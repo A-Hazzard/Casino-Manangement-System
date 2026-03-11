@@ -79,14 +79,14 @@ function calculateManufacturerDateRange(
  * @param locationId - Location ID to filter by
  * @param startDate - Start date
  * @param endDate - End date
- * @param licensee - Optional licensee to filter by
+ * @param licencee - Optional licencee to filter by
  * @returns Aggregation pipeline stages
  */
 function buildManufacturerPerformancePipeline(
   locationId: string,
   startDate: Date,
   endDate: Date,
-  licensee?: string | null
+  licencee?: string | null
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [
     {
@@ -119,12 +119,11 @@ function buildManufacturerPerformancePipeline(
     },
   ];
 
-  if (licensee && licensee !== 'all') {
+  if (licencee && licencee !== 'all') {
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licensee': licensee },
-          { 'locationDetails.rel.licencee': licensee },
+          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
         ],
       },
     } as PipelineStage);
@@ -262,7 +261,7 @@ function calculateManufacturerPercentages(
  * @param timePeriod - Time period
  * @param startDate - Optional custom start date
  * @param endDate - Optional custom end date
- * @param licensee - Optional licensee to filter by
+ * @param licencee - Optional licencee to filter by
  * @returns Array of manufacturer performance items
  */
 export async function getManufacturerPerformance(
@@ -270,7 +269,7 @@ export async function getManufacturerPerformance(
   timePeriod: TimePeriod,
   startDate?: string | null,
   endDate?: string | null,
-  licensee?: string | null
+  licencee?: string | null
 ): Promise<ManufacturerPerformanceItem[]> {
   const { startDate: startDateFilter, endDate: endDateFilter } =
     calculateManufacturerDateRange(timePeriod, startDate, endDate);
@@ -279,7 +278,7 @@ export async function getManufacturerPerformance(
     locationId,
     startDateFilter,
     endDateFilter,
-    licensee
+    licencee
   );
 
   const manufacturerData: ManufacturerDataItem[] = [];

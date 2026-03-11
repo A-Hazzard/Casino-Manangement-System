@@ -5,7 +5,7 @@
  * It supports:
  * - Single or multiple location IDs
  * - Filtering by time period or custom date range
- * - Optional filtering by licensee
+ * - Optional filtering by licencee
  * - Current period revenue and previous period average
  *
  * @module app/api/metrics/hourly-trends/route
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     const locationIds = searchParams.get('locationIds');
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licensee = searchParams.get('licensee');
+    const licencee = (searchParams.get('licencee'));
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
 
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
       timePeriod,
       startDateParam,
       endDateParam,
-      licensee
+      licencee
     );
 
     // ============================================================================

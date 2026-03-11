@@ -5,7 +5,7 @@
  * It supports:
  * - Profile field validation (username, email, phone, date of birth, etc.)
  * - Password change with current password verification
- * - Licensee and location assignment (for admin/developer roles)
+ * - Licencee and location assignment (for admin/developer roles)
  * - Session version incrementing on permission changes
  * - Profile validation status checking
  *
@@ -45,7 +45,7 @@ type ProfileUpdatePayload = {
   currentPassword?: string;
   newPassword?: string;
   confirmPassword?: string;
-  licenseeIds?: string[];
+  licenceeIds?: string[];
   locationIds?: string[];
 };
 
@@ -215,19 +215,19 @@ export async function PUT(request: NextRequest) {
       return cleaned;
     };
 
-    const requestedLicenseeIds = normalizeIdArray(body.licenseeIds);
+    const requestedLicenceeIds = normalizeIdArray(body.licenceeIds);
     const requestedLocationIds = normalizeIdArray(body.locationIds);
 
     // Use only new fields
-    let existingLicensees: string[] = [];
+    let existingLicencees: string[] = [];
     if (
       Array.isArray(
-        (user as { assignedLicensees?: string[] })?.assignedLicensees
+        (user as { assignedLicencees?: string[] })?.assignedLicencees
       )
     ) {
-      existingLicensees = (
-        user as { assignedLicensees: string[] }
-      ).assignedLicensees.map(id => String(id));
+      existingLicencees = (
+        user as { assignedLicencees: string[] }
+      ).assignedLicencees.map(id => String(id));
     }
 
     let existingLocations: string[] = [];
@@ -248,13 +248,13 @@ export async function PUT(request: NextRequest) {
     const canManageAssignments =
       userRoles.includes('admin') || userRoles.includes('developer');
 
-    // DO NOT require locations or licensees for admin and developer roles
+    // DO NOT require locations or licencees for admin and developer roles
     if (!canManageAssignments) {
       // Only validate if the fields are explicitly provided (not undefined)
-      // This allows users to update other fields without changing licensees/locations
-      if (requestedLicenseeIds !== undefined) {
-        if (requestedLicenseeIds.length === 0) {
-          errors.licenseeIds = 'Please contact your Administrator or Tech Support to be assigned to a licensee.';
+      // This allows users to update other fields without changing licencees/locations
+      if (requestedLicenceeIds !== undefined) {
+        if (requestedLicenceeIds.length === 0) {
+          errors.licenceeIds = 'Please contact your Administrator or Tech Support to be assigned to a licencee.';
         }
       }
       if (requestedLocationIds !== undefined) {
@@ -411,13 +411,13 @@ export async function PUT(request: NextRequest) {
 
 
 
-    // Update licensees if user can manage assignments and licenseeIds are provided
-    if (canManageAssignments && requestedLicenseeIds !== undefined) {
+    // Update licencees if user can manage assignments and licenceeIds are provided
+    if (canManageAssignments && requestedLicenceeIds !== undefined) {
       // Update only new field - no longer writing to old fields
-      updateSet['assignedLicensees'] = requestedLicenseeIds;
-      const sortedExistingLicensees = sortIds(existingLicensees);
-      const sortedRequestedLicensees = sortIds(requestedLicenseeIds);
-      if (!arraysEqual(sortedRequestedLicensees, sortedExistingLicensees)) {
+      updateSet['assignedLicencees'] = requestedLicenceeIds;
+      const sortedExistingLicencees = sortIds(existingLicencees);
+      const sortedRequestedLicencees = sortIds(requestedLicenceeIds);
+      if (!arraysEqual(sortedRequestedLicencees, sortedExistingLicencees)) {
         incrementSession = true;
       }
     }
@@ -481,7 +481,7 @@ export async function PUT(request: NextRequest) {
         rel: updatedObject.rel,
         isEnabled: updatedObject.isEnabled,
         assignedLocations: updatedObject.assignedLocations || undefined,
-        assignedLicensees: updatedObject.assignedLicensees || undefined,
+        assignedLicencees: updatedObject.assignedLicencees || undefined,
         tempPasswordChanged: updatedObject.tempPasswordChanged,
         requiresProfileUpdate,
         requiresPasswordUpdate: !!invalidFields.password,

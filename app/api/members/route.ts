@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     // Currency parameters
     const displayCurrency = getCurrencyFromQuery(searchParams);
-    const licensee = searchParams.get('licensee') || null;
+    const licencee = (searchParams.get('licencee')) || null;
 
     // ============================================================================
     // STEP 3: Build query filters
@@ -349,7 +349,7 @@ export async function GET(request: NextRequest) {
     // Apply currency conversion if needed
     const convertedMembers = await applyCurrencyConversionToMetrics(
       members,
-      licensee,
+      licencee,
       displayCurrency
     );
 
@@ -369,7 +369,7 @@ export async function GET(request: NextRequest) {
         },
       },
       currency: displayCurrency,
-      converted: shouldApplyCurrencyConversion(licensee),
+      converted: shouldApplyCurrencyConversion(licencee),
     };
 
     const duration = Date.now() - startTime;

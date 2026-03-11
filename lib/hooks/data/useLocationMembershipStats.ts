@@ -30,7 +30,7 @@ export function useLocationMembershipStats(
     useState<MembershipStats | null>(null);
   const [membershipStatsLoading, setMembershipStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const selectedLicensee = useDashBoardStore(state => state.selectedLicensee);
+  const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
   const makeRequest = useAbortableRequest();
 
   // Fetch membership stats
@@ -39,10 +39,10 @@ export function useLocationMembershipStats(
     setError(null);
 
     try {
-      // Use selected licensee or 'all' if not selected
-      const licensee = selectedLicensee || 'all';
+      // Use selected licencee or 'all' if not selected
+      const licencee = selectedLicencee || 'all';
       const stats = await fetchMembershipStats(
-        licensee,
+        licencee,
         locationId,
         machineTypeFilter
       );
@@ -62,14 +62,14 @@ export function useLocationMembershipStats(
     } finally {
       setMembershipStatsLoading(false);
     }
-  }, [selectedLicensee, locationId, machineTypeFilter]);
+  }, [selectedLicencee, locationId, machineTypeFilter]);
 
   // Refresh membership stats
   const refreshMembershipStats = useCallback(async () => {
     await fetchMembershipStatsData();
   }, [fetchMembershipStatsData]);
 
-  // Load membership stats on mount and when selectedLicensee, locationId, or machineTypeFilter changes
+  // Load membership stats on mount and when selectedLicencee, locationId, or machineTypeFilter changes
   useEffect(() => {
     const loadMembershipStats = async () => {
       setMembershipStatsLoading(true);
@@ -77,9 +77,9 @@ export function useLocationMembershipStats(
 
       try {
         const result = await makeRequest(async signal => {
-          const licensee = selectedLicensee || 'all';
+          const licencee = selectedLicencee || 'all';
           const stats = await fetchMembershipStats(
-            licensee,
+            licencee,
             locationId,
             machineTypeFilter,
             signal
@@ -110,7 +110,7 @@ export function useLocationMembershipStats(
     };
 
     loadMembershipStats();
-  }, [selectedLicensee, locationId, machineTypeFilter, makeRequest]);
+  }, [selectedLicencee, locationId, machineTypeFilter, makeRequest]);
 
   return {
     membershipStats,

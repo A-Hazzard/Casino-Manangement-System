@@ -26,7 +26,7 @@ export type UpdateLocationData = {
 export type LocationSelectItem = {
   _id: string;
   name: string;
-  licenseeId?: string | null;
+  licenceeId?: string | null;
 };
 
 export type LocationSortOption =
@@ -55,7 +55,7 @@ export type LocationResponse = {
   city?: string;
   state?: string;
   country: string;
-  licensee?: string;
+  licencee?: string;
   latitude?: number;
   longitude?: number;
   coordinates?: [number, number];
@@ -79,7 +79,7 @@ import { DateRangeFilter } from '../common/mongo';
 
 export type MeterMatchStage = {
   readAt: DateRangeFilter;
-  'rel.licensee'?: string;
+  'rel.licencee'?: string;
   [key: string]: unknown;
 };
 

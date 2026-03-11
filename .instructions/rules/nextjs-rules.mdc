@@ -21,7 +21,7 @@ All contributors should adhere to the following rules, which are enforced throug
 
 - **Purpose**: Casino Management System for managing gaming operations, financial reporting, and player tracking
 - **Technology Stack**: Next.js 15, TypeScript, MongoDB with Mongoose, Tailwind CSS, Zustand
-- **Key Features**: Real-time machine monitoring, financial analytics, collection management, multi-licensee support
+- **Key Features**: Real-time machine monitoring, financial analytics, collection management, multi-licencee support
 - **Performance Targets**: 7d queries <10s, 30d queries <15s
 
 **Critical Performance Requirements:**
@@ -931,9 +931,9 @@ for await (const agg of aggregation) {
 
 ---
 
-## 13. Backend Database Query Standards & Licensee Filtering
+## 13. Backend Database Query Standards & Licencee Filtering
 
-These rules consolidate the backend guidelines in `Documentation/backend/BACKEND_GUIDELINES.md` and the licensee/location access rules.
+These rules consolidate the backend guidelines in `Documentation/backend/BACKEND_GUIDELINES.md` and the licencee/location access rules.
 
 ### 13.1. Use Mongoose Models, Never Direct Collection Access
 
@@ -970,34 +970,34 @@ const session = await MachineSession.findOne({ _id: sessionId });
 const session = await MachineSession.findById(sessionId);
 ```
 
-### 13.3. Licensee & Location Filtering
+### 13.3. Licencee & Location Filtering
 
-All API routes that return location- or machine-scoped data **must** respect the user’s accessible licensees and locations.
+All API routes that return location- or machine-scoped data **must** respect the user’s accessible licencees and locations.
 
 - **Always support both spellings** of the query parameter:
 
 ```typescript
-const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+const licencee = searchParams.get('licencee') || searchParams.get('licencee');
 ```
 
 - **Always** use the shared helper to determine allowed locations and apply it to queries or aggregation `$match` stages.
 - **Pattern for applying location filters:**
 
 ```typescript
-const allowedLocationIds = await getUserLocationFilter(licensee || undefined);
+const allowedLocationIds = await getUserLocationFilter(licencee || undefined);
 
 if (allowedLocationIds !== 'all') {
   matchStage.gamingLocation = { $in: allowedLocationIds };
 }
 ```
 
-### 13.4. Aggregations with Licensee Filtering
+### 13.4. Aggregations with Licencee Filtering
 
 When joining machines and locations in aggregations:
 
 - Join machines by `_id`
 - Join locations by `gamingLocation`
-- Filter on `locationDetails.rel.licencee` using the resolved licensee
+- Filter on `locationDetails.rel.licencee` using the resolved licencee
 
 ```typescript
 const pipeline: PipelineStage[] = [
@@ -1022,7 +1022,7 @@ const pipeline: PipelineStage[] = [
   { $unwind: '$locationDetails' },
   {
     $match: {
-      'locationDetails.rel.licencee': licenseeId,
+      'locationDetails.rel.licencee': licenceeId,
     },
   },
 ];
@@ -1030,8 +1030,8 @@ const pipeline: PipelineStage[] = [
 
 ### 13.5. Consistency & Safety
 
-- Never bypass licensee/location checks in production APIs
-- Prefer shared helpers (`licenseeFilter.ts`, `users.ts`) over duplicating logic
+- Never bypass licencee/location checks in production APIs
+- Prefer shared helpers (`licenceeFilter.ts`, `users.ts`) over duplicating logic
 - Keep all database query logic type-safe – no `any` in query objects or results
 
 ---

@@ -7,6 +7,7 @@
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import { DateTimePicker } from '@/components/shared/ui/date-time-picker';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import type { User } from '@/lib/types/administration';
@@ -37,7 +38,7 @@ export default function ProfileAddressIdentity({
     value: string,
     section?: 'address' | 'identification'
   ) => {
-    onInputChange(field, value, section);
+    onInputChange(field, value , section);
     // Clear error when user starts typing
     const errorKey = section ? `${section}.${field}` : field;
     if (validationErrors[errorKey] || validationErrors[field]) {
@@ -157,26 +158,20 @@ export default function ProfileAddressIdentity({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
+            <div className='flex flex-col gap-2'>
               <Label>Date of Birth</Label>
               {isEditMode ? (
                 <>
-                  <Input
-                    type="date"
-                    value={
-                      formData?.identification?.dateOfBirth?.split('T')[0] || ''
-                    }
-                    onChange={e =>
+                  <DateTimePicker
+                    dateOnly
+                    date={formData?.identification?.dateOfBirth ? new Date(formData.identification.dateOfBirth) : undefined}
+                    setDate={(date: Date | undefined) =>
                       handleInputChangeWithValidation(
                         'dateOfBirth',
-                        e.target.value,
+                        date ? date.toISOString().split('T')[0] : '',
                         'identification'
                       )
                     }
-                    max={new Date().toISOString().split('T')[0]}
-                    className={`mt-2 ${
-                      validationErrors.dateOfBirth ? 'border-red-500' : ''
-                    }`}
                   />
                   {validationErrors.dateOfBirth && (
                     <p className="mt-1.5 text-sm text-red-600">

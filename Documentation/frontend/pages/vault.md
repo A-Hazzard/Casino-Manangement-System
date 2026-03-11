@@ -50,7 +50,7 @@ The module is found within `app/vault/` and uses components from `components/VAU
 - **Features**:
     - **Default View**: Last 7 days of expense history.
     - **Summary Cards**: Total expenses, category breakdown, average expense.
-    - **Filters**: Date range, category (Supplies, Repairs, Bills, Licenses, Other).
+    - **Filters**: Date range, category (Supplies, Repairs, Bills, Licences, Other).
     - **Record Expense**: Modal-based entry with mandatory denomination breakdown and optional receipt upload.
 
 ### 4. Float Transactions

@@ -97,7 +97,7 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
       roles?: string[];
       permissions?: string[];
       assignedLocations?: string[];
-      assignedLicensees?: string[];
+      assignedLicencees?: string[];
     };
 
     let dbUser: {
@@ -105,7 +105,7 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
       roles?: string[];
       permissions?: string[];
       assignedLocations?: string[];
-      assignedLicensees?: string[];
+      assignedLicencees?: string[];
       isEnabled?: boolean;
       deletedAt?: Date | null;
     } | null = null;
@@ -116,14 +116,14 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         const UserModel = (await import('@/app/api/lib/models/user')).default;
         dbUser = (await UserModel.findOne({ _id: jwtPayload._id })
           .select(
-            'sessionVersion roles permissions assignedLocations assignedLicensees isEnabled deletedAt'
+            'sessionVersion roles permissions assignedLocations assignedLicencees isEnabled deletedAt'
           )
           .lean()) as {
             sessionVersion?: number;
             roles?: string[];
             permissions?: string[];
             assignedLocations?: string[];
-            assignedLicensees?: string[];
+            assignedLicencees?: string[];
             isEnabled?: boolean;
             deletedAt?: Date | null;
           } | null;
@@ -195,7 +195,7 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         jwtPayload.permissions = dbUser.permissions;
       }
 
-      // Hydrate assignedLocations and assignedLicensees from database
+      // Hydrate assignedLocations and assignedLicencees from database
       // ALWAYS prefer database values (database is source of truth)
       // Only log in development and only when there's an issue
       if (process.env.NODE_ENV === 'development') {
@@ -228,18 +228,17 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
       }
 
       // ALWAYS use database value if it exists (even if empty array)
-      if (Array.isArray(dbUser.assignedLicensees)) {
+      if (Array.isArray(dbUser.assignedLicencees)) {
         // Database has data (even if empty) - ALWAYS use it (database is source of truth)
-        const dbLicensees = dbUser.assignedLicensees.map((id: string) =>
+        const dbLicencees = dbUser.assignedLicencees.map((id: string) =>
           String(id)
         );
-        jwtPayload.assignedLicensees = dbLicensees;
-      } else if (Array.isArray(jwtPayload.assignedLicensees)) {
+        jwtPayload.assignedLicencees = dbLicencees;
+      } else if (Array.isArray(jwtPayload.assignedLicencees)) {
         // JWT has data but DB doesn't - keep JWT data
-        // (This shouldn't happen after migration, but handle gracefully)
       } else {
         // No data in JWT or DB - ensure empty array is set
-        jwtPayload.assignedLicensees = [];
+        jwtPayload.assignedLicencees = [];
       }
     }
 
@@ -344,7 +343,7 @@ export async function createUser(
     isEnabled?: boolean;
     profilePicture?: string | null;
     assignedLocations?: string[];
-    assignedLicensees?: string[];
+    assignedLicencees?: string[];
     tempPassword?: string;
   },
   request: NextRequest
@@ -358,7 +357,7 @@ export async function createUser(
     isEnabled = true,
     profilePicture = null,
     assignedLocations,
-    assignedLicensees,
+    assignedLicencees,
     tempPassword,
   } = data;
 
@@ -451,15 +450,15 @@ export async function createUser(
     );
   }
 
-  // Validate that licensee is provided (user should never be created without a licensee)
+  // Validate that licencee is provided (user should never be created without a licencee)
   // Use only new field
-  const hasLicensees =
-    assignedLicensees &&
-    Array.isArray(assignedLicensees) &&
-    assignedLicensees.length > 0;
+  const hasLicencees =
+    assignedLicencees &&
+    Array.isArray(assignedLicencees) &&
+    assignedLicencees.length > 0;
 
-  if (!hasLicensees) {
-    throw new Error('A user must be assigned to at least one licensee');
+  if (!hasLicencees) {
+    throw new Error('A user must be assigned to at least one licencee');
   }
 
   // Check for existing username and email separately to provide specific error messages
@@ -479,22 +478,22 @@ export async function createUser(
   // Create user - catch MongoDB duplicate key errors
   let newUser;
   try {
-    // Use only new fields - no longer writing to old fields
-    let finalAssignedLicensees = assignedLicensees || [];
+    // Use only new fields - no longer writing to old fields (except assignedLocations)
+    let finalAssignedLicencees = assignedLicencees || [];
     let finalAssignedLocations = assignedLocations || [];
 
-    // ENFORCEMENT: Managers and Vault Managers can ONLY create users within their own licensees and locations
+    // ENFORCEMENT: Managers and Vault Managers can ONLY create users within their own licencees and locations
     if (isManager || isVaultManager) {
-      finalAssignedLicensees = (requestingUser.assignedLicensees as string[]) || [];
+      finalAssignedLicencees = (requestingUser.assignedLicencees as string[]) || [];
       finalAssignedLocations = (requestingUser.assignedLocations as string[]) || [];
 
-      console.log(`[createUser] Auto-assigning licensees/locations for new user ${username} based on creator ${requestingUser._id}`);
+      console.log(`[createUser] Auto-assigning licencees/locations for new user ${username} based on creator ${requestingUser._id}`);
     }
 
-    // ENFORCEMENT: Vault Managers must have exactly 1 licensee and 1 location
+    // ENFORCEMENT: Vault Managers must have exactly 1 licencee and 1 location
     if (normalizedRoles.includes('vault-manager')) {
-      if (finalAssignedLicensees.length !== 1 || finalAssignedLocations.length !== 1) {
-        throw new Error('Vault Managers must be assigned to exactly one licensee and one location');
+      if (finalAssignedLicencees.length !== 1 || finalAssignedLocations.length !== 1) {
+        throw new Error('Vault Managers must be assigned to exactly one licencee and one location');
       }
     }
 
@@ -515,9 +514,9 @@ export async function createUser(
       profile,
       isEnabled,
       profilePicture,
-      // Old fields removed - only using assignedLocations and assignedLicensees
+      // Old fields removed - only using assignedLocations and assignedLicencees
       assignedLocations: finalAssignedLocations,
-      assignedLicensees: finalAssignedLicensees,
+      assignedLicencees: finalAssignedLicencees,
       tempPasswordChanged: (isCashier && hasTemp) ? false : true, // Cashiers must change on first login
       tempPassword: tempPassword || null, // Store plain text temp password
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
@@ -667,18 +666,18 @@ export async function updateUser(
     }
   }
 
-  // ENFORCEMENT: Only admins and developers can edit assigned locations and licensees
+  // ENFORCEMENT: Only admins and developers can edit assigned locations and licencees
   // This applies to both self-editing and editing others
   const isAssignmentEditingAllowed = isDeveloper || isAdmin;
 
   if (!isAssignmentEditingAllowed) {
-    if (updateFields.assignedLocations !== undefined || updateFields.assignedLicensees !== undefined) {
+    if (updateFields.assignedLocations !== undefined || updateFields.assignedLicencees !== undefined) {
       console.warn(`[updateUser] Unauthorized attempt by user ${requestingUser?._id} to edit assignments for user ${_id}`);
 
       // Specifically for assignments, we silently remove them if unauthorized
       // to allow other profile updates to proceed
       delete updateFields.assignedLocations;
-      delete updateFields.assignedLicensees;
+      delete updateFields.assignedLicencees;
 
       // Also block legacy fields
       if (updateFields.rel !== undefined) delete updateFields.rel;
@@ -752,53 +751,53 @@ export async function updateUser(
     // Normalize roles before saving
     updateFields.roles = normalizedRoles;
 
-    // ENFORCEMENT: Vault Managers must have exactly 1 licensee and 1 location
+    // ENFORCEMENT: Vault Managers must have exactly 1 licencee and 1 location
     if (normalizedRoles.includes('vault-manager')) {
-      const licensees = (updateFields.assignedLicensees as string[]) || (user.assignedLicensees as string[]) || [];
+      const licencees = (updateFields.assignedLicencees as string[]) || (user.assignedLicencees as string[]) || [];
       const locations = (updateFields.assignedLocations as string[]) || (user.assignedLocations as string[]) || [];
 
-      if (licensees.length !== 1 || locations.length !== 1) {
+      if (licencees.length !== 1 || locations.length !== 1) {
         throw new Error(
-          'Vault Managers must be assigned to exactly one licensee and one location'
+          'Vault Managers must be assigned to exactly one licencee and one location'
         );
       }
     }
   }
 
-  // For managers, ensure they can only toggle isEnabled for users in their licensee
+  // For managers, ensure they can only toggle isEnabled for users in their licencee
   if (isManager && updateFields.isEnabled !== undefined) {
     // Use only new field for manager
-    let managerLicenseeIds: string[] = [];
+    let managerLicenceeIds: string[] = [];
     if (
       Array.isArray(
-        (requestingUser as { assignedLicensees?: string[] })?.assignedLicensees
+        (requestingUser as { assignedLicencees?: string[] })?.assignedLicencees
       )
     ) {
-      managerLicenseeIds = (
-        requestingUser as { assignedLicensees: string[] }
-      ).assignedLicensees.map(id => String(id));
+      managerLicenceeIds = (
+        requestingUser as { assignedLicencees: string[] }
+      ).assignedLicencees.map(id => String(id));
     }
 
     // Use only new field for user
-    let userLicenseeIds: string[] = [];
+    let userLicenceeIds: string[] = [];
     if (
       Array.isArray(
-        (user as { assignedLicensees?: string[] })?.assignedLicensees
+        (user as { assignedLicencees?: string[] })?.assignedLicencees
       )
     ) {
-      userLicenseeIds = (
-        user as { assignedLicensees: string[] }
-      ).assignedLicensees.map(id => String(id));
+      userLicenceeIds = (
+        user as { assignedLicencees: string[] }
+      ).assignedLicencees.map(id => String(id));
     }
 
-    // Check if user belongs to any of the manager's licensees
-    const hasSharedLicensee = userLicenseeIds.some(id =>
-      managerLicenseeIds.includes(id)
+    // Check if user belongs to any of the manager's licencees
+    const hasSharedLicencee = userLicenceeIds.some(id =>
+      managerLicenceeIds.includes(id)
     );
 
-    if (!hasSharedLicensee) {
+    if (!hasSharedLicencee) {
       throw new Error(
-        'Managers can only enable/disable accounts for users in their licensee'
+        'Managers can only enable/disable accounts for users in their licencee'
       );
     }
   }
@@ -1168,7 +1167,10 @@ export async function updateUser(
     }
   }
 
-  // No longer syncing to old fields - only using assignedLocations and assignedLicensees
+  // No longer syncing to old fields - only using assignedLocations and assignedLicencees
+
+  // Remove rel and resourcePermissions from updateFields if present
+
   // Remove rel and resourcePermissions from updateFields if present
   if ('rel' in updateFields) {
     delete updateFields.rel;
@@ -1556,7 +1558,7 @@ function calculateUserChanges(
  *
  * @param currentUser - Current user object
  * @param currentUserRoles - Current user roles array
- * @param currentUserLicensees - Current user assigned licensees
+ * @param currentUserLicencees - Current user assigned licencees
  * @param currentUserLocationPermissions - Current user assigned locations
  * @param searchParams - URL search parameters
  * @param startTime - Request start time for performance tracking
@@ -1571,7 +1573,7 @@ type UserItem = Record<string, unknown> & {
   isEnabled?: boolean;
   enabled?: boolean;
   assignedLocations?: string[];
-  assignedLicensees?: string[];
+  assignedLicencees?: string[];
   profile?: Record<string, unknown>;
   roles?: string[];
   discrepancy?: number;
@@ -1580,7 +1582,7 @@ type UserItem = Record<string, unknown> & {
 export async function handleDeletedUsersRequest(
   currentUser: Record<string, unknown> | null,
   currentUserRoles: string[],
-  currentUserLicensees: string[],
+  currentUserLicencees: string[],
   currentUserLocationPermissions: string[],
   searchParams: URLSearchParams,
   startTime: number,
@@ -1588,7 +1590,7 @@ export async function handleDeletedUsersRequest(
 ): Promise<Response> {
   const search = searchParams.get('search');
   const searchMode = searchParams.get('searchMode') || 'username';
-  const licensee = searchParams.get('licensee');
+  const licencee = searchParams.get('licencee');
 
   // Fetch deleted users
   const users = await getDeletedUsers();
@@ -1603,7 +1605,7 @@ export async function handleDeletedUsersRequest(
     profilePicture: (user.profilePicture as string) ?? null,
     profile: user.profile as Record<string, unknown>,
     assignedLocations: (user.assignedLocations as string[]) || undefined,
-    assignedLicensees: (user.assignedLicensees as string[]) || undefined,
+    assignedLicencees: (user.assignedLicencees as string[]) || undefined,
     loginCount: user.loginCount,
     lastLoginAt: user.lastLoginAt,
     sessionVersion: user.sessionVersion,
@@ -1614,16 +1616,16 @@ export async function handleDeletedUsersRequest(
     result,
     currentUser,
     currentUserRoles,
-    currentUserLicensees,
+    currentUserLicencees,
     currentUserLocationPermissions
   );
 
-  if (licensee && licensee !== 'all') {
+  if (licencee && licencee !== 'all') {
     result = result.filter(user => {
-      const userLicensees = Array.isArray(user.assignedLicensees)
-        ? user.assignedLicensees
+      const userLicencees = Array.isArray(user.assignedLicencees)
+        ? user.assignedLicencees
         : [];
-      return userLicensees.includes(licensee);
+      return userLicencees.includes(licencee);
     });
   }
 
@@ -1639,7 +1641,7 @@ export async function handleDeletedUsersRequest(
  *
  * @param currentUser - Current user object
  * @param currentUserRoles - Current user roles array
- * @param currentUserLicensees - Current user assigned licensees
+ * @param currentUserLicencees - Current user assigned licencees
  * @param currentUserLocationPermissions - Current user assigned locations
  * @param searchParams - URL search parameters
  * @param startTime - Request start time for performance tracking
@@ -1649,7 +1651,7 @@ export async function handleDeletedUsersRequest(
 export async function handleCashiersRequest(
   currentUser: Record<string, unknown> | null,
   currentUserRoles: string[],
-  currentUserLicensees: string[],
+  currentUserLicencees: string[],
   currentUserLocationPermissions: string[],
   searchParams: URLSearchParams,
   startTime: number,
@@ -1657,7 +1659,7 @@ export async function handleCashiersRequest(
 ): Promise<Response> {
   const search = searchParams.get('search');
   const searchMode = searchParams.get('searchMode') || 'username';
-  const licensee = searchParams.get('licensee');
+  const licencee = searchParams.get('licencee');
 
   // STEP 1: Connect to database to ensure we can fetch shifts
   await connectDB();
@@ -1705,7 +1707,7 @@ export async function handleCashiersRequest(
       profilePicture: (user.profilePicture as string) ?? null,
       profile: user.profile as Record<string, unknown>,
       assignedLocations: (user.assignedLocations as string[]) || undefined,
-      assignedLicensees: (user.assignedLicensees as string[]) || undefined,
+      assignedLicencees: (user.assignedLicencees as string[]) || undefined,
       loginCount: user.loginCount as number,
       lastLoginAt: user.lastLoginAt as Date,
       sessionVersion: user.sessionVersion as number,
@@ -1718,16 +1720,16 @@ export async function handleCashiersRequest(
     result,
     currentUser,
     currentUserRoles,
-    currentUserLicensees,
+    currentUserLicencees,
     currentUserLocationPermissions
   );
 
-  if (licensee && licensee !== 'all') {
+  if (licencee && licencee !== 'all') {
     result = result.filter((user: Record<string, unknown>) => {
-      const userLicensees = Array.isArray(user.assignedLicensees)
-        ? user.assignedLicensees
+      const userLicencees = Array.isArray(user.assignedLicencees)
+        ? user.assignedLicencees
         : [];
-      return userLicensees.includes(licensee);
+      return userLicencees.includes(licencee);
     });
   }
 
@@ -1750,7 +1752,7 @@ export async function handleCashiersRequest(
  *
  * @param currentUser - Current user object
  * @param currentUserRoles - Current user roles array
- * @param currentUserLicensees - Current user assigned licensees
+ * @param currentUserLicencees - Current user assigned licencees
  * @param currentUserLocationPermissions - Current user assigned locations
  * @param searchParams - URL search parameters
  * @param startTime - Request start time for performance tracking
@@ -1760,7 +1762,7 @@ export async function handleCashiersRequest(
 export async function handleAllUsersRequest(
   currentUser: Record<string, unknown> | null,
   currentUserRoles: string[],
-  currentUserLicensees: string[],
+  currentUserLicencees: string[],
   currentUserLocationPermissions: string[],
   searchParams: URLSearchParams,
   startTime: number,
@@ -1770,7 +1772,7 @@ export async function handleAllUsersRequest(
   const searchMode = searchParams.get('searchMode') || 'username';
   const status = searchParams.get('status') || 'all';
   const role = searchParams.get('role');
-  const licensee = searchParams.get('licensee');
+  const licencee = searchParams.get('licencee');
 
   // Fetch all users
   const users = await getAllUsers();
@@ -1785,7 +1787,7 @@ export async function handleAllUsersRequest(
     profilePicture: (user.profilePicture as string) ?? null,
     profile: user.profile as Record<string, unknown>,
     assignedLocations: (user.assignedLocations as string[]) || undefined,
-    assignedLicensees: (user.assignedLicensees as string[]) || undefined,
+    assignedLicencees: (user.assignedLicencees as string[]) || undefined,
     loginCount: user.loginCount as number,
     lastLoginAt: user.lastLoginAt as Date,
     sessionVersion: user.sessionVersion as number,
@@ -1798,7 +1800,7 @@ export async function handleAllUsersRequest(
     result,
     currentUser,
     currentUserRoles,
-    currentUserLicensees,
+    currentUserLicencees,
     currentUserLocationPermissions
   );
 
@@ -1823,13 +1825,13 @@ export async function handleAllUsersRequest(
     });
   }
 
-  // Apply licensee filtering
-  if (licensee && licensee !== 'all') {
+  // Apply licencee filtering
+  if (licencee && licencee !== 'all') {
     result = result.filter((user: UserItem) => {
-      const userLicensees = Array.isArray(user.assignedLicensees)
-        ? user.assignedLicensees
+      const userLicencees = Array.isArray(user.assignedLicencees)
+        ? user.assignedLicencees
         : [];
-      return userLicensees.includes(licensee);
+      return userLicencees.includes(licencee);
     });
   }
 
@@ -1847,7 +1849,7 @@ export async function handleAllUsersRequest(
  * @param users - Array of users to filter
  * @param currentUser - Current user object
  * @param currentUserRoles - Current user roles array
- * @param currentUserLicensees - Current user assigned licensees
+ * @param currentUserLicencees - Current user assigned licencees
  * @param currentUserLocationPermissions - Current user assigned locations
  * @returns Filtered array of users based on role-based access control
  */
@@ -1855,7 +1857,7 @@ function applyRoleBasedFiltering(
   users: UserItem[],
   currentUser: Record<string, unknown> | null,
   currentUserRoles: string[],
-  currentUserLicensees: string[],
+  currentUserLicencees: string[],
   currentUserLocationPermissions: string[]
 ): UserItem[] {
   const isAdmin =
@@ -1868,15 +1870,15 @@ function applyRoleBasedFiltering(
   let result = [...users];
 
   if (isManager && !isAdmin) {
-    // Managers can only see users with same licensees
-    // Managers can only see users with same licensees OR same locations
+    // Managers can only see users with same licencees
+    // Managers can only see users with same licencees OR same locations
     result = result.filter(user => {
-      const userLicensees = (user.assignedLicensees || []).map(l => String(l));
-      const hasSharedLicensee = userLicensees.some((userLic: string) =>
-        currentUserLicensees.includes(userLic)
+      const userLicencees = (user.assignedLicencees || []).map(l => String(l));
+      const hasSharedLicencee = userLicencees.some((userLic: string) =>
+        currentUserLicencees.includes(userLic)
       );
 
-      if (hasSharedLicensee) return true;
+      if (hasSharedLicencee) return true;
 
       const userLocs = (user.assignedLocations || []).map(l => String(l));
       if (userLocs.includes('all')) return true;

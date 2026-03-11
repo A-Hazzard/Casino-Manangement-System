@@ -14,11 +14,11 @@
  * @module app/api/locations/[locationId]/route
  */
 
-import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
@@ -26,7 +26,7 @@ import {
   convertFromUSD,
   convertToUSD,
   getCountryCurrency,
-  getLicenseeCurrency,
+  getLicenceeCurrency,
 } from '@/lib/helpers/rates';
 import { TransformedCabinet } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     const nameOnly = url.searchParams.get('nameOnly') === 'true';
     const basicInfo = url.searchParams.get('basicInfo') === 'true';
 
-    // Handle nameOnly requests - returns just name and licensee for display purposes
+    // Handle nameOnly requests - returns just name and licencee for display purposes
     // This bypasses access control since it only returns non-sensitive display data
     if (nameOnly) {
       await connectDB();
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
         {
           _id: 1,
           name: 1,
-          'rel.licensee': 1,
+          'rel.licencee': 1,
         }
       );
 
@@ -104,13 +104,13 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Handle licensee field - it's stored as string | null in the database
+      // Handle licencee field - it's stored as string | null in the database
       // Convert to array format for consistent API response
-      const licenseeId = location.rel?.licensee;
-      const licenseeIdArray = licenseeId
-        ? Array.isArray(licenseeId)
-          ? licenseeId
-          : [licenseeId]
+      const licenceeId = location.rel?.licencee || location.rel?.licencee;
+      const licenceeIdArray = licenceeId
+        ? Array.isArray(licenceeId)
+          ? licenceeId
+          : [licenceeId]
         : [];
 
       const locationData = location as { _id: unknown; name?: string };
@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
         location: {
           _id: locationData._id,
           name: locationData.name,
-          licenseeId: licenseeIdArray,
+          licenceeId: licenceeIdArray,
         },
       });
     }
@@ -185,7 +185,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 5: Parse query parameters
     // ============================================================================
-    const licensee = url.searchParams.get('licensee');
+    const licencee = (url.searchParams.get('licencee'));
     const searchTerm = url.searchParams.get('search');
     const timePeriod = url.searchParams.get('timePeriod') as TimePeriod;
     const customStartDate = url.searchParams.get('startDate');
@@ -291,20 +291,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // CRITICAL SECURITY CHECK: Verify the location belongs to the selected licensee (if provided)
-    // Developers and Admins bypass this check to simplify cross-licensee navigation
-    const hasSpecificLicensee =
-      licensee && licensee !== '' && licensee !== 'all';
+    // CRITICAL SECURITY CHECK: Verify the location belongs to the selected licencee (if provided)
+    // Developers and Admins bypass this check to simplify cross-licencee navigation
+    const hasSpecificLicencee =
+      licencee && licencee !== '' && licencee !== 'all';
 
-    if (!isAdmin && hasSpecificLicensee) {
-      const locationLicenseeId = locationCheck.rel?.licensee || (locationCheck.rel as unknown as Record<string, unknown>)?.licencee;
+    if (!isAdmin && hasSpecificLicencee) {
+      const locationLicenceeId = locationCheck.rel?.licencee || locationCheck.rel?.licencee;
 
-      if (locationLicenseeId !== licensee && (!Array.isArray(locationLicenseeId) || !locationLicenseeId.includes(licensee))) {
+      if (locationLicenceeId !== licencee && (!Array.isArray(locationLicenceeId) || !locationLicenceeId.includes(licencee))) {
         console.error(
-          `Access denied: Location ${locationId} does not belong to licensee ${licensee}`
+          `Access denied: Location ${locationId} does not belong to licencee ${licencee}`
         );
         return NextResponse.json(
-          { error: 'Access denied: Location not found for selected licensee' },
+          { error: 'Access denied: Location not found for selected licencee' },
           { status: 403 }
         );
       }
@@ -390,6 +390,7 @@ export async function GET(request: NextRequest) {
         gameType: 1,
         isCronosMachine: 1,
         sasMeters: 1,
+        collectorDenomination: 1,
       }
     )
       .lean()
@@ -449,19 +450,31 @@ export async function GET(request: NextRequest) {
       [
         {
           $match: {
-            $or: [
-              { machine: { $in: machineIds } }, // String match
+            $and: [
               {
-                machine: {
-                  $in: filteredMachines.map(m => m._id),
-                },
-              }, // ObjectId match
-            ],
-            readAt: {
-              $gte: gamingDayRange.rangeStart,
-              $lte: gamingDayRange.rangeEnd,
-            },
-          },
+                $or: [
+                  { location: locationId },
+                  { location: locationIdObj }
+                ]
+              },
+              {
+                $or: [
+                  { machine: { $in: machineIds } }, // String match
+                  {
+                    machine: {
+                      $in: filteredMachines.map(m => m._id),
+                    },
+                  }
+                ]
+              },
+              {
+                readAt: {
+                  $gte: gamingDayRange.rangeStart,
+                  $lte: gamingDayRange.rangeEnd,
+                }
+              }
+            ]
+          }
         },
         {
           $group: {
@@ -534,6 +547,7 @@ export async function GET(request: NextRequest) {
         locationName: locationName,
         assetNumber: assetNumber,
         serialNumber: assetNumber,
+        custom: machine.custom || {},
         relayId: (machine.relayId as string) || '',
         smibBoard: (machine.smibBoard as string) || '',
         smbId:
@@ -593,22 +607,22 @@ export async function GET(request: NextRequest) {
     // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
     const location = await GamingLocations.findOne(
       { _id: locationId },
-      { 'rel.licensee': 1, country: 1 }
+      { 'rel.licencee': 1, country: 1 }
     )
       .lean()
       .exec();
 
-    // Get licensee and country info for currency conversion
+    // Get licencee and country info for currency conversion
     let nativeCurrency: CurrencyCode = 'USD';
     if (location) {
       const locationData = location as {
-        rel?: { licensee?: string };
+        rel?: { licencee?: string };
         country?: string;
       };
-      const locationLicenseeId = locationData.rel?.licensee as
+      const locationLicenceeId = (locationData.rel?.licencee || locationData.rel?.licencee) as
         | string
         | undefined;
-      if (!locationLicenseeId) {
+      if (!locationLicenceeId) {
         // Unassigned locations - determine currency from country
         const countryId = locationData.country as string | undefined;
         if (countryId) {
@@ -625,17 +639,17 @@ export async function GET(request: NextRequest) {
           }
         }
       } else {
-        // Get licensee's native currency
+        // Get licencee's native currency
         // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
-        const licensee = await Licensee.findOne(
-          { _id: locationLicenseeId },
+        const licencee = await Licencee.findOne(
+          { _id: locationLicenceeId },
           { name: 1 }
         )
           .lean()
           .exec();
-        const licenseeData = licensee as { name?: string } | null;
-        if (licenseeData?.name) {
-          nativeCurrency = getLicenseeCurrency(licenseeData.name);
+        const licenceeData = licencee as { name?: string } | null;
+        if (licenceeData?.name) {
+          nativeCurrency = getLicenceeCurrency(licenceeData.name);
         }
       }
     }
@@ -673,6 +687,7 @@ export async function GET(request: NextRequest) {
           locationName: (cabinet.locationName as string) || '',
           assetNumber: (cabinet.assetNumber as string) || '',
           serialNumber: (cabinet.serialNumber as string) || '',
+          custom: (cabinet.custom as Record<string, unknown>) || {},
           relayId: (cabinet.relayId as string) || '',
           smibBoard: (cabinet.smibBoard as string) || '',
           smbId: (cabinet.smbId as string) || '',

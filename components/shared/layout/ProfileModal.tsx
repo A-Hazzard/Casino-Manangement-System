@@ -38,20 +38,20 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
     setIsEditMode,
     countries,
     countriesLoading,
-    licensees,
-    licenseesLoading,
-    licenseeOptions,
+    licencees,
+    licenceesLoading,
+    licenceeOptions,
     locations,
     locationsLoading,
     locationOptions,
     availableLocations,
     missingLocationNames,
-    selectedLicenseeIds,
-    setSelectedLicenseeIds,
+    selectedLicenceeIds,
+    setSelectedLicenceeIds,
     selectedLocationIds,
     setSelectedLocationIds,
-    allLicenseesSelected,
-    setAllLicenseesSelected,
+    allLicenceesSelected,
+    setAllLicenceesSelected,
     allLocationsSelected,
     setAllLocationsSelected,
     selectedRoles,
@@ -163,13 +163,13 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
                   isEditMode={isEditMode}
                   selectedRoles={selectedRoles}
                   setSelectedRoles={setSelectedRoles}
-                  licensees={licensees}
-                  licenseesLoading={licenseesLoading}
-                  allLicenseesSelected={allLicenseesSelected}
-                  onAllLicenseesToggle={setAllLicenseesSelected}
-                  selectedLicenseeIds={selectedLicenseeIds}
-                  onLicenseeChange={setSelectedLicenseeIds}
-                  licenseeOptions={licenseeOptions}
+                  licencees={licencees}
+                  licenceesLoading={licenceesLoading}
+                  allLicenceesSelected={allLicenceesSelected}
+                  onAllLicenceesToggle={setAllLicenceesSelected}
+                  selectedLicenceeIds={selectedLicenceeIds}
+                  onLicenceeChange={setSelectedLicenceeIds}
+                  licenceeOptions={licenceeOptions}
                   locations={locations}
                   locationsLoading={locationsLoading}
                   allLocationsSelected={allLocationsSelected}

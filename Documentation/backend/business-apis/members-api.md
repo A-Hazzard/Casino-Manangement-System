@@ -45,7 +45,7 @@ Member {
     dob: string;                  // Date of birth
     indentification: {            // Identification details
       number: string;             // ID number
-      type: string;               // ID type (Driver License, etc.)
+      type: string;               // ID type (Driver Licence, etc.)
     };
   };
   username: string;               // Member's username
@@ -79,14 +79,14 @@ Member {
 1. **Search Process**:
    - Queries `members` collection with search criteria
    - Applies text search across multiple fields
-   - Filters by licensee and location
+   - Filters by licencee and location
    - Calculates financial metrics from session data
    - Returns paginated results
 
 2. **Search Fields**:
    - **Text Search**: `firstName`, `lastName`, `username`
    - **Location Filter**: `gamingLocation`
-   - **Licensee Filter**: Via location lookup
+   - **Licencee Filter**: Via location lookup
    - **Date Filter**: `createdAt`, `lastLogin`
 
 3. **Search Query Structure**:
@@ -100,7 +100,7 @@ Member {
     { "username": { $regex: searchTerm, $options: "i" } }
   ],
   gamingLocation: locationFilter,
-  // Licensee filter applied via location lookup
+  // Licencee filter applied via location lookup
 }
 ```
 
@@ -231,7 +231,7 @@ Retrieves a paginated list of members with search and filtering capabilities, in
 - `limit` (number, default: 10): Number of members per page
 - `sortBy` (string, default: "createdAt"): Sort field (name, playerId, lastSession, createdAt, locationName, winLoss, lastLogin)
 - `sortOrder` (string, default: "desc"): Sort direction (asc, desc)
-- `licensee` (string, optional): Filter by licensee ID
+- `licencee` (string, optional): Filter by licencee ID
 
 **Response (Success - 200):**
 ```json
@@ -251,7 +251,7 @@ Retrieves a paginated list of members with search and filtering capabilities, in
           "dob": "1990-01-01",
           "indentification": {
             "number": "ID123456",
-            "type": "Driver License"
+            "type": "Driver Licence"
           }
         },
         "username": "johndoe",
@@ -295,7 +295,7 @@ Retrieves a paginated summary of members with additional filtering options, incl
 
 **Query Parameters:**
 
-- `licensee` (string, optional): Filter by licensee ID
+- `licencee` (string, optional): Filter by licencee ID
 - `dateFilter` (string, default: "all"): Date filter (all, yesterday, week, month, custom)
 - `startDate` (string, optional): Start date for custom date filtering (ISO format)
 - `endDate` (string, optional): End date for custom date filtering (ISO format)
@@ -452,7 +452,7 @@ Retrieves detailed information for a specific member.
         "dob": "1990-01-01",
         "indentification": {
           "number": "ID123456",
-          "type": "Driver License"
+          "type": "Driver Licence"
         }
       },
       "username": "johndoe",
@@ -768,10 +768,10 @@ SessionHistoryEntry {
 **Database Operations**:
 
 - Queries `members` collection with search criteria
-- Applies licensee and location filters
+- Applies licencee and location filters
 - Calculates win/loss from session data
 - Returns paginated results
-  **Query Parameters**: `search`, `page`, `limit`, `sortBy`, `sortOrder`, `licensee`
+  **Query Parameters**: `search`, `page`, `limit`, `sortBy`, `sortOrder`, `licencee`
   **Response Fields**: Array of `Member` objects with calculated financial metrics
   **Used By**: Member listing page, member search functionality
 
@@ -784,7 +784,7 @@ SessionHistoryEntry {
 - Applies date range filtering
 - Calculates summary statistics
 - Returns paginated results with summary data
-  **Query Parameters**: `licensee`, `dateFilter`, `startDate`, `endDate`, `search`, `location`
+  **Query Parameters**: `licencee`, `dateFilter`, `startDate`, `endDate`, `search`, `location`
   **Response Fields**: Member summary with aggregated statistics
   **Used By**: Member analytics, CSV export functionality
 
@@ -899,9 +899,9 @@ locationFilter = FIND(members WHERE gamingLocation = locationId)
 // Date Filter
 dateFilter = FIND(sessions WHERE startTime BETWEEN startDate AND endDate)
 
-// Licensee Filter
-licenseeFilter = FIND(members WHERE gamingLocation IN (
-  SELECT _id FROM gaminglocations WHERE rel.licensee = licenseeId
+// Licencee Filter
+licenceeFilter = FIND(members WHERE gamingLocation IN (
+  SELECT _id FROM gaminglocations WHERE rel.licencee = licenceeId
 ))
 ```
 
@@ -927,7 +927,7 @@ licenseeFilter = FIND(members WHERE gamingLocation IN (
 
 - **Authentication**: JWT token required for all endpoints
 - **Authorization**: Role-based access to member data
-- **Data Filtering**: Results filtered by user permissions and licensee
+- **Data Filtering**: Results filtered by user permissions and licencee
 - **Audit Logging**: All member operations logged for compliance
 
 ### Data Protection
@@ -977,9 +977,9 @@ Member location information is populated via MongoDB `$lookup` operations:
 - `members.gamingLocation` → `gaminglocations._id`
 - Populates `locationName` field with human-readable location name
 
-**Licensee Filtering:**
+**Licencee Filtering:**
 
-- Filters members by `gaminglocations.rel.licensee` field
+- Filters members by `gaminglocations.rel.licencee` field
 - Ensures multi-tenant data isolation
 - Applied via aggregation pipeline matching
 
@@ -999,7 +999,7 @@ Member location information is populated via MongoDB `$lookup` operations:
   - `lastLogin` - Last login timestamp
 - **Date Filtering**: Filter sessions by date ranges
 - **Location Filtering**: Filter by specific gaming locations
-- **Licensee Filtering**: Multi-tenant isolation by licensee
+- **Licencee Filtering**: Multi-tenant isolation by licencee
 
 ### Session Grouping
 
@@ -1192,7 +1192,7 @@ Date Filter = FIND(sessions WHERE startTime BETWEEN startDate AND endDate)
 
 - **Session Data**: Cache frequently accessed session data
 - **Machine Names**: Cache machine name lookups
-- **Location Data**: Cache location and licensee information
+- **Location Data**: Cache location and licencee information
 - **Pagination Results**: Cache paginated results for better UX
 
 ## Related Frontend Pages

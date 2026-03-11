@@ -75,7 +75,7 @@ Essential APIs that provide the foundation for the entire system:
 
 - **[Authentication API](core-apis/auth-api.md)** - User login, token management, security
 - **[Administration API](core-apis/administration-api.md)** - User management, roles, activity logs
-- **[System Config API](core-apis/system-config-api.md)** - System settings, licensee configuration
+- **[System Config API](core-apis/system-config-api.md)** - System settings, licencee configuration
 
 ### 🏢 Business APIs - Domain Operations
 
@@ -188,7 +188,7 @@ The system implements comprehensive RBAC:
 
 - **Developer:** Full system access
 - **Admin:** User and system administration
-- **Manager:** Licensee-level access and reporting
+- **Manager:** Licencee-level access and reporting
 - **Collector:** Collection operations and location access
 - **Location Admin:** Specific location management
 - **Technician:** Machine maintenance and configuration
@@ -212,7 +212,7 @@ The system implements comprehensive RBAC:
 #### Filtering
 
 - `search` (string) - Text search across relevant fields
-- `licensee` (string) - Filter by licensee ID
+- `licencee` (string) - Filter by licencee ID
 - `sortBy` (string) - Sort field name
 - `sortOrder` (string) - Sort direction: 'asc' | 'desc'
 

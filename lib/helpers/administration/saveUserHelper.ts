@@ -18,7 +18,7 @@ type SaveUserParams = {
   updated: Partial<User> & { password?: string };
   currentUser: User | null;
   getUserDisplayName: () => string;
-  selectedLicensee: string | null;
+  selectedLicencee: string | null;
   selectedStatus: string;
   itemsPerBatch: number;
   onSuccess: (updatedUserData: User) => void;
@@ -43,7 +43,7 @@ export async function saveUserHelper({
     updated.profilePicture !== undefined ||
     updated.password !== undefined ||
     updated.assignedLocations !== undefined ||
-    updated.assignedLicensees !== undefined ||
+    updated.assignedLicencees !== undefined ||
     (updated as { isEnabled?: boolean }).isEnabled !== undefined ||
     (updated as { enabled?: boolean }).enabled !== undefined;
 
@@ -100,9 +100,9 @@ export async function saveUserHelper({
     formDataComparison.assignedLocations = updated.assignedLocations;
   }
 
-  if (updated.assignedLicensees !== undefined) {
-    originalData.assignedLicensees = selectedUser.assignedLicensees;
-    formDataComparison.assignedLicensees = updated.assignedLicensees;
+  if (updated.assignedLicencees !== undefined) {
+    originalData.assignedLicencees = selectedUser.assignedLicencees;
+    formDataComparison.assignedLicencees = updated.assignedLicencees;
   }
 
   if (updated.password !== undefined) {
@@ -125,7 +125,7 @@ export async function saveUserHelper({
       fieldPath === 'roles' ||
       fieldPath.startsWith('rel') ||
       fieldPath === 'assignedLocations' ||
-      fieldPath === 'assignedLicensees'
+      fieldPath === 'assignedLicencees'
     );
   });
 
@@ -159,8 +159,8 @@ export async function saveUserHelper({
   if (updated.assignedLocations !== undefined) {
     updatePayload.assignedLocations = updated.assignedLocations;
   }
-  if (updated.assignedLicensees !== undefined) {
-    updatePayload.assignedLicensees = updated.assignedLicensees;
+  if (updated.assignedLicencees !== undefined) {
+    updatePayload.assignedLicencees = updated.assignedLicencees;
   }
 
   if (permissionFieldsChanged) {
@@ -213,7 +213,7 @@ export async function saveUserHelper({
         c =>
           c.path.startsWith('assignedLocations') ||
           c.path === 'assignedLocations' ||
-          c.path === 'assignedLicensees'
+          c.path === 'assignedLicencees'
       );
       if (locationChanges.length > 0) {
         toast.success(

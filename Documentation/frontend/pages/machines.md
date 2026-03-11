@@ -34,7 +34,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 - **URL Pattern:** `/cabinets`
 - **Authentication:** Required (ProtectedRoute with `requiredPage="machines"`)
 - **Access Level:** All authenticated users (with role-based restrictions)
-- **Licensee Filtering:** Supported
+- **Licencee Filtering:** Supported
 - **Responsive:** Desktop (table) and Mobile (card) views
 
 ## Page Sections
@@ -111,7 +111,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 
 **Notes:**
 
-- Currency conversion applied based on user role and selected licensee
+- Currency conversion applied based on user role and selected licencee
 - Loading skeleton shown during data fetch
 - Only visible when "Cabinets" section is active
 
@@ -219,7 +219,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 
 **Query Parameters:**
 
-- `licensee` - Licensee filter
+- `licencee` - Licencee filter
 - `timePeriod` - Time period filter
 - `startDate`, `endDate` - Custom date range
 - `currency` - Display currency
@@ -436,13 +436,13 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 
 1. **`GET /api/machines/aggregation`**
    - Returns paginated cabinet list with financial metrics
-   - Parameters: `licensee`, `timePeriod`, `startDate`, `endDate`, `currency`, `page`, `limit`, `search`, `locationId`
+   - Parameters: `licencee`, `timePeriod`, `startDate`, `endDate`, `currency`, `page`, `limit`, `search`, `locationId`
    - Used by: `fetchCabinets` function
    - Returns: Cabinet array with metrics, pagination info
 
 2. **`GET /api/machines/:id`**
    - Returns single cabinet details
-   - Parameters: `timePeriod`, `startDate`, `endDate`, `currency`, `licensee`
+   - Parameters: `timePeriod`, `startDate`, `endDate`, `currency`, `licencee`
    - Used by: `fetchCabinetById` function
 
 3. **`POST /api/machines`**
@@ -464,12 +464,12 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 
 6. **`GET /api/machines/:id/chart`**
    - Returns time-series chart data for a machine
-   - Parameters: `timePeriod`, `startDate`, `endDate`, `currency`, `licensee`, `granularity`
+   - Parameters: `timePeriod`, `startDate`, `endDate`, `currency`, `licencee`, `granularity`
    - Used by: `getMachineChartData` function
 
 7. **`GET /api/analytics/machines/stats`**
    - Returns machine status statistics
-   - Parameters: `licensee`
+   - Parameters: `licencee`
    - Used by: `useLocationMachineStats` hook
    - Returns: `{ totalMachines, onlineMachines, offlineMachines }`
 
@@ -514,7 +514,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 
 15. **`GET /api/locations`**
     - Returns available locations
-    - Parameters: `licensee`
+    - Parameters: `licencee`
     - Used by: Location filter dropdown
 
 ---
@@ -613,7 +613,7 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 
 **Key Properties Used:**
 
-- `selectedLicensee` - Selected licensee filter
+- `selectedLicencee` - Selected licencee filter
 - `activeMetricsFilter` - Current time period filter
 - `customDateRange` - Custom date range
 - `chartData` - Chart data
@@ -630,34 +630,34 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 
 1. **`fetchCabinets`**
    - Fetches cabinet list from `/api/machines/aggregation`
-   - Parameters: `licensee`, `timePeriod`, `customDateRange`, `currency`, `page`, `limit`, `searchTerm`, `locationId`, `signal`
+   - Parameters: `licencee`, `timePeriod`, `customDateRange`, `currency`, `page`, `limit`, `searchTerm`, `locationId`, `signal`
    - Returns: Cabinet array with metrics
 
 2. **`fetchCabinetById`**
    - Fetches single cabinet details
-   - Parameters: `cabinetId`, `timePeriod`, `customDateRange`, `currency`, `licensee`, `signal`
+   - Parameters: `cabinetId`, `timePeriod`, `customDateRange`, `currency`, `licencee`, `signal`
    - Returns: Cabinet details object
 
 3. **`fetchCabinetTotals`**
    - Fetches aggregated financial totals
-   - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicensee`, `displayCurrency`, `signal`
+   - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicencee`, `displayCurrency`, `signal`
    - Returns: `{ moneyIn, moneyOut, gross }`
 
 4. **`fetchCabinetsForLocation`**
    - Fetches cabinets for a specific location
-   - Parameters: `locationId`, `timePeriod`, `licensee`, `searchTerm`, `customDateRange`, `page`, `limit`, `currency`, `signal`
+   - Parameters: `locationId`, `timePeriod`, `licencee`, `searchTerm`, `customDateRange`, `page`, `limit`, `currency`, `signal`
    - Returns: Cabinet array with pagination info
 
 **File:** `lib/helpers/machineChart.ts`
 
 5. **`getMachineChartData`**
    - Fetches chart data for a machine
-   - Parameters: `machineId`, `timePeriod`, `startDate`, `endDate`, `displayCurrency`, `selectedLicensee`, `granularity`, `signal`
+   - Parameters: `machineId`, `timePeriod`, `startDate`, `endDate`, `displayCurrency`, `selectedLicencee`, `granularity`, `signal`
    - Returns: Chart data array with optional data span
 
 6. **`getMachineMetrics`**
    - Fetches machine metrics
-   - Parameters: `machineId`, `timePeriod`, `startDate`, `endDate`, `displayCurrency`, `selectedLicensee`
+   - Parameters: `machineId`, `timePeriod`, `startDate`, `endDate`, `displayCurrency`, `selectedLicencee`
    - Returns: Machine metrics data
 
 ### Hook Functions
@@ -711,15 +711,15 @@ The Cabinets page (also referred to as Machines page) provides comprehensive cab
 
 ### When Currency Conversion is Available
 
-- **Admin/Developer + "All Licensees"**: ✅ Currency conversion enabled
-- **Admin/Developer + Specific Licensee**: ❌ Native currency shown
+- **Admin/Developer + "All Licencees"**: ✅ Currency conversion enabled
+- **Admin/Developer + Specific Licencee**: ❌ Native currency shown
 - **Manager**: ❌ Native currency always shown
 - **Other Roles**: ❌ Native currency always shown
 
 ### Conversion Process
 
-1. Each cabinet's data in its licensee's native currency
-2. Data converted to USD (base) if viewing "All Licensees"
+1. Each cabinet's data in its licencee's native currency
+2. Data converted to USD (base) if viewing "All Licencees"
 3. Aggregated USD → Selected display currency
 
 ---

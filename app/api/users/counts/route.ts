@@ -3,7 +3,7 @@
  *
  * This route provides user counts grouped by role.
  * It supports:
- * - Licensee-based filtering
+ * - Licencee-based filtering
  * - Excludes users with deletedAt >= 2025-01-01
  * - Includes disabled users
  *
@@ -23,9 +23,9 @@ import { NextRequest } from 'next/server';
  * Flow:
  * 1. Connect to database
  * 2. Get current user and permissions
- * 3. Parse licensee query parameter
+ * 3. Parse licencee query parameter
  * 4. Fetch all users (excludes deletedAt >= 2025)
- * 5. Filter by licensee if provided
+ * 5. Filter by licencee if provided
  * 6. Count users by role
  * 7. Return counts
  */
@@ -55,21 +55,21 @@ export async function GET(request: NextRequest): Promise<Response> {
     const isLocationAdmin =
       currentUserRoles.includes('location admin') && !isAdmin && !isManager;
 
-    let currentUserLicensees: string[] = [];
+    let currentUserLicencees: string[] = [];
     if (
       Array.isArray(
-        (currentUser as { assignedLicensees?: string[] })?.assignedLicensees
+        (currentUser as { assignedLicencees?: string[] })?.assignedLicencees
       )
     ) {
-      currentUserLicensees = (currentUser as { assignedLicensees: string[] })
-        .assignedLicensees;
+      currentUserLicencees = (currentUser as { assignedLicencees: string[] })
+        .assignedLicencees;
     }
 
     // ============================================================================
     // STEP 3: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licensee = searchParams.get('licensee');
+    const licencee = (searchParams.get('licencee'));
 
     // ============================================================================
     // STEP 4: Fetch all users (excludes deletedAt >= 2025-01-01)
@@ -82,13 +82,13 @@ export async function GET(request: NextRequest): Promise<Response> {
     let filteredUsers = allUsers;
 
     if (isManager && !isAdmin) {
-      // Managers can only see users with same licensees
+      // Managers can only see users with same licencees
       filteredUsers = filteredUsers.filter(user => {
-        const userLicensees = Array.isArray(user.assignedLicensees)
-          ? user.assignedLicensees
+        const userLicencees = Array.isArray(user.assignedLicencees)
+          ? user.assignedLicencees
           : [];
-        return userLicensees.some((userLic: string) =>
-          currentUserLicensees.includes(userLic)
+        return userLicencees.some((userLic: string) =>
+          currentUserLicencees.includes(userLic)
         );
       });
     } else if (isLocationAdmin) {
@@ -131,14 +131,14 @@ export async function GET(request: NextRequest): Promise<Response> {
     }
 
     // ============================================================================
-    // STEP 6: Apply licensee filter if provided
+    // STEP 6: Apply licencee filter if provided
     // ============================================================================
-    if (licensee && licensee !== 'all') {
+    if (licencee && licencee !== 'all') {
       filteredUsers = filteredUsers.filter(user => {
-        const userLicensees = Array.isArray(user.assignedLicensees)
-          ? user.assignedLicensees
+        const userLicencees = Array.isArray(user.assignedLicencees)
+          ? user.assignedLicencees
           : [];
-        return userLicensees.includes(licensee);
+        return userLicencees.includes(licencee);
       });
     }
 

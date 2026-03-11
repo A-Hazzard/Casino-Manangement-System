@@ -105,7 +105,7 @@ const UserSchema = new Schema(
       },
     },
     assignedLocations: [{ type: String }], // Array of location IDs user has access to
-    assignedLicensees: [{ type: String }], // Array of licensee IDs user has access to
+    assignedLicencees: [{ type: String }], // Array of licencee IDs user has access to (UK spelling primary)
     profile: {
       firstName: {
         type: String,
@@ -177,11 +177,11 @@ const UserSchema = new Schema(
               if (isBlank(value)) return true;
               const trimmed = value!.trim();
               if (trimmed.length < 3) return false;
-              // Country can only have letters and spaces
-              return /^[A-Za-z\s]+$/.test(trimmed);
+              // Country can have letters, spaces, and ampersands (e.g. Trinidad & Tobago)
+              return /^[A-Za-z\s&]+$/.test(trimmed);
             },
             message:
-              'Country must be at least 3 characters and may only contain letters and spaces.',
+              'Country must be at least 3 characters and may only contain letters, spaces, and ampersands (&).',
           },
         },
         postalCode: { type: String, trim: true },

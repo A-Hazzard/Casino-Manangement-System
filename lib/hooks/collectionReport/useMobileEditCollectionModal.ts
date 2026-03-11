@@ -80,6 +80,7 @@ type MobileModalState = {
     previousBalance: string;
     reasonForShortagePayment: string;
   };
+  baseBalanceCorrection: string;
 };
 
 type UseMobileEditCollectionModalProps = {
@@ -112,10 +113,14 @@ export function useMobileEditCollectionModal({
     availableMachines,
     collectedMachines,
     collectionTime,
+    financials,
+    formData: storeFormData,
     setSelectedLocation: setStoreSelectedLocation,
     setLockedLocation: setStoreLockedLocation,
     setAvailableMachines: setStoreAvailableMachines,
     setCollectedMachines: setStoreCollectedMachines,
+    calculateCarryover: setStoreCalculateCarryover,
+    selectedMachineId: storeMachineId,
   } = useCollectionModalStore();
 
   // Update all dates state - syncs with form collection time
@@ -135,13 +140,13 @@ export function useMobileEditCollectionModal({
     collectedMachinesSearchTerm: '',
     editingEntryId: null,
     formData: {
-      metersIn: '',
-      metersOut: '',
-      ramClear: false,
-      ramClearMetersIn: '',
-      ramClearMetersOut: '',
-      notes: '',
-      collectionTime: collectionTime,
+      metersIn: storeFormData.metersIn,
+      metersOut: storeFormData.metersOut,
+      ramClear: storeFormData.ramClear,
+      ramClearMetersIn: storeFormData.ramClearMetersIn,
+      ramClearMetersOut: storeFormData.ramClearMetersOut,
+      notes: storeFormData.notes,
+      collectionTime: storeFormData.collectionTime,
     },
     isLoadingMachines: false,
     isProcessing: false,
@@ -153,21 +158,11 @@ export function useMobileEditCollectionModal({
     availableMachines,
     collectedMachines,
     originalCollections: [], // Initialize empty for dirty tracking
-    selectedMachine: null,
+    selectedMachine: storeMachineId || null,
     selectedMachineData: null,
     hasUnsavedEdits: false, // Initialize as no unsaved edits
-    financials: {
-      taxes: '0',
-      advance: '0',
-      variance: '0',
-      varianceReason: '',
-      amountToCollect: '0',
-      collectedAmount: '0',
-      balanceCorrection: '0',
-      balanceCorrectionReason: '',
-      previousBalance: '0',
-      reasonForShortagePayment: '',
-    },
+    financials: financials,
+    baseBalanceCorrection: financials.balanceCorrection,
   }));
 
   // ============================================================================
@@ -1033,14 +1028,15 @@ export function useMobileEditCollectionModal({
 
 
 
-  // Reset modal state when modal opens - show machines list to display collected machines with indicators
+  // Reset modal state when modal opens - home screen shows machine cards grid directly
   useEffect(() => {
     if (show) {
       setModalState(prev => ({
         ...prev,
-        isMachineListVisible: true,
+        isMachineListVisible: false,
         isFormVisible: false,
         isCollectedListVisible: false,
+        navigationStack: [],
       }));
     }
   }, [show]);
@@ -1091,6 +1087,27 @@ export function useMobileEditCollectionModal({
     deleteMachineFromList,
     editMachineInList,
     updateCollectionReportHandler,
+
+    // Base balance correction
+    baseBalanceCorrection: modalState.baseBalanceCorrection,
+    onBaseBalanceCorrectionChange: (value: string) => {
+      setModalState(prev => ({ ...prev, baseBalanceCorrection: value }));
+    },
+
+    // Collected amount change with calculations (to match PC and New modal)
+    onCollectedAmountChange: (value: string) => {
+      // Use the centralized store action
+      setStoreCalculateCarryover(value, modalState.baseBalanceCorrection);
+      
+      // Also update local modalState for immediate UI feedback if needed
+      setModalState(prev => ({
+        ...prev,
+        financials: {
+          ...prev.financials,
+          collectedAmount: value,
+        }
+      }));
+    },
 
     // Helpers
     sortMachinesAlphabetically,

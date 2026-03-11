@@ -3,19 +3,19 @@
  *
  * This route handles fetching machine online/offline status based on lastActivity.
  * It supports:
- * - Filtering by licensee
+ * - Filtering by licencee
  * - Role-based location filtering
  * - Online/offline counts based on lastActivity (3 minute threshold)
- * - Admin/Developer: all machines for selected licensee
+ * - Admin/Developer: all machines for selected licencee
  * - Other roles: only machines for assigned locations
  *
  * @module app/api/machines/status/route
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
+  getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
+} from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -29,7 +29,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 1. Parse and validate request parameters
  * 2. Connect to database
  * 3. Authenticate user and get accessible locations
- * 4. Determine location filter based on user role and selected licensee
+ * 4. Determine location filter based on user role and selected licencee
  * 5. Query machines with lastActivity and calculate online/offline status
  * 6. Return machine status counts
  */
@@ -41,10 +41,10 @@ export async function GET(req: NextRequest) {
     // STEP 1: Parse and validate request parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
-    const licensee =
-      searchParams.get('licensee') || searchParams.get('licensee');
-    const effectiveLicensee =
-      licensee && licensee.toLowerCase() !== 'all' ? licensee : undefined;
+    const licencee =
+      searchParams.get('licencee');
+    const effectiveLicencee =
+      licencee && licencee.toLowerCase() !== 'all' ? licencee : undefined;
     const locationId = searchParams.get('locationId');
     const machineTypeFilter = searchParams.get('machineTypeFilter');
     const search = searchParams.get('search')?.trim();
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
 
     let userRoles: string[] = [];
     let userLocationPermissions: string[] = [];
-    let userAccessibleLicensees: string[] | 'all' = [];
+    let userAccessibleLicencees: string[] | 'all' = [];
 
     // Normal mode: Get user from JWT
     const userPayload = await getUserFromServer();
@@ -90,14 +90,14 @@ export async function GET(req: NextRequest) {
       userLocationPermissions = (userPayload as { assignedLocations: string[] })
         .assignedLocations;
     }
-    userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
 
     // ============================================================================
-    // STEP 4: Determine location filter based on user role and selected licensee
+    // STEP 4: Determine location filter based on user role and selected licencee
     // ============================================================================
     const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicensees,
-      effectiveLicensee,
+      userAccessibleLicencees,
+      effectiveLicencee,
       userLocationPermissions,
       userRoles
     );
@@ -170,13 +170,12 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Apply licensee filter if specified (filter by location's licensee)
-    if (effectiveLicensee) {
+    // Apply licencee filter if specified (filter by location's licencee)
+    if (effectiveLicencee) {
       aggregationPipeline.push({
         $match: {
           $or: [
-            { 'locationDetails.rel.licensee': effectiveLicensee },
-            { 'locationDetails.rel.licencee': effectiveLicensee }
+            { 'locationDetails.rel.licencee': effectiveLicencee  }, { 'locationDetails.rel.licencee': effectiveLicencee  }
           ]
         },
       });

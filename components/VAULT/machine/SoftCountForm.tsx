@@ -21,7 +21,7 @@ import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { fetchCabinetById } from '@/lib/helpers/cabinets';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { GamingMachine } from '@/shared/types/entities';
@@ -62,7 +62,7 @@ export default function SoftCountForm({
   isEndOfDayFixed,
 }: SoftCountFormProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicensee } = useVaultLicensee();
+  const { licenceeId: selectedLicencee } = useVaultLicencee();
   
   // Form State
   const [notes, setNotes] = useState('');
@@ -78,7 +78,7 @@ export default function SoftCountForm({
   const [expectedDrop, setExpectedDrop] = useState<string>('');
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
 
-  const denomsList = useMemo(() => getDenominationValues(selectedLicensee), [selectedLicensee]);
+  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
 
   // Reset form when machine changes
   useEffect(() => {

@@ -56,7 +56,7 @@ export default function ReportsMachinesTab() {
   const searchParams = useSearchParams();
   const { displayCurrency } = useCurrencyFormat();
   const { openEditModal, openDeleteModal } = useCabinetsActionsStore();
-  const { selectedLicensee, customDateRange, activeMetricsFilter } =
+  const { selectedLicencee, customDateRange, activeMetricsFilter } =
     useDashBoardStore();
 
   // ============================================================================
@@ -678,7 +678,7 @@ export default function ReportsMachinesTab() {
     fetchLocationsData();
   }, [
     fetchLocationsData,
-    selectedLicensee,
+    selectedLicencee,
     customDateRange,
   ]);
 
@@ -691,7 +691,7 @@ export default function ReportsMachinesTab() {
     activeTab,
     overviewLocationForStats,
     fetchMachineStats,
-    selectedLicensee,
+    selectedLicencee,
     customDateRange,
     activeMetricsFilter,
   ]);
@@ -705,7 +705,7 @@ export default function ReportsMachinesTab() {
     activeTab,
     evaluationLocationForStats,
     fetchMachineStats,
-    selectedLicensee,
+    selectedLicencee,
     customDateRange,
     activeMetricsFilter,
   ]);
@@ -724,7 +724,7 @@ export default function ReportsMachinesTab() {
     debouncedSearchTerm,
     overviewSelectedLocation,
     onlineStatusFilter,
-    selectedLicensee,
+    selectedLicencee,
     customDateRange,
     fetchOverviewMachines,
   ]);
@@ -736,7 +736,7 @@ export default function ReportsMachinesTab() {
   }, [
     activeTab,
     evaluationSelectedLocations,
-    selectedLicensee,
+    selectedLicencee,
     customDateRange,
     fetchAllMachines,
   ]);
@@ -763,7 +763,7 @@ export default function ReportsMachinesTab() {
     debouncedOfflineSearchTerm,
     offlineSelectedLocations,
     selectedOfflineDuration,
-    selectedLicensee,
+    selectedLicencee,
     customDateRange,
     fetchOfflineMachines,
     setAllOfflineMachines,
@@ -833,7 +833,7 @@ export default function ReportsMachinesTab() {
     debouncedSearchTerm,
     overviewSelectedLocation,
     onlineStatusFilter,
-    selectedLicensee,
+    selectedLicencee,
     customDateRange,
   ]);
 
@@ -844,7 +844,7 @@ export default function ReportsMachinesTab() {
     debouncedOfflineSearchTerm,
     offlineSelectedLocations,
     selectedOfflineDuration,
-    selectedLicensee,
+    selectedLicencee,
     customDateRange,
   ]);
 

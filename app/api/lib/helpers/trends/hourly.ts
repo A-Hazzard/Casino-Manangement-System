@@ -166,14 +166,14 @@ function buildPreviousPeriodPipeline(
  * @param targetLocations - Array of location IDs
  * @param startDate - Start date
  * @param endDate - End date
- * @param licensee - Optional licensee to filter by
+ * @param licencee - Optional licencee to filter by
  * @returns Aggregation pipeline stages
  */
 function buildHourlyTrendsPipeline(
   targetLocations: string[],
   startDate: Date,
   endDate: Date,
-  licensee?: string | null
+  licencee?: string | null
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [
     {
@@ -202,12 +202,11 @@ function buildHourlyTrendsPipeline(
     { $unwind: '$locationDetails' },
   ];
 
-  if (licensee) {
+  if (licencee) {
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licensee': licensee },
-          { 'locationDetails.rel.licencee': licensee },
+          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
         ],
       },
     } as PipelineStage);
@@ -337,7 +336,7 @@ export function processMultipleLocationsHourlyData(
  * @param timePeriod - Time period
  * @param startDateParam - Optional custom start date
  * @param endDateParam - Optional custom end date
- * @param licensee - Optional licensee to filter by
+ * @param licencee - Optional licencee to filter by
  * @returns Hourly trends result
  */
 export async function getHourlyTrends(
@@ -346,7 +345,7 @@ export async function getHourlyTrends(
   timePeriod: TimePeriod,
   startDateParam?: string | null,
   endDateParam?: string | null,
-  licensee?: string | null
+  licencee?: string | null
 ): Promise<{
   currentPeriodRevenue: number;
   previousPeriodAverage: number;
@@ -402,7 +401,7 @@ export async function getHourlyTrends(
     targetLocations,
     startDate,
     endDate,
-    licensee
+    licencee
   );
   // Use cursor for Meters aggregation
   const hourlyData: HourlyDataItem[] = [];

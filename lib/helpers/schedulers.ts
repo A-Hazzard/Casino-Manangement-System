@@ -5,8 +5,8 @@
  * Schedulers manage collection schedules for collectors and locations.
  *
  * Features:
- * - Fetches all scheduler data with optional licensee filtering.
- * - Fetches schedulers with multiple filter options (licensee, location, collector, status, date range).
+ * - Fetches all scheduler data with optional licencee filtering.
+ * - Fetches schedulers with multiple filter options (licencee, location, collector, status, date range).
  * - Handles errors gracefully with empty array fallback.
  */
 
@@ -23,18 +23,18 @@ import axios from 'axios';
  * @returns Filtered scheduler data
  */
 export async function fetchSchedulersWithFilters(options: {
-  licensee?: string;
+  licencee?: string;
   location?: string;
   collector?: string;
   status?: string;
   dateRange?: { start: string; end: string };
 }): Promise<SchedulerData[]> {
   try {
-    const { licensee, location, collector, status, dateRange } = options;
+    const { licencee, location, collector, status, dateRange } = options;
 
     // Build query parameters
     const params = new URLSearchParams();
-    if (licensee && licensee !== 'all') params.append('licensee', licensee);
+    if (licencee && licencee !== 'all') params.append('licencee', licencee);
     if (location && location !== 'all') params.append('location', location);
     if (collector && collector !== 'all') params.append('collector', collector);
     if (status) params.append('status', status);

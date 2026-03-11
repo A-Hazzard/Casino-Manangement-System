@@ -12,7 +12,7 @@
  * @param isOpen - Whether modal is visible
  * @param onClose - Callback to close modal
  * @param onSuccess - Callback when cashier is created successfully
- * @param assignedLicensees - Current user's assigned licensees
+ * @param assignedLicencees - Current user's assigned licencees
  * @param assignedLocations - Current user's assigned locations
  */
 'use client';
@@ -36,7 +36,7 @@ type CashierCreationModalProps = {
   open: boolean;
   onClose: () => void;
   onSuccess: (tempPassword: string) => void;
-  assignedLicensees?: string[];
+  assignedLicencees?: string[];
   assignedLocations?: string[];
 };
 
@@ -47,7 +47,7 @@ export default function CashierCreationModal({
   open,
   onClose,
   onSuccess,
-  assignedLicensees = [],
+  assignedLicencees = [],
   assignedLocations = [],
 }: CashierCreationModalProps) {
   const [formData, setFormData] = React.useState({
@@ -55,7 +55,7 @@ export default function CashierCreationModal({
     firstName: '',
     lastName: '',
     email: '',
-    assignedLicensees: [] as string[],
+    assignedLicencees: [] as string[],
     assignedLocations: [] as string[],
   });
 
@@ -128,7 +128,7 @@ export default function CashierCreationModal({
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         email: formData.email.trim(),
-        assignedLicensees: formData.assignedLicensees,
+        assignedLicencees: formData.assignedLicencees,
         assignedLocations: formData.assignedLocations,
       });
 
@@ -152,7 +152,7 @@ export default function CashierCreationModal({
       firstName: '',
       lastName: '',
       email: '',
-      assignedLicensees: [],
+      assignedLicencees: [],
       assignedLocations: [],
     });
     setErrors({});
@@ -167,13 +167,13 @@ export default function CashierCreationModal({
         firstName: '',
         lastName: '',
         email: '',
-        assignedLicensees: assignedLicensees,
+        assignedLicencees: assignedLicencees,
         assignedLocations: assignedLocations,
       });
       setErrors({});
       setCreatedTempPassword(null);
     }
-  }, [open, assignedLicensees, assignedLocations]);
+  }, [open, assignedLicencees, assignedLocations]);
 
   const renderError = (field: string) => {
     if (errors[field]) {
@@ -312,15 +312,15 @@ export default function CashierCreationModal({
               </div>
 
               {/* Assignment Info */}
-              {(assignedLicensees.length > 0 || assignedLocations.length > 0) && (
+              {(assignedLicencees.length > 0 || assignedLocations.length > 0) && (
                 <div className="space-y-3 p-4 bg-violet-50/50 rounded-2xl border border-violet-100">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-violet-400">Automatic Assignments</h4>
                   <div className="grid grid-cols-2 gap-3">
-                    {assignedLicensees.length > 0 && (
+                    {assignedLicencees.length > 0 && (
                       <div className="space-y-1">
-                        <Label className="text-[9px] font-bold text-violet-700">Licensees</Label>
+                        <Label className="text-[9px] font-bold text-violet-700">Licencees</Label>
                         <div className="text-xs font-black text-violet-900 bg-white border border-violet-100 px-2 py-1 rounded-lg">
-                          {assignedLicensees.length} Total
+                          {assignedLicencees.length} Total
                         </div>
                       </div>
                     )}

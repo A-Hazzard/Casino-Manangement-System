@@ -109,7 +109,7 @@ The Cabinets API provides comprehensive endpoints for managing gaming cabinets, 
 
 **Query Parameters:**
 
-- `licensee` - Filter by licensee
+- `licencee` - Filter by licencee
 - `timePeriod` - Date range filter
 - `page` - Pagination page number
 - `limit` - Items per page

@@ -32,7 +32,7 @@ import {
 import type {
     DashboardMobileLayoutProps,
 } from '@/lib/types/components';
-import { getLicenseeName } from '@/lib/utils/licensee';
+import { getLicenceeName } from '@/lib/utils/licencee';
 import axios from 'axios';
 import { RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -56,10 +56,10 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
-  const licenseeName =
-    getLicenseeName(props.selectedLicensee) ||
-    props.selectedLicensee ||
-    'any licensee';
+  const licenceeName =
+    getLicenceeName(props.selectedLicencee) ||
+    props.selectedLicencee ||
+    'any licencee';
 
 
   const [machineStats, setMachineStats] = useState<{
@@ -79,7 +79,7 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
       setMachineStatsLoading(true);
       try {
         const params = new URLSearchParams();
-        params.append('licensee', 'all');
+        params.append('licencee', 'all');
 
         const res = await axios.get(
           `/api/analytics/machines/stats?${params.toString()}`
@@ -224,8 +224,8 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
         topPerformingData={props.topPerformingData}
         activeTab={props.activeTab}
         setActiveTab={props.setActiveTab}
-        selectedLicensee={props.selectedLicensee}
-        licenseeName={licenseeName}
+        selectedLicencee={props.selectedLicencee}
+        licenceeName={licenceeName}
         renderCustomizedLabel={props.renderCustomizedLabel}
         onViewMachine={item => {
           if (item.machineId) {

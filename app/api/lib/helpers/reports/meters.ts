@@ -9,7 +9,7 @@
  */
 
 import type { TimePeriod } from '@/app/api/lib/types';
-import { getLicenseeCurrency } from '@/lib/helpers/rates';
+import { getLicenceeCurrency } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
@@ -27,7 +27,7 @@ export type ParsedMetersReportParams = {
   page: number;
   limit: number;
   search: string;
-  licensee: string | null;
+  licencee: string | null;
   displayCurrency: CurrencyCode;
   includeHourlyData: boolean;
   requestedLocationList: string[];
@@ -42,7 +42,7 @@ export type LocationWithGamingDay = {
   _id: string;
   name: string;
   gameDayOffset: number;
-  rel?: { licensee?: string };
+  rel?: { licencee?: string };
   country?: string;
 };
 /**
@@ -123,7 +123,7 @@ export function parseMetersReportParams(
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const search = searchParams.get('search') || '';
-  const licensee = searchParams.get('licensee');
+  const licencee = (searchParams.get('licencee'));
   const includeHourlyData = searchParams.get('includeHourlyData') === 'true';
 
   // Validate required parameters
@@ -139,14 +139,14 @@ export function parseMetersReportParams(
   }
 
   // Determine display currency
-  // - If currency param is provided, use it (for "All Licensees" mode)
-  // - If viewing a specific licensee, use that licensee's native currency
+  // - If currency param is provided, use it (for "All Licencees" mode)
+  // - If viewing a specific licencee, use that licencee's native currency
   // - Otherwise default to USD
   let displayCurrency =
     (searchParams.get('currency') as CurrencyCode) || undefined;
 
-  if (!displayCurrency && licensee && licensee !== 'all') {
-    displayCurrency = getLicenseeCurrency(licensee);
+  if (!displayCurrency && licencee && licencee !== 'all') {
+    displayCurrency = getLicenceeCurrency(licencee);
   }
 
   displayCurrency = displayCurrency || 'USD';
@@ -188,7 +188,7 @@ export function parseMetersReportParams(
     page,
     limit,
     search,
-    licensee,
+    licencee,
     displayCurrency,
     includeHourlyData,
     requestedLocationList,
@@ -268,7 +268,7 @@ export async function fetchLocationData(
     _id: String(loc._id),
     name: (loc.name as string) || 'Unknown Location',
     gameDayOffset: (loc.gameDayOffset as number) ?? 8, // Default to 8 AM
-    rel: (loc.rel as { licensee?: string }) || undefined,
+    rel: (loc.rel as { licencee?: string }) || undefined,
     country: (loc.country as string) || undefined,
   }));
 }
@@ -324,12 +324,12 @@ export function calculateGamingDayRanges(
  * Fetch machines data for the selected locations
  *
  * @param locationList - List of location IDs to filter by
- * @param licensee - Optional licensee ID to filter by
+ * @param licencee - Optional licencee ID to filter by
  * @returns Array of machine data
  */
 export async function fetchMachinesData(
   locationList: string[],
-  licensee: string | null
+  licencee: string | null
 ): Promise<MachineData[]> {
   // Build query filter for machines
   const machineMatchStage: Record<string, unknown> = {
@@ -355,13 +355,12 @@ export async function fetchMachinesData(
     .lean()
     .exec();
 
-  // Filter by licensee if provided
-  if (licensee && licensee !== 'all') {
-    const licenseeLocations = await GamingLocations.find(
+  // Filter by licencee if provided
+  if (licencee && licencee !== 'all') {
+    const licenceeLocations = await GamingLocations.find(
       {
         $or: [
-          { 'rel.licensee': licensee },
-          { 'rel.licencee': licensee }
+          { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  }
         ]
       },
       { _id: 1 }
@@ -369,10 +368,10 @@ export async function fetchMachinesData(
       .lean()
       .exec();
 
-    const licenseeLocationIds = licenseeLocations.map(loc => String(loc._id));
+    const licenceeLocationIds = licenceeLocations.map(loc => String(loc._id));
 
     machinesData = machinesData.filter(machine =>
-      licenseeLocationIds.includes(
+      licenceeLocationIds.includes(
         (machine as unknown as { gamingLocation: string }).gamingLocation
       )
     );

@@ -4,7 +4,7 @@
  * This route handles searching locations with financial metrics.
  * It supports:
  * - Location name search
- * - Licensee filtering
+ * - Licencee filtering
  * - Time period filtering
  * - Financial metrics aggregation (money in, money out, gross)
  * - Machine statistics (total, online)
@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * Main GET handler for searching locations
  *
  * Flow:
- * 1. Parse query parameters (licensee, timePeriod, search, dates)
+ * 1. Parse query parameters (licencee, timePeriod, search, dates)
  * 2. Build location match filter
  * 3. Connect to database
  * 4. Build metrics aggregation pipeline
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     // STEP 1: Parse query parameters
     // ============================================================================
     const searchParams = new URL(request.url).searchParams;
-    const licensee = searchParams.get('licensee') ?? '';
+    const licencee = (searchParams.get('licencee')) ?? '';
     const search = searchParams.get('search')?.trim() || '';
 
     // ============================================================================
@@ -54,14 +54,13 @@ export async function GET(request: NextRequest) {
     if (search) {
       locationMatch.name = { $regex: search, $options: 'i' };
     }
-    if (licensee) {
+    if (licencee) {
       if (!locationMatch.$and) {
         locationMatch.$and = [];
       }
       (locationMatch.$and as unknown[]).push({
         $or: [
-          { 'rel.licensee': licensee },
-          { 'rel.licencee': licensee },
+          { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  },
         ],
       });
     }
@@ -92,10 +91,9 @@ export async function GET(request: NextRequest) {
     const matchStage: MeterMatchStage = {
       readAt: { $gte: startDate, $lte: endDate },
     };
-    if (licensee) {
+    if (licencee) {
       (matchStage as Record<string, unknown>).$or = [
-        { 'rel.licensee': licensee },
-        { 'rel.licencee': licensee },
+        { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  },
       ];
     }
 
@@ -139,8 +137,8 @@ export async function GET(request: NextRequest) {
           preserveNullAndEmptyArrays: false,
         },
       },
-      // Stage 4: Apply location filters (deletion status, search, licensee)
-      // Note: locationMatch already includes deletion status, search, and licensee filters
+      // Stage 4: Apply location filters (deletion status, search, licencee)
+      // Note: locationMatch already includes deletion status, search, and licencee filters
       { $match: locationMatch },
       // Stage 5: Group by location to calculate financial metrics and machine stats
       {

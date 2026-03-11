@@ -53,8 +53,8 @@ export default function EditMovementRequestModal({ onSaved }: { onSaved: () => v
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   // Data state
-  const [locations, setLocations] = useState<{ id: string; name: string; licenseeId?: string }[]>([]);
-  const [users, setUsers] = useState<{ _id: string; name: string; emailAddress: string; roles: string[]; assignedLocations: string[]; assignedLicensees: string[] }[]>([]);
+  const [locations, setLocations] = useState<{ id: string; name: string; licenceeId?: string }[]>([]);
+  const [users, setUsers] = useState<{ _id: string; name: string; emailAddress: string; roles: string[]; assignedLocations: string[]; assignedLicencees: string[] }[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [cabinets, setCabinets] = useState<Cabinet[]>([]);
   const [loadingCabinets, setLoadingCabinets] = useState(false);
@@ -83,7 +83,7 @@ export default function EditMovementRequestModal({ onSaved }: { onSaved: () => v
   // Fetch locations
   useEffect(() => {
     fetchAllGamingLocations()
-      .then(res => setLocations(res as { id: string; name: string; licenseeId?: string }[]))
+      .then(res => setLocations(res as { id: string; name: string; licenceeId?: string }[]))
       .catch(error => console.error('Failed to fetch locations:', error));
   }, []);
 
@@ -234,7 +234,7 @@ export default function EditMovementRequestModal({ onSaved }: { onSaved: () => v
       emailAddress: formData.requestTo,
       roles: [],
       assignedLocations: [],
-      assignedLicensees: []
+      assignedLicencees: []
     });
   }
 

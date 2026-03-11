@@ -23,8 +23,8 @@ import { toast } from 'sonner';
 
 import axios from 'axios';
 
-import { fetchLicensees } from '@/lib/helpers/client';
-import type { Licensee } from '@/lib/types/common';
+import { fetchLicencees } from '@/lib/helpers/client';
+import type { Licencee } from '@/lib/types/common';
 import type { NewLocationModalProps } from '@/lib/types/components';
 import { SelectedLocation } from '@/lib/types/location';
 import LocationsLocationPickerMap from '../LocationsLocationPickerMap';
@@ -48,7 +48,7 @@ export default function LocationsNewLocationModal({
     city: '',
     country: '',
     profitShare: '',
-    licensee: '',
+    licencee: '',
     isLocalServer: false,
     latitude: '',
     longitude: '',
@@ -87,8 +87,8 @@ export default function LocationsNewLocationModal({
   });
   const [useMap, setUseMap] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [licensees, setLicensees] = useState<Licensee[]>([]);
-  const [licenseesLoading, setLicenseesLoading] = useState(false);
+  const [licencees, setLicencees] = useState<Licencee[]>([]);
+  const [licenceesLoading, setLicenceesLoading] = useState(false);
 
   const [countries, setCountries] = useState<Country[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
@@ -143,10 +143,10 @@ export default function LocationsNewLocationModal({
 
   const timeOptions = generateTimeOptions();
 
-  // Load licensees and countries on modal open
+  // Load licencees and countries on modal open
   useEffect(() => {
     if (isOpen) {
-      loadLicensees();
+      loadLicencees();
       loadCountries();
     }
   }, [isOpen]);
@@ -160,7 +160,7 @@ export default function LocationsNewLocationModal({
         city: '',
         country: '',
         profitShare: '',
-        licensee: '',
+        licencee: '',
         isLocalServer: false,
         latitude: '',
         longitude: '',
@@ -201,17 +201,17 @@ export default function LocationsNewLocationModal({
     }
   }, [isOpen]);
 
-  const loadLicensees = async () => {
-    setLicenseesLoading(true);
+  const loadLicencees = async () => {
+    setLicenceesLoading(true);
     try {
-      const result = await fetchLicensees();
-      const licenseesData = Array.isArray(result.licensees) ? result.licensees : [];
-      setLicensees(licenseesData);
+      const result = await fetchLicencees();
+      const licenceesData = Array.isArray(result.licencees) ? result.licencees : [];
+      setLicencees(licenceesData);
     } catch (error) {
-      console.error('Failed to fetch licensees:', error);
-      toast.error('Failed to load licensees');
+      console.error('Failed to fetch licencees:', error);
+      toast.error('Failed to load licencees');
     } finally {
-      setLicenseesLoading(false);
+      setLicenceesLoading(false);
     }
   };
 
@@ -370,7 +370,7 @@ export default function LocationsNewLocationModal({
 
     try {
       // Validate form
-      if (!formData.name || !formData.licensee) {
+      if (!formData.name || !formData.licencee) {
         throw new Error('Please fill in all required fields');
       }
 
@@ -388,7 +388,7 @@ export default function LocationsNewLocationModal({
         country: formData.country,
         profitShare: parseInt(formData.profitShare) || 50,
         rel: {
-          licensee: formData.licensee,
+          licencee: formData.licencee,
         },
         isLocalServer: formData.isLocalServer,
         geoCoords: {
@@ -552,27 +552,27 @@ export default function LocationsNewLocationModal({
             </div>
           </div>
 
-          {/* Licensee */}
+          {/* Licencee */}
           <div className="mb-4">
             <label className="mb-2 block text-sm font-medium text-grayHighlight">
-              Licensee <span className="text-red-500">*</span>
+              Licencee <span className="text-red-500">*</span>
             </label>
             <select
-              name="licensee"
-              value={formData.licensee}
-              onChange={e => handleSelectChange('licensee', e.target.value)}
+              name="licencee"
+              value={formData.licencee}
+              onChange={e => handleSelectChange('licencee', e.target.value)}
               className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
               required
             >
-              <option value="">Select Licensee</option>
-              {licenseesLoading ? (
+              <option value="">Select Licencee</option>
+              {licenceesLoading ? (
                 <option value="" disabled>
-                  Loading licensees...
+                  Loading licencees...
                 </option>
               ) : (
-                licensees.map(licensee => (
-                  <option key={licensee._id} value={licensee._id}>
-                    {licensee.name}
+                licencees.map(licencee => (
+                  <option key={licencee._id} value={licencee._id}>
+                    {licencee.name}
                   </option>
                 ))
               )}

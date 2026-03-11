@@ -33,7 +33,7 @@ export function useCabinetPageData() {
   const searchParams = useSearchParams();
   const slug = pathname.split('/').pop() || '';
   const { user } = useUserStore();
-  const { selectedLicensee, activeMetricsFilter, customDateRange } =
+  const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
   const { displayCurrency } = useCurrency();
 
@@ -52,7 +52,7 @@ export function useCabinetPageData() {
     handleCabinetUpdated,
   } = useCabinetDetailsData({
     slug,
-    selectedLicensee,
+    selectedLicencee,
     activeMetricsFilter,
     customDateRange,
     dateFilterInitialized,
@@ -384,7 +384,7 @@ export function useCabinetPageData() {
           customDateRange.startDate,
           customDateRange.endDate,
           displayCurrency,
-          selectedLicensee,
+          selectedLicencee,
           granularity,
           signal
         );
@@ -406,7 +406,7 @@ export function useCabinetPageData() {
     customDateRange?.startDate,
     customDateRange?.endDate,
     displayCurrency,
-    selectedLicensee,
+    selectedLicencee,
     effectiveGranularity,
     makeChartRequest,
     chartGranularity,
@@ -448,7 +448,7 @@ export function useCabinetPageData() {
     activeMetricsFilter,
     canAccessSmibConfig,
     canEditMachines,
-    selectedLicensee,
+    selectedLicencee,
     displayCurrency,
     smibHook,
     // Setters

@@ -16,9 +16,9 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import UserModel from '@/app/api/lib/models/user';
-import { generateUniqueLicenseKey } from '@/app/api/lib/utils/licenseKey';
+import { generateUniqueLicenceKey } from '@/app/api/lib/utils/licenceKey';
 import { hashPassword } from '@/app/api/lib/utils/validation';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextResponse } from 'next/server';
@@ -33,20 +33,20 @@ export async function GET() {
     // ============================================================================
     // STEP 2: Check if system is already initialized
     // ============================================================================
-    const [existingUser, existingCountryCount, existingLicenseeCount] = await Promise.all([
+    const [existingUser, existingCountryCount, existingLicenceeCount] = await Promise.all([
       UserModel.findOne({
         $or: [{ username: 'admin' }, { emailAddress: 'admin@gmail.com' }],
       }).lean(),
       Countries.countDocuments({
         name: { $in: ['Trinidad & Tobago', 'Guyana', 'Barbados', 'St. Lucia'] },
       }),
-      Licensee.countDocuments({
+      Licencee.countDocuments({
         name: { $in: ['TTG', 'Cabana', 'Barbados'] },
       }),
     ]);
 
     // Only block installation if ALL prerequisite data exists
-    if (existingUser && existingCountryCount >= 4 && existingLicenseeCount >= 3) {
+    if (existingUser && existingCountryCount >= 4 && existingLicenceeCount >= 3) {
       return NextResponse.json(
         {
           success: false,
@@ -85,13 +85,13 @@ export async function GET() {
       seededCountries.push(countryDoc);
     }
 
-    // Countries seeded, proceeding to licensees...
+    // Countries seeded, proceeding to licencees...
 
     // ============================================================================
-    // STEP 5: Seed Licensees
+    // STEP 5: Seed Licencees
     // ============================================================================
     const currentDateTime = new Date();
-    const licenseesData = [
+    const licenceesData = [
       {
         _id: "9a5db2cb29ffd2d962fd1d91",
         name: "TTG",
@@ -99,7 +99,7 @@ export async function GET() {
         startDate: new Date("2026-02-25T19:19:34.435Z"),
         expiryDate: new Date("2027-02-25T19:19:34.435Z"),
         isPaid: true,
-        licenseKey: "LIC-MM2F4UKI-1NW5E1",
+        licenceKey: "LIC-MM2F4UKI-1NW5E1",
         status: "active",
         deletedAt: null,
         createdAt: currentDateTime,
@@ -112,7 +112,7 @@ export async function GET() {
         startDate: new Date("2026-02-25T19:19:35.029Z"),
         expiryDate: new Date("2027-02-25T19:19:35.029Z"),
         isPaid: true,
-        licenseKey: "LIC-MM2F4V11-6Y189A",
+        licenceKey: "LIC-MM2F4V11-6Y189A",
         status: "active",
         deletedAt: null,
         createdAt: currentDateTime,
@@ -126,7 +126,7 @@ export async function GET() {
         expiryDate: new Date("2025-07-01T03:18:00.000Z"),
         isPaid: true,
         description: "Licence to operate in Guyana",
-        licenseKey: "LIC-CABANA-AUTO-GEN", // Added to satisfy required field
+        licenceKey: "LIC-CABANA-AUTO-GEN", // Added to satisfy required field
         geoCoords: {
           zoomRatio: 9,
           latitude: 5.570307,
@@ -139,24 +139,24 @@ export async function GET() {
       },
     ];
 
-    const seededLicenseeIds = [];
-    for (const lic of licenseesData) {
-      let licenseeDoc = await Licensee.findOne({ 
+    const seededLicenceeIds = [];
+    for (const lic of licenceesData) {
+      let licenceeDoc = await Licencee.findOne({ 
         $or: [
           { _id: lic._id },
           { name: lic.name }
         ]
       });
 
-      if (!licenseeDoc) {
-        // Special case for Cabana: Generate licenseKey if not provided in user JSON
-        if (lic.name === 'Cabana' && lic.licenseKey === 'LIC-CABANA-AUTO-GEN') {
-          lic.licenseKey = await generateUniqueLicenseKey();
+      if (!licenceeDoc) {
+        // Special case for Cabana: Generate licenceKey if not provided in user JSON
+        if (lic.name === 'Cabana' && lic.licenceKey === 'LIC-CABANA-AUTO-GEN') {
+          lic.licenceKey = await generateUniqueLicenceKey();
         }
 
-        licenseeDoc = await Licensee.create(lic);
+        licenceeDoc = await Licencee.create(lic);
       }
-      seededLicenseeIds.push(licenseeDoc._id);
+      seededLicenceeIds.push(licenceeDoc._id);
     }
 
     // ============================================================================
@@ -179,7 +179,7 @@ export async function GET() {
         },
 
         assignedLocations: [], // Empty initially
-        assignedLicensees: seededLicenseeIds,
+        assignedLicencees: seededLicenceeIds,
         tempPassword: null,
         tempPasswordChanged: true,
         sessionVersion: 1,
@@ -196,7 +196,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: true,
-        message: 'System initialized successfully. Admin user, countries, and licensees created.',
+        message: 'System initialized successfully. Admin user, countries, and licencees created.',
       },
       { status: 201 }
     );

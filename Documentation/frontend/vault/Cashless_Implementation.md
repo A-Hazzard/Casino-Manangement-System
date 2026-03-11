@@ -116,7 +116,7 @@ Tracks individual cashier shifts with blind closing support.
 ```
 
 #### **User Management Rules**
-- **BR-07 (Inheritance)**: When a Vault Manager creates a cashier account, the cashier automatically inherits the `assignedLocations` and `assignedLicensees` of the creating manager. This is enforced at the API level (helper `createUser`).
+- **BR-07 (Inheritance)**: When a Vault Manager creates a cashier account, the cashier automatically inherits the `assignedLocations` and `assignedLicencees` of the creating manager. This is enforced at the API level (helper `createUser`).
 
 ---
 

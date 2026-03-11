@@ -27,7 +27,7 @@ Documentation/frontend/
 ├──
 ├── pages/                             # Main application pages
 │   ├── dashboard.md                   # Main dashboard with metrics
-│   ├── administration.md              # User and licensee management
+│   ├── administration.md              # User and licencee management
 │   ├── locations.md                   # Location management
 │   ├── machines.md                    # Machine/cabinet management
 │   ├── members.md                     # Member management
@@ -69,12 +69,12 @@ Documentation/frontend/
 - Top performing locations and cabinets
 - Machine status widget
 
-**[Administration](pages/administration.md)** - User and licensee management system
+**[Administration](pages/administration.md)** - User and licencee management system
 
 **Key Features:**
 
 - User CRUD operations with role management
-- Licensee management and assignments
+- Licencee management and assignments
 - Activity log tracking
 - Search and filtering capabilities
 

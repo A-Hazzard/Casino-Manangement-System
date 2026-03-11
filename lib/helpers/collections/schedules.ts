@@ -6,7 +6,7 @@ import axios from 'axios';
  */
 async function fetchCollectorSchedulesWithFilters(
   options: {
-    licensee?: string;
+    licencee?: string;
     location?: string;
     collector?: string;
     status?: string;
@@ -15,13 +15,13 @@ async function fetchCollectorSchedulesWithFilters(
   } = {}
 ): Promise<CollectorSchedule[]> {
   try {
-    const { licensee, location, collector, status, startDate, endDate } =
+    const { licencee, location, collector, status, startDate, endDate } =
       options;
 
     const baseUrl = '/api/schedulers';
     const params = new URLSearchParams();
 
-    if (licensee && licensee !== 'all') params.append('licensee', licensee);
+    if (licencee && licencee !== 'all') params.append('licencee', licencee);
     if (location && location !== 'all') params.append('location', location);
     if (collector && collector !== 'all') params.append('collector', collector);
     if (status && status !== 'all') params.append('status', status);
@@ -42,7 +42,7 @@ async function fetchCollectorSchedulesWithFilters(
  * Fetches and formats collector schedules with collectors list
  */
 export async function fetchAndFormatCollectorSchedules(
-  licensee?: string,
+  licencee?: string,
   location?: string,
   collector?: string,
   status?: string
@@ -52,7 +52,7 @@ export async function fetchAndFormatCollectorSchedules(
 }> {
   try {
     const data = await fetchCollectorSchedulesWithFilters({
-      licensee,
+      licencee,
       location,
       collector,
       status,

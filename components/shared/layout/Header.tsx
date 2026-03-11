@@ -5,24 +5,24 @@
  * Features:
  * - Page title display
  * - Sidebar toggle for mobile/desktop
- * - Licensee selector dropdown with permissions check
+ * - Licencee selector dropdown with permissions check
  * - Currency filter for financial data
  * - User menu with profile and logout
  * - Mobile responsive design
- * - Real-time licensee data fetching
+ * - Real-time licencee data fetching
  * - Currency conversion integration
- * - Dashboard metrics refresh on licensee/currency change
+ * - Dashboard metrics refresh on licencee/currency change
  * - Navigation links with role-based visibility
  * - Animated mobile menu
  * - Loading states for filters
  *
  * Large component (~664 lines) managing top-level navigation and controls.
  *
- * @param selectedLicensee - Currently selected licensee ID
+ * @param selectedLicencee - Currently selected licencee ID
  * @param pageTitle - Title to display in header
- * @param setSelectedLicensee - Callback to update selected licensee
+ * @param setSelectedLicencee - Callback to update selected licencee
  * @param hideOptions - Hide user menu options
- * @param hideLicenseeFilter - Hide licensee dropdown
+ * @param hideLicenceeFilter - Hide licencee dropdown
  * @param containerPaddingMobile - Custom mobile padding
  * @param disabled - Disable interactive elements
  * @param hideCurrencyFilter - Hide currency filter
@@ -30,16 +30,16 @@
 'use client';
 import CurrencyFilter from '@/components/shared/layout/CurrencyFilter';
 import { ClientOnly } from '@/components/shared/ui/ClientOnly';
-import LicenseeSelect from '@/components/shared/ui/LicenseeSelect';
+import LicenceeSelect from '@/components/shared/ui/LicenceeSelect';
 import { SidebarTrigger, useSidebar } from '@/components/shared/ui/sidebar';
 import { UserRole } from '@/lib/constants';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import {
-  fetchLicenseeById,
-  fetchLicensees, logoutUser
+  fetchLicenceeById,
+  fetchLicencees, logoutUser
 } from '@/lib/helpers/client';
 import { fetchMetricsData } from '@/lib/helpers/dashboard';
-import { getCountryCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
+import { getCountryCurrency, getLicenceeCurrency } from '@/lib/helpers/rates';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { HeaderProps } from '@/lib/types/components';
@@ -53,10 +53,10 @@ import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export default function Header({
-  selectedLicensee,
+  selectedLicencee,
   pageTitle,
-  setSelectedLicensee,
-  hideLicenseeFilter,
+  setSelectedLicencee,
+  hideLicenceeFilter,
   containerPaddingMobile,
   disabled = false,
   hideCurrencyFilter = false,
@@ -90,29 +90,29 @@ export default function Header({
     typeof role === 'string' ? role.toLowerCase() : role
   );
 
-  // Get user's licensee assignments (memoized to prevent unnecessary re-renders)
-  const userLicensees = useMemo(() => {
-    return Array.isArray(user?.assignedLicensees) ? user.assignedLicensees : [];
-  }, [user?.assignedLicensees]);
+  // Get user's licencee assignments (memoized to prevent unnecessary re-renders)
+  const userLicencees = useMemo(() => {
+    return Array.isArray(user?.assignedLicencees) ? user.assignedLicencees : [];
+  }, [user?.assignedLicencees]);
 
   const isAdmin =
     normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
   const isManager = normalizedRoles.includes('manager');
-  const hasMultipleLicensees =
-    Array.isArray(userLicensees) && userLicensees.length > 1;
-  const hasSingleLicensee =
-    Array.isArray(userLicensees) && userLicensees.length === 1;
+  const hasMultipleLicencees =
+    Array.isArray(userLicencees) && userLicencees.length > 1;
+  const hasSingleLicencee =
+    Array.isArray(userLicencees) && userLicencees.length === 1;
 
-  // Determine if licensee select should be shown
-  // Show if: admin OR user has multiple licensees (including location admins with multiple licensees)
-  // Hide if: user has 0 or 1 licensee (and not admin/dev) OR location admin with single/no licensee
-  const shouldShowLicenseeSelect =
-    isAdmin || (hasMultipleLicensees && !normalizedRoles.includes('cashier'));
+  // Determine if licencee select should be shown
+  // Show if: admin OR user has multiple licencees (including location admins with multiple licencees)
+  // Hide if: user has 0 or 1 licencee (and not admin/dev) OR location admin with single/no licencee
+  const shouldShowLicenceeSelect =
+    isAdmin || (hasMultipleLicencees && !normalizedRoles.includes('cashier'));
 
-  // Determine if we should show licensee name next to "Evolution CMS"
-  // Show if: user has exactly one licensee AND not admin/dev AND (not manager OR manager with single licensee)
-  const shouldShowLicenseeName =
-    hasSingleLicensee && !isAdmin && (!isManager || hasSingleLicensee);
+  // Determine if we should show licencee name next to "Evolution CMS"
+  // Show if: user has exactly one licencee AND not admin/dev AND (not manager OR manager with single licencee)
+  const shouldShowLicenceeName =
+    hasSingleLicencee && !isAdmin && (!isManager || hasSingleLicencee);
   // Check if the current path is related to members
   const isMembersPath =
     pathname === '/members' || pathname.startsWith('/members/');
@@ -130,99 +130,99 @@ export default function Header({
     !normalizedRoles.includes('vault-manager') &&
     !normalizedRoles.includes('cashier');
 
-  const [licenseeCurrencyMap, setLicenseeCurrencyMap] = useState<
+  const [licenceeCurrencyMap, setLicenceeCurrencyMap] = useState<
     Record<string, CurrencyCode>
   >({});
-  const [singleLicenseeName, setSingleLicenseeName] = useState<string>('');
+  const [singleLicenceeName, setSingleLicenceeName] = useState<string>('');
 
   useEffect(() => {
     let cancelled = false;
-    const loadLicensees = async () => {
+    const loadLicencees = async () => {
       try {
-        const result = await fetchLicensees();
+        const result = await fetchLicencees();
         if (cancelled) return;
         
-        // Extract licensees array from the result
-        const licensees = Array.isArray(result.licensees) ? result.licensees : [];
+        // Extract licencees array from the result
+        const licencees = Array.isArray(result.licencees) ? result.licencees : [];
 
         const map: Record<string, CurrencyCode> = {};
-        licensees.forEach(licensee => {
-          let currency = getLicenseeCurrency(licensee.name);
+        licencees.forEach(licencee => {
+          let currency = getLicenceeCurrency(licencee.name);
           if (
             currency === 'USD' &&
-            (licensee.countryName || typeof licensee.country === 'string')
+            (licencee.countryName || typeof licencee.country === 'string')
           ) {
-            const fallback = licensee.countryName
-              ? getCountryCurrency(licensee.countryName)
-              : getCountryCurrency(licensee.country);
+            const fallback = licencee.countryName
+              ? getCountryCurrency(licencee.countryName)
+              : getCountryCurrency(licencee.country);
             currency = fallback || currency;
           }
 
-          map[String(licensee._id)] = currency;
-          map[licensee.name] = currency;
+          map[String(licencee._id)] = currency;
+          map[licencee.name] = currency;
         });
 
-        setLicenseeCurrencyMap(map);
+        setLicenceeCurrencyMap(map);
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to load licensee currencies:', error);
+          console.error('Failed to load licencee currencies:', error);
         }
       }
     };
 
-    loadLicensees();
+    loadLicencees();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Load single licensee name if applicable
+  // Load single licencee name if applicable
   useEffect(() => {
     let cancelled = false;
-    const loadSingleLicenseeName = async () => {
+    const loadSingleLicenceeName = async () => {
       if (
-        !shouldShowLicenseeName ||
-        !hasSingleLicensee ||
-        userLicensees.length === 0
+        !shouldShowLicenceeName ||
+        !hasSingleLicencee ||
+        userLicencees.length === 0
       ) {
-        setSingleLicenseeName('');
+        setSingleLicenceeName('');
         return;
       }
 
       try {
-        const licenseeId = userLicensees[0];
-        const licensee = await fetchLicenseeById(licenseeId);
-        if (!cancelled && licensee?.name) {
-          setSingleLicenseeName(licensee.name);
+        const licenceeId = userLicencees[0];
+        const licencee = await fetchLicenceeById(licenceeId);
+        if (!cancelled && licencee?.name) {
+          setSingleLicenceeName(licencee.name);
         }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('Failed to load single licensee name:', error);
+          console.error('Failed to load single licencee name:', error);
         }
         if (!cancelled) {
-          setSingleLicenseeName('');
+          setSingleLicenceeName('');
         }
       }
     };
 
-    loadSingleLicenseeName();
+    loadSingleLicenceeName();
     return () => {
       cancelled = true;
     };
-  }, [shouldShowLicenseeName, hasSingleLicensee, userLicensees]);
+  }, [shouldShowLicenceeName, hasSingleLicencee, userLicencees]);
 
-  const resolveLicenseeCurrency = useCallback(
-    async (licenseeId: string): Promise<CurrencyCode> => {
-      if (!licenseeId || licenseeId === 'all' || licenseeId === '') {
+  const resolveLicenceeCurrency = useCallback(
+    async (licenceeId: string): Promise<CurrencyCode> => {
+      if (!licenceeId || licenceeId === 'all' || licenceeId === '') {
         return 'USD';
       }
 
       const cached =
-        licenseeCurrencyMap[licenseeId] ||
-        licenseeCurrencyMap[licenseeId.trim()] ||
-        licenseeCurrencyMap[
-          Object.keys(licenseeCurrencyMap).find(
-            key => key.toLowerCase() === licenseeId.toLowerCase()
+        licenceeCurrencyMap[licenceeId] ||
+        licenceeCurrencyMap[licenceeId.trim()] ||
+        licenceeCurrencyMap[
+          Object.keys(licenceeCurrencyMap).find(
+            key => key.toLowerCase() === licenceeId.toLowerCase()
           ) || ''
         ];
 
@@ -231,55 +231,55 @@ export default function Header({
       }
 
       try {
-        const licensee = await fetchLicenseeById(licenseeId);
-        if (licensee?.name) {
-          let currency = getLicenseeCurrency(licensee.name);
+        const licencee = await fetchLicenceeById(licenceeId);
+        if (licencee?.name) {
+          let currency = getLicenceeCurrency(licencee.name);
           if (
             currency === 'USD' &&
-            (licensee.countryName || typeof licensee.country === 'string')
+            (licencee.countryName || typeof licencee.country === 'string')
           ) {
-            const fallback = licensee.countryName
-              ? getCountryCurrency(licensee.countryName)
-              : getCountryCurrency(licensee.country);
+            const fallback = licencee.countryName
+              ? getCountryCurrency(licencee.countryName)
+              : getCountryCurrency(licencee.country);
             currency = fallback || currency;
           }
 
-          setLicenseeCurrencyMap(prev => ({
+          setLicenceeCurrencyMap(prev => ({
             ...prev,
-            [licenseeId]: currency,
-            [licensee.name]: currency,
+            [licenceeId]: currency,
+            [licencee.name]: currency,
           }));
           return currency;
         }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
           console.error(
-            'Failed to resolve currency for licensee:',
-            licenseeId,
+            'Failed to resolve currency for licencee:',
+            licenceeId,
             error
           );
         }
       }
 
-      return getLicenseeCurrency(licenseeId);
+      return getLicenceeCurrency(licenceeId);
     },
-    [licenseeCurrencyMap]
+    [licenceeCurrencyMap]
   );
 
-  // Wrapper function to handle licensee changes
-  const handleLicenseeChange = async (newLicensee: string) => {
-    if (setSelectedLicensee) {
-      setSelectedLicensee(newLicensee);
+  // Wrapper function to handle licencee changes
+  const handleLicenceeChange = async (newLicencee: string) => {
+    if (setSelectedLicencee) {
+      setSelectedLicencee(newLicencee);
     }
 
-    // Update currency context based on licensee selection
-    const isAllLicensee =
-      !newLicensee || newLicensee === 'all' || newLicensee === '';
-    if (isAllLicensee) {
-      // Reset to USD when "All Licensee" is selected
+    // Update currency context based on licencee selection
+    const isAllLicencee =
+      !newLicencee || newLicencee === 'all' || newLicencee === '';
+    if (isAllLicencee) {
+      // Reset to USD when "All Licencee" is selected
       setDisplayCurrency('USD');
     } else {
-      const mappedCurrency = await resolveLicenseeCurrency(newLicensee);
+      const mappedCurrency = await resolveLicenceeCurrency(newLicencee);
       setDisplayCurrency(mappedCurrency);
     }
 
@@ -290,7 +290,7 @@ export default function Header({
         await fetchMetricsData(
           activeMetricsFilter,
           customDateRange,
-          newLicensee,
+          newLicencee,
           setTotals,
           setChartData,
           setActiveFilters,
@@ -299,15 +299,15 @@ export default function Header({
         );
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('Error refreshing data after licensee change:', error);
+          console.error('Error refreshing data after licencee change:', error);
         }
       } finally {
         setLoadingChartData(false);
       }
     }
 
-    // For reports page, the tabs will automatically re-fetch when selectedLicensee changes
-    // because they have selectedLicensee in their useEffect dependencies
+    // For reports page, the tabs will automatically re-fetch when selectedLicencee changes
+    // because they have selectedLicencee in their useEffect dependencies
   };
 
   // Check if the current path is related to locations
@@ -326,15 +326,15 @@ export default function Header({
     let cancelled = false;
     const syncCurrency = async () => {
       const isAll =
-        !selectedLicensee ||
-        selectedLicensee === 'all' ||
-        selectedLicensee === '';
+        !selectedLicencee ||
+        selectedLicencee === 'all' ||
+        selectedLicencee === '';
       if (isAll) {
         setDisplayCurrency('USD');
         return;
       }
 
-      const currency = await resolveLicenseeCurrency(selectedLicensee);
+      const currency = await resolveLicenceeCurrency(selectedLicencee);
       if (!cancelled) {
         setDisplayCurrency(currency);
       }
@@ -345,7 +345,7 @@ export default function Header({
     return () => {
       cancelled = true;
     };
-  }, [selectedLicensee, setDisplayCurrency, resolveLicenseeCurrency]);
+  }, [selectedLicencee, setDisplayCurrency, resolveLicenceeCurrency]);
 
   // Check if the current path is the specific location details page
   const isSpecificLocationPath =
@@ -356,7 +356,7 @@ export default function Header({
   return (
     <ClientOnly fallback={<div className="h-16 animate-pulse bg-gray-100" />}>
       <div className={`flex flex-col gap-2 ${containerPaddingMobile || ''}`}>
-        {/* Header Section: Main header with title and licensee selector */}
+        {/* Header Section: Main header with title and licencee selector */}
         <header className="flex w-full flex-col p-0">
           {/* Menu Button and Main Title Row: Mobile sidebar trigger and title */}
           <div className="flex w-full min-w-0 items-center justify-between gap-2 sm:gap-4">
@@ -376,18 +376,18 @@ export default function Header({
                 <h1 className="shrink-0 whitespace-nowrap text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl">
                   Evolution CMS
                 </h1>
-                {shouldShowLicenseeName && singleLicenseeName && (
+                {shouldShowLicenceeName && singleLicenceeName && (
                   <span className="inline-flex items-center rounded-full bg-buttonActive/10 px-3 py-1 text-xs font-medium text-buttonActive ring-1 ring-inset ring-buttonActive/20 sm:text-sm">
-                    {singleLicenseeName}
+                    {singleLicenceeName}
                   </span>
                 )}
               </div>
             </div>
 
             {/* Right side: Filters */}
-            {(!hideLicenseeFilter && shouldShowLicenseeSelect) || shouldRenderCurrencyFilter ? (
+            {(!hideLicenceeFilter && shouldShowLicenceeSelect) || shouldRenderCurrencyFilter ? (
               <div className="flex min-w-0 shrink items-center gap-1 sm:gap-2">
-                {!hideLicenseeFilter && shouldShowLicenseeSelect && (
+                {!hideLicenceeFilter && shouldShowLicenceeSelect && (
                   <div
                     className="min-w-0 overflow-hidden md:w-auto md:max-w-[200px] lg:max-w-[220px] xl:max-w-none"
                     style={{
@@ -395,10 +395,10 @@ export default function Header({
                         'clamp(120px, calc((100vw - 240px) * 0.5 + 120px), 200px)',
                     }}
                   >
-                    <LicenseeSelect
-                      selected={selectedLicensee || ''}
-                      onChange={handleLicenseeChange}
-                      userLicenseeIds={isAdmin ? undefined : userLicensees}
+                    <LicenceeSelect
+                      selected={selectedLicencee || ''}
+                      onChange={handleLicenceeChange}
+                      userLicenceeIds={isAdmin ? undefined : userLicencees}
                       disabled={disabled}
                     />
                   </div>
@@ -408,7 +408,7 @@ export default function Header({
                     className="hidden md:flex"
                     disabled={disabled}
                     userRoles={userRoles}
-                    hasMultipleLicensees={hasMultipleLicensees}
+                    hasMultipleLicencees={hasMultipleLicencees}
                     onCurrencyChange={newCurrency => {
                       // Trigger data refresh when currency changes
                       if (pathname === '/' && activeMetricsFilter) {
@@ -416,7 +416,7 @@ export default function Header({
                         fetchMetricsData(
                           activeMetricsFilter,
                           customDateRange,
-                          selectedLicensee,
+                          selectedLicencee,
                           setTotals,
                           setChartData,
                           setActiveFilters,
@@ -622,14 +622,14 @@ export default function Header({
                       </motion.button>
                     )}
 
-                    {/* Mobile Currency Selector - only show when "All Licensee" is selected */}
+                    {/* Mobile Currency Selector - only show when "All Licencee" is selected */}
                     {shouldRenderCurrencyFilter && (
                       <div className="mt-6 border-t border-gray-200 p-4">
                         <CurrencyFilter
                           className="w-full"
                           disabled={disabled}
                           userRoles={userRoles as UserRole[]}
-                          hasMultipleLicensees={hasMultipleLicensees}
+                          hasMultipleLicencees={hasMultipleLicencees}
                           onCurrencyChange={newCurrency => {
                             // Trigger data refresh when currency changes
                             if (pathname === '/' && activeMetricsFilter) {
@@ -637,7 +637,7 @@ export default function Header({
                               fetchMetricsData(
                                 activeMetricsFilter,
                                 customDateRange,
-                                selectedLicensee,
+                                selectedLicencee,
                                 setTotals,
                                 setChartData,
                                 setActiveFilters,

@@ -7,7 +7,7 @@
  */
 'use client';
 
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { useState } from 'react';
 
 import VaultOverviewForceEndShiftModal from '@/components/VAULT/overview/modals/VaultOverviewForceEndShiftModal';
@@ -53,7 +53,7 @@ export default function VaultOverviewCloseDayModals({
   onConfirm,
   onRefresh
 }: VaultOverviewCloseDayModalsProps) {
-  const { licenseeId: selectedLicensee } = useVaultLicensee();
+  const { licenceeId: selectedLicencee } = useVaultLicencee();
   const [forceCloseCashier, setForceCloseCashier] = useState<ForceEndShiftCashier | null>(null);
   const [reviewShift, setReviewShift] = useState<UnbalancedShiftInfo | null>(null);
 
@@ -106,7 +106,7 @@ export default function VaultOverviewCloseDayModals({
         open={!!forceCloseCashier}
         onClose={() => setForceCloseCashier(null)}
         cashier={forceCloseCashier}
-        licenseeId={selectedLicensee}
+        licenceeId={selectedLicencee}
         locationId={locationId}
         onSuccess={() => {
           setForceCloseCashier(null);

@@ -26,7 +26,7 @@ const dummyState: DashBoardStore = {
   totals: null,
   chartData: null,
   gamingLocations: [],
-  selectedLicensee: '',
+  selectedLicencee: '',
   sortBy: 'totalDrop',
   customDateRange: {
     startDate: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -34,7 +34,7 @@ const dummyState: DashBoardStore = {
   },
   // Currency support
   displayCurrency: 'USD' as CurrencyCode,
-  isAllLicensee: false,
+  isAllLicencee: false,
   pendingCustomDateRange: undefined,
   topPerformingData: [],
   setInitialLoading: () => {},
@@ -52,14 +52,14 @@ const dummyState: DashBoardStore = {
   setTotals: () => {},
   setChartData: () => {},
   setGamingLocations: () => {},
-  setSelectedLicensee: () => {},
+  setSelectedLicencee: () => {},
   setSortBy: () => {},
   setCustomDateRange: () => {},
   setPendingCustomDateRange: () => {},
   setTopPerformingData: () => {},
   // Currency methods
   setDisplayCurrency: () => {},
-  setIsAllLicensee: () => {},
+  setIsAllLicencee: () => {},
 };
 
 // Make sure store is created only on client-side
@@ -88,7 +88,7 @@ const createStore = () => {
         totals: null,
         chartData: null,
         gamingLocations: [],
-  selectedLicensee: '',
+  selectedLicencee: '',
   sortBy: 'totalDrop',
   customDateRange: {
           startDate: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -97,7 +97,7 @@ const createStore = () => {
         pendingCustomDateRange: undefined,
         topPerformingData: [],
         displayCurrency: 'USD' as CurrencyCode,
-        isAllLicensee: false,
+        isAllLicencee: false,
 
         setInitialLoading: initialLoading => set({ initialLoading }),
         setLoadingChartData: loadingChartData => set({ loadingChartData }),
@@ -118,8 +118,8 @@ const createStore = () => {
         setTotals: totals => set({ totals }),
         setChartData: chartData => set({ chartData }),
         setGamingLocations: gamingLocations => set({ gamingLocations }),
-        setSelectedLicensee: selectedLicensee => {
-          set({ selectedLicensee });
+        setSelectedLicencee: selectedLicencee => {
+          set({ selectedLicencee });
         },
         setSortBy: sortBy => set({ sortBy }),
         setCustomDateRange: customDateRange => set({ customDateRange }),
@@ -128,13 +128,13 @@ const createStore = () => {
         setTopPerformingData: topPerformingData => set({ topPerformingData }),
         // Currency methods
         setDisplayCurrency: displayCurrency => set({ displayCurrency }),
-        setIsAllLicensee: isAllLicensee => set({ isAllLicensee }),
+        setIsAllLicencee: isAllLicencee => set({ isAllLicencee }),
       }),
       {
         name: 'dashboard-store',
         partialize: state =>
           ({
-            selectedLicensee: state.selectedLicensee,
+            selectedLicencee: state.selectedLicencee,
             activeMetricsFilter: state.activeMetricsFilter,
             customDateRange: state.customDateRange,
           }) as unknown as DashBoardStore,

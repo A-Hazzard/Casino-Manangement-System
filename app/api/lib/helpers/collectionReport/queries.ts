@@ -3,39 +3,39 @@
  *
  * Provides backend helper functions for querying collection reports and related
  * data, including fetching locations with machines, processing date ranges, and
- * applying role-based location filtering. It handles licensee filtering and
+ * applying role-based location filtering. It handles licencee filtering and
  * user permission checks for secure data access.
  *
  * Features:
  * - Fetches locations with machines for collection reports.
  * - Applies role-based location filtering (admin, manager, collector, technician).
  * - Processes date ranges for time period filtering.
- * - Handles licensee filtering with support for both spellings.
+ * - Handles licencee filtering with support for both spellings.
  * - Filters machines by deletion status and SMIB configuration.
  */
 
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import type { TimePeriod } from '@/app/api/lib/types';
-import { getLicenseeObjectId } from '@/lib/utils/licensee';
+import { getLicenceeObjectId } from '@/lib/utils/licencee';
 import { PipelineStage } from 'mongoose';
 
 /**
  * Fetches locations with machines for collection reports
  *
- * @param rawLicenseeParam - Raw licensee parameter (supports both spellings)
+ * @param rawLicenceeParam - Raw licencee parameter (supports both spellings)
  * @returns Promise<{ locations: unknown[] }>
  */
 export async function fetchLocationsWithMachines(
-  rawLicenseeParam?: string | null
+  rawLicenceeParam?: string | null
 ): Promise<{ locations: unknown[] }> {
-  const normalizedLicensee =
-    rawLicenseeParam && rawLicenseeParam !== 'all'
-      ? getLicenseeObjectId(rawLicenseeParam) || rawLicenseeParam
-      : rawLicenseeParam;
+  const normalizedLicencee =
+    rawLicenceeParam && rawLicenceeParam !== 'all'
+      ? getLicenceeObjectId(rawLicenceeParam) || rawLicenceeParam
+      : rawLicenceeParam;
 
   // Get current user and their permissions
   const user = await getUserFromServer();
@@ -45,12 +45,12 @@ export async function fetchLocationsWithMachines(
 
   const userRoles = (user.roles as string[]) || [];
   // Use only new field
-  let userAccessibleLicensees: string[] = [];
+  let userAccessibleLicencees: string[] = [];
   if (
-    Array.isArray((user as { assignedLicensees?: string[] })?.assignedLicensees)
+    Array.isArray((user as { assignedLicencees?: string[] })?.assignedLicencees)
   ) {
-    userAccessibleLicensees = (user as { assignedLicensees: string[] })
-      .assignedLicensees;
+    userAccessibleLicencees = (user as { assignedLicencees: string[] })
+      .assignedLicencees;
   }
   // Use only new field
   let userLocationPermissions: string[] = [];
@@ -65,8 +65,8 @@ export async function fetchLocationsWithMachines(
 
   // Get user's accessible locations based on role and permissions
   const allowedLocationIds = await getUserLocationFilter(
-    isAdmin ? 'all' : userAccessibleLicensees,
-    normalizedLicensee || undefined,
+    isAdmin ? 'all' : userAccessibleLicencees,
+    normalizedLicencee || undefined,
     userLocationPermissions,
     userRoles
   );
@@ -271,13 +271,13 @@ export function calculateDateRangeForTimePeriod(
  * Determines allowed location IDs based on user role and permissions
  *
  * @param userRoles - User roles array
- * @param userLicensees - User accessible licensees
+ * @param userLicencees - User accessible licencees
  * @param userLocationPermissions - User location permissions
  * @returns Promise<string[] | 'all'>
  */
 export async function determineAllowedLocationIds(
   userRoles: string[],
-  userLicensees: string[],
+  userLicencees: string[],
   userLocationPermissions: string[]
 ): Promise<string[] | 'all'> {
   const isAdmin =
@@ -289,7 +289,7 @@ export async function determineAllowedLocationIds(
   }
 
   if (isManager) {
-    if (userLicensees.length === 0) {
+    if (userLicencees.length === 0) {
       return [];
     }
 
@@ -302,8 +302,8 @@ export async function determineAllowedLocationIds(
     const managerLocations = await GamingLocations.find(
       {
         $or: [
-          { 'rel.licensee': { $in: userLicensees } },
-          { 'rel.licencee': { $in: userLicensees } },
+          { 'rel.licencee': { $in: userLicencees } },
+          { 'rel.licencee': { $in: userLicencees } },
         ],
         $and: [
           {
@@ -362,14 +362,14 @@ export async function getLocationNamesFromIds(
  * @param startDate - Start date for filtering.
  * @param endDate - End date for filtering.
  * @param locationName - Optional location name to filter.
- * @param licensee - Optional licensee to filter.
+ * @param licencee - Optional licencee to filter.
  * @returns Promise<{ drop: string; cancelledCredits: string; gross: string; sasGross: string; }> Aggregated sums for the summary table.
  */
 export async function getMonthlyCollectionReportSummary(
   startDate: Date,
   endDate: Date,
   locationFilter?: string | string[],
-  licensee?: string
+  licencee?: string
 ): Promise<{
   drop: string;
   cancelledCredits: string;
@@ -402,8 +402,8 @@ export async function getMonthlyCollectionReportSummary(
 
   let pipeline: PipelineStage[] = [];
 
-  if (licensee) {
-    // If licensee is specified, we need to join with gaminglocations to filter by licensee
+  if (licencee) {
+    // If licencee is specified, we need to join with gaminglocations to filter by licencee
     pipeline = [
       {
         $lookup: {
@@ -414,7 +414,7 @@ export async function getMonthlyCollectionReportSummary(
         },
       },
       { $unwind: '$locationDetails' },
-      { $match: { $or: [{ 'locationDetails.rel.licensee': licensee }, { 'locationDetails.rel.licencee': licensee }], ...match } },
+      { $match: { $or: [{ 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  }], ...match } },
       {
         $group: {
           _id: null,
@@ -426,7 +426,7 @@ export async function getMonthlyCollectionReportSummary(
       },
     ];
   } else {
-    // No licensee filter, use simple aggregation
+    // No licencee filter, use simple aggregation
     pipeline = [
       { $match: match },
       {
@@ -464,14 +464,14 @@ export async function getMonthlyCollectionReportSummary(
  * @param startDate - Start date for filtering.
  * @param endDate - End date for filtering.
  * @param locationName - Optional location name to filter.
- * @param licensee - Optional licensee to filter.
+ * @param licencee - Optional licencee to filter.
  * @returns Promise<Array<{ location: string; drop: string; win: string; gross: string; sasGross: string }>> Aggregated data per location for the details table.
  */
 export async function getMonthlyCollectionReportByLocation(
   startDate: Date,
   endDate: Date,
   locationFilter?: string | string[],
-  licensee?: string
+  licencee?: string
 ): Promise<
   Array<{
     location: string;
@@ -507,8 +507,8 @@ export async function getMonthlyCollectionReportByLocation(
 
   let pipeline: PipelineStage[] = [];
 
-  if (licensee) {
-    // If licensee is specified, we need to join with gaminglocations to filter by licensee
+  if (licencee) {
+    // If licencee is specified, we need to join with gaminglocations to filter by licencee
     pipeline = [
       {
         $lookup: {
@@ -519,7 +519,7 @@ export async function getMonthlyCollectionReportByLocation(
         },
       },
       { $unwind: '$locationDetails' },
-      { $match: { $or: [{ 'locationDetails.rel.licensee': licensee }, { 'locationDetails.rel.licencee': licensee }], ...match } },
+      { $match: { $or: [{ 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  }], ...match } },
       {
         $group: {
           _id: '$locationName',
@@ -532,7 +532,7 @@ export async function getMonthlyCollectionReportByLocation(
       { $sort: { _id: 1 } },
     ];
   } else {
-    // No licensee filter, use simple aggregation
+    // No licencee filter, use simple aggregation
     pipeline = [
       { $match: match },
       {

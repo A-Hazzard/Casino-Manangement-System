@@ -1022,7 +1022,7 @@ await Machine.findByIdAndUpdate(collectionToDelete.machineId, updateOperation);
 
 - Time period filtering (Today, Yesterday, 7d, 30d, All Time, Custom)
 - **Time period filtering** - All time filters use calendar days (midnight to midnight, Trinidad time), not the gaming day offset. This is because collection reports are tied to specific collection events rather than operational gaming days.
-- Location and licensee filtering
+- Location and licencee filtering
 - Monthly aggregation support
 - Locations with machines query for modal dropdowns
 
@@ -1038,7 +1038,7 @@ await Machine.findByIdAndUpdate(collectionToDelete.machineId, updateOperation);
 - The API supports pagination via `page` and `limit` query parameters, providing paginated results from the full dataset of reports.
 - Search filters by location name, report ID
 - Date filters support: Today, Yesterday, Last 7 Days, Last 30 Days, Custom range, All Time
-- Role-based filtering applies based on user's assigned locations/licensees
+- Role-based filtering applies based on user's assigned locations/licencees
 
 **Special Query - Locations with Machines**:
 When `locationsWithMachines=1` is set:
@@ -1046,7 +1046,7 @@ When `locationsWithMachines=1` is set:
 - Returns locations aggregated with their machines
 - Used to populate location/machine dropdowns in modals
 - Includes: `name`, `profitShare`, `machines[]` with meter data
-- Filters by licensee if provided
+- Filters by licencee if provided
 - Used by both desktop and mobile creation modals
 
 **Time Period Conversion** (Trinidad Time - UTC-4):
@@ -1071,7 +1071,7 @@ When `locationsWithMachines=1` is set:
 **Purpose:** Fetch collection schedulers with filtering and human-readable names.
 
 **Query Parameters:**
-- `licensee` (string, optional) - Filter by licensee ID.
+- `licencee` (string, optional) - Filter by licencee ID.
 - `location` (string, optional) - Filter by location ID.
 - `collector` (string, optional) - Filter by collector ID.
 - `status` (string, optional) - Filter by status ('pending', 'completed', 'canceled').
@@ -1101,7 +1101,7 @@ When `locationsWithMachines=1` is set:
 **Notes:**
 - Uses MongoDB aggregation with `$lookup` to enrich scheduler documents with `locationName`, `collectorName`, and `creatorName` from `gaminglocations` and `users` collections.
 - Supports date range filtering on `startTime`.
-- Filters are applied based on user's accessible locations/licensees.
+- Filters are applied based on user's accessible locations/licencees.
 
 ### GET /api/collection-report/[reportId]
 

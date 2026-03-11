@@ -16,7 +16,7 @@ const GamingLocationsSchema = new Schema(
       city: String,
     },
     rel: {
-      licensee: String,
+      licencee: String,
     },
     profitShare: Number,
     collectionBalance: Number,
@@ -89,7 +89,7 @@ GamingLocationsSchema.index(
 );
 
 // Critical indexes for aggregation performance
-GamingLocationsSchema.index({ 'rel.licensee': 1, deletedAt: 1 }); // For licensee-based queries
+GamingLocationsSchema.index({ 'rel.licencee': 1, deletedAt: 1 }); // Primary UK spelling
 GamingLocationsSchema.index({ deletedAt: 1 }); // For active locations
 GamingLocationsSchema.index({ _id: 1, deletedAt: 1 }); // For location lookups
 GamingLocationsSchema.index({

@@ -3,7 +3,7 @@
  *
  * This route handles fetching machine statistics with role-based access control.
  * It supports:
- * - Filtering by licensee
+ * - Filtering by licencee
  * - Role-based location filtering
  * - Machine counts (total, online, SAS)
  * - Financial metrics (drop, cancelled credits, gross)
@@ -13,9 +13,9 @@
 
 import { getMachineStatsForAnalytics } from '@/app/api/lib/helpers/reports/analytics';
 import {
-  getUserAccessibleLicenseesFromToken,
+  getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
+} from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
@@ -39,10 +39,10 @@ export async function GET(request: NextRequest) {
     // STEP 1: Parse and validate request parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licensee =
-      searchParams.get('licensee') || searchParams.get('licensee');
-    const effectiveLicensee =
-      licensee && licensee.toLowerCase() !== 'all' ? licensee : null;
+    const licencee =
+      searchParams.get('licencee');
+    const effectiveLicencee =
+      licencee && licencee.toLowerCase() !== 'all' ? licencee : null;
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 3: Authenticate user and get accessible locations
     // ============================================================================
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
     let userLocationPermissions: string[] = [];
@@ -61,8 +61,8 @@ export async function GET(request: NextRequest) {
     }
 
     const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicensees,
-      effectiveLicensee ?? undefined,
+      userAccessibleLicencees,
+      effectiveLicencee ?? undefined,
       userLocationPermissions,
       userRoles
     );

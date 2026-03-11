@@ -4,7 +4,7 @@
  *
  * Features:
  * - Date filters with custom date range support
- * - Licensee selector for filtering data
+ * - Licencee selector for filtering data
  * - Refresh button for data reload
  * - Financial metrics cards
  * - Detailed chart section with metrics filters
@@ -32,7 +32,7 @@ import {
 } from '@/components/shared/ui/skeletons/DashboardSkeletons';
 import type { TopPerformingItem } from '@/lib/types';
 import type { DashboardDesktopLayoutProps } from '@/lib/types/components';
-import { getLicenseeName } from '@/lib/utils/licensee';
+import { getLicenceeName } from '@/lib/utils/licencee';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -57,10 +57,10 @@ export default function DashboardDesktopLayout(
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
-  const licenseeName =
-    getLicenseeName(props.selectedLicensee) ||
-    props.selectedLicensee ||
-    'any licensee';
+  const licenceeName =
+    getLicenceeName(props.selectedLicencee) ||
+    props.selectedLicencee ||
+    'any licencee';
 
   const NoDataMessage = ({ message }: { message: string }) => (
     <div
@@ -257,7 +257,7 @@ export default function DashboardDesktopLayout(
                     <DashboardTopPerformingSkeleton />
                   ) : props.topPerformingData.length === 0 ? (
                     <NoDataMessage
-                      message={`No metrics found for ${props.selectedLicensee === 'all' ? 'any licensee' : licenseeName}`}
+                      message={`No metrics found for ${props.selectedLicencee === 'all' ? 'any licencee' : licenceeName}`}
                     />
                   ) : (
                     <div className="flex flex-col items-center gap-6 xl:flex-row xl:justify-between">

@@ -70,8 +70,8 @@ export default function MembersDetailsPageContent() {
   const params = useParams();
   const memberId = params.id as string;
   const { 
-    selectedLicensee, 
-    setSelectedLicensee,
+    selectedLicencee, 
+    setSelectedLicencee,
     activeMetricsFilter,
     customDateRange
   } = useDashBoardStore();
@@ -471,8 +471,8 @@ export default function MembersDetailsPageContent() {
     <>
       <PageLayout
         headerProps={{
-          selectedLicensee,
-          setSelectedLicensee,
+          selectedLicencee,
+          setSelectedLicencee,
         }}
         mainClassName="flex flex-col flex-1 px-4 py-6 sm:px-6 lg:px-8 w-full max-w-full"
         hideCurrencyFilter={true}

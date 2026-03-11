@@ -27,7 +27,7 @@ The Locations & Machines API manages gaming locations and individual gaming mach
    - Creates `GamingLocation` document in `gaminglocations` collection
    - Stores location details, address, and configuration
    - Sets up bill validator denomination preferences
-   - Links to licensee and country
+   - Links to licencee and country
 
 2. **Location Model Fields**:
 
@@ -42,7 +42,7 @@ GamingLocation {
   };
   profitShare: number;            // Profit sharing percentage (0-100)
   rel: {
-    licensee: string;             // Licensee identifier
+    licencee: string;             // Licencee identifier
   };
   status: string;                 // Location status (active, inactive, maintenance)
   statusHistory: Array;           // Status change history
@@ -354,9 +354,9 @@ if (location.sasMachines === 0 && !hasCollectionReportInPast3Months) {
 **Database Operations**:
 
 - Queries `gaminglocations` collection
-- Filters by licensee and search criteria
+- Filters by licencee and search criteria
 - Applies soft delete filtering
-  **Query Parameters**: `licensee`, `search`, `page`, `limit`
+  **Query Parameters**: `licencee`, `search`, `page`, `limit`
   **Response Fields**: Array of `GamingLocation` objects
   **Used By**: Location management page, location selection components
 
@@ -547,11 +547,11 @@ The Locations & Machines API manages gaming locations and individual gaming mach
 
 ### GET /api/locations
 
-Retrieves all gaming locations with optional licensee filtering.
+Retrieves all gaming locations with optional licencee filtering.
 
 **Query Parameters:**
 
-- `licensee` (string, optional): Filter locations by licensee name
+- `licencee` (string, optional): Filter locations by licencee name
 
 **Response (Success - 200):**
 
@@ -567,7 +567,7 @@ Retrieves all gaming locations with optional licensee filtering.
         "city": "Las Vegas"
       },
       "rel": {
-        "licensee": "Casino Corp"
+        "licencee": "Casino Corp"
       },
       "profitShare": 50,
       "isLocalServer": false,
@@ -606,7 +606,7 @@ Creates a new gaming location.
   "country": "United States",
   "profitShare": 60,
   "rel": {
-    "licensee": "Gaming Corp"
+    "licencee": "Gaming Corp"
   },
   "isLocalServer": true,
   "geoCoords": {
@@ -630,7 +630,7 @@ Creates a new gaming location.
       "city": "Reno"
     },
     "rel": {
-      "licensee": "Gaming Corp"
+      "licencee": "Gaming Corp"
     },
     "profitShare": 60,
     "isLocalServer": true,
@@ -668,7 +668,7 @@ Updates an existing gaming location.
   "country": "United States",
   "profitShare": 55,
   "rel": {
-    "licensee": "Updated Corp"
+    "licencee": "Updated Corp"
   },
   "isLocalServer": false,
   "geoCoords": {
@@ -1231,7 +1231,7 @@ type GamingLocation = {
     city: string;
   };
   rel: {
-    licensee: string;
+    licencee: string;
   };
   profitShare: number;
   isLocalServer: boolean;
@@ -1286,7 +1286,7 @@ type Machine = {
 ### Location Management
 
 - **Geographic Coordinates**: GPS coordinates for mapping
-- **Licensee Association**: Link locations to gaming licensees
+- **Licencee Association**: Link locations to gaming licencees
 - **Profit Sharing**: Configurable profit sharing percentages
 - **Local Server Support**: Support for local server configurations
 

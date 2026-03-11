@@ -16,7 +16,7 @@ import type { TimePeriod } from '@/shared/types/common';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseLocationDataProps = {
-  selectedLicensee: string;
+  selectedLicencee: string;
   activeMetricsFilter: string | null;
   customDateRange?: dateRange;
   searchTerm: string;
@@ -49,7 +49,7 @@ type UseLocationDataReturn = {
 };
 
 export function useLocationData({
-  selectedLicensee,
+  selectedLicencee,
   activeMetricsFilter,
   customDateRange,
   searchTerm,
@@ -112,7 +112,7 @@ export function useLocationData({
   // Fetch a specific batch of locations
   const fetchBatch = useCallback(
     async (page: number = 1, limit: number = 50) => {
-      const effectiveLicensee = selectedLicensee || '';
+      const effectiveLicencee = selectedLicencee || '';
       // Use current filter string from ref to avoid dependency on array
       const currentFilterString = selectedFiltersRef.current.length
         ? selectedFiltersRef.current.join(',')
@@ -120,7 +120,7 @@ export function useLocationData({
 
       return await fetchAggregatedLocationsData(
         (activeMetricsFilter || 'Today') as TimePeriod,
-        effectiveLicensee,
+        effectiveLicencee,
         currentFilterString,
         dateRangeForFetch,
         displayCurrency,
@@ -134,7 +134,7 @@ export function useLocationData({
       );
     },
     [
-      selectedLicensee,
+      selectedLicencee,
       activeMetricsFilter,
       dateRangeForFetch,
       displayCurrency,
@@ -160,7 +160,7 @@ export function useLocationData({
         : '';
 
       // Create unique key for this fetch - include filters in the key
-      const fetchKey = `${debouncedSearchTerm}-${selectedLicensee}-${activeMetricsFilter}-${dateRangeForFetch?.from?.getTime()}-${dateRangeForFetch?.to?.getTime()}-${displayCurrency}-${page}-${limit}-${currentFilters}-${selectedStatus}-${sortBy}-${sortOrder}`;
+      const fetchKey = `${debouncedSearchTerm}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeForFetch?.from?.getTime()}-${dateRangeForFetch?.to?.getTime()}-${displayCurrency}-${page}-${limit}-${currentFilters}-${selectedStatus}-${sortBy}-${sortOrder}`;
 
       // Mark this as the current active fetch generation
       const currentFetchId = performance.now();
@@ -191,11 +191,11 @@ export function useLocationData({
       const result = await makeRequest(async signal => {
         // Only use backend search if debounced search term exists
         if (debouncedSearchTerm.trim()) {
-          const effectiveLicensee = selectedLicensee || '';
+          const effectiveLicencee = selectedLicencee || '';
           const effectiveFilter = activeMetricsFilter || 'Today';
           const searchData = await searchAllLocations(
             debouncedSearchTerm,
-            effectiveLicensee,
+            effectiveLicencee,
             displayCurrency,
             effectiveFilter,
             dateRangeForFetch
@@ -211,7 +211,7 @@ export function useLocationData({
         // Otherwise, use the normal fetchLocationsData for metrics-based data
         const result = await fetchAggregatedLocationsData(
           (activeMetricsFilter || 'Today') as TimePeriod,
-          selectedLicensee || '',
+          selectedLicencee || '',
           currentFilters,
           dateRangeForFetch,
           displayCurrency,
@@ -266,7 +266,7 @@ export function useLocationData({
     [
       debouncedSearchTerm,
       displayCurrency,
-      selectedLicensee,
+      selectedLicencee,
       activeMetricsFilter,
       dateRangeForFetch,
       makeRequest,

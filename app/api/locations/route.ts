@@ -7,7 +7,7 @@
  * - Creating new locations
  * - Updating existing locations
  * - Soft deleting locations
- * - Licensee filtering
+ * - Licencee filtering
  * - Location permission filtering
  * - Minimal projection for performance
  *
@@ -16,14 +16,14 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-  getUserAccessibleLicenseesFromToken,
+  getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
+} from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { UpdateLocationData } from '@/lib/types/location';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
@@ -36,11 +36,11 @@ import { apiLogger } from '../lib/services/loggerService';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse query parameters (licensee, minimal, showAll, forceAll)
- * 3. Get user's accessible licensees and permissions
+ * 2. Parse query parameters (licencee, minimal, showAll, forceAll)
+ * 3. Get user's accessible licencees and permissions
  * 4. Build query filter based on access control
  * 5. Fetch locations with optional minimal projection
- * 6. Add licenseeId field for frontend filtering
+ * 6. Add licenceeId field for frontend filtering
  * 7. Return locations
  */
 export async function GET(request: Request) {
@@ -61,9 +61,9 @@ export async function GET(request: Request) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    // Support both 'licensee' and 'licensee' spelling for backwards compatibility
-    const licensee =
-      searchParams.get('licensee') || searchParams.get('licensee');
+    // Support both 'licencee' and 'licencee' spelling for backwards compatibility
+    const licencee =
+      searchParams.get('licencee');
     const minimal = searchParams.get('minimal') === '1';
 
     // Note: Collectors can access location data via API for collection reports
@@ -75,9 +75,9 @@ export async function GET(request: Request) {
       searchParams.get('forceAll') === '1';
 
     // ============================================================================
-    // STEP 3: Get user's accessible licensees and permissions
+    // STEP 3: Get user's accessible licencees and permissions
     // ============================================================================
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
 
@@ -107,22 +107,22 @@ export async function GET(request: Request) {
     const isAdminOrDeveloper =
       userRoles.includes('admin') || userRoles.includes('developer');
 
-    // Determine the licensee filter to use
-    // If forceAll is true and user is admin, ignore licensee filter (show all)
-    // If licensee is 'all' or empty, pass undefined to getUserLocationFilter to return all locations
-    // Otherwise, use the licensee parameter from query string
-    const licenseeFilterToUse =
+    // Determine the licencee filter to use
+    // If forceAll is true and user is admin, ignore licencee filter (show all)
+    // If licencee is 'all' or empty, pass undefined to getUserLocationFilter to return all locations
+    // Otherwise, use the licencee parameter from query string
+    const licenceeFilterToUse =
       forceAll && isAdminOrDeveloper
         ? undefined
-        : licensee && licensee !== 'all'
-          ? licensee
+        : licencee && licencee !== 'all'
+          ? licencee
           : undefined;
 
-    // Apply location filtering based on licensee + location permissions
+    // Apply location filtering based on licencee + location permissions
     // Always use getUserLocationFilter to ensure proper access control
     const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicensees,
-      licenseeFilterToUse,
+      userAccessibleLicencees,
+      licenceeFilterToUse,
       userLocationPermissions,
       userRoles
     );
@@ -134,19 +134,19 @@ export async function GET(request: Request) {
       } else {
         queryFilter = { ...deletionFilter, _id: { $in: allowedLocationIds } };
 
-        // CRITICAL: Add explicit licensee filter when specific licensee is selected
-        // This ensures we only return locations from the selected licensee
-        if (licenseeFilterToUse && licenseeFilterToUse !== 'all') {
-          // Resolve licensee ID (could be ID or name)
-          let resolvedLicenseeId = licenseeFilterToUse;
+        // CRITICAL: Add explicit licencee filter when specific licencee is selected
+        // This ensures we only return locations from the selected licencee
+        if (licenceeFilterToUse && licenceeFilterToUse !== 'all') {
+          // Resolve licencee ID (could be ID or name)
+          let resolvedLicenceeId = licenceeFilterToUse;
           try {
-            const licenseeDoc = await Licensee.findOne(
+            const licenceeDoc = await Licencee.findOne(
               {
                 $or: [
-                  { _id: licenseeFilterToUse },
+                  { _id: licenceeFilterToUse },
                   {
                     name: {
-                      $regex: new RegExp(`^${licenseeFilterToUse}$`, 'i'),
+                      $regex: new RegExp(`^${licenceeFilterToUse}$`, 'i'),
                     },
                   },
                 ],
@@ -154,8 +154,8 @@ export async function GET(request: Request) {
               { _id: 1 }
             ).lean();
 
-            if (licenseeDoc && !Array.isArray(licenseeDoc)) {
-              resolvedLicenseeId = String(licenseeDoc._id);
+            if (licenceeDoc && !Array.isArray(licenceeDoc)) {
+              resolvedLicenceeId = String(licenceeDoc._id);
             }
           } catch {
             // If resolution fails, use as-is
@@ -166,42 +166,41 @@ export async function GET(request: Request) {
           }
           (queryFilter.$and as Array<Record<string, unknown>>).push({
             $or: [
-              { 'rel.licensee': resolvedLicenseeId },
-              { 'rel.licencee': resolvedLicenseeId },
+              { 'rel.licencee': resolvedLicenceeId },
             ],
           });
           console.log(
-            `[Locations API] Applied licensee filter: ${resolvedLicenseeId} (from ${licenseeFilterToUse})`
+            `[Locations API] Applied licencee filter: ${resolvedLicenceeId} (from ${licenceeFilterToUse})`
           );
         }
       }
     } else {
       // Admin with no restrictions - return all locations (with deletion filter)
-      // But if a specific licensee is selected, still filter by it
+      // But if a specific licencee is selected, still filter by it
       queryFilter = { ...deletionFilter };
-      if (licenseeFilterToUse && licenseeFilterToUse !== 'all') {
-        // Resolve licensee ID (could be ID or name)
-        let resolvedLicenseeId = licenseeFilterToUse;
+      if (licenceeFilterToUse && licenceeFilterToUse !== 'all') {
+        // Resolve licencee ID (could be ID or name)
+        let resolvedLicenceeId = licenceeFilterToUse;
         try {
-          const licenseeDoc = await Licensee.findOne(
+          const licenceeDoc = await Licencee.findOne(
             {
               $or: [
-                { _id: licenseeFilterToUse },
+                { _id: licenceeFilterToUse },
                 {
-                  name: { $regex: new RegExp(`^${licenseeFilterToUse}$`, 'i') },
+                  name: { $regex: new RegExp(`^${licenceeFilterToUse}$`, 'i') },
                 },
               ],
             },
             { _id: 1 }
           ).lean();
 
-          if (licenseeDoc && !Array.isArray(licenseeDoc)) {
-            resolvedLicenseeId = String(licenseeDoc._id);
+          if (licenceeDoc && !Array.isArray(licenceeDoc)) {
+            resolvedLicenceeId = String(licenceeDoc._id);
           }
         } catch (error) {
           // If resolution fails, use as-is
           console.warn(
-            `[Locations API] Failed to resolve licensee ${licenseeFilterToUse}:`,
+            `[Locations API] Failed to resolve licencee ${licenceeFilterToUse}:`,
             error
           );
         }
@@ -211,12 +210,11 @@ export async function GET(request: Request) {
         }
         (queryFilter.$and as Array<Record<string, unknown>>).push({
           $or: [
-            { 'rel.licensee': resolvedLicenseeId },
-            { 'rel.licencee': resolvedLicenseeId },
+            { 'rel.licencee': resolvedLicenceeId },
           ],
         });
         console.log(
-          `[Locations API] Applied licensee filter (admin): ${resolvedLicenseeId} (from ${licenseeFilterToUse})`
+          `[Locations API] Applied licencee filter (admin): ${resolvedLicenceeId} (from ${licenceeFilterToUse})`
         );
       }
     }
@@ -225,31 +223,31 @@ export async function GET(request: Request) {
     // STEP 5: Fetch locations with optional minimal projection
     // ============================================================================
     const projection = minimal
-      ? { _id: 1, name: 1, geoCoords: 1, 'rel.licensee': 1, 'rel.licencee': 1 }
+      ? { _id: 1, name: 1, geoCoords: 1, 'rel.licencee': 1 }
       : undefined;
     const locations = await GamingLocations.find(queryFilter, projection)
       .sort({ name: 1 })
       .lean();
 
     // ============================================================================
-    // STEP 6: Add licenseeId field for frontend filtering
+    // STEP 6: Add licenceeId field for frontend filtering
     // ============================================================================
-    const locationsWithLicenseeId = locations.map(loc => {
-      const licenseeRaw = loc.rel?.licensee || (loc.rel as unknown as Record<string, unknown>)?.licencee;
-      let licenseeId: string | null = null;
+    const locationsWithLicenceeId = locations.map(loc => {
+      const licenceeRaw = loc.rel?.licencee;
+      let licenceeId: string | null = null;
 
-      if (Array.isArray(licenseeRaw)) {
-        licenseeId =
-          licenseeRaw.length > 0 && licenseeRaw[0]
-            ? String(licenseeRaw[0])
+      if (Array.isArray(licenceeRaw)) {
+        licenceeId =
+          licenceeRaw.length > 0 && licenceeRaw[0]
+            ? String(licenceeRaw[0])
             : null;
-      } else if (licenseeRaw) {
-        licenseeId = String(licenseeRaw);
+      } else if (licenceeRaw) {
+        licenceeId = String(licenceeRaw);
       }
 
       return {
         ...loc,
-        licenseeId,
+        licenceeId,
       };
     });
 
@@ -262,7 +260,7 @@ export async function GET(request: Request) {
       `Successfully fetched ${locations.length} locations (minimal: ${minimal}, showAll: ${showAll}) in ${duration}ms`
     );
     return NextResponse.json(
-      { locations: locationsWithLicenseeId },
+      { locations: locationsWithLicenceeId },
       { status: 200 }
     );
   } catch (error) {
@@ -388,7 +386,7 @@ export async function POST(request: Request) {
         city: address?.city || '',
       },
       rel: {
-        licensee: (rel?.licensee as string[] | undefined) || [],
+        licencee: (rel?.licencee || rel?.licencee) as string[] | undefined || [],
       },
       profitShare: profitShare || 50,
       gameDayOffset: gameDayOffset ?? 8,
@@ -466,9 +464,9 @@ export async function POST(request: Request) {
             newValue: address?.city || '',
           },
           {
-            field: 'rel.licensee',
+            field: 'rel.licencee',
             oldValue: null,
-            newValue: rel?.licensee || '',
+            newValue: rel?.licencee || rel?.licencee || '',
           },
           { field: 'profitShare', oldValue: null, newValue: profitShare || 50 },
           {
@@ -551,7 +549,7 @@ export async function POST(request: Request) {
       const friendlyFieldMap: Record<string, string> = {
         name: 'Location Name',
         location: 'Location ID',
-        'rel.licensee': 'Licensee',
+        'rel.licencee': 'Licencee',
       };
 
       const displayField = friendlyFieldMap[fieldName] || fieldName;
@@ -712,7 +710,10 @@ export async function PUT(request: Request) {
 
     if (rel) {
       updateData.rel = {};
-      if (rel.licensee !== undefined) updateData.rel.licensee = rel.licensee;
+      const licenceeVal = rel.licencee || rel.licencee;
+      if (licenceeVal !== undefined) {
+        updateData.rel.licencee = licenceeVal;
+      }
     }
 
     // Handle primitive types with explicit checks to handle zero values
@@ -827,11 +828,11 @@ export async function PUT(request: Request) {
             newValue: address.city,
           });
         }
-        if (rel?.licensee !== undefined) {
+        if (rel?.licencee !== undefined) {
           updateChanges.push({
-            field: 'rel.licensee',
-            oldValue: location.rel?.licensee,
-            newValue: rel.licensee,
+            field: 'rel.licencee',
+            oldValue: location.rel?.licencee,
+            newValue: rel.licencee,
           });
         }
         if (profitShare !== undefined) {
@@ -945,7 +946,7 @@ export async function PUT(request: Request) {
       const friendlyFieldMap: Record<string, string> = {
         name: 'Location Name',
         location: 'Location ID',
-        'rel.licensee': 'Licensee',
+        'rel.licencee': 'Licencee',
       };
 
       const displayField = friendlyFieldMap[fieldName] || fieldName;
@@ -1043,8 +1044,8 @@ export async function DELETE(request: Request) {
             newValue: null,
           },
           {
-            field: 'rel.licensee',
-            oldValue: locationToDelete.rel?.licensee || '',
+            field: 'rel.licencee',
+            oldValue: locationToDelete.rel?.licencee || '',
             newValue: null,
           },
           {

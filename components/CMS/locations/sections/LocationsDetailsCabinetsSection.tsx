@@ -30,7 +30,6 @@ import MachineStatusWidget from '@/components/shared/ui/MachineStatusWidget';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import type { dashboardData } from '@/lib/types';
 import type { ExtendedCabinetDetail } from '@/lib/types/pages';
-import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import gsap from 'gsap';
@@ -618,9 +617,9 @@ export default function LocationsDetailsCabinetsSection({
             <div ref={tableRef}>
               <LocationsCabinetGrid
                 filteredCabinets={
-                  filteredCabinets
-                    .filter(cab => getSerialNumberIdentifier(cab) !== 'N/A')
-                    .map(cab => ({
+                filteredCabinets
+                  .filter(cab => (cab.serialNumber || cab.custom?.name || 'N/A') !== 'N/A')
+                  .map(cab => ({
                       ...cab,
                       isOnline: cab.online,
                     })) as ExtendedCabinetDetail[]

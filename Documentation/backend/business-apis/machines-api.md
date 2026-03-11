@@ -73,7 +73,7 @@ X-RateLimit-Reset: 1640995200
 
 **Query Parameters:**
 - `location` (string, optional) - Filter by location ID
-- `licensee` (string, optional) - Filter by licensee ID
+- `licencee` (string, optional) - Filter by licencee ID
 - `status` (string, optional) - Filter by status ('online', 'offline')
 - `page` (number, optional) - Page number (default: 1)
 - `limit` (number, optional) - Items per page (default: 50, max: 200)
@@ -288,7 +288,7 @@ X-RateLimit-Reset: 1640995200
 
 **Query Parameters:**
 - `location` (string, optional) - Filter by location ID.
-- `licensee` (string, optional) - Filter by licensee ID.
+- `licencee` (string, optional) - Filter by licencee ID.
 - `startDate` (string, optional) - Start date (ISO format).
 - `endDate` (string, optional) - End date (ISO format).
 - `timePeriod` (string, optional) - Predefined periods ('today', 'yesterday', '7d', '30d', 'Custom').

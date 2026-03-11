@@ -9,7 +9,7 @@ The system supports two distinct operation modes determined by the `APPLICATION`
 ### Common Infrastructure
 Both modes share:
 - **QueryProvider**: For React Query data fetching.
-- **CurrencyProvider**: For multi-licensee currency aggregation.
+- **CurrencyProvider**: For multi-licencee currency aggregation.
 - **SidebarProvider**: For the config-driven navigation system.
 
 ---
@@ -19,8 +19,8 @@ Both modes share:
 Permissions are hierarchical. Higher roles inherit the capabilities of lower roles.
 1. **Developer**: Absolute system access.
 2. **Admin**: Fleet-wide management.
-3. **Manager**: Licensee-level oversight.
-4. **Location Admin**: Multi-unit management within a licensee.
+3. **Manager**: Licencee-level oversight.
+4. **Location Admin**: Multi-unit management within a licencee.
 5. **Vault Manager**: Restricted to Vault operations.
 
 ### Guards

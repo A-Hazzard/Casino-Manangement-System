@@ -18,7 +18,7 @@ import {
     DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues, getInitialDenominationRecord, recordToDenominations } from '@/lib/utils/vault/denominations';
 import { AlertCircle, Landmark, RefreshCw, ShieldAlert } from 'lucide-react';
@@ -34,7 +34,7 @@ interface VaultOverviewForceEndShiftModalProps {
     username: string;
     cashierName?: string;
   } | null;
-  licenseeId?: string;
+  licenceeId?: string;
   locationId?: string;
   onSuccess: () => void;
 }
@@ -43,25 +43,25 @@ export default function VaultOverviewForceEndShiftModal({
   open,
   onClose,
   cashier,
-  licenseeId,
+  licenceeId,
   locationId,
   onSuccess,
 }: VaultOverviewForceEndShiftModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: effectiveLicenseeId } = useVaultLicensee();
+  const { licenceeId: effectiveLicenceeId } = useVaultLicencee();
   const [denominations, setDenominations] = useState<Record<string, number>>({});
   const [touchedDenominations, setTouchedDenominations] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
 
-  const finalLicenseeId = licenseeId || effectiveLicenseeId;
-  const denomValues = getDenominationValues(finalLicenseeId);
+  const finalLicenceeId = licenceeId || effectiveLicenceeId;
+  const denomValues = getDenominationValues(finalLicenceeId);
 
   useEffect(() => {
     if (open) {
-      setDenominations(getInitialDenominationRecord(finalLicenseeId));
+      setDenominations(getInitialDenominationRecord(finalLicenceeId));
       setTouchedDenominations(new Set());
     }
-  }, [open, finalLicenseeId]);
+  }, [open, finalLicenceeId]);
 
   const shiftTotal = Object.entries(denominations).reduce(
     (sum, [val, qty]) => sum + (Number(val) * qty), 

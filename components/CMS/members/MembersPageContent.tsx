@@ -41,7 +41,7 @@ import type { MembersView } from '@/shared/types/entities';
  *
  * Features:
  * - Tab-based navigation (Members List, Summary)
- * - Licensee selection integration
+ * - Licencee selection integration
  * - Tab content rendering with suspense
  * - Loading skeletons
  * - Framer Motion animations
@@ -52,7 +52,7 @@ function MembersPageContentInner() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
-  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { onRefresh, onNewMember, refreshing } = useMembersHandlers();
 
   // All authenticated users have access to members
@@ -66,7 +66,7 @@ function MembersPageContentInner() {
   // Tab content rendering
   const tabComponents: Record<MembersView, React.ReactElement> = {
     members: <MembersListTab />,
-    'summary-report': <MembersSummaryTab selectedLicensee={selectedLicensee} />,
+    'summary-report': <MembersSummaryTab selectedLicencee={selectedLicencee} />,
   };
 
   const { getTabAnimationProps, currentTabComponent } = useMembersTabContent({
@@ -81,11 +81,11 @@ function MembersPageContentInner() {
       <>
         <PageLayout
           headerProps={{
-            selectedLicensee,
-            setSelectedLicensee,
+            selectedLicencee,
+            setSelectedLicencee,
             disabled: false,
           }}
-          hideLicenseeFilter={true}
+          hideLicenceeFilter={true}
           showToaster={false}
         >
           <div className="flex min-h-[400px] items-center justify-center">
@@ -135,11 +135,11 @@ function MembersPageContentInner() {
     <>
       <PageLayout
         headerProps={{
-          selectedLicensee,
-          setSelectedLicensee,
+          selectedLicencee,
+          setSelectedLicencee,
           disabled: false,
         }}
-        hideLicenseeFilter={true}
+        hideLicenceeFilter={true}
         hideCurrencyFilter={true}
         showToaster={false}
         onRefresh={onRefresh}
@@ -150,7 +150,7 @@ function MembersPageContentInner() {
           availableTabs={availableTabs}
           activeTab={activeTab}
           onTabChange={handleTabClick}
-          selectedLicensee={selectedLicensee}
+          selectedLicencee={selectedLicencee}
           onRefresh={onRefresh}
           onNewMember={onNewMember}
           refreshing={refreshing}

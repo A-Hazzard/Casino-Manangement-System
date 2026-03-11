@@ -15,7 +15,7 @@ import ClientOnly from '@/components/shared/ui/common/ClientOnly';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards';
 import MachineStatusWidget from '@/components/shared/ui/MachineStatusWidget';
-import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
+import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { useLocationsPageData } from '@/lib/hooks/locations/useLocationsPageData';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -23,7 +23,7 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
-import { shouldShowNoLicenseeMessage } from '@/lib/utils/licensee';
+import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import LocationsLocationCard from './LocationsLocationCard';
@@ -39,7 +39,7 @@ export default function LocationsPageContent() {
   // ============================================================================
   const router = useRouter();
   const { user } = useUserStore();
-  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { openEditModal, openDeleteModal, closeDeleteModal } =
     useLocationsActionsStore();
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -101,9 +101,9 @@ export default function LocationsPageContent() {
   // ============================================================================
   // Permission Checks
   // ============================================================================
-  // If user has no licensee assigned, show the "No Licensee Assigned" message
-  if (shouldShowNoLicenseeMessage(user)) {
-    return <NoLicenseeAssigned />;
+  // If user has no licencee assigned, show the "No Licencee Assigned" message
+  if (shouldShowNoLicenceeMessage(user)) {
+    return <NoLicenceeAssigned />;
   }
 
   // ============================================================================
@@ -126,7 +126,7 @@ export default function LocationsPageContent() {
       />
 
       <PageLayout
-        headerProps={{ selectedLicensee, setSelectedLicensee }}
+        headerProps={{ selectedLicencee, setSelectedLicencee }}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         onRefresh={handleRefresh}
         refreshing={refreshing}

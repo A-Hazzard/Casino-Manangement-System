@@ -5,10 +5,10 @@
  * It supports:
  * - Filtering by location IDs
  * - Time period filtering (Today, Yesterday, 7d, 30d, Custom)
- * - Licensee-based filtering
+ * - Licencee-based filtering
  * - Gaming day offset calculations
  * - Hourly or daily aggregation based on time period
- * - Currency conversion for multi-licensee views
+ * - Currency conversion for multi-licencee views
  *
  * @module app/api/analytics/location-trends/route
  */
@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse and validate request parameters (locationIds, timePeriod, licensee, startDate, endDate, currency)
+ * 2. Parse and validate request parameters (locationIds, timePeriod, licencee, startDate, endDate, currency)
  * 3. Execute the core location trends fetching logic via `getLocationTrends` helper
  * 4. Return location trends data
  */
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     const locationIds = searchParams.get('locationIds');
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licensee = searchParams.get('licensee');
+    const licencee = (searchParams.get('licencee'));
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
     const displayCurrency =
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     const trendsData = await getLocationTrends(
       locationIds,
       timePeriod,
-      licensee,
+      licencee,
       startDateParam,
       endDateParam,
       displayCurrency,

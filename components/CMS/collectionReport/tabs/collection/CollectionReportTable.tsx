@@ -39,7 +39,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportTableProps } from '@/lib/types/components';
 import { getGrossColorClass } from '@/lib/utils/financial';
-import { getLicenseeName } from '@/lib/utils/licensee';
+import { getLicenceeName } from '@/lib/utils/licencee';
 import { hasAdminAccess, hasManagerAccess } from '@/lib/utils/permissions';
 import detailsIcon from '@/public/details.svg';
 import {
@@ -64,7 +64,7 @@ export default function CollectionReportTable({
   sortDirection = 'desc',
   onSort,
   editableReportIds,
-  selectedLicensee,
+  selectedLicencee,
 }: CollectionReportTableProps) {
   useCurrencyFormat();
   const router = useRouter();
@@ -87,11 +87,11 @@ export default function CollectionReportTable({
 
   // Only show "No Data Available" when NOT loading and data is empty
   if (!loading && (!data || data.length === 0)) {
-    const licenseeName =
-      getLicenseeName(selectedLicensee || undefined) ||
-      selectedLicensee ||
+    const licenceeName =
+      getLicenceeName(selectedLicencee || undefined) ||
+      selectedLicencee ||
       'the selected period';
-    const emptyMessage = `No collection reports found for ${licenseeName}.`;
+    const emptyMessage = `No collection reports found for ${licenceeName}.`;
 
     return (
       <div className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md">

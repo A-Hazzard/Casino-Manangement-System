@@ -17,7 +17,7 @@ import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseCabinetDataProps = {
-  selectedLicensee: string;
+  selectedLicencee: string;
   activeMetricsFilter: string;
   customDateRange?: dateRange;
   searchTerm: string;
@@ -62,7 +62,7 @@ type UseCabinetDataReturn = {
 };
 
 export const useCabinetData = ({
-  selectedLicensee,
+  selectedLicencee,
   activeMetricsFilter,
   customDateRange,
   searchTerm,
@@ -140,8 +140,8 @@ export const useCabinetData = ({
   // Load locations for filter dropdown
   const loadLocations = useCallback(async () => {
     try {
-      console.warn('Loading cabinet locations for licensee:', selectedLicensee);
-      const locationsData = await fetchCabinetLocations(selectedLicensee);
+      console.warn('Loading cabinet locations for licencee:', selectedLicencee);
+      const locationsData = await fetchCabinetLocations(selectedLicencee);
 
       if (Array.isArray(locationsData)) {
         setLocations(locationsData);
@@ -154,7 +154,7 @@ export const useCabinetData = ({
       console.error('Failed to fetch locations:', error);
       setLocations([]);
     }
-  }, [selectedLicensee]);
+  }, [selectedLicencee]);
 
   // PERFORMANCE OPTIMIZATION: Memoize filtered cabinets calculation
   const filteredCabinets = useMemo(() => {
@@ -232,7 +232,7 @@ export const useCabinetData = ({
 
       const result = await makeRequest(async signal => {
         console.warn('[useCabinetData] Loading cabinets with filters:', {
-          selectedLicensee,
+          selectedLicencee,
           activeMetricsFilter,
           page,
           limit,
@@ -276,7 +276,7 @@ export const useCabinetData = ({
                   : 'all';
 
         const result = await fetchCabinets(
-          selectedLicensee,
+          selectedLicencee,
           activeMetricsFilter,
           dateRangeForFetch,
           displayCurrency,
@@ -416,7 +416,7 @@ export const useCabinetData = ({
       }
     },
     [
-      selectedLicensee,
+      selectedLicencee,
       activeMetricsFilter,
       customDateRange,
       displayCurrency,
@@ -508,7 +508,7 @@ export const useCabinetData = ({
     }
 
     // Create a dependency key to detect actual changes
-    const depsKey = `${activeMetricsFilter}-${selectedLicensee || 'all'}-${displayCurrency || 'default'}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${selectedLocation.join(',')}-${selectedGameType.join(',')}-${selectedStatus}-${searchTerm}`;
+    const depsKey = `${activeMetricsFilter}-${selectedLicencee || 'all'}-${displayCurrency || 'default'}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${selectedLocation.join(',')}-${selectedGameType.join(',')}-${selectedStatus}-${searchTerm}`;
 
     // On initial mount, don't abort anything (there's nothing to abort)
     // Only abort if dependencies actually changed (not on initial mount)
@@ -534,7 +534,7 @@ export const useCabinetData = ({
             fetchCabinetTotals(
               activeMetricsFilter,
               customDateRange,
-              selectedLicensee,
+              selectedLicencee,
               displayCurrency,
               signal,
               selectedLocation,
@@ -573,7 +573,7 @@ export const useCabinetData = ({
   }, [
     activeMetricsFilter,
     customDateRange,
-    selectedLicensee,
+    selectedLicencee,
     displayCurrency,
     selectedLocation,
     selectedGameType,

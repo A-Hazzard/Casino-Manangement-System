@@ -35,7 +35,7 @@ import {
 import { useUserStore } from '@/lib/store/userStore';
 import type { NavigationConfig } from '@/lib/types/layout/navigation';
 import { cn } from '@/lib/utils';
-import { shouldShowNoRoleMessage } from '@/lib/utils/licensee';
+import { shouldShowNoRoleMessage } from '@/lib/utils/licencee';
 import { shouldShowNavigationLinkDb } from '@/lib/utils/permissions';
 import { ChevronDown, ChevronUp, PanelLeft } from 'lucide-react';
 import Image from 'next/image';
@@ -895,7 +895,7 @@ export default function AppSidebar({
           <div className="md:hidden border-t border-border/50 px-3 py-4 mt-2">
             <CurrencyFilter 
               userRoles={user?.roles as string[]}
-              hasMultipleLicensees={(user?.assignedLicensees || []).length > 1}
+              hasMultipleLicencees={(user?.assignedLicencees || []).length > 1}
               className="w-full"
             />
           </div>

@@ -24,6 +24,7 @@ import {
 import { fetchCollectionReportById } from '@/lib/helpers/collectionReport/fetching';
 import { validateMachineEntry } from '@/lib/helpers/collectionReport';
 import { updateCollection } from '@/lib/helpers/collections';
+import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useDebounce, useDebouncedCallback } from '@/lib/hooks/useDebounce';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
@@ -63,17 +64,32 @@ export function useEditCollectionModal({
   const userId = user?._id;
 
   // ============================================================================
-  // State Management
+  // Zustand Store Integration
   // ============================================================================
+  const {
+    collectedMachines: collectedMachineEntries,
+    setCollectedMachines: setCollectedMachineEntries,
+    financials,
+    setFinancials,
+    formData: storeFormData,
+    setFormData: setStoreFormData,
+    calculateCarryover: storeCalculateCarryover,
+    setSelectedLocation: setStoreSelectedLocation,
+    selectedLocationId: storeLocationId,
+    selectedLocationName: storeLocationName,
+    selectedMachineId: storeMachineId,
+    setSelectedMachineId: setStoreMachineId,
+  } = useCollectionModalStore();
+
   const [reportData, setReportData] = useState<CollectionReportData | null>(
     null
   );
-  const [selectedLocationId, setSelectedLocationId] = useState<string>('');
-  const [selectedLocationName, setSelectedLocationName] = useState<string>('');
-  const [selectedMachineId, setSelectedMachineId] = useState<string>('');
-  const [collectedMachineEntries, setCollectedMachineEntries] = useState<
-    CollectionDocument[]
-  >([]);
+  
+  // Use store values but keep the names compatible with existing code where possible
+  const selectedLocationId = storeLocationId || '';
+  const selectedLocationName = storeLocationName || '';
+  const selectedMachineId = storeMachineId || '';
+
   const [originalCollections, setOriginalCollections] = useState<
     CollectionDocument[]
   >([]);
@@ -96,15 +112,27 @@ export function useEditCollectionModal({
   const [viewMode, setViewMode] = useState<'machines' | 'collected'>(
     'machines'
   );
-  const [currentCollectionTime, setCurrentCollectionTime] = useState<Date>(
-    new Date()
-  );
-  const [currentMetersIn, setCurrentMetersIn] = useState('');
-  const [currentMetersOut, setCurrentMetersOut] = useState('');
-  const [currentRamClearMetersIn, setCurrentRamClearMetersIn] = useState('');
-  const [currentRamClearMetersOut, setCurrentRamClearMetersOut] = useState('');
-  const [currentMachineNotes, setCurrentMachineNotes] = useState('');
-  const [currentRamClear, setCurrentRamClear] = useState(false);
+  
+  // Map store formData to local variables for existing logic compatibility
+  const currentCollectionTime = storeFormData.collectionTime;
+  const currentMetersIn = storeFormData.metersIn;
+  const currentMetersOut = storeFormData.metersOut;
+  const currentRamClearMetersIn = storeFormData.ramClearMetersIn;
+  const currentRamClearMetersOut = storeFormData.ramClearMetersOut;
+  const currentMachineNotes = storeFormData.notes;
+  const currentRamClear = storeFormData.ramClear;
+
+  const setCurrentMetersIn = (val: string) => setStoreFormData({ metersIn: val });
+  const setCurrentMetersOut = (val: string) => setStoreFormData({ metersOut: val });
+  const setCurrentRamClearMetersIn = (val: string) => setStoreFormData({ ramClearMetersIn: val });
+  const setCurrentRamClearMetersOut = (val: string) => setStoreFormData({ ramClearMetersOut: val });
+  const setCurrentMachineNotes = (val: string) => setStoreFormData({ notes: val });
+  const setCurrentRamClear = (val: boolean) => setStoreFormData({ ramClear: val });
+  const setCurrentCollectionTime = (val: Date) => setStoreFormData({ collectionTime: val });
+  const setSelectedLocationId = (id: string) => setStoreSelectedLocation(id, locations.find(l => String(l._id) === id)?.name || '');
+  const setSelectedLocationName = (name: string) => setStoreSelectedLocation(selectedLocationId, name);
+  const setSelectedMachineId = (id: string) => setStoreMachineId(id || undefined);
+
   const [showAdvancedSas, setShowAdvancedSas] = useState(false);
   const [customSasStartTime, setCustomSasStartTime] = useState<Date | null>(
     null
@@ -116,18 +144,7 @@ export function useEditCollectionModal({
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [showUpdateReportConfirmation, setShowUpdateReportConfirmation] =
     useState(false);
-  const [financials, setFinancials] = useState({
-    taxes: '',
-    advance: '',
-    variance: '',
-    varianceReason: '',
-    amountToCollect: '',
-    collectedAmount: '',
-    balanceCorrection: '0',
-    balanceCorrectionReason: '',
-    previousBalance: '0',
-    reasonForShortagePayment: '',
-  });
+
   const [baseBalanceCorrection, setBaseBalanceCorrection] =
     useState<string>('');
   const [machinesOfSelectedLocation, setMachinesOfSelectedLocation] = useState<
@@ -484,8 +501,8 @@ export function useEditCollectionModal({
         });
 
         // Update local state
-        setCollectedMachineEntries(prev =>
-          prev.map(entry =>
+        setCollectedMachineEntries(
+          collectedMachineEntries.map(entry =>
             entry._id === editingEntryId ? { ...entry, ...result } : entry
           )
         );
@@ -607,7 +624,7 @@ export function useEditCollectionModal({
 
           // Add to local state with the real ID from database
           const savedEntry = { ...newEntry, _id: response.data.data._id };
-          setCollectedMachineEntries(prev => [...prev, savedEntry]);
+          setCollectedMachineEntries([...collectedMachineEntries, savedEntry]);
           setHasChanges(true);
 
           // Reset form fields
@@ -716,8 +733,8 @@ export function useEditCollectionModal({
       toast.success('Machine deleted!', { position: 'top-left' });
 
       // Remove the deleted entry from local state immediately
-      setCollectedMachineEntries(prev =>
-        prev.filter(entry => entry._id !== entryToDelete)
+      setCollectedMachineEntries(
+        collectedMachineEntries.filter(entry => entry._id !== entryToDelete)
       );
 
       // CRITICAL: Also update originalCollections to prevent batch update errors
@@ -977,10 +994,7 @@ export function useEditCollectionModal({
         const defaultTime = calculateDefaultCollectionTime(
           location.gameDayOffset
         );
-        setCurrentCollectionTime(prev => {
-          if (prev.getTime() === defaultTime.getTime()) return prev;
-          return defaultTime;
-        });
+        setCurrentCollectionTime(defaultTime);
       }
     }
   }, [show, selectedLocationId, hasSetCollectionTimeFromReport]);
@@ -1089,10 +1103,9 @@ export function useEditCollectionModal({
     prevCalculationRef.current = currentInputs;
 
     if (!collectedMachineEntries.length) {
-      setFinancials(prev => {
-        if (prev.amountToCollect === '0') return prev;
-        return { ...prev, amountToCollect: '0' };
-      });
+      if (financials.amountToCollect !== '0') {
+        setFinancials({ amountToCollect: '0' });
+      }
       return;
     }
 
@@ -1152,13 +1165,11 @@ export function useEditCollectionModal({
       locationPreviousBalance;
 
     const newAmount = amountToCollect.toFixed(2);
-    setFinancials(prev => {
-      if (prev.amountToCollect === newAmount) return prev;
-      return {
-        ...prev,
+    if (financials.amountToCollect !== newAmount) {
+      setFinancials({
         amountToCollect: newAmount,
-      };
-    });
+      });
+    }
   }, [
     show,
     collectedMachineEntries,
@@ -1177,16 +1188,14 @@ export function useEditCollectionModal({
         l => String(l._id) === selectedLocationId
       );
       if (location) {
-        setSelectedLocationName(prev => {
-          if (prev === location.name) return prev;
-          return location.name;
-        });
+        if (selectedLocationName !== location.name) {
+          setSelectedLocationName(location.name);
+        }
       }
     } else if (!show) {
-      setSelectedLocationName(prev => {
-        if (prev === '') return prev;
-        return '';
-      });
+      if (selectedLocationName !== '') {
+        setSelectedLocationName('');
+      }
     }
   }, [show, selectedLocationId]);
 
@@ -1203,9 +1212,21 @@ export function useEditCollectionModal({
             setHasUnsavedEdits(true);
           }
 
-          // Set location name from report's locationName field
+          // Set location from report - resolve BOTH id and name immediately
           if (reportData.locationName) {
-            setSelectedLocationName(reportData.locationName);
+            const matchingLoc = locationsRef.current.find(
+              l => l.name === reportData.locationName
+            );
+            if (matchingLoc) {
+              // Set both id and name together so the dropdown shows correctly
+              setStoreSelectedLocation(
+                String(matchingLoc._id),
+                matchingLoc.name
+              );
+            } else {
+              // Fallback: set name only (id will be set when collections load)
+              setSelectedLocationName(reportData.locationName);
+            }
           }
 
           // Set the collection time to the report's timestamp
@@ -1261,10 +1282,9 @@ export function useEditCollectionModal({
               );
               if (matchingLocation) {
                 const newLocationId = String(matchingLocation._id);
-                // Only update if different to prevent unnecessary re-renders
-                setSelectedLocationId(prev =>
-                  prev === newLocationId ? prev : newLocationId
-                );
+                if (selectedLocationId !== newLocationId) {
+                  setSelectedLocationId(newLocationId);
+                }
                 setSelectedMachineId('');
               }
             }
@@ -1417,17 +1437,13 @@ export function useEditCollectionModal({
 
           if (previousMeters !== null) {
             console.warn('🔍 Using historical prevIn/prevOut:', previousMeters);
-            setPrevIn(prev =>
-              prev === previousMeters.prevIn ? prev : previousMeters.prevIn
-            );
-            setPrevOut(prev =>
-              prev === previousMeters.prevOut ? prev : previousMeters.prevOut
-            );
+            if (prevIn !== previousMeters.prevIn) setPrevIn(previousMeters.prevIn);
+            if (prevOut !== previousMeters.prevOut) setPrevOut(previousMeters.prevOut);
           } else {
             // Query failed - use 0 as safe fallback
             console.warn('🔍 Historical query returned null, using 0');
-            setPrevIn(prev => (prev === 0 ? prev : 0));
-            setPrevOut(prev => (prev === 0 ? prev : 0));
+            if (prevIn !== 0) setPrevIn(0);
+            if (prevOut !== 0) setPrevOut(0);
           }
         } catch (error) {
           console.error('Error fetching historical prev meters:', error);
@@ -1435,8 +1451,8 @@ export function useEditCollectionModal({
           console.warn(
             '🔍 Error in historical query, using 0 as safe fallback'
           );
-          setPrevIn(prev => (prev === 0 ? prev : 0));
-          setPrevOut(prev => (prev === 0 ? prev : 0));
+          if (prevIn !== 0) setPrevIn(0);
+          if (prevOut !== 0) setPrevOut(0);
         }
       };
 
@@ -1548,6 +1564,7 @@ export function useEditCollectionModal({
     setShowUpdateReportConfirmation,
     financials,
     setFinancials,
+    calculateCarryover: storeCalculateCarryover,
     baseBalanceCorrection,
     setBaseBalanceCorrection,
     machinesOfSelectedLocation,

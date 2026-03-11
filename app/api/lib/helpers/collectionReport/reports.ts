@@ -16,7 +16,7 @@ import UserModel from '@/app/api/lib/models/user';
  */
 type UserPermissions = {
   roles: string[];
-  licensees: string[];
+  licencees: string[];
   locationPermissions: string[];
 };
 
@@ -38,17 +38,17 @@ export type PaginatedCollectors = {
 };
 
 /**
- * Fetches paginated collectors for a licensee
+ * Fetches paginated collectors for a licencee
  *
  * @param page - Page number
  * @param limit - Items per page
- * @param licenseeId - Optional licensee ID to filter by
+ * @param licenceeId - Optional licencee ID to filter by
  * @returns Promise with paginated collectors
  */
 export async function getCollectorsPaginated(
   page: number,
   limit: number,
-  licenseeId?: string
+  licenceeId?: string
 ): Promise<PaginatedCollectors> {
   const skip = (page - 1) * limit;
 
@@ -58,8 +58,8 @@ export async function getCollectorsPaginated(
     isEnabled: true,
   };
 
-  if (licenseeId) {
-    filter.assignedLicensees = licenseeId;
+  if (licenceeId) {
+    filter.assignedLicencees = licenceeId;
   }
 
   // Fetch total count for pagination
@@ -106,13 +106,13 @@ export type CollectionReportsQueryParams = {
 /**
  * Builds location filter for collection reports based on user role and permissions
  *
- * @param userPermissions - User's roles, licensees, and location permissions
+ * @param userPermissions - User's roles, licencees, and location permissions
  * @returns Location IDs to filter by, or null if no filter should be applied
  */
 export async function buildCollectionReportsLocationFilter(
   userPermissions: UserPermissions
 ): Promise<string[] | null> {
-  const { roles, licensees, locationPermissions } = userPermissions;
+  const { roles, licencees, locationPermissions } = userPermissions;
 
   const isAdmin = roles.includes('admin') || roles.includes('developer');
   const isManager = roles.includes('manager');
@@ -127,9 +127,9 @@ export async function buildCollectionReportsLocationFilter(
     return locationPermissions;
   }
 
-  // Manager - get ALL locations for their assigned licensees
+  // Manager - get ALL locations for their assigned licencees
   if (isManager) {
-    if (licensees.length === 0) {
+    if (licencees.length === 0) {
       return [];
     }
 
@@ -141,8 +141,8 @@ export async function buildCollectionReportsLocationFilter(
     const managerLocations = await GamingLocations.find(
       {
         $or: [
-          { 'rel.licensee': { $in: licensees } },
-          { 'rel.licencee': { $in: licensees } },
+          { 'rel.licencee': { $in: licencees } },
+          { 'rel.licencee': { $in: licencees } },
         ],
         $and: [
           {
@@ -223,7 +223,7 @@ export function buildCollectionReportsQuery(
 
 /**
  * Extracts user permissions from user payload
- * Uses new fields (assignedLocations, assignedLicensees)
+ * Uses new fields (assignedLocations, assignedLicencees)
  *
  * @param userPayload - User payload from JWT token
  * @returns User permissions object
@@ -231,19 +231,19 @@ export function buildCollectionReportsQuery(
 export function extractUserPermissions(userPayload: {
   roles?: unknown;
   assignedLocations?: string[];
-  assignedLicensees?: string[];
+  assignedLicencees?: string[];
 }): UserPermissions {
   const roles = Array.isArray(userPayload.roles)
     ? (userPayload.roles as string[])
     : [];
 
   // Use only new field
-  let licensees: string[] = [];
+  let licencees: string[] = [];
   if (
-    Array.isArray(userPayload.assignedLicensees) &&
-    userPayload.assignedLicensees.length > 0
+    Array.isArray(userPayload.assignedLicencees) &&
+    userPayload.assignedLicencees.length > 0
   ) {
-    licensees = userPayload.assignedLicensees;
+    licencees = userPayload.assignedLicencees;
   }
 
   // Use only new field
@@ -257,7 +257,7 @@ export function extractUserPermissions(userPayload: {
 
   return {
     roles,
-    licensees,
+    licencees,
     locationPermissions,
   };
 }

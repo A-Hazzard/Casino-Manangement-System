@@ -85,24 +85,24 @@ const REGION_CENTERS: Record<string, [number, number]> = {
 };
 
 /**
- * Licensee to country mapping
+ * Licencee to country mapping
  */
-const LICENSEE_COUNTRY_MAP: Record<string, string> = {
+const LICENCEE_COUNTRY_MAP: Record<string, string> = {
   ttg: 'TT', // TTG -> Trinidad and Tobago
   cabana: 'GY', // Cabana -> Guyana
   barbados: 'BB', // Barbados -> Barbados
-  all: 'TT', // All Licensees -> Trinidad (default)
+  all: 'TT', // All Licencees -> Trinidad (default)
   '': 'TT', // Empty/undefined -> Trinidad (default)
 };
 
 /**
- * Get map center coordinates based on selected licensee
+ * Get map center coordinates based on selected licencee
  */
-export const getMapCenterByLicensee = (
-  selectedLicensee?: string
+export const getMapCenterByLicencee = (
+  selectedLicencee?: string
 ): [number, number] => {
-  const key = (selectedLicensee || '').toLowerCase();
-  const countryCode = LICENSEE_COUNTRY_MAP[key] || 'TT';
+  const key = (selectedLicencee || '').toLowerCase();
+  const countryCode = LICENCEE_COUNTRY_MAP[key] || 'TT';
   const center = REGION_CENTERS[countryCode] || REGION_CENTERS.DEFAULT;
   return center;
 };

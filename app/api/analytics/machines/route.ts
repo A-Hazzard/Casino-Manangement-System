@@ -3,7 +3,7 @@
  *
  * This route handles fetching machine analytics data with role-based access control.
  * It supports:
- * - Filtering by location and licensee
+ * - Filtering by location and licencee
  * - Role-based location filtering
  * - Sorting by total drop (highest performers first)
  * - Pagination with limit
@@ -13,9 +13,9 @@
 
 import { getMachineAnalytics } from '@/app/api/lib/helpers/reports/analytics';
 import {
-  getUserAccessibleLicenseesFromToken,
+  getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
+} from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(request.url);
     const limit = Number(searchParams.get('limit')) || 5;
-    const selectedLicensee =
-      searchParams.get('licensee') || searchParams.get('licensee') || undefined;
+    const selectedLicencee =
+      searchParams.get('licencee') || undefined;
     const selectedLocation = searchParams.get('location') || undefined;
 
     // ============================================================================
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 3: Authenticate user and get accessible locations
     // ============================================================================
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
     let userLocationPermissions: string[] = [];
@@ -61,8 +61,8 @@ export async function GET(request: NextRequest) {
     }
 
     const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicensees,
-      selectedLicensee || undefined,
+      userAccessibleLicencees,
+      selectedLicencee || undefined,
       userLocationPermissions,
       userRoles
     );
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
     const machines = await getMachineAnalytics(
       allowedLocationIds,
       selectedLocation,
-      selectedLicensee,
+      selectedLicencee,
       limit
     );
 

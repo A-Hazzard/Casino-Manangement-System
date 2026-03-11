@@ -95,7 +95,7 @@ export default function ProfileCompletionModal({
     newPassword: '',
     confirmPassword: '',
     // Assignments (Pass-through)
-    licenseeIds: (currentData.licenseeIds || []).map(id => String(id)),
+    licenceeIds: (currentData.licenceeIds || []).map(id => String(id)),
     locationIds: (currentData.locationIds || []).map(id => String(id)),
   });
 
@@ -217,9 +217,9 @@ export default function ProfileCompletionModal({
            }
            
             // 2. Assignment Fields (Always hidden in this modal)
-            if (['licenseeIds', 'locationIds'].includes(key)) {
+            if (['licenceeIds', 'locationIds'].includes(key)) {
                 if (msg.toLowerCase().includes('select at least one')) {
-                    hiddenErrors.push('Please contact your Administrator or Tech Support to be assigned to a ' + (key === 'locationIds' ? 'location.' : 'licensee.'));
+                    hiddenErrors.push('Please contact your Administrator or Tech Support to be assigned to a ' + (key === 'locationIds' ? 'location.' : 'licencee.'));
                 } else {
                     hiddenErrors.push(msg);
                 }

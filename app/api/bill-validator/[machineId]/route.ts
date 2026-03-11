@@ -119,7 +119,8 @@ export async function GET(req: NextRequest) {
     const userRoles = (userPayload?.roles as string[]) || [];
 
     const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer');
-    const isOnlyTechnician = userRoles.length === 1 && userRoles[0].toLowerCase() === 'technician';
+    const userRolesLower = userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase());
+    const isOnlyTechnician = userRolesLower.includes('technician') && !userRolesLower.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
 
     if (isOnlyTechnician && !isAdmin) {
       console.warn('[API Bill Validator] Applying technician restriction: forcing LastHour timePeriod');

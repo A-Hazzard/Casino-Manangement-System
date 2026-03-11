@@ -36,7 +36,7 @@ const ActivityLogSchema = new Schema(
       required: true,
       enum: [
         'user',
-        'licensee',
+        'licencee',
         'member',
         'location',
         'machine',
@@ -70,7 +70,7 @@ const ActivityLogSchema = new Schema(
       role: { type: String },
     },
     actionType: { type: String }, // CREATE, UPDATE, DELETE, etc.
-    entityType: { type: String }, // User, Licensee, etc.
+    entityType: { type: String }, // User, Licencee, etc.
     entity: {
       id: { type: String },
       name: { type: String },

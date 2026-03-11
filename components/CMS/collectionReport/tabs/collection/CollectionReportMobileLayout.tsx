@@ -35,7 +35,7 @@ export default function CollectionReportMobileLayout(props: CollectionReportMobi
           loading={props.loading}
           onEdit={props.onEdit}
           onDelete={props.onDelete}
-          selectedLicensee={props.selectedLicensee}
+          selectedLicencee={props.selectedLicencee}
           editableReportIds={props.editableReportIds}
         />
       </div>

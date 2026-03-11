@@ -269,6 +269,6 @@ Key features include:
 ### Role-Based Redirects
 
 - Admin/Developer → Dashboard
-- Manager → Dashboard (with licensee filtering)
+- Manager → Dashboard (with licencee filtering)
 - Collector/Location Admin → Dashboard (with location filtering)
 - Technician → Cabinets page

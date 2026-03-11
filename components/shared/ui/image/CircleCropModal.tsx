@@ -2,20 +2,20 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/shared/ui/dialog';
-import Image from 'next/image';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ReactCrop, {
-  Crop,
-  PixelCrop,
-  centerCrop,
-  makeAspectCrop,
+    Crop,
+    PixelCrop,
+    centerCrop,
+    convertToPixelCrop,
+    makeAspectCrop,
 } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
@@ -60,45 +60,14 @@ export default function CircleCropModal({
 
   const aspect = 1; // Square aspect ratio for circular crop
 
-  // Extract underlying img element from Next.js Image for react-image-crop
-  useEffect(() => {
-    if (imageWrapperRef.current && open) {
-      // Next.js Image renders an img element inside a span/div wrapper
-      const nextImageElement = imageWrapperRef.current.querySelector('img');
-      if (nextImageElement instanceof HTMLImageElement) {
-        // Sync our ref to point to Next.js Image's underlying img element
-        if (imgRef.current !== nextImageElement) {
-          // Store reference to the actual img element from Next.js Image
-          Object.defineProperty(imgRef, 'current', {
-            value: nextImageElement,
-            writable: true,
-            configurable: true,
-          });
-        }
-        const handleLoad = () => {
-          if (nextImageElement && aspect) {
-            setCrop(
-              centerAspectCrop(
-                nextImageElement.naturalWidth,
-                nextImageElement.naturalHeight,
-                aspect
-              )
-            );
-          }
-        };
-        if (nextImageElement.complete) {
-          handleLoad();
-          return undefined;
-        } else {
-          nextImageElement.addEventListener('load', handleLoad);
-          return () => {
-            nextImageElement.removeEventListener('load', handleLoad);
-          };
-        }
-      }
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight, width, height } = e.currentTarget;
+    if (aspect) {
+      const initialCropPercent = centerAspectCrop(naturalWidth, naturalHeight, aspect);
+      setCrop(initialCropPercent);
+      setCompletedCrop(convertToPixelCrop(initialCropPercent, width, height));
     }
-    return undefined;
-  }, [imageSrc, open, aspect]);
+  };
 
   const getCroppedImg = useCallback(
     (image: HTMLImageElement, crop: PixelCrop): Promise<{ url: string }> => {
@@ -204,17 +173,11 @@ export default function CircleCropModal({
               circularCrop
               className="max-h-96"
             >
-                {/* 
-                  Next.js Image component - react-image-crop accesses the underlying img element
-                  via the ref sync in useEffect. The library will work with the img element
-                  that Next.js Image renders internally.
-                */}
-                <Image
+              <img
+                ref={imgRef}
                 src={imageSrc}
-                  alt="Image to crop"
-                  width={800}
-                  height={800}
-                  unoptimized
+                alt="Image to crop"
+                onLoad={handleImageLoad}
                 style={{
                   maxHeight: '400px',
                   maxWidth: '100%',

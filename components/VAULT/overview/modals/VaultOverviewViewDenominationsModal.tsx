@@ -15,7 +15,7 @@ import {
     DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
@@ -37,10 +37,10 @@ export default function VaultOverviewViewDenominationsModal({
   totalAmount,
 }: VaultOverviewViewDenominationsModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicensee } = useVaultLicensee();
+  const { licenceeId: selectedLicencee } = useVaultLicencee();
 
   // Ensure all denominations are present even if quantity is 0
-  const standardDenoms = getDenominationValues(selectedLicensee);
+  const standardDenoms = getDenominationValues(selectedLicencee);
   const displayDenoms = standardDenoms.map(val => {
     const found = denominations.find(d => d.denomination === val);
     return {

@@ -8,14 +8,14 @@
 
 - **Countries**: `GET /api/countries` - Country information and regulations
 - **Firmwares**: `GET /api/firmwares` - Firmware management and versions
-- **Licensees**: `GET /api/licensees` - Licensee information and compliance
+- **Licencees**: `GET /api/licencees` - Licencee information and compliance
 - **Gaming Locations**: `GET /api/gaming-locations` - Gaming location configuration
 - **File Upload**: `POST /api/firmwares` - Firmware file upload
 - **Migration**: `POST /api/firmwares/migrate` - Firmware migration
 
 ## Overview
 
-The System Configuration API manages core system settings including countries, firmware management, licensee information, and gaming location configurations. This comprehensive system provides centralized management of all system-wide settings and configurations.
+The System Configuration API manages core system settings including countries, firmware management, licencee information, and gaming location configurations. This comprehensive system provides centralized management of all system-wide settings and configurations.
 
 ### System Architecture
 
@@ -28,13 +28,13 @@ The System Configuration API manages core system settings including countries, f
 
 ### GET `/api/countries`
 
-**Purpose**: Retrieves country information for licensing and regional configurations
+**Purpose**: Retrieves country information for licencing and regional configurations
 
 **Query Parameters:**
 
 - `active` - Filter by active status
 - `region` - Filter by region
-- `licenseRequired` - Filter by license requirement
+- `licenceRequired` - Filter by licence requirement
 
 **Response Fields:**
 
@@ -42,7 +42,7 @@ The System Configuration API manages core system settings including countries, f
 
 ## Overview
 
-The System Configuration API manages core system settings including countries, firmware management, licensee information, and gaming location configurations.
+The System Configuration API manages core system settings including countries, firmware management, licencee information, and gaming location configurations.
 
 ## API Endpoints
 
@@ -52,13 +52,13 @@ The System Configuration API manages core system settings including countries, f
 
 #### GET /api/countries
 
-Retrieves country information for licensing and regional configurations.
+Retrieves country information for licencing and regional configurations.
 
 **Query Parameters:**
 
 - `active` (boolean): Filter by active status
 - `region` (string): Filter by region
-- `licenseRequired` (boolean): Filter by license requirement
+- `licenceRequired` (boolean): Filter by licence requirement
 
 **Response:**
 
@@ -72,7 +72,7 @@ Retrieves country information for licensing and regional configurations.
       "code": "US",                     // ISO country code
       "region": "North America",        // Geographic region
       "active": true,                   // Active status
-      "licenseRequired": true,          // License requirement flag
+      "licenceRequired": true,          // Licence requirement flag
       "currency": "USD",                // Currency code
       "timezone": "America/New_York",   // Timezone
       "regulations": {
@@ -84,7 +84,7 @@ Retrieves country information for licensing and regional configurations.
       "code": "US",
       "region": "North America",
       "active": true,
-      "licenseRequired": true,
+      "licenceRequired": true,
       "currency": "USD",
       "timezone": "America/New_York",
       "regulations": {
@@ -118,7 +118,7 @@ Creates a new country configuration.
   "code": "CA",
   "region": "North America",
   "active": true,
-  "licenseRequired": true,
+  "licenceRequired": true,
   "currency": "CAD",
   "timezone": "America/Toronto",
   "regulations": {
@@ -282,17 +282,17 @@ Uploads new firmware.
 }
 ```
 
-## Licensees Endpoints
+## Licencees Endpoints
 
-### GET `/api/licensees`
+### GET `/api/licencees`
 
-**Purpose**: Retrieves licensee information
+**Purpose**: Retrieves licencee information
 
 **Query Parameters:**
 
 - `active` - Filter by active status
 - `country` - Filter by country
-- `licenseType` - Filter by license type
+- `licenceType` - Filter by licence type
 - `expiresBefore` - Filter by expiration date
 
 **Response Fields:**
@@ -336,38 +336,38 @@ Initiates firmware migration for machines.
 }
 ```
 
-### Licensees
+### Licencees
 
-**Base URL:** `/api/licensees`
+**Base URL:** `/api/licencees`
 
-#### GET /api/licensees
+#### GET /api/licencees
 
-Retrieves licensee information.
+Retrieves licencee information.
 
 **Query Parameters:**
 
 - `active` (boolean): Filter by active status
 - `country` (string): Filter by country
-- `licenseType` (string): Filter by license type
+- `licenceType` (string): Filter by licence type
 - `expiresBefore` (string): Filter by expiration date
 
 **Response:**
 
 ```json
 {
-  "licensees": [
+  "licencees": [
     {
       "_id": "string",
       "name": "ABC Gaming Corporation",
 
-      "licenseNumber": "LIC-2024-001",  // License number
-      "licenseType": "casino",          // License type
+      "licenceNumber": "LIC-2024-001",  // Licence number
+      "licenceType": "casino",          // Licence type
       "country": "US",                  // Country code
       "state": "Nevada",                // State/Province
       "active": true,                   // Active status
 
-      "licenseNumber": "LIC-2024-001",
-      "licenseType": "casino",
+      "licenceNumber": "LIC-2024-001",
+      "licenceType": "casino",
       "country": "US",
       "state": "Nevada",
       "active": true,
@@ -376,7 +376,7 @@ Retrieves licensee information.
         "phone": "+1-555-0123",
         "address": "123 Gaming St, Las Vegas, NV 89101"
       },
-      "licenseDetails": {
+      "licenceDetails": {
         "issuedDate": "2024-01-01T00:00:00.000Z",
         "expiryDate": "2025-01-01T00:00:00.000Z",
 
@@ -404,22 +404,22 @@ Retrieves licensee information.
 }
 ```
 
-### POST `/api/licensees`
+### POST `/api/licencees`
 
-**Purpose**: Creates new licensee
+**Purpose**: Creates new licencee
 
 **Request Fields:**
 
-#### POST /api/licensees
+#### POST /api/licencees
 
-Creates new licensee.
+Creates new licencee.
 
 **Request Body:**
 
 ```json
 {
   "name": "XYZ Gaming LLC",
-  "licenseType": "casino",
+  "licenceType": "casino",
   "country": "US",
   "state": "New Jersey",
   "contactInfo": {
@@ -427,7 +427,7 @@ Creates new licensee.
     "phone": "+1-555-0456",
     "address": "456 Casino Ave, Atlantic City, NJ 08401"
   },
-  "licenseDetails": {
+  "licenceDetails": {
     "issuedDate": "2024-01-01T00:00:00.000Z",
     "expiryDate": "2025-01-01T00:00:00.000Z",
     "maxMachines": 500,
@@ -445,27 +445,27 @@ Creates new licensee.
 **Query Parameters:**
 
 - `active` - Filter by active status
-- `licenseeId` - Filter by licensee
+- `licenceeId` - Filter by licencee
 - `country` - Filter by country
 - `state` - Filter by state
 
 **Response Fields:**
 
-#### PUT /api/licensees/[id]
+#### PUT /api/licencees/[id]
 
-Updates licensee information.
-
-**Path Parameters:**
-
-- `id` (string): Licensee ID
-
-#### DELETE /api/licensees/[id]
-
-Deactivates licensee (soft delete).
+Updates licencee information.
 
 **Path Parameters:**
 
-- `id` (string): Licensee ID
+- `id` (string): Licencee ID
+
+#### DELETE /api/licencees/[id]
+
+Deactivates licencee (soft delete).
+
+**Path Parameters:**
+
+- `id` (string): Licencee ID
 
 ### Gaming Locations
 
@@ -478,7 +478,7 @@ Retrieves gaming location information.
 **Query Parameters:**
 
 - `active` (boolean): Filter by active status
-- `licenseeId` (string): Filter by licensee
+- `licenceeId` (string): Filter by licencee
 - `country` (string): Filter by country
 - `state` (string): Filter by state
 
@@ -491,12 +491,12 @@ Retrieves gaming location information.
       "_id": "string",
       "name": "Main Street Casino",
 
-      "licenseeId": "string",           // Licensee identifier
-      "licenseeName": "ABC Gaming Corporation",
+      "licenceeId": "string",           // Licencee identifier
+      "licenceeName": "ABC Gaming Corporation",
       "active": true,                   // Active status
 
-      "licenseeId": "string",
-      "licenseeName": "ABC Gaming Corporation",
+      "licenceeId": "string",
+      "licenceeName": "ABC Gaming Corporation",
       "active": true,
       "address": {
         "street": "123 Main St",
@@ -556,7 +556,7 @@ Creates new gaming location.
 ```json
 {
   "name": "Downtown Gaming Center",
-  "licenseeId": "string",
+  "licenceeId": "string",
   "address": {
     "street": "456 Downtown Blvd",
     "city": "Las Vegas",
@@ -594,7 +594,7 @@ Creates new gaming location.
   code: string;                         // ISO country code
   region: string;                       // Geographic region
   active: boolean;                      // Active status
-  licenseRequired: boolean;             // License requirement flag
+  licenceRequired: boolean;             // Licence requirement flag
   currency: string;                     // Currency code
   timezone: string;                     // Timezone identifier
   regulations: {
@@ -612,7 +612,7 @@ type Country = {
   code: string;
   region: string;
   active: boolean;
-  licenseRequired: boolean;
+  licenceRequired: boolean;
   currency: string;
   timezone: string;
   regulations: {
@@ -665,16 +665,16 @@ type Firmware = {
 }
 ````
 
-### Licensee Model
+### Licencee Model
 
 **Database Fields:**
 
 ````typescript
 {
-  _id: string;                          // Licensee identifier
-  name: string;                         // Licensee name
-  licenseNumber: string;                // License number
-  licenseType: string;                  // License type
+  _id: string;                          // Licencee identifier
+  name: string;                         // Licencee name
+  licenceNumber: string;                // Licence number
+  licenceType: string;                  // Licence type
   country: string;                      // Country code
   state: string;                        // State/Province
   active: boolean;                      // Active status
@@ -683,9 +683,9 @@ type Firmware = {
     phone: string;                      // Contact phone
     address: string;                    // Contact address
   };
-  licenseDetails: {
-    issuedDate: Date;                   // License issue date
-    expiryDate: Date;                   // License expiry date
+  licenceDetails: {
+    issuedDate: Date;                   // Licence issue date
+    expiryDate: Date;                   // Licence expiry date
     maxMachines: number;                // Maximum machines allowed
     maxLocations: number;               // Maximum locations allowed
   };
@@ -695,11 +695,11 @@ type Firmware = {
     violations: string[];               // List of violations
 
 ```typescript
-type Licensee = {
+type Licencee = {
   _id: string;
   name: string;
-  licenseNumber: string;
-  licenseType: string;
+  licenceNumber: string;
+  licenceType: string;
   country: string;
   state: string;
   active: boolean;
@@ -708,7 +708,7 @@ type Licensee = {
     phone: string;
     address: string;
   };
-  licenseDetails: {
+  licenceDetails: {
     issuedDate: Date;
     expiryDate: Date;
     maxMachines: number;
@@ -732,7 +732,7 @@ type Licensee = {
 {
   _id: string;                          // Location identifier
   name: string;                         // Location name
-  licenseeId: string;                   // Licensee reference
+  licenceeId: string;                   // Licencee reference
   active: boolean;                      // Active status
   address: {
     street: string;                     // Street address
@@ -760,7 +760,7 @@ type Licensee = {
 type GamingLocation = {
   _id: string;
   name: string;
-  licenseeId: string;
+  licenceeId: string;
   active: boolean;
   address: {
     street: string;
@@ -796,7 +796,7 @@ type GamingLocation = {
 1. **Regional Compliance**: Country-specific gaming regulations and requirements
 2. **Currency Support**: Multi-currency support for different regions
 3. **Timezone Management**: Automatic timezone handling for global operations
-4. **License Requirements**: Automatic license requirement enforcement
+4. **Licence Requirements**: Automatic licence requirement enforcement
 
 ### Firmware Management
 
@@ -806,12 +806,12 @@ type GamingLocation = {
 4. **Rollback Support**: Firmware rollback capabilities for failed updates
 5. **Installation Tracking**: Real-time installation status tracking
 
-### Licensee Management
+### Licencee Management
 
-1. **License Tracking**: Comprehensive license lifecycle management
+1. **Licence Tracking**: Comprehensive licence lifecycle management
 2. **Compliance Monitoring**: Automated compliance checking and reporting
 3. **Contact Management**: Centralized contact information management
-4. **Capacity Planning**: License-based capacity planning and enforcement
+4. **Capacity Planning**: Licence-based capacity planning and enforcement
 
 ### Location Management
 
@@ -827,14 +827,14 @@ type GamingLocation = {
 ```
 Machine Utilization = Current Machines / Max Machines × 100
 Patron Utilization = Current Patrons / Max Patrons × 100
-License Utilization = Current Machines / License Max Machines × 100
+Licence Utilization = Current Machines / Licence Max Machines × 100
 ```
 
 ### Compliance Calculations
 
 ```
 Compliance Score = (Total Requirements - Violations) / Total Requirements × 100
-License Days Remaining = Expiry Date - Current Date
+Licence Days Remaining = Expiry Date - Current Date
 Audit Frequency = Last Audit Date + Audit Interval
 ```
 
@@ -931,7 +931,7 @@ Checksum Verification = Calculated Checksum === Stored Checksum
 - **Regional Compliance**: Country-specific gaming regulations and requirements
 - **Currency Support**: Multi-currency support for different regions
 - **Timezone Management**: Automatic timezone handling for global operations
-- **License Requirements**: Automatic license requirement enforcement
+- **Licence Requirements**: Automatic licence requirement enforcement
 
 ### Firmware Management
 - **Version Control**: Comprehensive version tracking and management
@@ -940,11 +940,11 @@ Checksum Verification = Calculated Checksum === Stored Checksum
 - **Rollback Support**: Firmware rollback capabilities for failed updates
 - **Installation Tracking**: Real-time installation status tracking
 
-### Licensee Management
-- **License Tracking**: Comprehensive license lifecycle management
+### Licencee Management
+- **Licence Tracking**: Comprehensive licence lifecycle management
 - **Compliance Monitoring**: Automated compliance checking and reporting
 - **Contact Management**: Centralized contact information management
-- **Capacity Planning**: License-based capacity planning and enforcement
+- **Capacity Planning**: Licence-based capacity planning and enforcement
 
 ### Location Management
 - **Capacity Management**: Real-time capacity monitoring and planning
@@ -984,7 +984,7 @@ Checksum Verification = Calculated Checksum === Stored Checksum
 - **System Configuration**: `/administration/config` - Main configuration page
 - **Country Management**: `/administration/countries` - Country configuration
 - **Firmware Management**: `/administration/firmwares` - Firmware upload and management
-- **Licensee Management**: `/administration/licensees` - Licensee information
+- **Licencee Management**: `/administration/licencees` - Licencee information
 - **Location Management**: `/administration/locations` - Gaming location configuration
 
 ## Dependencies
@@ -1005,7 +1005,7 @@ const response = await axios.post('/api/countries', {
   code: 'CA',
   region: 'North America',
   active: true,
-  licenseRequired: true,
+  licenceRequired: true,
   currency: 'CAD',
   timezone: 'America/Toronto',
   regulations: {
@@ -1043,14 +1043,14 @@ const response = await axios.post('/api/firmwares', formData, {
 });
 ````
 
-### Creating a Licensee
+### Creating a Licencee
 
 ````typescript
 
 ```javascript
-const response = await axios.post('/api/licensees', {
+const response = await axios.post('/api/licencees', {
   name: 'XYZ Gaming LLC',
-  licenseType: 'casino',
+  licenceType: 'casino',
   country: 'US',
   state: 'New Jersey',
   contactInfo: {
@@ -1058,7 +1058,7 @@ const response = await axios.post('/api/licensees', {
     phone: '+1-555-0456',
     address: '456 Casino Ave, Atlantic City, NJ 08401'
   },
-  licenseDetails: {
+  licenceDetails: {
     issuedDate: '2024-01-01T00:00:00.000Z',
     expiryDate: '2025-01-01T00:00:00.000Z',
     maxMachines: 500,
@@ -1081,7 +1081,7 @@ const response = await axios.post('/api/licensees', {
 ```javascript
 const response = await axios.post('/api/gaming-locations', {
   name: 'Downtown Gaming Center',
-  licenseeId: 'licensee123',
+  licenceeId: 'licencee123',
   address: {
     street: '456 Downtown Blvd',
     city: 'Las Vegas',

@@ -4,7 +4,7 @@
  *
  * Features:
  * - Responsive layout with sidebar integration
- * - Configurable header with licensee/currency filters
+ * - Configurable header with licencee/currency filters
  * - Toast notifications (Sonner)
  * - Customizable main content area styling
  * - Gradient background
@@ -15,7 +15,7 @@
  * @param children - Page content to render
  * @param pageTitle - Title to display in header
  * @param hideOptions - Hide header options
- * @param hideLicenseeFilter - Hide licensee dropdown
+ * @param hideLicenceeFilter - Hide licencee dropdown
  * @param hideCurrencyFilter - Hide currency filter
  * @param showHeader - Show/hide header (default: true)
  * @param headerProps - Override header props
@@ -36,12 +36,12 @@ type PageLayoutProps = {
   children: ReactNode;
   pageTitle?: string;
   hideOptions?: boolean;
-  hideLicenseeFilter?: boolean;
+  hideLicenceeFilter?: boolean;
   hideCurrencyFilter?: boolean;
   showHeader?: boolean;
   headerProps?: {
-    selectedLicensee?: string;
-    setSelectedLicensee?: (licensee: string) => void;
+    selectedLicencee?: string;
+    setSelectedLicencee?: (licencee: string) => void;
     disabled?: boolean;
     containerPaddingMobile?: string;
     hideCurrencyFilter?: boolean;
@@ -58,7 +58,7 @@ export default function PageLayout({
   children,
   pageTitle = '',
   hideOptions = false,
-  hideLicenseeFilter = false,
+  hideLicenceeFilter = false,
   hideCurrencyFilter = false,
   showHeader = true,
   headerProps,
@@ -70,7 +70,7 @@ export default function PageLayout({
   refreshing = false,
 }: PageLayoutProps) {
   // ============================================================================
-  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const [showFloatingRefresh, setShowFloatingRefresh] = useState(false);
 
   // Handle scroll events for the floating refresh button
@@ -90,10 +90,10 @@ export default function PageLayout({
   // Computed Values
   // ============================================================================
   // Use headerProps if provided, otherwise use default store values
-  const headerSelectedLicensee =
-    headerProps?.selectedLicensee ?? selectedLicensee;
-  const headerSetSelectedLicensee =
-    headerProps?.setSelectedLicensee ?? setSelectedLicensee;
+  const headerSelectedLicencee =
+    headerProps?.selectedLicencee ?? selectedLicencee;
+  const headerSetSelectedLicencee =
+    headerProps?.setSelectedLicencee ?? setSelectedLicencee;
   const headerDisabled = headerProps?.disabled ?? false;
   const headerContainerPaddingMobile = headerProps?.containerPaddingMobile;
   const headerHideCurrencyFilter =
@@ -114,11 +114,11 @@ export default function PageLayout({
         >
           {showHeader && (
             <Header
-              selectedLicensee={headerSelectedLicensee}
-              setSelectedLicensee={headerSetSelectedLicensee}
+              selectedLicencee={headerSelectedLicencee}
+              setSelectedLicencee={headerSetSelectedLicencee}
               pageTitle={pageTitle}
               hideOptions={hideOptions}
-              hideLicenseeFilter={hideLicenseeFilter}
+              hideLicenceeFilter={hideLicenceeFilter}
               disabled={headerDisabled}
               containerPaddingMobile={headerContainerPaddingMobile}
               hideCurrencyFilter={headerHideCurrencyFilter}

@@ -5,9 +5,9 @@
  * It supports:
  * - Filtering by location IDs or machine IDs
  * - Time period filtering (Today, Yesterday, 7d, 30d, Custom)
- * - Licensee-based filtering
+ * - Licencee-based filtering
  * - Hourly aggregation of machine metrics
- * - Currency conversion for multi-licensee views
+ * - Currency conversion for multi-licencee views
  * - 24-hour array format with stacked data by location
  *
  * @module app/api/analytics/machine-hourly/route
@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse and validate request parameters (locationIds, machineIds, timePeriod, licensee, startDate, endDate, currency)
+ * 2. Parse and validate request parameters (locationIds, machineIds, timePeriod, licencee, startDate, endDate, currency)
  * 3. Execute the core machine hourly fetching logic via `getMachineHourlyData` helper
  * 4. Return machine hourly trends data
  */
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     const machineIds = searchParams.get('machineIds');
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licensee = searchParams.get('licensee');
+    const licencee = (searchParams.get('licencee'));
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
     const displayCurrency =
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
       locationIds,
       machineIds,
       timePeriod,
-      licensee,
+      licencee,
       startDateParam,
       endDateParam,
       displayCurrency

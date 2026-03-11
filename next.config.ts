@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
       'node_modules/**/*.spec.js',
       'node_modules/**/README.md',
       'node_modules/**/CHANGELOG.md',
-      'node_modules/**/LICENSE',
+      'node_modules/**/LICENCE',
     ],
   },
   async redirects() {

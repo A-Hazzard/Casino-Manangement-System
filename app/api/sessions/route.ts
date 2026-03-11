@@ -4,10 +4,10 @@
  * This route handles fetching machine sessions with filtering and pagination.
  * It supports:
  * - Search functionality (session ID, machine ID, member ID)
- * - Licensee filtering through machine-location-licensee relationship
+ * - Licencee filtering through machine-location-licencee relationship
  * - Date filtering (predefined periods or custom date ranges)
  * - Pagination and sorting
- * - Aggregation with machine, location, and licensee data
+ * - Aggregation with machine, location, and licencee data
  *
  * @module app/api/sessions/route
  */
@@ -46,8 +46,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const sortBy = searchParams.get('sortBy') || 'startTime';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
-    const licensee =
-      searchParams.get('licensee') || searchParams.get('licensee') || '';
+    const licencee =
+      searchParams.get('licencee') || '';
     const dateFilter = searchParams.get('dateFilter') || 'all';
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Licensee filtering will be handled in aggregation pipeline
+    // Licencee filtering will be handled in aggregation pipeline
     // Date filtering - support both dateFilter and startDate/endDate
     if (startDateParam && endDateParam) {
       // Use explicit date range if provided
@@ -170,28 +170,28 @@ export async function GET(request: NextRequest) {
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Stage 6: Lookup licensee details for each location
+      // Stage 6: Lookup licencee details for each location
       {
         $lookup: {
-          from: 'licensees',
-          localField: 'location.rel.licensee',
+          from: 'licencees',
+          localField: 'location.rel.licencee',
           foreignField: '_id',
-          as: 'licensee',
+          as: 'licencee',
         },
       },
-      // Stage 7: Unwind licensee array (preserve locations with no licensee)
+      // Stage 7: Unwind licencee array (preserve locations with no licencee)
       {
         $unwind: {
-          path: '$licensee',
+          path: '$licencee',
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Stage 8: Filter by licensee if specified
-      ...(licensee && licensee !== 'All Licensees'
+      // Stage 8: Filter by licencee if specified
+      ...(licencee && licencee !== 'All Licencees'
         ? [
           {
             $match: {
-              'licensee.name': licensee,
+              'licencee.name': licencee,
             },
           },
         ]
@@ -246,28 +246,28 @@ export async function GET(request: NextRequest) {
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Stage 6: Lookup licensee details for each location
+      // Stage 6: Lookup licencee details for each location
       {
         $lookup: {
-          from: 'licensees',
-          localField: 'location.rel.licensee',
+          from: 'licencees',
+          localField: 'location.rel.licencee',
           foreignField: '_id',
-          as: 'licensee',
+          as: 'licencee',
         },
       },
-      // Stage 7: Unwind licensee array (preserve locations with no licensee)
+      // Stage 7: Unwind licencee array (preserve locations with no licencee)
       {
         $unwind: {
-          path: '$licensee',
+          path: '$licencee',
           preserveNullAndEmptyArrays: true,
         },
       },
-      // Stage 8: Filter by licensee if specified
-      ...(licensee && licensee !== 'All Licensees'
+      // Stage 8: Filter by licencee if specified
+      ...(licencee && licencee !== 'All Licencees'
         ? [
           {
             $match: {
-              'licensee.name': licensee,
+              'licencee.name': licencee,
             },
           },
         ]

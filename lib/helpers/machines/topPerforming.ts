@@ -7,7 +7,7 @@
  *
  * Features:
  * - Fetches top-performing locations or machines from the API.
- * - Supports time period and licensee filtering.
+ * - Supports time period and licencee filtering.
  * - Assigns colors dynamically from a color palette for visualization.
  * - Handles errors gracefully with empty array fallback.
  */
@@ -25,13 +25,13 @@ import axios from 'axios';
  *
  * @param activeTab - Either "locations" or "Cabinets".
  * @param timePeriod - The time period (7d, 30d, etc.).
- * @param licensee - (Optional) Licensee filter for restricting results.
+ * @param licencee - (Optional) Licencee filter for restricting results.
  * @returns Promise resolving to an array of top-performing entities with color assignment.
  */
 export async function fetchTopPerformingData(
   activeTab: ActiveTab,
   timePeriod: string,
-  licensee?: string,
+  licencee?: string,
   currency?: string,
   signal?: AbortSignal,
   startDate?: Date,
@@ -39,8 +39,8 @@ export async function fetchTopPerformingData(
 ): Promise<TopPerformingData> {
   try {
     const params: Record<string, string> = { activeTab, timePeriod };
-    if (licensee) {
-      params.licensee = licensee;
+    if (licencee) {
+      params.licencee = licencee;
     }
     if (currency) {
       params.currency = currency;
@@ -65,18 +65,20 @@ export async function fetchTopPerformingData(
     return rawData.map((item, index) => {
       // Format machine name with game in brackets if it's a machine (Cabinets tab)
       let formattedName = item.name;
-      if (activeTab === 'Cabinets' && item.game) {
-        // Format: SerialNumber (Game) or SerialNumber (CustomName, Game)
+      if (activeTab === 'Cabinets') {
+        // Format identically to formatMachineDisplayName
+        // We know 'item.name' comes from the backend grouping logic (usually the serialNumber)
+        const mainIdentifier = item.name || 'N/A';
         const bracketParts: string[] = [];
-        if (item.customName && item.customName !== item.name) {
+
+        if (item.customName && item.customName !== mainIdentifier) {
           bracketParts.push(item.customName);
         }
-        if (item.game) {
-          bracketParts.push(item.game);
-        }
-        if (bracketParts.length > 0) {
-          formattedName = `${item.name} (${bracketParts.join(', ')})`;
-        }
+
+        const gameDisplay = item.game?.trim() || '(game name not provided)';
+        bracketParts.push(gameDisplay);
+        
+        formattedName = `${mainIdentifier} (${bracketParts.join(', ')})`;
       }
 
       return {

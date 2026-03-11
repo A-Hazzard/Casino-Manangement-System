@@ -41,8 +41,8 @@ export default function MachinesPageContent() {
   // Hooks & Context
   // ============================================================================
   const {
-    selectedLicensee,
-    setSelectedLicensee,
+    selectedLicencee,
+    setSelectedLicencee,
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
@@ -89,7 +89,7 @@ export default function MachinesPageContent() {
     error,
     loadCabinets,
   } = useCabinetData({
-    selectedLicensee,
+    selectedLicencee,
     activeMetricsFilter,
     customDateRange,
     searchTerm,
@@ -213,8 +213,8 @@ export default function MachinesPageContent() {
 
       <PageLayout
         headerProps={{
-          selectedLicensee,
-          setSelectedLicensee,
+          selectedLicencee,
+          setSelectedLicencee,
           disabled: false,
         }}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
@@ -319,7 +319,7 @@ export default function MachinesPageContent() {
               onPageChange={setCurrentPage}
               onRetry={loadCabinets}
               transformCabinet={transformCabinet}
-              selectedLicensee={selectedLicensee}
+              selectedLicencee={selectedLicencee}
             />
           </>
         )}

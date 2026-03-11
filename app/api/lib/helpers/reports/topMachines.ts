@@ -180,7 +180,7 @@ export async function getTopMachinesByLocation(
  * @param timePeriod - Time period
  * @param startDate - Start date
  * @param endDate - End date
- * @param licensee - Optional licensee to filter by
+ * @param licencee - Optional licencee to filter by
  * @param locationIds - Optional comma-separated location IDs
  * @param limit - Limit for results
  * @returns Aggregation pipeline stages
@@ -189,7 +189,7 @@ function buildTopMachinesDetailedPipeline(
   timePeriod: string,
   startDate: Date,
   endDate: Date,
-  licensee?: string | null,
+  licencee?: string | null,
   locationIds?: string | null,
   limit: number = 5
 ): PipelineStage[] {
@@ -223,12 +223,11 @@ function buildTopMachinesDetailedPipeline(
     },
   ];
 
-  if (licensee) {
+  if (licencee) {
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licensee': licensee },
-          { 'locationDetails.rel.licencee': licensee },
+          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
         ],
       },
     } as PipelineStage);
@@ -437,14 +436,14 @@ function buildTopMachinesDetailedPipeline(
  * Fetches top machines with detailed metrics
  *
  * @param timePeriod - Time period
- * @param licensee - Optional licensee to filter by
+ * @param licencee - Optional licencee to filter by
  * @param locationIds - Optional comma-separated location IDs
  * @param limit - Limit for results
  * @returns Array of top machines with detailed metrics
  */
 export async function getTopMachinesDetailed(
   timePeriod: string,
-  licensee?: string | null,
+  licencee?: string | null,
   locationIds?: string | null,
   limit: number = 5
 ): Promise<unknown[]> {
@@ -455,7 +454,7 @@ export async function getTopMachinesDetailed(
     timePeriod,
     startDate!,
     endDate!,
-    licensee,
+    licencee,
     locationIds,
     limit
   );

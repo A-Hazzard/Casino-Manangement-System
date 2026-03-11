@@ -87,8 +87,8 @@ export type DashBoardStore = {
   gamingLocations: locations;
   setGamingLocations: (state: locations) => void;
 
-  selectedLicensee: string;
-  setSelectedLicensee: (state: string) => void;
+  selectedLicencee: string;
+  setSelectedLicencee: (state: string) => void;
 
   // Sorting for top performing data
   sortBy: 'totalDrop' | 'totalWin';
@@ -97,8 +97,8 @@ export type DashBoardStore = {
   // Currency support
   displayCurrency: CurrencyCode;
   setDisplayCurrency: (state: CurrencyCode) => void;
-  isAllLicensee: boolean;
-  setIsAllLicensee: (state: boolean) => void;
+  isAllLicencee: boolean;
+  setIsAllLicencee: (state: boolean) => void;
 };
 
 

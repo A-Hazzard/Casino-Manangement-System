@@ -20,8 +20,8 @@ import { toast } from 'sonner';
 
 import type { EditLocationModalProps } from '@/lib/types/components';
 // Activity logging will be handled via API calls
-import { fetchLicensees } from '@/lib/helpers/client';
-import type { Licensee } from '@/lib/types/common';
+import { fetchLicencees } from '@/lib/helpers/client';
+import type { Licencee } from '@/lib/types/common';
 
 import { fetchCountries } from '@/lib/helpers/countries';
 import type { Country } from '@/lib/types/common';
@@ -45,7 +45,7 @@ type LocationDetails = {
   profitShare?: number;
   gameDayOffset?: number;
   rel?: {
-    licensee: string;
+    licencee: string;
   };
   isLocalServer?: boolean;
   geoCoords?: {
@@ -96,8 +96,8 @@ export default function LocationsEditLocationModal({
   const [locationDetails, setLocationDetails] =
     useState<LocationDetails | null>(null);
   const [locationDetailsLoading, setLocationDetailsLoading] = useState(false);
-  const [licensees, setLicensees] = useState<Licensee[]>([]);
-  const [licenseesLoading, setLicenseesLoading] = useState(false);
+  const [licencees, setLicencees] = useState<Licencee[]>([]);
+  const [licenceesLoading, setLicenceesLoading] = useState(false);
 
   const [countries, setCountries] = useState<Country[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
@@ -197,7 +197,7 @@ export default function LocationsEditLocationModal({
     city: '',
     country: '',
     profitShare: '',
-    licensee: '',
+    licencee: '',
     isLocalServer: false,
     latitude: '',
     longitude: '',
@@ -291,20 +291,20 @@ export default function LocationsEditLocationModal({
     }
   };
 
-  // Load licensees
-  const loadLicensees = async () => {
-    setLicenseesLoading(true);
+  // Load licencees
+  const loadLicencees = async () => {
+    setLicenceesLoading(true);
     try {
-      const result = await fetchLicensees();
-      const licenseesData = Array.isArray(result.licensees)
-        ? result.licensees
+      const result = await fetchLicencees();
+      const licenceesData = Array.isArray(result.licencees)
+        ? result.licencees
         : [];
-      setLicensees(licenseesData);
+      setLicencees(licenceesData);
     } catch (error) {
-      console.error('Failed to fetch licensees:', error);
-      toast.error('Failed to load licensees');
+      console.error('Failed to fetch licencees:', error);
+      toast.error('Failed to load licencees');
     } finally {
-      setLicenseesLoading(false);
+      setLicenceesLoading(false);
     }
   };
 
@@ -344,7 +344,7 @@ export default function LocationsEditLocationModal({
         city: '', // Will be loaded from locationDetails
         country: '', // Will be loaded from locationDetails
         profitShare: '', // Will be loaded from locationDetails
-        licensee: '', // Will be loaded from locationDetails
+        licencee: '', // Will be loaded from locationDetails
         isLocalServer: selectedLocation.isLocalServer || false,
         latitude: '', // Will be loaded from locationDetails
         longitude: '', // Will be loaded from locationDetails
@@ -382,10 +382,10 @@ export default function LocationsEditLocationModal({
     }
   }, [selectedLocation]);
 
-  // Load licensees and countries when modal opens
+  // Load licencees and countries when modal opens
   useEffect(() => {
     if (isEditModalOpen) {
-      loadLicensees();
+      loadLicencees();
       loadCountries();
     }
   }, [isEditModalOpen]);
@@ -506,7 +506,7 @@ export default function LocationsEditLocationModal({
         city: locationDetails.address?.city || '',
         country: countryId || '',
         profitShare: locationDetails.profitShare?.toString() || '',
-        licensee: locationDetails.rel?.licensee || '',
+        licencee: locationDetails.rel?.licencee || '',
         isLocalServer: locationDetails.isLocalServer || false,
         latitude: locationDetails.geoCoords?.latitude?.toString() || '',
         longitude: locationDetails.geoCoords?.longitude?.toString() || '',
@@ -710,7 +710,7 @@ export default function LocationsEditLocationModal({
         gameDayOffset:
           parseInt(originalFormData.dayStartTime.split(':')[0]) || 8,
         rel: {
-          licensee: originalFormData.licensee,
+          licencee: originalFormData.licencee,
         },
         isLocalServer: originalFormData.isLocalServer,
         geoCoords:
@@ -735,7 +735,7 @@ export default function LocationsEditLocationModal({
         profitShare: parseInt(formData.profitShare) || 0,
         gameDayOffset: gameDayOffset,
         rel: {
-          licensee: formData.licensee,
+          licencee: formData.licencee,
         },
         isLocalServer: formData.isLocalServer,
         geoCoords:
@@ -916,7 +916,7 @@ export default function LocationsEditLocationModal({
                   <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
                 </div>
 
-                {/* Licensee */}
+                {/* Licencee */}
                 <div className="mb-4">
                   <div className="mb-2 h-4 w-20 animate-pulse rounded bg-gray-200" />
                   <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
@@ -1131,29 +1131,29 @@ export default function LocationsEditLocationModal({
                   </div>
                 </div>
 
-                {/* Licensee */}
+                {/* Licencee */}
                 <div className="mb-4">
                   <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                    Licensee <span className="text-red-500">*</span>
+                    Licencee <span className="text-red-500">*</span>
                   </label>
                   <select
-                    name="licensee"
-                    value={formData.licensee}
+                    name="licencee"
+                    value={formData.licencee}
                     onChange={e =>
-                      handleSelectChange('licensee', e.target.value)
+                      handleSelectChange('licencee', e.target.value)
                     }
                     className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
                     required
                   >
-                    <option value="">Select Licensee</option>
-                    {licenseesLoading ? (
+                    <option value="">Select Licencee</option>
+                    {licenceesLoading ? (
                       <option value="" disabled>
-                        Loading licensees...
+                        Loading licencees...
                       </option>
                     ) : (
-                      licensees.map(licensee => (
-                        <option key={licensee._id} value={licensee._id}>
-                          {licensee.name}
+                      licencees.map(licencee => (
+                        <option key={licencee._id} value={licencee._id}>
+                          {licencee.name}
                         </option>
                       ))
                     )}

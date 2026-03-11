@@ -96,9 +96,9 @@ The system uses eight distinct roles arranged in priority order:
 
 ### **Administration Page Tabs**
 
-- **Users Tab**: Developer, Admin, Manager (with licensee-scoped filtering)
-- **Licensees Tab**: Developer, Admin
-- **Activity Logs Tab**: Developer, Admin, Manager (with licensee-scoped filtering)
+- **Users Tab**: Developer, Admin, Manager (with licencee-scoped filtering)
+- **Licencees Tab**: Developer, Admin
+- **Activity Logs Tab**: Developer, Admin, Manager (with licencee-scoped filtering)
 - **Rationale**: Different administrative functions require different clearance levels
 
 ### **Collection Reports Page Tabs**
@@ -117,19 +117,19 @@ The system uses eight distinct roles arranged in priority order:
 - **Expenses**: Developer, Admin, Manager, Vault Manager
 - **Transactions**: Developer, Admin, Manager, Vault Manager
 
-## Licensee Filtering Strategy
+## Licencee Filtering Strategy
 
 ### **Location-Based Access**
 
-- Users can only see licensees for locations they have access to
-- Multi-licensee users see "All" option for their accessible licensees
+- Users can only see licencees for locations they have access to
+- Multi-licencee users see "All" option for their accessible licencees
 - Data filtering ensures users only see relevant information
 
 ### **Security Implementation**
 
 - All data queries filtered by user's accessible locations
-- Licensee selection limited to user's permissions
-- "All" option shows data for all accessible licensees
+- Licencee selection limited to user's permissions
+- "All" option shows data for all accessible licencees
 
 ## Navigation Strategy
 
@@ -158,7 +158,7 @@ The system uses eight distinct roles arranged in priority order:
 
 - All API responses filtered by user permissions
 - Location-based data access enforced
-- Licensee-based filtering implemented throughout
+- Licencee-based filtering implemented throughout
 
 ### **Multi-Role Security**
 
@@ -207,7 +207,7 @@ The system uses eight distinct roles arranged in priority order:
 - Core permission system first
 - Navigation hiding implementation
 - Tab-level access control
-- Licensee filtering system
+- Licencee filtering system
 - Direct link access implementation
 
 ### **Testing Strategy**

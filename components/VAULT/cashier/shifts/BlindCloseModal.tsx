@@ -24,7 +24,7 @@ import {
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
@@ -46,9 +46,9 @@ export default function BlindCloseModal({
   loading = false,
 }: BlindCloseModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: effectiveLicenseeId } = useVaultLicensee();
+  const { licenceeId: effectiveLicenceeId } = useVaultLicencee();
 
-  const denomsList = useMemo(() => getDenominationValues(effectiveLicenseeId), [effectiveLicenseeId]);
+  const denomsList = useMemo(() => getDenominationValues(effectiveLicenceeId), [effectiveLicenceeId]);
   
   const [denominations, setDenominations] = useState<Denomination[]>([]);
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());

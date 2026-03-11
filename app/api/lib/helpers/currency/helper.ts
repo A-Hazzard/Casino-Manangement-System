@@ -1,15 +1,15 @@
-import { convertCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
+import { convertCurrency, getLicenceeCurrency } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 
 /**
- * Check if currency conversion should be applied based on licensee selection
- * @param licensee - The selected licensee or 'all'
+ * Check if currency conversion should be applied based on licencee selection
+ * @param licencee - The selected licencee or 'all'
  * @returns boolean indicating if conversion is needed
  */
 export function shouldApplyCurrencyConversion(
-  licensee: string | null
+  licencee: string | null
 ): boolean {
-  return !licensee || licensee === 'all' || licensee === '';
+  return !licencee || licencee === 'all' || licencee === '';
 }
 
 /**
@@ -58,19 +58,19 @@ function convertFinancialFields<T extends Record<string, unknown>>(
 }
 
 /**
- * Apply currency conversion to financial metrics data based on licensee and display currency
+ * Apply currency conversion to financial metrics data based on licencee and display currency
  * @param data - Financial data object or array of objects
- * @param licensee - Selected licensee or 'all'
+ * @param licencee - Selected licencee or 'all'
  * @param displayCurrency - Target currency for display
  * @returns Converted financial data
  */
 export async function applyCurrencyConversionToMetrics<T>(
   data: T,
-  licensee: string | null,
+  licencee: string | null,
   displayCurrency: CurrencyCode
 ): Promise<T> {
-  // No conversion needed if not in "All Licensee" mode
-  if (!shouldApplyCurrencyConversion(licensee)) {
+  // No conversion needed if not in "All Licencee" mode
+  if (!shouldApplyCurrencyConversion(licencee)) {
     return data;
   }
 
@@ -87,12 +87,12 @@ export async function applyCurrencyConversionToMetrics<T>(
 
     const record = obj as Record<string, unknown>;
 
-    // If object has licensee information, convert based on that licensee's currency
-    const objLicensee = (record['licensee'] || record['licensee']) as
+    // If object has licencee information, convert based on that licencee's currency
+    const objLicencee = (record['licencee'] || record['licencee']) as
       | string
       | undefined;
-    const sourceCurrency = objLicensee
-      ? getLicenseeCurrency(objLicensee)
+    const sourceCurrency = objLicencee
+      ? getLicenceeCurrency(objLicencee)
       : 'USD';
 
     if (sourceCurrency !== displayCurrency) {

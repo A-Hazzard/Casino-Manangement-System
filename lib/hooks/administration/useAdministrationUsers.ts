@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 type UseAdministrationUsersProps = {
-  selectedLicensee: string | null;
+  selectedLicencee: string | null;
   activeSection: string;
   loadedSections: Set<string>;
   setLoadedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
@@ -28,7 +28,7 @@ const itemsPerBatch = 100;
 const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
 export function useAdministrationUsers({
-  selectedLicensee,
+  selectedLicencee,
   activeSection,
   loadedSections,
   setLoadedSections,
@@ -146,11 +146,11 @@ export function useAdministrationUsers({
   // ============================================================================
   // Effects
   // ============================================================================
-  // Reset users data when licensee or status changes
+  // Reset users data when licencee or status changes
   useEffect(() => {
     if (!mounted) return;
 
-    const filterKey = `${selectedLicensee}-${selectedStatus}-${selectedRole}`;
+    const filterKey = `${selectedLicencee}-${selectedStatus}-${selectedRole}`;
     if (lastFilterKeyRef.current !== filterKey) {
       hasAttemptedBackendFilterRef.current = false;
       lastFilterKeyRef.current = filterKey;
@@ -169,7 +169,7 @@ export function useAdministrationUsers({
       return updated;
     });
   }, [
-    selectedLicensee,
+    selectedLicencee,
     selectedStatus,
     selectedRole,
     mounted,
@@ -249,7 +249,7 @@ export function useAdministrationUsers({
       const loadBackendSearch = async () => {
         try {
           const result = await fetchUsers(
-            selectedLicensee ?? undefined,
+            selectedLicencee ?? undefined,
             1,
             itemsPerBatch,
             debouncedSearchValue,
@@ -277,7 +277,7 @@ export function useAdministrationUsers({
     debouncedSearchValue,
     allLoadedUsers,
     activeSection,
-    selectedLicensee,
+    selectedLicencee,
   ]);
 
   // Handle pagination for backend search results
@@ -295,7 +295,7 @@ export function useAdministrationUsers({
     const loadSearchPage = async () => {
       try {
         const result = await fetchUsers(
-          selectedLicensee ?? undefined,
+          selectedLicencee ?? undefined,
           currentPage1Indexed,
           itemsPerBatch,
           hasSearch ? debouncedSearchValue : undefined,
@@ -321,7 +321,7 @@ export function useAdministrationUsers({
     currentPage,
     usingBackendSearch,
     debouncedSearchValue,
-    selectedLicensee,
+    selectedLicencee,
     selectedStatus,
     selectedRole,
     isLoading,
@@ -335,7 +335,7 @@ export function useAdministrationUsers({
         setIsLoading(true);
         try {
           const result = await fetchUsers(
-            selectedLicensee ?? undefined,
+            selectedLicencee ?? undefined,
             1,
             itemsPerBatch,
             undefined,
@@ -358,7 +358,7 @@ export function useAdministrationUsers({
     }
   }, [
     activeSection,
-    selectedLicensee,
+    selectedLicencee,
     selectedStatus,
     loadedSections,
     setLoadedSections,
@@ -378,7 +378,7 @@ export function useAdministrationUsers({
     if (isLastPageOfBatch && !loadedBatches.has(nextBatch)) {
       setLoadedBatches(prev => new Set([...prev, nextBatch]));
       fetchUsers(
-        selectedLicensee ?? undefined,
+        selectedLicencee ?? undefined,
         nextBatch,
         itemsPerBatch,
         undefined,
@@ -406,7 +406,7 @@ export function useAdministrationUsers({
     if (!loadedBatches.has(currentBatch)) {
       setLoadedBatches(prev => new Set([...prev, currentBatch]));
       fetchUsers(
-        selectedLicensee ?? undefined,
+        selectedLicencee ?? undefined,
         currentBatch,
         itemsPerBatch,
         undefined,
@@ -435,7 +435,7 @@ export function useAdministrationUsers({
     isLoading,
     activeSection,
     loadedBatches,
-    selectedLicensee,
+    selectedLicencee,
     selectedStatus,
     debouncedSearchValue,
     calculateBatchNumber,
@@ -465,7 +465,7 @@ export function useAdministrationUsers({
         const loadBackendFilter = async () => {
           try {
             const result = await fetchUsers(
-              selectedLicensee ?? undefined,
+              selectedLicencee ?? undefined,
               1,
               itemsPerBatch,
               undefined,
@@ -506,7 +506,7 @@ export function useAdministrationUsers({
     usingBackendSearch,
     selectedRole,
     selectedStatus,
-    selectedLicensee,
+    selectedLicencee,
     roleFilteredUsers.length,
     allUsers.length,
   ]);
@@ -552,7 +552,7 @@ export function useAdministrationUsers({
     setRefreshing(true);
     try {
       const result = await fetchUsers(
-        selectedLicensee ?? undefined,
+        selectedLicencee ?? undefined,
         1,
         itemsPerBatch,
         undefined,
@@ -568,7 +568,7 @@ export function useAdministrationUsers({
     } finally {
       setRefreshing(false);
     }
-  }, [selectedLicensee, selectedStatus]);
+  }, [selectedLicencee, selectedStatus]);
 
   const getUserDisplayName = useCallback(() => {
     if (!user) return 'Unknown User';
@@ -613,7 +613,7 @@ export function useAdministrationUsers({
           } as User)
           : null,
         getUserDisplayName,
-        selectedLicensee,
+        selectedLicencee,
         selectedStatus,
         itemsPerBatch,
         onSuccess: async updatedUserData => {
@@ -631,7 +631,7 @@ export function useAdministrationUsers({
           setSelectedUser(null);
           setRefreshing(true);
           const result = await fetchUsers(
-            selectedLicensee ?? undefined,
+            selectedLicencee ?? undefined,
             1,
             itemsPerBatch,
             undefined,
@@ -652,7 +652,7 @@ export function useAdministrationUsers({
       selectedUser,
       user,
       getUserDisplayName,
-      selectedLicensee,
+      selectedLicencee,
       selectedStatus,
       setAllUsers,
       setAllLoadedUsers,
@@ -703,7 +703,7 @@ export function useAdministrationUsers({
 
         // Refresh users
         const result = await fetchUsers(
-          selectedLicensee ?? undefined,
+          selectedLicencee ?? undefined,
           1,
           itemsPerBatch,
           undefined,
@@ -726,7 +726,7 @@ export function useAdministrationUsers({
     [
       user,
       getUserDisplayName,
-      selectedLicensee,
+      selectedLicencee,
       selectedStatus,
       setAllUsers,
       setLoadedBatches,

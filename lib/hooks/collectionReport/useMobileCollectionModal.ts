@@ -57,6 +57,8 @@ export function useMobileCollectionModal({
     setSelectedLocation: setStoreSelectedLocation,
     setAvailableMachines: setStoreAvailableMachines,
     setLockedLocation: setStoreLockedLocation,
+    formData: storeFormData,
+    setFormData: setStoreFormData,
   } = useCollectionModalStore();
 
   // Expose store functions for component use
@@ -73,20 +75,12 @@ export function useMobileCollectionModal({
     searchTerm: '',
     collectedMachinesSearchTerm: '',
     editingEntryId: null as string | null,
-    formData: {
-      metersIn: '',
-      metersOut: '',
-      ramClear: false,
-      ramClearMetersIn: '',
-      ramClearMetersOut: '',
-      notes: '',
-      collectionTime: new Date(),
-    },
     isLoadingMachines: false,
     isProcessing: false,
     isLoadingCollections: false,
     collectedMachines: [] as CollectionDocument[],
     lockedLocationId: undefined as string | undefined,
+    baseBalanceCorrection: '',
   });
 
   const [showUnsavedChangesWarning, setShowUnsavedChangesWarning] =
@@ -357,21 +351,23 @@ export function useMobileCollectionModal({
       0
     );
 
-    const taxes = Number(financials.taxes) || 0;
-    const variance = Number(financials.variance) || 0;
-    const advance = Number(financials.advance) || 0;
-    const previousBalance = Number(financials.previousBalance) || 0;
-    
-    // Find matching location for profit share
+    // Find matching location for profit share and baseline balance
     const location = locationsRef.current.find(
       loc => String(loc._id) === (lockedLocationId || selectedLocation)
     );
     const profitShare = location?.profitShare ?? 50;
+    const baseBalance = location?.collectionBalance ?? 0;
+    const balanceCorrection = Number(financials.balanceCorrection) || 0;
+    const taxes = Number(financials.taxes) || 0;
+    const variance = Number(financials.variance) || 0;
+    const advance = Number(financials.advance) || 0;
 
     const partnerProfit =
       ((totalGross - variance - advance) * profitShare) / 100 - taxes;
+    
+    // Amount to collect = Machine Revenue - Expenses - Partner Profit + Baseline Balance + Correction
     const amountToCollect =
-      totalGross - variance - advance - partnerProfit + previousBalance;
+      totalGross - variance - advance - partnerProfit + baseBalance + balanceCorrection;
 
     setStoreFinancials({
       amountToCollect: amountToCollect.toFixed(2),
@@ -382,7 +378,7 @@ export function useMobileCollectionModal({
     financials.taxes,
     financials.variance,
     financials.advance,
-    financials.previousBalance,
+    financials.balanceCorrection,
     lockedLocationId,
     selectedLocation,
     setStoreFinancials,
@@ -430,14 +426,14 @@ export function useMobileCollectionModal({
     if (!selectedMachineData) return false;
 
     // Must have meters in and out entered
-    if (!modalState.formData.metersIn || !modalState.formData.metersOut)
+    if (!storeFormData.metersIn || !storeFormData.metersOut)
       return false;
 
     // If RAM Clear is checked, must have RAM Clear meters
     if (
-      modalState.formData.ramClear &&
-      (!modalState.formData.ramClearMetersIn ||
-        !modalState.formData.ramClearMetersOut)
+      storeFormData.ramClear &&
+      (!storeFormData.ramClearMetersIn ||
+        !storeFormData.ramClearMetersOut)
     ) {
       return false;
     }
@@ -445,11 +441,11 @@ export function useMobileCollectionModal({
     return true;
   }, [
     selectedMachineData,
-    modalState.formData.metersIn,
-    modalState.formData.metersOut,
-    modalState.formData.ramClear,
-    modalState.formData.ramClearMetersIn,
-    modalState.formData.ramClearMetersOut,
+    storeFormData.metersIn,
+    storeFormData.metersOut,
+    storeFormData.ramClear,
+    storeFormData.ramClearMetersIn,
+    storeFormData.ramClearMetersOut,
   ]);
 
   const isCreateReportsEnabled = useMemo(() => {
@@ -498,17 +494,17 @@ export function useMobileCollectionModal({
     const validation = validateMachineEntry(
       String(selectedMachineData._id),
       selectedMachineData,
-      modalState.formData.metersIn,
-      modalState.formData.metersOut,
+      storeFormData.metersIn,
+      storeFormData.metersOut,
       user?._id as string,
-      modalState.formData.ramClear,
+      storeFormData.ramClear,
       selectedMachineData.collectionMeters?.metersIn,
       selectedMachineData.collectionMeters?.metersOut,
-      modalState.formData.ramClearMetersIn
-        ? Number(modalState.formData.ramClearMetersIn)
+      storeFormData.ramClearMetersIn
+        ? Number(storeFormData.ramClearMetersIn)
         : undefined,
-      modalState.formData.ramClearMetersOut
-        ? Number(modalState.formData.ramClearMetersOut)
+      storeFormData.ramClearMetersOut
+        ? Number(storeFormData.ramClearMetersOut)
         : undefined,
       isEditing
     );
@@ -526,18 +522,18 @@ export function useMobileCollectionModal({
         machineId: String(selectedMachineData._id),
         location: selectedLocationName,
         collector: user?._id || '',
-        metersIn: Number(modalState.formData.metersIn),
-        metersOut: Number(modalState.formData.metersOut),
+        metersIn: Number(storeFormData.metersIn),
+        metersOut: Number(storeFormData.metersOut),
         // CRITICAL: Don't send prevIn/prevOut values
         // Let the API calculate them from machine history
-        notes: modalState.formData.notes,
-        timestamp: modalState.formData.collectionTime.toISOString(),
-        ramClear: modalState.formData.ramClear,
-        ramClearMetersIn: modalState.formData.ramClearMetersIn
-          ? Number(modalState.formData.ramClearMetersIn)
+        notes: storeFormData.notes,
+        timestamp: storeFormData.collectionTime.toISOString(),
+        ramClear: storeFormData.ramClear,
+        ramClearMetersIn: storeFormData.ramClearMetersIn
+          ? Number(storeFormData.ramClearMetersIn)
           : undefined,
-        ramClearMetersOut: modalState.formData.ramClearMetersOut
-          ? Number(modalState.formData.ramClearMetersOut)
+        ramClearMetersOut: storeFormData.ramClearMetersOut
+          ? Number(storeFormData.ramClearMetersOut)
           : undefined,
         locationReportId: '', // Will be set when report is created
         isCompleted: false,
@@ -593,17 +589,17 @@ export function useMobileCollectionModal({
           selectedMachine: null,
           selectedMachineData: null,
           editingEntryId: null, // Clear editing state
-          formData: {
-            ...prev.formData,
-            // Keep existing collectionTime - don't reset it
-            metersIn: '',
-            metersOut: '',
-            ramClear: false,
-            ramClearMetersIn: '',
-            ramClearMetersOut: '',
-            notes: '',
-          },
         };
+      });
+
+      // Clear form data in store
+      setStoreFormData({
+        metersIn: '',
+        metersOut: '',
+        ramClear: false,
+        ramClearMetersIn: '',
+        ramClearMetersOut: '',
+        notes: '',
       });
 
       // Sync to Zustand store
@@ -709,16 +705,17 @@ export function useMobileCollectionModal({
         editingEntryId: entry._id, // Track which entry we're editing
         isFormVisible: true,
         isCollectedListVisible: false,
-        formData: {
-          metersIn: entry.metersIn.toString(),
-          metersOut: entry.metersOut.toString(),
-          ramClear: entry.ramClear || false,
-          ramClearMetersIn: entry.ramClearMetersIn?.toString() || '',
-          ramClearMetersOut: entry.ramClearMetersOut?.toString() || '',
-          notes: entry.notes || '',
-          collectionTime: new Date(entry.timestamp),
-        },
       }));
+
+      setStoreFormData({
+        metersIn: entry.metersIn.toString(),
+        metersOut: entry.metersOut.toString(),
+        ramClear: entry.ramClear || false,
+        ramClearMetersIn: entry.ramClearMetersIn?.toString() || '',
+        ramClearMetersOut: entry.ramClearMetersOut?.toString() || '',
+        notes: entry.notes || '',
+        collectionTime: new Date(entry.timestamp),
+      });
 
       setStoreSelectedMachine(String(machine._id));
       setStoreSelectedMachineData(machine);
@@ -1027,8 +1024,14 @@ export function useMobileCollectionModal({
     setStoreFinancials,
     setStoreSelectedMachine: setStoreSelectedMachineExposed,
     setStoreSelectedMachineData: setStoreSelectedMachineDataExposed,
+    baseBalanceCorrection: modalState.baseBalanceCorrection,
+    onBaseBalanceCorrectionChange: (value: string) => {
+      setModalState(prev => ({ ...prev, baseBalanceCorrection: value }));
+    },
     getLocationIdFromMachine,
     fetchExistingCollections,
+    storeFormData,
+    setStoreFormData,
   };
 }
 

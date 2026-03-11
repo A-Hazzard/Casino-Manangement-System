@@ -21,7 +21,7 @@ import {
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
@@ -52,11 +52,11 @@ export default function VaultOverviewCloseShiftModal({
   locationId,
 }: VaultOverviewCloseShiftModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicensee } = useVaultLicensee();
+  const { licenceeId: selectedLicencee } = useVaultLicencee();
   const [denominations, setDenominations] = useState<Denomination[]>([]);
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
 
-  const denomsList = useMemo(() => getDenominationValues(selectedLicensee), [selectedLicensee]);
+  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
 
   useEffect(() => {
     if (open) {

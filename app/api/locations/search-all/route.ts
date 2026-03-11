@@ -4,9 +4,9 @@
  * This route handles searching all locations with financial metrics and currency conversion.
  * It supports:
  * - Location name and ID search
- * - Licensee filtering
+ * - Licencee filtering
  * - Role-based access control
- * - Currency conversion (Admin/Developer only for "All Licensees")
+ * - Currency conversion (Admin/Developer only for "All Licencees")
  * - Financial metrics aggregation
  * - Machine statistics
  *
@@ -14,15 +14,15 @@
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
+  getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
+} from '@/app/api/lib/helpers/licenceeFilter';
 import { getMemberCountsPerLocation } from '@/app/api/lib/helpers/membershipAggregation';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -56,9 +56,9 @@ type LocationAggregationResult = {
  * Main GET handler for searching all locations
  *
  * Flow:
- * 1. Parse query parameters (licensee, search, currency)
+ * 1. Parse query parameters (licencee, search, currency)
  * 2. Connect to database
- * 3. Get user's accessible licensees and permissions
+ * 3. Get user's accessible licencees and permissions
  * 4. Apply location filtering based on permissions
  * 5. Build location match filter
  * 6. Fetch locations with aggregation (machines, financial data)
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     // STEP 1: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licensee = searchParams.get('licensee') || '';
+    const licencee = (searchParams.get('licencee')) || '';
     const search = searchParams.get('search')?.trim() || '';
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
@@ -100,9 +100,9 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3: Get user's accessible licensees and permissions
+    // STEP 3: Get user's accessible licencees and permissions
     // ============================================================================
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
     // Use only new field
@@ -120,8 +120,8 @@ export async function GET(request: NextRequest) {
     // STEP 4: Apply location filtering based on permissions
     // ============================================================================
     const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicensees,
-      licensee || undefined,
+      userAccessibleLicencees,
+      licencee || undefined,
       userLocationPermissions,
       userRoles
     );
@@ -164,8 +164,12 @@ export async function GET(request: NextRequest) {
         });
       }
     }
-    if (licensee) {
-      locationMatch.$and.push({ 'rel.licensee': licensee });
+    if (licencee) {
+      locationMatch.$and.push({
+        $or: [
+          { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  }
+        ]
+      });
     }
 
     // Apply user location permissions filter
@@ -552,11 +556,11 @@ export async function GET(request: NextRequest) {
       currentUserRoles.includes('admin') ||
       currentUserRoles.includes('developer');
 
-    // Apply currency conversion ONLY for Admin/Developer viewing "All Licensees"
+    // Apply currency conversion ONLY for Admin/Developer viewing "All Licencees"
     let convertedLocations = finalFilteredLocations;
-    if (isAdminOrDev && shouldApplyCurrencyConversion(licensee)) {
-      // Get licensee details for currency mapping
-      const licenseesData = await Licensee.find(
+    if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
+      // Get licencee details for currency mapping
+      const licenceesData = await Licencee.find(
         {
           $or: [
             { deletedAt: null },
@@ -568,11 +572,11 @@ export async function GET(request: NextRequest) {
         .lean()
         .exec();
 
-      // Create a map of licensee ID to name
-      const licenseeIdToName = new Map<string, string>();
-      licenseesData.forEach((lic: { _id?: unknown; name?: string }) => {
+      // Create a map of licencee ID to name
+      const licenceeIdToName = new Map<string, string>();
+      licenceesData.forEach((lic: { _id?: unknown; name?: string }) => {
         if (lic._id && lic.name) {
-          licenseeIdToName.set(String(lic._id), lic.name);
+          licenceeIdToName.set(String(lic._id), lic.name);
         }
       });
 
@@ -590,9 +594,9 @@ export async function GET(request: NextRequest) {
 
       // Convert each location's financial data
       convertedLocations = finalFilteredLocations.map(loc => {
-        const licenseeId = loc.rel?.licensee as string | undefined;
+        const licenceeId = loc.rel?.licencee as string | undefined;
 
-        if (!licenseeId) {
+        if (!licenceeId) {
           // Unassigned locations - determine currency from country
           const countryId = loc.country as string | undefined;
           const countryName = countryId
@@ -615,13 +619,13 @@ export async function GET(request: NextRequest) {
           };
         }
 
-        const licenseeName =
-          licenseeIdToName.get(licenseeId.toString()) || 'Unknown';
+        const licenceeName =
+          licenceeIdToName.get(licenceeId.toString()) || 'Unknown';
 
-        // Convert from licensee's native currency to USD, then to display currency
-        const moneyInUSD = convertToUSD(loc.moneyIn, licenseeName);
-        const moneyOutUSD = convertToUSD(loc.moneyOut, licenseeName);
-        const grossUSD = convertToUSD(loc.gross, licenseeName);
+        // Convert from licencee's native currency to USD, then to display currency
+        const moneyInUSD = convertToUSD(loc.moneyIn, licenceeName);
+        const moneyOutUSD = convertToUSD(loc.moneyOut, licenceeName);
+        const grossUSD = convertToUSD(loc.gross, licenceeName);
 
         return {
           ...loc,

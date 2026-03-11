@@ -418,7 +418,7 @@ X-RateLimit-Reset: 1640995200
 
 - `confirmPassword` (string, optional) - Must match `newPassword`.
 
-- `licenseeIds` (string[], optional) - For admin assignment updates.
+- `licenceeIds` (string[], optional) - For admin assignment updates.
 
 - `locationIds` (string[], optional) - For admin assignment updates.
 
@@ -468,7 +468,7 @@ interface User {
   username: string; // Required username (unique, indexed)
   emailAddress: string; // User's email address (login credential, unique, indexed)
   assignedLocations?: string[]; // Array of location IDs user has access to
-  assignedLicensees?: string[]; // Array of licensee IDs user has access to
+  assignedLicencees?: string[]; // Array of licencee IDs user has access to
   invalidProfileFields?: { [key: string]: boolean }; // Object indicating invalid profile fields
   invalidProfileReasons?: { [key: string]: string }; // Object providing reasons for invalid profile fields
   profile?: {
@@ -514,7 +514,7 @@ interface JWTPayload {
   isEnabled: boolean; // Account enabled status
   roles?: string[]; // User's roles array (optional in payload for size optimization)
   assignedLocations?: string[]; // User's assigned locations
-  assignedLicensees?: string[]; // User's assigned licensees
+  assignedLicencees?: string[]; // User's assigned licencees
   invalidProfileFields?: { [key: string]: boolean }; // Object indicating invalid profile fields
   invalidProfileReasons?: { [key: string]: string }; // Object providing reasons for invalid profile fields
   sessionId: string; // Session identifier (user ID)
@@ -552,7 +552,7 @@ interface ProfileUpdateRequest {
   email?: string; // Optional: for updating email
   currentPassword?: string; // Optional: required if newPassword is provided
   newPassword?: string; // Optional: for updating password
-  assignedLicensees?: string[]; // Optional: for updating assigned licensees
+  assignedLicencees?: string[]; // Optional: for updating assigned licencees
   assignedLocations?: string[]; // Optional: for updating assigned locations
   profilePicture?: string; // Optional: URL to profile picture
   isEnabled?: boolean; // Optional: for enabling/disabling user

@@ -4,7 +4,7 @@
  * This route handles user management operations including fetching, creating, updating, and deleting users.
  * It supports:
  * - Role-based access control (Admin, Manager, Location Admin, Vault Manager, Cashier & Developer)
- * - Licensee-based filtering
+ * - Licencee-based filtering
  * - Location permission filtering
  * - Search functionality (username, email, _id, or all)
  * - Pagination
@@ -42,7 +42,7 @@ import { apiLogger } from '../lib/services/loggerService';
  * 1. Initialize API logging
  * 2. Connect to database
  * 3. Get current user and permissions
- * 4. Parse query parameters (licensee, search, searchMode, status, role, pagination)
+ * 4. Parse query parameters (licencee, search, searchMode, status, role, pagination)
  * 5. Route to appropriate handler based on request purpose
  * 6. Return paginated user list
  */
@@ -60,10 +60,10 @@ export async function GET(request: NextRequest): Promise<Response> {
     const currentUser = await getUserFromServer();
     const currentUserRoles = (currentUser?.roles as string[]) || [];
 
-    // Check if the assignedLicensees field exists and is a valid array before assigning
-    let currentUserLicensees: string[] = [];
-    if (Array.isArray(currentUser?.assignedLicensees)) {
-      currentUserLicensees = currentUser?.assignedLicensees;
+    // Check if the assignedLicencees field exists and is a valid array before assigning
+    let currentUserLicencees: string[] = [];
+    if (Array.isArray(currentUser?.assignedLicencees)) {
+      currentUserLicencees = currentUser?.assignedLicencees;
     }
 
     // Check if the assignedLocations field exists and is a valid array before assigning
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     console.warn('[USERS API] Current User Info:', {
       username: currentUser?.username,
       roles: currentUserRoles,
-      licensees: currentUserLicensees,
+      licencees: currentUserLicencees,
       locationPermissionsRaw: currentUserLocationPermissionsRaw,
       locationPermissions: currentUserLocationPermissions,
       isAdmin,
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       return handleDeletedUsersRequest(
         currentUser,
         currentUserRoles,
-        currentUserLicensees,
+        currentUserLicencees,
         currentUserLocationPermissions,
         searchParams,
         startTime,
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       return handleCashiersRequest(
         currentUser,
         currentUserRoles,
-        currentUserLicensees,
+        currentUserLicencees,
         currentUserLocationPermissions,
         searchParams,
         startTime,
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     return handleAllUsersRequest(
       currentUser,
       currentUserRoles,
-      currentUserLicensees,
+      currentUserLicencees,
       currentUserLocationPermissions,
       searchParams,
       startTime,
@@ -221,7 +221,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       isEnabled = true,
       profilePicture = null,
       assignedLocations,
-      assignedLicensees,
+      assignedLicencees,
       tempPassword,
     } = body;
 
@@ -321,7 +321,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         isEnabled,
         profilePicture,
         assignedLocations,
-        assignedLicensees,
+        assignedLicencees,
         tempPassword,
       },
       request
@@ -419,7 +419,7 @@ export async function PUT(request: NextRequest): Promise<Response> {
     const formattedUser = {
       ...userObject,
       assignedLocations: userObject.assignedLocations || undefined,
-      assignedLicensees: userObject.assignedLicensees || undefined,
+      assignedLicencees: userObject.assignedLicencees || undefined,
     };
 
     // ============================================================================

@@ -8,7 +8,7 @@
 type AccessRestrictedProps = {
   /**
    * The name of the section/feature that requires access
-   * Example: "Activity Logs", "Users", "Licensees"
+   * Example: "Activity Logs", "Users", "Licencees"
    */
   sectionName: string;
   /**

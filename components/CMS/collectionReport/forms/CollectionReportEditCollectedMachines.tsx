@@ -18,7 +18,7 @@ import type { CollectionDocument } from '@/lib/types/collection';
 import { formatDate } from '@/lib/utils/formatting';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import axios from 'axios';
-import { Edit3, Trash2 } from 'lucide-react';
+import { Edit3, Trash2, Info, SendHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 
 type EditCollectionCollectedMachinesProps = {
@@ -29,6 +29,13 @@ type EditCollectionCollectedMachinesProps = {
   updateAllDate: Date | undefined;
   setUpdateAllDate: (date: Date | undefined) => void;
   onRefresh?: () => void;
+  financials: {
+    amountToCollect: string;
+    collectedAmount: string;
+    previousBalance: string;
+  };
+  isUpdateReportEnabled: boolean;
+  onUpdateReport: () => void;
 };
 
 export default function CollectionReportEditCollectedMachines({
@@ -39,6 +46,9 @@ export default function CollectionReportEditCollectedMachines({
   updateAllDate,
   setUpdateAllDate,
   onRefresh,
+  financials,
+  isUpdateReportEnabled,
+  onUpdateReport,
 }: EditCollectionCollectedMachinesProps) {
   const handleUpdateAllDates = async () => {
     if (!updateAllDate) return;
@@ -137,7 +147,7 @@ export default function CollectionReportEditCollectedMachines({
                         entry.machineCustomName || entry.machineId || 'unknown'
                       }`
                 }
-                className="relative space-y-1 rounded-md border border-gray-200 bg-white p-3 shadow"
+                className="space-y-1 rounded-md border border-gray-200 bg-white p-3 shadow"
               >
                 <p className="break-words text-sm font-semibold text-primary">
                   {formatMachineDisplayNameWithBold({
@@ -169,7 +179,7 @@ export default function CollectionReportEditCollectedMachines({
                     RAM Clear: Enabled
                   </p>
                 )}
-                <div className="absolute right-2 top-2 flex gap-1">
+                <div className="flex justify-end gap-1 pt-1">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -193,6 +203,46 @@ export default function CollectionReportEditCollectedMachines({
             ))
         )}
       </div>
+
+      {/* Live Reconciliation Summary - Added for PC parity with mobile/new */}
+      {collectedMachineEntries.length > 0 && (
+        <div className="border-t border-gray-300 bg-blue-50/50 p-4">
+          <div className="mb-3 rounded-lg border border-blue-100 bg-white p-3 shadow-sm">
+            <h5 className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700">
+              <Info className="h-3 w-3" />
+              Live Reconciliation
+            </h5>
+            <div className="grid grid-cols-2 gap-3 border-t border-blue-50 pt-2">
+              <div>
+                <p className="text-[8px] font-bold text-gray-400 uppercase">Target</p>
+                <p className="text-xs font-black text-gray-900">${financials.amountToCollect || '0.00'}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[8px] font-bold text-gray-400 uppercase">Carryover</p>
+                <p className={`text-xs font-black ${Number(financials.previousBalance) < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                  ${financials.previousBalance || '0.00'}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <Button
+            onClick={onUpdateReport}
+            disabled={!isUpdateReportEnabled || isProcessing}
+            className={`w-full gap-2 rounded-lg py-5 text-xs font-bold shadow-md transition-all active:scale-95 ${
+              isUpdateReportEnabled && !isProcessing
+                ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:shadow-green-100 shadow-green-600/10'
+                : 'bg-gray-400 text-gray-100'
+            }`}
+          >
+            <SendHorizontal className="h-4 w-4" />
+            {isProcessing ? 'PROCESSING...' : 'SUBMIT FINAL REPORT'}
+          </Button>
+          <p className="mt-2 text-center text-[9px] text-gray-400 font-medium">
+            Finalize readings for all {collectedMachineEntries.length} machines.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

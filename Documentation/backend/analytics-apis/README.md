@@ -78,7 +78,7 @@ All analytics endpoints support:
 ### Aggregation Levels
 - **Machine Level:** Individual cabinet metrics
 - **Location Level:** Aggregated location data
-- **Licensee Level:** Multi-location analytics
+- **Licencee Level:** Multi-location analytics
 - **System Level:** Enterprise-wide metrics
 
 ### Data Granularity

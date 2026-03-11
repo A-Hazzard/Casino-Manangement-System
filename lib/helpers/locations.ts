@@ -9,12 +9,12 @@
  * - Fetches location details and associated cabinets
  * - Searches locations by name or ID
  * - Fetches aggregated location data with financial metrics
- * - Handles location filtering by licensee and time period
+ * - Handles location filtering by licencee and time period
  */
 
 import { locations } from '@/lib/types';
 import { getAuthHeaders } from '@/lib/utils/auth';
-import { getLicenseeObjectId } from '@/lib/utils/licensee';
+import { getLicenceeObjectId } from '@/lib/utils/licencee';
 import axios from 'axios';
 import { TimePeriod } from '../types/api';
 import { AggregatedLocation } from '../types/location';
@@ -22,24 +22,24 @@ import { AggregatedLocation } from '../types/location';
 /**
  * Fetches all gaming locations from the API.
  *
- * @param licensee - (Optional) Licensee filter for locations.
+ * @param licencee - (Optional) Licencee filter for locations.
  * @returns Promise resolving to an array of locations.
  */
 export default async function getAllGamingLocations(
-  licensee?: string
+  licencee?: string
 ): Promise<locations> {
   try {
     const params: Record<string, string> = {};
-    if (licensee && licensee !== 'all') {
-      // Convert licensee name to ObjectId for API compatibility
-      const licenseeObjectId = getLicenseeObjectId(licensee);
-      console.log('[getAllGamingLocations] Input licensee:', licensee);
+    if (licencee && licencee !== 'all') {
+      // Convert licencee name to ObjectId for API compatibility
+      const licenceeObjectId = getLicenceeObjectId(licencee);
+      console.log('[getAllGamingLocations] Input licencee:', licencee);
       console.log(
         '[getAllGamingLocations] Converted ObjectId:',
-        licenseeObjectId
+        licenceeObjectId
       );
-      if (licenseeObjectId) {
-        params.licensee = licenseeObjectId;
+      if (licenceeObjectId) {
+        params.licencee = licenceeObjectId;
       }
     }
 
@@ -69,12 +69,12 @@ export default async function getAllGamingLocations(
 /**
  * Fetches all gaming locations and formats them for dropdowns or selection lists.
  *
- * @param licensee - (Optional) Licensee filter for locations.
+ * @param licencee - (Optional) Licencee filter for locations.
  * @returns Promise resolving to an array of objects with id and name properties.
  */
-export async function fetchAllGamingLocations(licensee?: string) {
+export async function fetchAllGamingLocations(licencee?: string) {
   try {
-    const locationsList = await getAllGamingLocations(licensee);
+    const locationsList = await getAllGamingLocations(licencee);
     if (locationsList && Array.isArray(locationsList)) {
       const formattedLocations = locationsList.map(loc => {
         const locObj = loc as Record<string, unknown>;
@@ -88,10 +88,10 @@ export async function fetchAllGamingLocations(licensee?: string) {
             (locObj.name as string) ||
             (locObj.locationName as string) ||
             'Unknown Location',
-          licenseeId:
-            (locObj.licenseeId as string) ||
-            (locObj.licensee as string) ||
-            (rel?.licensee as string) ||
+          licenceeId:
+            (locObj.licenceeId as string) ||
+            (locObj.licencee as string) ||
+            (rel?.licencee as string) ||
             (rel?.licencee as string) ||
             '',
         };
@@ -107,12 +107,12 @@ export async function fetchAllGamingLocations(licensee?: string) {
 }
 
 /**
- * Searches ALL locations for a licensee, regardless of meter data.
+ * Searches ALL locations for a licencee, regardless of meter data.
  * This is specifically for search functionality to show all locations.
  */
 export const searchAllLocations = async (
   searchTerm: string,
-  licensee?: string,
+  licencee?: string,
   displayCurrency?: string,
   timePeriod?: string,
   customDateRange?: { from: Date; to: Date },
@@ -123,7 +123,7 @@ export const searchAllLocations = async (
   try {
     const params: Record<string, string> = {};
     if (searchTerm) params.search = searchTerm;
-    if (licensee) params.licensee = licensee;
+    if (licencee) params.licencee = licencee;
     if (displayCurrency) params.currency = displayCurrency;
     if (timePeriod) params.timePeriod = timePeriod;
     if (customDateRange?.from && customDateRange?.to) {
@@ -151,20 +151,20 @@ export const searchAllLocations = async (
  * Fetches location metrics for map display, including machine counts and financial data.
  *
  * @param timePeriod - The time period to fetch data for.
- * @param licensee - (Optional) Licensee filter.
+ * @param licencee - (Optional) Licencee filter.
  * @returns Promise resolving to location metrics array with machine and financial data.
  */
 /**
  * Fetches aggregated location data with financial metrics for the locations page
  * @param timePeriod - Time period filter
- * @param licensee - Licensee filter
+ * @param licencee - Licencee filter
  * @param filterString - Filter string for SMIB/Local Server filters
  * @param dateRange - Custom date range for Custom time period
  * @returns Promise resolving to an array of aggregated locations
  */
 export async function fetchAggregatedLocationsData(
   timePeriod: TimePeriod,
-  licensee?: string,
+  licencee?: string,
   machineTypeFilter?: string,
   dateRange?: { from: Date; to: Date },
   displayCurrency?: string,
@@ -191,7 +191,7 @@ export async function fetchAggregatedLocationsData(
 
     // Add query parameters if they exist
     const queryParams = [];
-    if (licensee) queryParams.push(`licensee=${encodeURIComponent(licensee)}`);
+    if (licencee) queryParams.push(`licencee=${encodeURIComponent(licencee)}`);
     if (timePeriod)
       queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
     if (machineTypeFilter)

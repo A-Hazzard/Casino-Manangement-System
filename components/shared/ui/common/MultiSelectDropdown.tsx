@@ -221,7 +221,7 @@ export default function MultiSelectDropdown({
         <div 
           ref={menuRef}
           data-portal-id="multi-select-dropdown"
-          className="fixed z-[9999] rounded-md border border-gray-300 bg-white shadow-xl animate-in fade-in-0 zoom-in-95 ring-1 ring-black ring-opacity-5"
+          className="fixed z-[100001] rounded-md border border-gray-300 bg-white shadow-xl animate-in fade-in-0 zoom-in-95 ring-1 ring-black ring-opacity-5"
           style={{
             top: position === 'bottom' ? `${coords.top}px` : undefined,
             bottom: position === 'top' ? `${window.innerHeight - coords.top}px` : undefined,

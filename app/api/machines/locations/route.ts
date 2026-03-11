@@ -3,7 +3,7 @@
  *
  * This route handles fetching locations available for machines.
  * It supports:
- * - Licensee filtering
+ * - Licencee filtering
  * - Role-based access control
  * - Country name lookup
  * - Location permission filtering
@@ -12,9 +12,9 @@
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
+  getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
+} from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
@@ -25,8 +25,8 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse query parameters (licensee/licensee)
- * 3. Get user's accessible licensees and permissions
+ * 2. Parse query parameters (licencee/licencee)
+ * 3. Get user's accessible licencees and permissions
  * 4. Determine allowed location IDs
  * 5. Build aggregation pipeline
  * 6. Execute aggregation with country lookup
@@ -45,16 +45,16 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    // Support both 'licensee' and 'licensee' spelling for backwards compatibility
-    const licensee = searchParams.get('licensee');
+    // Support both 'licencee' and 'licencee' spelling for backwards compatibility
+    const licencee = (searchParams.get('licencee'));
     const membershipOnly =
       searchParams.get('membershipOnly') === 'true' ||
       searchParams.get('membershipOnly') === '1';
 
     // ============================================================================
-    // STEP 3: Get user's accessible licensees and permissions
+    // STEP 3: Get user's accessible licencees and permissions
     // ============================================================================
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
     // Use only new field
@@ -71,10 +71,10 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 4: Determine allowed location IDs
     // ============================================================================
-    const finalLicensee = licensee || licensee;
+    const finalLicencee = licencee || licencee;
     const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicensees,
-      finalLicensee || undefined,
+      userAccessibleLicencees,
+      finalLicencee || undefined,
       userLocationPermissions,
       userRoles
     );
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
     // STEP 6: Execute aggregation with country lookup
     // ============================================================================
     const locations = await GamingLocations.aggregate([
-      // Only include non-deleted locations and match licensee if provided
+      // Only include non-deleted locations and match licencee if provided
       { $match: matchStage },
       // Lookup country details
       {

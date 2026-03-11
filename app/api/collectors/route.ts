@@ -3,7 +3,7 @@
  *
  * This route handles fetching paginated collectors.
  * It supports:
- * - Licensee-based filtering
+ * - Licencee-based filtering
  * - Pagination
  *
  * @module app/api/collectors/route
@@ -18,7 +18,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse query parameters (licensee, page, limit)
+ * 2. Parse query parameters (licencee, page, limit)
  * 3. Fetch paginated collectors
  * 4. Return collectors list
  */
@@ -35,14 +35,14 @@ export async function GET(req: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
-    const licensee = searchParams.get('licensee') || undefined;
+    const licencee = (searchParams.get('licencee')) || undefined;
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '10', 10); // Default limit to 10
 
     // ============================================================================
     // STEP 3: Fetch paginated collectors
     // ============================================================================
-    const collectors = await getCollectorsPaginated(page, limit, licensee);
+    const collectors = await getCollectorsPaginated(page, limit, licencee);
 
     // ============================================================================
     // STEP 4: Return collectors list

@@ -5,8 +5,8 @@
  *
  * Features:
  * - Client authentication helpers
- * - Client licensee management
+ * - Client licencee management
  */
 
 export * from './auth';
-export * from './licensees';
+export * from './licencees';

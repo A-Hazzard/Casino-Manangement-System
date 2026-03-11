@@ -20,7 +20,7 @@ import {
   createCollectionWithCalculations,
   getSasTimePeriod,
 } from '@/app/api/lib/helpers/collectionReport/creation';
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
@@ -43,7 +43,7 @@ export const dynamic = 'force-dynamic';
  * Flow:
  * 1. Connect to database
  * 2. Parse query parameters
- * 3. Get user's accessible licensees and permissions
+ * 3. Get user's accessible licencees and permissions
  * 4. Determine allowed location IDs
  * 5. Build filter query
  * 6. Apply sorting and pagination
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
     const sortOrder = searchParams.get('sortOrder');
 
     // ============================================================================
-    // STEP 3: Get user's accessible licensees and permissions
+    // STEP 3: Get user's accessible licencees and permissions
     // ============================================================================
     // SECURITY: Get user's accessible locations to prevent data leakage
     const user = await getUserFromServer();
@@ -86,14 +86,14 @@ export async function GET(req: NextRequest) {
 
     const userRoles = (user.roles as string[]) || [];
     // Use only new field
-    let userAccessibleLicensees: string[] = [];
+    let userAccessibleLicencees: string[] = [];
     if (
       Array.isArray(
-        (user as { assignedLicensees?: string[] })?.assignedLicensees
+        (user as { assignedLicencees?: string[] })?.assignedLicencees
       )
     ) {
-      userAccessibleLicensees = (user as { assignedLicensees: string[] })
-        .assignedLicensees;
+      userAccessibleLicencees = (user as { assignedLicencees: string[] })
+        .assignedLicencees;
     }
     // Use only new field
     let userLocationPermissions: string[] = [];
@@ -108,17 +108,17 @@ export async function GET(req: NextRequest) {
     const isAdmin =
       userRoles.includes('admin') || userRoles.includes('developer');
 
-    // Support both licensee spellings
-    const licensee =
-      searchParams.get('licensee') || searchParams.get('licensee');
+    // Support both licencee spellings
+    const licencee =
+      searchParams.get('licencee');
 
     // ============================================================================
     // STEP 4: Determine allowed location IDs
     // ============================================================================
     // Get allowed locations for this user
     const allowedLocationIds = await getUserLocationFilter(
-      isAdmin ? 'all' : userAccessibleLicensees,
-      licensee || undefined,
+      isAdmin ? 'all' : userAccessibleLicencees,
+      licencee || undefined,
       userLocationPermissions,
       userRoles
     );
@@ -403,7 +403,8 @@ export async function POST(req: NextRequest) {
       sasMeters: {
         machine:
           (machineData.serialNumber as string) ||
-          (machineData.customName as string) ||
+          (machineData.custom as { name?: string })?.name ||
+          (machineData.machineName as string) ||
           payload.machineId,
         drop: sasMeters.drop,
         totalCancelledCredits: sasMeters.totalCancelledCredits,
@@ -420,13 +421,23 @@ export async function POST(req: NextRequest) {
       },
       machineCustomName:
         payload.machineCustomName ||
-        (machineData.customName as string) ||
+        (machineData.custom as { name?: string })?.name ||
+        (machineData.machineName as string) ||
         (machineData.serialNumber as string) ||
         'Unknown Machine',
+      custom: {
+        name:
+          payload.machineCustomName ||
+          (machineData.custom as { name?: string })?.name ||
+          (machineData.machineName as string) ||
+          (machineData.serialNumber as string) ||
+          'Unknown Machine',
+      },
       machineId: payload.machineId,
       machineName:
         payload.machineName ||
-        (machineData.customName as string) ||
+        (machineData.custom as { name?: string })?.name ||
+        (machineData.machineName as string) ||
         (machineData.serialNumber as string) ||
         'Unknown Machine',
       game:

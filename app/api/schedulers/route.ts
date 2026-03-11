@@ -3,7 +3,7 @@
  *
  * This route handles fetching collection schedulers with filtering.
  * It supports:
- * - Licensee filtering
+ * - Licencee filtering
  * - Location filtering
  * - Collector filtering
  * - Status filtering
@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse query parameters (licensee, location, collector, status, dates)
+ * 2. Parse query parameters (licencee, location, collector, status, dates)
  * 3. Build query filters
  * 4. Fetch schedulers from database
  * 5. Return schedulers list
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const searchParams = request.nextUrl.searchParams;
-    const licensee = searchParams.get('licensee');
+    const licencee = (searchParams.get('licencee'));
     const location = searchParams.get('location');
     const collector = searchParams.get('collector');
     const status = searchParams.get('status');
@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const query: Record<string, MongoDBQueryValue> = {};
 
-    if (licensee && licensee.toLowerCase() !== 'all') {
-      query.licensee = licensee;
+    if (licencee && licencee.toLowerCase() !== 'all') {
+      query.licencee = licencee;
     }
 
     if (location && location.toLowerCase() !== 'all') {

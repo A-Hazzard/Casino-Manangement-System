@@ -3,7 +3,7 @@
  *
  * This route handles fetching members summary with filtering and pagination.
  * It supports:
- * - Licensee-based filtering
+ * - Licencee-based filtering
  * - Location filtering
  * - Date filtering (yesterday, week, month, custom)
  * - Search functionality
@@ -25,7 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 1. Connect to database
  * 2. Parse query parameters
  * 3. Build date filter conditions
- * 4. Handle licensee filtering through location lookup
+ * 4. Handle licencee filtering through location lookup
  * 5. Add location and search filters
  * 6. Get total count for pagination
  * 7. Aggregate member data with financial metrics
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
 
     const { searchParams } = new URL(request.url);
-    // Licensee filtering removed - show all members regardless of licensee
+    // Licencee filtering removed - show all members regardless of licencee
     const dateFilter = searchParams.get('dateFilter') || 'all';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
@@ -114,9 +114,9 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Handle location filtering (licensee filtering removed - show all members)
+    // STEP 4: Handle location filtering (licencee filtering removed - show all members)
     // ============================================================================
-    // Add location filter if specified (but no licensee filtering)
+    // Add location filter if specified (but no licencee filtering)
     if (locationFilter && locationFilter !== 'all') {
       if (locationFilter.includes(',')) {
         matchConditions.gamingLocation = { $in: locationFilter.split(',') };

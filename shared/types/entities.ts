@@ -43,7 +43,7 @@ export type Address = {
 };
 
 export type RelationshipInfo = {
-  licensee?: string[];
+  licencee?: string[];
   [key: string]: string | string[] | undefined;
 };
 
@@ -76,7 +76,7 @@ export type AggregatedLocation = {
   noSMIBLocation: boolean;
   hasSmib: boolean;
   gamesPlayed: number;
-  rel?: { licensee?: string | null }; // For currency conversion
+  rel?: { licencee?: string | null }; // For currency conversion
   country?: string; // For currency conversion
   totalDrop?: number; // Alias for moneyIn in some contexts
   enableMembership?: boolean; // Membership enabled flag

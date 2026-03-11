@@ -8,7 +8,7 @@ type MembersNavigationProps = {
   availableTabs: MembersTab[];
   activeTab: MembersView;
   onTabChange: (tabId: string) => void;
-  selectedLicensee?: string;
+  selectedLicencee?: string;
   onRefresh?: () => void;
   onNewMember?: () => void;
   refreshing?: boolean;
@@ -23,7 +23,7 @@ export default function MembersNavigation({
   availableTabs,
   activeTab,
   onTabChange,
-  selectedLicensee,
+  selectedLicencee,
   onRefresh,
   refreshing = false,
   locationName,
@@ -60,9 +60,9 @@ export default function MembersNavigation({
                   ? `${activeTabConfig?.label || 'Members'} For ${locationName}`
                   : activeTabConfig?.label || 'Members'}
               </h1>
-              {selectedLicensee && !locationName && (
+              {selectedLicencee && !locationName && (
                 <span className="max-w-[140px] truncate text-xs text-gray-500 sm:max-w-xs">
-                  ({selectedLicensee})
+                  ({selectedLicencee})
                 </span>
               )}
             </div>

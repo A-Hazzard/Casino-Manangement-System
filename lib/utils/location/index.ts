@@ -9,7 +9,7 @@
  */
 
 // Location map utilities
-export { getMapCenterByLicensee } from './map';
+export { getMapCenterByLicencee } from './map';
 
 // Locations page utilities
 export { hasMissingCoordinates } from './page';

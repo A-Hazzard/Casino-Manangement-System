@@ -33,7 +33,7 @@ import {
     getTransactionTypeBadge
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { ExtendedVaultTransaction } from '@/shared/types/vault';
@@ -49,7 +49,7 @@ export default function VaultTransactionsPageContent() {
   // Hooks & State
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicensee, setLicenseeId: setSelectedLicensee } = useVaultLicensee();
+  const { licenceeId: selectedLicencee, setLicenceeId: setSelectedLicencee } = useVaultLicencee();
   const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<ExtendedVaultTransaction[]>(
@@ -103,7 +103,7 @@ export default function VaultTransactionsPageContent() {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData, selectedLicensee]);
+  }, [fetchData, selectedLicencee]);
 
   // Periodic refresh only if at least 2 items
   useEffect(() => {
@@ -242,8 +242,8 @@ export default function VaultTransactionsPageContent() {
         onRefresh={() => fetchData(true)}
         refreshing={loading}
         headerProps={isAdminOrDev ? {
-            selectedLicensee,
-            setSelectedLicensee,
+            selectedLicencee,
+            setSelectedLicencee,
             disabled: false
         } : undefined}
     >

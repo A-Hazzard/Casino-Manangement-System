@@ -9,7 +9,7 @@
  * @module app/api/vault/payout/route */
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
@@ -26,7 +26,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 1. Performance tracking and authentication
  * 2. Parse and validate request body
  * 3. Database connection and find active cashier shift
- * 4. Licensee/location filtering via cashier shift
+ * 4. Licencee/location filtering via cashier shift
  * 5. Create Payout and Transaction records
  * 6. Update cashier shift totals
  * 7. Return response
@@ -99,10 +99,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Licensee/location filtering
+    // STEP 4: Licencee/location filtering
     // ============================================================================
     const allowedLocationIds = await getUserLocationFilter(
-      (userPayload?.assignedLicensees as string[]) || [],
+      (userPayload?.assignedLicencees as string[]) || [],
       undefined,
       (userPayload?.assignedLocations as string[]) || [],
       (userPayload?.roles as string[]) || []

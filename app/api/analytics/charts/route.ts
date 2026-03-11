@@ -3,9 +3,9 @@
  *
  * This route handles fetching chart data for analytics visualization.
  * It supports:
- * - Filtering by licensee
+ * - Filtering by licencee
  * - Time period filtering (last7days, last30days)
- * - Currency conversion for multi-licensee views
+ * - Currency conversion for multi-licencee views
  * - Daily aggregation of financial metrics (drop, cancelled credits, gross)
  *
  * @module app/api/analytics/charts/route
@@ -21,7 +21,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse and validate request parameters (licensee, period, currency)
+ * 2. Parse and validate request parameters (licencee, period, currency)
  * 3. Execute the core charts data fetching logic via `getChartsData` helper
  * 4. Return chart series data with currency information
  */
@@ -38,16 +38,16 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse and validate request parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licensee = searchParams.get('licensee');
+    const licencee = (searchParams.get('licencee'));
     const period =
       (searchParams.get('period') as 'last7days' | 'last30days') ||
       'last30days';
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
 
-    if (!licensee) {
+    if (!licencee) {
       return NextResponse.json(
-        { message: 'Licensee is required' },
+        { message: 'Licencee is required' },
         { status: 400 }
       );
     }
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 3: Execute the core charts data fetching logic via helper
     // ============================================================================
-    const chartsData = await getChartsData(licensee, period, displayCurrency);
+    const chartsData = await getChartsData(licencee, period, displayCurrency);
 
     // ============================================================================
     // STEP 4: Return chart series data with currency information

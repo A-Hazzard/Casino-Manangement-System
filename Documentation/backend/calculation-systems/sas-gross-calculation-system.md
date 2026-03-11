@@ -175,7 +175,7 @@ const sasGross = totalDrop - totalCancelled;
 **Implementation:**
 
 - Uses same aggregation pipeline as Cabinets page
-- Aggregates across all locations for licensee
+- Aggregates across all locations for licencee
 - Applies gaming day ranges for time filtering
 
 ### 5. Collection Reports List

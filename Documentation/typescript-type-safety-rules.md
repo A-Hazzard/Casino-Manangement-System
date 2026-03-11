@@ -17,7 +17,7 @@ Types used across both frontend and backend:
 
 - **Purpose**: Core entity types, API contracts, and common utilities
 - **Location**: `shared/types/`
-- **Examples**: `Licensee`, `GamingLocation`, `Machine`, `ApiResponse<T>`
+- **Examples**: `Licencee`, `GamingLocation`, `Machine`, `ApiResponse<T>`
 
 #### 2. **Frontend Types** (`lib/types/`)
 
@@ -119,7 +119,7 @@ type User = { id: string; email: string }; // Redefinition
 
 ```typescript
 // ✅ DO: Re-export from shared types
-export type { User, Licensee, Machine } from '@shared/types/entities';
+export type { User, Licencee, Machine } from '@shared/types/entities';
 
 // ❌ DON'T: Redefine shared types
 export type User = {
@@ -167,7 +167,7 @@ export type DatabaseConfig = {
 };
 
 // shared/types/entities.ts - Core entity types
-export type Licensee = {
+export type Licencee = {
   /* ... */
 };
 export type GamingLocation = {

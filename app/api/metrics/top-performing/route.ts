@@ -5,7 +5,7 @@
  * It supports:
  * - Filtering by activeTab (locations or cabinets)
  * - Filtering by timePeriod (Today, Yesterday, 7d, 30d)
- * - Optional filtering by licensee
+ * - Optional filtering by licencee
  *
  * @module app/api/metrics/top-performing/route
  */
@@ -17,7 +17,7 @@ import { convertTopPerformingCurrency } from '@/app/api/lib/helpers/currency/top
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
-import { getLicenseeObjectId } from '@/lib/utils/licensee';
+import { getLicenceeObjectId } from '@/lib/utils/licencee';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -46,16 +46,16 @@ export async function GET(req: NextRequest) {
     const timePeriod: TimePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || '7d';
 
-    // Raw licensee from query (name, id, or "all")
-    const rawLicensee =
-      searchParams.get('licensee') || searchParams.get('licensee') || null;
+    // Raw licencee from query (name, id, or "all")
+    const rawLicencee =
+      searchParams.get('licencee') || null;
 
-    // Normalize licensee for DB filtering:
+    // Normalize licencee for DB filtering:
     // - Map known names (TTG, Cabana, etc.) → ObjectId
     // - Treat "all" / empty as undefined (no filter)
-    let licenseeForFilter: string | undefined;
-    if (rawLicensee && rawLicensee !== 'all') {
-      licenseeForFilter = getLicenseeObjectId(rawLicensee) || rawLicensee;
+    let licenceeForFilter: string | undefined;
+    if (rawLicencee && rawLicencee !== 'all') {
+      licenceeForFilter = getLicenceeObjectId(rawLicencee) || rawLicencee;
     }
 
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
     const data = await getTopPerformingMetrics(
       activeTab,
       timePeriod,
-      licenseeForFilter,
+      licenceeForFilter,
       customStartDate,
       customEndDate
     );
@@ -113,11 +113,11 @@ export async function GET(req: NextRequest) {
 
     let convertedData = data as unknown as TopPerformingItem[];
 
-    // Currency conversion ONLY for Admin/Developer when viewing "All Licensees" (no specific licensee selected)
-    // Only apply conversion if "all licensees" is selected AND display currency is not USD
+    // Currency conversion ONLY for Admin/Developer when viewing "All Licencees" (no specific licencee selected)
+    // Only apply conversion if "all licencees" is selected AND display currency is not USD
     const shouldConvert =
       isAdminOrDev &&
-      shouldApplyCurrencyConversion(rawLicensee) &&
+      shouldApplyCurrencyConversion(rawLicencee) &&
       displayCurrency &&
       displayCurrency !== 'USD';
 

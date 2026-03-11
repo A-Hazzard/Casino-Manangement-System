@@ -13,18 +13,18 @@
  * @module app/api/machines/[machineId]/route
  */
 
-import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import {
   convertFromUSD,
   convertToUSD,
   getCountryCurrency,
-  getLicenseeCurrency,
+  getLicenceeCurrency,
 } from '@/lib/helpers/rates';
 import type { MachineDocument } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
@@ -90,7 +90,8 @@ export async function GET(
     // STEP 3.5: Technician Restriction - Force last hour meter data
     // ============================================================================
     const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer');
-    const isOnlyTechnician = userRoles.length === 1 && userRoles[0].toLowerCase() === 'technician';
+    const userRolesLower = userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase());
+    const isOnlyTechnician = userRolesLower.includes('technician') && !userRolesLower.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
     if (isOnlyTechnician && !isAdmin) {
       console.warn('[API Machine Detail] Applying technician restriction: forcing LastHour timePeriod');
       timePeriod = 'LastHour';
@@ -159,11 +160,11 @@ export async function GET(
             name?: string;
             locationName?: string;
             gameDayOffset?: number;
-            rel?: { licensee?: string };
+            rel?: { licencee?: string };
           } | null;
 
         if (location) {
-          // Check if user has access to this location (includes both licensee and location permissions)
+          // Check if user has access to this location (includes both licencee and location permissions)
           const hasAccess = await checkUserLocationAccess(
             String(machine.gamingLocation)
           );
@@ -305,14 +306,14 @@ export async function GET(
     let finalCoinOut = coinOut;
 
     // For cabinet detail pages we ALWAYS convert from the machine's native currency
-    // into the selected display currency (including USD), regardless of licensee filter or role.
+    // into the selected display currency (including USD), regardless of licencee filter or role.
     // EXCEPT for cashiers and vault managers who should always see raw values.
     const shouldConvert = Boolean(displayCurrency) && !isStaff;
 
     if (shouldConvert) {
       // Get location details to determine native currency
       let locationData: {
-        rel?: { licensee?: string };
+        rel?: { licencee?: string };
         country?: string;
       } | null = null;
       if (machine.gamingLocation) {
@@ -322,7 +323,7 @@ export async function GET(
           })
             .select('rel country')
             .lean()) as {
-              rel?: { licensee?: string };
+              rel?: { licencee?: string };
               country?: string;
             } | null;
         } catch (error) {
@@ -333,26 +334,26 @@ export async function GET(
         }
       }
 
-      // Determine native currency from licensee or country
+      // Determine native currency from licencee or country
       let nativeCurrency: CurrencyCode = 'USD';
-      const licenseeId = locationData?.rel?.licensee || (locationData?.rel as unknown as Record<string, unknown>)?.licencee as string | undefined;
-      if (licenseeId) {
+      const licenceeId = locationData?.rel?.licencee || (locationData?.rel as unknown as Record<string, unknown>)?.licencee as string | undefined;
+      if (licenceeId) {
         try {
-          // Licensee _id is stored as a String in this project, not ObjectId
-          const licenseeDoc = await Licensee.findOne({
-            _id: licenseeId,
+          // Licencee _id is stored as a String in this project, not ObjectId
+          const licenceeDoc = await Licencee.findOne({
+            _id: licenceeId,
           })
             .select('name')
             .lean();
 
-          if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
-            // Map licensee name/id to its native currency (TTD, GYD, BBD, etc.)
-            nativeCurrency = getLicenseeCurrency(licenseeDoc.name);
+          if (licenceeDoc && !Array.isArray(licenceeDoc) && licenceeDoc.name) {
+            // Map licencee name/id to its native currency (TTD, GYD, BBD, etc.)
+            nativeCurrency = getLicenceeCurrency(licenceeDoc.name);
           }
-        } catch (licenseeError: unknown) {
+        } catch (licenceeError: unknown) {
           console.warn(
-            'Failed to resolve licensee for currency conversion:',
-            licenseeError instanceof Error ? licenseeError.message : licenseeError
+            'Failed to resolve licencee for currency conversion:',
+            licenceeError instanceof Error ? licenceeError.message : licenceeError
           );
         }
       } else if (locationData?.country) {

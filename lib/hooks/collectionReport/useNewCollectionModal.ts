@@ -60,40 +60,52 @@ export function useNewCollectionModal({
   onClose,
   logActivityCallback,
 }: UseNewCollectionModalProps) {
-  const { resetState: resetStoreState } = useCollectionModalStore();
+  const {
+    selectedLocationId,
+    setSelectedLocation,
+    lockedLocationId,
+    setLockedLocation,
+    collectedMachines: collectedMachineEntries,
+    setCollectedMachines: setCollectedMachineEntries,
+    financials,
+    setFinancials,
+    formData: storeFormData,
+    setFormData: setStoreFormData,
+    resetState: resetStoreState,
+  } = useCollectionModalStore();
 
   const [hasChanges, setHasChanges] = useState(false);
-  const [selectedLocationId, setSelectedLocationId] = useState<
-    string | undefined
-  >(undefined);
-  const [selectedLocationName, setSelectedLocationName] = useState<string>('');
+  const selectedLocationName = useCollectionModalStore(state => state.selectedLocationName);
+  
   const [machinesOfSelectedLocation, setMachinesOfSelectedLocation] = useState<
     CollectionReportMachineSummary[]
   >([]);
   const [machineSearchTerm, setMachineSearchTerm] = useState('');
-  const [lockedLocationId, setLockedLocationId] = useState<string | undefined>(
-    undefined
-  );
   const [selectedMachineId, setSelectedMachineId] = useState<
     string | undefined
   >(undefined);
-  const [currentCollectionTime, setCurrentCollectionTime] = useState<Date>(
-    new Date()
-  );
-  const [currentMetersIn, setCurrentMetersIn] = useState('');
-  const [currentMetersOut, setCurrentMetersOut] = useState('');
-  const [currentRamClearMetersIn, setCurrentRamClearMetersIn] = useState('');
-  const [currentRamClearMetersOut, setCurrentRamClearMetersOut] = useState('');
-  const [currentMachineNotes, setCurrentMachineNotes] = useState('');
-  const [currentRamClear, setCurrentRamClear] = useState(false);
+
+  const currentCollectionTime = storeFormData.collectionTime;
+  const currentMetersIn = storeFormData.metersIn;
+  const currentMetersOut = storeFormData.metersOut;
+  const currentRamClearMetersIn = storeFormData.ramClearMetersIn;
+  const currentRamClearMetersOut = storeFormData.ramClearMetersOut;
+  const currentMachineNotes = storeFormData.notes;
+  const currentRamClear = storeFormData.ramClear;
+
+  const setCurrentMetersIn = (val: string) => setStoreFormData({ metersIn: val });
+  const setCurrentMetersOut = (val: string) => setStoreFormData({ metersOut: val });
+  const setCurrentRamClearMetersIn = (val: string) => setStoreFormData({ ramClearMetersIn: val });
+  const setCurrentRamClearMetersOut = (val: string) => setStoreFormData({ ramClearMetersOut: val });
+  const setCurrentMachineNotes = (val: string) => setStoreFormData({ notes: val });
+  const setCurrentRamClear = (val: boolean) => setStoreFormData({ ramClear: val });
+  const setCurrentCollectionTime = (val: Date) => setStoreFormData({ collectionTime: val });
+
   const [showAdvancedSas, setShowAdvancedSas] = useState(false);
   const [customSasStartTime, setCustomSasStartTime] = useState<Date | null>(
     null
   );
   const [isFirstCollection, setIsFirstCollection] = useState(false);
-  const [collectedMachineEntries, setCollectedMachineEntries] = useState<
-    CollectionDocument[]
-  >([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [showUpdateConfirmation, setShowUpdateConfirmation] = useState(false);
@@ -117,19 +129,6 @@ export function useNewCollectionModal({
     useState(false);
   const [baseBalanceCorrection, setBaseBalanceCorrection] =
     useState<string>('0');
-
-  const [financials, setFinancials] = useState({
-    taxes: '0',
-    advance: '0',
-    variance: '0',
-    varianceReason: '',
-    amountToCollect: '0',
-    collectedAmount: '',
-    balanceCorrection: '0',
-    balanceCorrectionReason: '',
-    previousBalance: '0',
-    reasonForShortagePayment: '',
-  });
 
   const selectedLocation = useMemo(() => {
     const locationIdToUse = lockedLocationId || selectedLocationId;
@@ -156,18 +155,32 @@ export function useNewCollectionModal({
   );
 
   // Update location name when location changes
-  // Use selectedLocationId/lockedLocationId instead of selectedLocation to avoid dependency on locations array
+  // Handled by the store now via selectedLocationName being reactive
   useEffect(() => {
+    // This effect is mostly kept for machines fetching which depends on the IDs
     const locationIdToUse = lockedLocationId || selectedLocationId;
     if (locationIdToUse) {
-      const location = locations.find(l => String(l._id) === locationIdToUse);
-      if (location) {
-        setSelectedLocationName(location.name);
-      } else {
-        setSelectedLocationName('');
-      }
+      const fetchMachinesForLocation = async () => {
+        try {
+          const response = await axios.get(
+            `/api/machines?locationId=${locationIdToUse}&_t=${Date.now()}`
+          );
+          if (response.data?.success && response.data?.data) {
+            setMachinesOfSelectedLocation(response.data.data);
+          } else {
+            setMachinesOfSelectedLocation([]);
+          }
+        } catch (error) {
+          console.error('Error fetching machines for location:', error);
+          setMachinesOfSelectedLocation([]);
+        }
+      };
+      fetchMachinesForLocation();
+      setSelectedMachineId(undefined);
     } else {
-      setSelectedLocationName('');
+      setMachinesOfSelectedLocation([]);
+      setSelectedMachineId(undefined);
+      setMachineSearchTerm('');
     }
   }, [selectedLocationId, lockedLocationId, locations]);
 
@@ -265,7 +278,7 @@ export function useNewCollectionModal({
 
   const calculateAmountToCollect = useCallback(() => {
     if (!collectedMachineEntries.length || isLoadingExistingCollections) {
-      setFinancials(prev => ({ ...prev, amountToCollect: '0' }));
+      setFinancials({ amountToCollect: '0' });
       return;
     }
 
@@ -273,7 +286,7 @@ export function useNewCollectionModal({
       entry => entry.metersIn !== undefined && entry.metersOut !== undefined
     );
     if (!hasValidData) {
-      setFinancials(prev => ({ ...prev, amountToCollect: '0' }));
+      setFinancials({ amountToCollect: '0' });
       return;
     }
 
@@ -308,6 +321,7 @@ export function useNewCollectionModal({
     const taxes = Number(financials.taxes) || 0;
     const variance = Number(financials.variance) || 0;
     const advance = Number(financials.advance) || 0;
+    const balanceCorrection = Number(financials.balanceCorrection) || 0;
     const locationPreviousBalance = locationCollectionBalance;
     const profitShare = locationProfitShare;
 
@@ -319,17 +333,18 @@ export function useNewCollectionModal({
       variance -
       advance -
       partnerProfit +
-      locationPreviousBalance;
+      locationPreviousBalance +
+      balanceCorrection;
 
-    setFinancials(prev => ({
-      ...prev,
+    setFinancials({
       amountToCollect: amountToCollect.toFixed(2),
-    }));
+    });
   }, [
     collectedMachineEntries,
     financials.taxes,
     financials.variance,
     financials.advance,
+    financials.balanceCorrection,
     locationCollectionBalance,
     locationProfitShare,
     isLoadingExistingCollections,
@@ -397,18 +412,17 @@ export function useNewCollectionModal({
               firstCollection.machineId
             );
             if (properLocationId) {
-              setSelectedLocationId(properLocationId);
-              setLockedLocationId(properLocationId);
               const locationData = locations.find(
                 loc => String(loc._id) === properLocationId
               );
+              setSelectedLocation(properLocationId, locationData?.name || '');
+              setLockedLocation(properLocationId);
               if (locationData) {
-                setFinancials(prev => ({
-                  ...prev,
+                setFinancials({
                   previousBalance: (
                     locationData.collectionBalance || 0
                   ).toString(),
-                }));
+                });
               }
             }
           }
@@ -455,13 +469,13 @@ export function useNewCollectionModal({
           // Find the location by name in the locations array
           const matchingLocation = locations.find(loc => loc.name === firstEntry.location);
           if (matchingLocation) {
-            setLockedLocationId(String(matchingLocation._id));
+            setLockedLocation(String(matchingLocation._id));
           }
         }
       }
     }
-    // Only run when 'show' transitions from false to true
-  }, [show, collectedMachineEntries.length, selectedLocationId, lockedLocationId, locations]);
+    // Only run when 'show' transitions from false to true to avoid infinite refresh loops
+  }, [show]);
 
   useEffect(() => {
     const locationIdToUse = lockedLocationId || selectedLocationId;
@@ -561,10 +575,9 @@ export function useNewCollectionModal({
 
     if (hasChanges) {
       setCollectedMachineEntries([]);
-      setSelectedLocationId(undefined);
-      setSelectedLocationName('');
+      setSelectedLocation(undefined, '');
       setSelectedMachineId(undefined);
-      setLockedLocationId(undefined);
+      setLockedLocation(undefined);
       setMachineSearchTerm('');
       setHasChanges(false);
       resetStoreState();
@@ -602,8 +615,8 @@ export function useNewCollectionModal({
       };
 
       const createdCollection = await addMachineCollection(entryData);
-      setCollectedMachineEntries(prev => [...prev, createdCollection]);
-      setLockedLocationId(selectedLocationId);
+      setCollectedMachineEntries([...collectedMachineEntries, createdCollection]);
+      setLockedLocation(selectedLocationId);
       setHasChanges(true);
       setSelectedMachineId(undefined);
       setCurrentMetersIn('');
@@ -700,11 +713,10 @@ export function useNewCollectionModal({
         editingEntryId,
         updatedData
       );
-      setCollectedMachineEntries(prev =>
-        prev.map(e =>
-          String(e._id) === editingEntryId ? updatedCollection : e
-        )
+      const updatedList = collectedMachineEntries.map(e =>
+        String(e._id) === editingEntryId ? updatedCollection : e
       );
+      setCollectedMachineEntries(updatedList);
       setHasChanges(true);
       setEditingEntryId(null);
       setSelectedMachineId(undefined);
@@ -769,7 +781,7 @@ export function useNewCollectionModal({
         setCurrentMachineNotes('');
         setCurrentRamClear(false);
       }
-      if (updatedEntries.length === 0) setLockedLocationId(undefined);
+      if (updatedEntries.length === 0) setLockedLocation(undefined);
       setShowDeleteConfirmation(false);
       setEntryToDelete(null);
       toast.success('Collection entry removed');
@@ -899,8 +911,8 @@ export function useNewCollectionModal({
         duration: 5000,
       });
       setCollectedMachineEntries([]);
-      setLockedLocationId(undefined);
-      setSelectedLocationId(undefined);
+      setLockedLocation(undefined);
+      setSelectedLocation(undefined, '');
       setHasChanges(true);
       setShowCreateReportConfirmation(false);
       if (onSuccess) onSuccess();
@@ -916,16 +928,15 @@ export function useNewCollectionModal({
 
   const handleLocationChange = useCallback(
     (value: string) => {
-      setSelectedLocationId(value);
       const selectedLoc = locations.find(loc => String(loc._id) === value);
+      setSelectedLocation(value, selectedLoc?.name || '');
       if (selectedLoc) {
-        setFinancials(prev => ({
-          ...prev,
+        setFinancials({
           previousBalance: (selectedLoc.collectionBalance || 0).toString(),
-        }));
+        });
       }
     },
-    [locations]
+    [locations, setSelectedLocation, setFinancials]
   );
 
   const handleDisabledFieldClick = useCallback(() => {

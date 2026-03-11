@@ -7,7 +7,7 @@
  *
  * @module app/api/vault/transfers/route */
 
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { InterLocationTransferModel } from '@/app/api/lib/models/interLocationTransfer';
@@ -21,7 +21,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * Handler flow:
  * 1. Performance tracking and authentication
  * 2. Parse and validate request body
- * 3. Licensee/location filtering for both source and destination
+ * 3. Licencee/location filtering for both source and destination
  * 4. Database connection
  * 5. Create transfer record
  * 6. Save transfer and return response
@@ -75,10 +75,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3: Licensee/location filtering
+    // STEP 3: Licencee/location filtering
     // ============================================================================
     const allowedLocationIds = await getUserLocationFilter(
-      (userPayload?.assignedLicensees as string[]) || [],
+      (userPayload?.assignedLicencees as string[]) || [],
       undefined,
       (userPayload?.assignedLocations as string[]) || [],
       (userPayload?.roles as string[]) || []
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
  * Handler flow:
  * 1. Performance tracking and authentication
  * 2. Parse and validate request parameters
- * 3. Licensee/location filtering
+ * 3. Licencee/location filtering
  * 4. Database connection and query
  * 5. Return transfers list
  */
@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
     await connectDB();
 
     // ============================================================================
-    // Licensee/location filtering
+    // Licencee/location filtering
     // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
@@ -188,7 +188,7 @@ export async function GET(request: NextRequest) {
     }
 
     const allowedLocationIds = await getUserLocationFilter(
-      (userPayload?.assignedLicensees as string[]) || [],
+      (userPayload?.assignedLicencees as string[]) || [],
       undefined,
       (userPayload?.assignedLocations as string[]) || [],
       (userPayload?.roles as string[]) || []

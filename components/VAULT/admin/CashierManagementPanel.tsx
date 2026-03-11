@@ -46,7 +46,7 @@ import {
     handleUpdateCashierStatus
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 
@@ -91,7 +91,7 @@ export default function CashierManagementPanel({
   const { user, hasActiveVaultShift, isVaultReconciled, isStaleShift } = useUserStore();
   const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicensee } = useVaultLicensee();
+  const { licenceeId: selectedLicencee } = useVaultLicencee();
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -211,7 +211,7 @@ export default function CashierManagementPanel({
   const openEndShiftModal = async (cashier: Cashier) => {
     if (!checkVaultStatus('management')) return;
     setSelectedCashier(cashier);
-    setShiftDenominations(getInitialDenominationRecord(selectedLicensee));
+    setShiftDenominations(getInitialDenominationRecord(selectedLicencee));
     setShiftNotes('');
     
 
@@ -232,7 +232,7 @@ export default function CashierManagementPanel({
             setCurrentFloatRequest(req);
             
             // Init denominations
-            const denoms = getInitialDenominationRecord(selectedLicensee);
+            const denoms = getInitialDenominationRecord(selectedLicencee);
             req.denominations.forEach((d: Denomination) => {
                 if (denoms[d.denomination.toString()] !== undefined) {
                     denoms[d.denomination.toString()] = d.quantity;
@@ -393,7 +393,7 @@ export default function CashierManagementPanel({
         firstName: newCashier.firstName.trim(),
         lastName: newCashier.lastName.trim(),
         email: newCashier.email.trim(),
-        assignedLicensees: user?.assignedLicensees,
+        assignedLicencees: user?.assignedLicencees,
         assignedLocations: user?.assignedLocations,
       });
 
@@ -496,7 +496,7 @@ export default function CashierManagementPanel({
       if (result.success) {
         toast.success(`Shift ended for ${selectedCashier.username}. Move to Pending Review.`);
         setIsEndShiftModalOpen(false);
-        setShiftDenominations(getInitialDenominationRecord(selectedLicensee));
+        setShiftDenominations(getInitialDenominationRecord(selectedLicencee));
         setShiftNotes('');
         fetchCashiers();
       } else {
@@ -1037,7 +1037,7 @@ export default function CashierManagementPanel({
           
           <div className="space-y-6 py-4">
              <div className="grid grid-cols-1 gap-y-4">
-                {getDenominationValues(selectedLicensee).map(denom => {
+                {getDenominationValues(selectedLicencee).map(denom => {
                    return (
                     <div key={denom} className="flex items-center gap-4">
                        <div className="flex-1 space-y-1.5">

@@ -4,7 +4,7 @@
  * This route handles fetching top performing machines with detailed metrics.
  * It supports:
  * - Filtering by time period
- * - Optional filtering by licensee and location IDs
+ * - Optional filtering by licencee and location IDs
  * - Aggregating financial and gaming metrics
  * - Sorting by handle (highest performers first)
  *
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licensee = searchParams.get('licensee');
+    const licencee = (searchParams.get('licencee'));
     const locationIds = searchParams.get('locationIds');
     const limit = parseInt(searchParams.get('limit') || '5');
 
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const topMachines = await getTopMachinesDetailed(
       timePeriod,
-      licensee,
+      licencee,
       locationIds,
       limit
     );

@@ -3,7 +3,7 @@
  * Tab navigation component for administration page with role-based access control.
  *
  * Features:
- * - Tab-based navigation (Users, Licensees, Activity Logs, Feedback)
+ * - Tab-based navigation (Users, Licencees, Activity Logs, Feedback)
  * - Role-based tab filtering (only shows accessible tabs)
  * - Active tab highlighting
  * - Responsive design (desktop and mobile)
@@ -55,8 +55,8 @@ export default function AdministrationNavigation({
     switch (tab.id) {
       case 'users':
         return hasTabAccess(userRoles, 'administration', 'users');
-      case 'licensees':
-        return hasTabAccess(userRoles, 'administration', 'licensees');
+      case 'licencees':
+        return hasTabAccess(userRoles, 'administration', 'licencees');
       case 'activity-logs':
         return hasTabAccess(userRoles, 'administration', 'activity-logs');
       case 'feedback':

@@ -223,11 +223,11 @@ Key features include:
 
 **API Endpoints:**
 
--   `GET /api/locationAggregation/[locationId]` - Fetches aggregated financial data for the specific location, based on the selected date range and licensee (handled by `useLocationCabinetsData`).
+-   `GET /api/locationAggregation/[locationId]` - Fetches aggregated financial data for the specific location, based on the selected date range and licencee (handled by `useLocationCabinetsData`).
 
 **Data Flow:**
 
-1.  `useLocationCabinetsData` hook fetches aggregated financial data (`financialTotals`) for the specific `locationId` and currently selected `activeMetricsFilter`/`customDateRange`/`selectedLicensee`.
+1.  `useLocationCabinetsData` hook fetches aggregated financial data (`financialTotals`) for the specific `locationId` and currently selected `activeMetricsFilter`/`customDateRange`/`selectedLicencee`.
 2.  `FinancialMetricsCards` displays these `financialTotals` (Money In, Money Out, Gross).
 
 **Key Functions:**
@@ -295,7 +295,7 @@ Key features include:
 
 -   **GET `/api/locations/[locationId]/cabinets`**
     *   **Purpose:** Fetch machines for specific location.
-    *   **Query Parameters:** `page`, `limit`, `search`, `status`, `sortBy`, `sortOrder`, `gameType`, `timePeriod`, `startDate`, `endDate`, `currency`, `licensee`
+    *   **Query Parameters:** `page`, `limit`, `search`, `status`, `sortBy`, `sortOrder`, `gameType`, `timePeriod`, `startDate`, `endDate`, `currency`, `licencee`
     *   **Response:** `{ success: true, data: Cabinet[], pagination: PaginationData }`
     *   **Used By:** `useLocationCabinetsData` hook.
 
@@ -333,19 +333,19 @@ Key features include:
 
 -   **GET `/api/locationAggregation/[locationId]`**
     *   **Purpose:** Fetch aggregated financial data for a specific location.
-    *   **Query Parameters:** `timePeriod`, `startDate`, `endDate`, `currency`, `licensee`
+    *   **Query Parameters:** `timePeriod`, `startDate`, `endDate`, `currency`, `licencee`
     *   **Response:** `{ success: true, data: LocationAggregation }`
     *   **Used By:** `useLocationCabinetsData` for financial totals displayed in `FinancialMetricsCards`.
 
 -   **GET `/api/analytics/machines/stats`**
     *   **Purpose:** Fetch machine online/offline status counts for a location.
-    *   **Query Parameters:** `locationId`, `gameType`, `searchTerm`, `licensee`
+    *   **Query Parameters:** `locationId`, `gameType`, `searchTerm`, `licencee`
     *   **Response:** `{ success: true, data: MachineStatusCounts }`
     *   **Used By:** `useLocationMachineStats` hook for the `MachineStatusWidget`.
 
 -   **GET `/api/analytics/membership/stats`**
     *   **Purpose:** Fetch membership statistics for a location.
-    *   **Query Parameters:** `locationId`, `licensee`
+    *   **Query Parameters:** `locationId`, `licencee`
     *   **Response:** `{ success: true, data: MembershipStats }`
     *   **Used By:** `useLocationMembershipStats` hook to determine `membershipCount` for the 'Members' tab visibility.
 
@@ -353,13 +353,13 @@ Key features include:
 
 -   **GET `/api/analytics/location-trends`**
     *   **Purpose:** Fetch aggregated location trend data.
-    *   **Query Parameters:** `locationId` (plural `locationIds` is used in Dashboard context, here it's singular), `timePeriod`, `licensee`, `startDate`, `endDate`, `currency`, `granularity`, `status`, `gameType`
+    *   **Query Parameters:** `locationId` (plural `locationIds` is used in Dashboard context, here it's singular), `timePeriod`, `licencee`, `startDate`, `endDate`, `currency`, `granularity`, `status`, `gameType`
     *   **Response:** `{ success: true, trends: Array<{ day, time, handle, winLoss, jackpot, plays, drop, gross }> }`
     *   **Used By:** `useLocationChartData` when `activeMetricsFilter` is 'Custom' or for long periods (Quarterly/All Time) with monthly/weekly granularity.
 
 -   **GET `/api/machines/[machineId]/chart`**
     *   **Purpose:** Fetch chart data for individual machines.
-    *   **Query Parameters:** `timePeriod`, `startDate`, `endDate`, `currency`, `licensee`, `granularity`, `machineId`
+    *   **Query Parameters:** `timePeriod`, `startDate`, `endDate`, `currency`, `licencee`, `granularity`, `machineId`
     *   **Response:** `{ success: true, data: Array<{ day, time, drop, totalCancelledCredits, gross }>, dataSpan?: { minDate, maxDate } }`
     *   **Used By:** `useLocationChartData` for non-'Custom' `activeMetricsFilter` periods (Today, Yesterday, 7d, 30d). Data is fetched for all machines in the location and then aggregated client-side to form the location-level chart.
 
@@ -370,13 +370,13 @@ Key features include:
 ### Hooks
 
 -   **`useLocationCabinetsData`** (`lib/hooks/locations/useLocationCabinetsData.ts`)
-    *   **Parameters:** `locationId`, `selectedLicensee`, `activeMetricsFilter`, `customDateRange`, `dateFilterInitialized`, `filtersInitialized`, `isAdminUser`, `setDateFilterInitialized`, `setFiltersInitialized`.
+    *   **Parameters:** `locationId`, `selectedLicencee`, `activeMetricsFilter`, `customDateRange`, `dateFilterInitialized`, `filtersInitialized`, `isAdminUser`, `setDateFilterInitialized`, `setFiltersInitialized`.
     *   **Purpose:** Fetches and manages the list of machines/cabinets for the specified `locationId`, including their aggregated financial data.
     *   **Features:** Handles pagination, search, game type, and status filtering. Manages internal loading states and initial data fetching to ensure filters are applied correctly. Provides `locationName`, `locationMembershipEnabled`, `financialTotals`, `filteredCabinets`, `gameTypes`, `locations`, and various filter states and setters.
     *   **Provides:** `financialTotals`, `filteredCabinets`, `gameTypes`, `locationName`, `locationMembershipEnabled`, `loading`, `cabinetsLoading`, `refreshing`, filter states, setters, and `refreshCabinets` function.
 
 -   **`useLocationChartData`** (`lib/hooks/locations/useLocationChartData.ts`)
-    *   **Parameters:** `locationId`, `selectedLicensee`, `activeMetricsFilter`, `customDateRange`, `activeView`, `status`, `gameType`.
+    *   **Parameters:** `locationId`, `selectedLicencee`, `activeMetricsFilter`, `customDateRange`, `activeView`, `status`, `gameType`.
     *   **Purpose:** Manages fetching and processing chart data for the location.
     *   **Features:** Dynamically selects API endpoints based on `activeMetricsFilter` and `granularity`. Includes abort controller support for request cancellation, granularity detection, and manual override options. Filters chart data based on machine `status` and `gameType` from the machines filter bar.
     *   **Provides:** `chartData`, `loadingChartData`, `chartGranularity`, `setChartGranularity`, `showGranularitySelector`, `availableGranularityOptions`, `refreshChart` function.
@@ -399,10 +399,10 @@ Key features include:
 ### Stores
 
 -   **`useDashBoardStore`** (`lib/store/dashboardStore.ts`) - Zustand store
-    *   `selectedLicensee` - Selected licensee filter.
+    *   `selectedLicencee` - Selected licencee filter.
     *   `activeMetricsFilter` - Active date filter type.
     *   `customDateRange` - Custom date range.
-    *   `setSelectedLicensee` - Licensee selection setter.
+    *   `setSelectedLicencee` - Licencee selection setter.
 
 -   **`useUserStore`** (`lib/store/userStore.ts`) - Zustand store
     *   `user` - Current user object.
@@ -526,7 +526,7 @@ Key features include:
 ### Role-Based Access
 
 - **Admin/Developer**: Full access to all features
-- **Manager**: Access to assigned licensee locations
+- **Manager**: Access to assigned licencee locations
 - **Collector/Location Admin**: Access to assigned locations only
 - **Technician**: Limited access (may be redirected to cabinets)
 
@@ -585,6 +585,6 @@ Key features include:
 ### Integration Points
 
 - **Dashboard Filters**: Uses shared date filtering from dashboard store
-- **Licensee Selection**: Integrated with global licensee filtering
+- **Licencee Selection**: Integrated with global licencee filtering
 - **Machine Status**: Real-time status updates via WebSocket/MQTT
 - **Financial Calculations**: Shared calculation utilities across pages

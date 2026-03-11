@@ -48,7 +48,7 @@ type CabinetSortOption =
 
 type UseLocationCabinetsDataProps = {
   locationId: string;
-  selectedLicensee: string | null;
+  selectedLicencee: string | null;
   activeMetricsFilter: string | null;
   customDateRange: DateRange | null;
   dateFilterInitialized: boolean;
@@ -64,7 +64,7 @@ const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
 
 export function useLocationCabinetsData({
   locationId,
-  selectedLicensee,
+  selectedLicencee,
   activeMetricsFilter,
   customDateRange,
   dateFilterInitialized,
@@ -283,7 +283,7 @@ export function useLocationCabinetsData({
 
       fetchCabinetsForLocation(
         locationId,
-        selectedLicensee ?? undefined,
+        selectedLicencee ?? undefined,
         activeMetricsFilter,
         undefined, // No searchTerm for batch fetching
         activeMetricsFilter === 'Custom' && customDateRange
@@ -351,7 +351,7 @@ export function useLocationCabinetsData({
 
       fetchCabinetsForLocation(
         locationId,
-        selectedLicensee ?? undefined,
+        selectedLicencee ?? undefined,
         activeMetricsFilter,
         undefined, // No searchTerm for batch fetching
         activeMetricsFilter === 'Custom' && customDateRange
@@ -421,7 +421,7 @@ export function useLocationCabinetsData({
         ? JSON.stringify(customDateRange)
         : 'none';
 
-    const fetchKey = `${locationId}-${selectedLicensee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}-${selectedStatus}`;
+    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}-${selectedStatus}`;
 
     const fetchData = async () => {
       // Only proceed if filters are initialized
@@ -507,9 +507,9 @@ export function useLocationCabinetsData({
           }
         }
 
-        // Fetch locations for the selected licensee
+        // Fetch locations for the selected licencee
         const formattedLocations = await fetchAllGamingLocations(
-          isAdminUser ? 'all' : (selectedLicensee ?? undefined)
+          isAdminUser ? 'all' : (selectedLicencee ?? undefined)
         );
         setLocations(formattedLocations);
 
@@ -558,7 +558,7 @@ export function useLocationCabinetsData({
           setAllCabinets([]);
           setAccumulatedCabinets([]);
           setLoadedBatches(new Set());
-          setError('No locations found for the selected licensee.');
+          setError('No locations found for the selected licencee.');
           setLoading(false);
           setCabinetsLoading(false);
           return;
@@ -599,7 +599,7 @@ export function useLocationCabinetsData({
           const result = await makeCabinetsRequest(async signal => {
             return await fetchCabinetsForLocation(
               locationId,
-              selectedLicensee ?? undefined,
+              selectedLicencee ?? undefined,
               activeMetricsFilter,
               debouncedSearchTerm?.trim() || undefined,
               activeMetricsFilter === 'Custom' && customDateRange
@@ -699,7 +699,7 @@ export function useLocationCabinetsData({
     fetchData();
   }, [
     locationId,
-    selectedLicensee,
+    selectedLicencee,
     activeMetricsFilter,
     customDateRange,
     dateFilterInitialized,

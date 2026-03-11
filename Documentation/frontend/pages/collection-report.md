@@ -92,14 +92,14 @@ Key features include:
 
 **Data Flow:**
 1. Component fetches collection reports via `useCollectionReportPageData` hook
-2. Reports filtered by licensee, date range, and search term
+2. Reports filtered by licencee, date range, and search term
 3. Pagination handled with batch loading optimization
 4. User can create, edit, or delete reports via modals
 5. Date filters integrate with dashboard date filter system
 
 **Key Functions:**
 - `useCollectionReportPageData` (`lib/hooks/collectionReport/useCollectionReportPageData.ts`) - Main data hook
-- `fetchCollectionReportsByLicensee` (`lib/helpers/collectionReport.ts`) - Fetch reports
+- `fetchCollectionReportsByLicencee` (`lib/helpers/collectionReport.ts`) - Fetch reports
 - `getLocationsWithMachines` (`lib/helpers/collectionReport.ts`) - Fetch locations for modals
 - `handleRefresh` - Refresh reports data
 - `handleEdit` - Open edit modal
@@ -121,7 +121,7 @@ Key features include:
 - Batch loading optimization (loads 50 items per batch, displays 10 per page)
 - Search filters by location name, report ID
 - Date filters support: Today, Yesterday, Last 7 Days, Last 30 Days, Custom range, All Time
-- Role-based filtering applies based on user's assigned locations/licensees
+- Role-based filtering applies based on user's assigned locations/licencees
 
 ---
 
@@ -139,7 +139,7 @@ Key features include:
 
 **Data Flow:**
 1. Component uses `useMonthlyReportData` hook.
-2. Monthly data aggregated by location/licensee, filtered by 'location' and 'date range'.
+2. Monthly data aggregated by location/licencee, filtered by 'location' and 'date range'.
 3. Data displayed in summary format.
 
 **Key Functions:**
@@ -148,7 +148,7 @@ Key features include:
 
 **Notes:**
 - Shows aggregated monthly collection data
-- Filtered by selected licensee and date range
+- Filtered by selected licencee and date range
 
 ---
 
@@ -256,7 +256,7 @@ Key features include:
 - **GET `/api/collectionReport`**
   - **Purpose:** Fetch collection reports with pagination and filtering
   - **Query Parameters:**
-    - `licensee` - Licensee filter (optional)
+    - `licencee` - Licencee filter (optional)
     - `timePeriod` - Time period filter (today, yesterday, week, month, custom)
     - `startDate` - Custom start date (ISO string, required if timePeriod=custom)
     - `endDate` - Custom end date (ISO string, required if timePeriod=custom)
@@ -308,7 +308,7 @@ Key features include:
 
 - **GET `/api/locations`**
   - **Purpose:** Fetch gaming locations
-  - **Query Parameters:** `licensee` - Licensee filter (optional)
+  - **Query Parameters:** `licencee` - Licencee filter (optional)
   - **Response:** `{ locations: Location[] }`
   - **Used By:** Collection modals, filters
 
@@ -340,10 +340,10 @@ Key features include:
   - Provides managers and schedules
 
 - **`useDashBoardStore`** (`lib/store/dashboardStore.ts`) - Zustand store
-  - `selectedLicensee` - Selected licensee for filtering
+  - `selectedLicencee` - Selected licencee for filtering
   - `activeMetricsFilter` - Active date filter type
   - `customDateRange` - Custom date range (if Custom filter selected)
-  - `setSelectedLicensee` - Licensee selection setter
+  - `setSelectedLicencee` - Licencee selection setter
 
 ### State Properties
 
@@ -367,7 +367,7 @@ Key features include:
 
 ### Data Fetching
 
-- **`fetchCollectionReportsByLicensee`** (`lib/helpers/collectionReport.ts`)
+- **`fetchCollectionReportsByLicencee`** (`lib/helpers/collectionReport.ts`)
   - Fetches collection reports with pagination and filtering
   - Handles date range and time period mapping
   - Returns reports array and pagination data
@@ -436,8 +436,8 @@ Key features include:
 
 ### Role-Based Access Control
 
-- **Admin/Developer**: Full access to all features across all licensees
-- **Manager**: Access to assigned licensees. Can edit and delete only the **two most recent** reports per location. Older reports are view-only.
+- **Admin/Developer**: Full access to all features across all licencees
+- **Manager**: Access to assigned licencees. Can edit and delete only the **two most recent** reports per location. Older reports are view-only.
 - **Collector/Location Admin**: Access to assigned locations only.
 - **Technician**: No access (redirected to Cabinets)
 

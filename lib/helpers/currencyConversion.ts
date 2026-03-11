@@ -2,11 +2,11 @@
  * Currency Conversion Helper Functions
  *
  * Provides helper functions for converting financial data between different currencies
- * based on licensee settings. Currency conversion only applies when "All Licensee" is selected
- * and the licensee uses a currency other than USD.
+ * based on licencee settings. Currency conversion only applies when "All Licencee" is selected
+ * and the licencee uses a currency other than USD.
  *
  * Features:
- * - Check if currency conversion should be applied based on licensee
+ * - Check if currency conversion should be applied based on licencee
  */
 
 import {
@@ -14,11 +14,11 @@ import {
 } from './rates';
 
 /**
- * Check if currency conversion should be applied based on licensee
+ * Check if currency conversion should be applied based on licencee
  */
 export function shouldApplyCurrencyConversion(
-  licensee: string | null | undefined
+  licencee: string | null | undefined
 ): boolean {
-  return shouldApplyConversion(licensee);
+  return shouldApplyConversion(licencee);
 }
 

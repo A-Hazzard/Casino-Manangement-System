@@ -17,6 +17,7 @@
 import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { Input } from '@/components/shared/ui/input';
 import { Textarea } from '@/components/shared/ui/textarea';
+import { Info } from 'lucide-react';
 import {
     Tooltip,
     TooltipContent,
@@ -135,13 +136,13 @@ export default function CollectionReportNewCollectionFinancials({
           />
         </div>
         <div>
-          <label className="mb-2 flex items-center text-sm font-medium text-gray-700">
+          <label className="mb-2 flex items-center text-sm font-bold text-gray-700">
             Amount To Collect:{' '}
             <span className="text-red-500 ml-1">*</span>
             <CalculationHelp 
               title="Amount to Collect" 
-              formula="(Gross - Variance - Advance) - PartnerProfit + PrevBalance" 
-              description="The total cash that the collector is expected to retrieve from the machines at this location."
+              formula="(Total Meters In - Total Meters Out) - Variance - Advance - Partner Share + Opening Balance" 
+              description="This is the target amount of cash you should have in hand. It takes the total machine revenue and subtracts expenses (Advance/Variance) and the Partner's profit share, then adds any balance carried over from the last collection."
             />
           </label>
           <Input
@@ -149,17 +150,20 @@ export default function CollectionReportNewCollectionFinancials({
             placeholder="0"
             value={financials.amountToCollect}
             readOnly
-            className="cursor-not-allowed bg-gray-100"
+            className="cursor-not-allowed bg-gray-50 font-semibold text-gray-900"
             title="This value is automatically calculated"
           />
+          <p className="mt-1 text-[10px] text-gray-500 italic">
+            Computed automatically based on meters and settings.
+          </p>
         </div>
         <div>
-          <label className="mb-2 flex items-center text-sm font-medium text-gray-700">
+          <label className="mb-2 flex items-center text-sm font-bold text-gray-700">
             Collected Amount:
             <CalculationHelp 
               title="Collected Amount" 
-              formula="Value entered manually" 
-              description="The actual amount of cash retrieved and counted by the collector."
+              formula="The actual physical cash you counted" 
+              description="This is the most important field. Enter the total amount of cash you actually retrieved and counted from all machines. This should ideally match the 'Amount to Collect' field."
             />
           </label>
           <TooltipProvider>
@@ -199,15 +203,25 @@ export default function CollectionReportNewCollectionFinancials({
               ) : null}
             </Tooltip>
           </TooltipProvider>
+          <p className="mt-1.5 text-xs leading-tight font-medium">
+            {(baseBalanceCorrection.trim() === '' && financials.balanceCorrection.trim() === '') 
+              ? <span className="text-amber-600 flex items-center gap-1.5 bg-amber-50 p-2 rounded border border-amber-200">
+                  <Info className="h-3.5 w-3.5 shrink-0" />
+                  Locked: Enter a Balance Correction first (even if 0) to unlock this field.
+                </span>
+              : <span className="text-blue-700 bg-blue-50 p-2 rounded border border-blue-200 block">
+                  Action: Count all physical cash collected from machines and enter the exact total here.
+                </span>}
+          </p>
         </div>
         <div>
-          <label className="mb-2 flex items-center text-sm font-medium text-gray-700">
+          <label className="mb-2 flex items-center text-sm font-bold text-gray-700">
             Balance Correction:{' '}
             <span className="text-red-500 ml-1">*</span>
             <CalculationHelp 
               title="Balance Correction" 
-              formula="Value entered manually" 
-              description="Adjustment made to resolve any ongoing balance issues from previous periods."
+              formula="Manual Adjustment to Opening Balance" 
+              description="Use this to set or adjust the starting balance for this collection. It 'unlocks' the Collected Amount field to ensure you acknowledge the starting state before entering the collection results."
             />
           </label>
           <TooltipProvider>
@@ -247,6 +261,16 @@ export default function CollectionReportNewCollectionFinancials({
               ) : null}
             </Tooltip>
           </TooltipProvider>
+          <p className="mt-1.5 text-xs leading-tight font-medium">
+            {financials.collectedAmount.trim() !== '' 
+              ? <span className="text-amber-600 flex items-center gap-1.5 bg-amber-50 p-2 rounded border border-amber-200">
+                  <Info className="h-3.5 w-3.5 shrink-0" />
+                  Note: Clear the 'Collected Amount' above if you need to re-adjust this field.
+                </span> 
+              : <span className="text-gray-600 bg-gray-50 p-2 rounded border border-gray-200 block">
+                  Required: Set the opening balance or adjustments for this collection batch.
+                </span>}
+          </p>
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -266,9 +290,9 @@ export default function CollectionReportNewCollectionFinancials({
           <label className="mb-2 flex items-center text-sm font-medium text-gray-700">
             Previous Balance:
             <CalculationHelp 
-              title="Previous Balance" 
+              title="Current/New Balance" 
               formula="Collected Amount - Amount to Collect" 
-              description="Automatically tracks shortages or overages. This becomes the balance for the next collection."
+              description="This shows if there is a shortage (negative) or overage (positive) in the collection. This value will be carried over as the 'Opening Balance' for the next collection at this location."
             />
           </label>
           <Input
@@ -296,6 +320,63 @@ export default function CollectionReportNewCollectionFinancials({
             className="min-h-[40px]"
             disabled={isProcessing}
           />
+        </div>
+      </div>
+
+      {/* Financial Reconciliation Summary Breakdown */}
+      <div className="mt-6 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/40 p-5 shadow-sm">
+        <h5 className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-900">
+          <Info className="h-4 w-4 text-blue-600" />
+          Batch Financial Reconciliation Summary
+        </h5>
+        
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Target Collection</p>
+            <p className="text-lg font-black text-blue-900">${financials.amountToCollect || '0.00'}</p>
+            <p className="text-[10px] text-blue-700/70 italic leading-tight">
+              Expected amount based on meters and profit share.
+            </p>
+          </div>
+          
+          <div className="space-y-1 border-l border-blue-100 pl-4 md:border-l md:pl-6">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Actual Collected</p>
+            <p className="text-lg font-black text-blue-900">${financials.collectedAmount || '0.00'}</p>
+            <p className="text-[10px] text-blue-700/70 italic leading-tight">
+              Total physical cash retrieving from all machines.
+            </p>
+          </div>
+          
+          <div className="space-y-1 border-l border-blue-100 pl-4 md:border-l md:pl-6">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">New Carry-Over Balance</p>
+            <p className={`text-lg font-black ${Number(financials.previousBalance) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+              ${financials.previousBalance || '0.00'}
+            </p>
+            <p className="text-[10px] text-blue-700/70 italic leading-tight">
+              The shortage/overage results for the next collection.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 border-t border-blue-100 pt-4">
+          <div className="flex flex-col gap-2 rounded-lg bg-white/50 p-3 border border-blue-50">
+            <p className="text-[11px] font-bold text-blue-900 flex items-center gap-1.5">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+              The Reconciliation Breakdown:
+            </p>
+            <p className="text-xs font-mono text-blue-800 leading-relaxed bg-blue-50/50 p-2 rounded">
+              <span className="font-bold text-blue-600">{financials.collectedAmount || '0.00'}</span> (Actual) 
+              <span className="mx-1.5 text-blue-400">minus</span>
+              <span className="font-bold text-blue-600">{financials.amountToCollect || '0.00'}</span> (Target)
+              <span className="mx-2 text-blue-400 font-bold">=</span>
+              <span className={`font-bold ${Number(financials.previousBalance) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {financials.previousBalance || '0.00'}
+              </span> (New Balance)
+            </p>
+            <p className="text-[10px] text-gray-500 italic mt-1">
+              Note: The 'Balance Correction' set earlier acts as the opening anchor to reconcile this batch.
+            </p>
+          </div>
         </div>
       </div>
     </>

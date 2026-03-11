@@ -38,8 +38,8 @@ The API automatically filters results based on the current user's permissions:
 ```typescript
 // 1. Get user's accessible locations
 const allowedLocationIds = await getUserLocationFilter(
-  isAdmin ? 'all' : userAccessibleLicensees,
-  licensee || undefined,
+  isAdmin ? 'all' : userAccessibleLicencees,
+  licencee || undefined,
   userLocationPermissions,
   userRoles
 );
@@ -220,7 +220,7 @@ All GET requests are automatically filtered by user's accessible locations:
 User: {
   roles: ['collector'],
   assignedLocations: ['LOCATION_A_ID', 'LOCATION_B_ID'],
-  assignedLicensees: ['TTG_ID']
+  assignedLicencees: ['TTG_ID']
 }
 
 // API automatically filters:
@@ -234,8 +234,8 @@ Collections.find({
 | Role | Access Level |
 |------|-------------|
 | **Developer/Admin** | All collections across all locations |
-| **Manager** | All collections for assigned licensees |
-| **Collector/Location Admin/Technician** | Only collections for assigned locations (intersection of licensee locations ∩ user's location permissions) |
+| **Manager** | All collections for assigned licencees |
+| **Collector/Location Admin/Technician** | Only collections for assigned locations (intersection of licencee locations ∩ user's location permissions) |
 
 #### 3. **Incomplete Collections Isolation**
 
@@ -384,7 +384,7 @@ GET /api/collections?machineId=<machineId>&beforeTimestamp=<date>&sortBy=timesta
 **Issue**: The GET endpoint was not checking user's `assignedLocations`, allowing any user with a valid token to view collections from any location by manipulating URL parameters.
 
 **Fix**: Implemented `getUserLocationFilter` to:
-1. Get user's role, licensees, and location permissions
+1. Get user's role, licencees, and location permissions
 2. Calculate allowed location IDs based on role hierarchy
 3. Convert location IDs to location names
 4. Filter collections by those names
@@ -512,7 +512,7 @@ console.log('Incomplete collections:', collections.length);
 ## Related Documentation
 
 - [Collection Report System](./collection-report.md) - Parent report system
-- [Licensee & Location Access Control](./../licensee-location-filtering.md) - Permission system
+- [Licencee & Location Access Control](./../licencee-location-filtering.md) - Permission system
 - [Database Models](./../database-models.md) - Collection schema
 - [API Overview](./api-overview.md) - General API patterns
 

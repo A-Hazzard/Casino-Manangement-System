@@ -5,17 +5,17 @@
  * It supports:
  * - Multiple report types (overview, stats, all, offline)
  * - Time period filtering (today, week, month, custom dates)
- * - Licensee filtering
+ * - Licencee filtering
  * - Location filtering
  * - Online/offline status filtering
  * - Search functionality
- * - Currency conversion (Admin/Developer only for "All Licensees")
+ * - Currency conversion (Admin/Developer only for "All Licencees")
  * - Pagination
  *
  * @module app/api/reports/machines/route
  */
 
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import {
   getAllMachines,
   getMachineStats,
@@ -52,8 +52,8 @@ export async function GET(req: NextRequest) {
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
 
-    const licensee =
-      searchParams.get('licensee') || searchParams.get('licensee') || undefined;
+    const licencee =
+      searchParams.get('licencee') || undefined;
     const onlineStatus = searchParams.get('onlineStatus') || 'all';
     const searchTerm = searchParams.get('search');
     const locationId = searchParams.get('locationId');
@@ -97,16 +97,16 @@ export async function GET(req: NextRequest) {
     const isAdminOrDev =
       userRoles.includes('admin') || userRoles.includes('developer');
 
-    const assignedLicensees =
-      (userPayload as { assignedLicensees?: string[] })?.assignedLicensees ||
+    const assignedLicencees =
+      (userPayload as { assignedLicencees?: string[] })?.assignedLicencees ||
       [];
     const assignedLocations =
       (userPayload as { assignedLocations?: string[] })?.assignedLocations ||
       [];
 
     const allowedLocationIds = await getUserLocationFilter(
-      isAdminOrDev ? 'all' : assignedLicensees,
-      licensee,
+      isAdminOrDev ? 'all' : assignedLicencees,
+      licencee,
       assignedLocations,
       userRoles
     );
@@ -193,14 +193,13 @@ export async function GET(req: NextRequest) {
       locationMatchStage._id = { $in: allowedLocationIds };
     }
 
-    if (licensee && licensee !== 'all') {
+    if (licencee && licencee !== 'all') {
       if (!locationMatchStage.$and) {
         locationMatchStage.$and = [];
       }
       (locationMatchStage.$and as Array<Record<string, unknown>>).push({
         $or: [
-          { 'rel.licensee': licensee },
-          { 'rel.licencee': licensee }
+          { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  }
         ]
       });
     }
@@ -216,7 +215,7 @@ export async function GET(req: NextRequest) {
           locationMatchStage,
           startDate,
           endDate,
-          licensee,
+          licencee,
           displayCurrency,
           isAdminOrDev,
           timePeriod

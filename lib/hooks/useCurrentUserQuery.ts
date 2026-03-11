@@ -36,7 +36,7 @@ type CurrentUserResponse = {
     roles: string[];
     isEnabled: boolean;
     assignedLocations?: string[];
-    assignedLicensees?: string[];
+    assignedLicencees?: string[];
     createdAt: string;
     updatedAt: string;
     requiresProfileUpdate?: boolean;
@@ -110,7 +110,7 @@ export function useCurrentUserQuery() {
         roles: dbUser.roles,
         isEnabled: dbUser.isEnabled,
         assignedLocations: dbUser.assignedLocations,
-        assignedLicensees: dbUser.assignedLicensees,
+        assignedLicencees: dbUser.assignedLicencees,
         requiresProfileUpdate: dbUser.requiresProfileUpdate,
         requiresPasswordUpdate: dbUser.requiresPasswordUpdate,
         invalidProfileFields: dbUser.invalidProfileFields,
@@ -127,8 +127,8 @@ export function useCurrentUserQuery() {
 
         if (process.env.NODE_ENV === 'development') {
           console.log(
-            '✅ User store updated with assignedLicensees:',
-            dbUser.assignedLicensees
+            '✅ User store updated with assignedLicencees:',
+            dbUser.assignedLicencees
           );
         }
       }

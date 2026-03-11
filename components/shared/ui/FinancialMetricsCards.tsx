@@ -5,7 +5,7 @@
  * Features:
  * - Financial metrics display (Money In, Money Out, Gross)
  * - Currency conversion support
- * - Licensee-specific currency resolution
+ * - Licencee-specific currency resolution
  * - Loading states with skeleton
  * - Currency caching
  * - Responsive card layout
@@ -20,8 +20,8 @@
 
 import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
 import { DashboardFinancialMetricsSkeleton } from '@/components/shared/ui/skeletons/DashboardSkeletons';
-import { fetchLicenseeById } from '@/lib/helpers/client';
-import { getCountryCurrency, getLicenseeCurrency } from '@/lib/helpers/rates';
+import { fetchLicenceeById } from '@/lib/helpers/client';
+import { getCountryCurrency, getLicenceeCurrency } from '@/lib/helpers/rates';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import {
@@ -44,7 +44,7 @@ type FinancialMetricsCardsProps = {
   disableCurrencyConversion?: boolean;
 };
 
-const licenseeCurrencyCache: Record<string, CurrencyCode> = {};
+const licenceeCurrencyCache: Record<string, CurrencyCode> = {};
 
 export default function FinancialMetricsCards({
   totals,
@@ -52,7 +52,7 @@ export default function FinancialMetricsCards({
   title = 'Financial Metrics',
   className = '',
 }: FinancialMetricsCardsProps) {
-  const { selectedLicensee } = useDashBoardStore();
+  const { selectedLicencee } = useDashBoardStore();
   const { displayCurrency } = useCurrencyFormat();
   const [resolvedCurrencyCode, setResolvedCurrencyCode] =
     useState<CurrencyCode>(displayCurrency);
@@ -62,9 +62,9 @@ export default function FinancialMetricsCards({
 
     const resolveCurrency = async () => {
       const isAll =
-        !selectedLicensee ||
-        selectedLicensee === 'all' ||
-        selectedLicensee === '';
+        !selectedLicencee ||
+        selectedLicencee === 'all' ||
+        selectedLicencee === '';
 
       if (isAll) {
         if (!cancelled) {
@@ -73,12 +73,12 @@ export default function FinancialMetricsCards({
         return;
       }
 
-      const cacheKey = selectedLicensee.trim();
+      const cacheKey = selectedLicencee.trim();
       const cachedValue =
-        licenseeCurrencyCache[cacheKey] ||
-        licenseeCurrencyCache[cacheKey.toLowerCase()] ||
-        licenseeCurrencyCache[
-          Object.keys(licenseeCurrencyCache).find(
+        licenceeCurrencyCache[cacheKey] ||
+        licenceeCurrencyCache[cacheKey.toLowerCase()] ||
+        licenceeCurrencyCache[
+          Object.keys(licenceeCurrencyCache).find(
             key => key.toLowerCase() === cacheKey.toLowerCase()
           ) || ''
         ];
@@ -91,18 +91,18 @@ export default function FinancialMetricsCards({
       }
 
       try {
-        const licensee = await fetchLicenseeById(cacheKey);
-        let currency = getLicenseeCurrency(licensee?.name || cacheKey);
+        const licencee = await fetchLicenceeById(cacheKey);
+        let currency = getLicenceeCurrency(licencee?.name || cacheKey);
 
         if (
           currency === 'USD' &&
-          licensee &&
-          (licensee.countryName || typeof licensee.country === 'string')
+          licencee &&
+          (licencee.countryName || typeof licencee.country === 'string')
         ) {
-          const fallback = licensee.countryName
-            ? getCountryCurrency(licensee.countryName)
+          const fallback = licencee.countryName
+            ? getCountryCurrency(licencee.countryName)
             : getCountryCurrency(
-                typeof licensee.country === 'string' ? licensee.country : ''
+                typeof licencee.country === 'string' ? licencee.country : ''
               );
           if (fallback) {
             currency = fallback;
@@ -113,9 +113,9 @@ export default function FinancialMetricsCards({
           currency = 'USD';
         }
 
-        licenseeCurrencyCache[cacheKey] = currency;
-        if (licensee?.name) {
-          licenseeCurrencyCache[licensee.name] = currency;
+        licenceeCurrencyCache[cacheKey] = currency;
+        if (licencee?.name) {
+          licenceeCurrencyCache[licencee.name] = currency;
         }
 
         if (!cancelled) {
@@ -124,8 +124,8 @@ export default function FinancialMetricsCards({
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
           console.error(
-            '[FinancialMetricsCards] Failed to resolve licensee currency:',
-            selectedLicensee,
+            '[FinancialMetricsCards] Failed to resolve licencee currency:',
+            selectedLicencee,
             error
           );
         }
@@ -140,7 +140,7 @@ export default function FinancialMetricsCards({
     return () => {
       cancelled = true;
     };
-  }, [selectedLicensee, displayCurrency]);
+  }, [selectedLicencee, displayCurrency]);
 
   const currencyCode = resolvedCurrencyCode || displayCurrency || 'USD';
 

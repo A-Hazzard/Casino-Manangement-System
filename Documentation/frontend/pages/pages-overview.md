@@ -42,7 +42,7 @@ All page documentation files follow a consistent structure:
 ### Administration
 
 - **[Administration](./administration.md)** (`/administration`)
-  - User management, licensee management, activity logs, and feedback
+  - User management, licencee management, activity logs, and feedback
   - URL: `/administration`
   - File: `app/administration/page.tsx`
 
@@ -136,12 +136,12 @@ All page documentation files follow a consistent structure:
 
 - Most pages require authentication via `ProtectedRoute` component
 - Role-based access control enforced at page and component levels
-- Licensee and location filtering based on user permissions
+- Licencee and location filtering based on user permissions
 
 ### State Management
 
 - **Zustand Stores:**
-  - `useDashBoardStore` - Dashboard state, selected licensee, date filters
+  - `useDashBoardStore` - Dashboard state, selected licencee, date filters
   - `useUserStore` - Current user data
   - Feature-specific stores (e.g., `useMemberActionsStore`, `useLocationActionsStore`)
 

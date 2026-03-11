@@ -25,7 +25,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportCardsProps } from '@/lib/types/components';
 import { getGrossColorClass } from '@/lib/utils/financial';
-import { getLicenseeName } from '@/lib/utils/licensee';
+import { getLicenceeName } from '@/lib/utils/licencee';
 import { hasAdminAccess, hasManagerAccess, UserRole } from '@/lib/utils/permissions';
 import { AlertTriangle, Edit3, Trash2 } from 'lucide-react';
 import Image from 'next/image';
@@ -45,7 +45,7 @@ export default function CollectionReportCards({
   onEdit,
   onDelete,
   editableReportIds,
-  selectedLicensee,
+  selectedLicencee,
 }: CollectionReportCardsProps) {
   const router = useRouter();
   useCurrencyFormat();
@@ -71,11 +71,11 @@ export default function CollectionReportCards({
 
   // Only show "No Data Available" when NOT loading and data is empty
   if (!loading && (!data || data.length === 0)) {
-    const licenseeName =
-      getLicenseeName(selectedLicensee || undefined) ||
-      selectedLicensee ||
+    const licenceeName =
+      getLicenceeName(selectedLicencee || undefined) ||
+      selectedLicencee ||
       'the selected period';
-    const emptyMessage = `No collection reports found for ${licenseeName}.`;
+    const emptyMessage = `No collection reports found for ${licenceeName}.`;
 
     return (
       <div className="flex flex-col items-center justify-center rounded-lg bg-container p-8 shadow-md">

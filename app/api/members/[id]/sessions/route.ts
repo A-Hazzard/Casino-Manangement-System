@@ -72,7 +72,7 @@ export async function GET(
     const limit = parseInt(searchParams.get('limit') || '10');
     const filter = searchParams.get('filter') || 'session';
     const displayCurrency = getCurrencyFromQuery(searchParams);
-    const licensee = searchParams.get('licensee') || null;
+    const licencee = (searchParams.get('licencee')) || null;
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
     const timePeriod = searchParams.get('timePeriod');
@@ -225,7 +225,7 @@ export async function GET(
       // ============================================================================
       const convertedSessions = await applyCurrencyConversionToMetrics(
         processedSessions,
-        licensee,
+        licencee,
         displayCurrency
       );
 
@@ -245,7 +245,7 @@ export async function GET(
           },
         },
         currency: displayCurrency,
-        converted: shouldApplyCurrencyConversion(licensee),
+        converted: shouldApplyCurrencyConversion(licencee),
       });
     } else {
       // ============================================================================
@@ -401,7 +401,7 @@ export async function GET(
       // ============================================================================
       const convertedGroupedSessions = await applyCurrencyConversionToMetrics(
         processedSessions,
-        licensee,
+        licencee,
         displayCurrency
       );
 
@@ -421,7 +421,7 @@ export async function GET(
           },
         },
         currency: displayCurrency,
-        converted: shouldApplyCurrencyConversion(licensee),
+        converted: shouldApplyCurrencyConversion(licencee),
       });
     }
   } catch (error) {

@@ -2,24 +2,24 @@
  * Exchange Rate Helper Functions
  *
  * Provides helper functions for currency conversion and exchange rate management.
- * Currency conversion only applies when "All Licensee" is selected. It handles
+ * Currency conversion only applies when "All Licencee" is selected. It handles
  * conversion between USD (base currency) and other currencies (TTD, GYD, BBD),
  * and provides utilities for currency formatting and display.
  *
  * Features:
  * - Manages fixed exchange rates for USD, TTD, GYD, and BBD.
- * - Maps licensees to their respective currencies.
+ * - Maps licencees to their respective currencies.
  * - Converts values between currencies (to/from USD, between currencies).
  * - Provides currency symbols and names for display.
  * - Formats amounts with currency symbols.
  * - Handles currency conversion for financial data arrays.
  */
 
-import { getLicenseeName } from '@/lib/utils/licensee';
+import { getLicenceeName } from '@/lib/utils/licencee';
 import type {
     CurrencyCode,
     ExchangeRates,
-    LicenseeCurrencyMapping,
+    LicenceeCurrencyMapping,
 } from '@/shared/types/currency';
 
 // Fixed exchange rates (USD as base currency)
@@ -30,14 +30,14 @@ const FIXED_RATES: ExchangeRates = {
   BBD: 2.0, // 1 USD = 2.0 BBD
 };
 
-// Licensee to currency mapping
-const LICENSEE_CURRENCY: LicenseeCurrencyMapping = {
+// Licencee to currency mapping
+const LICENCEE_CURRENCY: LicenceeCurrencyMapping = {
   TTG: 'TTD', // Trinidad & Tobago
   Cabana: 'GYD', // Guyana
   Barbados: 'BBD', // Barbados
 };
 
-// Country name to currency mapping (for locations without licensees)
+// Country name to currency mapping (for locations without licencees)
 const COUNTRY_CURRENCY_MAP: Record<string, CurrencyCode> = {
   'Trinidad and Tobago': 'TTD',
   'Trinidad & Tobago': 'TTD',
@@ -51,18 +51,18 @@ const COUNTRY_CURRENCY_MAP: Record<string, CurrencyCode> = {
 // ============================================================================
 
 /**
- * Get the currency for a specific licensee
+ * Get the currency for a specific licencee
  */
-export function getLicenseeCurrency(licensee: string): CurrencyCode {
-  if (!licensee) {
+export function getLicenceeCurrency(licencee: string): CurrencyCode {
+  if (!licencee) {
     return 'USD';
   }
 
   const normalized =
-    getLicenseeName(licensee) || (licensee as keyof LicenseeCurrencyMapping);
+    getLicenceeName(licencee) || (licencee as keyof LicenceeCurrencyMapping);
 
   return (
-    LICENSEE_CURRENCY[normalized as keyof LicenseeCurrencyMapping] || 'USD'
+    LICENCEE_CURRENCY[normalized as keyof LicenceeCurrencyMapping] || 'USD'
   );
 }
 
@@ -78,13 +78,13 @@ export function getCountryCurrency(countryName: string): CurrencyCode {
 // ============================================================================
 
 /**
- * Check if a licensee should have currency conversion applied
+ * Check if a licencee should have currency conversion applied
  */
 export function shouldApplyConversion(
-  licensee: string | null | undefined
+  licencee: string | null | undefined
 ): boolean {
-  // Only apply conversion when "All Licensee" is selected (licensee is null, undefined, or "all")
-  return !licensee || licensee === 'all' || licensee === '';
+  // Only apply conversion when "All Licencee" is selected (licencee is null, undefined, or "all")
+  return !licencee || licencee === 'all' || licencee === '';
 }
 
 // ============================================================================
@@ -92,18 +92,18 @@ export function shouldApplyConversion(
 // ============================================================================
 
 /**
- * Convert a value from a licensee's currency to USD
+ * Convert a value from a licencee's currency to USD
  */
 export function convertToUSD(
   value: number,
-  licenseeOrCurrency: string
+  licenceeOrCurrency: string
 ): number {
   // Check if it's an actual currency code (must exist in FIXED_RATES)
-  const isCurrencyCode = licenseeOrCurrency in FIXED_RATES;
+  const isCurrencyCode = licenceeOrCurrency in FIXED_RATES;
 
   const sourceCurrency = isCurrencyCode
-    ? (licenseeOrCurrency as CurrencyCode)
-    : getLicenseeCurrency(licenseeOrCurrency);
+    ? (licenceeOrCurrency as CurrencyCode)
+    : getLicenceeCurrency(licenceeOrCurrency);
 
   if (sourceCurrency === 'USD') {
     return value;
@@ -114,7 +114,7 @@ export function convertToUSD(
   // Safety check: if rate is undefined, return original value without conversion
   if (!rate || isNaN(rate)) {
     console.error(
-      `⚠️ Currency conversion error: No rate found for ${sourceCurrency} (from ${licenseeOrCurrency})`
+      `⚠️ Currency conversion error: No rate found for ${sourceCurrency} (from ${licenceeOrCurrency})`
     );
     return value;
   }

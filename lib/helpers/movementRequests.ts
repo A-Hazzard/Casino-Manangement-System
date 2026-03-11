@@ -6,7 +6,7 @@
  * between locations.
  *
  * Features:
- * - Fetches all movement requests with optional licensee filtering.
+ * - Fetches all movement requests with optional licencee filtering.
  * - Creates, updates, and deletes movement requests.
  * - Filters movement requests by search term and location.
  * - Paginates movement requests for display.
@@ -21,15 +21,15 @@ import axios from 'axios';
 
 /**
  * Fetch all movement requests from the API.
- * @param licensee - (Optional) Licensee filter for movement requests.
+ * @param licencee - (Optional) Licencee filter for movement requests.
  * @returns Promise<MovementRequest[]>
  */
 export async function fetchMovementRequests(
-  licensee?: string
+  licencee?: string
 ): Promise<MovementRequest[]> {
   const params: Record<string, string> = {};
-  if (licensee && licensee !== 'all') {
-    params.licensee = licensee;
+  if (licencee && licencee !== 'all') {
+    params.licencee = licencee;
   }
 
   const res = await axios.get('/api/movement-requests', { params });

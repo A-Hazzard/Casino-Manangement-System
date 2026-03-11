@@ -15,10 +15,10 @@
      - [Search and Filter Bar](#search-and-filter-bar)
      - [User Table/Cards](#user-tablecards)
      - [User Modals](#user-modals)
-   - [Licensees Section](#licensees-section)
-     - [Licensee Search Bar](#licensee-search-bar)
-     - [Licensee Table/Cards](#licensee-tablecards)
-     - [Licensee Modals](#licensee-modals)
+   - [Licencees Section](#licencees-section)
+     - [Licencee Search Bar](#licencee-search-bar)
+     - [Licencee Table/Cards](#licencee-tablecards)
+     - [Licencee Modals](#licencee-modals)
    - [Countries Section](#countries-section)
      - [Country Search Bar](#country-search-bar)
      - [Country Table/Cards](#country-tablecards)
@@ -31,7 +31,7 @@
 
 ## Overview
 
-The Administration page provides comprehensive user and licensee management functionality, along with activity log viewing and feedback management. It is organized into four main sections accessible via tab navigation.
+The Administration page provides comprehensive user and licencee management functionality, along with activity log viewing and feedback management. It is organized into four main sections accessible via tab navigation.
 
 ## File Information
 
@@ -39,8 +39,8 @@ The Administration page provides comprehensive user and licensee management func
 - **URL Pattern:** `/administration`
 - **Authentication:** Required (ProtectedRoute with `requiredPage="administration"`)
 - **Access Level:** Developer, Admin, Manager, Location Admin (role-based section access)
-- **Licensee Filtering:** Supported for Users section
-- **Licensee Filtering:** Supported for Users section
+- **Licencee Filtering:** Supported for Users section
+- **Licencee Filtering:** Supported for Users section
 - **Responsive:** Desktop (table) and Mobile (card) views
 - **Global Refresh:** Header refresh button updates the data for the currently active tab.
 
@@ -48,7 +48,7 @@ The Administration page provides comprehensive user and licensee management func
 
 ### Navigation Tabs
 
-**Purpose:** Allows switching between four main administration sections: Users, Licensees, Activity Logs, and Feedback.
+**Purpose:** Allows switching between four main administration sections: Users, Licencees, Activity Logs, and Feedback.
 
 **Components:**
 
@@ -57,7 +57,7 @@ The Administration page provides comprehensive user and licensee management func
 **Tab Configuration:**
 
 - Defined in `lib/constants/administration.ts` as `ADMINISTRATION_TABS_CONFIG`
-- Tabs: Users, Licensees, Activity Logs, Feedback
+- Tabs: Users, Licencees, Activity Logs, Feedback
 
 **Access Control:**
 
@@ -88,7 +88,7 @@ The Administration page provides comprehensive user and licensee management func
 **Data Flow:**
 
 1. `useAdministrationUserCounts` hook fetches counts on mount
-2. Data filtered by `selectedLicensee` query parameter
+2. Data filtered by `selectedLicencee` query parameter
 3. Excludes users with `deletedAt >= 2025-01-01`
 4. Includes disabled users (`isEnabled: false`)
 5. Counts displayed in 5 cards: Total, Collectors, Admins, Location Admins, Managers
@@ -101,7 +101,7 @@ The Administration page provides comprehensive user and licensee management func
 **Notes:**
 
 - Loading skeleton shown during fetch
-- Cards update when `selectedLicensee` changes
+- Cards update when `selectedLicencee` changes
 
 ---
 
@@ -152,7 +152,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Query Parameters:**
 
-- `licensee` - Filter by licensee
+- `licencee` - Filter by licencee
 - `page` - Current page number
 - `limit` - Items per page
 - `search` - Search query
@@ -177,7 +177,7 @@ The Administration page provides comprehensive user and licensee management func
 **Sorting:**
 
 - Clickable column headers in table view
-- Supported columns: username, email, roles, assignedLicensees, lastLoginAt
+- Supported columns: username, email, roles, assignedLicencees, lastLoginAt
 - Sort state managed via `sortConfig` and `requestSort` function
 
 **Pagination:**
@@ -204,7 +204,7 @@ The Administration page provides comprehensive user and licensee management func
 - Account information (username, email, password, roles)
 - Personal information (firstName, lastName, gender, phoneNumber)
 - Address and identification details
-- Licensee and location permissions assignment
+- Licencee and location permissions assignment
 - Form validation with real-time error messages
 - Password strength validation
 
@@ -232,23 +232,23 @@ The Administration page provides comprehensive user and licensee management func
 
     *   **Role Information Dialog:** View a dialog showing pages accessible to each specific role.
 
--   **Assigned Licensees:**
+-   **Assigned Licencees:**
 
-    *   Assign multiple licensees to the user using a `MultiSelectDropdown`.
+    *   Assign multiple licencees to the user using a `MultiSelectDropdown`.
 
-    *   Includes an "All Licensees" toggle for easy assignment.
+    *   Includes an "All Licencees" toggle for easy assignment.
 
-    *   Role-based restrictions apply (e.g., Managers cannot change licensee assignments, Location Admins' licensees are pre-filled).
+    *   Role-based restrictions apply (e.g., Managers cannot change licencee assignments, Location Admins' licencees are pre-filled).
 
 -   **Assigned Locations:**
 
     *   Assign multiple specific locations to the user using a `MultiSelectDropdown`.
 
-    *   Includes an "All Locations for selected licensee(s)" toggle.
+    *   Includes an "All Locations for selected licencee(s)" toggle.
 
-    *   Dynamic filtering of available locations based on selected licensees.
+    *   Dynamic filtering of available locations based on selected licencees.
 
-    *   If a licensee is deselected, locations belonging only to that licensee are automatically removed from assigned locations.
+    *   If a licencee is deselected, locations belonging only to that licencee are automatically removed from assigned locations.
 
 -   **Change Detection:** Only sends changed fields to the API on save.
 
@@ -287,82 +287,82 @@ The Administration page provides comprehensive user and licensee management func
 
 ---
 
-## Licensees Section
+## Licencees Section
 
-### Licensee Search Bar
+### Licencee Search Bar
 
-**Purpose:** Allows users to search for licensees by name.
+**Purpose:** Allows users to search for licencees by name.
 
 **Components:**
 
-- `components/CMS/administration/AdministrationLicenseeSearchBar.tsx` - Search input component
+- `components/CMS/administration/AdministrationLicenceeSearchBar.tsx` - Search input component
 
 **Functionality:**
 
-- Text search across licensee name
-- Client-side filtering of licensee list
+- Text search across licencee name
+- Client-side filtering of licencee list
 - Real-time search as user types
-- **Visibility:** Only displayed when the total number of licensees exceeds 20.
+- **Visibility:** Only displayed when the total number of licencees exceeds 20.
 
 **State Management:**
 
-- `licenseeSearchValue` - Current search text
-- Managed by `useAdministrationLicensees` hook
+- `licenceeSearchValue` - Current search text
+- Managed by `useAdministrationLicencees` hook
 
 ---
 
-### Licensee Table/Cards
+### Licencee Table/Cards
 
-**Purpose:** Displays the list of licensees in table format (desktop) or card format (mobile).
+**Purpose:** Displays the list of licencees in table format (desktop) or card format (mobile).
 
 **Components:**
 
-- `components/CMS/administration/tables/AdministrationLicenseeTable.tsx` - Desktop table view
-- `components/CMS/administration/cards/AdministrationLicenseeCard.tsx` - Mobile card view
-- `components/CMS/administration/skeletons/AdministrationLicenseeTableSkeleton.tsx` - Loading skeleton
-- `components/CMS/administration/skeletons/AdministrationLicenseeCardSkeleton.tsx` - Loading skeleton
+- `components/CMS/administration/tables/AdministrationLicenceeTable.tsx` - Desktop table view
+- `components/CMS/administration/cards/AdministrationLicenceeCard.tsx` - Mobile card view
+- `components/CMS/administration/skeletons/AdministrationLicenceeTableSkeleton.tsx` - Loading skeleton
+- `components/CMS/administration/skeletons/AdministrationLicenceeCardSkeleton.tsx` - Loading skeleton
 
 **API Endpoint:**
 
-- `GET /api/licensees` - Returns licensee list
+- `GET /api/licencees` - Returns licencee list
 
 **Data Flow:**
 
-1. `useAdministrationLicensees` hook fetches licensees on mount
+1. `useAdministrationLicencees` hook fetches licencees on mount
 2. Data filtered client-side by search value
-3. Licensees displayed with payment status, expiry date, country
+3. Licencees displayed with payment status, expiry date, country
 
 **Key Functions:**
 
-- `useAdministrationLicensees` - Main hook managing licensees state
-- `refreshLicensees` - Function to manually refresh licensee list
+- `useAdministrationLicencees` - Main hook managing licencees state
+- `refreshLicencees` - Function to manually refresh licencee list
 
 **Actions Available:**
 
-- Edit licensee
-- Delete licensee
+- Edit licencee
+- Delete licencee
 - View payment history
 - Toggle payment status
 
 ---
 
-### Licensee Modals
+### Licencee Modals
 
-**Purpose:** Provides modals for managing licensees.
+**Purpose:** Provides modals for managing licencees.
 
 **Components:**
 
-- `components/CMS/administration/modals/AdministrationAddLicenseeModal.tsx` - Create new licensee modal
-- `components/CMS/administration/modals/AdministrationEditLicenseeModal.tsx` - Edit existing licensee modal
-- `components/CMS/administration/modals/AdministrationDeleteLicenseeModal.tsx` - Delete confirmation modal
+- `components/CMS/administration/modals/AdministrationAddLicenceeModal.tsx` - Create new licencee modal
+- `components/CMS/administration/modals/AdministrationEditLicenceeModal.tsx` - Edit existing licencee modal
+- `components/CMS/administration/modals/AdministrationDeleteLicenceeModal.tsx` - Delete confirmation modal
 - `components/CMS/administration/modals/AdministrationPaymentHistoryModal.tsx` - View payment history
-- `components/CMS/administration/modals/AdministrationLicenseeSuccessModal.tsx` - Success message with license key
+- `components/CMS/administration/modals/AdministrationLicenceeSuccessModal.tsx` - Success message with licence key
 - `components/CMS/administration/modals/AdministrationPaymentStatusConfirmModal.tsx` - Confirm payment status change
 
-**Add/Edit Licensee Modal Features:**
+**Add/Edit Licencee Modal Features:**
 
 - Name, country, currency selection
-- License key generation (auto-generated on create)
+- Licence key generation (auto-generated on create)
 - Payment status and expiry date
 - Form validation
 
@@ -374,18 +374,18 @@ The Administration page provides comprehensive user and licensee management func
 
 **API Endpoints:**
 
-- `POST /api/licensees` - Create new licensee
-- `PUT /api/licensees` - Update existing licensee
-- `DELETE /api/licensees` - Delete licensee
-- `GET /api/licensees/:id/payments` - Fetch payment history
+- `POST /api/licencees` - Create new licencee
+- `PUT /api/licencees` - Update existing licencee
+- `DELETE /api/licencees` - Delete licencee
+- `GET /api/licencees/:id/payments` - Fetch payment history
 
 **Key Functions:**
 
-- `handleOpenAddLicensee` - Opens add modal
-- `handleSaveAddLicensee` - Saves new licensee
-- `handleOpenEditLicensee` - Opens edit modal with licensee data
-- `handleSaveEditLicensee` - Saves licensee changes
-- `handleDeleteLicensee` - Deletes licensee
+- `handleOpenAddLicencee` - Opens add modal
+- `handleSaveAddLicencee` - Saves new licencee
+- `handleOpenEditLicencee` - Opens edit modal with licencee data
+- `handleSaveEditLicencee` - Saves licencee changes
+- `handleDeleteLicencee` - Deletes licencee
 - `handlePaymentHistory` - Opens payment history modal
 - `handleTogglePaymentStatus` - Opens payment status confirmation modal
 
@@ -548,12 +548,12 @@ The Administration page provides comprehensive user and licensee management func
 
 1. **`GET /api/users`**
    - Returns paginated user list
-   - Parameters: `licensee`, `page`, `limit`, `search`, `role`, `status`, `sortBy`, `sortOrder`
+   - Parameters: `licencee`, `page`, `limit`, `search`, `role`, `status`, `sortBy`, `sortOrder`
    - Used by: `useAdministrationUsers` hook
 
 2. **`GET /api/users/counts`**
    - Returns user counts by role
-   - Parameters: `licensee`
+   - Parameters: `licencee`
    - Used by: `useAdministrationUserCounts` hook
 
 3. **`GET /api/users/:id`**
@@ -575,28 +575,28 @@ The Administration page provides comprehensive user and licensee management func
    - Body: `{ _id: string }`
    - Used by: `DeleteUserModal` component
 
-### Licensees Endpoints
+### Licencees Endpoints
 
-1. **`GET /api/licensees`**
-   - Returns licensee list
-   - Used by: `useAdministrationLicensees` hook
+1. **`GET /api/licencees`**
+   - Returns licencee list
+   - Used by: `useAdministrationLicencees` hook
 
-2. **`POST /api/licensees`**
-   - Creates new licensee
-   - Body: Licensee creation payload
-   - Used by: `AddLicenseeModal` component
+2. **`POST /api/licencees`**
+   - Creates new licencee
+   - Body: Licencee creation payload
+   - Used by: `AddLicenceeModal` component
 
-3. **`PUT /api/licensees`**
-   - Updates existing licensee
-   - Body: Licensee update payload
-   - Used by: `EditLicenseeModal` component
+3. **`PUT /api/licencees`**
+   - Updates existing licencee
+   - Body: Licencee update payload
+   - Used by: `EditLicenceeModal` component
 
-4. **`DELETE /api/licensees`**
-   - Deletes licensee
-   - Used by: `DeleteLicenseeModal` component
+4. **`DELETE /api/licencees`**
+   - Deletes licencee
+   - Used by: `DeleteLicenceeModal` component
 
-5. **`GET /api/licensees/:id/payments`**
-   - Returns payment history for licensee
+5. **`GET /api/licencees/:id/payments`**
+   - Returns payment history for licencee
    - Used by: `PaymentHistoryModal` component
 
 ### Activity Logs Endpoint
@@ -631,7 +631,7 @@ The Administration page provides comprehensive user and licensee management func
 
 1. **`GET /api/countries`**
    - Returns list of countries
-   - Used by: Administration Countries section and Licensee modals
+   - Used by: Administration Countries section and Licencee modals
 
 2. **`POST /api/countries`**
    - Creates new country
@@ -685,38 +685,38 @@ The Administration page provides comprehensive user and licensee management func
 - `closeAddUserModal` - Closes add user modal
 - `requestSort` - Handles column sorting
 
-### Licensees State
+### Licencees State
 
-**Hook:** `useAdministrationLicensees`
+**Hook:** `useAdministrationLicencees`
 
 **Key State Properties:**
 
-- `isLicenseesLoading` - Loading state
-- `filteredLicensees` - Filtered licensee list
-- `licenseeSearchValue` - Current search text
-- `isAddLicenseeModalOpen` - Add modal open state
-- `isEditLicenseeModalOpen` - Edit modal open state
-- `isDeleteLicenseeModalOpen` - Delete modal open state
+- `isLicenceesLoading` - Loading state
+- `filteredLicencees` - Filtered licencee list
+- `licenceeSearchValue` - Current search text
+- `isAddLicenceeModalOpen` - Add modal open state
+- `isEditLicenceeModalOpen` - Edit modal open state
+- `isDeleteLicenceeModalOpen` - Delete modal open state
 - `isPaymentHistoryModalOpen` - Payment history modal open state
-- `isLicenseeSuccessModalOpen` - Success modal open state
+- `isLicenceeSuccessModalOpen` - Success modal open state
 - `isPaymentConfirmModalOpen` - Payment status confirmation modal open state
 - `countries` - List of countries for selection
 - `isCountriesLoading` - Countries loading state
-- `selectedLicensee` - Currently selected licensee
-- `licenseeForm` - Form state for add/edit modals
-- `selectedLicenseeForPayment` - Licensee selected for payment history
-- `selectedLicenseeForPaymentChange` - Licensee selected for payment status change
-- `createdLicensee` - Newly created licensee data (for success modal)
+- `selectedLicencee` - Currently selected licencee
+- `licenceeForm` - Form state for add/edit modals
+- `selectedLicenceeForPayment` - Licencee selected for payment history
+- `selectedLicenceeForPaymentChange` - Licencee selected for payment status change
+- `createdLicencee` - Newly created licencee data (for success modal)
 
 **Key Functions:**
 
-- `refreshLicensees` - Refreshes licensee list
-- `handleOpenAddLicensee` - Opens add modal
-- `handleSaveAddLicensee` - Saves new licensee
-- `handleOpenEditLicensee` - Opens edit modal
-- `handleSaveEditLicensee` - Saves licensee changes
-- `handleOpenDeleteLicensee` - Opens delete modal
-- `handleDeleteLicensee` - Deletes licensee
+- `refreshLicencees` - Refreshes licencee list
+- `handleOpenAddLicencee` - Opens add modal
+- `handleSaveAddLicencee` - Saves new licencee
+- `handleOpenEditLicencee` - Opens edit modal
+- `handleSaveEditLicencee` - Saves licencee changes
+- `handleOpenDeleteLicencee` - Opens delete modal
+- `handleDeleteLicencee` - Deletes licencee
 - `handlePaymentHistory` - Opens payment history modal
 - `handleTogglePaymentStatus` - Opens payment status confirmation
 - `handleConfirmPaymentStatusChange` - Confirms payment status change
@@ -755,7 +755,7 @@ The Administration page provides comprehensive user and licensee management func
 
 **Key State Properties:**
 
-- `activeSection` - Current active section ('users', 'licensees', 'activity-logs', 'feedback')
+- `activeSection` - Current active section ('users', 'licencees', 'activity-logs', 'feedback')
 
 **Key Functions:**
 
@@ -792,7 +792,7 @@ The Administration page provides comprehensive user and licensee management func
    - Returns: boolean
 
 2. **Role-Based Filtering Logic**
-   - Managers: Can only view/edit users in their assigned licensees
+   - Managers: Can only view/edit users in their assigned licencees
    - Location Admins: Can only view/edit users in their assigned locations
    - Developers/Admins: Can view/edit all users
 
@@ -805,13 +805,13 @@ The Administration page provides comprehensive user and licensee management func
 **Users Section:**
 
 - **Developer/Admin:** Full access to all users
-- **Manager:** Access to users in assigned licensees only
+- **Manager:** Access to users in assigned licencees only
 - **Location Admin:** Access to users in assigned locations only (cannot edit developers/admins/managers)
 
-**Licensees Section:**
+**Licencees Section:**
 
 - **Developer/Admin:** Full access
-- **Manager:** View-only access to assigned licensees
+- **Manager:** View-only access to assigned licencees
 - **Location Admin:** No access
 
 **Activity Logs Section:**
@@ -824,11 +824,11 @@ The Administration page provides comprehensive user and licensee management func
 - Access controlled via `hasTabAccess('administration', 'feedback')`
 - Typically: Developer/Admin only
 
-### Licensee Filtering
+### Licencee Filtering
 
-- Users section supports licensee filtering via `selectedLicensee` from dashboard store
+- Users section supports licencee filtering via `selectedLicencee` from dashboard store
 - Filter applies to user list and user counts
-- Managers automatically filtered to assigned licensees only
+- Managers automatically filtered to assigned licencees only
 
 ---
 
@@ -836,13 +836,13 @@ The Administration page provides comprehensive user and licensee management func
 
 ### Desktop View
 
-- Table layouts for Users and Licensees
+- Table layouts for Users and Licencees
 - Full-width modals
 - Side-by-side form layouts
 
 ### Mobile View
 
-- Card layouts for Users and Licensees
+- Card layouts for Users and Licencees
 - Full-screen modals
 - Stacked form layouts
 - Touch-optimized interactions
@@ -854,7 +854,7 @@ The Administration page provides comprehensive user and licensee management func
 ### User Summary Cards (December 2024)
 
 - Added summary cards showing user counts by role
-- Filters by selected licensee
+- Filters by selected licencee
 - Excludes deleted users (deletedAt >= 2025)
 - Includes disabled users
 
@@ -862,6 +862,6 @@ The Administration page provides comprehensive user and licensee management func
 
 - Comprehensive form with all user fields
 - Profile picture upload with circular cropping
-- Licensee and location permissions management
+- Licencee and location permissions management
 - Real-time validation
 - Password strength validation

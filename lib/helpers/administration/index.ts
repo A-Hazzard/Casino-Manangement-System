@@ -5,7 +5,7 @@
  *
  * Features:
  * - User management operations
- * - Licensee management operations
+ * - Licencee management operations
  * - Administration page utilities
  */
 

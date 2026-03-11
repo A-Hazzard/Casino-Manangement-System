@@ -138,9 +138,9 @@ Example: At 2 AM Trinidad on Nov 11 → current gaming day is Nov 10 8 AM → No
 
 Financial reporting uses **sum of movement fields** from meter readings, not calculated/derived values. This ensures accuracy across reads.
 
-### Licensee Access Context
+### Licencee Access Context
 
-Multi-tenant: users are assigned to specific licensees and/or locations. All API responses must be filtered by the user's assigned licensees. Frontend passes licensee context in every request. See `.cursor/licensee-access-context.md`.
+Multi-tenant: users are assigned to specific licencees and/or locations. All API responses must be filtered by the user's assigned licencees. Frontend passes licencee context in every request. See `.cursor/licencee-access-context.md`.
 
 ### Timezone
 
@@ -233,7 +233,7 @@ Comprehensive docs live in `Documentation/` and `.cursor/`:
 - `Documentation/financial-metrics-guide.md` — calculation methods
 - `Documentation/http-https-cookie-rules.md` — HTTP/HTTPS cookie security rules ← NEW
 - `.cursor/gaming-day-offset-system.md` — gaming day concept (critical)
-- `.cursor/licensee-access-context.md` — multi-tenant permissions
+- `.cursor/licencee-access-context.md` — multi-tenant permissions
 - `.cursor/vault-FRD.md` — Vault functional requirements
 - `Documentation/frontend/` — per-page frontend docs
 - `Documentation/backend/` — per-endpoint backend docs

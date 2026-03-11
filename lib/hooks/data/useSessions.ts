@@ -23,7 +23,7 @@ import { useSessionsFilters } from './useSessionsFilters';
 
 export function useSessions() {
   const makeRequest = useAbortableRequest();
-  const { selectedLicensee, activeMetricsFilter, customDateRange } =
+  const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
   const filterControls = useSessionsFilters();
   const { searchTerm, sortBy, sortOrder, statusFilter } = filterControls;
@@ -75,8 +75,8 @@ export function useSessions() {
           params.append('sortOrder', sortOrder);
         }
 
-        if (selectedLicensee && selectedLicensee !== 'all') {
-          params.append('licensee', selectedLicensee);
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.append('licencee', selectedLicencee);
         }
 
         if (
@@ -197,7 +197,7 @@ export function useSessions() {
       });
     },
     [
-      selectedLicensee,
+      selectedLicencee,
       activeMetricsFilter,
       customDateRange,
       debouncedSearchTerm,
@@ -221,7 +221,7 @@ export function useSessions() {
     // Initial load: fetch first batch to get 100 items (5 pages)
     fetchSessions(1, false);
   }, [
-    selectedLicensee,
+    selectedLicencee,
     activeMetricsFilter,
     customDateRange,
     debouncedSearchTerm,

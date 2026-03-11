@@ -15,9 +15,9 @@ import CollectionReportDesktopLayout from '@/components/CMS/collectionReport/tab
 import CollectionReportMobileLayout from '@/components/CMS/collectionReport/tabs/collection/CollectionReportMobileLayout';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
-import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
+import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
-import { COLLECTION_TABS_CONFIG } from '@/lib/constants';
+import { COLLECTION_TABS_CONFIG, UserRole } from '@/lib/constants';
 import { useCollectionReportPageData } from '@/lib/hooks/collectionReport/useCollectionReportPageData';
 import { useCollectorScheduleData } from '@/lib/hooks/collectionReport/useCollectorScheduleData';
 import { useManagerScheduleData } from '@/lib/hooks/collectionReport/useManagerScheduleData';
@@ -26,9 +26,10 @@ import { useMonthlyReportData } from '@/lib/hooks/collectionReport/useMonthlyRep
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import {
-    shouldShowLicenseeFilter,
-    shouldShowNoLicenseeMessage,
-} from '@/lib/utils/licensee';
+    shouldShowLicenceeFilter,
+    shouldShowNoLicenceeMessage,
+} from '@/lib/utils/licencee';
+import { hasManagerAccess } from '@/lib/utils/permissions';
 import dynamic from 'next/dynamic';
 import { useRef, useState } from 'react';
 
@@ -88,7 +89,7 @@ export default function CollectionReportPageContent() {
   // ============================================================================
   const hook = useCollectionReportPageData();
   const { user } = useUserStore();
-  const { setSelectedLicensee, selectedLicensee } = useDashBoardStore();
+  const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
 
   const desktopTableRef = useRef<HTMLDivElement | null>(null);
   const mobileCardsRef = useRef<HTMLDivElement | null>(null);
@@ -109,6 +110,7 @@ export default function CollectionReportPageContent() {
     filters,
     handleTabChange,
     handleRefresh,
+    handleCreate,
     handleEdit,
     handleDelete,
     confirmDelete,
@@ -123,10 +125,10 @@ export default function CollectionReportPageContent() {
   } = hook;
 
   // Initialize specialized hooks for secondary tabs
-  const monthlyHook = useMonthlyReportData(selectedLicensee);
-  const collectorHook = useCollectorScheduleData(selectedLicensee, locations);
+  const monthlyHook = useMonthlyReportData(selectedLicencee);
+  const collectorHook = useCollectorScheduleData(selectedLicencee, locations);
   const managerHook = useManagerScheduleData(
-    selectedLicensee,
+    selectedLicencee,
     locations,
     collectorHook.collectors
   );
@@ -135,19 +137,29 @@ export default function CollectionReportPageContent() {
   // Permission Checks
   // ============================================================================
 
-  // If user has no licensee assigned, show the "No Licensee Assigned" message
-  if (shouldShowNoLicenseeMessage(user)) {
+  // Hide Monthly Report and Manager Schedule tabs from non-management roles (e.g. collector)
+  const canSeeManagerTabs = hasManagerAccess((user?.roles || []) as UserRole[]);
+  const visibleTabs = COLLECTION_TABS_CONFIG.filter(
+    tab => tab.id === 'monthly' || tab.id === 'manager' ? canSeeManagerTabs : true
+  );
+  // If the active tab is restricted for this user, fall back to the default tab
+  const effectiveTab = (activeTab === 'monthly' || activeTab === 'manager') && !canSeeManagerTabs
+    ? 'collection' as const
+    : activeTab;
+
+  // If user has no licencee assigned, show the "No Licencee Assigned" message
+  if (shouldShowNoLicenceeMessage(user)) {
     return (
       <PageLayout
-        headerProps={{ setSelectedLicensee }}
+        headerProps={{ setSelectedLicencee }}
         pageTitle="Collection Reports"
         hideOptions
-        hideLicenseeFilter
+        hideLicenceeFilter
         hideCurrencyFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
         showToaster
       >
-        <NoLicenseeAssigned />
+        <NoLicenceeAssigned />
       </PageLayout>
     );
   }
@@ -160,8 +172,8 @@ export default function CollectionReportPageContent() {
   return (
     <>
       <PageLayout
-        headerProps={{ setSelectedLicensee, disabled: false }}
-        hideLicenseeFilter={!shouldShowLicenseeFilter(user)}
+        headerProps={{ setSelectedLicencee, disabled: false }}
+        hideLicenceeFilter={!shouldShowLicenceeFilter(user)}
         hideCurrencyFilter
         mainClassName="flex flex-col flex-1 w-full max-w-full p-4 md:p-6 overflow-x-hidden"
         showToaster
@@ -170,26 +182,26 @@ export default function CollectionReportPageContent() {
       >
         {/* Page Header: Title and primary action buttons */}
         <CollectionReportHeader
-          activeTab={activeTab}
+          activeTab={effectiveTab}
           refreshing={refreshing}
           loading={loading}
           onRefresh={handleRefresh}
-          onCreateDesktop={() => setShowNewCollectionDesktop(true)}
-          onCreateMobile={() => setShowNewCollectionMobile(true)}
+          onCreateDesktop={handleCreate}
+          onCreateMobile={handleCreate}
         />
 
         {/* Multi-Tab Navigation Section */}
         <div className="mb-8 mt-8">
           <CollectionReportNavigation
-            tabs={COLLECTION_TABS_CONFIG}
-            activeView={activeTab}
+            tabs={visibleTabs}
+            activeView={effectiveTab}
             onChange={handleTabChange}
             isLoading={false}
           />
         </div>
 
         {/* Date Filter Integration (applicable to main collections tab) */}
-        {activeTab === 'collection' && (
+        {effectiveTab === 'collection' && (
           <div className="mb-6">
             <DateFilters hideAllTime={false} onCustomRangeGo={handleRefresh} />
           </div>
@@ -201,7 +213,7 @@ export default function CollectionReportPageContent() {
         <div className="mt-6 flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
             <MotionDiv
-              key={activeTab}
+              key={effectiveTab}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -209,7 +221,7 @@ export default function CollectionReportPageContent() {
               className="h-full"
             >
               {/* 1. Main Collection Reports Tab */}
-              {activeTab === 'collection' && (
+              {effectiveTab === 'collection' && (
                 <div className="tab-content-wrapper">
                   {/* Desktop Data Grid View */}
                   <div className="hidden md:block">
@@ -240,7 +252,7 @@ export default function CollectionReportPageContent() {
                       sortField={filters.sortField}
                       sortDirection={filters.sortDirection}
                       onSort={filters.handleSort}
-                      selectedLicensee={selectedLicensee}
+                      selectedLicencee={selectedLicencee}
                       editableReportIds={hook.editableReportIds}
                     />
                   </div>
@@ -271,7 +283,7 @@ export default function CollectionReportPageContent() {
                       isSearching={isSearching}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
-                      selectedLicensee={selectedLicensee}
+                      selectedLicencee={selectedLicencee}
                       editableReportIds={hook.editableReportIds}
                     />
                   </div>
@@ -294,7 +306,7 @@ export default function CollectionReportPageContent() {
               )}
 
               {/* 2. Monthly Roll-up Reports Tab */}
-              {activeTab === 'monthly' && (
+              {effectiveTab === 'monthly' && (
                 <div className="tab-content-wrapper">
                   <MonthlyDesktop {...monthlyHook} />
                   <div className="lg:hidden">
@@ -304,7 +316,7 @@ export default function CollectionReportPageContent() {
               )}
 
               {/* 3. Collector Schedule Management Tab */}
-              {activeTab === 'collector' && (
+              {effectiveTab === 'collector' && (
                 <div className="tab-content-wrapper">
                   <CollectorDesktop {...collectorHook} />
                   <div className="lg:hidden">
@@ -326,7 +338,7 @@ export default function CollectionReportPageContent() {
               )}
 
               {/* 4. Manager Oversight Tab */}
-              {activeTab === 'manager' && (
+              {effectiveTab === 'manager' && (
                 <div className="tab-content-wrapper">
                   <ManagerDesktop {...managerHook} />
                   <div className="lg:hidden">

@@ -55,7 +55,7 @@ export default function CollectionReportNewCollectionCollectedMachines({
                         entry.machineCustomName || entry.machineId || 'unknown'
                       }`
                 }
-                className="relative space-y-1 rounded-md border border-gray-200 bg-white p-3 shadow"
+                className="space-y-1 rounded-md border border-gray-200 bg-white p-3 shadow"
               >
                 <p className="break-words text-sm font-semibold text-primary">
                   {formatMachineDisplayNameWithBold({
@@ -87,7 +87,7 @@ export default function CollectionReportNewCollectionCollectedMachines({
                     RAM Clear: Enabled
                   </p>
                 )}
-                <div className="absolute right-2 top-2 flex gap-1">
+                <div className="flex justify-end gap-1 pt-1">
                   <Button
                     variant="ghost"
                     size="icon"

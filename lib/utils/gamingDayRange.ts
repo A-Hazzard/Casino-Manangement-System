@@ -7,7 +7,7 @@
  *
  * Features:
  * - Gaming day range calculation
- * - Timezone offset handling for different licensees
+ * - Timezone offset handling for different licencees
  * - Support for custom game day offsets
  * - Date range calculations for time periods
  *

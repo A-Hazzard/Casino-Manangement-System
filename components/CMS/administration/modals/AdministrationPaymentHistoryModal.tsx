@@ -1,13 +1,13 @@
 /**
  * Payment History Modal Component
- * Modal for displaying payment history for a licensee.
+ * Modal for displaying payment history for a licencee.
  *
  * Features:
  * - Payment history display
  * - Payment status indicators (completed, overdue, cancelled)
  * - Payment details (type, date paid, next billing, amount)
  * - GSAP animations
- * - Licensee information display
+ * - Licencee information display
  *
  * @param props - Component props
  */
@@ -16,12 +16,12 @@
 import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { X } from 'lucide-react';
-import type { Licensee } from '@/lib/types/common';
+import type { Licencee } from '@/lib/types/common';
 
 type AdministrationPaymentHistoryModalProps = {
   open: boolean;
   onClose: () => void;
-  licensee: Licensee | null;
+  licencee: Licencee | null;
 };
 
 type Payment = {
@@ -36,7 +36,7 @@ type Payment = {
 function AdministrationPaymentHistoryModal({
   open,
   onClose,
-  licensee,
+  licencee,
 }: AdministrationPaymentHistoryModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +53,7 @@ function AdministrationPaymentHistoryModal({
     }
   }, [open]);
 
-  if (!open || !licensee) return null;
+  if (!open || !licencee) return null;
 
   const getStatusDisplay = (payment: Payment) => {
     switch (payment.status) {
@@ -108,7 +108,7 @@ function AdministrationPaymentHistoryModal({
           </h2>
 
           {/* Subtitle/Context */}
-          <p className="text-lg text-gray-600">{licensee.name}</p>
+          <p className="text-lg text-gray-600">{licencee.name}</p>
         </div>
 
         {/* Payment Records Content */}

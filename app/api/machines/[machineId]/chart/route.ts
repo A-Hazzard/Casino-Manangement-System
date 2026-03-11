@@ -11,17 +11,17 @@
  * @module app/api/machines/[machineId]/chart/route
  */
 
-import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import {
   convertFromUSD,
   convertToUSD,
   getCountryCurrency,
-  getLicenseeCurrency,
+  getLicenceeCurrency,
 } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -151,7 +151,7 @@ export async function GET(
           .select('gameDayOffset rel country')
           .lean<{
             gameDayOffset?: number;
-            rel?: { licensee?: string };
+            rel?: { licencee?: string };
             country?: string;
           } | null>();
 
@@ -519,7 +519,7 @@ export async function GET(
     // STEP 9: Apply currency conversion if needed
     // ============================================================================
     // For cabinet detail charts we ALWAYS convert from the machine's native currency
-    // into the selected display currency (including USD), regardless of licensee filter or role.
+    // into the selected display currency (including USD), regardless of licencee filter or role.
     let convertedChartData = chartData;
 
     const shouldConvert = Boolean(displayCurrency);
@@ -527,7 +527,7 @@ export async function GET(
     if (shouldConvert) {
       // Get location details to determine native currency
       let locationData: {
-        rel?: { licensee?: string };
+        rel?: { licencee?: string };
         country?: string;
       } | null = null;
       if (machine.gamingLocation) {
@@ -537,7 +537,7 @@ export async function GET(
           })
             .select('rel country')
             .lean()) as {
-              rel?: { licensee?: string };
+              rel?: { licencee?: string };
               country?: string;
             } | null;
         } catch (error) {
@@ -548,24 +548,24 @@ export async function GET(
         }
       }
 
-      // Determine native currency from licensee or country
+      // Determine native currency from licencee or country
       let nativeCurrency: CurrencyCode = 'USD';
-      const licenseeId = locationData?.rel?.licensee || (locationData?.rel as Record<string, unknown>)?.licencee;
-      if (licenseeId) {
+      const licenceeId = locationData?.rel?.licencee || (locationData?.rel as Record<string, unknown>)?.licencee;
+      if (licenceeId) {
         try {
-          const licenseeDoc = await Licensee.findOne({
-            _id: licenseeId,
+          const licenceeDoc = await Licencee.findOne({
+            _id: licenceeId,
           })
             .select('name')
             .lean();
 
-          if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
-            nativeCurrency = getLicenseeCurrency(licenseeDoc.name);
+          if (licenceeDoc && !Array.isArray(licenceeDoc) && licenceeDoc.name) {
+            nativeCurrency = getLicenceeCurrency(licenceeDoc.name);
           }
-        } catch (licenseeError) {
+        } catch (licenceeError) {
           console.warn(
-            '[Machine Chart API] Failed to resolve licensee for currency conversion:',
-            licenseeError
+            '[Machine Chart API] Failed to resolve licencee for currency conversion:',
+            licenceeError
           );
         }
       } else if (locationData?.country) {

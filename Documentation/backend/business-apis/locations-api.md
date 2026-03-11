@@ -44,7 +44,7 @@ All endpoints are prefixed with `/api/locations`.
 ### Required Permissions
 - **Read Operations:** Any authenticated user
 - **Write Operations:** Admin, Manager, or Location Admin roles
-- **Location-Specific Access:** Users can only access locations within their assigned licensees/locations
+- **Location-Specific Access:** Users can only access locations within their assigned licencees/locations
 
 ### Token Requirements
 - Valid JWT token required for all endpoints
@@ -72,10 +72,10 @@ X-RateLimit-Reset: 1640995200
 **Purpose:** Retrieve a list of gaming locations, with results automatically filtered based on the user's roles and permissions. Supports minimal data projection for performance.
 
 **Query Parameters:**
-- `licensee` (string, optional) - Filter locations by a specific licensee ID.
-- `minimal` (boolean, optional) - If `true`, returns a minimal projection of location data (`_id`, `name`, `geoCoords`, `rel.licensee`).
+- `licencee` (string, optional) - Filter locations by a specific licencee ID.
+- `minimal` (boolean, optional) - If `true`, returns a minimal projection of location data (`_id`, `name`, `geoCoords`, `rel.licencee`).
 - `showAll` (boolean, optional) - If `true`, includes all locations, but still respects user permissions.
-- `forceAll` (boolean, optional) - If `true` and user is an admin/developer, bypasses all licensee/location filters to return all locations in the system.
+- `forceAll` (boolean, optional) - If `true` and user is an admin/developer, bypasses all licencee/location filters to return all locations in the system.
 - `page` (number, optional) - Page number for pagination (default: 1).
 - `limit` (number, optional) - Items per page (default: 20, max: 100).
 - `search` (string, optional) - Search by location name or address.
@@ -84,9 +84,9 @@ X-RateLimit-Reset: 1640995200
 
 **Security & Filtering Logic:**
 - **Admin/Developer:** Can see all locations by default. Can use `forceAll=true` to bypass all filters.
-- **Manager:** Sees all locations within their `assignedLicensees`.
+- **Manager:** Sees all locations within their `assignedLicencees`.
 - **Collector/Technician/Location Admin:** Sees only the specific locations listed in their `assignedLocations`.
-- If a `licensee` is specified, the results are further filtered to that licensee, but always within the bounds of the user's permissions.
+- If a `licencee` is specified, the results are further filtered to that licencee, but always within the bounds of the user's permissions.
 
 **Response (Success - 200):**
 ```json
@@ -96,7 +96,7 @@ X-RateLimit-Reset: 1640995200
     {
       "_id": "location_id",
       "name": "Downtown Casino",
-      "licensee": "licensee_id",
+      "licencee": "licencee_id",
       "address": {
         "street": "123 Main St",
         "town": "City",
@@ -124,7 +124,7 @@ X-RateLimit-Reset: 1640995200
 ```
 
 **Used By:** Location listing pages, location selection dropdowns
-**Notes:** Automatically filters results based on user's accessible licensees and locations
+**Notes:** Automatically filters results based on user's accessible licencees and locations
 
 ---
 
@@ -136,7 +136,7 @@ X-RateLimit-Reset: 1640995200
 ```json
 {
   "name": "Downtown Casino",
-  "licensee": "licensee_id",
+  "licencee": "licencee_id",
   "address": {
     "street": "123 Main St",
     "town": "City",
@@ -155,7 +155,7 @@ X-RateLimit-Reset: 1640995200
 
 **Required Fields:**
 - `name` - Location display name
-- `licensee` - Associated licensee ID
+- `licencee` - Associated licencee ID
 - `address` - Complete address object
 
 **Response (Success - 201):**
@@ -165,7 +165,7 @@ X-RateLimit-Reset: 1640995200
   "data": {
     "_id": "new_location_id",
     "name": "Downtown Casino",
-    "licensee": "licensee_id",
+    "licencee": "licencee_id",
     "address": {
       "street": "123 Main St",
       "town": "City",
@@ -182,7 +182,7 @@ X-RateLimit-Reset: 1640995200
 ```
 
 **Used By:** Location creation forms, bulk location import
-**Notes:** Triggers activity log entry, validates licensee permissions
+**Notes:** Triggers activity log entry, validates licencee permissions
 
 ---
 
@@ -200,8 +200,8 @@ X-RateLimit-Reset: 1640995200
   "data": {
     "_id": "location_id",
     "name": "Downtown Casino",
-    "licensee": "licensee_id",
-    "licenseeDetails": {
+    "licencee": "licencee_id",
+    "licenceeDetails": {
       "name": "Casino Corp",
       "code": "CC001"
     },
@@ -234,7 +234,7 @@ X-RateLimit-Reset: 1640995200
 ```
 
 **Used By:** Location detail views, location editing forms
-**Notes:** Includes computed fields like machine count and licensee details
+**Notes:** Includes computed fields like machine count and licencee details
 
 ---
 
@@ -370,7 +370,7 @@ interface Location {
     };
   };
   rel: {
-    licensee: string;
+    licencee: string;
   };
   profitShare: number;
   collectionBalance: number;
@@ -423,7 +423,7 @@ interface Location {
 ```typescript
 interface CreateLocationRequest {
   name: string;                   // Required: Display name
-  licensee: string;               // Required: Licensee ID
+  licencee: string;               // Required: Licencee ID
   address: {                      // Required: Address object
     street?: string;
     town?: string;
@@ -488,8 +488,8 @@ interface MachineAssignment {
 | Status Code | Error Code | Description |
 |-------------|------------|-------------|
 | 400 | VALIDATION_ERROR | Request validation failed |
-| 400 | INVALID_LICENSEE | Licensee does not exist or access denied |
-| 400 | DUPLICATE_NAME | Location name already exists for licensee |
+| 400 | INVALID_LICENCEE | Licencee does not exist or access denied |
+| 400 | DUPLICATE_NAME | Location name already exists for licencee |
 | 401 | UNAUTHORIZED | Missing or invalid authentication |
 | 403 | FORBIDDEN | Insufficient permissions for location |
 | 404 | LOCATION_NOT_FOUND | Location does not exist |
@@ -505,7 +505,7 @@ interface MachineAssignment {
   "message": "Location validation failed",
   "error": {
     "name": "Location name is required",
-    "licensee": "Invalid licensee ID",
+    "licencee": "Invalid licencee ID",
     "address": "Complete address is required"
   },
   "code": "VALIDATION_ERROR"
@@ -525,7 +525,7 @@ const createLocation = async (locationData) => {
     },
     body: JSON.stringify({
       name: 'Downtown Casino',
-      licensee: 'licensee_id',
+      licencee: 'licencee_id',
       address: {
         street: '123 Main St',
         town: 'City',
@@ -591,9 +591,9 @@ const getLocationMachines = async (locationId, filters = {}) => {
 
 ### Search Locations
 ```javascript
-const searchLocations = async (searchTerm, licenseeId) => {
+const searchLocations = async (searchTerm, licenceeId) => {
   const response = await fetch(
-    `/api/locations?search=${encodeURIComponent(searchTerm)}&licensee=${licenseeId}`,
+    `/api/locations?search=${encodeURIComponent(searchTerm)}&licencee=${licenceeId}`,
     {
       headers: {
         'Authorization': `Bearer ${token}`

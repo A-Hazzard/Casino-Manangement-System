@@ -67,7 +67,7 @@ export function useMetersTabData({
   const makeHourlyChartRequest = useAbortableRequest();
 
   const {
-    selectedLicensee,
+    selectedLicencee,
     activeMetricsFilter,
     customDateRange,
     displayCurrency,
@@ -186,10 +186,10 @@ export function useMetersTabData({
         const params: Record<string, string> = {};
         if (
           !isLocationAdmin &&
-          selectedLicensee &&
-          selectedLicensee !== 'all'
+          selectedLicencee &&
+          selectedLicencee !== 'all'
         ) {
-          params.licensee = selectedLicensee;
+          params.licencee = selectedLicencee;
         }
 
         const response = await axios.get('/api/locations', {
@@ -232,7 +232,7 @@ export function useMetersTabData({
     });
   }, [
     isLocationAdmin,
-    selectedLicensee,
+    selectedLicencee,
     locationAdminLocations,
     fetchUserPermissions,
     makeLocationsRequest,
@@ -271,8 +271,8 @@ export function useMetersTabData({
           );
         }
 
-        if (selectedLicensee && selectedLicensee !== 'all') {
-          params.append('licensee', selectedLicensee);
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.append('licencee', selectedLicencee);
         }
 
         if (displayCurrency) {
@@ -355,7 +355,7 @@ export function useMetersTabData({
       selectedLocations,
       activeMetricsFilter,
       customDateRange,
-      selectedLicensee,
+      selectedLicencee,
       displayCurrency,
       chartGranularity,
       itemsPerBatch,
@@ -385,12 +385,12 @@ export function useMetersTabData({
     }
   }, [fetchLocations]);
 
-  // Refetch locations when licensee changes
+  // Refetch locations when licencee changes
   useEffect(() => {
     if (locationsInitialized.current) {
       void fetchLocations();
     }
-  }, [selectedLicensee, fetchLocations]);
+  }, [selectedLicencee, fetchLocations]);
 
   // Note: Granularity changes are handled by the main fetchMetersData effect
   // which includes chartGranularity in its dependency array, so data is refetched automatically
@@ -407,7 +407,7 @@ export function useMetersTabData({
     selectedLocations,
     activeMetricsFilter,
     customDateRange,
-    selectedLicensee,
+    selectedLicencee,
     displayCurrency,
     fetchMetersData,
   ]);
@@ -492,8 +492,8 @@ export function useMetersTabData({
             );
           }
 
-          if (selectedLicensee && selectedLicensee !== 'all') {
-            params.append('licensee', selectedLicensee);
+          if (selectedLicencee && selectedLicencee !== 'all') {
+            params.append('licencee', selectedLicencee);
           }
 
           if (displayCurrency) {
@@ -535,7 +535,7 @@ export function useMetersTabData({
     selectedLocations,
     activeMetricsFilter,
     customDateRange,
-    selectedLicensee,
+    selectedLicencee,
     displayCurrency,
     chartGranularity,
     allHourlyChartData,

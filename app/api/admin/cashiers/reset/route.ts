@@ -83,21 +83,21 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4.5: Licensee Validation (Rule 9)
+    // STEP 4.5: Licencee Validation (Rule 9)
     // ============================================================================
     const isAdmin = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
     if (!isAdmin) {
-      const { getUserAccessibleLicenseesFromToken } = await import('../../../lib/helpers/licenseeFilter');
-      const accessibleLicensees = await getUserAccessibleLicenseesFromToken(userPayload as Parameters<typeof getUserAccessibleLicenseesFromToken>[0]);
+      const { getUserAccessibleLicenceesFromToken } = await import('../../../lib/helpers/licenceeFilter');
+      const accessibleLicencees = await getUserAccessibleLicenceesFromToken(userPayload as Parameters<typeof getUserAccessibleLicenceesFromToken>[0]);
 
-      if (accessibleLicensees !== 'all') {
-        const cashierLicensees = (cashier.assignedLicensees as string[]) || [];
-        const hasOverlap = cashierLicensees.some(id => accessibleLicensees.includes(String(id)));
+      if (accessibleLicencees !== 'all') {
+        const cashierLicencees = (cashier.assignedLicencees as string[]) || [];
+        const hasOverlap = cashierLicencees.some(id => accessibleLicencees.includes(String(id)));
 
         if (!hasOverlap) {
-          console.warn(`[Reset Cashier API] Access denied. User ${userPayload._id} tried to reset cashier ${cashierId} but has no shared licensees.`);
+          console.warn(`[Reset Cashier API] Access denied. User ${userPayload._id} tried to reset cashier ${cashierId} but has no shared licencees.`);
           return NextResponse.json(
-            { success: false, error: 'Insufficient permissions - You do not have access to this cashier\'s licensee' },
+            { success: false, error: 'Insufficient permissions - You do not have access to this cashier\'s licencee' },
             { status: 403 }
           );
         }

@@ -3,7 +3,7 @@
  *
  * This route handles fetching locations for collection reports.
  * It supports:
- * - GET: Retrieves a list of locations filtered by licensee and user permissions
+ * - GET: Retrieves a list of locations filtered by licencee and user permissions
  *
  * @module app/api/collectionReport/locations/route
  */
@@ -12,19 +12,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import {
-  getUserAccessibleLicenseesFromToken,
+  getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
+} from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { getLicenseeObjectId } from '@/lib/utils/licensee';
+import { getLicenceeObjectId } from '@/lib/utils/licencee';
 
 /**
  * Main GET handler for collection report locations
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse query parameters (licensee)
- * 3. Get user's accessible licensees and permissions
+ * 2. Parse query parameters (licencee)
+ * 3. Get user's accessible licencees and permissions
  * 4. Build query filter based on access control
  * 5. Fetch locations with minimal projection
  * 6. Return locations with id and name
@@ -42,18 +42,18 @@ export async function GET(req: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
-    // Support both 'licensee' and 'licensee' spelling
-    const rawLicenseeParam =
-      searchParams.get('licensee') || searchParams.get('licensee');
-    const licensee =
-      rawLicenseeParam && rawLicenseeParam !== 'all'
-        ? getLicenseeObjectId(rawLicenseeParam) || rawLicenseeParam
-        : rawLicenseeParam;
+    // Support both 'licencee' and 'licencee' spelling
+    const rawLicenceeParam =
+      searchParams.get('licencee');
+    const licencee =
+      rawLicenceeParam && rawLicenceeParam !== 'all'
+        ? getLicenceeObjectId(rawLicenceeParam) || rawLicenceeParam
+        : rawLicenceeParam;
 
     // ============================================================================
-    // STEP 3: Get user's accessible licensees and permissions
+    // STEP 3: Get user's accessible licencees and permissions
     // ============================================================================
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       return NextResponse.json({ locations: [] }, { status: 401 });
@@ -77,8 +77,8 @@ export async function GET(req: NextRequest) {
     };
 
     const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicensees,
-      licensee || undefined,
+      userAccessibleLicencees,
+      licencee || undefined,
       userLocationPermissions,
       userRoles
     );

@@ -33,11 +33,11 @@ export type DateFiltersProps = {
 };
 
 export type HeaderProps = {
-  selectedLicensee?: string;
+  selectedLicencee?: string;
   pageTitle?: string;
-  setSelectedLicensee?: (state: string) => void;
+  setSelectedLicencee?: (state: string) => void;
   hideOptions?: boolean;
-  hideLicenseeFilter?: boolean;
+  hideLicenceeFilter?: boolean;
   containerPaddingMobile?: string;
   disabled?: boolean;
   hideCurrencyFilter?: boolean;
@@ -129,7 +129,7 @@ export type CollectionReportTableProps = {
   sortDirection?: 'asc' | 'desc';
   onSort?: (field: keyof CollectionReportRow) => void;
   editableReportIds?: Set<string>; // Set of locationReportIds that can be edited
-  selectedLicensee?: string | null;
+  selectedLicencee?: string | null;
 };
 
 export type CollectionReportCardsProps = {
@@ -141,7 +141,7 @@ export type CollectionReportCardsProps = {
   editableReportIds?: Set<string>; // Set of locationReportIds that can be edited
   loading?: boolean;
   onRefresh?: () => void;
-  selectedLicensee?: string | null;
+  selectedLicencee?: string | null;
 };
 
 export type CollectionReportDesktopUIProps = {
@@ -166,7 +166,7 @@ export type CollectionReportDesktopUIProps = {
   sortField?: keyof CollectionReportRow;
   sortDirection?: 'asc' | 'desc';
   onSort?: (field: keyof CollectionReportRow) => void;
-  selectedLicensee?: string;
+  selectedLicencee?: string;
   editableReportIds?: Set<string>; // Set of locationReportIds that can be edited (most recent per location)
 };
 
@@ -190,7 +190,7 @@ export type CollectionReportMobileUIProps = {
   reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
-  selectedLicensee?: string;
+  selectedLicencee?: string;
   editableReportIds?: Set<string>; // Set of locationReportIds that can be edited (most recent per location)
 };
 
@@ -420,8 +420,8 @@ export type DashboardMobileLayoutProps = {
     filter: import('@shared/types').TimePeriod | ''
   ) => void;
   renderCustomizedLabel: (props: CustomizedLabelProps) => React.ReactNode;
-  selectedLicensee?: string;
-  setSelectedLicensee: (licensee: string) => void;
+  selectedLicencee?: string;
+  setSelectedLicencee: (licencee: string) => void;
   loadingTopPerforming: boolean;
   hasTopPerformingFetched: boolean;
   onRefresh: () => Promise<void>;

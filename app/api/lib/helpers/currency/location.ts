@@ -2,17 +2,17 @@
  * Location Currency Conversion Helper
  *
  * This file contains helper functions for converting location financial data
- * between different currencies based on licensee and country settings.
+ * between different currencies based on licencee and country settings.
  */
 
 import { Countries } from '@/app/api/lib/models/countries';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
   convertFromUSD,
   convertToUSD,
   getCountryCurrency,
-  getLicenseeCurrency,
+  getLicenceeCurrency,
 } from '@/lib/helpers/rates';
 import type { AggregatedLocation } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -22,20 +22,20 @@ import type { CurrencyCode } from '@/shared/types/currency';
  *
  * @param rows - Array of aggregated locations
  * @param displayCurrency - Target currency code
- * @param licensee - Licensee filter (if any)
+ * @param licencee - Licencee filter (if any)
  * @returns Promise<AggregatedLocation[]>
  */
 export async function convertLocationCurrency(
   rows: AggregatedLocation[],
   displayCurrency: CurrencyCode,
-  licensee: string | undefined
+  licencee: string | undefined
 ): Promise<AggregatedLocation[]> {
-  if (!shouldApplyCurrencyConversion(licensee)) {
+  if (!shouldApplyCurrencyConversion(licencee)) {
     return rows;
   }
 
   // Get currency mappings
-  const licenseesData = await Licensee.find(
+  const licenceesData = await Licencee.find(
     {
       $or: [
         { deletedAt: null },
@@ -45,10 +45,10 @@ export async function convertLocationCurrency(
     { _id: 1, name: 1 }
   ).lean();
 
-  const licenseeIdToName = new Map<string, string>();
-  licenseesData.forEach(lic => {
+  const licenceeIdToName = new Map<string, string>();
+  licenceesData.forEach(lic => {
     if (lic._id && lic.name) {
-      licenseeIdToName.set(String(lic._id), lic.name);
+      licenceeIdToName.set(String(lic._id), lic.name);
     }
   });
 
@@ -64,11 +64,11 @@ export async function convertLocationCurrency(
   // Meter values are stored in the location's native currency
   // Convert from native currency to USD, then to display currency
   return rows.map(location => {
-    const locationLicenseeId = location.rel?.licensee as string | undefined;
+    const locationLicenceeId = location.rel?.licencee as string | undefined;
 
     let nativeCurrency: string = 'USD';
 
-    if (!locationLicenseeId) {
+    if (!locationLicenceeId) {
       // Unassigned locations - determine currency from country
       const countryId = location.country as string | undefined;
       const countryName = countryId
@@ -76,18 +76,18 @@ export async function convertLocationCurrency(
         : undefined;
       nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
     } else {
-      // Get licensee's native currency
-      const licenseeName =
-        licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
+      // Get licencee's native currency
+      const licenceeName =
+        licenceeIdToName.get(locationLicenceeId.toString()) || 'Unknown';
 
-      if (licenseeName === 'Unknown') {
+      if (licenceeName === 'Unknown') {
         const countryId = location.country as string | undefined;
         const countryName = countryId
           ? countryIdToName.get(countryId.toString())
           : undefined;
         nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
       } else {
-        nativeCurrency = getLicenseeCurrency(licenseeName);
+        nativeCurrency = getLicenceeCurrency(licenceeName);
       }
     }
 

@@ -3,14 +3,14 @@
  *
  * This route handles operations related to movement requests for cabinets/machines.
  * It supports:
- * - GET: Fetching all movement requests with optional licensee filtering
+ * - GET: Fetching all movement requests with optional licencee filtering
  * - POST: Creating a new movement request
  *
  * @module app/api/movement-requests/route
  */
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * Flow:
  * 1. Parse and validate request parameters
  * 2. Fetch all non-deleted movement requests
- * 3. Filter by licensee if provided
+ * 3. Filter by licencee if provided
  * 4. Fetch location names for lookup
  * 5. Transform requests with location names
  * 6. Return transformed requests
@@ -50,14 +50,14 @@ export async function GET(req: NextRequest) {
     // STEP 2: Get user location permissions
     // ============================================================================
     // Use only new field
-    let userAccessibleLicensees: string[] = [];
+    let userAccessibleLicencees: string[] = [];
     if (
       Array.isArray(
-        (userPayload as { assignedLicensees?: string[] })?.assignedLicensees
+        (userPayload as { assignedLicencees?: string[] })?.assignedLicencees
       )
     ) {
-      userAccessibleLicensees = (userPayload as { assignedLicensees: string[] })
-        .assignedLicensees;
+      userAccessibleLicencees = (userPayload as { assignedLicencees: string[] })
+        .assignedLicencees;
     }
     // Use only new field
     let userLocationPermissions: string[] = [];
@@ -72,11 +72,11 @@ export async function GET(req: NextRequest) {
 
     // Get user's accessible locations
     const { searchParams } = new URL(req.url);
-    const licensee =
-      searchParams.get('licensee') || searchParams.get('licensee');
+    const licencee =
+      searchParams.get('licencee');
     const allowedLocationIds = await getUserLocationFilter(
-      isAdminOrDev ? 'all' : userAccessibleLicensees,
-      licensee && licensee !== 'all' ? licensee : undefined,
+      isAdminOrDev ? 'all' : userAccessibleLicencees,
+      licencee && licencee !== 'all' ? licencee : undefined,
       userLocationPermissions,
       userRoles
     );
@@ -198,16 +198,15 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 5: Filter by licensee if provided (additional filter)
+    // STEP 5: Filter by licencee if provided (additional filter)
     // ============================================================================
-    if (licensee && licensee !== 'all') {
-      const licenseeLocations = await GamingLocations.find(
+    if (licencee && licencee !== 'all') {
+      const licenceeLocations = await GamingLocations.find(
         {
           $and: [
             {
               $or: [
-                { 'rel.licensee': licensee },
-                { 'rel.licencee': licensee }
+                { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  }
               ]
             },
             {
@@ -221,14 +220,14 @@ export async function GET(req: NextRequest) {
         { _id: 1, name: 1 }
       ).lean();
 
-      const licenseeLocationIds = licenseeLocations.map((loc: { _id: unknown }) =>
+      const licenceeLocationIds = licenceeLocations.map((loc: { _id: unknown }) =>
         String(loc._id)
       );
 
       requests = requests.filter(
         request =>
-          licenseeLocationIds.includes(String(request.locationFrom)) ||
-          licenseeLocationIds.includes(String(request.locationTo))
+          licenceeLocationIds.includes(String(request.locationFrom)) ||
+          licenceeLocationIds.includes(String(request.locationTo))
       );
     }
 

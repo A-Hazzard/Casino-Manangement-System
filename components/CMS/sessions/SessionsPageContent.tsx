@@ -45,8 +45,8 @@ export default function SessionsPageContent() {
     hasActiveFilters,
   } = useSessions();
 
-  // Dashboard store specific for Licensee
-  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
+  // Dashboard store specific for Licencee
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -68,8 +68,8 @@ if (refreshSessions) {
   return (
     <PageLayout
       headerProps={{
-        selectedLicensee,
-        setSelectedLicensee,
+        selectedLicencee,
+        setSelectedLicencee,
         disabled: false,
       }}
       mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"

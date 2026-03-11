@@ -119,7 +119,7 @@ function AdministrationActivityLogCard({
         return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 font-medium';
       case 'member':
         return 'bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200 font-medium';
-      case 'licensee':
+      case 'licencee':
         return 'bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-200 font-medium';
       case 'session':
         return 'bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-200 font-medium';

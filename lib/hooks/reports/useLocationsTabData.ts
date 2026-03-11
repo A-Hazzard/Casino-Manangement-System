@@ -57,7 +57,7 @@ export function useLocationsTabData({
   // ============================================================================
   // Store & Hooks
   // ============================================================================
-  const { activeMetricsFilter, customDateRange, selectedLicensee } =
+  const { activeMetricsFilter, customDateRange, selectedLicencee } =
     useDashBoardStore();
   const { setLoading } = useReportsStore();
   const { displayCurrency } = useCurrencyFormat();
@@ -237,9 +237,9 @@ export function useLocationsTabData({
       setGamingLocationsLoading(true);
       try {
         const params = new URLSearchParams();
-        // Always pass licensee parameter so API knows user's selection
-        if (selectedLicensee) {
-          params.append('licensee', selectedLicensee);
+        // Always pass licencee parameter so API knows user's selection
+        if (selectedLicencee) {
+          params.append('licencee', selectedLicencee);
         }
 
         const response = await axios.get(
@@ -261,7 +261,7 @@ export function useLocationsTabData({
         setGamingLocationsLoading(false);
       }
     });
-  }, [selectedLicensee, makeGamingLocationsRequest]);
+  }, [selectedLicencee, makeGamingLocationsRequest]);
 
   /**
    * Fetch location aggregation data for map (same API as dashboard)
@@ -303,8 +303,8 @@ export function useLocationsTabData({
           return;
         }
 
-        if (selectedLicensee && selectedLicensee !== 'all') {
-          params.append('licensee', selectedLicensee);
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.append('licencee', selectedLicencee);
         }
 
         if (displayCurrency) {
@@ -360,7 +360,7 @@ export function useLocationsTabData({
   }, [
     activeMetricsFilter,
     customDateRange,
-    selectedLicensee,
+    selectedLicencee,
     displayCurrency,
     makeLocationAggregationRequest,
   ]);
@@ -370,8 +370,8 @@ export function useLocationsTabData({
    */
   const fetchBatch = useCallback(
     async (page: number = 1, limit: number = 50, signal?: AbortSignal) => {
-      const effectiveLicensee =
-        selectedLicensee && selectedLicensee !== 'all' ? selectedLicensee : '';
+      const effectiveLicencee =
+        selectedLicencee && selectedLicencee !== 'all' ? selectedLicencee : '';
 
       // Build date range for custom dates
       let dateRange: { from: Date; to: Date } | undefined;
@@ -407,7 +407,7 @@ export function useLocationsTabData({
 
       return await fetchAggregatedLocationsData(
         timePeriod,
-        effectiveLicensee,
+        effectiveLicencee,
         '', // No filter string for reports page
         dateRange,
         displayCurrency,
@@ -421,7 +421,7 @@ export function useLocationsTabData({
       activeMetricsFilter,
       customDateRange,
       displayCurrency,
-      selectedLicensee,
+      selectedLicencee,
       activeTab,
       selectedSasLocations,
       selectedRevenueLocations,
@@ -441,7 +441,7 @@ export function useLocationsTabData({
           startDate: new Date(),
           endDate: new Date(),
         },
-        selectedLicensee,
+        selectedLicencee,
         (totals: DashboardTotals | null) => {
           setMetricsTotals(totals);
           setMetricsTotalsLoading(false);
@@ -456,7 +456,7 @@ export function useLocationsTabData({
       console.error('Error fetching metrics totals:', error);
       setMetricsTotalsLoading(false);
     }
-  }, [activeMetricsFilter, customDateRange, selectedLicensee, displayCurrency]);
+  }, [activeMetricsFilter, customDateRange, selectedLicencee, displayCurrency]);
 
   /**
    * Simplified data fetching for locations with batch loading
@@ -551,8 +551,8 @@ export function useLocationsTabData({
           summary: 'true',
         };
 
-        if (selectedLicensee && selectedLicensee !== 'all') {
-          params.licensee = selectedLicensee;
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.licencee = selectedLicencee;
         }
 
         if (displayCurrency) {
@@ -770,7 +770,7 @@ export function useLocationsTabData({
       }
     },
     [
-      selectedLicensee,
+      selectedLicencee,
       activeTab,
       fetchGamingLocationsAsync,
       selectedSasLocations,
@@ -812,8 +812,8 @@ export function useLocationsTabData({
           }
         }
 
-        if (selectedLicensee && selectedLicensee !== 'all') {
-          params.licensee = selectedLicensee;
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.licencee = selectedLicencee;
         }
 
         buildTimePeriodParams(params);
@@ -862,7 +862,7 @@ export function useLocationsTabData({
     selectedSasLocations,
     selectedRevenueLocations,
     activeTab,
-    selectedLicensee,
+    selectedLicencee,
     buildTimePeriodParams,
     makeTopMachinesRequest,
   ]);
@@ -894,8 +894,8 @@ export function useLocationsTabData({
           }
         }
 
-        if (selectedLicensee && selectedLicensee !== 'all') {
-          params.licensee = selectedLicensee;
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.licencee = selectedLicencee;
         }
 
         buildTimePeriodParams(params);
@@ -947,7 +947,7 @@ export function useLocationsTabData({
     selectedSasLocations,
     selectedRevenueLocations,
     activeTab,
-    selectedLicensee,
+    selectedLicencee,
     buildTimePeriodParams,
     makeBottomMachinesRequest,
   ]);
@@ -976,8 +976,8 @@ export function useLocationsTabData({
             locationIds: locationsToFetch.join(','),
           };
 
-          if (selectedLicensee && selectedLicensee !== 'all') {
-            params.licensee = selectedLicensee;
+          if (selectedLicencee && selectedLicencee !== 'all') {
+            params.licencee = selectedLicencee;
           }
 
           if (displayCurrency) {
@@ -1017,7 +1017,7 @@ export function useLocationsTabData({
       selectedSasLocations,
       selectedRevenueLocations,
       activeTab,
-      selectedLicensee,
+      selectedLicencee,
       displayCurrency,
       chartGranularity,
       makeTrendDataRequest,
@@ -1057,7 +1057,7 @@ export function useLocationsTabData({
   }, [
     activeMetricsFilter,
     dateRangeKey,
-    selectedLicensee,
+    selectedLicencee,
     displayCurrency,
     fetchLocationDataAsync,
     fetchMetricsTotals,

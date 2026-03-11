@@ -20,7 +20,7 @@ import {
     CardTitle,
 } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
@@ -40,12 +40,12 @@ export default function VaultInventoryCard({
   isLoading = false,
 }: VaultInventoryCardProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicensee } = useVaultLicensee();
+  const { licenceeId: selectedLicencee } = useVaultLicencee();
 
   // Normalize denominations to ensure all slots exist even if 0
   const normalizedDenoms = useMemo(() => {
     const map = new Map<number, number>();
-    const denomsList = getDenominationValues(selectedLicensee);
+    const denomsList = getDenominationValues(selectedLicencee);
     (denominations || []).forEach(d => map.set(d.denomination, d.quantity));
 
     const result = denomsList.map(val => ({
@@ -56,7 +56,7 @@ export default function VaultInventoryCard({
     }));
 
     return result;
-  }, [denominations, selectedLicensee]);
+  }, [denominations, selectedLicencee]);
 
   const totalBills = normalizedDenoms.reduce(
     (acc, curr) => acc + curr.quantity,

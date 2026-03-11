@@ -8,22 +8,22 @@ import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
 export default function CabinetDetailNotFound() {
   const pathname = usePathname();
   const slug = pathname.split('/').pop() || '';
-  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
   return (
     <>
       <div className="flex min-h-screen overflow-hidden bg-background md:pl-36 xl:mx-auto xl:w-full">
         <main className="flex flex-1 flex-col items-center justify-center overflow-x-hidden p-4 md:p-6">
           <Header
-            selectedLicensee={selectedLicensee}
-            setSelectedLicensee={setSelectedLicensee}
+            selectedLicencee={selectedLicencee}
+            setSelectedLicencee={setSelectedLicencee}
             pageTitle=""
             hideOptions={true}
-            hideLicenseeFilter={false}
+            hideLicenceeFilter={false}
           />
           <NotFoundError
             title="Cabinet Not Found"
-            message={`The cabinet with ID "${slug}" could not be found for the selected licensee.`}
+            message={`The cabinet with ID "${slug}" could not be found for the selected licencee.`}
             resourceType="cabinet"
             showRetry={false}
             customBackText="Back to Cabinets"

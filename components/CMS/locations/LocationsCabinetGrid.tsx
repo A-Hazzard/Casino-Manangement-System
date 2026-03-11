@@ -27,6 +27,7 @@
 import CabinetTable from '@/components/CMS/cabinets/CabinetsCabinetTable';
 import { Button } from '@/components/shared/ui/button';
 import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
+import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import type { CabinetSortOption } from '@/lib/hooks/data';
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
@@ -38,7 +39,6 @@ import {
     getMoneyInColorClass,
     getMoneyOutColorClass,
 } from '@/lib/utils/financial';
-import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { formatDistanceToNow } from 'date-fns';
 import gsap from 'gsap';
@@ -101,9 +101,9 @@ function CabinetCardMobile({
       className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
     >
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="max-w-[60%] truncate font-semibold">
-          {getSerialNumberIdentifier(cabinet)}
-        </h3>
+        <div className="max-w-[60%] truncate font-semibold">
+          {formatMachineDisplayNameWithBold(cabinet)}
+        </div>
         <span
           ref={statusRef}
           className={`inline-flex h-3 w-3 items-center justify-center rounded-full ${

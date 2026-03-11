@@ -7,7 +7,7 @@
  * Returns detailed transaction list for a specific metric (Cash In, Cash Out, Payouts).
  */
 
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     // Access check
     const allowedLocationIds = await getUserLocationFilter(
-      (userPayload?.assignedLicensees as string[]) || [],
+      (userPayload?.assignedLicencees as string[]) || [],
       undefined,
       (userPayload?.assignedLocations as string[]) || [],
       (userPayload?.roles as string[]) || []

@@ -27,7 +27,7 @@ export async function switchFilter(
   setChartData: (state: dashboardData[]) => void,
   startDate?: Date,
   endDate?: Date,
-  licensee?: string,
+  licencee?: string,
   setActiveFilters?: (filters: ActiveFilters) => void,
   setShowDatePicker?: (state: boolean) => void,
   displayCurrency?: string,
@@ -56,7 +56,7 @@ export async function switchFilter(
       filter,
       startDate,
       endDate,
-      licensee,
+      licencee,
       displayCurrency,
       signal,
       granularity

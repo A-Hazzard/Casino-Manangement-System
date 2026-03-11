@@ -271,9 +271,9 @@ All endpoints return consistent error format:
 
 ### Role-Based Access
 
-- `developer` - Full system access across all licensees
-- `admin` - Full system access across all licensees
-- `manager` - Access to ALL locations within assigned licensees
+- `developer` - Full system access across all licencees
+- `admin` - Full system access across all licencees
+- `manager` - Access to ALL locations within assigned licencees
 - `collector` - Access to specifically assigned locations only
 - `location admin` - Access to specifically assigned locations only
 - `technician` - Access to specifically assigned locations (Cabinets only)
@@ -445,7 +445,7 @@ All APIs follow a consistent response format:
 
 ### 8. System Configuration & Firmware
 
-**Base URLs:** `/api/firmwares`, `/api/licensees`, `/api/countries`, `/api/collectors`
+**Base URLs:** `/api/firmwares`, `/api/licencees`, `/api/countries`, `/api/collectors`
 
 | Endpoint                   | Method | Description            | Used By              |
 | -------------------------- | ------ | ---------------------- | -------------------- |
@@ -454,7 +454,7 @@ All APIs follow a consistent response format:
 | `/firmwares/[id]`          | GET    | Firmware details       | Firmware details     |
 | `/firmwares/[id]/download` | GET    | Download firmware      | Firmware updates     |
 | `/firmwares/migrate`       | POST   | Firmware migration     | System updates       |
-| `/licensees`               | GET    | List licensees         | Licensee management  |
+| `/licencees`               | GET    | List licencees         | Licencee management  |
 | `/countries`               | GET    | List countries         | Country selection    |
 | `/countries`               | POST   | Create new country     | Country management   |
 | `/countries`               | PUT    | Update country         | Country management   |
@@ -548,13 +548,13 @@ WebSocket Connection → Event Monitoring → Real-time Data Push → UI Update
 
 ## Common Query Parameters
 
-### Licensee Filtering
+### Licencee Filtering
 
-- `licensee` (string): Licensee ID to filter data (preferred spelling)
-- `licensee` (string): Alternate spelling (backwards compatibility)
+- `licencee` (string): Licencee ID to filter data (preferred spelling)
+- `licencee` (string): Alternate spelling (backwards compatibility)
 - **Behavior**:
-  - Developer/Admin: Optional filter, defaults to all licensees
-  - Manager: Must be one of user's assigned licensees
+  - Developer/Admin: Optional filter, defaults to all licencees
+  - Manager: Must be one of user's assigned licencees
   - Collector/Location Admin/Technician: Ignored (auto-filtered to assigned locations)
 
 ### Pagination
@@ -568,7 +568,7 @@ WebSocket Connection → Event Monitoring → Real-time Data Push → UI Update
 - `sortBy` (string): Field to sort by
 - `sortOrder` (string): Sort direction (asc/desc)
 - `dateRange` (string): Date range filter
-- `licensee` (string): Filter by licensee
+- `licencee` (string): Filter by licencee
 
 ### Date Filtering
 
@@ -612,13 +612,13 @@ WebSocket Connection → Event Monitoring → Real-time Data Push → UI Update
 ### Authorization
 
 - **Role-based access control (RBAC)**: 6 distinct roles with different permission levels
-- **Licensee-based filtering**: Users assigned to specific licensees, data isolated by licensee
+- **Licencee-based filtering**: Users assigned to specific licencees, data isolated by licencee
 - **Location-level permissions**: Granular resource permissions for location-specific access
 - **Session version management**: `sessionVersion` incremented on permission changes
 - **Automatic session invalidation**: JWT validation checks session version on every request
 - **Permission intersection logic**:
-  - Managers: See all locations for assigned licensees
-  - Non-managers: See intersection of (licensee locations ∩ assigned locations)
+  - Managers: See all locations for assigned licencees
+  - Non-managers: See intersection of (licencee locations ∩ assigned locations)
 
 ### Data Protection
 

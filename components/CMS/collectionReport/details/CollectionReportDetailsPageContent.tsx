@@ -173,7 +173,7 @@ export default function CollectionReportDetailsPageContent() {
       }}
       pageTitle=""
       hideOptions={true}
-      hideLicenseeFilter={true}
+      hideLicenceeFilter={true}
       mainClassName="flex flex-col flex-1 w-full max-w-full"
       showToaster={false}
       onRefresh={handleRefresh}

@@ -20,11 +20,11 @@ import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards'
 import UploadSmibDataModal from '@/components/shared/ui/firmware/UploadSmibDataModal';
 import MachineStatusWidget from '@/components/shared/ui/MachineStatusWidget';
 import NewMovementRequestModal from '@/components/shared/ui/movements/NewMovementRequestModal';
-import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
+import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import { useCabinetsPageData } from '@/lib/hooks/cabinets/useCabinetsPageData';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
-import { shouldShowNoLicenseeMessage } from '@/lib/utils/licensee';
+import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import { RefreshCw } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import CabinetsDeleteCabinetModal from './modals/CabinetsDeleteCabinetModal';
@@ -60,7 +60,7 @@ export default function CabinetsPageContent() {
   const cabinetsPageData = useCabinetsPageData();
   const { user } = useUserStore();
   const {
-    setSelectedLicensee,
+    setSelectedLicencee,
     activeMetricsFilter,
   } = useDashBoardStore();
 
@@ -105,7 +105,8 @@ export default function CabinetsPageContent() {
     transformCabinet,
   } = cabinetsPageData;
 
-  const isTechnicianOnly = user?.roles?.length === 1 && user?.roles[0] === 'technician';
+  const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
+  const isTechnicianOnly = userRoles.includes('technician') && !userRoles.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
 
   const shouldHideFinancials = (_u: { roles?: string[] } | null | undefined) => {
     return false;
@@ -114,15 +115,15 @@ export default function CabinetsPageContent() {
   // ============================================================================
   // Permission Checks
   // ============================================================================
-  // If user has no licensee assigned, show the "No Licensee Assigned" message
-  if (shouldShowNoLicenseeMessage(user)) {
+  // If user has no licencee assigned, show the "No Licencee Assigned" message
+  if (shouldShowNoLicenceeMessage(user)) {
     return (
       <PageLayout
-        headerProps={{ setSelectedLicensee }}
+        headerProps={{ setSelectedLicencee }}
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
         showToaster={false}
       >
-        <NoLicenseeAssigned />
+        <NoLicenceeAssigned />
       </PageLayout>
     );
   }
@@ -152,7 +153,7 @@ export default function CabinetsPageContent() {
       />
 
       <PageLayout
-        headerProps={{ setSelectedLicensee }}
+        headerProps={{ setSelectedLicencee }}
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
         showToaster={false}
         onRefresh={handleRefresh}

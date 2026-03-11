@@ -13,15 +13,16 @@ import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSe
 import { ConfirmationDialog } from '@/components/shared/ui/ConfirmationDialog';
 import {
     Dialog,
+    DialogClose,
     DialogContent,
-    DialogHeader,
-    DialogTitle,
+    DialogTitle
 } from '@/components/shared/ui/dialog';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { useMobileCollectionModal } from '@/lib/hooks/collectionReport/useMobileCollectionModal';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
+import { Calculator, ClipboardList, Info, SendHorizontal, X } from 'lucide-react';
 
 type CollectionReportMobileNewCollectionModalProps = {
   show: boolean;
@@ -65,6 +66,14 @@ export default function CollectionReportMobileNewCollectionModal({
     setStoreSelectedMachineData,
     showDeleteConfirmation,
     setShowDeleteConfirmation,
+    showUnsavedChangesWarning,
+    setShowUnsavedChangesWarning,
+    showCreateReportConfirmation,
+    setShowCreateReportConfirmation,
+    baseBalanceCorrection,
+    onBaseBalanceCorrectionChange,
+    storeFormData,
+    setStoreFormData,
   } = useMobileCollectionModal({
     show,
     locations,
@@ -74,54 +83,117 @@ export default function CollectionReportMobileNewCollectionModal({
 
   return (
     <>
-    <Dialog open={show} onOpenChange={onClose}>
-      <DialogContent className="flex h-full w-full max-w-full flex-col p-0">
-        <DialogHeader className="rounded-t-xl border-b bg-white p-4 md:rounded-t-xl">
-          <DialogTitle className="text-xl font-bold">New Collection Report</DialogTitle>
-        </DialogHeader>
-        {modalState.navigationStack.length === 0 ? (
-          <div className="flex h-full flex-col overflow-hidden">
+    <Dialog 
+      open={show} 
+      onOpenChange={(isOpen) => {
+        // Prevent closing if confirmation dialogs are open
+        if (!isOpen && (showCreateReportConfirmation || showDeleteConfirmation || modalState.showViewMachineConfirmation || showUnsavedChangesWarning)) {
+          return;
+        }
 
-            {/* Summary Info - Show when location is selected */}
-            {(lockedLocationId || selectedLocation) && (
-              <div className="border-b bg-blue-50 px-4 py-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-gray-600">Location:</p>
+        // Check for unsaved changes before closing
+        if (!isOpen && (collectedMachines.length > 0 || selectedMachineData || storeFormData.metersIn || storeFormData.metersOut || storeFormData.notes)) {
+           setShowUnsavedChangesWarning(true);
+           return;
+        }
+
+        if (!isOpen) {
+          onClose();
+        }
+      }}
+    >
+      <DialogContent 
+        className="m-0 flex h-[100dvh] w-full max-w-full flex-col overflow-hidden border-none bg-gray-50 p-0 shadow-2xl md:inset-auto md:left-[50%] md:top-[50%] md:h-[90vh] md:w-[95vw] md:max-w-6xl md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-2xl"
+        onInteractOutside={(e) => e.preventDefault()}
+        showCloseButton={false}
+        isMobileFullScreen={true}
+      >
+        <DialogTitle className="sr-only">New Collection Report</DialogTitle>
+        
+        {/* Modern Sticky Header - Only show on home screen */}
+        {modalState.navigationStack.length === 0 && (
+          <div className="sticky top-0 z-[100] border-b bg-white px-5 py-4 shadow-sm md:rounded-t-2xl">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold tracking-tight text-gray-900">New Collection Report</h2>
+              <DialogClose asChild>
+                <button
+                  onClick={onClose}
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </DialogClose>
+            </div>
+          </div>
+        )}
+
+        {modalState.navigationStack.length === 0 ? (
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-white mobile-collection-scrollbar">
+
+            {/* Summary Info - Show when location is selected and we have machines */}
+            {(lockedLocationId || selectedLocation) && collectedMachines.length > 0 && (
+              <div className="border-b bg-blue-50/50 px-6 py-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
                     <p className="text-sm font-semibold text-gray-900">
-                      {selectedLocationName || 'Not selected'}
+                      {selectedLocationName || 'Location'}
                     </p>
                   </div>
-                  {collectedMachines.length > 0 && (
-                    <div className="text-right">
-                      <p className="text-xs text-gray-600">Machines Collected:</p>
-                      <p className="text-sm font-semibold text-green-600">
-                        {collectedMachines.length}
-                      </p>
+                  <div className="rounded-full bg-green-100 px-3 py-1 text-right">
+                    <p className="text-xs font-bold text-green-700">
+                      {collectedMachines.length} Machine{collectedMachines.length !== 1 ? 's' : ''} Recorded
+                    </p>
+                  </div>
+                </div>
+
+                {/* Live Reconciliation Summary */}
+                <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
+                  <h5 className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-blue-600">
+                    <Info className="h-3 w-3" />
+                    Live Reconciliation Summary
+                  </h5>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-0.5 border-r border-gray-100">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase">Target</p>
+                      <p className="text-sm font-black text-gray-900">${financials.amountToCollect || '0.00'}</p>
                     </div>
-                  )}
+                    <div className="space-y-0.5 pl-2">
+                       <p className="text-[9px] font-bold text-gray-400 uppercase">Actual</p>
+                       <p className="text-sm font-black text-blue-600">${financials.collectedAmount || '0.00'}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 border-t border-gray-50 pt-3">
+                    <div className="flex items-center justify-between">
+                       <p className="text-[9px] font-bold text-gray-400 uppercase">Next Opening Balance</p>
+                       <p className={`text-xs font-black ${Number(financials.previousBalance) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                         ${financials.previousBalance || '0.00'}
+                       </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Location Selector - ALWAYS VISIBLE */}
-            <div className="flex flex-1 flex-col overflow-hidden p-4">
+            <div className="p-6 bg-gray-50/20">
               {modalState.isLoadingCollections ? (
-                <div className="space-y-4">
-                  <div className="py-4 text-center">
-                    <p className="font-medium text-blue-600">
-                      Checking if any collection reports is in progress first
+                <div className="space-y-6 flex flex-col items-center justify-center py-10">
+                  <div className="text-center">
+                    <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+                    <p className="font-semibold text-gray-900">
+                      Checking status...
                     </p>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Please wait while we check for incomplete collections
+                    <p className="mt-2 text-sm text-gray-500 max-w-[200px] mx-auto">
+                      Checking for any in-progress collection reports
                     </p>
                   </div>
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-12 w-full max-w-sm rounded-xl" />
                 </div>
               ) : (
                 <>
-                  <label className="mb-2 block text-sm font-medium">
+                  <label className="mb-2 block text-sm font-bold text-gray-700">
                     Select Location
                   </label>
                   <div
@@ -154,22 +226,6 @@ export default function CollectionReportMobileNewCollectionModal({
               {/* Action Buttons - Only show when location is selected */}
               {(lockedLocationId || selectedLocation) && (
                 <div className="mt-6 space-y-3">
-                  {/* Open Report Button - Only show when a machine is selected */}
-                  {selectedMachine && (
-                    <button
-                      onClick={() => {
-                        pushNavigation('main');
-                        setModalState(prev => ({
-                          ...prev,
-                          isFormVisible: true,
-                        }));
-                      }}
-                      className="w-full rounded-lg bg-blue-600 py-3 font-medium text-white hover:bg-blue-700"
-                    >
-                      Open Report
-                    </button>
-                  )}
-
                   {/* View Form Button - Show when there are collected machines */}
                   {collectedMachines.length > 0 && (
                     <button
@@ -181,10 +237,10 @@ export default function CollectionReportMobileNewCollectionModal({
                           isViewingFinancialForm: true, // Show financial form
                         }));
                       }}
-                      className="w-full rounded-lg bg-purple-600 py-3 font-medium text-white hover:bg-purple-700"
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-3 font-medium text-white transition-all hover:bg-blue-700 active:scale-95 shadow-md"
                     >
-                      View Form ({collectedMachines.length}{' '}
-                      machine{collectedMachines.length !== 1 ? 's' : ''})
+                      <Calculator className="h-5 w-5" />
+                      View Amount to Collect/Taxes
                     </button>
                   )}
 
@@ -201,35 +257,26 @@ export default function CollectionReportMobileNewCollectionModal({
                         isViewingFinancialForm: false, // Show machine list
                       }));
                     }}
-                    className={`w-full rounded-lg py-3 font-medium ${
+                    className={`flex w-full items-center justify-center gap-2 rounded-lg py-3 font-medium transition-all active:scale-95 shadow-md ${
                       collectedMachines.length === 0
-                        ? 'cursor-not-allowed bg-gray-400 text-gray-200'
+                        ? 'cursor-not-allowed bg-gray-400 text-gray-200 shadow-none'
                         : 'bg-green-600 text-white hover:bg-green-700'
                     }`}
                   >
-                    View Collected Machines ({collectedMachines.length})
+                    <ClipboardList className="h-5 w-5" />
+                    View Recorded Machines ({collectedMachines.length})
                   </button>
                 </div>
               )}
 
               {/* Machines List - Show when location is selected */}
               {(lockedLocationId || selectedLocation) && (
-                <div className="mt-6 flex min-h-0 flex-1 flex-col">
-                  <h3 className="mb-4 text-lg font-semibold">
-                    Machines for{' '}
-                    {(() => {
-                      const locationIdToUse =
-                        lockedLocationId || selectedLocation;
-                      const location = locations.find(
-                        l => String(l._id) === locationIdToUse
-                      );
-                      return (
-                        location?.name ||
-                        selectedLocationName ||
-                        'Selected Location'
-                      );
-                    })()}
-                  </h3>
+                <div className="mt-8">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-gray-900">
+                      {selectedLocationName ? `Machines at ${selectedLocationName}` : 'Available Machines'}
+                    </h3>
+                  </div>
 
                   {/* Search bar for machines */}
                   {availableMachines.length > 3 && (
@@ -251,11 +298,7 @@ export default function CollectionReportMobileNewCollectionModal({
 
                   {/* Machine Cards Container - 2x2 Grid */}
                   <div
-                    className="min-h-0 flex-1 grid grid-cols-1 gap-3 overflow-y-auto pb-4 sm:grid-cols-2 items-start"
-                    style={{
-                      scrollbarWidth: 'thin',
-                      scrollbarColor: '#d1d5db #f3f4f6',
-                    }}
+                    className="grid grid-cols-1 gap-3 pb-8 sm:grid-cols-2 items-start"
                   >
                     {modalState.isLoadingMachines ? (
                       [1, 2, 3, 4, 5, 6].map(i => (
@@ -311,16 +354,16 @@ export default function CollectionReportMobileNewCollectionModal({
                           return (
                             <div
                               key={String(machine._id)}
-                              className={`rounded-lg border-2 p-4 transition-all ${
+                              className={`rounded-2xl border p-4 transition-all duration-200 ${
                                 isSelected
-                                  ? 'border-blue-500 bg-blue-50 shadow-md'
+                                  ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/10 shadow-md'
                                   : isCollected
-                                    ? 'border-green-300 bg-green-50 shadow-sm'
-                                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                                    ? 'border-green-200 bg-green-50/50 opacity-90'
+                                    : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-lg'
                               }`}
                             >
                               {/* Machine Name */}
-                              <p className="break-words text-sm font-semibold text-primary">
+                              <p className="break-words text-sm font-bold text-gray-900 line-clamp-2 min-h-[40px]">
                                 {formatMachineDisplayNameWithBold(machine)}
                               </p>
 
@@ -370,30 +413,31 @@ export default function CollectionReportMobileNewCollectionModal({
                                       // Select the machine
                                       setStoreSelectedMachine(String(machine._id));
                                       setStoreSelectedMachineData(machine);
+                                      setStoreFormData({
+                                        metersIn: '',
+                                        metersOut: '',
+                                        notes: '',
+                                        ramClear: false,
+                                        ramClearMetersIn: '',
+                                        ramClearMetersOut: '',
+                                      });
                                       setModalState(prev => ({
                                         ...prev,
                                         isFormVisible: true,
-                                        formData: {
-                                          ...prev.formData,
-                                          metersIn: '',
-                                          metersOut: '',
-                                          notes: '',
-                                          ramClear: false,
-                                        },
                                       }));
                                     }
                                   }}
                                   disabled={isCollected}
-                                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                                  className={`rounded-full px-5 py-2.5 text-sm font-bold shadow-sm transition-all active:scale-95 ${
                                     isCollected
-                                      ? 'cursor-not-allowed border border-green-300 bg-green-100 text-green-700'
+                                      ? 'cursor-not-allowed bg-green-100 text-green-700'
                                       : isSelected
-                                        ? 'border border-red-600 bg-red-600 text-white hover:bg-red-700'
-                                        : 'border border-blue-600 bg-blue-600 text-white hover:bg-blue-700'
+                                        ? 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100'
+                                        : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
                                   }`}
                                 >
                                   {isCollected
-                                    ? '✓ Added'
+                                    ? '✓ Collected'
                                     : isSelected
                                       ? 'Unselect'
                                       : 'Select'}
@@ -405,6 +449,27 @@ export default function CollectionReportMobileNewCollectionModal({
                       })()
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Home Screen Submit Button - Allow submission from machine list */}
+              {collectedMachines.length > 0 && (
+                <div className="sticky bottom-0 mt-6 border-t bg-white/80 p-4 backdrop-blur-sm">
+                  <button
+                    onClick={() => setShowCreateReportConfirmation(true)}
+                    disabled={!isCreateReportsEnabled || modalState.isProcessing}
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold shadow-lg transition-all active:scale-95 ${
+                      isCreateReportsEnabled && !modalState.isProcessing
+                        ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:shadow-green-200'
+                        : 'cursor-not-allowed bg-gray-400 text-gray-200'
+                    }`}
+                  >
+                    <SendHorizontal className="h-5 w-5" />
+                    SUBMIT FINAL COLLECTION REPORT
+                  </button>
+                  <p className="mt-2 text-center text-[10px] text-gray-400 font-medium">
+                    Proceed to finalize all {collectedMachines.length} machine readings.
+                  </p>
                 </div>
               )}
             </div>
@@ -440,13 +505,13 @@ export default function CollectionReportMobileNewCollectionModal({
             selectedMachineData={selectedMachineData ?? null}
             editingEntryId={modalState.editingEntryId}
             formData={{
-              collectionTime: modalState.formData.collectionTime,
-              metersIn: modalState.formData.metersIn,
-              metersOut: modalState.formData.metersOut,
-              ramClear: modalState.formData.ramClear,
-              ramClearMetersIn: modalState.formData.ramClearMetersIn,
-              ramClearMetersOut: modalState.formData.ramClearMetersOut,
-              notes: modalState.formData.notes,
+              collectionTime: storeFormData.collectionTime,
+              metersIn: storeFormData.metersIn,
+              metersOut: storeFormData.metersOut,
+              ramClear: storeFormData.ramClear,
+              ramClearMetersIn: storeFormData.ramClearMetersIn,
+              ramClearMetersOut: storeFormData.ramClearMetersOut,
+              notes: storeFormData.notes,
             }}
             financials={financials}
             collectedMachinesCount={collectedMachines.length}
@@ -469,32 +534,45 @@ export default function CollectionReportMobileNewCollectionModal({
               }));
             }}
             onFormDataChange={(field, value) => {
-              setModalState(prev => ({
-                ...prev,
-                formData: {
-                  ...prev.formData,
-                  [field]: value,
-                },
-              }));
+              setStoreFormData({
+                [field]: value,
+              });
             }}
             onFinancialDataChange={(field, value) => {
               setStoreFinancials({ [field]: value });
             }}
             onAddMachine={addMachineToList}
             autoFillRamClearMeters={checked => {
-              setModalState(prev => ({
-                ...prev,
-                formData: {
-                  ...prev.formData,
-                  ramClear: checked,
-                  ramClearMetersIn: checked ? prev.formData.metersIn : '',
-                  ramClearMetersOut: checked ? prev.formData.metersOut : '',
-                },
-              }));
+              setStoreFormData({
+                ramClear: checked,
+                ramClearMetersIn: checked ? storeFormData.metersIn : '',
+                ramClearMetersOut: checked ? storeFormData.metersOut : '',
+              });
             }}
             onCollectedAmountChange={value => {
               setStoreFinancials({ collectedAmount: value });
+              // Trigger manual calculations to match PC logic
+              setTimeout(() => {
+                const amountCollected = Number(value) || 0;
+                const amountToCollect = Number(financials.amountToCollect) || 0;
+
+                // Calculate previous balance: collectedAmount - amount To Collect
+                let previousBalance = financials.previousBalance;
+                if (value !== '' && amountCollected >= 0) {
+                  previousBalance = (amountCollected - amountToCollect).toString();
+                }
+
+                // Final correction = base entered first + collected amount
+                const finalCorrection = (Number(baseBalanceCorrection) || 0) + amountCollected;
+
+                setStoreFinancials({
+                  previousBalance: previousBalance,
+                  balanceCorrection: value === '' ? (baseBalanceCorrection || '0') : finalCorrection.toString(),
+                });
+              }, 0);
             }}
+            baseBalanceCorrection={baseBalanceCorrection}
+            onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}
           />
         )}
 
@@ -559,7 +637,31 @@ export default function CollectionReportMobileNewCollectionModal({
             onFinancialDataChange={(field, value) => {
               setStoreFinancials({ [field]: value });
             }}
-            onCreateReport={createCollectionReport}
+            onCollectedAmountChange={value => {
+              setStoreFinancials({ collectedAmount: value });
+              // Trigger manual calculations to match PC logic
+              setTimeout(() => {
+                const amountCollected = Number(value) || 0;
+                const amountToCollect = Number(financials.amountToCollect) || 0;
+
+                // Calculate previous balance: collectedAmount - amount To Collect
+                let previousBalance = financials.previousBalance;
+                if (value !== '' && amountCollected >= 0) {
+                  previousBalance = (amountCollected - amountToCollect).toString();
+                }
+
+                // Final correction = base entered first + collected amount
+                const finalCorrection = (Number(baseBalanceCorrection) || 0) + amountCollected;
+
+                setStoreFinancials({
+                  previousBalance: previousBalance,
+                  balanceCorrection: value === '' ? (baseBalanceCorrection || '0') : finalCorrection.toString(),
+                });
+              }, 0);
+            }}
+            baseBalanceCorrection={baseBalanceCorrection}
+            onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}
+            onCreateReport={() => setShowCreateReportConfirmation(true)}
           />
         )}
       </DialogContent>
@@ -588,6 +690,35 @@ export default function CollectionReportMobileNewCollectionModal({
       title="Confirm Delete"
       message="Are you sure you want to delete this collection entry?"
       confirmText="Yes, Delete"
+      cancelText="Cancel"
+      isLoading={modalState.isProcessing}
+    />
+
+    {/* Unsaved Changes Confirmation Dialog */}
+    <ConfirmationDialog
+      isOpen={showUnsavedChangesWarning}
+      onClose={() => setShowUnsavedChangesWarning(false)}
+      onConfirm={() => {
+        setShowUnsavedChangesWarning(false);
+        onClose();
+      }}
+      title="Unsaved Changes"
+      message="You have unsaved changes or machines added to your report. Are you sure you want to close and discard everything?"
+      confirmText="Discard and Close"
+      cancelText="Keep Editing"
+    />
+
+    {/* Create Report Confirmation Dialog */}
+    <ConfirmationDialog
+      isOpen={showCreateReportConfirmation}
+      onClose={() => setShowCreateReportConfirmation(false)}
+      onConfirm={() => {
+        setShowCreateReportConfirmation(false);
+        createCollectionReport();
+      }}
+      title="Confirm Collection Report"
+      message="Are you sure you want to create this collection report batch? This will update machine history and meter readings."
+      confirmText="Yes, Create Report"
       cancelText="Cancel"
       isLoading={modalState.isProcessing}
     />

@@ -13,7 +13,7 @@
 import DashboardDesktopLayout from '@/components/CMS/dashboard/DashboardDesktopLayout';
 import DashboardMobileLayout from '@/components/CMS/dashboard/DashboardMobileLayout';
 import PageLayout from '@/components/shared/layout/PageLayout';
-import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
+import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import { PieChartLabelRenderer } from '@/components/shared/ui/PieChartLabelRenderer';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import {
@@ -33,7 +33,7 @@ import { DashboardTotals, TopPerformingData } from '@/lib/types';
 import { CustomizedLabelProps } from '@/lib/types/components';
 import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import { shouldShowNoLicenseeMessage } from '@/lib/utils/licensee';
+import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import { TimePeriod, type ChartGranularity } from '@/shared/types/common';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -74,8 +74,8 @@ export default function DashboardPageContent() {
     setChartData,
     gamingLocations,
     setGamingLocations,
-    selectedLicensee,
-    setSelectedLicensee,
+    selectedLicencee,
+    setSelectedLicencee,
     topPerformingData,
     setTopPerformingData,
     pieChartSortIsOpen,
@@ -95,7 +95,7 @@ export default function DashboardPageContent() {
     customDateRange,
     setActiveMetricsFilter,
     setShowDatePicker,
-  } = useDashboardFilters({ selectedLicensee });
+  } = useDashboardFilters({ selectedLicencee });
 
   const [chartGranularity, setChartGranularity] = useState<ChartGranularity>(
     () =>
@@ -109,7 +109,7 @@ export default function DashboardPageContent() {
 
 
   const { refreshing, handleRefresh } = useDashboardRefresh({
-    selectedLicensee,
+    selectedLicencee,
     activeMetricsFilter,
     activePieChartFilter: activeMetricsFilter,
     customDateRange,
@@ -224,7 +224,7 @@ export default function DashboardPageContent() {
     if (!activeMetricsFilter) return;
 
     const currentDateRangeKey = dateRangeKey;
-    const fetchKey = `${activeMetricsFilter}-${selectedLicensee}-${currentDateRangeKey}-${displayCurrency}-${isAdminUser}-${chartGranularity}`;
+    const fetchKey = `${activeMetricsFilter}-${selectedLicencee}-${currentDateRangeKey}-${displayCurrency}-${isAdminUser}-${chartGranularity}`;
 
     if (prevFetchParams.current === fetchKey) {
       setLoadingChartData(false);
@@ -255,8 +255,8 @@ export default function DashboardPageContent() {
         if (!isGranularityChangeOnly) {
           await stableHandleApiCallWithRetry(
             () =>
-              loadGamingLocations(setGamingLocations, selectedLicensee, {
-                forceAll: isAdminUser || selectedLicensee === 'all',
+              loadGamingLocations(setGamingLocations, selectedLicencee, {
+                forceAll: isAdminUser || selectedLicencee === 'all',
               }),
             'Dashboard Locations'
           );
@@ -266,7 +266,7 @@ export default function DashboardPageContent() {
           await fetchMetricsData(
             activeMetricsFilter as TimePeriod,
             effectiveDateRange,
-            selectedLicensee,
+            selectedLicencee,
             setTotals,
             setChartData,
             setActiveFilters,
@@ -295,7 +295,7 @@ export default function DashboardPageContent() {
     fetchMetrics();
   }, [
     activeMetricsFilter,
-    selectedLicensee,
+    selectedLicencee,
     dateRangeKey,
     effectiveDateRange,
     displayCurrency,
@@ -319,7 +319,7 @@ export default function DashboardPageContent() {
     if (!activeMetricsFilter) return;
 
     const effectiveTab = activeTab || 'Cabinets';
-    const topPerformingKey = `top-performing-${effectiveTab}-${activeMetricsFilter}-${selectedLicensee}-${dateRangeKey}-${displayCurrency}`;
+    const topPerformingKey = `top-performing-${effectiveTab}-${activeMetricsFilter}-${selectedLicencee}-${dateRangeKey}-${displayCurrency}`;
 
     if (prevTopPerformingKeyRef.current === topPerformingKey) return;
 
@@ -336,7 +336,7 @@ export default function DashboardPageContent() {
               prevTopPerformingKeyRef.current = topPerformingKey;
             },
             setLoadingTopPerforming,
-            selectedLicensee,
+            selectedLicencee,
             displayCurrency,
             signal,
             effectiveDateRange
@@ -353,7 +353,7 @@ export default function DashboardPageContent() {
   }, [
     activeTab,
     activeMetricsFilter,
-    selectedLicensee,
+    selectedLicencee,
     dateRangeKey,
     effectiveDateRange,
     displayCurrency,
@@ -388,20 +388,20 @@ export default function DashboardPageContent() {
   // ============================================================================
   // Render
   // ============================================================================
-  if (shouldShowNoLicenseeMessage(user)) {
-    return <NoLicenseeAssigned />;
+  if (shouldShowNoLicenceeMessage(user)) {
+    return <NoLicenceeAssigned />;
   }
 
   return (
     <PageLayout
       headerProps={{
-        selectedLicensee,
-        setSelectedLicensee,
+        selectedLicencee,
+        setSelectedLicencee,
         disabled: loadingChartData || refreshing,
       }}
       pageTitle="Dashboard"
       hideOptions={false}
-      hideLicenseeFilter={false}
+      hideLicenceeFilter={false}
       mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
       showToaster={true}
       onRefresh={handleRefresh}
@@ -434,8 +434,8 @@ export default function DashboardPageContent() {
           setActiveMetricsFilter={setActiveMetricsFilter}
           setActivePieChartFilter={setActiveMetricsFilter}
           renderCustomizedLabel={renderCustomizedLabel}
-          selectedLicensee={selectedLicensee}
-          setSelectedLicensee={setSelectedLicensee}
+          selectedLicencee={selectedLicencee}
+          setSelectedLicencee={setSelectedLicencee}
           loadingTopPerforming={loadingTopPerforming}
           hasTopPerformingFetched={hasTopPerformingFetchedRef.current}
           onRefresh={handleRefresh}
@@ -475,8 +475,8 @@ export default function DashboardPageContent() {
           setActiveMetricsFilter={setActiveMetricsFilter}
           setActivePieChartFilter={setActiveMetricsFilter}
           renderCustomizedLabel={renderCustomizedLabel}
-          selectedLicensee={selectedLicensee}
-          setSelectedLicensee={setSelectedLicensee}
+          selectedLicencee={selectedLicencee}
+          setSelectedLicencee={setSelectedLicencee}
           loadingTopPerforming={loadingTopPerforming}
           hasTopPerformingFetched={hasTopPerformingFetchedRef.current}
           onRefresh={handleRefresh}

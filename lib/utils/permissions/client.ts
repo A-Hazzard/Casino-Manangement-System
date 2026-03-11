@@ -112,7 +112,7 @@ export const hasTabAccess = (
 ): boolean => {
   const tabPermissions: Record<string, UserRole[]> = {
     'administration-users': ['developer', 'admin', 'manager', 'location admin'],
-    'administration-licensees': ['developer', 'admin'],
+    'administration-licencees': ['developer', 'admin'],
     'administration-countries': ['developer', 'admin'],
     'administration-activity-logs': [
       'developer',

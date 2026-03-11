@@ -3,8 +3,8 @@
  *
  * This route handles fetching aggregated location metrics with filtering and currency conversion.
  * It supports:
- * - GET: Retrieves location metrics with optional filtering by time period, licensee, machine type,
- *        and currency conversion for admin/developer users viewing all licensees
+ * - GET: Retrieves location metrics with optional filtering by time period, licencee, machine type,
+ *        and currency conversion for admin/developer users viewing all licencees
  *
  * @module app/api/locationAggregation/route
  */
@@ -17,14 +17,14 @@ import {
 } from '@/app/api/lib/helpers/cacheUtils';
 import { convertLocationCurrency } from '@/app/api/lib/helpers/currency/location';
 import {
-  getUserAccessibleLicenseesFromToken,
+  getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
+} from '@/app/api/lib/helpers/licenceeFilter';
 import { getLocationsWithMetrics } from '@/app/api/lib/helpers/locationAggregation';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
-    const licensee = searchParams.get('licensee') || undefined;
+    const licencee = (searchParams.get('licencee')) || undefined;
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;
     let displayCurrency: CurrencyCode = currencyParam || 'USD';
     const machineTypeFilter =
@@ -177,7 +177,7 @@ export async function GET(req: NextRequest) {
     let userPayload;
     let userRoles: string[] = [];
     let userLocationPermissions: string[] = [];
-    let userAccessibleLicensees: string[] | 'all' = [];
+    let userAccessibleLicencees: string[] | 'all' = [];
 
     if (isDevMode && testUserId) {
       // Dev mode: Get user directly from DB for testing
@@ -189,14 +189,14 @@ export async function GET(req: NextRequest) {
         const testUser = testUserResult as {
           roles?: string[];
           assignedLocations?: string[];
-          assignedLicensees?: string[];
+          assignedLicencees?: string[];
         };
         userRoles = (testUser.roles || []) as string[];
         userLocationPermissions = Array.isArray(testUser.assignedLocations)
           ? testUser.assignedLocations.map((id: string) => String(id))
           : [];
-        userAccessibleLicensees = Array.isArray(testUser.assignedLicensees)
-          ? testUser.assignedLicensees.map((id: string) => String(id))
+        userAccessibleLicencees = Array.isArray(testUser.assignedLicencees)
+          ? testUser.assignedLicencees.map((id: string) => String(id))
           : [];
       } else {
         return NextResponse.json(
@@ -220,50 +220,50 @@ export async function GET(req: NextRequest) {
           userLocationPermissions = assignedLocations;
         }
       }
-      userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+      userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     }
 
-    // In normal mode (not dev mode or no testUserId), get licensees from token
+    // In normal mode (not dev mode or no testUserId), get licencees from token
     if (!isDevMode || !testUserId) {
-      userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+      userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     }
 
     // ============================================================================
     // STEP 4.5: Determine display currency (if not provided) - AFTER DB connection
     // ============================================================================
-    if (!currencyParam && userAccessibleLicensees !== 'all') {
-      // For non-admin users, auto-detect currency from their licensee
-      let resolvedLicensee: string | undefined =
-        licensee && licensee !== 'all' ? licensee : undefined;
+    if (!currencyParam && userAccessibleLicencees !== 'all') {
+      // For non-admin users, auto-detect currency from their licencee
+      let resolvedLicencee: string | undefined =
+        licencee && licencee !== 'all' ? licencee : undefined;
       if (
-        !resolvedLicensee &&
-        Array.isArray(userAccessibleLicensees) &&
-        userAccessibleLicensees.length === 1
+        !resolvedLicencee &&
+        Array.isArray(userAccessibleLicencees) &&
+        userAccessibleLicencees.length === 1
       ) {
-        resolvedLicensee = userAccessibleLicensees[0];
+        resolvedLicencee = userAccessibleLicencees[0];
       }
 
-      if (resolvedLicensee) {
-        // Get licensee name from ID to properly resolve currency
+      if (resolvedLicencee) {
+        // Get licencee name from ID to properly resolve currency
         try {
-          const licenseeDoc = await Licensee.findOne(
-            { _id: resolvedLicensee },
+          const licenceeDoc = await Licencee.findOne(
+            { _id: resolvedLicencee },
             { name: 1 }
           ).lean();
-          if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
-            const { getLicenseeCurrency } = await import('@/lib/helpers/rates');
-            displayCurrency = getLicenseeCurrency(licenseeDoc.name);
+          if (licenceeDoc && !Array.isArray(licenceeDoc) && licenceeDoc.name) {
+            const { getLicenceeCurrency } = await import('@/lib/helpers/rates');
+            displayCurrency = getLicenceeCurrency(licenceeDoc.name);
           }
         } catch {
-          // Failed to get licensee name for currency - use default USD
+          // Failed to get licencee name for currency - use default USD
         }
       }
     }
 
-    // Get allowed location IDs (respects user permissions and licensee filter)
+    // Get allowed location IDs (respects user permissions and licencee filter)
     const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicensees,
-      licensee || undefined,
+      userAccessibleLicencees,
+      licencee || undefined,
       userLocationPermissions,
       userRoles
     );
@@ -274,7 +274,7 @@ export async function GET(req: NextRequest) {
     // Include user-specific permissions in cache key to prevent cross-user cache hits
     const cacheKey = getCacheKey({
       timePeriod,
-      licensee,
+      licencee,
       machineTypeFilter,
       startDate,
       endDate,
@@ -307,7 +307,7 @@ export async function GET(req: NextRequest) {
     // STEP 7: Fetch aggregated location metrics (with backend filtering)
     // ============================================================================
     const { rows, totalCount } = await getLocationsWithMetrics(
-      licensee,
+      licencee,
       page,
       limit,
       sasEvaluationOnly,
@@ -342,11 +342,11 @@ export async function GET(req: NextRequest) {
       currentUserRoles.includes('developer');
 
     let convertedRows = sortedRows;
-    if (isAdminOrDev && shouldApplyCurrencyConversion(licensee)) {
+    if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
       convertedRows = await convertLocationCurrency(
         sortedRows,
         displayCurrency,
-        licensee
+        licencee
       );
     }
 
@@ -361,7 +361,7 @@ export async function GET(req: NextRequest) {
       limit,
       hasMore: false,
       currency: displayCurrency,
-      converted: shouldApplyCurrencyConversion(licensee),
+      converted: shouldApplyCurrencyConversion(licencee),
     };
 
     if (!clearCacheParam && !skipCacheForSelected) {

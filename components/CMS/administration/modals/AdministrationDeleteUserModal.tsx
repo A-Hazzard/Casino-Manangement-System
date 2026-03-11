@@ -57,7 +57,7 @@ export default function AdministrationDeleteUserModal({
   if (!open || !user) return null;
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-[100000]">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"

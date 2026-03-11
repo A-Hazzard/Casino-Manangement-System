@@ -200,7 +200,7 @@ export async function fetchVaultOverviewData(
  * Queries aggregated data from membershipEnabled locations only
  */
 export async function fetchGlobalVaultOverviewData(
-  licenseeId?: string
+  licenceeId?: string
 ): Promise<{
   vaultBalance: VaultBalance;
   metrics: VaultMetrics;
@@ -212,8 +212,8 @@ export async function fetchGlobalVaultOverviewData(
 }> {
   try {
     let url = `/api/vault/overview/global`;
-    if (licenseeId && licenseeId !== 'all') {
-      url += `?licenseeId=${encodeURIComponent(licenseeId)}`;
+    if (licenceeId && licenceeId !== 'all') {
+      url += `?licenceeId=${encodeURIComponent(licenceeId)}`;
     }
 
     const response = await fetch(url);
@@ -1571,7 +1571,7 @@ export async function handleRejectFloatTransaction(
  * @param cashierData.lastName - Cashier's last name
  * @param cashierData.email - Cashier's email address
  * @param cashierData.password - Optional password (auto-generated if not provided)
- * @param cashierData.assignedLicensees - Optional array of licensee IDs
+ * @param cashierData.assignedLicencees - Optional array of licencee IDs
  * @param cashierData.assignedLocations - Optional array of location IDs
  * @returns Promise with success status, error message, and temporary password if successful
  */
@@ -1581,7 +1581,7 @@ export async function handleCreateCashier(cashierData: {
   lastName: string;
   email: string;
   password?: string;
-  assignedLicensees?: string[];
+  assignedLicencees?: string[];
   assignedLocations?: string[];
 }): Promise<{ success: boolean; error?: string; tempPassword?: string }> {
   let data;
@@ -1608,7 +1608,7 @@ export async function handleCreateCashier(cashierData: {
           firstName,
           lastName,
         },
-        assignedLicensees: cashierData.assignedLicensees || [],
+        assignedLicencees: cashierData.assignedLicencees || [],
         assignedLocations: cashierData.assignedLocations || [],
         isEnabled: true,
       }),

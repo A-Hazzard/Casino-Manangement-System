@@ -8,7 +8,7 @@
 
 import { COLLECTION_TABS_CONFIG } from '@/lib/constants';
 import {
-  fetchCollectionReportsByLicensee,
+  fetchCollectionReportsByLicencee,
   getLocationsWithMachines,
 } from '@/lib/helpers/collectionReport';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
@@ -28,7 +28,7 @@ import { useCollectionReportFilters } from './useCollectionReportFilters';
 
 export function useCollectionReportPageData() {
   const searchParams = useSearchParams();
-  const { selectedLicensee, activeMetricsFilter, customDateRange } =
+  const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
   const { user } = useUserStore();
 
@@ -115,8 +115,8 @@ export function useCollectionReportPageData() {
 
       setLoading(true);
       try {
-        const result = await fetchCollectionReportsByLicensee(
-          selectedLicensee || undefined,
+        const result = await fetchCollectionReportsByLicencee(
+          selectedLicencee || undefined,
           activeMetricsFilter === 'Custom'
             ? { from: customDateRange.startDate, to: customDateRange.endDate }
             : undefined,
@@ -152,7 +152,7 @@ export function useCollectionReportPageData() {
     },
     [
       activeTab,
-      selectedLicensee,
+      selectedLicencee,
       activeMetricsFilter,
       customDateRange,
       debouncedSearch,
@@ -180,6 +180,17 @@ export function useCollectionReportPageData() {
     } else {
       setShowEditDesktop(true);
       setShowEditMobile(false);
+    }
+  };
+
+  const handleCreate = () => {
+    const isMobile = window.innerWidth < 1280;
+    if (isMobile) {
+      setShowNewCollectionMobile(true);
+      setShowNewCollectionDesktop(false);
+    } else {
+      setShowNewCollectionDesktop(true);
+      setShowNewCollectionMobile(false);
     }
   };
 
@@ -236,13 +247,13 @@ export function useCollectionReportPageData() {
   // Effects
   // ============================================================================
   useEffect(() => {
-    fetchAllGamingLocations(selectedLicensee || undefined).then(locs => {
+    fetchAllGamingLocations(selectedLicencee || undefined).then(locs => {
       setLocations(locs.map(l => ({ _id: l.id, name: l.name })));
     });
-    getLocationsWithMachines(selectedLicensee || undefined).then(
+    getLocationsWithMachines(selectedLicencee || undefined).then(
       setLocationsWithMachines
     );
-  }, [selectedLicensee]);
+  }, [selectedLicencee]);
 
   // Load initial batch on mount and when filters change
   useEffect(() => {
@@ -413,6 +424,7 @@ export function useCollectionReportPageData() {
     handleRefresh: useCallback(async () => {
       await refreshReports();
     }, [refreshReports]),
+    handleCreate,
     handleEdit,
     handleDelete,
     confirmDelete,
@@ -425,13 +437,13 @@ export function useCollectionReportPageData() {
     setShowDeleteConfirmation,
     setEditingReportId,
     onRefreshLocations: useCallback(async () => {
-      const locs = await fetchAllGamingLocations(selectedLicensee || undefined);
+      const locs = await fetchAllGamingLocations(selectedLicencee || undefined);
       setLocations(locs.map(l => ({ _id: l.id, name: l.name })));
       const locsWithMachines = await getLocationsWithMachines(
-        selectedLicensee || undefined
+        selectedLicencee || undefined
       );
       setLocationsWithMachines(locsWithMachines);
-    }, [selectedLicensee]),
+    }, [selectedLicencee]),
   };
 }
 

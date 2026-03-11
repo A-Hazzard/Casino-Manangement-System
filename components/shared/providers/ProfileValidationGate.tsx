@@ -7,7 +7,7 @@
  * - Shows ProfileValidationModal when profile needs updates
  * - Handles profile update API calls
  * - Validates password strength
- * - Tracks licensee and location dependencies
+ * - Tracks licencee and location dependencies
  * - Forces logout after successful profile update (sessionVersion increment)
  * - Prevents modal reopening after successful update
  * - Shows success/error toasts
@@ -72,11 +72,11 @@ export default function ProfileValidationGate({
   const { lastLoginPassword, clearLastLoginPassword } =
     useAuthSessionStore();
   // Use only new fields - memoize to prevent dependency array issues
-  const userLicenseeDeps = useMemo(() => {
-    return Array.isArray(user?.assignedLicensees) && user.assignedLicensees.length > 0
-      ? user.assignedLicensees
+  const userLicenceeDeps = useMemo(() => {
+    return Array.isArray(user?.assignedLicencees) && user.assignedLicencees.length > 0
+      ? user.assignedLicencees
       : [];
-  }, [user?.assignedLicensees]);
+  }, [user?.assignedLicencees]);
   const userLocationDeps = useMemo(() => {
     return Array.isArray(user?.assignedLocations) && user.assignedLocations.length > 0
       ? user.assignedLocations
@@ -97,7 +97,7 @@ export default function ProfileValidationGate({
     emailAddress: '',
     phone: '',
     dateOfBirth: '',
-    licenseeIds: [],
+    licenceeIds: [],
     locationIds: [],
   });
   
@@ -139,7 +139,7 @@ export default function ProfileValidationGate({
           emailAddress: '',
           phone: '',
           dateOfBirth: '',
-          licenseeIds: [],
+          licenceeIds: [],
           locationIds: [],
         });
         return;
@@ -226,9 +226,9 @@ export default function ProfileValidationGate({
       const needsUpdate = Object.values(nextInvalid).some(Boolean);
 
       // Use only new fields
-      let latestLicenseeIds: string[] = [];
-      if (Array.isArray(latestUser.assignedLicensees) && latestUser.assignedLicensees.length > 0) {
-        latestLicenseeIds = latestUser.assignedLicensees.map(id => String(id));
+      let latestLicenceeIds: string[] = [];
+      if (Array.isArray(latestUser.assignedLicencees) && latestUser.assignedLicencees.length > 0) {
+        latestLicenceeIds = latestUser.assignedLicencees.map(id => String(id));
       }
       
       let latestLocationIds: string[] = [];
@@ -262,7 +262,7 @@ export default function ProfileValidationGate({
               .toISOString()
               .split('T')[0]
           : '',
-      licenseeIds: latestLicenseeIds,
+      licenceeIds: latestLicenceeIds,
       locationIds: latestLocationIds,
     });
 
@@ -286,7 +286,7 @@ export default function ProfileValidationGate({
     user?.username,
     user?.requiresProfileUpdate,
     user?.invalidProfileFields,
-    userLicenseeDeps,
+    userLicenceeDeps,
     userLocationDeps,
     refetch,
     lastLoginPassword,
@@ -370,12 +370,12 @@ export default function ProfileValidationGate({
               .toISOString()
               .split('T')[0]
           : data.dateOfBirth) || '',
-        licenseeIds: (() => {
+        licenceeIds: (() => {
           // Use only new field
-          if (Array.isArray(result.user?.assignedLicensees) && result.user.assignedLicensees.length > 0) {
-            return result.user.assignedLicensees.map((id: string) => String(id));
+          if (Array.isArray(result.user?.assignedLicencees) && result.user.assignedLicencees.length > 0) {
+            return result.user.assignedLicencees.map((id: string) => String(id));
           }
-          return data.licenseeIds ?? [];
+          return data.licenceeIds ?? [];
         })(),
         locationIds: (() => {
           // Use only new field

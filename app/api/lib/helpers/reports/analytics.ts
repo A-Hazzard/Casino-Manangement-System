@@ -9,7 +9,7 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -25,14 +25,14 @@ import mongoose from 'mongoose';
  *
  * @param allowedLocationIds - Location IDs to filter by, or 'all' for no filter
  * @param selectedLocation - Optional specific location to filter by
- * @param selectedLicensee - Optional licensee to filter by
+ * @param selectedLicencee - Optional licencee to filter by
  * @param limit - Optional limit for results
  * @returns Aggregation pipeline stages
  */
 function buildMachineAnalyticsPipeline(
   allowedLocationIds: string[] | 'all',
   selectedLocation?: string,
-  selectedLicensee?: string,
+  selectedLicencee?: string,
   limit?: number
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [];
@@ -76,13 +76,12 @@ function buildMachineAnalyticsPipeline(
     $unwind: '$locationDetails',
   });
 
-  // Stage 4: Filter by licensee if provided
-  if (selectedLicensee) {
+  // Stage 4: Filter by licencee if provided
+  if (selectedLicencee) {
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licensee': selectedLicensee },
-          { 'locationDetails.rel.licencee': selectedLicensee },
+          { 'locationDetails.rel.licencee': selectedLicencee  }, { 'locationDetails.rel.licencee': selectedLicencee  },
         ],
       },
     } as PipelineStage);
@@ -121,20 +120,20 @@ function buildMachineAnalyticsPipeline(
  *
  * @param allowedLocationIds - Location IDs to filter by, or 'all' for no filter
  * @param selectedLocation - Optional specific location to filter by
- * @param selectedLicensee - Optional licensee to filter by
+ * @param selectedLicencee - Optional licencee to filter by
  * @param limit - Optional limit for results
  * @returns Array of machine analytics data
  */
 export async function getMachineAnalytics(
   allowedLocationIds: string[] | 'all',
   selectedLocation?: string,
-  selectedLicensee?: string,
+  selectedLicencee?: string,
   limit?: number
 ): Promise<MachineAnalytics[]> {
   const pipeline = buildMachineAnalyticsPipeline(
     allowedLocationIds,
     selectedLocation,
-    selectedLicensee,
+    selectedLicencee,
     limit
   );
 
@@ -270,10 +269,10 @@ export type DashboardAnalyticsResult = {
 /**
  * Builds aggregation pipeline for dashboard analytics
  *
- * @param licensee - Licensee ID to filter by
+ * @param licencee - Licencee ID to filter by
  * @returns Aggregation pipeline stages
  */
-function buildDashboardAnalyticsPipeline(licensee: string): PipelineStage[] {
+function buildDashboardAnalyticsPipeline(licencee: string): PipelineStage[] {
   return [
     {
       $lookup: {
@@ -289,8 +288,7 @@ function buildDashboardAnalyticsPipeline(licensee: string): PipelineStage[] {
     {
       $match: {
         $or: [
-          { 'locationDetails.rel.licensee': licensee },
-          { 'locationDetails.rel.licencee': licensee },
+          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
         ],
       },
     },
@@ -333,13 +331,13 @@ function buildDashboardAnalyticsPipeline(licensee: string): PipelineStage[] {
 /**
  * Fetches dashboard analytics data
  *
- * @param licensee - Licensee ID to filter by
+ * @param licencee - Licencee ID to filter by
  * @returns Dashboard analytics result
  */
 export async function getDashboardAnalytics(
-  licensee: string
+  licencee: string
 ): Promise<DashboardAnalyticsResult> {
-  const pipeline = buildDashboardAnalyticsPipeline(licensee);
+  const pipeline = buildDashboardAnalyticsPipeline(licencee);
   const statsResult = await Machine.aggregate(pipeline);
 
   return (
@@ -357,13 +355,13 @@ export async function getDashboardAnalytics(
 /**
  * Build aggregation pipeline for charts data
  *
- * @param licenseeId - Licensee ObjectId
+ * @param licenceeId - Licencee ObjectId
  * @param startDate - Start date for filtering
  * @param endDate - End date for filtering
  * @returns MongoDB aggregation pipeline stages
  */
 function buildChartsPipeline(
-  licenseeId: mongoose.Types.ObjectId,
+  licenceeId: mongoose.Types.ObjectId,
   startDate: Date,
   endDate: Date
 ): PipelineStage[] {
@@ -400,10 +398,10 @@ function buildChartsPipeline(
     {
       $unwind: '$locationDetails',
     },
-    // Stage 6: Filter by licensee
+    // Stage 6: Filter by licencee
     {
       $match: {
-        'locationDetails.licensee': licenseeId,
+        'locationDetails.licencee': licenceeId,
       },
     },
     // Stage 7: Group by date to aggregate daily financial metrics
@@ -445,21 +443,21 @@ function buildChartsPipeline(
  * Apply currency conversion to chart series data
  *
  * @param series - Chart series data
- * @param licensee - Licensee identifier
+ * @param licencee - Licencee identifier
  * @param displayCurrency - Target currency code
  * @returns Converted series data
  */
 function applyChartsCurrencyConversion(
   series: Array<Record<string, unknown>>,
-  licensee: string | null,
+  licencee: string | null,
   displayCurrency: CurrencyCode
 ): Array<Record<string, unknown>> {
-  if (!shouldApplyCurrencyConversion(licensee)) {
+  if (!shouldApplyCurrencyConversion(licencee)) {
     return series;
   }
 
   console.warn(
-    '🔍 ANALYTICS CHARTS - Applying currency conversion for All Licensee mode'
+    '🔍 ANALYTICS CHARTS - Applying currency conversion for All Licencee mode'
   );
 
   const financialFields = ['totalDrop', 'cancelledCredits', 'gross'];
@@ -480,13 +478,13 @@ function applyChartsCurrencyConversion(
 /**
  * Get charts data for analytics
  *
- * @param licensee - Licensee identifier
+ * @param licencee - Licencee identifier
  * @param period - Time period ('last7days' or 'last30days')
  * @param displayCurrency - Display currency code
  * @returns Chart series data with currency conversion applied
  */
 export async function getChartsData(
-  licensee: string,
+  licencee: string,
   period: 'last7days' | 'last30days',
   displayCurrency: CurrencyCode
 ): Promise<{
@@ -497,9 +495,9 @@ export async function getChartsData(
   const endDate = new Date();
   const startDate =
     period === 'last7days' ? subDays(endDate, 7) : subDays(endDate, 30);
-  const licenseeId = new mongoose.Types.ObjectId(licensee);
+  const licenceeId = new mongoose.Types.ObjectId(licencee);
 
-  const chartsPipeline = buildChartsPipeline(licenseeId, startDate, endDate);
+  const chartsPipeline = buildChartsPipeline(licenceeId, startDate, endDate);
   // Use cursor for Meters aggregation
   const series: Array<Record<string, unknown>> = [];
   const seriesCursor = Meters.aggregate(chartsPipeline).cursor({
@@ -511,26 +509,26 @@ export async function getChartsData(
 
   const convertedSeries = applyChartsCurrencyConversion(
     series,
-    licensee,
+    licencee,
     displayCurrency
   );
 
   return {
     series: convertedSeries,
     currency: displayCurrency,
-    converted: shouldApplyCurrencyConversion(licensee),
+    converted: shouldApplyCurrencyConversion(licencee),
   };
 }
 
 /**
  * Get top locations analytics data with financial metrics
  *
- * @param licensee - Licensee ID to filter by
+ * @param licencee - Licencee ID to filter by
  * @param displayCurrency - Display currency code
  * @returns Top locations with financial metrics and currency conversion
  */
 export async function getTopLocationsAnalytics(
-  licensee: string,
+  licencee: string,
   displayCurrency: CurrencyCode
 ): Promise<{
   topLocations: Array<{
@@ -566,8 +564,7 @@ export async function getTopLocationsAnalytics(
     {
       $match: {
         $or: [
-          { 'locationDetails.rel.licensee': licensee },
-          { 'locationDetails.rel.licencee': licensee },
+          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
         ],
       },
     },
@@ -702,12 +699,12 @@ export async function getTopLocationsAnalytics(
     };
   });
 
-  if (shouldApplyCurrencyConversion(licensee)) {
+  if (shouldApplyCurrencyConversion(licencee)) {
     const { convertToUSD, getCountryCurrency } = await import(
       '@/lib/helpers/rates'
     );
 
-    const licenseesData = await Licensee.find(
+    const licenceesData = await Licencee.find(
       {
         $or: [
           { deletedAt: null },
@@ -719,9 +716,9 @@ export async function getTopLocationsAnalytics(
       .lean()
       .exec();
 
-    const licenseeIdToName = new Map<string, string>();
-    licenseesData.forEach(lic => {
-      licenseeIdToName.set(String(lic._id), lic.name as string);
+    const licenceeIdToName = new Map<string, string>();
+    licenceesData.forEach(lic => {
+      licenceeIdToName.set(String(lic._id), lic.name as string);
     });
 
     const countriesData = await Countries.find({}).lean();
@@ -733,12 +730,12 @@ export async function getTopLocationsAnalytics(
     });
 
     topLocationsWithMetrics = topLocationsWithMetrics.map(location => {
-      const licenseeId = location.rel?.licensee || (location.rel as Record<string, unknown> | undefined)?.licencee;
+      const licenceeId = location.rel?.licencee || (location.rel as Record<string, unknown> | undefined)?.licencee;
       let nativeCurrency: string = 'USD';
 
-      if (licenseeId) {
-        const licenseeName = licenseeIdToName.get(licenseeId.toString());
-        nativeCurrency = licenseeName || 'USD';
+      if (licenceeId) {
+        const licenceeName = licenceeIdToName.get(licenceeId.toString());
+        nativeCurrency = licenceeName || 'USD';
       } else if (location.country) {
         const countryName = countryIdToName.get(location.country.toString());
         nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
@@ -763,7 +760,7 @@ export async function getTopLocationsAnalytics(
   return {
     topLocations: topLocationsWithMetrics,
     currency: displayCurrency,
-    converted: shouldApplyCurrencyConversion(licensee),
+    converted: shouldApplyCurrencyConversion(licencee),
   };
 }
 

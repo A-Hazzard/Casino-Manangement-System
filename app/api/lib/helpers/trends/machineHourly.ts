@@ -10,7 +10,7 @@
 
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
@@ -46,7 +46,7 @@ function buildMachineHourlyPipeline(
   endDate: Date,
   targetLocations: string[],
   targetMachines: string[],
-  licensee: string | null
+  licencee: string | null
 ): PipelineStage[] {
   const pipeline: PipelineStage[] = [
     {
@@ -73,12 +73,11 @@ function buildMachineHourlyPipeline(
     },
   ];
 
-  if (licensee && licensee !== 'all') {
+  if (licencee && licencee !== 'all') {
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licensee': licensee },
-          { 'locationDetails.rel.licencee': licensee },
+          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
         ],
       },
     } as PipelineStage);
@@ -238,11 +237,11 @@ function calculateHourlyTotals(
 async function getLocationCurrenciesForMachineHourly(
   locationsData: Array<{
     _id: unknown;
-    rel?: { licensee?: unknown };
+    rel?: { licencee?: unknown };
     country?: unknown;
   }>
 ): Promise<Map<string, string>> {
-  const licenseesData = await Licensee.find(
+  const licenceesData = await Licencee.find(
     {
       $or: [
         { deletedAt: null },
@@ -254,9 +253,9 @@ async function getLocationCurrenciesForMachineHourly(
     .lean()
     .exec();
 
-  const licenseeIdToName = new Map<string, string>();
-  licenseesData.forEach(lic => {
-    licenseeIdToName.set(String(lic._id), lic.name as string);
+  const licenceeIdToName = new Map<string, string>();
+  licenceesData.forEach(lic => {
+    licenceeIdToName.set(String(lic._id), lic.name as string);
   });
 
   const countriesData = await Countries.find({}).lean();
@@ -269,13 +268,13 @@ async function getLocationCurrenciesForMachineHourly(
 
   const locationCurrencies = new Map<string, string>();
   locationsData.forEach(loc => {
-    const locationLicenseeId = loc.rel?.licensee || (loc.rel as Record<string, unknown> | undefined)?.licencee;
-    if (locationLicenseeId) {
-      const licenseeName =
-        licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
+    const locationLicenceeId = loc.rel?.licencee || (loc.rel as Record<string, unknown> | undefined)?.licencee;
+    if (locationLicenceeId) {
+      const licenceeName =
+        licenceeIdToName.get(locationLicenceeId.toString()) || 'Unknown';
       locationCurrencies.set(
         (loc._id as { toString: () => string }).toString(),
-        licenseeName
+        licenceeName
       );
     } else {
       const countryId = loc.country;
@@ -381,7 +380,7 @@ export async function getMachineHourlyData(
   locationIds: string | null,
   machineIds: string | null,
   timePeriod: TimePeriod,
-  licensee: string | null,
+  licencee: string | null,
   startDateParam: string | null,
   endDateParam: string | null,
   displayCurrency: CurrencyCode
@@ -431,7 +430,7 @@ export async function getMachineHourlyData(
     endDate,
     targetLocations,
     targetMachines,
-    licensee
+    licencee
   );
 
   // Use cursor for Meters aggregation
@@ -471,7 +470,7 @@ export async function getMachineHourlyData(
   let convertedHourlyTrends = hourlyTrends;
   let convertedTotals = totals;
 
-  if (shouldApplyCurrencyConversion(licensee)) {
+  if (shouldApplyCurrencyConversion(licencee)) {
     const locationCurrencies = await getLocationCurrenciesForMachineHourly(
       locationsData
     );
@@ -498,7 +497,7 @@ export async function getMachineHourlyData(
     locations: Object.keys(locationHourlyData),
     locationNames,
     currency: displayCurrency,
-    converted: shouldApplyCurrencyConversion(licensee),
+    converted: shouldApplyCurrencyConversion(licencee),
   };
 }
 

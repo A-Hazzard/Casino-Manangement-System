@@ -12,7 +12,7 @@
  * @module app/api/locations/[locationId]/cabinets/[cabinetId]/route
  */
 
-import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';

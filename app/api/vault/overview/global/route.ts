@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licenseeId = searchParams.get('licenseeId');
+    const licenceeId = searchParams.get('licenceeId') || searchParams.get('licencee');
 
     await connectDB();
 
@@ -63,8 +63,10 @@ export async function GET(request: NextRequest) {
       deletedAt: { $lt: new Date('2025-01-01') }
     };
 
-    if (licenseeId && licenseeId !== 'all') {
-      locationQuery['rel.licensee'] = licenseeId;
+    if (licenceeId && licenceeId !== 'all') {
+      locationQuery.$or = [
+        { 'rel.licencee': licenceeId  }, { 'rel.licencee': licenceeId  }
+      ];
     }
 
     const locations = await GamingLocations.find(locationQuery, { _id: 1, name: 1, gameDayOffset: 1 }).lean();

@@ -9,7 +9,7 @@
 
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -24,7 +24,7 @@ import type { CurrencyCode } from '@/shared/types/currency';
 // Functions accept 'any' for db parameter to handle version differences
 import { ObjectId } from 'mongodb';
 import type { PipelineStage } from 'mongoose';
-import { getUserLocationFilter } from '../licenseeFilter';
+import { getUserLocationFilter } from '../licenceeFilter';
 
 /**
  * Meter trend metric item
@@ -37,7 +37,7 @@ type MeterTrendMetric = {
   gross: number;
   gamesPlayed: number;
   jackpot: number;
-  licensee?: string | null;
+  licencee?: string | null;
   country?: string | null;
   location?: string;
   geoCoords?: Record<string, unknown> | null;
@@ -64,7 +64,7 @@ type LocationData = {
   gameDayOffset?: number;
   country?: unknown;
   geoCoords?: Record<string, unknown>;
-  rel?: { licensee?: unknown };
+  rel?: { licencee?: unknown };
 };
 
 /**
@@ -168,7 +168,7 @@ function determineAggregationGranularity(
  * Filters locations based on user permissions
  *
  * @param locations - Array of location data
- * @param licensee - Optional licensee filter
+ * @param licencee - Optional licencee filter
  * @param isAdmin - Whether user is admin
  * @param isManager - Whether user is manager
  * @param userLocationPermissions - User's location permissions
@@ -176,12 +176,12 @@ function determineAggregationGranularity(
  */
 function filterLocationsByPermissions(
   locations: LocationData[],
-  licensee: string | null,
+  licencee: string | null,
   isAdmin: boolean,
   isManager: boolean,
   userLocationPermissions: string[]
 ): LocationData[] {
-  if (licensee) {
+  if (licencee) {
     if (!isAdmin && !isManager) {
       if (userLocationPermissions.length === 0) {
         return [];
@@ -525,13 +525,13 @@ async function processLocationMetricsSingleAggregation(
         gross: metric.gross || 0,
         gamesPlayed: metric.gamesPlayed || 0,
         jackpot: metric.jackpot || 0,
-        licensee:
-          typeof location.rel?.licensee === 'string'
-            ? location.rel.licensee
+        licencee:
+          typeof location.rel?.licencee === 'string'
+            ? location.rel.licencee
             : typeof (location.rel as Record<string, unknown> | undefined)?.licencee === 'string'
               ? (location.rel as Record<string, unknown> | undefined)?.licencee
-              : Array.isArray(location.rel?.licensee)
-                ? (location.rel?.licensee?.[0]?.toString() ?? null)
+              : Array.isArray(location.rel?.licencee)
+                ? (location.rel?.licencee?.[0]?.toString() ?? null)
                 : null,
         country: location.country ? String(location.country) : null,
         location: locationId,
@@ -611,13 +611,13 @@ async function processLocationMetricsBatches(
 
         return results.map(metric => ({
           ...metric,
-          licensee:
-            typeof location.rel?.licensee === 'string'
-              ? location.rel.licensee
+          licencee:
+            typeof location.rel?.licencee === 'string'
+              ? location.rel.licencee
               : typeof (location.rel as Record<string, unknown> | undefined)?.licencee === 'string'
                 ? (location.rel as Record<string, unknown> | undefined)?.licencee
-                : Array.isArray(location.rel?.licensee)
-                  ? (location.rel?.licensee?.[0]?.toString() ?? null)
+                : Array.isArray(location.rel?.licencee)
+                  ? (location.rel?.licencee?.[0]?.toString() ?? null)
                   : null,
           country: location.country ? String(location.country) : null,
           location: locationId,
@@ -633,35 +633,35 @@ async function processLocationMetricsBatches(
 }
 
 /**
- * Loads licensee and country metadata for currency conversion
+ * Loads licencee and country metadata for currency conversion
  *
  * @param db - Database connection
  * @param metricsPerLocation - Array of meter trend metrics
- * @returns Maps of licensee ID to name and country ID to name
+ * @returns Maps of licencee ID to name and country ID to name
  */
 async function loadCurrencyMetadata(
   metricsPerLocation: MeterTrendMetric[]
 ): Promise<{
-  licenseeIdToName: Map<string, string>;
+  licenceeIdToName: Map<string, string>;
   countryIdToName: Map<string, string>;
 }> {
-  const licenseeIdToName = new Map<string, string>();
+  const licenceeIdToName = new Map<string, string>();
   const countryIdToName = new Map<string, string>();
 
-  const licenseeIds = Array.from(
+  const licenceeIds = Array.from(
     new Set(
       metricsPerLocation
-        .map(metric => metric.licensee)
+        .map(metric => metric.licencee)
         .filter((id): id is string => Boolean(id))
     )
   );
 
-  if (licenseeIds.length > 0) {
+  if (licenceeIds.length > 0) {
     // Use Mongoose model with lean() for read-only query
-    const licenseeDocs = await Licensee.find(
+    const licenceeDocs = await Licencee.find(
       {
         _id: {
-          $in: licenseeIds
+          $in: licenceeIds
             .map(id => {
               try {
                 return new ObjectId(id);
@@ -677,8 +677,8 @@ async function loadCurrencyMetadata(
       .lean()
       .exec();
 
-    licenseeDocs.forEach(doc => {
-      licenseeIdToName.set(String(doc._id), doc.name);
+    licenceeDocs.forEach(doc => {
+      licenceeIdToName.set(String(doc._id), doc.name);
     });
   }
 
@@ -716,7 +716,7 @@ async function loadCurrencyMetadata(
     });
   }
 
-  return { licenseeIdToName, countryIdToName };
+  return { licenceeIdToName, countryIdToName };
 }
 
 /**
@@ -725,7 +725,7 @@ async function loadCurrencyMetadata(
  * @param metricsPerLocation - Array of meter trend metrics
  * @param shouldConvert - Whether to apply currency conversion
  * @param displayCurrency - Display currency code
- * @param licenseeIdToName - Map of licensee ID to name
+ * @param licenceeIdToName - Map of licencee ID to name
  * @param countryIdToName - Map of country ID to name
  * @returns Array of aggregated metrics
  */
@@ -733,7 +733,7 @@ function aggregateMetricsWithConversion(
   metricsPerLocation: MeterTrendMetric[],
   shouldConvert: boolean,
   displayCurrency: CurrencyCode,
-  licenseeIdToName: Map<string, string>,
+  licenceeIdToName: Map<string, string>,
   countryIdToName: Map<string, string>
 ): AggregatedMetric[] {
   const aggregatedMap = new Map<string, AggregatedMetric>();
@@ -776,9 +776,9 @@ function aggregateMetricsWithConversion(
 
     if (shouldConvert) {
       let nativeCurrency = 'USD';
-      if (metric.licensee) {
+      if (metric.licencee) {
         nativeCurrency =
-          licenseeIdToName.get(metric.licensee) || metric.licensee || 'USD';
+          licenceeIdToName.get(metric.licencee) || metric.licencee || 'USD';
       } else if (metric.country) {
         const countryName = countryIdToName.get(metric.country);
         nativeCurrency = countryName
@@ -839,7 +839,7 @@ function aggregateMetricsWithConversion(
  *
  * @param db - Database connection
  * @param params - Request parameters
- * @param accessibleLicensees - User's accessible licensees
+ * @param accessibleLicencees - User's accessible licencees
  * @param userRoles - User roles
  * @param userLocationPermissions - User's location permissions
  * @returns Array of aggregated metrics
@@ -847,7 +847,7 @@ function aggregateMetricsWithConversion(
 export async function getMeterTrends(
   params: {
     timePeriod: string;
-    licensee: string;
+    licencee: string;
     startDate?: string | null;
     endDate?: string | null;
     displayCurrency: CurrencyCode;
@@ -857,13 +857,13 @@ export async function getMeterTrends(
     onlineStatus?: string;
     searchTerm?: string;
   },
-  accessibleLicensees: string[] | 'all',
+  accessibleLicencees: string[] | 'all',
   userRoles: string[],
   userLocationPermissions: string[]
 ): Promise<AggregatedMetric[]> {
   const {
     timePeriod,
-    licensee,
+    licencee,
     startDate,
     endDate,
     displayCurrency,
@@ -877,7 +877,7 @@ export async function getMeterTrends(
   const isAdminOrDev =
     userRoles.includes('admin') || userRoles.includes('developer');
   const shouldConvert =
-    isAdminOrDev && shouldApplyCurrencyConversion(licensee || 'all');
+    isAdminOrDev && shouldApplyCurrencyConversion(licencee || 'all');
 
   let customStartDate: Date | undefined;
   let customEndDate: Date | undefined;
@@ -893,14 +893,13 @@ export async function getMeterTrends(
     $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
   };
 
-  if (licensee) {
+  if (licencee) {
     if (!locationQuery.$and) {
       locationQuery.$and = [];
     }
     (locationQuery.$and as unknown[]).push({
       $or: [
-        { 'rel.licensee': licensee },
-        { 'rel.licencee': licensee },
+        { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  },
       ],
     });
   }
@@ -920,14 +919,14 @@ export async function getMeterTrends(
 
   const isManager = userRoles.includes('manager');
   const isAdmin =
-    accessibleLicensees === 'all' ||
+    accessibleLicencees === 'all' ||
     userRoles.includes('admin') ||
     userRoles.includes('developer');
 
-  if (licensee) {
+  if (licencee) {
     const filteredLocations = filterLocationsByPermissions(
       locations as LocationData[],
-      licensee,
+      licencee,
       isAdmin,
       isManager,
       userLocationPermissions
@@ -935,7 +934,7 @@ export async function getMeterTrends(
     locations = filteredLocations as typeof locations;
   } else {
     const allowedLocationIds = await getUserLocationFilter(
-      accessibleLicensees,
+      accessibleLicencees,
       undefined,
       userLocationPermissions,
       userRoles
@@ -1094,12 +1093,12 @@ export async function getMeterTrends(
     return [];
   }
 
-  let licenseeIdToName = new Map<string, string>();
+  let licenceeIdToName = new Map<string, string>();
   let countryIdToName = new Map<string, string>();
 
   if (shouldConvert) {
     const metadata = await loadCurrencyMetadata(metricsPerLocation);
-    licenseeIdToName = metadata.licenseeIdToName;
+    licenceeIdToName = metadata.licenceeIdToName;
     countryIdToName = metadata.countryIdToName;
   }
 
@@ -1107,7 +1106,7 @@ export async function getMeterTrends(
     metricsPerLocation,
     shouldConvert,
     displayCurrency,
-    licenseeIdToName,
+    licenceeIdToName,
     countryIdToName
   );
 }

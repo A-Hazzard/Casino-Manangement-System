@@ -2,7 +2,7 @@
  * Currency Conversion Helper for Meters Report
  *
  * This module handles currency conversion for the meters report when viewing
- * "All Licensees" mode as an Admin or Developer.
+ * "All Licencees" mode as an Admin or Developer.
  *
  * @module app/api/lib/helpers/metersReportCurrency
  */
@@ -15,14 +15,14 @@ import {
 import type { CurrencyCode } from '@/shared/types/currency';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 import { Countries } from '@/app/api/lib/models/countries';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import type { LocationWithGamingDay, TransformedMeterData } from './meters';
 
 /**
  * Location details for currency determination
  */
 type LocationDetails = {
-  licensee: string | null;
+  licencee: string | null;
   country: string | null;
 };
 
@@ -30,24 +30,24 @@ type LocationDetails = {
  * Build maps for currency conversion lookup
  *
  * @param db - MongoDB database instance
- * @param locationsData - Location data with licensee and country info
- * @returns Maps for licensee-to-country and location-to-details lookup
+ * @param locationsData - Location data with licencee and country info
+ * @returns Maps for licencee-to-country and location-to-details lookup
  */
 export async function buildCurrencyMaps(
   locationsData: LocationWithGamingDay[]
 ): Promise<{
-  licenseeMap: Map<string, string>;
+  licenceeMap: Map<string, string>;
   countryNameMap: Map<string, string>;
   locationDetailsMap: Map<string, LocationDetails>;
 }> {
-  // Fetch licensee mappings
-  const allLicensees = await Licensee.find({}, { _id: 1, name: 1, country: 1 })
+  // Fetch licencee mappings
+  const allLicencees = await Licencee.find({}, { _id: 1, name: 1, country: 1 })
     .lean()
     .exec();
 
-  const licenseeMap = new Map<string, string>();
-  allLicensees.forEach((lic: Record<string, unknown>) => {
-    licenseeMap.set(lic.name as string, lic.country as string);
+  const licenceeMap = new Map<string, string>();
+  allLicencees.forEach((lic: Record<string, unknown>) => {
+    licenceeMap.set(lic.name as string, lic.country as string);
   });
 
   // Fetch country names from country IDs
@@ -74,13 +74,13 @@ export async function buildCurrencyMaps(
     const countryName = countryId ? countryNameMap.get(countryId) : null;
 
     locationDetailsMap.set(loc._id, {
-      licensee: loc.rel?.licensee || null,
+      licencee: loc.rel?.licencee || null,
       country: countryName || null,
     });
   });
 
   return {
-    licenseeMap,
+    licenceeMap,
     countryNameMap,
     locationDetailsMap,
   };
@@ -89,22 +89,22 @@ export async function buildCurrencyMaps(
 /**
  * Determine the native currency for a location
  *
- * @param locationDetails - Location details with licensee and country info
- * @param licenseeMap - Map of licensee name to country ID
+ * @param locationDetails - Location details with licencee and country info
+ * @param licenceeMap - Map of licencee name to country ID
  * @returns Native currency code for the location
  */
 function getNativeCurrencyForLocation(
   locationDetails: LocationDetails | undefined,
-  licenseeMap: Map<string, string>
+  licenceeMap: Map<string, string>
 ): CurrencyCode {
   if (!locationDetails) {
     return 'USD';
   }
 
-  if (locationDetails.licensee) {
-    const licenseeCountry = licenseeMap.get(locationDetails.licensee);
-    if (licenseeCountry) {
-      return getCountryCurrency(licenseeCountry);
+  if (locationDetails.licencee) {
+    const licenceeCountry = licenceeMap.get(locationDetails.licencee);
+    if (licenceeCountry) {
+      return getCountryCurrency(licenceeCountry);
     }
   }
 
@@ -166,21 +166,21 @@ function convertMeterDataCurrency(
  *
  * @param data - Array of meter data items
  * @param locationDetailsMap - Map of location ID to location details
- * @param licenseeMap - Map of licensee name to country ID
+ * @param licenceeMap - Map of licencee name to country ID
  * @param displayCurrency - Target display currency
  * @returns Array of converted meter data items
  */
 export function applyCurrencyConversion(
   data: TransformedMeterData[],
   locationDetailsMap: Map<string, LocationDetails>,
-  licenseeMap: Map<string, string>,
+  licenceeMap: Map<string, string>,
   displayCurrency: CurrencyCode
 ): TransformedMeterData[] {
   return data.map(item => {
     const locationDetails = locationDetailsMap.get(item.locationId);
     const nativeCurrency = getNativeCurrencyForLocation(
       locationDetails,
-      licenseeMap
+      licenceeMap
     );
 
     return convertMeterDataCurrency(item, nativeCurrency, displayCurrency);

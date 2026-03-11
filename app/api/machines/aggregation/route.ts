@@ -4,10 +4,10 @@
  * This route handles aggregating machine data across multiple locations.
  * It supports:
  * - Time period filtering (today, week, month, custom dates)
- * - Licensee filtering
+ * - Licencee filtering
  * - Location filtering
  * - Search functionality
- * - Currency conversion (Admin/Developer only for "All Licensees")
+ * - Currency conversion (Admin/Developer only for "All Licencees")
  * - Gaming day offset calculations per location
  * - Pagination
  * - Optimized batch processing for performance
@@ -16,9 +16,9 @@
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
+  getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
+} from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
@@ -39,9 +39,9 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse query parameters (locationId, search, licensee, timePeriod, currency, pagination)
+ * 2. Parse query parameters (locationId, search, licencee, timePeriod, currency, pagination)
  * 3. Validate timePeriod parameter
- * 4. Get user's accessible licensees and permissions
+ * 4. Get user's accessible licencees and permissions
  * 5. Determine allowed location IDs
  * 6. Fetch locations with gameDayOffset
  * 7. Calculate gaming day ranges per location
@@ -79,9 +79,9 @@ export async function GET(req: NextRequest) {
       : [];
 
     const searchTerm = searchParams.get('search')?.trim() || '';
-    // Support both 'licensee' and 'licensee' spelling for backwards compatibility
-    const licensee =
-      searchParams.get('licensee') || searchParams.get('licensee');
+    // Support both 'licencee' and 'licencee' spelling for backwards compatibility
+    const licencee =
+      searchParams.get('licencee');
     let timePeriod = searchParams.get('timePeriod');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
@@ -110,9 +110,9 @@ export async function GET(req: NextRequest) {
     const endDateParam = searchParams.get('endDate');
 
     // ============================================================================
-    // STEP 4: Get user's accessible licensees and permissions
+    // STEP 4: Get user's accessible licencees and permissions
     // ============================================================================
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
     let userLocationPermissions: string[] = [];
@@ -125,16 +125,16 @@ export async function GET(req: NextRequest) {
         .assignedLocations;
     }
 
-    // Get allowed location IDs (intersection of licensee + location permissions, respecting roles)
+    // Get allowed location IDs (intersection of licencee + location permissions, respecting roles)
     let allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicensees,
-      licensee || undefined,
+      userAccessibleLicencees,
+      licencee || undefined,
       userLocationPermissions,
       userRoles
     );
 
     // CRITICAL: For Admins and Developers, if specific locations are requested,
-    // we bypass the restrictive allowedLocationIds check (which might be filtered by a stale licensee UI tag)
+    // we bypass the restrictive allowedLocationIds check (which might be filtered by a stale licencee UI tag)
     // to ensure they can see the data for the location they are specifically viewing.
     const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer');
     if (isAdmin && locationIdArray.length > 0) {
@@ -144,7 +144,8 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 4.5: Technician Restriction - Force last hour meter data
     // ============================================================================
-    const isOnlyTechnician = userRoles.length === 1 && userRoles[0].toLowerCase() === 'technician';
+    const userRolesLower = userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase());
+    const isOnlyTechnician = userRolesLower.includes('technician') && !userRolesLower.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
     if (isOnlyTechnician && !isAdmin) {
       console.warn('[API Aggregation] Applying technician restriction: forcing LastHour timePeriod');
       timePeriod = 'LastHour';
@@ -160,10 +161,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
           ...response,
           debug: {
-            userAccessibleLicensees,
+            userAccessibleLicencees,
             userRoles,
             userLocationPermissions,
-            licenseeParam: licensee,
+            licenceeParam: licencee,
             allowedLocationIds: 'EMPTY',
             reason: 'No accessible locations',
           },
@@ -509,6 +510,7 @@ export async function GET(req: NextRequest) {
             locationName: (location.name as string) || '(No Location)',
             assetNumber: finalSerialNumber,
             serialNumber: finalSerialNumber,
+            custom: machine.custom || {},
             game: String(machine.game || machine.gameType || ''),
             installedGame: String(machine.game || machine.gameType || ''),
             denomination: machine.denomination || '',
@@ -839,6 +841,7 @@ export async function GET(req: NextRequest) {
               locationName: (location.name as string) || '(No Location)',
               assetNumber: finalSerialNumber,
               serialNumber: finalSerialNumber,
+              custom: machine.custom || {},
               smbId: machine.relayId || '',
               relayId: machine.relayId || '',
               installedGame: String(machine.game || machine.gameType || ''),
@@ -1017,10 +1020,10 @@ export async function GET(req: NextRequest) {
       currentUserRoles.includes('admin') ||
       currentUserRoles.includes('developer');
 
-    // Currency conversion ONLY for Admin/Developer when viewing "All Licensees"
+    // Currency conversion ONLY for Admin/Developer when viewing "All Licencees"
     // Managers and other users ALWAYS see native currency (TTD for TTG, GYD for Cabana, etc.)
-    if (isAdminOrDev && shouldApplyCurrencyConversion(licensee)) {
-      // Get licensee details for currency mapping
+    if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
+      // Get licencee details for currency mapping
       const db = await connectDB();
       if (!db) {
         return NextResponse.json(
@@ -1029,8 +1032,8 @@ export async function GET(req: NextRequest) {
         );
       }
 
-      const { Licensee } = await import('@/app/api/lib/models/licensee');
-      const licenseesData = await Licensee.find(
+      const { Licencee } = await import('@/app/api/lib/models/licencee');
+      const licenceesData = await Licencee.find(
         {
           $or: [
             { deletedAt: null },
@@ -1042,14 +1045,14 @@ export async function GET(req: NextRequest) {
         .lean()
         .exec();
 
-      // Create a map of licensee ID to name
-      const licenseeIdToName = new Map<string, string>();
-      licenseesData.forEach(lic => {
-        licenseeIdToName.set(String(lic._id), lic.name);
+      // Create a map of licencee ID to name
+      const licenceeIdToName = new Map<string, string>();
+      licenceesData.forEach(lic => {
+        licenceeIdToName.set(String(lic._id), lic.name);
       });
 
       // Get country details for currency mapping
-      const { getCountryCurrency, getLicenseeCurrency, convertToUSD } =
+      const { getCountryCurrency, getLicenceeCurrency, convertToUSD } =
         await import('@/lib/helpers/rates');
       const countriesData = await Countries.find({}).lean();
       const countryIdToName = new Map<string, string>();
@@ -1059,7 +1062,7 @@ export async function GET(req: NextRequest) {
         }
       });
 
-      // Get location details for each machine to determine licensee
+      // Get location details for each machine to determine licencee
       const locationDetailsMap = new Map();
       for (const location of locations) {
         const locationIdStr = (
@@ -1073,13 +1076,13 @@ export async function GET(req: NextRequest) {
       // Convert from native currency to USD, then to display currency
       filteredMachines = filteredMachines.map(machine => {
         const locationDetails = locationDetailsMap.get(machine.locationId);
-        const machineLicenseeId = (locationDetails?.rel?.licensee || (locationDetails?.rel as Record<string, unknown>)?.licencee) as
+        const machineLicenceeId = (locationDetails?.rel?.licencee || (locationDetails?.rel as Record<string, unknown>)?.licencee) as
           | string
           | undefined;
 
         let nativeCurrency: string = 'USD';
 
-        if (!machineLicenseeId) {
+        if (!machineLicenceeId) {
           // Unassigned machines - determine currency from country
           const countryId = locationDetails?.country as string | undefined;
           const countryName = countryId
@@ -1089,10 +1092,10 @@ export async function GET(req: NextRequest) {
             ? getCountryCurrency(countryName)
             : 'USD';
         } else {
-          // Get licensee's native currency
-          const licenseeName =
-            licenseeIdToName.get(machineLicenseeId.toString()) || 'Unknown';
-          nativeCurrency = getLicenseeCurrency(licenseeName);
+          // Get licencee's native currency
+          const licenceeName =
+            licenceeIdToName.get(machineLicenceeId.toString()) || 'Unknown';
+          nativeCurrency = getLicenceeCurrency(licenceeName);
         }
 
         // Convert from native currency to USD, then to display currency
@@ -1196,13 +1199,13 @@ export async function GET(req: NextRequest) {
     // STEP 11: Apply pagination
     // ============================================================================
     type DebugInfo = {
-      userAccessibleLicensees: string[] | 'all';
+      userAccessibleLicencees: string[] | 'all';
       userRoles: string[];
       userLocationPermissions: string[];
-      licenseeParam: string | null | undefined;
+      licenceeParam: string | null | undefined;
       allowedLocationIds: string | string[];
       locationsFound: number;
-      locationSample: Array<{ id: string; name: string; licensee?: string }>;
+      locationSample: Array<{ id: string; name: string; licencee?: string }>;
       machinesReturned: number;
       totalMachines?: number;
       timePeriod: string | undefined;
@@ -1250,10 +1253,10 @@ export async function GET(req: NextRequest) {
     // DEBUG: Add debug info if ?debug=true
     if (debug) {
       response.debug = {
-        userAccessibleLicensees,
+        userAccessibleLicencees,
         userRoles,
         userLocationPermissions,
-        licenseeParam: licensee,
+        licenceeParam: licencee,
         allowedLocationIds:
           allowedLocationIds === 'all'
             ? 'ALL'
@@ -1262,7 +1265,7 @@ export async function GET(req: NextRequest) {
         locationSample: locations.slice(0, 3).map(l => ({
           id: String(l._id),
           name: String(l.name),
-          licensee: l.rel?.licensee ? String(l.rel.licensee) : undefined,
+          licencee: l.rel?.licencee ? String(l.rel.licencee) : undefined,
         })),
         machinesReturned: paginatedMachines.length,
         totalMachines: totalCount,

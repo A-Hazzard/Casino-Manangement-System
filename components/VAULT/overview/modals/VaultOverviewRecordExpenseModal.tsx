@@ -33,7 +33,7 @@ import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machine
 import { Textarea } from '@/components/shared/ui/textarea';
 import { CARIBBEAN_BANKS } from '@/lib/constants/banks';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination, ExpenseCategory } from '@/shared/types/vault';
@@ -77,7 +77,7 @@ export default function VaultOverviewRecordExpenseModal({
   onConfirm,
 }: VaultOverviewRecordExpenseModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicensee } = useVaultLicensee();
+  const { licenceeId: selectedLicencee } = useVaultLicencee();
   // ============================================================================
   // Hooks & State
   // ============================================================================
@@ -87,9 +87,9 @@ export default function VaultOverviewRecordExpenseModal({
   const [denominations, setDenominations] = useState<Denomination[]>([]);
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
 
-  const denomsList = useMemo(() => getDenominationValues(selectedLicensee), [selectedLicensee]);
+  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
 
-  // Update denominations when licensee changes or modal opens
+  // Update denominations when licencee changes or modal opens
   useEffect(() => {
     if (open) {
       setDenominations(denomsList.map(denom => ({ 
@@ -139,7 +139,7 @@ export default function VaultOverviewRecordExpenseModal({
             params: {
               type: 'overview',
               limit: 1000,
-              licensee: selectedLicensee !== 'all' ? selectedLicensee : undefined,
+              licencee: selectedLicencee !== 'all' ? selectedLicencee : undefined,
             },
           });
           const fetchedMachines = response.data.data || [];
@@ -172,7 +172,7 @@ export default function VaultOverviewRecordExpenseModal({
       
       fetchMachines();
     }
-  }, [open, category, expenseDetails.isMachineRepair, selectedLicensee]);
+  }, [open, category, expenseDetails.isMachineRepair, selectedLicencee]);
 
   // ============================================================================
   // Computed Values

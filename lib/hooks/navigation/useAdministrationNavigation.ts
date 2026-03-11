@@ -16,7 +16,7 @@ export const useAdministrationNavigation = () => {
   const getActiveSectionFromURL = useCallback((): AdministrationSection => {
     const section = searchParams.get('section');
     console.log('🔄 [ADMIN HOOK] Getting section from URL:', section);
-    if (section === 'licensees') return 'licensees';
+    if (section === 'licencees') return 'licencees';
     if (section === 'countries') return 'countries';
     if (section === 'activity-logs') return 'activity-logs';
     if (section === 'feedback') return 'feedback';

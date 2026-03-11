@@ -1,8 +1,8 @@
-import { fetchLicensees } from '@/lib/helpers/client';
+import { fetchLicencees } from '@/lib/helpers/client';
 import type { SortKey, User } from '@/lib/types/administration';
-import type { Licensee } from '@/lib/types/common';
-import type { AddLicenseeForm, AddUserForm } from '@/lib/types/pages';
-import { getNext30Days } from '@/lib/utils/licensee';
+import type { Licencee } from '@/lib/types/common';
+import type { AddLicenceeForm, AddUserForm } from '@/lib/types/pages';
+import { getNext30Days } from '@/lib/utils/licencee';
 import { validateEmail, validatePassword } from '@/lib/utils/validation';
 import {
   createUser,
@@ -80,7 +80,7 @@ const userManagement = {
       lastName,
       gender,
       profilePicture,
-      licenseeIds,
+      licenceeIds,
       allowedLocations,
       street,
       town,
@@ -151,7 +151,7 @@ const userManagement = {
       profile: Record<string, unknown>;
       isEnabled: boolean;
       profilePicture: string | null;
-      assignedLicensees?: string[];
+      assignedLicencees?: string[];
       assignedLocations?: string[];
     } = {
       username,
@@ -163,19 +163,19 @@ const userManagement = {
       profilePicture: profilePicture || null,
     };
 
-    // Include licensee assignments (required for all users)
+    // Include licencee assignments (required for all users)
     if (
-      !licenseeIds ||
-      !Array.isArray(licenseeIds) ||
-      licenseeIds.length === 0
+      !licenceeIds ||
+      !Array.isArray(licenceeIds) ||
+      licenceeIds.length === 0
     ) {
-      toast.error('A user must be assigned to at least one licensee');
+      toast.error('A user must be assigned to at least one licencee');
       return;
     }
 
     if (roles.includes('vault-manager') || roles.includes('cashier')) {
-      if (licenseeIds.length > 1) {
-        toast.error('Vault Managers and Cashiers can only be assigned to one licensee');
+      if (licenceeIds.length > 1) {
+        toast.error('Vault Managers and Cashiers can only be assigned to one licencee');
         return;
       }
       if (allowedLocations && allowedLocations.length > 1) {
@@ -184,7 +184,7 @@ const userManagement = {
       }
     }
 
-    payload.assignedLicensees = licenseeIds;
+    payload.assignedLicencees = licenceeIds;
 
     // Include location assignments if provided
     if (
@@ -239,81 +239,81 @@ const userManagement = {
 };
 
 /**
- * Handles licensee management operations
+ * Handles licencee management operations
  */
-const licenseeManagement = {
+const licenceeManagement = {
   /**
-   * Loads all licensees from the API
+   * Loads all licencees from the API
    */
-  loadLicensees: async (
-    setAllLicensees: (licensees: Licensee[]) => void,
-    setIsLicenseesLoading: (loading: boolean) => void
+  loadLicencees: async (
+    setAllLicencees: (licencees: Licencee[]) => void,
+    setIsLicenceesLoading: (loading: boolean) => void
   ) => {
-    setIsLicenseesLoading(true);
+    setIsLicenceesLoading(true);
     try {
-      const result = await fetchLicensees();
-      // Extract licensees array from the result
-      const licenseesData = Array.isArray(result.licensees)
-        ? result.licensees
+      const result = await fetchLicencees();
+      // Extract licencees array from the result
+      const licenceesData = Array.isArray(result.licencees)
+        ? result.licencees
         : [];
-      setAllLicensees(licenseesData);
+      setAllLicencees(licenceesData);
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('Failed to fetch licensees:', error);
+        console.error('Failed to fetch licencees:', error);
       }
-      setAllLicensees([]);
-      toast.error('Failed to load licensees');
+      setAllLicencees([]);
+      toast.error('Failed to load licencees');
     }
-    setIsLicenseesLoading(false);
+    setIsLicenceesLoading(false);
   },
 
   /**
-   * Creates a new licensee
+   * Creates a new licencee
    */
-  createNewLicensee: async (
-    licenseeForm: AddLicenseeForm,
-    setIsAddLicenseeModalOpen: (open: boolean) => void,
-    setLicenseeForm: (form: AddLicenseeForm) => void,
-    setCreatedLicensee: (
-      licensee: { name: string; licenseKey: string } | null
+  createNewLicencee: async (
+    licenceeForm: AddLicenceeForm,
+    setIsAddLicenceeModalOpen: (open: boolean) => void,
+    setLicenceeForm: (form: AddLicenceeForm) => void,
+    setCreatedLicencee: (
+      licencee: { name: string; licenceKey: string } | null
     ) => void,
-    setIsLicenseeSuccessModalOpen: (open: boolean) => void,
-    refreshLicensees: () => Promise<void>
+    setIsLicenceeSuccessModalOpen: (open: boolean) => void,
+    refreshLicencees: () => Promise<void>
   ) => {
-    if (!licenseeForm.name || !licenseeForm.country) {
+    if (!licenceeForm.name || !licenceeForm.country) {
       toast.error('Name and country are required');
       return;
     }
 
     try {
-      const response = await fetch('/api/licensees', {
+      const response = await fetch('/api/licencees', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: licenseeForm.name,
-          country: licenseeForm.country,
-          startDate: licenseeForm.startDate,
-          expiryDate: licenseeForm.expiryDate,
+          name: licenceeForm.name,
+          country: licenceeForm.country,
+          startDate: licenceeForm.startDate,
+          expiryDate: licenceeForm.expiryDate,
         }),
       });
 
       const result = await response.json();
 
-      // Show success modal with license key
-      if (result.licensee && result.licensee.licenseKey) {
-        setCreatedLicensee({
-          name: result.licensee.name,
-          licenseKey: result.licensee.licenseKey,
+      // Show success modal with licence key
+      if (result.licencee && result.licencee.licenceKey) {
+        setCreatedLicencee({
+          name: result.licencee.name,
+          licenceKey: result.licencee.licenceKey,
         });
-        setIsLicenseeSuccessModalOpen(true);
+        setIsLicenceeSuccessModalOpen(true);
       }
 
-      setIsAddLicenseeModalOpen(false);
-      setLicenseeForm({});
-      await refreshLicensees();
-      toast.success('Licensee created successfully');
+      setIsAddLicenceeModalOpen(false);
+      setLicenceeForm({});
+      await refreshLicencees();
+      toast.success('Licencee created successfully');
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
@@ -321,31 +321,31 @@ const licenseeManagement = {
       toast.error(
         error?.response?.data?.message ||
         error?.message ||
-        'Failed to add licensee'
+        'Failed to add licencee'
       );
     }
   },
 
   /**
-   * Updates an existing licensee
+   * Updates an existing licencee
    */
-  updateExistingLicensee: async (
-    selectedLicensee: Licensee,
-    licenseeForm: AddLicenseeForm,
-    setIsEditLicenseeModalOpen: (open: boolean) => void,
-    setSelectedLicensee: (licensee: Licensee | null) => void,
-    setLicenseeForm: (form: AddLicenseeForm) => void,
-    refreshLicensees: () => Promise<void>
+  updateExistingLicencee: async (
+    selectedLicencee: Licencee,
+    licenceeForm: AddLicenceeForm,
+    setIsEditLicenceeModalOpen: (open: boolean) => void,
+    setSelectedLicencee: (licencee: Licencee | null) => void,
+    setLicenceeForm: (form: AddLicenceeForm) => void,
+    refreshLicencees: () => Promise<void>
   ) => {
     try {
       // Include the current isPaid value to preserve payment status
       const updateData = {
-        ...licenseeForm,
-        _id: selectedLicensee._id,
-        isPaid: selectedLicensee.isPaid, // Preserve current payment status
+        ...licenceeForm,
+        _id: selectedLicencee._id,
+        isPaid: selectedLicencee.isPaid, // Preserve current payment status
       };
 
-      const response = await fetch(`/api/licensees/${selectedLicensee._id}`, {
+      const response = await fetch(`/api/licencees/${selectedLicencee._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -354,13 +354,13 @@ const licenseeManagement = {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update licensee');
+        throw new Error('Failed to update licencee');
       }
-      setIsEditLicenseeModalOpen(false);
-      setSelectedLicensee(null);
-      setLicenseeForm({});
-      await refreshLicensees();
-      toast.success('Licensee updated successfully');
+      setIsEditLicenceeModalOpen(false);
+      setSelectedLicencee(null);
+      setLicenceeForm({});
+      await refreshLicencees();
+      toast.success('Licencee updated successfully');
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
@@ -368,32 +368,32 @@ const licenseeManagement = {
       toast.error(
         error?.response?.data?.message ||
         error?.message ||
-        'Failed to update licensee'
+        'Failed to update licencee'
       );
     }
   },
 
   /**
-   * Deletes a licensee
+   * Deletes a licencee
    */
-  deleteExistingLicensee: async (
-    selectedLicensee: Licensee,
-    setIsDeleteLicenseeModalOpen: (open: boolean) => void,
-    setSelectedLicensee: (licensee: Licensee | null) => void,
-    refreshLicensees: () => Promise<void>
+  deleteExistingLicencee: async (
+    selectedLicencee: Licencee,
+    setIsDeleteLicenceeModalOpen: (open: boolean) => void,
+    setSelectedLicencee: (licencee: Licencee | null) => void,
+    refreshLicencees: () => Promise<void>
   ) => {
     try {
-      const response = await fetch(`/api/licensees/${selectedLicensee._id}`, {
+      const response = await fetch(`/api/licencees/${selectedLicencee._id}`, {
         method: 'DELETE',
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete licensee');
+        throw new Error('Failed to delete licencee');
       }
-      setIsDeleteLicenseeModalOpen(false);
-      setSelectedLicensee(null);
-      await refreshLicensees();
-      toast.success('Licensee deleted successfully');
+      setIsDeleteLicenceeModalOpen(false);
+      setSelectedLicencee(null);
+      await refreshLicencees();
+      toast.success('Licencee deleted successfully');
     } catch (err) {
       const error = err as Error & {
         response?: { data?: { message?: string } };
@@ -401,25 +401,25 @@ const licenseeManagement = {
       toast.error(
         error?.response?.data?.message ||
         error?.message ||
-        'Failed to delete licensee'
+        'Failed to delete licencee'
       );
     }
   },
 
   /**
-   * Toggles payment status for a licensee
+   * Toggles payment status for a licencee
    */
   togglePaymentStatus: async (
-    selectedLicenseeForPaymentChange: Licensee,
-    refreshLicensees: () => Promise<void>
+    selectedLicenceeForPaymentChange: Licencee,
+    refreshLicencees: () => Promise<void>
   ) => {
     try {
       // Determine current payment status
       const currentIsPaid =
-        selectedLicenseeForPaymentChange.isPaid !== undefined
-          ? selectedLicenseeForPaymentChange.isPaid
-          : selectedLicenseeForPaymentChange.expiryDate
-            ? new Date(selectedLicenseeForPaymentChange.expiryDate) > new Date()
+        selectedLicenceeForPaymentChange.isPaid !== undefined
+          ? selectedLicenceeForPaymentChange.isPaid
+          : selectedLicenceeForPaymentChange.expiryDate
+            ? new Date(selectedLicenceeForPaymentChange.expiryDate) > new Date()
             : false;
 
       const newIsPaid = !currentIsPaid;
@@ -431,21 +431,21 @@ const licenseeManagement = {
         expiryDate?: Date;
         prevExpiryDate?: Date;
       } = {
-        _id: selectedLicenseeForPaymentChange._id,
+        _id: selectedLicenceeForPaymentChange._id,
         isPaid: newIsPaid,
       };
 
       // If changing from unpaid to paid, extend expiry date by 30 days
       if (!currentIsPaid && newIsPaid) {
-        updateData.prevExpiryDate = selectedLicenseeForPaymentChange.expiryDate
-          ? new Date(selectedLicenseeForPaymentChange.expiryDate)
+        updateData.prevExpiryDate = selectedLicenceeForPaymentChange.expiryDate
+          ? new Date(selectedLicenceeForPaymentChange.expiryDate)
           : undefined;
         updateData.expiryDate = getNext30Days();
       }
 
-      await axios.put('/api/licensees', updateData);
+      await axios.put('/api/licencees', updateData);
 
-      await refreshLicensees();
+      await refreshLicencees();
       toast.success('Payment status updated successfully');
     } catch (err) {
       const error = err as Error & {
@@ -478,10 +478,10 @@ const locationManagement = {
 
       const locationsList = response.data?.locations || [];
 
-      return locationsList.map((loc: { _id?: string; id?: string; name?: string; locationName?: string; licenseeId?: string }) => ({
+      return locationsList.map((loc: { _id?: string; id?: string; name?: string; locationName?: string; licenceeId?: string }) => ({
         _id: loc._id?.toString() || loc.id?.toString() || '',
         name: loc.name || loc.locationName || 'Unknown Location',
-        licenseeId: loc.licenseeId ? String(loc.licenseeId) : null,
+        licenceeId: loc.licenceeId ? String(loc.licenceeId) : null,
       }));
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
@@ -508,9 +508,9 @@ export const administrationUtils = {
   userManagement,
 
   /**
-   * Licensee management operations
+   * Licencee management operations
    */
-  licenseeManagement,
+  licenceeManagement,
 
   /**
    * Location management operations
@@ -569,12 +569,12 @@ export const administrationUtils = {
   },
 
   /**
-   * Filters licensees based on search value
+   * Filters licencees based on search value
    */
-  filterLicensees: (allLicensees: Licensee[], licenseeSearchValue: string) => {
-    if (!licenseeSearchValue) return allLicensees;
-    return allLicensees.filter(licensee =>
-      licensee.name.toLowerCase().includes(licenseeSearchValue.toLowerCase())
+  filterLicencees: (allLicencees: Licencee[], licenceeSearchValue: string) => {
+    if (!licenceeSearchValue) return allLicencees;
+    return allLicencees.filter(licencee =>
+      licencee.name.toLowerCase().includes(licenceeSearchValue.toLowerCase())
     );
   },
 

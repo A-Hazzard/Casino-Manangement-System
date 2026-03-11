@@ -11,7 +11,7 @@ import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues, getInitialDenominationRecord } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
@@ -42,10 +42,10 @@ export default function VaultOverviewReconcileModal({
   systemDenominations = []
 }: VaultOverviewReconcileModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicensee } = useVaultLicensee();
+  const { licenceeId: selectedLicencee } = useVaultLicencee();
   const [loading, setLoading] = useState(false);
   
-  const denominationsList = useMemo(() => getDenominationValues(selectedLicensee), [selectedLicensee]);
+  const denominationsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
   
   const [breakdown, setBreakdown] = useState<Record<number, number>>({});
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
@@ -53,15 +53,15 @@ export default function VaultOverviewReconcileModal({
   const [source, setSource] = useState<string>('Periodic');
   const [showAuthenticator, setShowAuthenticator] = useState(false);
 
-  // Update breakdown when licensee changes or modal opens
+  // Update breakdown when licencee changes or modal opens
   useEffect(() => {
     if (open) {
-      setBreakdown(getInitialDenominationRecord(selectedLicensee) as Record<number, number>);
+      setBreakdown(getInitialDenominationRecord(selectedLicencee) as Record<number, number>);
       setTouchedDenominations(new Set());
       setSource('Periodic');
       setReason('');
     }
-  }, [selectedLicensee, open]);
+  }, [selectedLicencee, open]);
 
   const totalAmount = useMemo(() => {
     return Object.entries(breakdown).reduce(
@@ -121,7 +121,7 @@ export default function VaultOverviewReconcileModal({
       });
       onClose();
       // Reset form
-      setBreakdown(getInitialDenominationRecord(selectedLicensee) as Record<number, number>);
+      setBreakdown(getInitialDenominationRecord(selectedLicencee) as Record<number, number>);
       setTouchedDenominations(new Set());
       setReason('');
       setSource('Periodic');

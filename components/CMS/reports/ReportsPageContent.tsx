@@ -33,7 +33,7 @@ import Image from 'next/image';
  *
  * Features:
  * - Tab-based navigation (Locations, Machines, Meters)
- * - Licensee selection integration
+ * - Licencee selection integration
  * - Date filters
  * - Tab content rendering with suspense
  * - Loading states and overlays
@@ -45,7 +45,7 @@ export default function ReportsPageContent() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
-  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { user } = useUserStore();
 
   // Check user roles
@@ -145,8 +145,8 @@ export default function ReportsPageContent() {
   return (
     <PageLayout
       headerProps={{
-        selectedLicensee,
-        setSelectedLicensee,
+        selectedLicencee,
+        setSelectedLicencee,
         disabled: isLoading || refreshing,
       }}
       showToaster={true}

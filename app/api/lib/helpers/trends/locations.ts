@@ -10,7 +10,7 @@
 
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
@@ -221,7 +221,7 @@ function buildLocationTrendsPipeline(
   targetLocations: string[],
   queryStartDate: Date,
   queryEndDate: Date,
-  licensee: string | null,
+  licencee: string | null,
   shouldUseHourly: boolean,
   shouldUseMinute?: boolean,
   shouldUseMonthly?: boolean,
@@ -256,12 +256,11 @@ function buildLocationTrendsPipeline(
     },
   ];
 
-  if (licensee && licensee !== 'all') {
+  if (licencee && licencee !== 'all') {
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licensee': licensee },
-          { 'locationDetails.rel.licencee': licensee },
+          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
         ],
       },
     } as PipelineStage);
@@ -423,11 +422,11 @@ function buildLocationTrendsPipeline(
 async function getLocationCurrencies(
   locationsData: Array<{
     _id: unknown;
-    rel?: { licensee?: unknown };
+    rel?: { licencee?: unknown };
     country?: unknown;
   }>
 ): Promise<Map<string, string>> {
-  const licenseesData = await Licensee.find(
+  const licenceesData = await Licencee.find(
     {
       $or: [
         { deletedAt: null },
@@ -439,9 +438,9 @@ async function getLocationCurrencies(
     .lean()
     .exec();
 
-  const licenseeIdToName = new Map<string, string>();
-  licenseesData.forEach(lic => {
-    licenseeIdToName.set(String(lic._id), lic.name as string);
+  const licenceeIdToName = new Map<string, string>();
+  licenceesData.forEach(lic => {
+    licenceeIdToName.set(String(lic._id), lic.name as string);
   });
 
   const countriesData = await Countries.find({}).lean();
@@ -454,11 +453,11 @@ async function getLocationCurrencies(
 
   const locationCurrencies = new Map<string, string>();
   locationsData.forEach(loc => {
-    const locationLicenseeId = loc.rel?.licensee || (loc.rel as Record<string, unknown>)?.licencee;
-    if (locationLicenseeId) {
-      const licenseeName =
-        licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
-      locationCurrencies.set(String(loc._id), licenseeName);
+    const locationLicenceeId = loc.rel?.licencee || (loc.rel as Record<string, unknown>)?.licencee;
+    if (locationLicenceeId) {
+      const licenceeName =
+        licenceeIdToName.get(locationLicenceeId.toString()) || 'Unknown';
+      locationCurrencies.set(String(loc._id), licenceeName);
     } else {
       const countryId = loc.country;
       const countryName = countryId
@@ -808,7 +807,7 @@ function calculateLocationTotals(
 export async function getLocationTrends(
   locationIds: string,
   timePeriod: TimePeriod,
-  licensee: string | null,
+  licencee: string | null,
   startDateParam: string | null,
   endDateParam: string | null,
   displayCurrency: CurrencyCode,
@@ -1007,7 +1006,7 @@ export async function getLocationTrends(
     targetLocations,
     queryStartDate,
     queryEndDate,
-    licensee,
+    licencee,
     useHourly,
     useMinute,
     useMonthly,
@@ -1035,7 +1034,7 @@ export async function getLocationTrends(
 
   // Apply currency conversion if needed
   let convertedData = dailyData;
-  if (shouldApplyCurrencyConversion(licensee)) {
+  if (shouldApplyCurrencyConversion(licencee)) {
     const locationCurrencies = await getLocationCurrencies(locationsData);
     convertedData = convertDailyTrendItems(
       dailyData,
@@ -1088,7 +1087,7 @@ export async function getLocationTrends(
     locations: targetLocations,
     locationNames,
     currency: displayCurrency,
-    converted: shouldApplyCurrencyConversion(licensee),
+    converted: shouldApplyCurrencyConversion(licencee),
     isHourly: useHourly,
     dataSpan:
       actualDataSpan && actualDataSpan.minDate && actualDataSpan.maxDate

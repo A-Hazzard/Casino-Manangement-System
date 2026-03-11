@@ -10,7 +10,7 @@ export function useCurrencyFormat() {
   const {
     displayCurrency,
     formatAmount: contextFormatAmount,
-    isAllLicensee,
+    isAllLicencee,
   } = useCurrency();
 
   /**
@@ -31,7 +31,7 @@ export function useCurrencyFormat() {
   /**
    * Check if currency conversion should be applied
    */
-  const shouldShowCurrency = () => isAllLicensee;
+  const shouldShowCurrency = () => isAllLicencee;
 
   /**
    * Format amount with currency symbol only (no number formatting)
@@ -65,7 +65,7 @@ export function useCurrencyFormat() {
     shouldShowCurrency,
     getCurrencyInfo,
     displayCurrency,
-    isAllLicensee,
+    isAllLicencee,
   };
 }
 

@@ -193,7 +193,7 @@ The page allows users to:
     - `search` - Search term (searches session ID, machine ID, member ID)
     - `sortBy` - Sort field (startTime, totalHandle, won, gamesPlayed, duration, etc.)
     - `sortOrder` - Sort direction (asc, desc)
-    - `licensee` - Licensee filter (optional)
+    - `licencee` - Licencee filter (optional)
     - `dateFilter` - Date filter type (today, yesterday, week, month, custom)
     - `startDate` - Custom start date (ISO string)
     - `endDate` - Custom end date (ISO string)
@@ -245,10 +245,10 @@ The page allows users to:
   - Provides: `navigateToSessionEvents` function
 
 - **`useDashBoardStore`** (`lib/store/dashboardStore.ts`) - Zustand store
-  - `selectedLicensee` - Selected licensee for filtering
+  - `selectedLicencee` - Selected licencee for filtering
   - `activeMetricsFilter` - Active date filter type
   - `customDateRange` - Custom date range (if Custom filter selected)
-  - `setSelectedLicensee` - Licensee selection setter
+  - `setSelectedLicencee` - Licencee selection setter
 
 ### State Properties
 

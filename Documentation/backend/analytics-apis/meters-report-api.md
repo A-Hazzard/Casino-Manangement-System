@@ -52,7 +52,7 @@ This ensures that financial metrics and meter readings are calculated based on t
 - `timePeriod` - "Today", "Yesterday", "7d", "30d", "Custom"
 - `startDate` - Custom start date (ISO format)
 - `endDate` - Custom end date (ISO format)
-- `licensee` - Licensee filter
+- `licencee` - Licencee filter
 - `locationIds` - Comma-separated location IDs
 
 **Response:**
@@ -371,7 +371,7 @@ type MetersReportParams = {
   page?: number;                  // Pagination page number (default: 1)
   limit?: number;                 // Items per page (default: 10, max: 100)
   search?: string;                // Search term for machine ID, location name, serial number, or custom name
-  licensee?: string;              // Filter by licensee ID (triggers location refetch)
+  licencee?: string;              // Filter by licencee ID (triggers location refetch)
   includeHourlyData?: boolean;    // Include hourly chart data in response
   hourlyDataMachineIds?: string;  // Comma-separated machine IDs for filtered hourly chart data
   currency?: string;              // Display currency code (USD, TTD, GYD, BBD)
@@ -876,7 +876,7 @@ const params = new URLSearchParams({
   page: '1',
   limit: '10',
   search: 'machine123',
-  licensee: 'licensee_id',
+  licencee: 'licencee_id',
 });
 
 const response = await fetch(`/api/reports/meters?${params}`);
@@ -1023,13 +1023,13 @@ metersSchema.index({ machine: 1, createdAt: -1 });
 - **Date Range**: Valid ISO date string format
 - **Pagination**: Numeric validation with reasonable limits
 - **Search**: String sanitization for SQL injection prevention
-- **Licensee**: Valid licensee ID format
+- **Licencee**: Valid licencee ID format
 
 ### Data Protection
 
 - **User Authentication**: Valid JWT token required
 - **Role-based Access**: Data filtered by user permissions
-- **Licensee Filtering**: Users only see data for their assigned licensees
+- **Licencee Filtering**: Users only see data for their assigned licencees
 
 ## Integration Points
 
@@ -1042,7 +1042,7 @@ metersSchema.index({ machine: 1, createdAt: -1 });
 ### Frontend Components
 
 - **MetersTab**: `components/reports/tabs/MetersTab.tsx`
-  - Refetches locations when licensee filter changes
+  - Refetches locations when licencee filter changes
   - Supports debounced search with chart synchronization
   - Top Performing Machines chart calculated from table data
   - Comprehensive skeleton loaders for all sections
@@ -1131,7 +1131,7 @@ console.error('❌ Meters Report API Error:', {
 
 ### November 20, 2025
 
-- **Licensee Filter Refetching**: MetersTab now automatically refetches locations when licensee filter changes
+- **Licencee Filter Refetching**: MetersTab now automatically refetches locations when licencee filter changes
 - **Mobile Chart Optimization**:
   - Horizontal scrolling for charts with many data points
   - Reduced label frequency on mobile devices

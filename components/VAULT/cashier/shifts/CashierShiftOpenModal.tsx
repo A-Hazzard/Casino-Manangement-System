@@ -20,7 +20,7 @@ import {
     DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination } from '@/shared/types/vault';
 import { AlertTriangle, Coins } from 'lucide-react';
@@ -47,16 +47,16 @@ export default function CashierShiftOpenModal({
   loading = false,
 }: CashierShiftOpenModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: effectiveLicenseeId } = useVaultLicensee();
+  const { licenceeId: effectiveLicenceeId } = useVaultLicencee();
   const [step, setStep] = useState<'input' | 'review'>('input');
   const [showAuthenticator, setShowAuthenticator] = useState(false);
 
-  const denomsList = useMemo(() => getDenominationValues(effectiveLicenseeId), [effectiveLicenseeId]);
+  const denomsList = useMemo(() => getDenominationValues(effectiveLicenceeId), [effectiveLicenceeId]);
 
   const [denominations, setDenominations] = useState<Denomination[]>([]);
   const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
 
-  // Update denominations when licensee changes or modal opens
+  // Update denominations when licencee changes or modal opens
   useEffect(() => {
     if (open && step === 'input') {
       setDenominations(denomsList.map(denom => ({ 

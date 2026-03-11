@@ -29,7 +29,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 - **URL Pattern:** `/locations`
 - **Authentication:** Required (ProtectedRoute with `requiredPage="locations"`)
 - **Access Level:** Developer, Admin, Manager, Location Admin (with assigned locations)
-- **Licensee Filtering:** Supported
+- **Licencee Filtering:** Supported
 - **Responsive:** Desktop (table) and Mobile (card) views
 
 ## Page Sections
@@ -74,7 +74,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 - `calculateLocationFinancialTotals` - Calculates totals from location array (from `lib/utils/financial.ts`)
 
 **Notes:**
-- Currency conversion applied based on user role and selected licensee
+- Currency conversion applied based on user role and selected licencee
 - Loading skeleton shown during data fetch
 
 ---
@@ -170,7 +170,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 
 **Query Parameters:**
 - `timePeriod` - Time period filter (Today, Yesterday, 7d, 30d, Custom)
-- `licensee` / `licensee` - Licensee filter
+- `licencee` / `licencee` - Licencee filter
 - `currency` - Display currency
 - `search` - Search query
 - `machineTypeFilter` - Status filter string (comma-separated)
@@ -213,7 +213,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 **Notes:**
 - Test locations (names starting with "test") filtered out for non-developers
 - Location data includes financial metrics aggregated by time period
-- Currency conversion applied based on user role and selected licensee
+- Currency conversion applied based on user role and selected licencee
 
 ---
 
@@ -229,7 +229,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 **New Location Modal Features:**
 - Location name
 - Country selection
-- Licensee assignment
+- Licencee assignment
 - Gaming day offset
 - Geographic coordinates (latitude, longitude)
 - SMIB configuration
@@ -264,25 +264,25 @@ The Locations page provides comprehensive management and analytics for gaming lo
 
 1. **`GET /api/reports/locations`**
    - Returns paginated location list with financial metrics
-   - Parameters: `timePeriod`, `licensee`/`licensee`, `currency`, `search`, `machineTypeFilter`, `page`, `limit`, `startDate`, `endDate`
+   - Parameters: `timePeriod`, `licencee`/`licencee`, `currency`, `search`, `machineTypeFilter`, `page`, `limit`, `startDate`, `endDate`
    - Used by: `useLocationData` hook
    - Returns: Location array with financial metrics, pagination info, currency info
 
 2. **`GET /api/locationAggregation`**
    - Returns aggregated financial totals
-   - Parameters: `timePeriod`, `licensee`, `currency`, `startDate`, `endDate`
+   - Parameters: `timePeriod`, `licencee`, `currency`, `startDate`, `endDate`
    - Used by: Financial metrics cards (if available)
    - Returns: `{ moneyIn, moneyOut, gross }`
 
 3. **`GET /api/analytics/machines/stats`**
    - Returns machine status statistics
-   - Parameters: `licensee`, `machineTypeFilter`
+   - Parameters: `licencee`, `machineTypeFilter`
    - Used by: `useLocationMachineStats` hook
    - Returns: `{ totalMachines, onlineMachines, offlineMachines }`
 
 4. **`GET /api/analytics/membership/stats`**
    - Returns membership statistics
-   - Parameters: `licensee`, `machineTypeFilter`
+   - Parameters: `licencee`, `machineTypeFilter`
    - Used by: `useLocationMembershipStats` hook
    - Returns: `{ membershipCount }`
 
@@ -380,14 +380,14 @@ The Locations page provides comprehensive management and analytics for gaming lo
 
 3. **`useLocationMachineStats`**
    - Fetches machine status statistics
-   - Parameters: `licensee`, `machineTypeFilter`
+   - Parameters: `licencee`, `machineTypeFilter`
    - Returns: `{ machineStats, machineStatsLoading, refreshMachineStats }`
 
 **File:** `lib/hooks/data/useLocationMembershipStats.ts`
 
 4. **`useLocationMembershipStats`**
    - Fetches membership statistics
-   - Parameters: `licensee`, `machineTypeFilter`
+   - Parameters: `licencee`, `machineTypeFilter`
    - Returns: `{ membershipStats, membershipStatsLoading, refreshMembershipStats }`
 
 ### Utility Functions
@@ -404,7 +404,7 @@ The Locations page provides comprehensive management and analytics for gaming lo
 
 2. **`fetchDashboardTotals`**
    - Fetches financial metrics totals from API
-   - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicensee`, `setTotals`, `displayCurrency`, `signal`
+   - Parameters: `activeMetricsFilter`, `customDateRange`, `selectedLicencee`, `setTotals`, `displayCurrency`, `signal`
    - Used for financial metrics cards
 
 ---
@@ -479,15 +479,15 @@ The Locations page provides comprehensive management and analytics for gaming lo
 
 ### When Currency Conversion is Available
 
-- **Admin/Developer + "All Licensees"**: ✅ Currency conversion enabled
-- **Admin/Developer + Specific Licensee**: ❌ Native currency shown
+- **Admin/Developer + "All Licencees"**: ✅ Currency conversion enabled
+- **Admin/Developer + Specific Licencee**: ❌ Native currency shown
 - **Manager**: ❌ Native currency always shown
 - **Location Admin**: ❌ Native currency always shown
 
 ### Conversion Process
 
-1. Each location's data in its licensee's native currency
-2. Data converted to USD (base) if viewing "All Licensees"
+1. Each location's data in its licencee's native currency
+2. Data converted to USD (base) if viewing "All Licencees"
 3. Aggregated USD → Selected display currency
 
 ---

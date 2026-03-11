@@ -47,7 +47,7 @@ export default function ReportsLocationsTab() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
-  const { activeMetricsFilter, customDateRange, selectedLicensee } =
+  const { activeMetricsFilter, customDateRange, selectedLicencee } =
     useDashBoardStore();
   const { selectedDateRange, setLoading } = useReportsStore();
 
@@ -244,7 +244,7 @@ export default function ReportsLocationsTab() {
   }, [
     activeMetricsFilter,
     selectedDateRange,
-    selectedLicensee,
+    selectedLicencee,
     setCurrentPage,
   ]);
 

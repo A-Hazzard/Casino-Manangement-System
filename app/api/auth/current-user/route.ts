@@ -85,7 +85,7 @@ export async function GET() {
         roles: dbUser.roles || [],
         isEnabled: dbUser.isEnabled ?? true,
         assignedLocations: dbUser.assignedLocations || undefined,
-        assignedLicensees: dbUser.assignedLicensees || undefined,
+        assignedLicencees: dbUser.assignedLicencees || undefined,
         createdAt: dbUser.createdAt || new Date(),
         updatedAt: dbUser.updatedAt || new Date(),
         tempPasswordChanged: dbUser.tempPasswordChanged ?? true,

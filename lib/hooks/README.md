@@ -13,7 +13,7 @@ This directory contains all custom React hooks organized by functionality for be
 ### `/data` - Data Fetching & State Management
 
 - `useAcceptedBills.ts` - Bill validator data fetching
-- `useAdministrationData.ts` - Administration data fetching (users, licensees, activity logs)
+- `useAdministrationData.ts` - Administration data fetching (users, licencees, activity logs)
 - `useAdministrationModals.ts` - Administration modal state management
 - `useCabinetData.ts` - Cabinet data management and filtering
 - `useCabinetDetailsData.ts` - Cabinet details data fetching

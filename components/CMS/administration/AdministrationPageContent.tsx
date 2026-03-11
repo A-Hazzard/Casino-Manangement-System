@@ -1,7 +1,7 @@
 /**
  * Administration Page Content Component
  * Handles all state management and data fetching for the administration page.
- * Manages users, licensees, activity logs, and feedback sections.
+ * Manages users, licencees, activity logs, and feedback sections.
  *
  * @module components/administration/AdministrationPageContent
  */
@@ -10,7 +10,7 @@
 import AdministrationFeedbackManagement from '@/components/CMS/administration/AdministrationFeedbackManagement';
 import AdministrationNavigation from '@/components/CMS/administration/AdministrationNavigation';
 import AdministrationCountriesSection from '@/components/CMS/administration/sections/AdministrationCountriesSection';
-import AdministrationLicenseesSection from '@/components/CMS/administration/sections/AdministrationLicenseesSection';
+import AdministrationLicenceesSection from '@/components/CMS/administration/sections/AdministrationLicenceesSection';
 import AdministrationUsersSection from '@/components/CMS/administration/sections/AdministrationUsersSection';
 import AdministrationActivityLogsTable from '@/components/CMS/administration/tables/AdministrationActivityLogsTable';
 import PageLayout from '@/components/shared/layout/PageLayout';
@@ -18,7 +18,7 @@ import { AccessRestricted } from '@/components/shared/ui/AccessRestricted';
 import { Button } from '@/components/shared/ui/button';
 import { ADMINISTRATION_TABS_CONFIG, IMAGES } from '@/lib/constants';
 import { useAdministrationCountries } from '@/lib/hooks/administration/useAdministrationCountries';
-import { useAdministrationLicensees } from '@/lib/hooks/administration/useAdministrationLicensees';
+import { useAdministrationLicencees } from '@/lib/hooks/administration/useAdministrationLicencees';
 import { useAdministrationUsers } from '@/lib/hooks/administration/useAdministrationUsers';
 import { useAdministrationNavigation } from '@/lib/hooks/navigation';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -33,7 +33,7 @@ export default function AdministrationPageContent() {
   // ============================================================================
   // Hooks & State
   // ============================================================================
-  const { selectedLicensee, setSelectedLicensee } = useDashBoardStore();
+  const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { user } = useUserStore();
   const { activeSection, handleSectionChange } = useAdministrationNavigation();
 
@@ -43,15 +43,15 @@ export default function AdministrationPageContent() {
 
   // Users data and state management hook
   const usersHook = useAdministrationUsers({
-    selectedLicensee,
+    selectedLicencee,
     activeSection,
     loadedSections,
     setLoadedSections,
     mounted,
   });
 
-  // Licensees data and state management hook
-  const licenseesHook = useAdministrationLicensees({
+  // Licencees data and state management hook
+  const licenceesHook = useAdministrationLicencees({
     activeSection,
     loadedSections,
     setLoadedSections,
@@ -68,11 +68,11 @@ export default function AdministrationPageContent() {
   }, []);
 
   useEffect(() => {
-    // Ensure selected licensee is initialized
-    if (!selectedLicensee) {
-      setSelectedLicensee('');
+    // Ensure selected licencee is initialized
+    if (!selectedLicencee) {
+      setSelectedLicencee('');
     }
-  }, [selectedLicensee, setSelectedLicensee]);
+  }, [selectedLicencee, setSelectedLicencee]);
 
   // ============================================================================
   // Render Helpers
@@ -123,67 +123,67 @@ export default function AdministrationPageContent() {
       );
     }
 
-    // 4. Licensees Section
-    if (activeSection === 'licensees') {
-      if (!hasTabAccess(userRoles, 'administration', 'licensees')) {
-        return <AccessRestricted sectionName="Licensees" />;
+    // 4. Licencees Section
+    if (activeSection === 'licencees') {
+      if (!hasTabAccess(userRoles, 'administration', 'licencees')) {
+        return <AccessRestricted sectionName="Licencees" />;
       }
       return (
-        <AdministrationLicenseesSection
-          isLicenseesLoading={licenseesHook.isLicenseesLoading}
-          filteredLicensees={licenseesHook.filteredLicensees}
-          licenseeSearchValue={licenseesHook.licenseeSearchValue}
-          isAddLicenseeModalOpen={licenseesHook.isAddLicenseeModalOpen}
-          isEditLicenseeModalOpen={licenseesHook.isEditLicenseeModalOpen}
-          isDeleteLicenseeModalOpen={licenseesHook.isDeleteLicenseeModalOpen}
-          isPaymentHistoryModalOpen={licenseesHook.isPaymentHistoryModalOpen}
-          isLicenseeSuccessModalOpen={licenseesHook.isLicenseeSuccessModalOpen}
-          isPaymentConfirmModalOpen={licenseesHook.isPaymentConfirmModalOpen}
-          countries={licenseesHook.countries}
-          isCountriesLoading={licenseesHook.isCountriesLoading}
-          selectedLicensee={licenseesHook.selectedLicensee}
-          licenseeForm={licenseesHook.licenseeForm}
-          selectedLicenseeForPayment={licenseesHook.selectedLicenseeForPayment}
-          selectedLicenseeForPaymentChange={
-            licenseesHook.selectedLicenseeForPaymentChange
+        <AdministrationLicenceesSection
+          isLicenceesLoading={licenceesHook.isLicenceesLoading}
+          filteredLicencees={licenceesHook.filteredLicencees}
+          licenceeSearchValue={licenceesHook.licenceeSearchValue}
+          isAddLicenceeModalOpen={licenceesHook.isAddLicenceeModalOpen}
+          isEditLicenceeModalOpen={licenceesHook.isEditLicenceeModalOpen}
+          isDeleteLicenceeModalOpen={licenceesHook.isDeleteLicenceeModalOpen}
+          isPaymentHistoryModalOpen={licenceesHook.isPaymentHistoryModalOpen}
+          isLicenceeSuccessModalOpen={licenceesHook.isLicenceeSuccessModalOpen}
+          isPaymentConfirmModalOpen={licenceesHook.isPaymentConfirmModalOpen}
+          countries={licenceesHook.countries}
+          isCountriesLoading={licenceesHook.isCountriesLoading}
+          selectedLicencee={licenceesHook.selectedLicencee}
+          licenceeForm={licenceesHook.licenceeForm}
+          selectedLicenceeForPayment={licenceesHook.selectedLicenceeForPayment}
+          selectedLicenceeForPaymentChange={
+            licenceesHook.selectedLicenceeForPaymentChange
           }
-          createdLicensee={licenseesHook.createdLicensee}
-          setLicenseeSearchValue={licenseesHook.setLicenseeSearchValue}
-          setIsAddLicenseeModalOpen={licenseesHook.setIsAddLicenseeModalOpen}
-          setIsEditLicenseeModalOpen={licenseesHook.setIsEditLicenseeModalOpen}
-          setIsDeleteLicenseeModalOpen={
-            licenseesHook.setIsDeleteLicenseeModalOpen
+          createdLicencee={licenceesHook.createdLicencee}
+          setLicenceeSearchValue={licenceesHook.setLicenceeSearchValue}
+          setIsAddLicenceeModalOpen={licenceesHook.setIsAddLicenceeModalOpen}
+          setIsEditLicenceeModalOpen={licenceesHook.setIsEditLicenceeModalOpen}
+          setIsDeleteLicenceeModalOpen={
+            licenceesHook.setIsDeleteLicenceeModalOpen
           }
           setIsPaymentHistoryModalOpen={
-            licenseesHook.setIsPaymentHistoryModalOpen
+            licenceesHook.setIsPaymentHistoryModalOpen
           }
-          setIsLicenseeSuccessModalOpen={
-            licenseesHook.setIsLicenseeSuccessModalOpen
+          setIsLicenceeSuccessModalOpen={
+            licenceesHook.setIsLicenceeSuccessModalOpen
           }
           setIsPaymentConfirmModalOpen={
-            licenseesHook.setIsPaymentConfirmModalOpen
+            licenceesHook.setIsPaymentConfirmModalOpen
           }
-          setSelectedLicensee={licenseesHook.setSelectedLicensee}
-          setLicenseeForm={licenseesHook.setLicenseeForm}
-          setSelectedLicenseeForPayment={
-            licenseesHook.setSelectedLicenseeForPayment
+          setSelectedLicencee={licenceesHook.setSelectedLicencee}
+          setLicenceeForm={licenceesHook.setLicenceeForm}
+          setSelectedLicenceeForPayment={
+            licenceesHook.setSelectedLicenceeForPayment
           }
-          setSelectedLicenseeForPaymentChange={
-            licenseesHook.setSelectedLicenseeForPaymentChange
+          setSelectedLicenceeForPaymentChange={
+            licenceesHook.setSelectedLicenceeForPaymentChange
           }
-          setCreatedLicensee={licenseesHook.setCreatedLicensee}
-          handleOpenAddLicensee={licenseesHook.handleOpenAddLicensee}
-          handleSaveAddLicensee={licenseesHook.handleSaveAddLicensee}
-          handleOpenEditLicensee={licenseesHook.handleOpenEditLicensee}
-          handleSaveEditLicensee={licenseesHook.handleSaveEditLicensee}
-          handleOpenDeleteLicensee={licenseesHook.handleOpenDeleteLicensee}
-          handleDeleteLicensee={licenseesHook.handleDeleteLicensee}
-          handlePaymentHistory={licenseesHook.handlePaymentHistory}
-          handleTogglePaymentStatus={licenseesHook.handleTogglePaymentStatus}
+          setCreatedLicencee={licenceesHook.setCreatedLicencee}
+          handleOpenAddLicencee={licenceesHook.handleOpenAddLicencee}
+          handleSaveAddLicencee={licenceesHook.handleSaveAddLicencee}
+          handleOpenEditLicencee={licenceesHook.handleOpenEditLicencee}
+          handleSaveEditLicencee={licenceesHook.handleSaveEditLicencee}
+          handleOpenDeleteLicencee={licenceesHook.handleOpenDeleteLicencee}
+          handleDeleteLicencee={licenceesHook.handleDeleteLicencee}
+          handlePaymentHistory={licenceesHook.handlePaymentHistory}
+          handleTogglePaymentStatus={licenceesHook.handleTogglePaymentStatus}
           handleConfirmPaymentStatusChange={
-            licenseesHook.handleConfirmPaymentStatusChange
+            licenceesHook.handleConfirmPaymentStatusChange
           }
-          refreshLicensees={licenseesHook.refreshLicensees}
+          refreshLicencees={licenceesHook.refreshLicencees}
         />
       );
     }
@@ -194,7 +194,7 @@ export default function AdministrationPageContent() {
     }
     return (
       <AdministrationUsersSection
-        selectedLicensee={selectedLicensee}
+        selectedLicencee={selectedLicencee}
         isLoading={usersHook.isLoading}
         isSearching={usersHook.isSearching}
         processedUsers={usersHook.processedUsers}
@@ -235,7 +235,7 @@ export default function AdministrationPageContent() {
         refreshUsers={usersHook.refreshUsers}
       />
     );
-  }, [activeSection, user, usersHook, licenseesHook, selectedLicensee, countriesHook]);
+  }, [activeSection, user, usersHook, licenceesHook, selectedLicencee, countriesHook]);
 
   // ============================================================================
   // Event Handlers
@@ -248,8 +248,8 @@ export default function AdministrationPageContent() {
     try {
       if (activeSection === 'users') {
         await usersHook.refreshUsers();
-      } else if (activeSection === 'licensees') {
-        await licenseesHook.refreshLicensees();
+      } else if (activeSection === 'licencees') {
+        await licenceesHook.refreshLicencees();
       } else if (activeSection === 'feedback') {
         window.dispatchEvent(new CustomEvent('refreshFeedback'));
       } else if (activeSection === 'countries') {
@@ -260,7 +260,7 @@ export default function AdministrationPageContent() {
     } finally {
       setRefreshing(false);
     }
-  }, [activeSection, usersHook, licenseesHook, countriesHook]);
+  }, [activeSection, usersHook, licenceesHook, countriesHook]);
 
   // Prevent hydration mismatch
   if (!mounted) return null;
@@ -323,17 +323,17 @@ export default function AdministrationPageContent() {
               <span className="hidden sm:inline">Create new user</span>
               <span className="sm:hidden">Create</span>
             </Button>
-          ) : activeSection === 'licensees' ? (
+          ) : activeSection === 'licencees' ? (
             <Button
-              onClick={licenseesHook.handleOpenAddLicensee}
+              onClick={licenceesHook.handleOpenAddLicencee}
               disabled={
-                licenseesHook.isCountriesLoading ||
-                licenseesHook.countries.length === 0
+                licenceesHook.isCountriesLoading ||
+                licenceesHook.countries.length === 0
               }
               className="flex items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:bg-buttonActive sm:gap-2 sm:px-6 sm:py-2 sm:text-sm"
             >
               <PlusCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">Create new licensee</span>
+              <span className="hidden sm:inline">Create new licencee</span>
               <span className="sm:hidden">Create</span>
             </Button>
           ) : activeSection === 'countries' ? (
@@ -356,7 +356,7 @@ export default function AdministrationPageContent() {
           tabs={ADMINISTRATION_TABS_CONFIG}
           activeSection={activeSection}
           onChange={handleSectionChange}
-          isLoading={usersHook.isLoading || licenseesHook.isLicenseesLoading}
+          isLoading={usersHook.isLoading || licenceesHook.isLicenceesLoading}
         />
       </div>
 

@@ -23,10 +23,10 @@ import CircleCropModal from '@/components/shared/ui/image/CircleCropModal';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { administrationUtils } from '@/lib/helpers/administration';
-import { fetchLicensees } from '@/lib/helpers/client';
+import { fetchLicencees } from '@/lib/helpers/client';
 import { fetchCountries } from '@/lib/helpers/countries';
 import { useUserStore } from '@/lib/store/userStore';
-import type { Country, Licensee } from '@/lib/types/common';
+import type { Country, Licencee } from '@/lib/types/common';
 import type { LocationSelectItem } from '@/lib/types/location';
 import type { AddUserForm } from '@/lib/types/pages';
 import {
@@ -119,13 +119,13 @@ export default function AdministrationAddUserModal({
     return [];
   }, [isDeveloper, isAdmin, isManager, isLocationAdmin]);
 
-  const currentUserLicenseeIds = useMemo(
+  const currentUserLicenceeIds = useMemo(
     () =>
-      (Array.isArray(currentUser?.assignedLicensees)
-        ? currentUser.assignedLicensees
+      (Array.isArray(currentUser?.assignedLicencees)
+        ? currentUser.assignedLicencees
         : []
       ).map(id => String(id)),
-    [currentUser?.assignedLicensees]
+    [currentUser?.assignedLicencees]
   );
 
   const currentUserLocationPermissions = useMemo(
@@ -196,9 +196,9 @@ export default function AdministrationAddUserModal({
   const isCashierSelected = roles.includes('cashier');
   const hasRestrictedAssignments = isVaultManagerSelected || isCashierSelected;
   const isAssignmentsEnabled = roles.length > 0;
-  const [licensees, setLicensees] = useState<Licensee[]>([]);
-  const [selectedLicenseeIds, setSelectedLicenseeIds] = useState<string[]>([]);
-  const [allLicenseesSelected, setAllLicenseesSelected] = useState(false);
+  const [licencees, setLicencees] = useState<Licencee[]>([]);
+  const [selectedLicenceeIds, setSelectedLicenceeIds] = useState<string[]>([]);
+  const [allLicenceesSelected, setAllLicenceesSelected] = useState(false);
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [allLocationsSelected, setAllLocationsSelected] = useState(false);
@@ -251,8 +251,8 @@ export default function AdministrationAddUserModal({
       setPassword('');
       setConfirmPassword('');
       setRoles([]);
-      setSelectedLicenseeIds([]);
-      setAllLicenseesSelected(false);
+      setSelectedLicenceeIds([]);
+      setAllLicenceesSelected(false);
       setSelectedLocationIds([]);
       setAllLocationsSelected(false);
       setAccountErrors({});
@@ -272,62 +272,62 @@ export default function AdministrationAddUserModal({
     }
   }, [open]);
 
-  // Auto-set licensee for location admins
+  // Auto-set licencee for location admins
   useEffect(() => {
-    if (open && isLocationAdmin && currentUserLicenseeIds.length > 0) {
-      setSelectedLicenseeIds(currentUserLicenseeIds);
-      setAllLicenseesSelected(false);
+    if (open && isLocationAdmin && currentUserLicenceeIds.length > 0) {
+      setSelectedLicenceeIds(currentUserLicenceeIds);
+      setAllLicenceesSelected(false);
     }
-  }, [open, isLocationAdmin, currentUserLicenseeIds]);
+  }, [open, isLocationAdmin, currentUserLicenceeIds]);
 
 
-  // Load licensees
+  // Load licencees
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
 
-    const loadLicensees = async () => {
+    const loadLicencees = async () => {
       try {
-        const result = await fetchLicensees();
+        const result = await fetchLicencees();
         if (cancelled) return;
 
-        let lics = Array.isArray(result.licensees) ? result.licensees : [];
+        let lics = Array.isArray(result.licencees) ? result.licencees : [];
 
-        // Filter licensees for managers
-        if (isManager && currentUserLicenseeIds.length > 0) {
+        // Filter licencees for managers
+        if (isManager && currentUserLicenceeIds.length > 0) {
           lics = lics.filter(lic =>
-            currentUserLicenseeIds.includes(String(lic._id))
+            currentUserLicenceeIds.includes(String(lic._id))
           );
         }
 
-        // Filter licensees for location admins and auto-set
-        if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
+        // Filter licencees for location admins and auto-set
+        if (isLocationAdmin && currentUserLicenceeIds.length > 0) {
           lics = lics.filter(lic =>
-            currentUserLicenseeIds.includes(String(lic._id))
+            currentUserLicenceeIds.includes(String(lic._id))
           );
           if (lics.length > 0 && !cancelled) {
-            setSelectedLicenseeIds([String(lics[0]._id)]);
-            setAllLicenseesSelected(false);
+            setSelectedLicenceeIds([String(lics[0]._id)]);
+            setAllLicenceesSelected(false);
           }
         }
 
-        // Auto-set for managers with single licensee
+        // Auto-set for managers with single licencee
         if (isManager && lics.length === 1 && !cancelled) {
-          setSelectedLicenseeIds([String(lics[0]._id)]);
-          setAllLicenseesSelected(false);
+          setSelectedLicenceeIds([String(lics[0]._id)]);
+          setAllLicenceesSelected(false);
         }
 
-        setLicensees(lics);
+        setLicencees(lics);
       } catch (error) {
-        console.error('Error loading licensees:', error);
+        console.error('Error loading licencees:', error);
       }
     };
 
-    void loadLicensees();
+    void loadLicencees();
     return () => {
       cancelled = true;
     };
-  }, [open, isManager, isLocationAdmin, currentUserLicenseeIds]);
+  }, [open, isManager, isLocationAdmin, currentUserLicenceeIds]);
 
   // Load locations
   useEffect(() => {
@@ -580,11 +580,14 @@ export default function AdministrationAddUserModal({
 
     // Country validation (matches User model schema)
     if (country && country.length > 0) {
-      if (country.length < 3) {
-        newErrors.country =
-          'Country must be at least 3 characters and may only contain letters and spaces.';
-      } else if (!/^[A-Za-z\s]+$/.test(country)) {
-        newErrors.country = 'Country may only contain letters and spaces.';
+      const isCountryId = /^[0-9a-fA-F]{24}$/.test(country);
+      if (!isCountryId) {
+        if (country.length < 3) {
+          newErrors.country =
+            'Country must be at least 3 characters and may only contain letters, spaces, and ampersands (&).';
+        } else if (!/^[A-Za-z\s&]+$/.test(country)) {
+          newErrors.country = 'Country may only contain letters, spaces, and ampersands (&).';
+        }
       }
     }
 
@@ -727,10 +730,10 @@ export default function AdministrationAddUserModal({
 
     // Enforce single selection if vault-manager or cashier is selected
     if (checked && (role === 'vault-manager' || role === 'cashier')) {
-      if (selectedLicenseeIds.length > 1) {
-        setSelectedLicenseeIds([selectedLicenseeIds[0]]);
+      if (selectedLicenceeIds.length > 1) {
+        setSelectedLicenceeIds([selectedLicenceeIds[0]]);
         toast.info(
-          `${role === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to a single licensee. Assignments have been adjusted.`
+          `${role === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to a single licencee. Assignments have been adjusted.`
         );
       }
       if (selectedLocationIds.length > 1) {
@@ -739,12 +742,12 @@ export default function AdministrationAddUserModal({
           `${role === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to a single location. Assignments have been adjusted.`
         );
       }
-      setAllLicenseesSelected(false);
+      setAllLicenceesSelected(false);
       setAllLocationsSelected(false);
     }
   };
 
-  // Filter locations based on selected licensees
+  // Filter locations based on selected licencees
   const availableLocations = useMemo(() => {
     if (isLocationAdmin && currentUserLocationPermissions.length > 0) {
       return locations.filter(loc =>
@@ -752,20 +755,20 @@ export default function AdministrationAddUserModal({
       );
     }
 
-    return allLicenseesSelected
+    return allLicenceesSelected
       ? locations
-      : selectedLicenseeIds.length > 0
+      : selectedLicenceeIds.length > 0
         ? locations.filter(
             loc =>
-              loc.licenseeId && selectedLicenseeIds.includes(loc.licenseeId)
+              loc.licenceeId && selectedLicenceeIds.includes(loc.licenceeId)
           )
         : [];
   }, [
     isLocationAdmin,
     currentUserLocationPermissions,
     locations,
-    allLicenseesSelected,
-    selectedLicenseeIds,
+    allLicenceesSelected,
+    selectedLicenceeIds,
   ]);
 
   // Sync "all selected" states to prevent Vault Manager restrictions or single-item auto-selection
@@ -773,25 +776,25 @@ export default function AdministrationAddUserModal({
     if (!open) return;
     
     if (hasRestrictedAssignments) {
-      if (allLicenseesSelected) setAllLicenseesSelected(false);
+      if (allLicenceesSelected) setAllLicenceesSelected(false);
       if (allLocationsSelected) setAllLocationsSelected(false);
     } else {
-      // Also ensure "All" is not set if count is 1 or 0
-      if (allLicenseesSelected && (licensees.length <= 1 || selectedLicenseeIds.length !== licensees.length)) {
-        setAllLicenseesSelected(false);
+      // Also ensure "All" is not set if count is 0 or individual count doesn't match
+      if (allLicenceesSelected && (licencees.length === 0 || selectedLicenceeIds.length !== licencees.length)) {
+        setAllLicenceesSelected(false);
       }
-      if (allLocationsSelected && (availableLocations.length <= 1 || selectedLocationIds.length !== availableLocations.length)) {
+      if (allLocationsSelected && (availableLocations.length === 0 || selectedLocationIds.length !== availableLocations.length)) {
         setAllLocationsSelected(false);
       }
     }
   }, [
     open,
     isVaultManagerSelected,
-    allLicenseesSelected,
+    allLicenceesSelected,
     allLocationsSelected,
-    licensees.length,
+    licencees.length,
     availableLocations.length,
-    selectedLicenseeIds.length,
+    selectedLicenceeIds.length,
     selectedLocationIds.length
   ]);
 
@@ -808,7 +811,7 @@ export default function AdministrationAddUserModal({
     }
   };
 
-  const licenseeOptions: MultiSelectOption[] = licensees.map(lic => ({
+  const licenceeOptions: MultiSelectOption[] = licencees.map(lic => ({
     id: String(lic._id),
     label: lic.name,
   }));
@@ -818,32 +821,32 @@ export default function AdministrationAddUserModal({
     label: loc.name,
   }));
 
-  const handleLicenseeChange = (newSelectedIds: string[]) => {
+  const handleLicenceeChange = (newSelectedIds: string[]) => {
     let finalIds = newSelectedIds;
     if (hasRestrictedAssignments && newSelectedIds.length > 1) {
       finalIds = [newSelectedIds[newSelectedIds.length - 1]];
-      toast.info(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single licensee.`);
+      toast.info(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single licencee.`);
     }
 
-    setSelectedLicenseeIds(finalIds);
-    setAllLicenseesSelected(
-      finalIds.length === licensees.length && licensees.length > 1 && !hasRestrictedAssignments
+    setSelectedLicenceeIds(finalIds);
+    setAllLicenceesSelected(
+      finalIds.length === licencees.length && licencees.length > 1 && !hasRestrictedAssignments
     );
 
-    // Filter locations based on selected licensees
+    // Filter locations based on selected licencees
     setSelectedLocationIds(prevLocationIds => {
       const validLocationIds = prevLocationIds.filter(locId => {
         const location = locations.find(l => l._id === locId);
         if (!location) return true;
         return (
-          location.licenseeId && finalIds.includes(location.licenseeId)
+          location.licenceeId && finalIds.includes(location.licenceeId)
         );
       });
 
       if (validLocationIds.length !== prevLocationIds.length) {
         const removedCount = prevLocationIds.length - validLocationIds.length;
         toast.info(
-          `${removedCount} location${removedCount > 1 ? 's' : ''} removed because ${removedCount > 1 ? "they don't" : "it doesn't"} belong to the selected licensee${finalIds.length > 1 ? 's' : ''}`
+          `${removedCount} location${removedCount > 1 ? 's' : ''} removed because ${removedCount > 1 ? "they don't" : "it doesn't"} belong to the selected licencee${finalIds.length > 1 ? 's' : ''}`
         );
       }
 
@@ -863,19 +866,19 @@ export default function AdministrationAddUserModal({
     );
   };
 
-  const handleAllLicenseesChange = (checked: boolean) => {
+  const handleAllLicenceesChange = (checked: boolean) => {
     if (isVaultManagerSelected && checked) {
-      toast.error('Vault Managers cannot be assigned to all licensees');
+      toast.error('Vault Managers cannot be assigned to all licencees');
       return;
     }
-    setAllLicenseesSelected(checked);
+    setAllLicenceesSelected(checked);
     if (checked) {
-      setSelectedLicenseeIds(licensees.map(lic => String(lic._id)));
+      setSelectedLicenceeIds(licencees.map(lic => String(lic._id)));
     } else {
-      setSelectedLicenseeIds([]);
+      setSelectedLicenceeIds([]);
       if (selectedLocationIds.length > 0) {
         setSelectedLocationIds([]);
-        toast.info('All locations cleared since no licensees are selected');
+        toast.info('All locations cleared since no licencees are selected');
       }
     }
   };
@@ -929,8 +932,8 @@ export default function AdministrationAddUserModal({
     }
 
     if (hasRestrictedAssignments) {
-      if (selectedLicenseeIds.length !== 1 || allLicenseesSelected) {
-        toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one licensee`);
+      if (selectedLicenceeIds.length !== 1 || allLicenceesSelected) {
+        toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one licencee`);
         return;
       }
       if (selectedLocationIds.length !== 1 || allLocationsSelected) {
@@ -939,8 +942,8 @@ export default function AdministrationAddUserModal({
       }
     }
 
-    if (selectedLicenseeIds.length === 0 && !allLicenseesSelected) {
-      toast.error('At least one licensee must be assigned');
+    if (selectedLicenceeIds.length === 0 && !allLicenceesSelected) {
+      toast.error('At least one licencee must be assigned');
       return;
     }
 
@@ -979,9 +982,9 @@ export default function AdministrationAddUserModal({
       gender: formData.gender.trim() || undefined,
       phoneNumber: formData.phoneNumber.trim() || undefined,
       profilePicture: formData.profilePicture || null,
-      licenseeIds: allLicenseesSelected
-        ? licensees.map(lic => String(lic._id))
-        : selectedLicenseeIds,
+      licenceeIds: allLicenceesSelected
+        ? licencees.map(lic => String(lic._id))
+        : selectedLicenceeIds,
       allowedLocations: allLocationsSelected
         ? availableLocations.map(loc => loc._id)
         : selectedLocationIds,
@@ -1016,7 +1019,7 @@ export default function AdministrationAddUserModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] flex items-end justify-center lg:items-center">
+      <div className="fixed inset-0 z-[100000] flex items-end justify-center lg:items-center">
         <div
           ref={backdropRef}
           className="absolute inset-0 bg-black/50"
@@ -1569,7 +1572,7 @@ export default function AdministrationAddUserModal({
               <CardHeader>
                 <CardTitle>Roles & Permissions</CardTitle>
                 <CardDescription>
-                  User roles, licensee assignments, and location access
+                  User roles, licencee assignments, and location access
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -1582,8 +1585,8 @@ export default function AdministrationAddUserModal({
                     {availableRoles.map(role => {
                       const isRestrictedRole = role.value === 'vault-manager' || role.value === 'cashier';
                       const isVMRestricted = isRestrictedRole && (
-                        selectedLicenseeIds.length > 1 || 
-                        allLicenseesSelected || 
+                        selectedLicenceeIds.length > 1 || 
+                        allLicenceesSelected || 
                         selectedLocationIds.length > 1 || 
                         allLocationsSelected
                       );
@@ -1622,7 +1625,7 @@ export default function AdministrationAddUserModal({
                           </div>
                           {isVMRestricted && (
                             <p className="pl-6 text-[10px] font-bold text-red-600 leading-tight">
-                              {role.value === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to 1 Licensee & Location
+                              {role.value === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to 1 Licencee & Location
                             </p>
                           )}
                         </div>
@@ -1638,7 +1641,7 @@ export default function AdministrationAddUserModal({
 
                 <div className="h-px w-full bg-gray-200" />
 
-                {/* Licensees and Locations Container */}
+                {/* Licencees and Locations Container */}
                 <div className={`relative grid w-full grid-cols-1 gap-6 md:grid-cols-2 rounded-xl border-2 border-transparent transition-all duration-300 ${!isAssignmentsEnabled ? 'border-dashed border-amber-200 bg-gray-50/50 opacity-60 grayscale' : 'border-solid border-transparent'}`}>
                   {!isAssignmentsEnabled && (
                     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl bg-white/40 p-6 backdrop-blur-[2px]">
@@ -1649,62 +1652,54 @@ export default function AdministrationAddUserModal({
                         <div className="space-y-1">
                           <h4 className="text-lg font-bold text-amber-900">Action Required</h4>
                           <p className="max-w-[280px] text-sm font-medium leading-relaxed text-amber-700">
-                            Please select a <span className="font-bold underline">Role</span> above to unlock licensee and location assignments.
+                            Please select a <span className="font-bold underline">Role</span> above to unlock licencee and location assignments.
                           </p>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Licensees Section */}
+                  {/* Licencees Section */}
                   <div className="flex flex-col">
                     <Label className="mb-4 text-center text-base font-medium">
-                      Assigned Licensees <span className="text-red-500">*</span>
+                      Assigned Licencees <span className="text-red-500">*</span>
                     </Label>
 
-                    {isLocationAdmin && currentUserLicenseeIds.length === 1 ? (
+                    {isLocationAdmin && currentUserLicenceeIds.length === 1 ? (
                       <div className="text-center">
                         <div className="text-gray-700">
-                          {licensees.find(
-                            l => String(l._id) === currentUserLicenseeIds[0]
-                          )?.name || 'No licensee assigned'}
+                          {licencees.find(
+                            l => String(l._id) === currentUserLicenceeIds[0]
+                          )?.name || 'No licencee assigned'}
                         </div>
                         <p className="mt-2 text-xs italic text-gray-500">
-                          Licensee is automatically set to your assigned licensee
+                          Licencee is automatically set to your assigned licencee
                         </p>
                       </div>
                     ) : (
                       <div className="space-y-3">
                         <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
                           <Checkbox
-                            checked={allLicenseesSelected}
+                            checked={allLicenceesSelected}
                             onCheckedChange={checked =>
-                              handleAllLicenseesChange(checked === true)
+                              handleAllLicenceesChange(checked === true)
                             }
-                            disabled={(isLocationAdmin && currentUserLicenseeIds.length === 1) || hasRestrictedAssignments || !isAssignmentsEnabled}
+                            disabled={(isLocationAdmin && currentUserLicenceeIds.length === 1) || hasRestrictedAssignments || !isAssignmentsEnabled}
                             className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
                           />
-                          All Licensees
+                          All Licencees
                         </label>
 
-                        {!allLicenseesSelected && (
-                          <MultiSelectDropdown
-                            options={licenseeOptions}
-                            selectedIds={selectedLicenseeIds}
-                             onChange={handleLicenseeChange}
-                            placeholder="Select licensees..."
-                            searchPlaceholder="Search licensees..."
-                            label="licensees"
-                            showSelectAll={!hasRestrictedAssignments}
-                            disabled={(isLocationAdmin && currentUserLicenseeIds.length === 1) || !isAssignmentsEnabled}
-                          />
-                        )}
-
-                        {allLicenseesSelected && (
-                          <div className="rounded-md border border-green-200 bg-green-50 p-3 text-center text-sm font-medium text-green-800">
-                            All {licensees.length} licensees are selected
-                          </div>
-                        )}
+                        <MultiSelectDropdown
+                          options={licenceeOptions}
+                          selectedIds={selectedLicenceeIds}
+                          onChange={handleLicenceeChange}
+                          placeholder="Select licencees..."
+                          searchPlaceholder="Search licencees..."
+                          label="licencees"
+                          showSelectAll={!hasRestrictedAssignments}
+                          disabled={(isLocationAdmin && currentUserLicenceeIds.length === 1) || !isAssignmentsEnabled}
+                        />
                       </div>
                     )}
                   </div>
@@ -1715,9 +1710,9 @@ export default function AdministrationAddUserModal({
                       Allowed Locations
                     </Label>
 
-                    {selectedLicenseeIds.length === 0 && !allLicenseesSelected ? (
+                    {selectedLicenceeIds.length === 0 && !allLicenceesSelected ? (
                       <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-center text-sm font-medium text-yellow-800">
-                        ⚠️ Please select at least one licensee first to assign
+                        ⚠️ Please select at least one licencee first to assign
                         locations
                       </div>
                     ) : (
@@ -1782,7 +1777,7 @@ export default function AdministrationAddUserModal({
                   checkingEmail ||
                   Object.keys(accountErrors).length > 0 ||
                   roles.length === 0 ||
-                  (selectedLicenseeIds.length === 0 && !allLicenseesSelected)
+                  (selectedLicenceeIds.length === 0 && !allLicenceesSelected)
                 }
                 className="min-w-[140px] gap-2 bg-blue-600 hover:bg-blue-700"
               >

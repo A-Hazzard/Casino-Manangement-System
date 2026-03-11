@@ -16,7 +16,7 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
-import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
+import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
@@ -54,7 +54,7 @@ import {
     useLocationMembershipStats,
 } from '@/lib/hooks/data';
 import { useUserStore } from '@/lib/store/userStore';
-import { shouldShowNoLicenseeMessage } from '@/lib/utils/licensee';
+import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import { hasMissingCoordinates } from '@/lib/utils/location';
 import type { AggregatedLocation } from '@/shared/types';
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
@@ -68,14 +68,14 @@ import Link from 'next/link';
 function LocationMembersContent({
   locationId,
   locationName,
-  selectedLicensee,
+  selectedLicencee,
   activeTab,
   handleTabClick,
   onRefreshReady,
 }: {
   locationId: string;
   locationName: string;
-  selectedLicensee: string | null;
+  selectedLicencee: string | null;
   activeTab: string;
   handleTabClick: (tabId: string) => void;
   onRefreshReady?: (refreshHandler: (() => void) | undefined) => void;
@@ -96,7 +96,7 @@ function LocationMembersContent({
         availableTabs={MEMBERS_TABS_CONFIG}
         activeTab={activeTab as 'members' | 'summary-report'}
         onTabChange={handleTabClick}
-        selectedLicensee={selectedLicensee || undefined}
+        selectedLicencee={selectedLicencee || undefined}
         onRefresh={onRefresh}
         onNewMember={onNewMember}
         refreshing={refreshing}
@@ -125,7 +125,7 @@ function LocationMembersContent({
               <MembersListTab forcedLocationId={locationId} />
             ) : (
               <MembersSummaryTab 
-                selectedLicensee={selectedLicensee || ''} 
+                selectedLicencee={selectedLicencee || ''} 
                 forcedLocationId={locationId}
               />
             )}
@@ -150,8 +150,8 @@ export default function LocationsDetailsPageContent() {
   const tabParam = searchParams.get('tab');
 
   const {
-    selectedLicensee,
-    setSelectedLicensee,
+    selectedLicencee,
+    setSelectedLicencee,
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
@@ -197,7 +197,7 @@ export default function LocationsDetailsPageContent() {
   // ============================================================================
   const cabinetsData = useLocationCabinetsData({
     locationId,
-    selectedLicensee,
+    selectedLicencee,
     activeMetricsFilter,
     customDateRange,
     dateFilterInitialized,
@@ -209,7 +209,7 @@ export default function LocationsDetailsPageContent() {
 
   const chartDataHook = useLocationChartData({
     locationId,
-    selectedLicensee,
+    selectedLicencee,
     activeMetricsFilter: activeMetricsFilter || null,
     customDateRange,
     activeView,
@@ -351,23 +351,23 @@ export default function LocationsDetailsPageContent() {
   // ============================================================================
   // Early Returns
   // ============================================================================
-  // Show "No Licensee Assigned" message for non-admin users without licensees
-  const showNoLicenseeMessage = shouldShowNoLicenseeMessage(user);
-  if (showNoLicenseeMessage) {
+  // Show "No Licencee Assigned" message for non-admin users without licencees
+  const showNoLicenceeMessage = shouldShowNoLicenceeMessage(user);
+  if (showNoLicenceeMessage) {
     return (
       <PageLayout
         headerProps={{
-          selectedLicensee,
-          setSelectedLicensee,
+          selectedLicencee,
+          setSelectedLicencee,
           disabled: false,
         }}
         pageTitle=""
         hideOptions={true}
-        hideLicenseeFilter={true}
+        hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >
-        <NoLicenseeAssigned />
+        <NoLicenceeAssigned />
       </PageLayout>
     );
   }
@@ -386,8 +386,8 @@ export default function LocationsDetailsPageContent() {
     <>
       <PageLayout
         headerProps={{
-          selectedLicensee,
-          setSelectedLicensee,
+          selectedLicencee,
+          setSelectedLicencee,
           disabled:
             cabinetsData.loading ||
             cabinetsData.cabinetsLoading ||
@@ -395,7 +395,7 @@ export default function LocationsDetailsPageContent() {
         }}
         pageTitle=""
         hideOptions={true}
-        hideLicenseeFilter={true}
+        hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
         onRefresh={handleRefresh}
@@ -582,7 +582,7 @@ export default function LocationsDetailsPageContent() {
             <LocationMembersContent
               locationId={locationId}
               locationName={cabinetsData.locationName}
-              selectedLicensee={selectedLicensee}
+              selectedLicencee={selectedLicencee}
               activeTab={activeTab}
               handleTabClick={handleTabClick}
               onRefreshReady={handler => {

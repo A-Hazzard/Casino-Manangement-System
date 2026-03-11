@@ -282,7 +282,7 @@ Key features include:
     - `status` - Filter by status (All, Online, Offline)
     - `sortBy` - Sort field
     - `sortOrder` - Sort direction (asc, desc)
-    - `licensee` - Licensee filter
+    - `licencee` - Licencee filter
   - **Response:** `{ success: true, data: Cabinet[], pagination: PaginationData }`
   - **Used By:** Main machines data fetching
 
@@ -348,10 +348,10 @@ Key features include:
 ### Stores
 
 - **`useDashBoardStore`** (`lib/store/dashboardStore.ts`) - Zustand store
-  - `selectedLicensee` - Selected licensee filter
+  - `selectedLicencee` - Selected licencee filter
   - `activeMetricsFilter` - Active date filter type
   - `customDateRange` - Custom date range
-  - `setSelectedLicensee` - Licensee selection setter
+  - `setSelectedLicencee` - Licencee selection setter
 
 - **`useUserStore`** (`lib/store/userStore.ts`) - Zustand store
   - `user` - Current user object
@@ -476,7 +476,7 @@ Key features include:
 ### Role-Based Access
 
 - **Admin/Developer**: Full CRUD operations on all machines
-- **Manager**: CRUD operations on assigned licensee locations
+- **Manager**: CRUD operations on assigned licencee locations
 - **Collector/Location Admin**: Limited CRUD on assigned locations
 - **Technician**: View-only access (may be redirected)
 
@@ -497,7 +497,7 @@ Key features include:
 ### Integration Points
 
 - **Dashboard Filters**: Uses shared date filtering from dashboard store
-- **Licensee Selection**: Integrated with global licensee filtering
+- **Licencee Selection**: Integrated with global licencee filtering
 - **Machine Status**: Real-time updates via WebSocket/MQTT
 - **Financial Calculations**: Shared calculation utilities
 - **Navigation**: Seamless integration with location details page

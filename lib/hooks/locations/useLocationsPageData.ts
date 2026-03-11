@@ -27,7 +27,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export function useLocationsPageData() {
   const {
-    selectedLicensee,
+    selectedLicencee,
     activeMetricsFilter,
     customDateRange,
   } = useDashBoardStore();
@@ -74,7 +74,7 @@ export function useLocationsPageData() {
   // Base Hook Integration
   // ============================================================================
   const { locationData, loading, searchLoading, error, fetchData, totalCount } = useLocationData({
-    selectedLicensee,
+    selectedLicencee,
     activeMetricsFilter,
     customDateRange,
     searchTerm,
@@ -173,7 +173,7 @@ export function useLocationsPageData() {
   useEffect(() => {
     setCurrentPage(0);
     setLoadedBatches(new Set());
-  }, [selectedFilters, selectedStatus, searchTerm, debouncedSearchTerm, activeMetricsFilter, selectedLicensee, customDateRange, sortOption, sortOrder, displayCurrency]);
+  }, [selectedFilters, selectedStatus, searchTerm, debouncedSearchTerm, activeMetricsFilter, selectedLicencee, customDateRange, sortOption, sortOrder, displayCurrency]);
 
   // Consolidated data fetch effect
   useEffect(() => {
@@ -191,7 +191,7 @@ export function useLocationsPageData() {
     sortOrder,
     selectedFilters,
     activeMetricsFilter,
-    selectedLicensee,
+    selectedLicencee,
     customDateRange,
     filtersInitialized,
     fetchData,
@@ -212,7 +212,7 @@ export function useLocationsPageData() {
         await fetchDashboardTotals(
           activeMetricsFilter,
           customDateRange || { startDate: new Date(), endDate: new Date() },
-          selectedLicensee,
+          selectedLicencee,
           setMetricsTotals,
           displayCurrency,
           signal,
@@ -233,7 +233,7 @@ export function useLocationsPageData() {
         setMetricsTotalsLoading(false);
       }
     });
-  }, [activeMetricsFilter, selectedLicensee, customDateRange, displayCurrency, filtersInitialized, machineTypeFilterString, makeMetricsRequest, debouncedSearchTerm, selectedStatus]);
+  }, [activeMetricsFilter, selectedLicencee, customDateRange, displayCurrency, filtersInitialized, machineTypeFilterString, makeMetricsRequest, debouncedSearchTerm, selectedStatus]);
 
   return {
     loading: loading || searchLoading || isDataMissingForPage || (searchTerm !== debouncedSearchTerm),

@@ -32,6 +32,7 @@ import {
 import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
 import { useEditCollectionModal } from '@/lib/hooks/collectionReport/useEditCollectionModal';
 import { CollectionReportEditCollectionModalProps } from '@/lib/types/components';
+import { Info } from 'lucide-react';
 import { useCallback } from 'react';
 
 export default function CollectionReportEditCollectionModal({
@@ -94,6 +95,7 @@ export default function CollectionReportEditCollectionModal({
     isFirstCollection,
     financials,
     setFinancials,
+    calculateCarryover,
     baseBalanceCorrection,
     setBaseBalanceCorrection,
 
@@ -215,7 +217,32 @@ export default function CollectionReportEditCollectionModal({
                     isProcessing={isProcessing}
                     isUpdateReportEnabled={isUpdateReportEnabled}
                     onUpdateReport={handleUpdateReport}
+                    onCollectedAmountChange={(value: string) => {
+                      calculateCarryover(value, baseBalanceCorrection);
+                    }}
                   />
+
+                  {/* Reconciliation Guide Note - PC Only version */}
+                  <div className="mt-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
+                    <p className="text-[11px] font-bold text-blue-900 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                      <Info className="h-3 w-3" />
+                      Reconciliation Guide:
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-white/60 p-2.5 rounded border border-blue-50">
+                        <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">Target</p>
+                        <p className="text-[10px] text-gray-600 leading-relaxed text-pretty">Based on machines, profit share, plus Opening Balance/Correction.</p>
+                      </div>
+                      <div className="bg-white/60 p-2.5 rounded border border-blue-50">
+                        <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">Collected</p>
+                        <p className="text-[10px] text-gray-600 leading-relaxed text-pretty">The physical cash retrieved. This field unlocks after setting Correction.</p>
+                      </div>
+                      <div className="bg-white/60 p-2.5 rounded border border-blue-50">
+                        <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">Carryover</p>
+                        <p className="text-[10px] text-gray-600 leading-relaxed text-pretty">Collected minus Target. This value starts the next collection cycle.</p>
+                      </div>
+                    </div>
+                  </div>
                 </>
               ) : (
                 <div className="flex h-full items-center justify-center">
@@ -236,6 +263,9 @@ export default function CollectionReportEditCollectionModal({
               updateAllDate={updateAllDate}
               setUpdateAllDate={setUpdateAllDate}
               onRefresh={onRefresh}
+              financials={financials}
+              isUpdateReportEnabled={isUpdateReportEnabled}
+              onUpdateReport={handleUpdateReport}
             />
           </div>
         </DialogContent>

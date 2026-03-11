@@ -48,8 +48,8 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
   onRefresh,
   locations: propLocations,
 }) => {
-  const [locations, setLocations] = useState<{ id: string; name: string; licenseeId?: string }[]>([]);
-  const [users, setUsers] = useState<{ _id: string; name: string; emailAddress: string; roles: string[]; assignedLocations: string[]; assignedLicensees: string[] }[]>([]);
+  const [locations, setLocations] = useState<{ id: string; name: string; licenceeId?: string }[]>([]);
+  const [users, setUsers] = useState<{ _id: string; name: string; emailAddress: string; roles: string[]; assignedLocations: string[]; assignedLicencees: string[] }[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [movementType, setMovementType] = useState<'Machine' | 'SMIB'>('Machine');
   const [fromLocation, setFromLocation] = useState('');
@@ -76,11 +76,11 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
         return { 
           id: String(l._id || ''), 
           name: String(l.name || ''),
-          licenseeId: String(l.licenseeId || rel?.licensee || rel?.licencee || l.licensee || '')
+          licenceeId: String(l.licenceeId || rel?.licencee || rel?.licencee || l.licencee || '')
         };
       }));
     } else {
-      fetchAllGamingLocations().then(res => setLocations(res as { id: string; name: string; licenseeId?: string }[]));
+      fetchAllGamingLocations().then(res => setLocations(res as { id: string; name: string; licenceeId?: string }[]));
     }
   }, [propLocations]);
 

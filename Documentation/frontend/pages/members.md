@@ -80,7 +80,7 @@ The page features a tabbed interface with two main views:
 **API Endpoints:**
 
 - `GET /api/members` - Fetch members list with pagination, search, sorting, and filtering
-  - Query parameters: `page`, `limit`, `search`, `sortBy`, `sortOrder`, `licensee`, `locationFilter`
+  - Query parameters: `page`, `limit`, `search`, `sortBy`, `sortOrder`, `licencee`, `locationFilter`
 - `GET /api/machines/locations?membershipOnly=true` - Fetch membership-enabled locations for filter
 - `GET /api/members/summary` - Fetch summary statistics
 
@@ -149,7 +149,7 @@ The page features a tabbed interface with two main views:
 **API Endpoints:**
 
 - `GET /api/members/summary` - Fetch summary data with analytics
-  - Query parameters: `licensee`, `page`, `limit`, `search`, `location`, `dateFilter`, `startDate`, `endDate`
+  - Query parameters: `licencee`, `page`, `limit`, `search`, `location`, `dateFilter`, `startDate`, `endDate`
 - `GET /api/members/demographics` - Fetch demographic data (optional, may return 404)
 - `GET /api/members/trends` - Fetch activity trends (optional, may return 404)
 - `GET /api/machines/locations?membershipOnly=true` - Fetch membership-enabled locations
@@ -207,7 +207,7 @@ The page features a tabbed interface with two main views:
     - `search` - Search term (searches name, playerId, username)
     - `sortBy` - Sort column (name, playerId, createdAt, lastSession, locationName, winLoss, lastLogin, etc.)
     - `sortOrder` - Sort direction (asc, desc)
-    - `licensee` - Licensee filter
+    - `licencee` - Licencee filter
     - `locationFilter` - Location ID filter
     - `winLossFilter` - Win/loss filter (positive, negative, all)
     - `startDate` - Date filter start
@@ -218,7 +218,7 @@ The page features a tabbed interface with two main views:
 - **GET `/api/members/summary`**
   - **Purpose:** Fetch member summary data with analytics
   - **Query Parameters:**
-    - `licensee` - Licensee filter (required)
+    - `licencee` - Licencee filter (required)
     - `page` - Page number
     - `limit` - Items per page
     - `search` - Search term
@@ -275,13 +275,13 @@ The page features a tabbed interface with two main views:
 
 - **GET `/api/members/demographics`**
   - **Purpose:** Fetch demographic analytics
-  - **Query Parameters:** `licensee`
+  - **Query Parameters:** `licencee`
   - **Note:** May return 404 if endpoint not implemented
   - **Used By:** `useMembersSummaryData` hook (optional)
 
 - **GET `/api/members/trends`**
   - **Purpose:** Fetch activity trends
-  - **Query Parameters:** `licensee`
+  - **Query Parameters:** `licencee`
   - **Note:** May return 404 if endpoint not implemented
   - **Used By:** `useMembersSummaryData` hook (optional)
 
@@ -316,8 +316,8 @@ The page features a tabbed interface with two main views:
   - Provides loading state, summary data, demographics, trends, and refresh function
 
 - **`useDashBoardStore`** (`lib/store/dashboardStore.ts`) - Zustand store
-  - `selectedLicensee` - Selected licensee for filtering
-  - `setSelectedLicensee` - Licensee selection setter
+  - `selectedLicencee` - Selected licencee for filtering
+  - `setSelectedLicencee` - Licencee selection setter
 
 - **`useMemberActionsStore`** (`lib/store/memberActionsStore.ts`) - Zustand store
   - `selectedMember` - Currently selected member

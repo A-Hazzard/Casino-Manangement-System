@@ -85,7 +85,7 @@ import VaultOverviewModals from './sections/VaultOverviewModals';
 import VaultOverviewShiftPromotion from './sections/VaultOverviewShiftPromotion';
 
 // Hooks
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 
 /**
  * Vault Overview Component
@@ -110,7 +110,7 @@ export default function VaultOverviewPageContent() {
   const [machines, setMachines] = useState<GamingMachine[]>([]);
   
   // Loading States
-  const { licenseeId: selectedLicensee, setLicenseeId: setSelectedLicensee } = useVaultLicensee();
+  const { licenceeId: selectedLicencee, setLicenceeId: setSelectedLicencee } = useVaultLicencee();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [shiftReviewLoading, setShiftReviewLoading] = useState(false);
@@ -156,8 +156,8 @@ export default function VaultOverviewPageContent() {
     try {
       let data;
       if (isAdminOrDev) {
-          // fetch global data with licensee filter
-          data = await fetchGlobalVaultOverviewData(selectedLicensee);
+          // fetch global data with licencee filter
+          data = await fetchGlobalVaultOverviewData(selectedLicencee);
       } else if (locationId) {
           data = await fetchVaultOverviewData(locationId, user?.username || '');
       } else {
@@ -197,14 +197,14 @@ export default function VaultOverviewPageContent() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user?.assignedLocations, user?.username, selectedLicensee, isAdminOrDev]);
+  }, [user?.assignedLocations, user?.username, selectedLicencee, isAdminOrDev]);
 
   /**
-   * Refetch data when location or licensee changes
+   * Refetch data when location or licencee changes
    */
   useEffect(() => {
     fetchData();
-  }, [user?.assignedLocations, selectedLicensee, fetchData]);
+  }, [user?.assignedLocations, selectedLicencee, fetchData]);
 
   useEffect(() => {
     // STEP: Periodic refresh for float requests and notifications
@@ -537,8 +537,8 @@ export default function VaultOverviewPageContent() {
       onRefresh={() => fetchData(false)}
       refreshing={refreshing}
       headerProps={isAdminOrDev ? {
-          selectedLicensee,
-          setSelectedLicensee,
+          selectedLicencee,
+          setSelectedLicencee,
           disabled: false
       } : undefined}
     >

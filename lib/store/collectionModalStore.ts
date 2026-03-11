@@ -50,6 +50,17 @@ type CollectionModalState = {
     reasonForShortagePayment: string;
   };
 
+  // Form data for machine entry
+  formData: {
+    metersIn: string;
+    metersOut: string;
+    ramClear: boolean;
+    ramClearMetersIn: string;
+    ramClearMetersOut: string;
+    notes: string;
+    collectionTime: Date;
+  };
+
   // Actions
   setSelectedLocation: (
     locationId: string | undefined,
@@ -72,6 +83,13 @@ type CollectionModalState = {
   setFinancials: (
     financials: Partial<CollectionModalState['financials']>
   ) => void;
+  setFormData: (
+    formData: Partial<CollectionModalState['formData']>
+  ) => void;
+  calculateCarryover: (
+    collectedAmount: string,
+    baseBalanceCorrection: string
+  ) => void;
   resetState: () => void;
 };
 
@@ -92,6 +110,16 @@ const initialFinancials = {
   reasonForShortagePayment: '',
 };
 
+const initialFormData = {
+  metersIn: '',
+  metersOut: '',
+  ramClear: false,
+  ramClearMetersIn: '',
+  ramClearMetersOut: '',
+  notes: '',
+  collectionTime: new Date(),
+};
+
 // ============================================================================
 // Store Creation
 // ============================================================================
@@ -107,6 +135,7 @@ const dummyState: CollectionModalState = {
   selectedMachineData: null,
   collectionTime: new Date(),
   financials: initialFinancials,
+  formData: initialFormData,
   setSelectedLocation: () => {},
   setLockedLocation: () => {},
   setAvailableMachines: () => {},
@@ -118,6 +147,8 @@ const dummyState: CollectionModalState = {
   setSelectedMachineData: () => {},
   setCollectionTime: () => {},
   setFinancials: () => {},
+  setFormData: () => {},
+  calculateCarryover: () => {},
   resetState: () => {},
 };
 
@@ -133,6 +164,7 @@ const createStore = () => {
   selectedMachineData: null,
   collectionTime: new Date(),
   financials: initialFinancials,
+  formData: initialFormData,
 
   // Actions
   setSelectedLocation: (locationId, locationName) =>
@@ -175,6 +207,42 @@ const createStore = () => {
       financials: { ...state.financials, ...financials },
     })),
 
+  setFormData: formData =>
+    set(state => ({
+      formData: { ...state.formData, ...formData },
+    })),
+
+  calculateCarryover: (collectedAmount: string, baseBalanceCorrection: string) => {
+    set(state => {
+      const amountCollected = Number(collectedAmount) || 0;
+      const amountToCollect = Number(state.financials.amountToCollect) || 0;
+      const baseCorrection = Number(baseBalanceCorrection) || 0;
+
+      let previousBalance = state.financials.previousBalance;
+      let finalCorrection = state.financials.balanceCorrection;
+
+      if (collectedAmount !== '' && amountCollected >= 0) {
+        // Carryover = Collected - Target
+        const carryover = amountCollected - amountToCollect;
+        previousBalance = carryover.toFixed(2);
+        
+        // Final Balance Correction = Base + Carryover
+        finalCorrection = (baseCorrection + carryover).toFixed(2);
+      } else {
+        // If cleared, reset to base
+        finalCorrection = baseCorrection.toFixed(2);
+      }
+
+      return {
+        financials: {
+          ...state.financials,
+          collectedAmount,
+          previousBalance,
+          balanceCorrection: finalCorrection,
+        },
+      };
+    });
+  },
   resetState: () =>
     set({
       selectedLocationId: undefined,
@@ -186,6 +254,7 @@ const createStore = () => {
       selectedMachineData: null,
       collectionTime: new Date(),
       financials: initialFinancials,
+      formData: initialFormData,
     }),
   }));
 };

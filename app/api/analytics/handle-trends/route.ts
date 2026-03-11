@@ -4,7 +4,7 @@
  * This route handles fetching handle (drop) trends data over time.
  * It supports:
  * - Time period filtering (Today, Yesterday, 7d, 30d, Custom)
- * - Licensee-based filtering
+ * - Licencee-based filtering
  * - Location-based filtering (comma-separated location IDs)
  * - Hourly or daily aggregation based on time period
  *
@@ -20,7 +20,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * Main GET handler for fetching handle trends data
  *
  * Flow:
- * 1. Parse and validate request parameters (timePeriod, licensee, locationIds)
+ * 1. Parse and validate request parameters (timePeriod, licencee, locationIds)
  * 2. Connect to database
  * 3. Execute the core handle trends fetching logic via `getHandleTrends` helper
  * 4. Return handle trends data
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licensee = searchParams.get('licensee');
+    const licencee = (searchParams.get('licencee'));
     const locationIds = searchParams.get('locationIds');
 
     // ============================================================================
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const handleTrends = await getHandleTrends(
       timePeriod,
-      licensee,
+      licencee,
       locationIds
     );
 

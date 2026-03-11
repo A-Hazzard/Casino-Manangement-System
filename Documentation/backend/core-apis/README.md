@@ -28,7 +28,7 @@ This directory contains documentation for the core API endpoints that provide th
 **[system-config-api.md](./system-config-api.md)** - System settings and configuration management
 
 **Key Endpoints:**
-- `GET /api/licensees` - Licensee management
+- `GET /api/licencees` - Licencee management
 - `GET /api/countries` - Country and regional data
 - `GET /api/system/config` - System configuration
 - `PUT /api/system/config` - Update system settings

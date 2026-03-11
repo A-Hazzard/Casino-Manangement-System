@@ -6,7 +6,7 @@
 Allows the Vault Manager to record cash taken *out* of the vault for operational reasons (not safe counts or float distribution).
 
 ## Inputs
-1.  **Category:** Dropdown (e.g., "Supplies", "Repairs", "Bills", "Licenses", "Other").
+1.  **Category:** Dropdown (e.g., "Supplies", "Repairs", "Bills", "Licences", "Other").
 2.  **Denominations:** **Required** breakdown of specific bills used (via `DenominationInputGrid`).
 3.  **Amount:** *Calculated automatically* based on selected denominations.
 4.  **Date:** Defaults to today.

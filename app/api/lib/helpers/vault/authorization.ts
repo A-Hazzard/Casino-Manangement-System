@@ -9,7 +9,7 @@
  * @module app/api/lib/helpers/vault/authorization
  */
 
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { HIGH_PRIORITY_ROLES } from '@/lib/constants/roles';
 
 /**

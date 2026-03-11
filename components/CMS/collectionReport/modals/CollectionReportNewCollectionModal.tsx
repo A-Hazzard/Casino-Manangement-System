@@ -44,6 +44,7 @@ import { useNewCollectionModal } from '@/lib/hooks/collectionReport/useNewCollec
 import { useUserStore } from '@/lib/store/userStore';
 import { formatDate } from '@/lib/utils/formatting';
 import { useCallback } from 'react';
+import { Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
@@ -299,14 +300,13 @@ export default function CollectionReportNewCollectionModal({
                     baseBalanceCorrection={baseBalanceCorrection}
                     isProcessing={isProcessing}
                     onFinancialsChange={updates =>
-                      setFinancials(prev => ({ ...prev, ...updates }))
+                      setFinancials(updates)
                     }
                     onBaseBalanceCorrectionChange={setBaseBalanceCorrection}
                     onCollectedAmountChange={value => {
-                      setFinancials(prev => ({
-                        ...prev,
+                      setFinancials({
                         collectedAmount: value,
-                      }));
+                      });
                       // Trigger manual calculations
                       setTimeout(() => {
                         const amountCollected = Number(value) || 0;
@@ -319,25 +319,37 @@ export default function CollectionReportNewCollectionModal({
                           // Calculate previous balance: collectedAmount - amount To Collect
                           previousBalance = (
                             amountCollected - amountToCollect
-                          ).toString();
+                          ).toFixed(2);
                         }
 
-                        // Final correction = base entered first + collected amount
-                        const finalCorrection =
-                          (Number(baseBalanceCorrection) || 0) +
-                          amountCollected;
-
-                        setFinancials(prev => ({
-                          ...prev,
+                        setFinancials({
                           previousBalance: previousBalance,
-                          balanceCorrection:
-                            value === ''
-                              ? baseBalanceCorrection || '0'
-                              : finalCorrection.toString(),
-                        }));
+                        });
                       }, 0);
                     }}
                   />
+                  
+                  {/* Reconciliation Guide Note - PC Only version */}
+                  <div className="mt-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
+                    <p className="text-[11px] font-bold text-blue-900 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                      <Info className="h-3 w-3" />
+                      Reconciliation Guide:
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-white/60 p-2.5 rounded border border-blue-50">
+                        <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">Target</p>
+                        <p className="text-[10px] text-gray-600 leading-relaxed text-pretty">Based on machines, profit share, plus Opening Balance/Correction.</p>
+                      </div>
+                      <div className="bg-white/60 p-2.5 rounded border border-blue-50">
+                        <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">Collected</p>
+                        <p className="text-[10px] text-gray-600 leading-relaxed text-pretty">The physical cash retrieved. This field unlocks after setting Correction.</p>
+                      </div>
+                      <div className="bg-white/60 p-2.5 rounded border border-blue-50">
+                        <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">Carryover</p>
+                        <p className="text-[10px] text-gray-600 leading-relaxed text-pretty">Collected minus Target. This value starts the next collection cycle.</p>
+                      </div>
+                    </div>
+                  </div>
                 </>
               ) : (
                 <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8">

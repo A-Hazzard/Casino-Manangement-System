@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 const ITEMS_PER_PAGE = 20;
 
 export function useCollectorScheduleData(
-  selectedLicensee: string | null,
+  selectedLicencee: string | null,
   locations: LocationSelectItem[]
 ) {
   // ============================================================================
@@ -48,7 +48,7 @@ export function useCollectorScheduleData(
     try {
       const { collectorSchedules: schedules, collectors: collectorList } = 
         await fetchAndFormatCollectorSchedules(
-          selectedLicensee || undefined,
+          selectedLicencee || undefined,
           selectedLocation === 'all' ? undefined : selectedLocation,
           selectedCollector === 'all' ? undefined : selectedCollector,
           selectedStatus === 'all' ? undefined : selectedStatus
@@ -62,7 +62,7 @@ export function useCollectorScheduleData(
     } finally {
       setLoadingCollectorSchedules(false);
     }
-  }, [selectedLicensee, selectedLocation, selectedCollector, selectedStatus]);
+  }, [selectedLicencee, selectedLocation, selectedCollector, selectedStatus]);
 
   const onResetFilters = useCallback(() => {
     setSelectedLocation('all');

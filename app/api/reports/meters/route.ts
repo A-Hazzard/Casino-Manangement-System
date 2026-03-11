@@ -6,16 +6,16 @@
  * - Gaming day offset calculations per location
  * - Getting the last meter document per machine (not summing)
  * - Hourly chart data aggregation
- * - Currency conversion for multi-licensee views
+ * - Currency conversion for multi-licencee views
  * - Search and pagination
  *
  * @module app/api/reports/meters/route
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
+  getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
+} from '@/app/api/lib/helpers/licenceeFilter';
 import {
   calculateGamingDayRanges,
   determineLocationList,
@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 3: Get user permissions and determine accessible locations
     // ============================================================================
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     let userLocationPermissions: string[] = [];
     if (
       Array.isArray(
@@ -150,8 +150,8 @@ export async function GET(req: NextRequest) {
     }
 
     const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicensees,
-      params.licensee || undefined,
+      userAccessibleLicencees,
+      params.licencee || undefined,
       userLocationPermissions,
       userRoles
     );
@@ -210,7 +210,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const machinesData = await fetchMachinesData(
       locationList,
-      params.licensee
+      params.licencee
     );
 
     if (machinesData.length === 0) {
@@ -298,37 +298,37 @@ export async function GET(req: NextRequest) {
     /**
      * Currency conversion is ONLY applied when:
      * 1. User is Admin/Developer
-     * 2. "All Licensees" is selected (params.licensee is null, undefined, or "all")
+     * 2. "All Licencees" is selected (params.licencee is null, undefined, or "all")
      * 3. A display currency is explicitly selected (currency param is provided)
      *
-     * When viewing a specific licensee, NO conversion should happen - values should
-     * be displayed in that licensee's native currency.
+     * When viewing a specific licencee, NO conversion should happen - values should
+     * be displayed in that licencee's native currency.
      */
     let convertedData = paginatedData;
     // Currency conversion should ONLY happen when:
     // 1. User is Admin/Developer
-    // 2. "All Licensees" is EXPLICITLY selected (licensee parameter must be "all")
+    // 2. "All Licencees" is EXPLICITLY selected (licencee parameter must be "all")
     // 3. Currency parameter is explicitly provided in the request
     //
-    // IMPORTANT: The frontend only sends licensee parameter when it's NOT "all".
-    // So if licensee is missing, we're NOT viewing "all licensees" mode.
-    // Only convert when licensee is explicitly "all".
-    const licenseeParam = searchParams.get('licensee');
+    // IMPORTANT: The frontend only sends licencee parameter when it's NOT "all".
+    // So if licencee is missing, we're NOT viewing "all licencees" mode.
+    // Only convert when licencee is explicitly "all".
+    const licenceeParam = (searchParams.get('licencee'));
     const currencyParamProvided = searchParams.get('currency') !== null;
 
-    // Only convert when explicitly viewing "all licensees" mode
+    // Only convert when explicitly viewing "all licencees" mode
     const shouldConvert =
-      isAdminOrDev && licenseeParam === 'all' && currencyParamProvided;
+      isAdminOrDev && licenceeParam === 'all' && currencyParamProvided;
 
     if (shouldConvert) {
-      const { locationDetailsMap, licenseeMap } = await buildCurrencyMaps(
+      const { locationDetailsMap, licenceeMap } = await buildCurrencyMaps(
         locationsData
       );
 
       convertedData = applyCurrencyConversion(
         paginatedData,
         locationDetailsMap,
-        licenseeMap,
+        licenceeMap,
         params.displayCurrency
       );
     }

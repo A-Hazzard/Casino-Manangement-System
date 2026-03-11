@@ -30,7 +30,7 @@ Enable efficient monitoring of financials, machine performance, customer data, a
 
 Each report listed below should support the ability to:
 
-- Filter by date range, location, licensee, and other relevant parameters
+- Filter by date range, location, licencee, and other relevant parameters
 - View on screen with pagination and sorting
 - Export to CSV and Excel formats with real-time data fetching
 - Interactive date range selection with custom calendar picker
@@ -99,7 +99,7 @@ Each report listed below should support the ability to:
 - **Mobile**: Calendar only displays when "Custom" is selected
 - **Desktop**: Calendar always available as a button
 - **Component**: `components/reports/common/ReportsDateFilters.tsx` uses `ModernCalendar` from `components/ui/ModernCalendar.tsx`
-  • **Licensee Filtering**: Filter all reports by specific licensee or view all licensees
+  • **Licencee Filtering**: Filter all reports by specific licencee or view all licencees
   • **Export Functionality**: CSV and Excel export with real-time data fetching from API
   • **Responsive Design**: Desktop and mobile optimized layouts
   • **Real-time Data**: Live data updates and manual refresh capabilities
@@ -117,7 +117,7 @@ Each report listed below should support the ability to:
 
 • **Data Source**: Direct API calls to `/api/reports/locations` endpoint (Locations Tab) and other report-specific endpoints
 • **Export Formats**: PDF and Excel (XLSX) with proper file naming
-• **Data Scope**: Exports all data matching current filters (date range, licensee, report type, selected locations)
+• **Data Scope**: Exports all data matching current filters (date range, licencee, report type, selected locations)
 • **File Naming**: Automatic naming with report type and date (e.g., `Location Overview Report - Today - 2025-01-20`)
 • **Error Handling**: Comprehensive error handling with user feedback via toast notifications
 • **Performance**: Optimized for large datasets with loading state management
@@ -200,11 +200,11 @@ The Locations Tab (`/reports?section=locations`) displays a comprehensive table 
 - **Summary Metrics**: Shows totals row at the bottom of exported reports
 - **Currency Support**: Displays amounts in selected currency (USD, TTD, GYD, BBD) with proper formatting
 - **Responsive Design**: Adapts to mobile and desktop viewports
-- **Data Source**: Fetches from `/api/reports/locations` endpoint with licensee and date filtering
+- **Data Source**: Fetches from `/api/reports/locations` endpoint with licencee and date filtering
 
 **Location Filtering:**
 
-- **Licensee Filter**: Filters locations by selected licensee (or shows all if "All Licensees" selected)
+- **Licencee Filter**: Filters locations by selected licencee (or shows all if "All Licencees" selected)
 - **Date Range Filter**: Filters financial metrics by selected time period (Today, Yesterday, 7d, 30d, Custom)
 - **Location Selection**: Users can select specific locations for detailed analysis in other tabs
 - **Auto-Display**: When no specific locations are selected, all accessible locations are displayed
@@ -254,7 +254,7 @@ The Locations Tab provides three distinct export functions, each supporting PDF 
 - **Currency Formatting**: Exports respect the selected display currency and format amounts accordingly
 - **Error Handling**: Comprehensive error handling with user-friendly toast notifications
 - **Loading States**: Export buttons are disabled during data fetching to prevent duplicate exports
-- **Data Freshness**: Exports use current filter state (date range, licensee, selected locations) to ensure data accuracy
+- **Data Freshness**: Exports use current filter state (date range, licencee, selected locations) to ensure data accuracy
 
 **Export Button Behavior:**
 

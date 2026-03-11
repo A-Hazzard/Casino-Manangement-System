@@ -452,7 +452,7 @@ Import models from `@/app/api/lib/models/`:
 - `Meters` - meters collection
 - `MachineSession` - machineSessions collection
 - `MachineEvents` - machineEvents collection
-- `Licensee` - licensees collection
+- `Licencee` - licencees collection
 - `Countries` - countries collection
 - `Collections` - collections collection
 - `CollectionReport` - collectionReports collection
@@ -489,16 +489,16 @@ const machine = await Machine.findById(machineId);
 const machine = await db.collection('machines').findOne({ _id: machineId });
 ```
 
-### Licensee Filtering
+### Licencee Filtering
 
-**CRITICAL**: Always filter data by user's accessible licensees/locations:
+**CRITICAL**: Always filter data by user's accessible licencees/locations:
 
 ```typescript
 // Always support both spellings
-const licensee = searchParams.get('licensee') || searchParams.get('licensee');
+const licencee = searchParams.get('licencee') || searchParams.get('licencee');
 
 // Get user's accessible locations
-const allowedLocationIds = await getUserLocationFilter(licensee || undefined);
+const allowedLocationIds = await getUserLocationFilter(licencee || undefined);
 
 // Apply filter to query
 if (allowedLocationIds !== 'all') {

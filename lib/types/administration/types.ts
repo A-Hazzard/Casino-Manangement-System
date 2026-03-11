@@ -8,7 +8,7 @@ export type User = {
   roles: string[];
   profilePicture: string | null;
   assignedLocations?: string[]; // Array of location IDs user has access to
-  assignedLicensees?: string[]; // Array of licensee IDs user has access to
+  assignedLicencees?: string[]; // Array of licencee IDs user has access to
   password?: string;
   profile?: {
     firstName?: string;

@@ -1,9 +1,9 @@
 /**
  * Analytics Dashboard API Route
  *
- * This route handles fetching dashboard analytics data for a specific licensee.
+ * This route handles fetching dashboard analytics data for a specific licencee.
  * It supports:
- * - Filtering by licensee
+ * - Filtering by licencee
  * - Aggregating financial and machine statistics
  * - Currency conversion
  *
@@ -35,13 +35,13 @@ export async function GET(request: NextRequest) {
     // STEP 1: Parse and validate request parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licensee = searchParams.get('licensee');
+    const licencee = (searchParams.get('licencee'));
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
 
-    if (!licensee) {
+    if (!licencee) {
       return NextResponse.json(
-        { message: 'Licensee is required' },
+        { message: 'Licencee is required' },
         { status: 400 }
       );
     }
@@ -54,14 +54,14 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 3: Fetch dashboard analytics data
     // ============================================================================
-    const globalStats = await getDashboardAnalytics(licensee);
+    const globalStats = await getDashboardAnalytics(licencee);
 
     // ============================================================================
     // STEP 4: Apply currency conversion if needed
     // ============================================================================
     let convertedStats = globalStats;
 
-    if (shouldApplyCurrencyConversion(licensee)) {
+    if (shouldApplyCurrencyConversion(licencee)) {
       const financialFields = [
         'totalDrop',
         'totalCancelledCredits',
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       globalStats: convertedStats,
       currency: displayCurrency,
-      converted: shouldApplyCurrencyConversion(licensee),
+      converted: shouldApplyCurrencyConversion(licencee),
     });
   } catch (error) {
     const duration = Date.now() - startTime;

@@ -37,7 +37,7 @@ type LeanUserObject = LeanUserDocument & {
   roles?: string[];
   sessionVersion?: number;
   assignedLocations?: string[];
-  assignedLicensees?: string[];
+  assignedLicencees?: string[];
   passwordUpdatedAt?: Date | string | null;
   tempPasswordChanged?: boolean;
   tempPassword?: string | null;
@@ -289,7 +289,7 @@ export async function authenticateUser(
         roles: userObject.roles || [],
         profile: userObject.profile || undefined,
         assignedLocations: userObject.assignedLocations || undefined,
-        assignedLicensees: userObject.assignedLicensees || undefined,
+        assignedLicencees: userObject.assignedLicencees || undefined,
         sessionVersion: Number(userObject.sessionVersion) || 1,
         lastLoginAt: new Date(),
         loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -339,10 +339,10 @@ export async function authenticateUser(
       const userObject = typedUser;
 
       const sessionId = userObject._id.toString();
-      // Don't include assignedLocations/assignedLicensees in token to prevent cookie size issues
+      // Don't include assignedLocations/assignedLicencees in token to prevent cookie size issues
       // The full list is available from userPayload (stored in localStorage) and can be fetched from DB
       // The middleware only needs to verify the token exists and is valid - it doesn't need location data
-      // Location/licensee filtering happens in API routes, not middleware
+      // Location/licencee filtering happens in API routes, not middleware
 
       const accessToken = await generateAccessToken({
         _id: userObject._id.toString(),
@@ -350,7 +350,7 @@ export async function authenticateUser(
         username: String(userObject.username || ''),
         isEnabled: userObject.isEnabled,
         roles: userObject.roles || [],
-        // Removed assignedLocations and assignedLicensees to keep token small enough for cookies
+        // Removed assignedLocations and assignedLicencees to keep token small enough for cookies
         // Full data is in userPayload (localStorage) and can be fetched from DB when needed
         sessionId: sessionId,
         sessionVersion: Number(userObject.sessionVersion) || 1,
@@ -373,7 +373,7 @@ export async function authenticateUser(
         roles: userObject.roles || [],
         profile: userObject.profile || undefined,
         assignedLocations: userObject.assignedLocations || undefined,
-        assignedLicensees: userObject.assignedLicensees || undefined,
+        assignedLicencees: userObject.assignedLicencees || undefined,
         sessionVersion: Number(userObject.sessionVersion) || 1,
         lastLoginAt: new Date(),
         loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -419,10 +419,10 @@ export async function authenticateUser(
 
     // Generate tokens
     const sessionId = userObject._id.toString(); // Use user ID as session ID
-    // Don't include assignedLocations/assignedLicensees in token to prevent cookie size issues
+    // Don't include assignedLocations/assignedLicencees in token to prevent cookie size issues
     // The full list is available from userPayload (stored in localStorage) and can be fetched from DB
     // The middleware only needs to verify the token exists and is valid - it doesn't need location data
-    // Location/licensee filtering happens in API routes, not middleware
+    // Location/licencee filtering happens in API routes, not middleware
 
     const accessToken = await generateAccessToken({
       _id: userObject._id.toString(),
@@ -430,7 +430,7 @@ export async function authenticateUser(
       username: userObject.username || '',
       isEnabled: userObject.isEnabled,
       roles: userObject.roles || [],
-      // Removed assignedLocations and assignedLicensees to keep token small enough for cookies
+      // Removed assignedLocations and assignedLicencees to keep token small enough for cookies
       // Full data is in userPayload (localStorage) and can be fetched from DB when needed
       sessionId: sessionId,
       sessionVersion: userObject.sessionVersion || 1,
@@ -469,7 +469,7 @@ export async function authenticateUser(
       roles: userObject.roles || [],
       profile: userObject.profile || undefined,
       assignedLocations: userObject.assignedLocations || undefined,
-      assignedLicensees: userObject.assignedLicensees || undefined,
+      assignedLicencees: userObject.assignedLicencees || undefined,
       sessionVersion: Number(userObject.sessionVersion) || 1,
       lastLoginAt: new Date(),
       loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -575,8 +575,8 @@ export async function refreshAccessToken(
     const assignedLocations = userObject.assignedLocations?.length
       ? userObject.assignedLocations
       : undefined;
-    const assignedLicensees = userObject.assignedLicensees?.length
-      ? userObject.assignedLicensees
+    const assignedLicencees = userObject.assignedLicencees?.length
+      ? userObject.assignedLicencees
       : undefined;
 
     const accessToken = await generateAccessToken({
@@ -586,7 +586,7 @@ export async function refreshAccessToken(
       isEnabled: userObject.isEnabled,
       roles: userObject.roles || [],
       assignedLocations,
-      assignedLicensees,
+      assignedLicencees,
       sessionId: sessionId,
       sessionVersion: userObject.sessionVersion || 1,
       dbContext: {

@@ -17,7 +17,7 @@ import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
  * - Real-time data updates and filtering
  * - Responsive design for desktop and mobile
  * - Advanced filtering and export capabilities
- * - Currency conversion for Admin/Developer viewing "All Licensees"
+ * - Currency conversion for Admin/Developer viewing "All Licencees"
  */
 export default function ReportsPage() {
   return (

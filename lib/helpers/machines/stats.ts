@@ -2,12 +2,12 @@
  * Machine Statistics Helper Functions
  *
  * Provides helper functions for fetching and managing machine statistics,
- * including total, online, and offline machine counts. It supports licensee
- * filtering to get statistics for specific licensees or all licensees.
+ * including total, online, and offline machine counts. It supports licencee
+ * filtering to get statistics for specific licencees or all licencees.
  *
  * Features:
  * - Fetches machine statistics (total, online, offline counts).
- * - Supports licensee filtering (defaults to "all").
+ * - Supports licencee filtering (defaults to "all").
  * - Handles errors gracefully with default values.
  * - Provides type definitions for machine statistics.
  * - Uses new dedicated machine status API that queries lastActivity.
@@ -37,16 +37,16 @@ export type MachineStats = {
 /**
  * Fetches machine statistics for online/offline counts based on lastActivity
  * Uses the new dedicated /api/machines/status endpoint that properly filters
- * by user permissions and selected licensee.
+ * by user permissions and selected licencee.
  *
- * @param licensee - The licensee filter (defaults to "all")
+ * @param licencee - The licencee filter (defaults to "all")
  * @param locationId - Optional specific location ID to get stats for that location only
  * @param machineTypeFilter - Optional filter string (comma-separated) for SMIB/No SMIB/Local Server/Membership
  * @param signal - Optional AbortSignal to cancel the request
  * @returns Promise resolving to machine stats
  */
 export async function fetchMachineStats(
-  licensee: string = 'all',
+  licencee: string = 'all',
   locationId?: string,
   machineTypeFilter?: string | null,
   signal?: AbortSignal,
@@ -56,8 +56,8 @@ export async function fetchMachineStats(
 ): Promise<MachineStats> {
   try {
     const params = new URLSearchParams();
-    if (licensee && licensee !== 'all') {
-      params.append('licensee', licensee);
+    if (licencee && licencee !== 'all') {
+      params.append('licencee', licencee);
     }
     if (locationId) {
       params.append('locationId', locationId);

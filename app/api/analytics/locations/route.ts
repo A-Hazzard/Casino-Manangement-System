@@ -3,10 +3,10 @@
  *
  * This route handles fetching top performing locations analytics data.
  * It supports:
- * - Filtering by licensee
+ * - Filtering by licencee
  * - Aggregating machine statistics per location
  * - Financial metrics calculation (drop, cancelled credits, gross)
- * - Currency conversion for multi-licensee views
+ * - Currency conversion for multi-licencee views
  * - Top 5 locations by performance
  *
  * @module app/api/analytics/locations/route
@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse and validate request parameters (licensee, currency)
+ * 2. Parse and validate request parameters (licencee, currency)
  * 3. Execute the core top locations fetching logic via `getTopLocationsAnalytics` helper
  * 4. Return top locations analytics data
  */
@@ -45,13 +45,13 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse and validate request parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licensee = searchParams.get('licensee');
+    const licencee = (searchParams.get('licencee'));
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
 
-    if (!licensee) {
+    if (!licencee) {
       return NextResponse.json(
-        { message: 'Licensee is required' },
+        { message: 'Licencee is required' },
         { status: 400 }
       );
     }
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     // STEP 3: Execute the core top locations fetching logic via helper
     // ============================================================================
     const locationsData = await getTopLocationsAnalytics(
-      licensee,
+      licencee,
       displayCurrency
     );
 

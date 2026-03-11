@@ -200,13 +200,13 @@ overallWinRate = SUM(gamesWon) / SUM(gamesPlayed) * 100
 1. **Search Process**:
    - Queries `machinesessions` collection with search criteria
    - Applies text search across multiple fields
-   - Filters by date range, licensee, and location
+   - Filters by date range, licencee, and location
    - Returns paginated results with calculated metrics
 
 2. **Search Fields and Filters**:
    - **Text Search**: `sessionId`, `machineId`, `memberId`
    - **Date Filtering**: `startTime` with predefined or custom ranges
-   - **Licensee Filtering**: Via machine location lookup
+   - **Licencee Filtering**: Via machine location lookup
    - **Location Filtering**: Via machine association
 
 3. **Search Query Structure**:
@@ -267,7 +267,7 @@ Retrieves a paginated list of gaming sessions with advanced filtering and search
 - `search` (string, optional): Search by session ID, machine ID, or member ID
 - `sortBy` (string, default: "startTime"): Sort field (startTime, handle, won, gamesPlayed, duration)
 - `sortOrder` (string, default: "desc"): Sort direction (asc, desc)
-- `licensee` (string, optional): Filter by licensee name
+- `licencee` (string, optional): Filter by licencee name
 - `dateFilter` (string, optional): Date filter (today, yesterday, week, month, custom)
 - `startDate` (string, optional): Custom start date (ISO string)
 - `endDate` (string, optional): Custom end date (ISO string)
@@ -442,14 +442,14 @@ type SessionEvent = {
 
 - **Text Search**: Search by session ID, machine ID, or member ID
 - **Date Filtering**: Predefined filters (today, yesterday, week, month) and custom date ranges
-- **Licensee Filtering**: Filter sessions by gaming licensee
+- **Licencee Filtering**: Filter sessions by gaming licencee
 - **Pagination**: Efficient pagination with configurable limits
 
 ### Data Aggregation
 
 - **Machine Lookup**: Populates machine names and details
 - **Location Lookup**: Links machines to gaming locations
-- **Licensee Lookup**: Links locations to licensees
+- **Licencee Lookup**: Links locations to licencees
 - **Calculated Fields**: Duration, handle amounts, win/loss calculations
 
 ### Session Analytics
@@ -605,10 +605,10 @@ type SessionEvent = {
 **What it does**: Retrieves paginated list of gaming sessions with filtering
 **Database Operations**:
 - Queries `machinesessions` collection with search criteria
-- Applies date range and licensee filters
+- Applies date range and licencee filters
 - Calculates session metrics and performance data
 - Returns paginated results
-**Query Parameters**: `page`, `limit`, `search`, `sortBy`, `sortOrder`, `licensee`, `dateFilter`, `startDate`, `endDate`
+**Query Parameters**: `page`, `limit`, `search`, `sortBy`, `sortOrder`, `licencee`, `dateFilter`, `startDate`, `endDate`
 **Response Fields**: Array of session objects with calculated metrics
 **Used By**: Session listing page, session search functionality
 
@@ -717,7 +717,7 @@ const dateFilters = {
 
 - **Authentication**: JWT token required for all endpoints
 - **Authorization**: Role-based access to session data
-- **Data Filtering**: Results filtered by user permissions and licensee
+- **Data Filtering**: Results filtered by user permissions and licencee
 - **Audit Logging**: All session operations logged for compliance
 
 ### Data Protection
@@ -829,5 +829,5 @@ Session Events = FIND(machineevents WHERE
 
 - **Session Data**: Cache frequently accessed session data
 - **Machine Names**: Cache machine name lookups
-- **Location Data**: Cache location and licensee information
+- **Location Data**: Cache location and licencee information
 - **Pagination Results**: Cache paginated results for better UX

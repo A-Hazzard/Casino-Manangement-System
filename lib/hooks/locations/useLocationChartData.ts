@@ -25,7 +25,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseLocationChartDataProps = {
   locationId: string;
-  selectedLicensee: string | null;
+  selectedLicencee: string | null;
   activeMetricsFilter: TimePeriod | null;
   customDateRange: DateRange | null;
   activeView: 'machines' | 'members';
@@ -35,7 +35,7 @@ type UseLocationChartDataProps = {
 
 export function useLocationChartData({
   locationId,
-  selectedLicensee,
+  selectedLicencee,
   activeMetricsFilter,
   customDateRange,
   activeView,
@@ -288,7 +288,7 @@ export function useLocationChartData({
     // Include refreshTrigger to force refresh when refresh button is clicked
     const fetchKey = JSON.stringify({
       locationId,
-      selectedLicensee,
+      selectedLicencee,
       timePeriod,
       customDateRange,
       displayCurrency,
@@ -331,8 +331,8 @@ export function useLocationChartData({
           timePeriod: timePeriod as string,
         };
 
-        if (selectedLicensee && selectedLicensee !== 'all') {
-          params.licensee = selectedLicensee;
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.licencee = selectedLicencee;
         }
 
         if (displayCurrency) {
@@ -521,7 +521,7 @@ export function useLocationChartData({
     });
   }, [
     locationId,
-    selectedLicensee,
+    selectedLicencee,
     activeMetricsFilter,
     customDateRange,
     displayCurrency,

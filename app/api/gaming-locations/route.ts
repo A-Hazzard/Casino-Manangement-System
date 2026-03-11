@@ -1,10 +1,10 @@
 /**
  * Gaming Locations API Route
  *
- * This route handles fetching gaming locations filtered by licensee.
+ * This route handles fetching gaming locations filtered by licencee.
  * It supports:
- * - Single licensee filtering
- * - Multiple licensees filtering (comma-separated)
+ * - Single licencee filtering
+ * - Multiple licencees filtering (comma-separated)
  * - Deleted location exclusion
  *
  * @module app/api/gaming-locations/route
@@ -19,11 +19,11 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse query parameters (licensee, licensees)
+ * 2. Parse query parameters (licencee, licencees)
  * 3. Build query filter with deleted location exclusion
- * 4. Apply licensee filtering
+ * 4. Apply licencee filtering
  * 5. Fetch locations from database
- * 6. Format locations with licensee ID
+ * 6. Format locations with licencee ID
  * 7. Return formatted locations list
  */
 export async function GET(request: NextRequest) {
@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licensee = searchParams.get('licensee');
-    const licensees = searchParams.get('licensees'); // Support multiple licensees (comma-separated)
+    const licencee = searchParams.get('licencee');
+    const licencees = searchParams.get('licencees'); // Support multiple licencees (comma-separated)
     const ids = searchParams.get('ids'); // Support specific IDs (comma-separated)
     const includeDeleted = searchParams.get('includeDeleted') === 'true';
 
@@ -57,25 +57,25 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Apply licensee filtering
+    // STEP 4: Apply licencee filtering
     // ============================================================================
-    // If multiple licensees are provided (comma-separated), filter by all of them
-    if (licensees) {
-      const licenseeArray = licensees
+    // If multiple licencees are provided (comma-separated), filter by all of them
+    if (licencees) {
+      const licenceeArray = licencees
         .split(',')
         .map(l => l.trim())
         .filter(l => l);
-      if (licenseeArray.length > 0) {
+      if (licenceeArray.length > 0) {
         query.$or = [
-          { 'rel.licensee': { $in: licenseeArray } },
-          { 'rel.licencee': { $in: licenseeArray } }
+          { 'rel.licencee': { $in: licenceeArray } },
+          { 'rel.licencee': { $in: licenceeArray } }
         ];
       }
-    } else if (licensee) {
-      // Single licensee filter (backwards compatibility)
+    } else if (licencee || searchParams.get('licencee')) {
+      // Single licencee filter (backwards compatibility)
+      const targetLicencee = licencee || searchParams.get('licencee');
       query.$or = [
-        { 'rel.licensee': licensee },
-        { 'rel.licencee': licensee }
+        { 'rel.licencee': targetLicencee }, { 'rel.licencee': targetLicencee }
       ];
     }
 
@@ -84,11 +84,11 @@ export async function GET(request: NextRequest) {
       const idArray = ids.split(',').map(id => id.trim()).filter(id => id);
       if (idArray.length > 0) {
         query._id = { $in: idArray };
-        // If IDs are provided, we often want to bypass the licensee filter 
+        // If IDs are provided, we often want to bypass the licencee filter 
         // especially for profile display of assigned locations
-        delete query['rel.licensee'];
         delete query['rel.licencee'];
-        delete query.$or; // Removed if we're bypassing licensee filter
+        delete query['rel.licencee'];
+        delete query.$or; // Removed if we're bypassing licencee filter
       }
     }
 
@@ -98,42 +98,40 @@ export async function GET(request: NextRequest) {
     const locations = await GamingLocations.find(query, {
       _id: 1,
       name: 1,
-      'rel.licensee': 1,
       'rel.licencee': 1,
     })
       .sort({ name: 1 })
       .lean();
 
     // ============================================================================
-    // STEP 6: Format locations with licensee ID
+    // STEP 6: Format locations with licencee ID
     // ============================================================================
     type LocationResult = {
       _id: string;
       name: string;
       rel?: {
-        licensee?: string | string[];
         licencee?: string | string[];
       };
     };
 
     const formattedLocations = (locations as unknown as LocationResult[]).map((loc) => {
-      const licenseeRaw = loc.rel?.licensee || loc.rel?.licencee;
-      let licenseeId: string | null = null;
+      const licenceeRaw = loc.rel?.licencee;
+      let licenceeId: string | null = null;
 
-      if (Array.isArray(licenseeRaw)) {
-        licenseeId =
-          licenseeRaw.length > 0 && licenseeRaw[0]
-            ? String(licenseeRaw[0])
+      if (Array.isArray(licenceeRaw)) {
+        licenceeId =
+          licenceeRaw.length > 0 && licenceeRaw[0]
+            ? String(licenceeRaw[0])
             : null;
-      } else if (licenseeRaw) {
-        licenseeId = String(licenseeRaw);
+      } else if (licenceeRaw) {
+        licenceeId = String(licenceeRaw);
       }
 
       return {
         _id: loc._id,
         id: String(loc._id), // Also include 'id' for compatibility
         name: loc.name,
-        licenseeId,
+        licenceeId,
       };
     });
 

@@ -1,6 +1,6 @@
 /**
  * Payment Status Confirm Modal Component
- * Confirmation modal for toggling licensee payment status.
+ * Confirmation modal for toggling licencee payment status.
  *
  * Features:
  * - Payment status toggle confirmation
@@ -8,7 +8,7 @@
  * - Expiry date calculation (30 days from now)
  * - Date formatting
  * - GSAP animations
- * - Licensee name display
+ * - Licencee name display
  *
  * @param props - Component props
  */
@@ -25,7 +25,7 @@ type AdministrationPaymentStatusConfirmModalProps = {
   onClose: () => void;
   onConfirm: () => void;
   currentStatus: boolean;
-  licenseeName: string;
+  licenceeName: string;
   currentExpiryDate?: Date | string;
 };
 
@@ -34,7 +34,7 @@ function AdministrationPaymentStatusConfirmModal({
   onClose,
   onConfirm,
   currentStatus,
-  licenseeName,
+  licenceeName,
   currentExpiryDate,
 }: AdministrationPaymentStatusConfirmModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -79,7 +79,7 @@ function AdministrationPaymentStatusConfirmModal({
             </h3>
             <p className="mb-4 text-gray-600">
               Are you sure you want to change the payment status for{' '}
-              <span className="font-semibold">&quot;{licenseeName}&quot;</span>{' '}
+              <span className="font-semibold">&quot;{licenceeName}&quot;</span>{' '}
               from{' '}
               <span
                 className={`font-semibold ${
@@ -101,7 +101,7 @@ function AdministrationPaymentStatusConfirmModal({
             {!currentStatus && newStatus && (
               <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
                 <p className="mb-2 text-sm text-blue-800">
-                  <strong>Note:</strong> This license will expire{' '}
+                  <strong>Note:</strong> This licence will expire{' '}
                   <strong>30 days from today</strong>.
                 </p>
                 <div className="flex flex-col gap-1 text-xs text-gray-700">

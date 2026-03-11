@@ -7,7 +7,7 @@ export type ProfileValidationModalData = {
   emailAddress: string;
   phone: string;
   dateOfBirth?: string; // Optional - no longer required for validation
-  licenseeIds: string[];
+  licenceeIds: string[];
   locationIds: string[];
 };
 

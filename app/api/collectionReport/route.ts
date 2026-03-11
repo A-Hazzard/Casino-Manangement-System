@@ -3,7 +3,7 @@
  *
  * This route handles fetching and creating collection reports.
  * It supports:
- * - GET: Retrieves collection reports with filtering by time period, licensee, and location
+ * - GET: Retrieves collection reports with filtering by time period, licencee, and location
  *        Also supports fetching locations with machines and monthly report summaries
  * - POST: Creates a new collection report and updates related collections and machines
  *
@@ -29,7 +29,7 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
-import { getLicenseeObjectId } from '@/lib/utils/licensee';
+import { getLicenceeObjectId } from '@/lib/utils/licencee';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../lib/helpers/users';
 
@@ -65,12 +65,11 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     if (searchParams.get('locationsWithMachines')) {
       try {
-        const rawLicenseeParam =
-          searchParams.get('licensee') ||
-          searchParams.get('licensee') ||
+        const rawLicenceeParam =
+          searchParams.get('licencee') ||
           undefined;
 
-        const result = await fetchLocationsWithMachines(rawLicenseeParam);
+        const result = await fetchLocationsWithMachines(rawLicenceeParam);
         return NextResponse.json(result);
       } catch (error: unknown) {
         const duration = Date.now() - startTime;
@@ -104,25 +103,25 @@ export async function GET(req: NextRequest) {
     const locationId = searchParams.get('locationId') || undefined;
     const locationIds = searchParams.get('locationIds')?.split(',') || undefined;
 
-    const rawLicenseeParam =
-      searchParams.get('licensee') || searchParams.get('licensee') || undefined;
-    const licensee =
-      rawLicenseeParam && rawLicenseeParam !== 'all'
-        ? getLicenseeObjectId(rawLicenseeParam) || rawLicenseeParam
-        : rawLicenseeParam;
+    const rawLicenceeParam =
+      searchParams.get('licencee') || undefined;
+    const licencee =
+      rawLicenceeParam && rawLicenceeParam !== 'all'
+        ? getLicenceeObjectId(rawLicenceeParam) || rawLicenceeParam
+        : rawLicenceeParam;
 
     if (startDateStr && endDateStr && !timePeriod) {
       const summary = await getMonthlyCollectionReportSummary(
         new Date(startDateStr),
         new Date(endDateStr),
         locationName || (locationIds || (locationId ? [locationId] : undefined)),
-        licensee
+        licencee
       );
       const details = await getMonthlyCollectionReportByLocation(
         new Date(startDateStr),
         new Date(endDateStr),
         locationName || (locationIds || (locationId ? [locationId] : undefined)),
-        licensee
+        licencee
       );
       return NextResponse.json({ summary, details });
     }
@@ -150,14 +149,14 @@ export async function GET(req: NextRequest) {
 
     const userRoles = (userPayload?.roles as string[]) || [];
     // Use only new field
-    let userLicensees: string[] = [];
+    let userLicencees: string[] = [];
     if (
       Array.isArray(
-        (userPayload as { assignedLicensees?: string[] })?.assignedLicensees
+        (userPayload as { assignedLicencees?: string[] })?.assignedLicencees
       )
     ) {
-      userLicensees = (userPayload as { assignedLicensees: string[] })
-        .assignedLicensees;
+      userLicencees = (userPayload as { assignedLicencees: string[] })
+        .assignedLicencees;
     }
     // Use only new field
     let userLocationPermissions: string[] = [];
@@ -172,7 +171,7 @@ export async function GET(req: NextRequest) {
 
     const allowedLocationIds = await determineAllowedLocationIds(
       userRoles,
-      userLicensees,
+      userLicencees,
       userLocationPermissions
     );
 
@@ -191,7 +190,7 @@ export async function GET(req: NextRequest) {
     // STEP 8: Fetch and filter collection reports
     // ============================================================================
     const reports = await getAllCollectionReportsWithMachineCounts(
-      licensee,
+      licencee,
       startDate,
       endDate
     );

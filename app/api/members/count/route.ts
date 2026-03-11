@@ -7,9 +7,9 @@
  */
 
 import {
-    getUserAccessibleLicenseesFromToken,
+    getUserAccessibleLicenceesFromToken,
     getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
+} from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
@@ -20,7 +20,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * Main GET handler for members count
  *
  * Flow:
- * 1. Parse licensee and location parameters
+ * 1. Parse licencee and location parameters
  * 2. Connect to database and authenticate user
  * 3. Get user location permissions
  * 4. Count members based on accessible locations
@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
     // STEP 1: Parse request parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
-    const licensee =
-      searchParams.get('licensee') || searchParams.get('licensee');
+    const licencee =
+      searchParams.get('licencee');
     const locationId = searchParams.get('locationId');
     const machineTypeFilter = searchParams.get('machineTypeFilter');
 
@@ -50,8 +50,8 @@ export async function GET(req: NextRequest) {
 
     const user = await getUserFromServer();
 
-    // Get user's accessible licensees
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    // Get user's accessible licencees
+    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
 
     // Get user's location permissions and roles
     const userLocationPermissions = ((
@@ -71,8 +71,8 @@ export async function GET(req: NextRequest) {
     // STEP 3: Get user location permissions
     // ============================================================================
     const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicensees,
-      licensee || undefined,
+      userAccessibleLicencees,
+      licencee || undefined,
       userLocationPermissions,
       userRoles
     );

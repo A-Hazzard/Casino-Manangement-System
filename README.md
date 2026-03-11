@@ -29,7 +29,7 @@
   - Custom date filtering with time inputs
 - 👥 **Member Management** ([docs](Documentation/frontend/members.md))
 - 🎯 **Session Management** ([docs](Documentation/frontend/sessions.md))
-- 👥 **User & Licensee Administration** ([docs](Documentation/frontend/administration.md))
+- 👥 **User & Licencee Administration** ([docs](Documentation/frontend/administration.md))
 - 🔐 **Secure Authentication** ([docs](Documentation/frontend/login.md))
   - Role-based access control (RBAC)
   - JWT token-based authentication
@@ -175,7 +175,7 @@ The `test/` directory contains a **Go-based MongoDB query tool** for development
 
 - **Interactive CLI**: Menu-driven interface for different query types
 - **Date Range Support**: Query data for specific time periods (today, yesterday, 7 days, custom dates)
-- **Location & Licensee Filtering**: Filter data by specific locations or licensees
+- **Location & Licencee Filtering**: Filter data by specific locations or licencees
 - **Machine Search**: Find specific machines by serial number
 - **Meter Data Analysis**: Query meter data with date filtering
 - **Real-time Results**: Immediate feedback on query results
@@ -189,12 +189,12 @@ go run main.go
 
 **Query Types Available:**
 
-1. **Machine Search**: Find machines by serial number with location/licensee info
+1. **Machine Search**: Find machines by serial number with location/licencee info
 2. **Machine with Meters**: Search machines with meter data by date range
-3. **Licensee Search**: Find all machines under a specific licensee
+3. **Licencee Search**: Find all machines under a specific licencee
 4. **Location Search**: Find all machines at a specific location
-5. **Location & Licensee**: Combined filtering for specific location/licensee combinations
-6. **Location by Licensee**: Find all locations under a specific licensee
+5. **Location & Licencee**: Combined filtering for specific location/licencee combinations
+6. **Location by Licencee**: Find all locations under a specific licencee
 
 **Configuration:**
 
@@ -330,7 +330,7 @@ Evolution1 CMS/
 - **Cabinets:** Slot machine/cabinet management, firmware, SMIB ([cabinets.md](Documentation/frontend/cabinets.md))
   - **Cabinet Details:** Individual cabinet configuration and monitoring ([cabinet-details.md](Documentation/frontend/cabinet-details.md))
 - **Collection Report:** Collection reporting, monthly summaries, scheduling, delete/edit functionality ([collection-report.md](Documentation/frontend/collection-report.md))
-- **Administration:** User and licensee management ([administration.md](Documentation/frontend/administration.md))
+- **Administration:** User and licencee management ([administration.md](Documentation/frontend/administration.md))
 - **Login:** Secure authentication ([login.md](Documentation/frontend/login.md))
 - **Vault Management:** Comprehensive cash handling and cashier oversight ([FE README](Documentation/frontend/vault/README.md) | [Tracker](Documentation/VAULT_DOCS_TRACKER.md))
 

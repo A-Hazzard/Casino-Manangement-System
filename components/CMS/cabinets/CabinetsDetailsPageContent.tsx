@@ -13,13 +13,13 @@
 'use client';
 
 import PageLayout from '@/components/shared/layout/PageLayout';
-import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
+import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import { CabinetDetailsLoadingState } from '@/components/shared/ui/skeletons/CabinetDetailSkeletons';
 
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
-import { shouldShowNoLicenseeMessage } from '@/lib/utils/licensee';
+import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import CabinetsDeleteCabinetModal from './modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from './modals/CabinetsEditCabinetModal';
 
@@ -38,7 +38,7 @@ import CabinetsDetailsSummarySection from '@/components/CMS/cabinets/details/Cab
 export default function CabinetsDetailsPageContent() {
   const hook = useCabinetPageData();
   const { user } = useUserStore();
-  const { setSelectedLicensee, selectedLicensee } = useDashBoardStore();
+  const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
   const { openEditModal } = useCabinetsActionsStore();
 
   const {
@@ -69,16 +69,16 @@ export default function CabinetsDetailsPageContent() {
   // ============================================================================
   // Early Returns
   // ============================================================================
-  if (shouldShowNoLicenseeMessage(user)) {
+  if (shouldShowNoLicenceeMessage(user)) {
     return (
       <PageLayout
-        headerProps={{ selectedLicensee, setSelectedLicensee }}
+        headerProps={{ selectedLicencee, setSelectedLicencee }}
         pageTitle=""
         hideOptions
-        hideLicenseeFilter
+        hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
       >
-        <NoLicenseeAssigned />
+        <NoLicenceeAssigned />
       </PageLayout>
     );
   }
@@ -86,8 +86,8 @@ export default function CabinetsDetailsPageContent() {
   if (!cabinet && !error) {
     return (
       <CabinetDetailsLoadingState
-        selectedLicensee={selectedLicensee}
-        setSelectedLicensee={setSelectedLicensee}
+        selectedLicencee={selectedLicencee}
+        setSelectedLicencee={setSelectedLicencee}
         error={error}
       />
     );
@@ -103,10 +103,10 @@ export default function CabinetsDetailsPageContent() {
       <CabinetsDeleteCabinetModal />
 
       <PageLayout
-        headerProps={{ selectedLicensee, setSelectedLicensee }}
+        headerProps={{ selectedLicencee, setSelectedLicencee }}
         pageTitle=""
         hideOptions
-        hideLicenseeFilter
+        hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
         onRefresh={handleRefresh}
         refreshing={refreshing}
@@ -116,7 +116,7 @@ export default function CabinetsDetailsPageContent() {
           <CabinetsDetailsSummarySection
             cabinet={cabinet}
             locationName={locationName}
-            selectedLicensee={selectedLicensee}
+            selectedLicencee={selectedLicencee}
             isOnline={isOnline}
             refreshing={refreshing}
             canEditMachines={canEditMachines}

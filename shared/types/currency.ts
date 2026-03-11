@@ -1,6 +1,6 @@
 /**
  * Currency conversion types for Evolution CMS
- * Only applies when "All Licensee" is selected
+ * Only applies when "All Licencee" is selected
  */
 
 export type CurrencyCode = 'USD' | 'TTD' | 'GYD' | 'BBD';
@@ -12,7 +12,7 @@ export type ExchangeRates = {
   BBD: number;
 };
 
-export type LicenseeCurrencyMapping = {
+export type LicenceeCurrencyMapping = {
   TTG: 'TTD';
   Cabana: 'GYD';
   Barbados: 'BBD';
@@ -27,7 +27,7 @@ export type CurrencyContextType = {
     from: CurrencyCode,
     to: CurrencyCode
   ) => number;
-  isAllLicensee: boolean;
+  isAllLicencee: boolean;
   shouldApplyConversion: boolean;
 };
 

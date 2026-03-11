@@ -8,11 +8,11 @@
 'use client';
 
 import type { MultiSelectOption } from '@/components/shared/ui/common/MultiSelectDropdown';
-import { fetchLicensees } from '@/lib/helpers/client';
+import { fetchLicencees } from '@/lib/helpers/client';
 import { fetchCountries } from '@/lib/helpers/countries';
 import { useUserStore } from '@/lib/store/userStore';
 import type { User as AdminUser } from '@/lib/types/administration';
-import type { Country, Licensee } from '@/lib/types/common';
+import type { Country, Licencee } from '@/lib/types/common';
 import axios from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -22,14 +22,14 @@ const EMAIL_REGEX = /\S+@\S+\.\S+/;
 // Extended User type for profile-specific fields
 type User = AdminUser & {
   rel?: {
-    licensee?: string | string[];
+    licencee?: string | string[];
   };
   resourcePermissions?: {
     'gaming-locations'?: {
       resources: string | string[];
     };
   };
-  assignedLicensees?: string[];
+  assignedLicencees?: string[];
   assignedLocations?: string[];
 };
 
@@ -64,24 +64,23 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [countries, setCountries] = useState<Country[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
-  const [licensees, setLicensees] = useState<Licensee[]>([]);
-  const [licenseesLoading, setLicenseesLoading] = useState(false);
+  const [licencees, setLicencees] = useState<Licencee[]>([]);
+  const [licenceesLoading, setLicenceesLoading] = useState(false);
   const [locations, setLocations] = useState<
     Array<{
       _id: string;
       name: string;
-      licenseeId?: string | string[];
-      licensee?: string | string[];
+      licenceeId?: string | string[];
+      licencee?: string | string[];
       rel?: {
-        licensee?: string | string[];
         licencee?: string | string[];
       }
     }>
   >([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [missingLocationNames] = useState<Record<string, string>>({});
-  const [selectedLicenseeIds, setSelectedLicenseeIds] = useState<string[]>([]);
-  const [allLicenseesSelected, setAllLicenseesSelected] = useState(false);
+  const [selectedLicenceeIds, setSelectedLicenceeIds] = useState<string[]>([]);
+  const [allLicenceesSelected, setAllLicenceesSelected] = useState(false);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [allLocationsSelected, setAllLocationsSelected] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
@@ -105,8 +104,9 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   const [emailAddress, setEmailAddress] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const hasAttemptedLicenseeFetchRef = useRef(false);
+  const hasAttemptedLicenceeFetchRef = useRef(false);
   const hasAttemptedLocationsFetchRef = useRef(false);
+  const hasReconciledLicenceesRef = useRef(false);
 
   // Load initial data
   useEffect(() => {
@@ -122,23 +122,35 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
             setSelectedRoles(data.roles || []);
 
             // Set initial assignments (Support current API fields)
-            if (data.assignedLicensees) {
-              setSelectedLicenseeIds(Array.isArray(data.assignedLicensees) ? data.assignedLicensees : []);
-            } else if (data.rel?.licensee) {
+            if (data.assignedLicencees) {
+              const assigned = Array.isArray(data.assignedLicencees) ? data.assignedLicencees : [];
+              if (assigned.includes('all')) {
+                setAllLicenceesSelected(true);
+                setSelectedLicenceeIds([]);
+              } else {
+                setSelectedLicenceeIds(assigned);
+              }
+            } else if (data.rel?.licencee) {
               // Fallback for legacy data
-              const isAll = data.rel.licensee === 'all';
-              setAllLicenseesSelected(isAll);
-              setSelectedLicenseeIds(
+              const isAll = data.rel.licencee === 'all';
+              setAllLicenceesSelected(isAll);
+              setSelectedLicenceeIds(
                 isAll
                   ? []
-                  : Array.isArray(data.rel.licensee)
-                    ? data.rel.licensee
-                    : [data.rel.licensee]
+                  : Array.isArray(data.rel.licencee)
+                    ? data.rel.licencee
+                    : [data.rel.licencee]
               );
             }
 
             if (data.assignedLocations) {
-              setSelectedLocationIds(Array.isArray(data.assignedLocations) ? data.assignedLocations : []);
+              const assigned = Array.isArray(data.assignedLocations) ? data.assignedLocations : [];
+              if (assigned.includes('all')) {
+                setAllLocationsSelected(true);
+                setSelectedLocationIds([]);
+              } else {
+                setSelectedLocationIds(assigned);
+              }
             } else if (data.resourcePermissions?.['gaming-locations']?.resources) {
               // Fallback for legacy data
               const resources =
@@ -158,11 +170,12 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     }
   }, [open, authUser?._id, onClose]);
 
-  // Fetch static lists (Countries, Licensees, Locations)
+  // Fetch static lists (Countries, Licencees, Locations)
   useEffect(() => {
     if (!open) {
-      hasAttemptedLicenseeFetchRef.current = false;
+      hasAttemptedLicenceeFetchRef.current = false;
       hasAttemptedLocationsFetchRef.current = false;
+      hasReconciledLicenceesRef.current = false;
       return;
     }
     if (open) {
@@ -179,19 +192,19 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
           .finally(() => setCountriesLoading(false));
       }
 
-      // Fetch Licensees only once per modal open
-      if (!hasAttemptedLicenseeFetchRef.current) {
-        hasAttemptedLicenseeFetchRef.current = true;
-        setLicenseesLoading(true);
-        fetchLicensees(1, 1000)
+      // Fetch Licencees only once per modal open
+      if (!hasAttemptedLicenceeFetchRef.current) {
+        hasAttemptedLicenceeFetchRef.current = true;
+        setLicenceesLoading(true);
+        fetchLicencees(1, 1000)
           .then(data => {
-            if (data && 'licensees' in data) {
-              setLicensees((data as { licensees: Licensee[] }).licensees);
+            if (data && 'licencees' in data) {
+              setLicencees((data as { licencees: Licencee[] }).licencees);
             } else {
-              setLicensees(Array.isArray(data) ? data : []);
+              setLicencees(Array.isArray(data) ? data : []);
             }
           })
-          .finally(() => setLicenseesLoading(false));
+          .finally(() => setLicenceesLoading(false));
       }
 
       // Fetch Locations once per modal open
@@ -207,6 +220,33 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       }
     }
   }, [open, countries.length, countriesLoading]);
+
+  // Reconcile stale licencee IDs once both userData and licencees are loaded
+  useEffect(() => {
+    if (hasReconciledLicenceesRef.current) return;
+    if (!licencees.length || !userData || licenceesLoading) return;
+
+    hasReconciledLicenceesRef.current = true;
+
+    const isAdminOrDev = userData.roles?.some(r =>
+      ['admin', 'developer'].includes(r.toLowerCase())
+    );
+
+    const validIds = selectedLicenceeIds.filter(id =>
+      id === 'all' || licencees.some(l => String(l._id) === id)
+    );
+
+    if (validIds.length < selectedLicenceeIds.length) {
+      if (isAdminOrDev && validIds.length === 0) {
+        // All stored IDs are orphaned — admin defaults to "All Licencees"
+        setAllLicenceesSelected(true);
+        setSelectedLicenceeIds([]);
+      } else {
+        // Remove only the orphaned IDs, keep valid ones
+        setSelectedLicenceeIds(validIds);
+      }
+    }
+  }, [licencees, licenceesLoading, userData, selectedLicenceeIds]);
 
   const attemptedMissingIdsRef = useRef<string | null>(null);
 
@@ -242,18 +282,18 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   }, [open, userData?.assignedLocations, locations.length]);
 
   // Options for multi-select
-  const licenseeOptions: MultiSelectOption[] = useMemo(
-    () => licensees.map(l => ({ id: String(l._id), label: l.name })),
-    [licensees]
+  const licenceeOptions: MultiSelectOption[] = useMemo(
+    () => licencees.map(l => ({ id: String(l._id), label: l.name })),
+    [licencees]
   );
 
   const availableLocations = useMemo(() => {
-    if (allLicenseesSelected) return locations;
+    if (allLicenceesSelected) return locations;
     return locations.filter(
       loc =>
-        loc.licenseeId && selectedLicenseeIds.includes(String(loc.licenseeId))
+        loc.licenceeId && selectedLicenceeIds.includes(String(loc.licenceeId))
     );
-  }, [locations, allLicenseesSelected, selectedLicenseeIds]);
+  }, [locations, allLicenceesSelected, selectedLicenceeIds]);
 
   const locationOptions: MultiSelectOption[] = useMemo(
     () => availableLocations.map(l => ({ id: String(l._id), label: l.name })),
@@ -344,9 +384,9 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       if (countryName && countryName.length > 0) {
         if (countryName.length < 3) {
           errors.country =
-            'Country must be at least 3 characters and may only contain letters and spaces.';
-        } else if (!/^[A-Za-z\s]+$/.test(countryName)) {
-          errors.country = 'Country may only contain letters and spaces.';
+            'Country must be at least 3 characters and may only contain letters, spaces, and ampersands (&).';
+        } else if (!/^[A-Za-z\s&]+$/.test(countryName)) {
+          errors.country = 'Country may only contain letters, spaces, and ampersands (&).';
         }
       }
     }
@@ -427,11 +467,11 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
         profilePicture,
         roles: selectedRoles,
         assignedLocations: allLocationsSelected ? ['all'] : selectedLocationIds,
-        assignedLicensees: allLicenseesSelected ? ['all'] : selectedLicenseeIds,
+        assignedLicencees: allLicenceesSelected ? ['all'] : selectedLicenceeIds,
         // Legacy fields for backward compatibility if needed by SMIB/other systems
         rel: {
           ...userData.rel,
-          licensee: allLicenseesSelected ? 'all' : selectedLicenseeIds,
+          licencee: allLicenceesSelected ? 'all' : selectedLicenceeIds,
         },
         resourcePermissions: {
           ...userData.resourcePermissions,
@@ -501,20 +541,20 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     setIsEditMode,
     countries,
     countriesLoading,
-    licensees,
-    licenseesLoading,
-    licenseeOptions,
+    licencees,
+    licenceesLoading,
+    licenceeOptions,
     locations,
     locationsLoading,
     locationOptions,
     availableLocations,
     missingLocationNames,
-    selectedLicenseeIds,
-    setSelectedLicenseeIds,
+    selectedLicenceeIds,
+    setSelectedLicenceeIds,
     selectedLocationIds,
     setSelectedLocationIds,
-    allLicenseesSelected,
-    setAllLicenseesSelected,
+    allLicenceesSelected,
+    setAllLicenceesSelected,
     allLocationsSelected,
     setAllLocationsSelected,
     selectedRoles,

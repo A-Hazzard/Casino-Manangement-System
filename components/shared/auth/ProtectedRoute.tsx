@@ -19,7 +19,7 @@
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { NoRoleAssigned } from '@/components/shared/ui/NoRoleAssigned';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { shouldShowNoRoleMessage } from '@/lib/utils/licensee';
+import { shouldShowNoRoleMessage } from '@/lib/utils/licencee';
 import {
     PageName,
     hasAdminAccessDb,
@@ -240,13 +240,13 @@ export default function ProtectedRoute({
     return (
       <PageLayout
         headerProps={{
-          selectedLicensee: '',
-          setSelectedLicensee: () => {},
+          selectedLicencee: '',
+          setSelectedLicencee: () => {},
           disabled: false,
         }}
         pageTitle=""
         hideOptions={true}
-        hideLicenseeFilter={true}
+        hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
         showToaster={false}
       >

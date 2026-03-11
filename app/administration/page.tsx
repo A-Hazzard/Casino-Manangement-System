@@ -2,7 +2,7 @@
  * Administration Page
  * Main entry point for the administration section.
  *
- * This page handles management of users, licensees, system activity logs,
+ * This page handles management of users, licencees, system activity logs,
  * and user feedback. It delegates core logic to AdministrationPageContent.
  *
  * @module app/administration/page

@@ -7,7 +7,7 @@
  * information from the users collection.
  *
  * Features:
- * - Fetches all collection reports with licensee and date range filtering.
+ * - Fetches all collection reports with licencee and date range filtering.
  * - Enriches reports with machine counts (collected vs total machines).
  * - Calculates financial metrics from actual collections (gross, SAS gross, variation).
  * - Includes collector details (username, profile information) via lookup.
@@ -37,7 +37,7 @@ const formatSmartDecimal = (value: number): string => {
  * This includes the total machine count per location which requires database access
  */
 export async function getAllCollectionReportsWithMachineCounts(
-  licenseeId?: string,
+  licenceeId?: string,
   startDate?: Date,
   endDate?: Date
 ): Promise<CollectionReportRow[]> {
@@ -100,14 +100,13 @@ export async function getAllCollectionReportsWithMachineCounts(
         preserveNullAndEmptyArrays: true,
       },
     },
-    // Apply licensee filter only if provided
-    ...(licenseeId
+    // Apply licencee filter only if provided
+    ...(licenceeId
       ? [
         {
           $match: {
             $or: [
-              { 'locationDetails.rel.licensee': licenseeId },
-              { 'locationDetails.rel.licencee': licenseeId },
+              { 'locationDetails.rel.licencee': licenceeId  }, { 'locationDetails.rel.licencee': licenceeId  },
             ],
           },
         },

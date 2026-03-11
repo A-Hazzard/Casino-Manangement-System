@@ -40,7 +40,7 @@ The Evolution One Casino Management System is a comprehensive Next.js-based plat
 - Real-time machine monitoring and status tracking
 - Comprehensive financial reporting and analytics
 - Collection management with automated calculations
-- Multi-licensee support with currency conversion
+- Multi-licencee support with currency conversion
 - Role-based access control with hierarchical permissions
 - Gaming day offset system for flexible business day boundaries
 - Audit logging for regulatory compliance
@@ -103,7 +103,7 @@ evolution-one-cms/
 Types used across both frontend and backend:
 
 - `shared/types/database.ts` - Database-related types
-- `shared/types/entities.ts` - Core entity types (Licensee, GamingLocation, Machine, etc.)
+- `shared/types/entities.ts` - Core entity types (Licencee, GamingLocation, Machine, etc.)
 - `shared/types/api.ts` - API request/response types
 - `shared/types/common.ts` - Common utility types (TimePeriod, DateRange, etc.)
 - `shared/types/auth.ts` - Authentication types
@@ -155,7 +155,7 @@ Before creating or modifying types that represent backend data:
 ### Core Entity Hierarchy
 
 ```
-Licensee (licensee.ts)
+Licencee (licencee.ts)
 ├── GamingLocation (gaminglocations.ts)
 │   ├── Machine (machines.ts) - Primary UI data source
 │   │   ├── Meter (meters.ts) - Financial metrics source
@@ -273,7 +273,7 @@ Meters.aggregate([
 GamingLocation {
   _id: string;
   name: string;
-  "rel.licensee": string;         // Links to Licensee
+  "rel.licencee": string;         // Links to Licencee
   gameDayOffset: number;          // Gaming day start hour (0-23, default 8)
   country: string;                // Links to Country for currency detection
   geoCoords: {
@@ -292,7 +292,7 @@ GamingLocation {
 
 ### Important Relationships
 
-1. **Licensee → GamingLocation → Machine** - Multi-tenant architecture
+1. **Licencee → GamingLocation → Machine** - Multi-tenant architecture
 2. **Machine → Meter** - Primary financial data source
 3. **Machine → CollectionMetersHistory** - Collection tracking
 4. **GamingLocation → CollectionReport** - Location aggregation
@@ -321,13 +321,13 @@ const session = await MachineSession.findOne({ _id: sessionId });
 const session = await MachineSession.findById(sessionId);
 ```
 
-#### Licensee & Location Filtering
+#### Licencee & Location Filtering
 
-All API routes must respect user's accessible licensees and locations:
+All API routes must respect user's accessible licencees and locations:
 
 ```typescript
-const licensee = searchParams.get('licensee') || searchParams.get('licensee');
-const allowedLocationIds = await getUserLocationFilter(licensee || undefined);
+const licencee = searchParams.get('licencee') || searchParams.get('licencee');
+const allowedLocationIds = await getUserLocationFilter(licencee || undefined);
 
 if (allowedLocationIds !== 'all') {
   matchStage.gamingLocation = { $in: allowedLocationIds };
@@ -641,12 +641,12 @@ const todayBase =
 
 ### Overview
 
-The currency conversion system provides accurate multi-licensee financial data aggregation with proper currency conversion. The system handles locations and machines belonging to different licensees with different currencies, as well as unassigned locations that use country-based currency detection.
+The currency conversion system provides accurate multi-licencee financial data aggregation with proper currency conversion. The system handles locations and machines belonging to different licencees with different currencies, as well as unassigned locations that use country-based currency detection.
 
 ### Key Principles
 
 - **Accuracy**: Native currency detection → USD → Display currency conversion
-- **Flexibility**: Support for locations with/without licensees
+- **Flexibility**: Support for locations with/without licencees
 - **Consistency**: Unified conversion across all endpoints
 - **Performance**: Efficient conversion with minimal overhead
 
@@ -670,8 +670,8 @@ const FIXED_RATES: ExchangeRates = {
   BBD: 2.0,
 };
 
-// Licensee to currency mapping
-const LICENSEE_CURRENCY = {
+// Licencee to currency mapping
+const LICENCEE_CURRENCY = {
   TTG: 'TTD',
   Cabana: 'GYD',
   Barbados: 'BBD',
@@ -691,7 +691,7 @@ const COUNTRY_CURRENCY_MAP = {
 
 ```typescript
 // Convert from native currency to USD
-export function convertToUSD(value: number, licenseeOrCurrency: string): number;
+export function convertToUSD(value: number, licenceeOrCurrency: string): number;
 
 // Convert from USD to target currency
 export function convertFromUSD(
@@ -702,15 +702,15 @@ export function convertFromUSD(
 // Get currency for a country
 export function getCountryCurrency(countryName: string): CurrencyCode;
 
-// Get currency for a licensee
-export function getLicenseeCurrency(licenseeName: string): CurrencyCode;
+// Get currency for a licencee
+export function getLicenceeCurrency(licenceeName: string): CurrencyCode;
 ```
 
 ### Conversion Flow
 
 1. **Detect Native Currency**:
-   - If location has licensee → Use licensee's currency
-   - If location has no licensee → Use country's currency
+   - If location has licencee → Use licencee's currency
+   - If location has no licencee → Use country's currency
    - Fallback to USD
 
 2. **Convert to USD** (if needed):
@@ -721,20 +721,20 @@ export function getLicenseeCurrency(licenseeName: string): CurrencyCode;
 
 ### When Conversion Applies
 
-- **Admin/Developer viewing "All Licensees"**: Always converts to selected display currency
-- **Single Licensee View**: Shows native currency (no conversion needed)
-- **Multi-Licensee Aggregation**: Converts all to display currency for accurate totals
+- **Admin/Developer viewing "All Licencees"**: Always converts to selected display currency
+- **Single Licencee View**: Shows native currency (no conversion needed)
+- **Multi-Licencee Aggregation**: Converts all to display currency for accurate totals
 
 ### API Implementation
 
 ```typescript
 // Check if conversion is needed
-const shouldConvert = shouldApplyCurrencyConversion(licensee);
+const shouldConvert = shouldApplyCurrencyConversion(licencee);
 
 if (shouldConvert) {
   // Get native currency for location
   const nativeCurrency =
-    getLicenseeCurrency(licenseeName) ||
+    getLicenceeCurrency(licenceeName) ||
     getCountryCurrency(countryName) ||
     'USD';
 
@@ -826,15 +826,15 @@ The Vault Management System (VMS) handles cash movements, cashier shifts, float 
 
 #### Location-Based Access
 
-- Users can only see licensees for locations they have access to
-- Multi-licensee users see "All" option for their accessible licensees
+- Users can only see licencees for locations they have access to
+- Multi-licencee users see "All" option for their accessible licencees
 - Data filtering ensures users only see relevant information
 
 #### Security Implementation
 
 - All data queries filtered by user's accessible locations
-- Licensee selection limited to user's permissions
-- "All" option shows data for all accessible licensees
+- Licencee selection limited to user's permissions
+- "All" option shows data for all accessible licencees
 
 ### Navigation Strategy
 

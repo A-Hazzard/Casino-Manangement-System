@@ -6,7 +6,7 @@
 
 'use client';
 
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Info } from 'lucide-react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
@@ -67,6 +67,33 @@ export default function CollectionReportMobileEditMachineList({
           <ArrowLeft className="h-5 w-5" />
         </button>
       </div>
+
+      {/* Live Reconciliation Summary - Added for parity with New modal */}
+      {collectedMachines.length > 0 && (
+        <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50/30 p-3 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <h5 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700">
+              <Info className="h-3 w-3" />
+              Live Reconciliation
+            </h5>
+            <span className="text-[9px] font-medium text-blue-500 italic">
+              (Syncs as you add machines)
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 border-t border-blue-100/50 pt-2">
+            <div>
+              <p className="text-[8px] font-bold text-gray-400 uppercase">Target</p>
+              <p className="text-xs font-black text-gray-900">
+                ${(Number(collectedMachines.reduce((sum, m) => sum + (m.movement?.gross || 0), 0))).toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[8px] font-bold text-gray-400 uppercase">Carryover</p>
+              <p className="text-xs font-black text-blue-600">$0.00</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Search bar for machines */}
       {machines.length > 3 && (

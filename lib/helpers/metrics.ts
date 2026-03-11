@@ -7,7 +7,7 @@
  *
  * Features:
  * - Fetches metric data from the API with time period and date range filtering.
- * - Supports licensee filtering and currency conversion.
+ * - Supports licencee filtering and currency conversion.
  * - Groups data by day or hour based on time period.
  * - Fills missing intervals with zero values for consistent chart display.
  * - Handles errors gracefully with comprehensive error handling.
@@ -29,13 +29,13 @@ import { getGranularityFromDataPoints } from '../utils/chart/granularity';
 /**
  * Fetches and aggregates metric data from the API endpoint.
  *
- * Calls the `/api/metrics/meters` endpoint using a time period, and optionally a custom date range and licensee filter.
+ * Calls the `/api/metrics/meters` endpoint using a time period, and optionally a custom date range and licencee filter.
  * Normalizes the data into the dashboardData shape, groups records by day or hour, and sorts chronologically.
  *
  * @param timePeriod - The time period to fetch metrics for.
  * @param startDate - (Optional) Start date for a custom range.
  * @param endDate - (Optional) End date for a custom range.
- * @param licensee - (Optional) Licensee ID to filter metrics.
+ * @param licencee - (Optional) Licencee ID to filter metrics.
  * @param displayCurrency - (Optional) Currency code for display.
  * @returns Promise resolving to an array of aggregated dashboardData objects.
  */
@@ -43,7 +43,7 @@ export async function getMetrics(
   timePeriod: TimePeriod,
   startDate?: Date | string,
   endDate?: Date | string,
-  licensee?: string,
+  licencee?: string,
   displayCurrency?: string,
   signal?: AbortSignal,
   granularity?: 'hourly' | 'minute',
@@ -79,8 +79,8 @@ export async function getMetrics(
         url += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
       }
     }
-    if (licensee && licensee !== 'all') {
-      url += `&licensee=${licensee}`;
+    if (licencee && licencee !== 'all') {
+      url += `&licencee=${licencee}`;
     }
     if (displayCurrency) {
       url += `&currency=${displayCurrency}`;

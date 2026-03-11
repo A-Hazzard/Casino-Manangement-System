@@ -88,7 +88,7 @@ export default function CollectionReportEditLocationMachineSelection({
       )}
 
       {/* Machine list */}
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+      <div className="min-h-0 space-y-2">
         {selectedLocationId ? (
           isLoadingMachines ? (
             <div className="space-y-2">

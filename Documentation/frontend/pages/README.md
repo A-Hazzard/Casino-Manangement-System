@@ -7,7 +7,7 @@ This directory contains comprehensive documentation for all main application pag
 ### 🏠 Main Application Pages
 
 - **[Dashboard](dashboard.md)** - Main landing page with real-time metrics, financial cards, charts, and location map
-- **[Administration](administration.md)** - User and licensee management system with activity logging
+- **[Administration](administration.md)** - User and licencee management system with activity logging
 - **[Locations](locations.md)** - Gaming location management with financial metrics
 - **[Machines](machines.md)** - Machine/cabinet management with SMIB configuration
 - **[Members](members.md)** - Member management with win/loss calculations

@@ -24,7 +24,7 @@ export type AddUserForm = {
   phoneNumber?: string;
   profilePicture?: string | null;
   allowedLocations: string[];
-  licenseeIds?: string[];
+  licenceeIds?: string[];
   street?: string;
   town?: string;
   region?: string;
@@ -36,7 +36,7 @@ export type AddUserForm = {
   notes?: string;
 };
 
-export type AddLicenseeForm = {
+export type AddLicenceeForm = {
   _id?: string;
   name?: string;
   description?: string | undefined;

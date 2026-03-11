@@ -4,9 +4,9 @@
  * This route handles fetching location reports with financial metrics and filtering.
  * It supports:
  * - Time period filtering (today, week, month, custom dates)
- * - Licensee-based filtering
+ * - Licencee-based filtering
  * - Location search
- * - Currency conversion (Admin/Developer only for "All Licensees")
+ * - Currency conversion (Admin/Developer only for "All Licencees")
  * - Role-based access control
  * - Gaming day offset calculations
  * - Pagination
@@ -16,9 +16,9 @@
  */
 
 import {
-  getUserAccessibleLicenseesFromToken,
+  getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenseeFilter';
+} from '@/app/api/lib/helpers/licenceeFilter';
 import { getMemberCountsPerLocation } from '@/app/api/lib/helpers/membershipAggregation';
 import {
   applyLocationsCurrencyConversion,
@@ -27,11 +27,11 @@ import {
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
-import { getLicenseeCurrency } from '@/lib/helpers/rates';
+import { getLicenceeCurrency } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type {
@@ -62,8 +62,8 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
-    const licensee =
-      searchParams.get('licensee') || searchParams.get('licensee') || undefined;
+    const licencee =
+      searchParams.get('licencee') || undefined;
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;
     let displayCurrency: CurrencyCode = currencyParam || 'USD';
     const searchTerm = searchParams.get('search')?.trim() || '';
@@ -102,36 +102,36 @@ export async function GET(req: NextRequest) {
     const userLocationPermissions =
       (userPayload as { assignedLocations?: string[] })?.assignedLocations ||
       [];
-    const userAccessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     const isAdminOrDev =
       userRoles.includes('admin') || userRoles.includes('developer');
 
     // ============================================================================
     // STEP 3: Determine accessible locations and display currency
     // ============================================================================
-    let resolvedLicensee =
-      licensee && licensee !== 'all' ? licensee : undefined;
+    let resolvedLicencee =
+      licencee && licencee !== 'all' ? licencee : undefined;
     if (
-      !resolvedLicensee &&
-      userAccessibleLicensees !== 'all' &&
-      userAccessibleLicensees.length === 1
+      !resolvedLicencee &&
+      userAccessibleLicencees !== 'all' &&
+      userAccessibleLicencees.length === 1
     ) {
-      resolvedLicensee = userAccessibleLicensees[0];
+      resolvedLicencee = userAccessibleLicencees[0];
     }
 
-    if (!currencyParam && resolvedLicensee) {
-      const licenseeDoc = await Licensee.findOne(
-        { _id: resolvedLicensee },
+    if (!currencyParam && resolvedLicencee) {
+      const licenceeDoc = await Licencee.findOne(
+        { _id: resolvedLicencee },
         { name: 1 }
       ).lean();
-      if (licenseeDoc && !Array.isArray(licenseeDoc) && licenseeDoc.name) {
-        displayCurrency = getLicenseeCurrency(licenseeDoc.name);
+      if (licenceeDoc && !Array.isArray(licenceeDoc) && licenceeDoc.name) {
+        displayCurrency = getLicenceeCurrency(licenceeDoc.name);
       }
     }
 
     const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicensees,
-      licensee || undefined,
+      userAccessibleLicencees,
+      licencee || undefined,
       userLocationPermissions,
       userRoles
     );
@@ -162,14 +162,13 @@ export async function GET(req: NextRequest) {
       locationMatchStage._id = { $in: specificLocations };
     }
 
-    if (licensee && licensee !== 'all') {
+    if (licencee && licencee !== 'all') {
       if (!locationMatchStage.$and) {
         locationMatchStage.$and = [];
       }
       (locationMatchStage.$and as Array<Record<string, unknown>>).push({
         $or: [
-          { 'rel.licensee': licensee },
-          { 'rel.licencee': licensee }
+          { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  }
         ]
       });
     }
@@ -594,7 +593,7 @@ export async function GET(req: NextRequest) {
     const paginated = filteredResults.slice(skip, skip + limit);
     const converted = await applyLocationsCurrencyConversion(
       paginated,
-      licensee,
+      licencee,
       displayCurrency,
       isAdminOrDev
     );
@@ -613,7 +612,7 @@ export async function GET(req: NextRequest) {
         hasPrevPage: page > 1,
       },
       currency: displayCurrency,
-      converted: isAdminOrDev && (licensee === 'all' || !licensee),
+      converted: isAdminOrDev && (licencee === 'all' || !licencee),
       performance: { totalTime: Date.now() - perfStart },
     });
   } catch (err: unknown) {

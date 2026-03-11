@@ -29,7 +29,7 @@ import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { GamingMachine } from '@/shared/types/entities';
@@ -71,7 +71,7 @@ export default function VaultOverviewAddCashModal({
   onConfirm,
 }: VaultOverviewAddCashModalProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicensee } = useVaultLicensee();
+  const { licenceeId: selectedLicencee } = useVaultLicencee();
   // ============================================================================
   // Hooks & State
   // ============================================================================
@@ -86,7 +86,7 @@ export default function VaultOverviewAddCashModal({
   const [loadingMachines, setLoadingMachines] = useState(false);
   const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([]);
 
-  const denomsList = useMemo(() => getDenominationValues(selectedLicensee), [selectedLicensee]);
+  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
 
   useEffect(() => {
     if (open) {
@@ -104,7 +104,7 @@ export default function VaultOverviewAddCashModal({
             params: {
               type: 'overview',
               limit: 1000,
-              licensee: selectedLicensee !== 'all' ? selectedLicensee : undefined,
+              licencee: selectedLicencee !== 'all' ? selectedLicencee : undefined,
             },
           });
           const fetchedMachines = response.data.data || [];
@@ -123,7 +123,7 @@ export default function VaultOverviewAddCashModal({
       
       fetchMachines();
     }
-  }, [open, source, selectedLicensee]);
+  }, [open, source, selectedLicencee]);
 
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);

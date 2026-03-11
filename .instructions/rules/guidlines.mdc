@@ -13,7 +13,7 @@ checklist: [
 "No use of any types; types defined and imported where necessary",
 "No direct db.collection access; always use imported Mongoose models from app/api/lib/models/",
 "when querying by id, use findOne({ \_id: id }) not findById(id)",
-"Licensee/location-based filtering for data according to user context"
+"Licencee/location-based filtering for data according to user context"
 ]
 
 rationale: """ - Ensures routes are easy to maintain, audit, and extend - Establishes uniform code/comment/documentation style - Prevents accidental type safety, security, or organization regressions - Enables scalable helper extraction and modularization - Prevents performance regressions by highlighting slow routes - Reduces error-proneness in database access
@@ -28,7 +28,7 @@ _
 _ This route handles machine record retrieval and status reporting.
 _ It supports:
 _ - List all machines
-_ - Filter by location/licensee
+_ - Filter by location/licencee
 _ - Fetch machine status info
 _
 _ @module app/api/machines/route
@@ -67,13 +67,13 @@ try {
 // STEP 1: Parse and validate request parameters
 // ============================================================================
 const { searchParams } = new URL(req.url);
-const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+const licencee = searchParams.get('licencee') || searchParams.get('licencee');
 
           // ============================================================================
           // STEP 2: Authenticate user and get allowed locations
           // ============================================================================
           const user = await getUserFromServer();
-          const allowedLocationIds = await getUserLocationFilter(licensee ?? undefined);
+          const allowedLocationIds = await getUserLocationFilter(licencee ?? undefined);
 
           // ============================================================================
           // STEP 3: Fetch machines from database
@@ -167,13 +167,13 @@ modelsList: [
 remedy: "See all models in app/api/lib/models/; always use model methods and string \_id."
 }
 
-rule("Licensee/location-based filtering is required for all appropriate backend queries.") {
+rule("Licencee/location-based filtering is required for all appropriate backend queries.") {
 appliesTo: "app/api/\*_/_.ts"
 snippet("""
 // Always support both spellings
-const licensee = searchParams.get('licensee') || searchParams.get('licencee');
+const licencee = searchParams.get('licencee') || searchParams.get('licencee');
 // Get user's accessible locations
-const allowedLocationIds = await getUserLocationFilter(licensee || undefined);
+const allowedLocationIds = await getUserLocationFilter(licencee || undefined);
 // Apply filter to query
 if (allowedLocationIds !== 'all') {
 matchStage['gamingLocation'] = { $in: allowedLocationIds };

@@ -75,7 +75,7 @@ export default function TopPerformingLocationModal({
     activePieChartFilter,
     activeMetricsFilter,
     customDateRange,
-    selectedLicensee,
+    selectedLicencee,
   } = useDashBoardStore();
 
   // Use activeMetricsFilter if available (from location detail page), otherwise fall back to activePieChartFilter (from dashboard)
@@ -233,8 +233,8 @@ export default function TopPerformingLocationModal({
               : new Date(customDateRange.endDate);
           locationTotalsUrl += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
         }
-        if (selectedLicensee && selectedLicensee !== 'all') {
-          locationTotalsUrl += `&licensee=${selectedLicensee}`;
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          locationTotalsUrl += `&licencee=${selectedLicencee}`;
         }
         if (displayCurrency) {
           locationTotalsUrl += `&currency=${displayCurrency}`;
@@ -295,8 +295,8 @@ export default function TopPerformingLocationModal({
           }
         }
 
-        if (selectedLicensee && selectedLicensee !== 'all') {
-          chartUrl += `&licensee=${encodeURIComponent(selectedLicensee)}`;
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          chartUrl += `&licencee=${encodeURIComponent(selectedLicencee)}`;
         }
 
         if (displayCurrency) {
@@ -482,7 +482,7 @@ export default function TopPerformingLocationModal({
     customDateRange.startDate,
     customDateRange.endDate,
     displayCurrency,
-    selectedLicensee,
+    selectedLicencee,
     locationName,
     chartGranularity,
   ]);

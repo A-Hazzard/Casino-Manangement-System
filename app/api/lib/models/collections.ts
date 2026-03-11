@@ -43,6 +43,7 @@ const collectionsSchema = new Schema(
     sasMeters: sasMetersSchema,
     movement: movementSchema,
     machineCustomName: { type: String },
+    custom: { name: { type: String } },
     machineId: { type: String },
     machineName: { type: String },
     game: { type: String },

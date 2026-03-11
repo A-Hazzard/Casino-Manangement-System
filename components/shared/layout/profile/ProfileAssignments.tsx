@@ -1,26 +1,26 @@
 /**
  * Profile Assignments Component
  *
- * Handles user roles, licensee assignments, and location permissions.
+ * Handles user roles, licencee assignments, and location permissions.
  */
 
 'use client';
 
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from '@/components/shared/ui/card';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import MultiSelectDropdown, {
-  type MultiSelectOption,
+    type MultiSelectOption,
 } from '@/components/shared/ui/common/MultiSelectDropdown';
 import { Label } from '@/components/shared/ui/label';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import type { User } from '@/lib/types/administration';
-import type { Licensee } from '@/lib/types/common';
+import type { Licencee } from '@/lib/types/common';
 import { useMemo } from 'react';
 
 type ProfileAssignmentsProps = {
@@ -28,20 +28,19 @@ type ProfileAssignmentsProps = {
   isEditMode: boolean;
   selectedRoles: string[];
   setSelectedRoles: (roles: string[] | ((prev: string[]) => string[])) => void;
-  licensees: Licensee[];
-  licenseesLoading: boolean;
-  allLicenseesSelected: boolean;
-  onAllLicenseesToggle: (checked: boolean) => void;
-  selectedLicenseeIds: string[];
-  onLicenseeChange: (ids: string[]) => void;
-  licenseeOptions: MultiSelectOption[];
+  licencees: Licencee[];
+  licenceesLoading: boolean;
+  allLicenceesSelected: boolean;
+  onAllLicenceesToggle: (checked: boolean) => void;
+  selectedLicenceeIds: string[];
+  onLicenceeChange: (ids: string[]) => void;
+  licenceeOptions: MultiSelectOption[];
   locations: Array<{ 
     _id: string; 
     name: string; 
-    licenseeId?: string | string[]; 
-    licensee?: string | string[];
+    licenceeId?: string | string[]; 
+    licencee?: string | string[];
     rel?: {
-      licensee?: string | string[];
       licencee?: string | string[];
     }
   }>;
@@ -51,7 +50,7 @@ type ProfileAssignmentsProps = {
   selectedLocationIds: string[];
   onLocationChange: (ids: string[]) => void;
   locationOptions: MultiSelectOption[];
-  availableLocations: Array<{ _id: string; name: string; licenseeId?: string | string[] }>;
+  availableLocations: Array<{ _id: string; name: string; licenceeId?: string | string[] }>;
   missingLocationNames: Record<string, string>;
 };
 
@@ -60,13 +59,13 @@ export default function ProfileAssignments({
   isEditMode,
   selectedRoles,
   setSelectedRoles,
-  licensees,
-  licenseesLoading,
-  allLicenseesSelected,
-  onAllLicenseesToggle,
-  selectedLicenseeIds,
-  onLicenseeChange,
-  licenseeOptions,
+  licencees,
+  licenceesLoading,
+  allLicenceesSelected,
+  onAllLicenceesToggle,
+  selectedLicenceeIds,
+  onLicenceeChange,
+  licenceeOptions,
   locations,
   locationsLoading,
   allLocationsSelected,
@@ -92,38 +91,38 @@ export default function ProfileAssignments({
     
     if (isActuallyAllSelected) {
       return locations.map(loc => {
-        const lid = loc.licenseeId || loc.rel?.licensee || loc.rel?.licencee || loc.licensee;
-        const lic = licensees.find(l => String(l._id) === (Array.isArray(lid) ? String(lid[0]) : String(lid)));
+        const lid = loc.licenceeId || loc.rel?.licencee || loc.licencee;
+        const lic = licencees.find(l => String(l._id) === (Array.isArray(lid) ? String(lid[0]) : String(lid)));
         return {
           locationName: loc.name,
-          licenseeName: lic?.name || 'Unknown',
+          licenceeName: lic?.name || 'Unknown',
           id: String(loc._id),
         };
       }).sort((a, b) => a.locationName.localeCompare(b.locationName));
     }
 
-    const rows: Array<{ locationName: string; licenseeName: string; id: string }> = [];
+    const rows: Array<{ locationName: string; licenceeName: string; id: string }> = [];
     const processedLocationIds = new Set<string>();
 
     selectedLocationIds.forEach(id => {
       if (!id || id === 'all') return;
       
-      const licensee = licensees.find(l => String(l._id) === id);
-      if (licensee) {
-        // It's a licensee ID - find all locations for it
-        const licenseeLocations = locations.filter(loc => {
-          const lid = loc.licenseeId || loc.rel?.licensee || loc.rel?.licencee || loc.licensee;
+      const licencee = licencees.find(l => String(l._id) === id);
+      if (licencee) {
+        // It's a licencee ID - find all locations for it
+        const licenceeLocations = locations.filter(loc => {
+          const lid = loc.licenceeId || loc.rel?.licencee || loc.licencee;
           if (Array.isArray(lid)) {
-             return lid.some(l => String(l) === String(licensee._id));
+             return lid.some(l => String(l) === String(licencee._id));
           }
-          return String(lid) === String(licensee._id);
+          return String(lid) === String(licencee._id);
         });
         
-        licenseeLocations.forEach(loc => {
+        licenceeLocations.forEach(loc => {
           if (!processedLocationIds.has(String(loc._id))) {
             rows.push({
               locationName: loc.name,
-              licenseeName: licensee.name,
+              licenceeName: licencee.name,
               id: String(loc._id)
             });
             processedLocationIds.add(String(loc._id));
@@ -134,12 +133,12 @@ export default function ProfileAssignments({
         const loc = locations.find(l => String(l._id) === id);
         if (loc) {
           if (!processedLocationIds.has(String(loc._id))) {
-            const lid = loc.licenseeId || loc.rel?.licensee || loc.rel?.licencee || loc.licensee;
+            const lid = loc.licenceeId || loc.rel?.licencee || loc.licencee;
             const singleLid = Array.isArray(lid) ? lid[0] : lid;
-            const lic = licensees.find(l => String(l._id) === String(singleLid));
+            const lic = licencees.find(l => String(l._id) === String(singleLid));
             rows.push({
               locationName: loc.name,
-              licenseeName: lic?.name || 'Unknown',
+              licenceeName: lic?.name || 'Unknown',
               id: String(loc._id)
             });
             processedLocationIds.add(String(loc._id));
@@ -147,7 +146,7 @@ export default function ProfileAssignments({
         } else {
           rows.push({
             locationName: missingLocationNames[id] || id,
-            licenseeName: 'Unknown',
+            licenceeName: 'Unknown',
             id
           });
         }
@@ -155,9 +154,9 @@ export default function ProfileAssignments({
     });
 
     return rows.sort((a, b) => a.locationName.localeCompare(b.locationName));
-  }, [allLocationsSelected, selectedLocationIds, locations, licensees, missingLocationNames]);
+  }, [allLocationsSelected, selectedLocationIds, locations, licencees, missingLocationNames]);
 
-  // Only admins and developers can edit assigned locations and licensees
+  // Only admins and developers can edit assigned locations and licencees
   const canEditAssignments = userData.roles?.some(role =>
     ['admin', 'developer'].includes(role.toLowerCase())
   );
@@ -167,7 +166,7 @@ export default function ProfileAssignments({
       <CardHeader>
         <CardTitle>Assignments</CardTitle>
         <CardDescription>
-          Licensee and location access permissions
+          Licencee and location access permissions
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -234,54 +233,56 @@ export default function ProfileAssignments({
             )}
           </div>
 
-          {/* Licensees */}
+          {/* Licencees */}
           <div>
             <Label className="text-base font-medium text-gray-900">
-              Assigned Licensees
+              Assigned Licencees
             </Label>
             <p className="mb-4 text-sm text-gray-500">
-              Licensees you have access to
+              Licencees you have access to
             </p>
-            {licenseesLoading ? (
+            {licenceesLoading ? (
               <Skeleton className="h-10 w-full" />
             ) : isEditMode && canEditAssignments ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
                   <Checkbox
-                    id="allLicensees"
-                    checked={allLicenseesSelected}
+                    id="allLicencees"
+                    checked={allLicenceesSelected}
                     onCheckedChange={checked =>
-                      onAllLicenseesToggle(checked === true)
+                      onAllLicenceesToggle(checked === true)
                     }
-                    disabled={licensees.length === 0}
+                    disabled={licencees.length === 0}
                   />
                   <Label
-                    htmlFor="allLicensees"
+                    htmlFor="allLicencees"
                     className="cursor-pointer text-sm font-medium"
                   >
-                    All Licensees
+                    All Licencees
                   </Label>
                 </div>
-                {!allLicenseesSelected && (
+                {!allLicenceesSelected && (
                   <MultiSelectDropdown
-                    options={licenseeOptions}
-                    selectedIds={selectedLicenseeIds}
-                    onChange={onLicenseeChange}
-                    label="licensees"
+                    options={licenceeOptions}
+                    selectedIds={selectedLicenceeIds}
+                    onChange={onLicenceeChange}
+                    label="licencees"
                     showSelectAll
                   />
                 )}
               </div>
             ) : (
               <div className="text-sm font-medium text-gray-600">
-                {selectedLicenseeIds.length
-                  ? selectedLicenseeIds
-                      .map(
-                        id => licensees.find(l => String(l._id) === id)?.name || id
-                      )
-                      .filter(Boolean)
-                      .join(', ')
-                  : 'No licensees assigned'}
+                {allLicenceesSelected
+                  ? 'All Licencees'
+                  : selectedLicenceeIds.length
+                    ? selectedLicenceeIds
+                        .map(
+                          id => licencees.find(l => String(l._id) === id)?.name || id
+                        )
+                        .filter(Boolean)
+                        .join(', ')
+                    : 'No licencees assigned'}
               </div>
             )}
           </div>
@@ -325,7 +326,7 @@ export default function ProfileAssignments({
                         Location
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">
-                        Licensee
+                        Licencee
                       </th>
                     </tr>
                   </thead>
@@ -337,7 +338,7 @@ export default function ProfileAssignments({
                             {row.locationName}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-600">
-                            {row.licenseeName}
+                            {row.licenceeName}
                           </td>
                         </tr>
                       ))

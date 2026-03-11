@@ -2,7 +2,7 @@
  * useAdministrationUserCounts Hook
  *
  * Fetches user counts by role for the administration page.
- * Filters by licensee and excludes users with deletedAt >= 2025-01-01.
+ * Filters by licencee and excludes users with deletedAt >= 2025-01-01.
  * Includes disabled users.
  */
 
@@ -19,7 +19,7 @@ type UserCounts = {
   managers: number;
 };
 
-export function useAdministrationUserCounts(selectedLicensee: string | null) {
+export function useAdministrationUserCounts(selectedLicencee: string | null) {
   const [counts, setCounts] = useState<UserCounts | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -33,8 +33,8 @@ export function useAdministrationUserCounts(selectedLicensee: string | null) {
 
       try {
         const params: Record<string, string> = {};
-        if (selectedLicensee && selectedLicensee !== 'all') {
-          params.licensee = selectedLicensee;
+        if (selectedLicencee && selectedLicencee !== 'all') {
+          params.licencee = selectedLicencee;
         }
 
         const response = await axios.get<{
@@ -66,7 +66,7 @@ export function useAdministrationUserCounts(selectedLicensee: string | null) {
     return () => {
       isMounted = false;
     };
-  }, [selectedLicensee]);
+  }, [selectedLicencee]);
 
   return { counts, isLoading, error };
 }

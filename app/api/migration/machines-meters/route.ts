@@ -1,7 +1,7 @@
 import { connectDB, disconnectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import UserModel from '@/app/api/lib/models/user';
@@ -22,7 +22,7 @@ const TIMEZONE_OFFSET = -4;
 // --- Migration Types ---
 type MigrationPeriod = 'Today' | 'Yesterday';
 
-type LeanLicensee = {
+type LeanLicencee = {
     _id: string;
     name: string;
 };
@@ -30,9 +30,9 @@ type LeanLicensee = {
 type LeanLocation = {
     _id: string;
     gameDayOffset?: number;
-    licensee?: string;
+    licencee?: string;
     rel?: {
-        licensee?: string;
+        licencee?: string;
     };
 };
 
@@ -66,13 +66,13 @@ export async function POST(request: Request) {
 
         // STEP 2: Prep Export
         const body: {
-            licenseeName?: string;
+            licenceeName?: string;
             migrateMeters?: boolean;
             daysToMigrate?: MigrationPeriod[];
         } = await request.json().catch(() => ({}));
 
         const { 
-            licenseeName = 'Cabana',
+            licenceeName = 'Cabana',
             migrateMeters = true
         } = body;
 
@@ -82,21 +82,21 @@ export async function POST(request: Request) {
         await fs.mkdir(EXPORT_DIR, { recursive: true });
         log(`📁 Exporting JSON files to: ${EXPORT_DIR}`);
 
-        // 1. Export Licensees
-        log('🏢 Fetching licensees...');
-        const licensees = (await Licensee.find({}).lean()) as unknown as LeanLicensee[];
-        if (licensees.length > 0) {
-            await fs.writeFile(path.join(EXPORT_DIR, 'licensees.json'), JSON.stringify(licensees, null, 2));
-            log(`   ✅ ${licensees.length} Licensees exported.`);
+        // 1. Export Licencees
+        log('🏢 Fetching licencees...');
+        const licencees = (await Licencee.find({}).lean()) as unknown as LeanLicencee[];
+        if (licencees.length > 0) {
+            await fs.writeFile(path.join(EXPORT_DIR, 'licencees.json'), JSON.stringify(licencees, null, 2));
+            log(`   ✅ ${licencees.length} Licencees exported.`);
         }
 
-        const targetLicensee = licensees.find((l) => l.name === licenseeName);
-        const targetLicenseeId = targetLicensee?._id?.toString();
+        const targetLicencee = licencees.find((l) => l.name === licenceeName);
+        const targetLicenceeId = targetLicencee?._id?.toString();
 
-        if (!targetLicenseeId) {
-            throw new Error(`Licensee '${licenseeName}' not found in source database.`);
+        if (!targetLicenceeId) {
+            throw new Error(`Licencee '${licenceeName}' not found in source database.`);
         }
-        log(`📍 Targeting licensee: ${licenseeName} (${targetLicenseeId})`);
+        log(`📍 Targeting licencee: ${licenceeName} (${targetLicenceeId})`);
 
         // 2. Export Countries
         log('🌍 Fetching countries...');
@@ -117,16 +117,16 @@ export async function POST(request: Request) {
                 const offset = loc.gameDayOffset ?? 8;
                 locationOffsets.set(loc._id.toString(), offset);
                 
-                if (loc.licensee?.toString() === targetLicenseeId || loc.rel?.licensee?.toString() === targetLicenseeId) {
+                if (loc.licencee?.toString() === targetLicenceeId || loc.rel?.licencee?.toString() === targetLicenceeId) {
                     targetLocationIds.push(loc._id.toString());
                 }
             });
             await fs.writeFile(path.join(EXPORT_DIR, 'gaminglocations.json'), JSON.stringify(locations, null, 2));
-            log(`   ✅ ${locations.length} Locations exported. (${targetLocationIds.length} for ${licenseeName})`);
+            log(`   ✅ ${locations.length} Locations exported. (${targetLocationIds.length} for ${licenceeName})`);
         }
 
         // 4. Export Machines
-        log(`🎰 Fetching machines for ${licenseeName}...`);
+        log(`🎰 Fetching machines for ${licenceeName}...`);
         const machines = await Machine.find({
             gamingLocation: { $in: targetLocationIds }
         }).lean();
@@ -198,10 +198,10 @@ export async function POST(request: Request) {
         
         return NextResponse.json({
             success: true,
-            licensee: licenseeName,
+            licencee: licenceeName,
             exportPath: EXPORT_DIR,
             counts: {
-                licensees: licensees.length,
+                licencees: licencees.length,
                 locations: locations.length,
                 targetLocations: targetLocationIds.length,
                 machines: machines.length,

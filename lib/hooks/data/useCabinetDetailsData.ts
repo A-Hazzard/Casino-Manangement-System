@@ -15,7 +15,7 @@ import { dateRange } from '@/lib/types/index';
 
 type UseCabinetDetailsDataProps = {
   slug: string;
-  selectedLicensee: string;
+  selectedLicencee: string;
   activeMetricsFilter: string | null;
   customDateRange?: dateRange;
   dateFilterInitialized: boolean;
@@ -34,7 +34,7 @@ type UseCabinetDetailsDataReturn = {
 
 export function useCabinetDetailsData({
   slug,
-  selectedLicensee,
+  selectedLicencee,
   activeMetricsFilter,
   customDateRange,
   dateFilterInitialized,
@@ -97,7 +97,7 @@ export function useCabinetDetailsData({
             ? { from: customDateRange.startDate, to: customDateRange.endDate }
             : undefined,
           currency,
-          selectedLicensee || null,
+          selectedLicencee || null,
           signal
         );
       });
@@ -196,7 +196,7 @@ export function useCabinetDetailsData({
     slug,
     activeMetricsFilter,
     customDateRange,
-    selectedLicensee,
+    selectedLicencee,
     displayCurrency,
     makeRequest,
   ]);

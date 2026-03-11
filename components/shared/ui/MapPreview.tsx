@@ -9,7 +9,7 @@
  * - Fullscreen mode
  * - GSAP animations
  * - Location popups with metrics
- * - Licensee filtering
+ * - Licencee filtering
  * - Dynamic Leaflet imports (SSR disabled)
  *
  * Very large component (~795 lines) handling map display and interactions.
@@ -48,7 +48,7 @@ import {
     PerformanceLevel,
     getPerformanceLevel as getCommonPerformanceLevel,
 } from '@/lib/utils/financial';
-import { getMapCenterByLicensee } from '@/lib/utils/location';
+import { getMapCenterByLicencee } from '@/lib/utils/location';
 
 // Dynamically import react-leaflet components (SSR disabled)
 const MapContainer = dynamic(
@@ -327,13 +327,13 @@ export default function MapPreview(props: MapPreviewProps) {
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [userDefaultCenter, setUserDefaultCenter] = useState<[number, number]>([
     10.6599, -61.5199,
-  ]); // Trinidad center as initial map center (dynamically updated based on licensee)
+  ]); // Trinidad center as initial map center (dynamically updated based on licencee)
   const previewMapRef = useRef<Record<string, unknown> | null>(null);
   const modalMapRef = useRef<Record<string, unknown> | null>(null);
   const router = useRouter();
 
   // Get Zustand state for reactivity
-  const { selectedLicensee, activeMetricsFilter, customDateRange } =
+  const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
 
   // Initialize Leaflet on client side
@@ -389,7 +389,7 @@ export default function MapPreview(props: MapPreviewProps) {
     };
   }, [mapReady]);
 
-  const normalizedSelected = (selectedLicensee || '').toLowerCase();
+  const normalizedSelected = (selectedLicencee || '').toLowerCase();
 
   const getLocationCenter = (location: Location): [number, number] | null => {
     if (!location?.geoCoords || !location.geoCoords.latitude) {
@@ -402,39 +402,39 @@ export default function MapPreview(props: MapPreviewProps) {
     return [location.geoCoords.latitude, longitude];
   };
 
-  const matchesLicensee = (
+  const matchesLicencee = (
     location: Location,
-    licenseeKey: string
+    licenceeKey: string
   ): boolean => {
-    if (!licenseeKey) return false;
+    if (!licenceeKey) return false;
 
     const metadata = location as Location & {
-      licenseeId?: string | null;
-      rel?: { licensee?: string | string[] | null };
+      licenceeId?: string | null;
+      rel?: { licencee?: string | string[] | null };
     };
 
-    const licenseeCandidates: string[] = [];
+    const licenceeCandidates: string[] = [];
 
-    if (metadata.licenseeId) {
-      licenseeCandidates.push(String(metadata.licenseeId).toLowerCase());
+    if (metadata.licenceeId) {
+      licenceeCandidates.push(String(metadata.licenceeId).toLowerCase());
     }
 
-    const relLicensee = metadata.rel?.licensee;
-    if (Array.isArray(relLicensee)) {
-      relLicensee.forEach(value => {
+    const relLicencee = metadata.rel?.licencee;
+    if (Array.isArray(relLicencee)) {
+      relLicencee.forEach(value => {
         if (value) {
-          licenseeCandidates.push(String(value).toLowerCase());
+          licenceeCandidates.push(String(value).toLowerCase());
         }
       });
-    } else if (relLicensee) {
-      licenseeCandidates.push(String(relLicensee).toLowerCase());
+    } else if (relLicencee) {
+      licenceeCandidates.push(String(relLicencee).toLowerCase());
     }
 
     if (metadata.name) {
-      licenseeCandidates.push(String(metadata.name).toLowerCase());
+      licenceeCandidates.push(String(metadata.name).toLowerCase());
     }
 
-    return licenseeCandidates.includes(licenseeKey);
+    return licenceeCandidates.includes(licenceeKey);
   };
 
   const validLocations = useMemo(() => {
@@ -460,7 +460,7 @@ export default function MapPreview(props: MapPreviewProps) {
       return validLocations;
     }
     return validLocations.filter((location) =>
-      matchesLicensee(location, normalizedSelected)
+      matchesLicencee(location, normalizedSelected)
     );
   }, [normalizedSelected, validLocations]);
 
@@ -482,9 +482,9 @@ export default function MapPreview(props: MapPreviewProps) {
   const centersEqual = (a: [number, number], b: [number, number]): boolean =>
     a[0] === b[0] && a[1] === b[1];
 
-  // Update map center when licensee or locations change
+  // Update map center when licencee or locations change
   useEffect(() => {
-    const fallbackCenter = getMapCenterByLicensee(selectedLicensee);
+    const fallbackCenter = getMapCenterByLicencee(selectedLicencee);
     let nextCenter: [number, number] | null = null;
 
     if (normalizedSelected && normalizedSelected !== 'all') {
@@ -501,7 +501,7 @@ export default function MapPreview(props: MapPreviewProps) {
     setUserDefaultCenter(prev =>
       centersEqual(prev, resolved) ? prev : resolved
     );
-  }, [selectedLicensee, normalizedSelected, filteredLocations, validLocations]);
+  }, [selectedLicencee, normalizedSelected, filteredLocations, validLocations]);
 
   // Handle external props vs internal fetch
   useEffect(() => {
@@ -552,8 +552,8 @@ export default function MapPreview(props: MapPreviewProps) {
         // No valid timePeriod, skip the request
         return;
       }
-      if (selectedLicensee) {
-        params.append('licensee', selectedLicensee);
+      if (selectedLicencee) {
+        params.append('licencee', selectedLicencee);
       }
 
       const requestKey = `/api/locationAggregation?${params.toString()}`;
@@ -586,7 +586,7 @@ export default function MapPreview(props: MapPreviewProps) {
   }, [
     activeMetricsFilter,
     customDateRange,
-    selectedLicensee,
+    selectedLicencee,
     props.locationAggregates,
   ]);
 
@@ -635,7 +635,7 @@ export default function MapPreview(props: MapPreviewProps) {
   };
 
   // Search functionality
-  // CRITICAL: Search only through filteredLocations (already filtered by licensee)
+  // CRITICAL: Search only through filteredLocations (already filtered by licencee)
   // This ensures search results match what's shown on the map
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -646,8 +646,8 @@ export default function MapPreview(props: MapPreviewProps) {
       return;
     }
 
-    // Search through filteredLocations (already filtered by licensee and coordinates)
-    // This ensures search results only show locations from the selected licensee
+    // Search through filteredLocations (already filtered by licencee and coordinates)
+    // This ensures search results only show locations from the selected licencee
     const filtered = filteredLocations.filter((location) => {
       const locationName = location.name || location.locationName || '';
       return locationName.toLowerCase().includes(query.toLowerCase());
@@ -885,7 +885,7 @@ export default function MapPreview(props: MapPreviewProps) {
         <div className="relative h-48 w-full rounded-lg sm:h-56">
           {mapReady && (
             <MapContainer
-              center={userDefaultCenter} // Always use licensee-based center
+              center={userDefaultCenter} // Always use licencee-based center
               zoom={10}
               className="z-0 h-full w-full rounded-lg"
               ref={handlePreviewMapCreated}
@@ -1033,7 +1033,7 @@ export default function MapPreview(props: MapPreviewProps) {
 
               {mapReady && (
                 <MapContainer
-                  center={userDefaultCenter} // Always use licensee-based center
+                  center={userDefaultCenter} // Always use licencee-based center
                   zoom={10}
                   className="h-[50vh] w-full rounded-lg sm:h-[60vh] md:h-[70vh]"
                   ref={handleModalMapCreated}

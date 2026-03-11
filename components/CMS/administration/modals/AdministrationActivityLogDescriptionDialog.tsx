@@ -133,7 +133,7 @@ function AdministrationActivityLogDescriptionDialog({
         return 'outline';
       case 'collection':
         return 'destructive';
-      case 'licensee':
+      case 'licencee':
         return 'default';
       case 'member':
         return 'secondary';

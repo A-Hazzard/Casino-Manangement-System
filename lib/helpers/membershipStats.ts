@@ -3,11 +3,11 @@
  *
  * Provides helper functions for fetching membership statistics and member counts.
  * It handles API calls to retrieve member count data with optional filtering
- * by licensee, location, and machine type.
+ * by licencee, location, and machine type.
  *
  * Features:
  * - Fetches member count from API
- * - Supports licensee filtering
+ * - Supports licencee filtering
  * - Supports location filtering
  * - Supports machine type filtering (SMIB/No SMIB/Local Server/Membership)
  * - Abort signal support for request cancellation
@@ -21,14 +21,14 @@ export type MembershipStats = {
 
 /**
  * Fetches member count from the API
- * @param licensee - Licensee ID to filter by
+ * @param licencee - Licencee ID to filter by
  * @param locationId - Optional location ID for specific location stats
  * @param machineTypeFilter - Optional filter string (comma-separated) for SMIB/No SMIB/Local Server/Membership
  * @param signal - Optional AbortSignal to cancel the request
  * @returns Promise<MembershipStats>
  */
 export async function fetchMembershipStats(
-  licensee?: string,
+  licencee?: string,
   locationId?: string,
   machineTypeFilter?: string | null,
   signal?: AbortSignal
@@ -36,8 +36,8 @@ export async function fetchMembershipStats(
   try {
     const params = new URLSearchParams();
 
-    if (licensee && licensee !== 'all') {
-      params.append('licensee', licensee);
+    if (licencee && licencee !== 'all') {
+      params.append('licencee', licencee);
     }
 
     if (locationId) {

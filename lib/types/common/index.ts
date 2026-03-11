@@ -5,12 +5,12 @@
  *
  * Features:
  * - Country types
- * - Licensee types
+ * - Licencee types
  * - Logger types
  * - MongoDB types
  */
 
 export * from './country';
-export * from './licensee';
+export * from './licencee';
 export * from './logger';
 export * from './mongo';

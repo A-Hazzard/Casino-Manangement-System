@@ -7,13 +7,13 @@
 
 ## Recent Performance Optimizations (November 11th, 2025) 🚀
 
-### Dashboard API - Parallel Licensee Processing
+### Dashboard API - Parallel Licencee Processing
 
 **API:** `GET /api/dashboard/totals`
 
 **Optimization:**
 
-- Process ALL licensees in PARALLEL instead of sequentially
+- Process ALL licencees in PARALLEL instead of sequentially
 - Uses `Promise.all()` for concurrent queries
 
 **Performance:**
@@ -81,7 +81,7 @@ Aggregates location-level metrics including machine counts, SAS status, and fina
 - `timePeriod`: "Today", "Yesterday", "7d", "30d", "All Time", "Custom"
 - `startDate`: ISO date string for custom range
 - `endDate`: ISO date string for custom range
-- `licensee`: Filter by licensee ID or name
+- `licencee`: Filter by licencee ID or name
 - `machineTypeFilter`: Comma-separated categories:
   - `LocalServersOnly`, `SMIBLocationsOnly`, `NoSMIBLocation`, `MembershipOnly`
   - `MissingCoordinates`, `HasCoordinates`
@@ -101,7 +101,7 @@ Provides detailed machine performance analysis.
 - `onlineStatus`: `online`, `offline`, `all`
 - `search`: Search term for machine ID or name
 - `locationId`: Filter by location(s)
-- `licensee`: Filter by licensee
+- `licencee`: Filter by licencee
 
 ### 3. Location Reports API
 **Endpoint:** `GET /api/reports/locations`
@@ -111,7 +111,7 @@ Aggregates performance metrics at the location level with detailed breakdown.
 
 #### Query Parameters
 - `timePeriod`: Today, Yesterday, 7d, 30d, Custom
-- `licensee`: Filter by licensee
+- `licencee`: Filter by licencee
 - `search`: Search by location name
 - `machineTypeFilter`: Status filters
 - `summary`: If true, returns simplified summary data
@@ -316,7 +316,7 @@ switch (timePeriod) {
 The Machines Aggregation API calculates financial metrics per machine by aggregating meter data. The process:
 
 1. **Location Processing**:
-   - Fetches all accessible locations (respects user permissions and licensee filter)
+   - Fetches all accessible locations (respects user permissions and licencee filter)
    - Calculates gaming day range for each location based on location's `gameDayOffset`
    - Gets all machines for accessible locations from `machines` collection
 
@@ -406,12 +406,12 @@ The Machines Aggregation API calculates financial metrics per machine by aggrega
 ```javascript
 // Main aggregation pipeline with simplified two-phase approach
 const locationPipeline = [
-  // 1. Match locations (non-deleted, optional licensee filter)
+  // 1. Match locations (non-deleted, optional licencee filter)
   {
     $match: {
       deletedAt: { $in: [null, new Date(-1)] },
-      ...(licenseeLocationIds && licenseeLocationIds.length > 0
-        ? { _id: { $in: licenseeLocationIds } }
+      ...(licenceeLocationIds && licenceeLocationIds.length > 0
+        ? { _id: { $in: licenceeLocationIds } }
         : {}),
     },
   },
@@ -532,7 +532,7 @@ const locationPipeline = [
 - `page` - Pagination page number (default: 1)
 - `limit` - Items per page (default: 10, max: 10)
 - `search` - Search term for machine ID or location name
-- `licensee` - Filter by licensee ID
+- `licencee` - Filter by licencee ID
 
 **Response Fields:**
 
@@ -668,7 +668,7 @@ machineSchema.index({ lastSasMeterAt: -1 });
 
 #### Query Optimization
 
-- **Licensee Pre-filtering**: Prefetch location IDs for licensee filtering
+- **Licencee Pre-filtering**: Prefetch location IDs for licencee filtering
 - **Pagination**: Server-side pagination with skip/limit
 - **Aggregation Limits**: Timeout and memory limits for large datasets
 - **Parallel Processing**: Concurrent data fetching where possible
@@ -688,7 +688,7 @@ try {
     db,
     { startDate, endDate },
     showAllLocations,
-    licensee,
+    licencee,
     machineTypeFilter,
     page,
     limit
@@ -788,7 +788,7 @@ console.log(`Location aggregation completed in ${duration}ms`);
 console.error('❌ LocationAggregation API Error:', {
   error: error.message,
   stack: error.stack,
-  params: { timePeriod, licensee, page, limit },
+  params: { timePeriod, licencee, page, limit },
   timestamp: new Date().toISOString(),
 });
 ```
@@ -818,7 +818,7 @@ console.error('❌ LocationAggregation API Error:', {
   deletedAt: Date | null; // Soft delete flag
   isLocalServer: boolean; // Server type flag
   rel: {
-    licensee: string; // Licensee reference
+    licencee: string; // Licencee reference
   }
 }
 ```
@@ -867,7 +867,7 @@ type GamingLocation = {
   deletedAt: Date | null; // Soft delete flag
   isLocalServer: boolean; // Server type flag
   rel: {
-    licensee: string; // Licensee reference
+    licencee: string; // Licencee reference
   };
   // ... other location fields
 };
@@ -970,7 +970,7 @@ type MetersReportParams = {
   page?: number; // Pagination page number (default: 1)
   limit?: number; // Items per page (default: 10, max: 10)
   search?: string; // Search term for machine ID or location name
-  licensee?: string; // Filter by licensee ID
+  licencee?: string; // Filter by licencee ID
 };
 ```
 

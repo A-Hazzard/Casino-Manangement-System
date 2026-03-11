@@ -14,11 +14,11 @@
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
 import PageLayout from '@/components/shared/layout/PageLayout';
-import { NoLicenseeAssigned } from '@/components/shared/ui/NoLicenseeAssigned';
+import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import { CabinetDetailsLoadingState } from '@/components/shared/ui/skeletons/CabinetDetailSkeletons';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
-import { shouldShowNoLicenseeMessage } from '@/lib/utils/licensee';
+import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 
 // Custom Hooks
 import { useMachinePageData } from '@/lib/hooks/machines/useMachinePageData';
@@ -34,7 +34,7 @@ import CabinetsDetailsSummarySection from '@/components/CMS/cabinets/details/Cab
 export default function MachineDetailsPageContent() {
   const hook = useMachinePageData();
   const { user } = useUserStore();
-  const { setSelectedLicensee, selectedLicensee } = useDashBoardStore();
+  const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
 
   const {
     cabinet,
@@ -52,18 +52,18 @@ export default function MachineDetailsPageContent() {
     onLocationClick,
   } = hook;
 
-  // Show "No Licensee Assigned" message for non-admin users without licensees
-  if (shouldShowNoLicenseeMessage(user)) {
+  // Show "No Licencee Assigned" message for non-admin users without licencees
+  if (shouldShowNoLicenceeMessage(user)) {
     return (
-      <PageLayout headerProps={{ selectedLicensee, setSelectedLicensee }} pageTitle="Machine Details" hideOptions hideLicenseeFilter mainClassName="flex flex-col flex-1 p-4 md:p-6" showToaster>
-        <NoLicenseeAssigned />
+      <PageLayout headerProps={{ selectedLicencee, setSelectedLicencee }} pageTitle="Machine Details" hideOptions hideLicenceeFilter mainClassName="flex flex-col flex-1 p-4 md:p-6" showToaster>
+        <NoLicenceeAssigned />
       </PageLayout>
     );
   }
 
   // Show loading state while fetching cabinet data
   if (!cabinet && !error) {
-    return <CabinetDetailsLoadingState selectedLicensee={selectedLicensee} setSelectedLicensee={setSelectedLicensee} error={error} />;
+    return <CabinetDetailsLoadingState selectedLicencee={selectedLicencee} setSelectedLicencee={setSelectedLicencee} error={error} />;
   }
 
   // Don't render if there's an error or no cabinet data
@@ -75,9 +75,9 @@ export default function MachineDetailsPageContent() {
       <CabinetsDeleteCabinetModal />
 
       <PageLayout
-        headerProps={{ selectedLicensee, setSelectedLicensee }}
+        headerProps={{ selectedLicencee, setSelectedLicencee }}
         pageTitle=""
-        hideOptions hideLicenseeFilter
+        hideOptions hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
         showToaster={false}
         onRefresh={handleRefresh}
@@ -87,7 +87,7 @@ export default function MachineDetailsPageContent() {
           <CabinetsDetailsSummarySection
             cabinet={cabinet}
             locationName={locationName}
-            selectedLicensee={selectedLicensee}
+            selectedLicencee={selectedLicencee}
             isOnline={isOnline}
             refreshing={refreshing}
             canEditMachines={canManageMachines}

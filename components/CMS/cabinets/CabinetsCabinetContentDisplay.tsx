@@ -19,11 +19,11 @@ import { Button } from '@/components/shared/ui/button';
 import ClientOnly from '@/components/shared/ui/common/ClientOnly';
 import { NetworkError } from '@/components/shared/ui/errors';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
-import { fetchLicensees } from '@/lib/helpers/client';
+import { fetchLicencees } from '@/lib/helpers/client';
 import type { CabinetSortOption } from '@/lib/hooks/data';
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
-import { getLicenseeName } from '@/lib/utils/licensee';
+import { getLicenceeName } from '@/lib/utils/licencee';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { animateCards, animateTableRows } from '@/lib/utils/ui';
 import type { GamingMachine as Machine } from '@/shared/types/entities';
@@ -50,7 +50,7 @@ type CabinetsCabinetContentDisplayProps = {
   onDelete?: (machine: Machine) => void;
   onRetry: () => void;
   transformCabinet: (cabinet: Machine) => Machine;
-  selectedLicensee?: string;
+  selectedLicencee?: string;
   totalCount?: number;
   /**
    * When false, disable header click sorting in the table.
@@ -78,7 +78,7 @@ export const CabinetsCabinetContentDisplay = ({
   onPageChange,
   onRetry,
   transformCabinet,
-  selectedLicensee = 'all',
+  selectedLicencee = 'all',
   enableHeaderSorting = true,
   showSortIcons = true,
   totalCount,
@@ -87,8 +87,8 @@ export const CabinetsCabinetContentDisplay = ({
   const cardsRef = useRef<HTMLDivElement>(null);
   const { openEditModal, openDeleteModal } = useCabinetsActionsStore();
   const user = useUserStore(state => state.user);
-  const licenseeName =
-    getLicenseeName(selectedLicensee) || selectedLicensee || 'any licensee';
+  const licenceeName =
+    getLicenceeName(selectedLicencee) || selectedLicencee || 'any licencee';
 
   /**
    * Determines if the user can edit machines.
@@ -133,39 +133,39 @@ export const CabinetsCabinetContentDisplay = ({
     return false;
   }, []);
 
-  const [licenseeNames, setLicenseeNames] = useState<string[]>([]);
+  const [licenceeNames, setLicenceeNames] = useState<string[]>([]);
 
   /**
-   * Fetches licensee names for better empty state messaging
+   * Fetches licencee names for better empty state messaging
    */
   useEffect(() => {
-    const loadLicenseeNames = async () => {
+    const loadLicenceeNames = async () => {
       // Use only new field
-      let userLicensees: string[] = [];
+      let userLicencees: string[] = [];
       if (
-        Array.isArray(user?.assignedLicensees) &&
-        user.assignedLicensees.length > 0
+        Array.isArray(user?.assignedLicencees) &&
+        user.assignedLicencees.length > 0
       ) {
-        userLicensees = user.assignedLicensees;
+        userLicencees = user.assignedLicencees;
       }
 
-      if (userLicensees.length > 0) {
-        const result = await fetchLicensees();
-        const allLicensees = Array.isArray(result.licensees)
-          ? result.licensees
+      if (userLicencees.length > 0) {
+        const result = await fetchLicencees();
+        const allLicencees = Array.isArray(result.licencees)
+          ? result.licencees
           : [];
-        const names = userLicensees
+        const names = userLicencees
           .map(id => {
-            const licensee = allLicensees.find(
+            const licencee = allLicencees.find(
               l => String(l._id) === String(id)
             );
-            return licensee?.name;
+            return licencee?.name;
           })
           .filter((name): name is string => name !== undefined);
-        setLicenseeNames(names);
+        setLicenceeNames(names);
       }
     };
-    loadLicenseeNames();
+    loadLicenceeNames();
   }, [user]);
 
   /**
@@ -276,19 +276,19 @@ export const CabinetsCabinetContentDisplay = ({
     } else if (allCabinets.length === 0) {
       if (isAdmin) {
         emptyMessage =
-          selectedLicensee &&
-          selectedLicensee !== 'all' &&
-          selectedLicensee !== ''
-            ? `No machines found for ${licenseeName}.`
+          selectedLicencee &&
+          selectedLicencee !== 'all' &&
+          selectedLicencee !== ''
+            ? `No machines found for ${licenceeName}.`
             : 'No machines found in the system.';
-      } else if (licenseeNames.length > 0) {
-        const licenseeList = licenseeNames.join(', ');
-        emptyMessage = `No machines found in your allowed locations for ${licenseeList}.`;
+      } else if (licenceeNames.length > 0) {
+        const licenceeList = licenceeNames.join(', ');
+        emptyMessage = `No machines found in your allowed locations for ${licenceeList}.`;
       } else {
         emptyMessage = 'No machines found in your allowed locations.';
       }
     } else {
-      emptyMessage = `No machines found for ${selectedLicensee === 'all' ? 'any licensee' : licenseeName}.`;
+      emptyMessage = `No machines found for ${selectedLicencee === 'all' ? 'any licencee' : licenceeName}.`;
     }
 
     return (
@@ -354,6 +354,10 @@ export const CabinetsCabinetContentDisplay = ({
                       : undefined
                 }
                 installedGame={machine.installedGame || machine.game || ''}
+                custom={machine.custom}
+                online={machine.online}
+                offlineTimeLabel={machine.offlineTimeLabel}
+                actualOfflineTime={machine.actualOfflineTime}
                 onEdit={() => handleEdit(machine)}
                 onDelete={() => handleDelete(machine)}
                 canEditMachines={canEditMachines}

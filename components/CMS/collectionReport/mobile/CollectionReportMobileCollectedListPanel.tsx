@@ -3,7 +3,7 @@
 import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
-import { ArrowLeft, Edit3, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit3, Trash2, Info, SendHorizontal } from 'lucide-react';
 import React from 'react';
 
 type MobileCollectedListPanelProps = {
@@ -51,6 +51,9 @@ type MobileCollectedListPanelProps = {
   onDeleteMachine: (machineId: string) => void;
   onFinancialDataChange: (field: string, value: string) => void;
   onCreateReport: () => void;
+  onCollectedAmountChange?: (value: string) => void;
+  baseBalanceCorrection?: string;
+  onBaseBalanceCorrectionChange?: (value: string) => void;
 };
 
 /**
@@ -72,13 +75,16 @@ export default function CollectionReportMobileCollectedListPanel({
   updateAllDate,
   onUpdateAllDate,
   onApplyAllDates,
-  formatMachineDisplay,
+  formatMachineDisplay: _formatMachineDisplay,
   formatDate,
   sortMachines,
   onEditMachine,
   onDeleteMachine,
   onFinancialDataChange,
   onCreateReport,
+  onCollectedAmountChange,
+  baseBalanceCorrection: _baseBalanceCorrection,
+  onBaseBalanceCorrectionChange,
 }: MobileCollectedListPanelProps) {
   // Filter and sort machines
   const filteredMachines = collectedMachines.filter(machine => {
@@ -103,51 +109,51 @@ export default function CollectionReportMobileCollectedListPanel({
 
   return (
     <div
-      className={`fixed z-[90] h-full w-full transform bg-white shadow-xl transition-all duration-300 ease-in-out md:h-[90vh] md:rounded-xl ${
+      className={`fixed inset-0 z-[90] flex h-full w-full transform flex-col bg-white shadow-xl transition-all duration-300 ease-in-out md:h-[90vh] md:rounded-xl ${
         isVisible
-          ? 'inset-0 translate-y-0 opacity-100 md:inset-auto md:left-[50%] md:top-[50%] md:-translate-x-1/2 md:-translate-y-1/2'
-          : 'pointer-events-none inset-0 translate-y-full opacity-0 md:inset-auto md:left-[50%] md:top-[50%] md:-translate-x-1/2 md:-translate-y-1/2 md:translate-y-[-50%]'
+          ? 'translate-y-0 opacity-100 md:left-[50%] md:top-[50%] md:-translate-x-1/2 md:-translate-y-1/2'
+          : 'translate-y-full opacity-0 md:left-[50%] md:top-[50%] md:-translate-x-1/2 md:-translate-y-1/2'
       } `}
     >
       {isVisible && (
-        <div className="flex h-full w-full flex-col overflow-hidden">
+        <div className="flex h-full w-full flex-col overflow-hidden bg-white">
           {/* List Header */}
-          <div className="flex items-center justify-between rounded-t-xl border-b bg-green-600 p-4 text-white md:rounded-t-xl">
-            <button
-              onClick={onBack}
-              className="rounded-full p-2 hover:bg-green-700"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div className="flex items-center gap-3">
-              <h3 className="text-lg font-bold">
-                Collected Machines ({collectedMachines.length})
+          <div className="sticky top-0 z-[100] flex items-center justify-between border-b bg-white px-2 py-3 shadow-sm">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={onBack}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 active:scale-95"
+              >
+                <ArrowLeft className="h-6 w-6" />
+              </button>
+              <h3 className="text-lg font-bold text-gray-900">
+                Collected ({collectedMachines.length})
               </h3>
-              {collectedMachines.length > 0 && (
-                <div className="flex rounded-lg bg-green-700 p-1">
-                  <button
-                    onClick={() => onToggleView(false)}
-                    className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
-                      !isViewingFinancialForm
-                        ? 'bg-white text-green-600'
-                        : 'text-white hover:bg-green-600'
-                    }`}
-                  >
-                    List
-                  </button>
-                  <button
-                    onClick={() => onToggleView(true)}
-                    className={`rounded px-3 py-1 text-sm font-medium transition-colors ${
-                      isViewingFinancialForm
-                        ? 'bg-white text-green-600'
-                        : 'text-white hover:bg-green-600'
-                    }`}
-                  >
-                    Financial
-                  </button>
-                </div>
-              )}
             </div>
+            {collectedMachines.length > 0 && (
+              <div className="mr-2 flex rounded-full bg-gray-100 p-1">
+                <button
+                  onClick={() => onToggleView(false)}
+                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                    !isViewingFinancialForm
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  List
+                </button>
+                <button
+                  onClick={() => onToggleView(true)}
+                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                    isViewingFinancialForm
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Financial
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Content Area - Show either machine list or financial form */}
@@ -174,31 +180,34 @@ export default function CollectionReportMobileCollectedListPanel({
                     <div className="space-y-4">
                       {/* Amount to Collect */}
                       <div>
-                        <label className="mb-1 flex items-center text-sm font-medium">
+                        <label className="mb-1 flex items-center text-sm font-bold text-gray-700">
                           Amount to Collect *
                           <CalculationHelp 
                             title="Amount to Collect" 
-                            formula="(Gross - Variance - Advance) - PartnerProfit + PrevBalance" 
-                            description="The total cash that the collector is expected to retrieve."
+                            formula="(Total Meters In - Total Meters Out) - Variance - Advance - Partner Share + Opening Balance" 
+                            description="This is the target amount of cash you should have in hand. It takes the total machine revenue and subtracts expenses (Advance/Variance) and the Partner's profit share, then adds any balance carried over from the last collection."
                           />
                         </label>
                         <input
                           type="text"
                           value={financials.amountToCollect}
                           readOnly
-                          className="w-full rounded-lg border bg-gray-100 p-3 font-semibold text-gray-700"
+                          className="w-full cursor-not-allowed rounded-lg border bg-gray-50 p-3 font-semibold text-gray-900"
                           title="Auto-calculated based on machine data and financial inputs"
                         />
+                        <p className="mt-1 text-[10px] text-gray-500">
+                          Calculated automatically based on meters and location share settings.
+                        </p>
                       </div>
 
                       {/* Balance Correction */}
                       <div>
-                        <label className="mb-1 flex items-center text-sm font-medium">
+                        <label className="mb-1 flex items-center text-sm font-bold text-gray-700">
                           Balance Correction *
                           <CalculationHelp 
                             title="Balance Correction" 
-                            formula="Value entered manually" 
-                            description="Adjustment made to resolve any ongoing balance issues."
+                            formula="Manual Adjustment to Opening Balance" 
+                            description="Use this to set or adjust the starting balance for this collection. It 'unlocks' the Collected Amount field to ensure you acknowledge the starting state before entering the collection results."
                           />
                         </label>
                         <input
@@ -209,21 +218,32 @@ export default function CollectionReportMobileCollectedListPanel({
                             const val = e.target.value;
                             if (/^-?\d*\.?\d*$/.test(val) || val === '') {
                               onFinancialDataChange('balanceCorrection', val);
+                              if (onBaseBalanceCorrectionChange) onBaseBalanceCorrectionChange(val);
                             }
                           }}
-                          disabled={isProcessing}
+                          disabled={isProcessing || financials.collectedAmount.trim() !== ''}
                           className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                        <p className="mt-1.5 text-xs leading-tight font-medium">
+                          {financials.collectedAmount.trim() !== '' 
+                            ? <span className="text-amber-600 flex items-center gap-1.5 bg-amber-50 p-2 rounded border border-amber-200">
+                                <Info className="h-3.5 w-3.5 shrink-0" />
+                                Note: Clear the 'Collected Amount' below if you need to re-adjust this field.
+                              </span> 
+                            : <span className="text-gray-600 bg-gray-50 p-2 rounded border border-gray-200 block">
+                                Required: Set the opening balance or adjustments for this collection batch.
+                              </span>}
+                        </p>
                       </div>
 
                       {/* Collected Amount */}
                       <div>
-                        <label className="mb-1 flex items-center text-sm font-medium">
+                        <label className="mb-1 flex items-center text-sm font-bold text-gray-700">
                           Collected Amount
                           <CalculationHelp 
                             title="Collected Amount" 
-                            formula="Value entered manually" 
-                            description="The actual amount of cash retrieved and counted."
+                            formula="The actual physical cash you counted" 
+                            description="This is the most important field. Enter the total amount of cash you actually retrieved and counted from all machines. This should ideally match the 'Amount to Collect' field."
                           />
                         </label>
                         <input
@@ -234,11 +254,22 @@ export default function CollectionReportMobileCollectedListPanel({
                             const val = e.target.value;
                             if (/^-?\d*\.?\d*$/.test(val) || val === '') {
                               onFinancialDataChange('collectedAmount', val);
+                              if (onCollectedAmountChange) onCollectedAmountChange(val);
                             }
                           }}
-                          disabled={isProcessing}
+                          disabled={isProcessing || financials.balanceCorrection.trim() === ''}
                           className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                        <p className="mt-1.5 text-xs leading-tight font-medium">
+                          {financials.balanceCorrection.trim() === ''
+                            ? <span className="text-amber-600 flex items-center gap-1.5 bg-amber-50 p-2 rounded border border-amber-200">
+                                <Info className="h-3.5 w-3.5 shrink-0" />
+                                Locked: Enter a Balance Correction first (even if 0) to unlock this field.
+                              </span>
+                            : <span className="text-blue-700 bg-blue-50 p-2 rounded border border-blue-200 block">
+                                Action: Count all physical cash collected from machines and enter the exact total here.
+                              </span>}
+                        </p>
                       </div>
 
                       {/* Taxes */}
@@ -321,9 +352,9 @@ export default function CollectionReportMobileCollectedListPanel({
                         <label className="mb-1 flex items-center text-sm font-medium">
                           Previous Balance
                           <CalculationHelp 
-                            title="Previous Balance" 
+                            title="Current/New Balance" 
                             formula="Collected Amount - Amount to Collect" 
-                            description="Automatically tracks shortages or overages."
+                            description="This shows if there is a shortage (negative) or overage (positive) in the collection. This value will be carried over as the 'Opening Balance' for the next collection at this location."
                           />
                         </label>
                         <input
@@ -340,6 +371,55 @@ export default function CollectionReportMobileCollectedListPanel({
                           className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           title="Auto-calculated as collected amount minus amount to collect (editable)"
                         />
+                      </div>
+                    </div>
+
+                    {/* Financial Reconciliation Summary Breakdown */}
+                    <div className="mt-4 border-t border-gray-100 bg-blue-50/40 p-4">
+                      <h5 className="mb-3 flex items-center gap-2 text-sm font-bold text-blue-900">
+                        <Info className="h-4 w-4 text-blue-600" />
+                        Reconciliation Summary
+                      </h5>
+                      
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between rounded-lg bg-white p-3 shadow-sm border border-blue-100">
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Target Amount</p>
+                            <p className="text-sm font-black text-blue-900">${financials.amountToCollect || '0.00'}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Actual Collected</p>
+                            <p className="text-sm font-black text-blue-900">${financials.collectedAmount || '0.00'}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="rounded-lg bg-white p-3 shadow-sm border border-blue-100">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">New Carry-Over Balance</p>
+                          <p className={`text-base font-black ${Number(financials.previousBalance) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            ${financials.previousBalance || '0.00'}
+                          </p>
+                        </div>
+
+                        <div className="rounded-lg bg-blue-900/5 p-2.5 border border-blue-100">
+                          <p className="text-xs font-mono text-blue-800 leading-relaxed text-center">
+                            <span className="font-bold">{financials.collectedAmount || '0.00'}</span> 
+                            <span className="mx-1 text-blue-400">-</span>
+                            <span className="font-bold">{financials.amountToCollect || '0.00'}</span> 
+                            <span className="mx-1 text-blue-400">=</span>
+                            <span className={`font-bold ${Number(financials.previousBalance) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {financials.previousBalance || '0.00'}
+                            </span>
+                          </p>
+                        </div>
+                        
+                        <div className="rounded-lg bg-white/60 p-3 border border-blue-100">
+                          <p className="text-[10px] font-bold text-blue-900 mb-1.5 uppercase">Breakdown Guide:</p>
+                          <ul className="space-y-1 text-[9px] text-gray-700">
+                            <li>• <span className="font-bold">Target</span>: Expected based on revenue/share + Correction.</li>
+                            <li>• <span className="font-bold">Collected</span>: Physical cash Retrieved.</li>
+                            <li>• <span className="font-bold">Carryover</span>: Collected minus Target. Becomes next Opening.</li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -365,9 +445,41 @@ export default function CollectionReportMobileCollectedListPanel({
                 </div>
               </div>
             ) : (
-              // Show Machine List
-              <div className="mobile-collection-scrollbar flex-1 overflow-y-auto">
-                <div className="space-y-3 p-4 pb-4">
+              <div className="mobile-collection-scrollbar flex-1 overflow-y-auto flex flex-col">
+                {/* Live Reconciliation Summary - ALWAYS SHOWN ABOVE LIST */}
+                <div className="border-b bg-blue-50/50 px-4 py-4">
+                  <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
+                    <h5 className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-blue-600">
+                      <Info className="h-3 w-3" />
+                      Live Reconciliation Summary
+                    </h5>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-0.5 border-r border-gray-100">
+                        <p className="text-[9px] font-bold text-gray-400 uppercase">Target</p>
+                        <p className="text-sm font-black text-gray-900">${financials.amountToCollect || '0.00'}</p>
+                      </div>
+                      <div className="space-y-0.5 pl-2">
+                         <p className="text-[9px] font-bold text-gray-400 uppercase">Actual</p>
+                         <p className="text-sm font-black text-blue-600">${financials.collectedAmount || '0.00'}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 border-t border-gray-50 pt-3">
+                      <div className="flex items-center justify-between">
+                         <p className="text-[9px] font-bold text-gray-400 uppercase">Next Opening Balance</p>
+                         <p className={`text-xs font-black ${Number(financials.previousBalance) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                           ${financials.previousBalance || '0.00'}
+                         </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-center">
+                    <p className="text-[9px] text-blue-600/70 italic px-2">
+                       (Collected minus Target = New Carryover Balance)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex-1">
                   {/* Update All Dates - Show if there are 2 or more machines */}
                   {collectedMachines.length >= 2 && (
                     <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
@@ -417,48 +529,54 @@ export default function CollectionReportMobileCollectedListPanel({
                     sortedMachines.map(machine => (
                       <div
                         key={machine._id}
-                        className="rounded-lg border border-gray-200 bg-white p-4"
+                        className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold">
-                              {formatMachineDisplay({
-                                serialNumber: machine.serialNumber,
-                                custom: {
-                                  name: machine.machineCustomName,
-                                },
-                                game: machine.game,
-                              })}
-                            </p>
-                            <p className="mt-1 text-xs text-gray-600">
-                              In: {machine.metersIn} | Out: {machine.metersOut}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              Time: {formatDate(machine.timestamp)}
-                            </p>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                             {/* Rich Machine Identification */}
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-0.5">
+                                {machine.serialNumber || 'No Serial'}
+                              </p>
+                              <h4 className="text-sm font-black text-gray-900 leading-tight">
+                                {machine.machineCustomName || machine.machineName || 'Unknown Machine'}
+                              </h4>
+                              <p className="text-[10px] font-medium text-gray-400 italic">
+                                Game: {machine.game || 'Standard Slot'}
+                              </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
+                              <p>In: <span className="font-bold text-gray-900">{machine.metersIn}</span></p>
+                              <p>Out: <span className="font-bold text-gray-900">{machine.metersOut}</span></p>
+                              <p className="col-span-2 text-[10px]">
+                                Time: <span className="font-medium">{formatDate(new Date(machine.timestamp))}</span>
+                              </p>
+                            </div>
                             {machine.notes && (
-                              <p className="mt-1 text-xs italic text-gray-500">
+                              <p className="text-[10px] italic text-gray-400 line-clamp-2">
                                 Notes: {machine.notes}
                               </p>
                             )}
                             {machine.ramClear && (
-                              <p className="mt-1 text-xs font-semibold text-red-600">
-                                RAM Cleared
-                              </p>
+                              <div className="flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 border border-red-100 w-fit">
+                                <span className="h-1.5 w-1.5 rounded-full bg-red-500"></span>
+                                <span className="text-[10px] font-bold text-red-600 uppercase tracking-tighter">RAM Cleared</span>
+                              </div>
                             )}
                           </div>
 
-                          <div className="flex space-x-2">
+                          <div className="flex flex-col space-y-2">
                             <button
                               onClick={() => onEditMachine(machine)}
-                              className="rounded-lg bg-blue-100 p-2 text-blue-600 hover:bg-blue-200"
+                              className="rounded-full bg-blue-50 p-2.5 text-blue-600 hover:bg-blue-100 active:scale-90 transition-all shadow-sm"
                               disabled={isProcessing}
                             >
                               <Edit3 className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => onDeleteMachine(machine._id)}
-                              className="rounded-lg bg-red-100 p-2 text-red-600 hover:bg-red-200"
+                              className="rounded-full bg-red-50 p-2.5 text-red-600 hover:bg-red-100 active:scale-90 transition-all shadow-sm"
                               disabled={isProcessing}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -468,6 +586,25 @@ export default function CollectionReportMobileCollectedListPanel({
                       </div>
                     ))
                   )}
+                </div>
+
+                {/* Machine List Submission Button */}
+                <div className="sticky bottom-0 mt-auto border-t bg-white/90 p-4 backdrop-blur-md">
+                  <button
+                    onClick={onCreateReport}
+                    disabled={!isCreateReportsEnabled || isProcessing}
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold shadow-lg transition-all active:scale-95 ${
+                      isCreateReportsEnabled && !isProcessing
+                        ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:shadow-green-200 shadow-green-600/20'
+                        : 'cursor-not-allowed bg-gray-400 text-gray-200'
+                    }`}
+                  >
+                    <SendHorizontal className="h-5 w-5" />
+                    {isProcessing ? 'PROCESSING...' : 'SUBMIT FINAL REPORT'}
+                  </button>
+                  <p className="mt-2 text-center text-[10px] text-gray-400 font-medium">
+                    Finalize readings for all {collectedMachines.length} machines.
+                  </p>
                 </div>
               </div>
             )}

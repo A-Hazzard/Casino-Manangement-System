@@ -13,7 +13,7 @@
   - [PUT /api/users/[id]](#put-apiusersid)
   - [DELETE /api/users/[id]](#delete-apiusersid)
   - [GET /api/activity-logs](#get-apiactivity-logs)
-  - [GET /api/licensees](#get-apilicensees)
+  - [GET /api/licencees](#get-apilicencees)
 - [Data Models](#data-models)
 - [Error Handling](#error-handling)
 - [Examples](#examples)
@@ -21,12 +21,12 @@
 
 ## Overview
 
-The Administration API provides comprehensive user management, licensee administration, and activity logging capabilities for the Evolution One CMS system. It handles user CRUD operations, role assignments, permission management, and maintains audit trails for all administrative actions.
+The Administration API provides comprehensive user management, licencee administration, and activity logging capabilities for the Evolution One CMS system. It handles user CRUD operations, role assignments, permission management, and maintains audit trails for all administrative actions.
 
 **Key Features:**
 - User account management (create, read, update, delete)
 - Role-based access control and permissions
-- Licensee management and assignments
+- Licencee management and assignments
 - Activity logging and audit trails
 - Profile validation and data integrity
 - Session management and invalidation
@@ -43,7 +43,7 @@ All endpoints are prefixed with `/api` and require administrative privileges.
 
 ### Required Permissions
 - **Admin Role:** Full access to all administration endpoints
-- **Manager Role:** Limited access to user management within assigned licensees
+- **Manager Role:** Limited access to user management within assigned licencees
 - **Developer Role:** Full access for system development and testing
 
 ### Token Requirements
@@ -77,7 +77,7 @@ X-RateLimit-Reset: 1640995200
 - `limit` (number, optional) - Items per page (default: 10, max: 100)
 - `search` (string, optional) - Search term for name, email, or username
 - `role` (string, optional) - Filter by user role
-- `licensee` (string, optional) - Filter by licensee
+- `licencee` (string, optional) - Filter by licencee
 - `isEnabled` (boolean, optional) - Filter by account status
 - `sortBy` (string, optional) - Sort field (default: 'createdAt')
 - `sortOrder` (string, optional) - Sort order: 'asc' | 'desc' (default: 'desc')
@@ -127,7 +127,7 @@ X-RateLimit-Reset: 1640995200
   "lastName": "Doe",
   "lastName": "Doe",
   "roles": ["collector"],
-  "assignedLicensees": ["licensee_id"],
+  "assignedLicencees": ["licencee_id"],
   "assignedLocations": ["location_id"],
   "isEnabled": true
 }
@@ -183,7 +183,7 @@ X-RateLimit-Reset: 1640995200
     "lastName": "Doe",
     "roles": ["collector"],
     "permissions": ["read_collections", "write_collections"],
-    "assignedLicensees": ["licensee_id"],
+    "assignedLicencees": ["licencee_id"],
     "assignedLocations": ["location_id"],
     "isEnabled": true,
     "lastLoginAt": "2024-12-28T10:30:00Z",
@@ -211,7 +211,7 @@ X-RateLimit-Reset: 1640995200
   "firstName": "John",
   "lastName": "Smith",
   "roles": ["manager"],
-  "assignedLicensees": ["new_licensee_id"],
+  "assignedLicencees": ["new_licencee_id"],
   "assignedLocations": ["new_location_id"],
   "isEnabled": true
 }
@@ -228,7 +228,7 @@ X-RateLimit-Reset: 1640995200
     "firstName": "John",
     "lastName": "Smith",
     "roles": ["manager"],
-    "assignedLicensees": ["new_licensee_id"],
+    "assignedLicencees": ["new_licencee_id"],
     "assignedLocations": ["new_location_id"],
     "isEnabled": true,
     "updatedAt": "2024-12-28T11:15:00Z"
@@ -314,14 +314,14 @@ X-RateLimit-Reset: 1640995200
 
 ---
 
-### GET /api/licensees
+### GET /api/licencees
 
-**Purpose:** Retrieve list of licensees for administrative management
+**Purpose:** Retrieve list of licencees for administrative management
 
 **Query Parameters:**
 - `page` (number, optional) - Page number (default: 1)
 - `limit` (number, optional) - Items per page (default: 20)
-- `search` (string, optional) - Search by licensee name
+- `search` (string, optional) - Search by licencee name
 - `isActive` (boolean, optional) - Filter by active status
 - `sortBy` (string, optional) - Sort field (default: 'name')
 - `sortOrder` (string, optional) - Sort order (default: 'asc')
@@ -332,7 +332,7 @@ X-RateLimit-Reset: 1640995200
   "success": true,
   "data": [
     {
-      "_id": "licensee_id",
+      "_id": "licencee_id",
       "name": "Casino Corp",
       "code": "CC001",
       "contactEmail": "admin@casinocorp.com",
@@ -349,8 +349,8 @@ X-RateLimit-Reset: 1640995200
 }
 ```
 
-**Used By:** Licensee management interfaces, user assignment forms
-**Notes:** Used for populating licensee selection dropdowns
+**Used By:** Licencee management interfaces, user assignment forms
+**Notes:** Used for populating licencee selection dropdowns
 
 ## Data Models
 
@@ -375,7 +375,7 @@ interface User {
   };
   roles: string[];                // User roles array
   permissions: string[];          // Computed permissions
-  assignedLicensees: string[];    // Licensee IDs user can access
+  assignedLicencees: string[];    // Licencee IDs user can access
   assignedLocations: string[];    // Location IDs user can access
   isEnabled: boolean;             // Account enabled status
   lastLoginAt?: Date;             // Last successful login
@@ -388,12 +388,12 @@ interface User {
 }
 ```
 
-### Licensee Model
+### Licencee Model
 ```typescript
-interface Licensee {
-  _id: string;                    // Unique licensee identifier
-  name: string;                   // Licensee display name
-  code: string;                   // Unique licensee code
+interface Licencee {
+  _id: string;                    // Unique licencee identifier
+  name: string;                   // Licencee display name
+  code: string;                   // Unique licencee code
   contactEmail: string;           // Primary contact email
   contactPhone?: string;          // Contact phone number
   address?: {
@@ -402,7 +402,7 @@ interface Licensee {
     region?: string;
     country?: string;
   };
-  isActive: boolean;              // Licensee active status
+  isActive: boolean;              // Licencee active status
   createdAt: Date;                // Creation timestamp
   updatedAt: Date;                // Last modification timestamp
 }
@@ -457,7 +457,7 @@ interface CreateUserRequest {
   lastName: string;               // Required: Alphabetic only
   otherName?: string;             // Optional: Alphabetic only
   roles: string[];                // Required: Valid role strings
-  assignedLicensees?: string[];   // Optional: Licensee IDs
+  assignedLicencees?: string[];   // Optional: Licencee IDs
   assignedLocations?: string[];   // Optional: Location IDs
   isEnabled?: boolean;            // Optional: Default true
 }
@@ -470,7 +470,7 @@ interface UpdateUserRequest {
   lastName?: string;
   otherName?: string;
   roles?: string[];
-  assignedLicensees?: string[];
+  assignedLicencees?: string[];
   assignedLocations?: string[];
   isEnabled?: boolean;
 }
@@ -526,7 +526,7 @@ const createUser = async (userData) => {
       firstName: 'John',
       lastName: 'Doe',
       roles: ['collector'],
-      assignedLicensees: ['licensee_id'],
+      assignedLicencees: ['licencee_id'],
       isEnabled: true
     })
   });
@@ -607,13 +607,13 @@ const bulkUpdateUsers = async (userUpdates) => {
 - **v1.0:** Basic user CRUD operations
 - **v1.1:** Added role-based permissions
 - **v1.2:** Implemented activity logging
-- **v1.3:** Added licensee assignment system
+- **v1.3:** Added licencee assignment system
 - **v1.4:** Enhanced session management
 
 ### Breaking Changes
 - **Role Structure:** Updated role definitions in v1.1
 - **Permission System:** New permission-based access in v1.2
-- **Licensee Assignment:** Required licensee assignments in v1.3
+- **Licencee Assignment:** Required licencee assignments in v1.3
 
 ### Compatibility
 - All existing API consumers remain compatible

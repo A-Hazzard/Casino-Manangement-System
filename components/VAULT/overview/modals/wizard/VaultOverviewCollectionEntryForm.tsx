@@ -12,7 +12,7 @@ import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import { fetchCabinetById } from '@/lib/helpers/cabinets';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { useVaultLicensee } from '@/lib/hooks/vault/useVaultLicensee';
+import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { cn } from '@/lib/utils';
 import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { GamingMachine } from '@/shared/types/entities';
@@ -50,7 +50,7 @@ export default function VaultOverviewCollectionEntryForm({
   defaultShowHistory = false
 }: VaultOverviewCollectionEntryFormProps) {
   const { formatAmount } = useCurrencyFormat();
-  const { licenseeId: selectedLicensee } = useVaultLicensee();
+  const { licenceeId: selectedLicencee } = useVaultLicencee();
   
   // States
   const [meters, setMeters] = useState({
@@ -68,7 +68,7 @@ export default function VaultOverviewCollectionEntryForm({
   const [expectedDrop, setExpectedDrop] = useState<string>('');
   const [showHistory, setShowHistory] = useState(defaultShowHistory);
 
-  const denomsList = useMemo(() => getDenominationValues(selectedLicensee), [selectedLicensee]);
+  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
 
   // Effects
   useEffect(() => {

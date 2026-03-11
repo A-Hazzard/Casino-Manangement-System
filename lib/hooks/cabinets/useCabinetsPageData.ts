@@ -32,7 +32,7 @@ const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
 
 export function useCabinetsPageData() {
   const activeMetricsFilter = useDashBoardStore(state => state.activeMetricsFilter);
-  const selectedLicensee = useDashBoardStore(state => state.selectedLicensee);
+  const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
   const customDateRange = useDashBoardStore(state => state.customDateRange);
   const displayCurrency = useDashBoardStore(state => state.displayCurrency);
 
@@ -87,7 +87,7 @@ export function useCabinetsPageData() {
     totalCount,
     loadCabinets,
   } = useCabinetData({
-    selectedLicensee,
+    selectedLicencee,
     activeMetricsFilter,
     customDateRange,
     displayCurrency,
@@ -216,7 +216,7 @@ export function useCabinetsPageData() {
           activeMetricsFilter as TimePeriod,
           customDateRange?.startDate,
           customDateRange?.endDate,
-          selectedLicensee,
+          selectedLicencee,
           displayCurrency,
           signal,
           chartGranularity,
@@ -245,7 +245,7 @@ export function useCabinetsPageData() {
   }, [
     activeMetricsFilter,
     customDateRange,
-    selectedLicensee,
+    selectedLicencee,
     displayCurrency,
     chartGranularity,
     selectedLocation,
@@ -289,7 +289,7 @@ export function useCabinetsPageData() {
   useEffect(() => {
     setCurrentPage(0);
     setLoadedBatches(new Set());
-  }, [selectedLocation, selectedGameType, searchTerm, debouncedSearchTerm, selectedLicensee, activeMetricsFilter, customDateRange, sortOption, sortOrder, displayCurrency]);
+  }, [selectedLocation, selectedGameType, searchTerm, debouncedSearchTerm, selectedLicencee, activeMetricsFilter, customDateRange, sortOption, sortOrder, displayCurrency]);
 
   // Wrapped setters
   const handleSetSelectedStatus = useCallback((status: string) => {
@@ -354,7 +354,7 @@ export function useCabinetsPageData() {
     activeSection,
     activeMetricsFilter,
     customDateRange,
-    selectedLicensee,
+    selectedLicencee,
     loadCabinets,
     fetchChartData,
     debouncedSearchTerm,

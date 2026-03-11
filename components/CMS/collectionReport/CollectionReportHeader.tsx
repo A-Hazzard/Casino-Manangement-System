@@ -65,7 +65,14 @@ export default function CollectionReportHeader({
               <div className="flex h-9 w-28 animate-pulse items-center justify-center rounded-md bg-gray-200 sm:w-44" />
             ) : (
               <Button
-                onClick={refreshing ? undefined : (window.innerWidth < 768 ? onCreateMobile : onCreateDesktop)}
+                onClick={() => {
+                  if (refreshing) return;
+                  if (window.innerWidth < 1280) {
+                    onCreateMobile();
+                  } else {
+                    onCreateDesktop();
+                  }
+                }}
                 className="flex items-center gap-1 rounded-md bg-buttonActive text-white px-2 py-1 text-xs font-medium hover:bg-purple-700 transition-colors shadow-sm sm:gap-2 sm:px-4 sm:py-2 sm:text-sm flex-shrink-0"
                 disabled={refreshing}
               >

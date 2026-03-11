@@ -23,11 +23,11 @@ import CircleCropModal from '@/components/shared/ui/image/CircleCropModal';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { Skeleton } from '@/components/shared/ui/skeleton';
-import { fetchLicensees } from '@/lib/helpers/client';
+import { fetchLicencees } from '@/lib/helpers/client';
 import { fetchCountries } from '@/lib/helpers/countries';
 import { useUserStore } from '@/lib/store/userStore';
 import type { User } from '@/lib/types/administration';
-import type { Country, Licensee } from '@/lib/types/common';
+import type { Country, Licencee } from '@/lib/types/common';
 import type { LocationSelectItem } from '@/lib/types/location';
 import {
     getPasswordStrengthLabel,
@@ -118,15 +118,15 @@ export default function AdministrationUserModal({
       ['admin', 'developer', 'manager', 'location admin'].includes(role)
     )
   );
-  const canEditLicensees = isDeveloper || isAdmin; // Only admins/developers can edit licensee assignments
+  const canEditLicencees = isDeveloper || isAdmin; // Only admins/developers can edit licencee assignments
 
-  const currentUserLicenseeIds = useMemo(
+  const currentUserLicenceeIds = useMemo(
     () =>
-      (Array.isArray(currentUser?.assignedLicensees)
-        ? currentUser.assignedLicensees
+      (Array.isArray(currentUser?.assignedLicencees)
+        ? currentUser.assignedLicencees
         : []
       ).map(id => String(id)),
-    [currentUser?.assignedLicensees]
+    [currentUser?.assignedLicencees]
   );
   
   const [isEditMode, setIsEditMode] = useState(false);
@@ -240,21 +240,21 @@ export default function AdministrationUserModal({
     roleLabel: string;
   }>({ open: false, role: '', roleLabel: '' });
 
-  // Licensees state
-  const [licensees, setLicensees] = useState<Licensee[]>([]);
-  const [selectedLicenseeIds, setSelectedLicenseeIds] = useState<string[]>([]);
-  const [allLicenseesSelected, setAllLicenseesSelected] = useState(false);
-  const licenseesRef = useRef<Licensee[]>([]);
+  // Licencees state
+  const [licencees, setLicencees] = useState<Licencee[]>([]);
+  const [selectedLicenceeIds, setSelectedLicenceeIds] = useState<string[]>([]);
+  const [allLicenceesSelected, setAllLicenceesSelected] = useState(false);
+  const licenceesRef = useRef<Licencee[]>([]);
   const locationsRef = useRef<LocationSelectItem[]>([]);
-  const rawLicenseeIdsRef = useRef<string[]>([]);
+  const rawLicenceeIdsRef = useRef<string[]>([]);
 
   // Countries state
   const [countries, setCountries] = useState<Country[]>([]);
   const [countriesLoading, setCountriesLoading] = useState(false);
 
   useEffect(() => {
-    licenseesRef.current = licensees;
-  }, [licensees]);
+    licenceesRef.current = licencees;
+  }, [licencees]);
 
   useEffect(() => {
     locationsRef.current = locations;
@@ -293,45 +293,51 @@ export default function AdministrationUserModal({
     setRoles(targetUser.roles || []);
     setIsEnabled(targetUser.isEnabled !== undefined ? targetUser.isEnabled : true);
 
-    let rawLicenseeIds: string[] = [];
+    let rawLicenceeIds: string[] = [];
     if (
-      Array.isArray(targetUser.assignedLicensees) &&
-      targetUser.assignedLicensees.length > 0
+      Array.isArray(targetUser.assignedLicencees) &&
+      targetUser.assignedLicencees.length > 0
     ) {
-      rawLicenseeIds = targetUser.assignedLicensees.map(id => String(id));
+      rawLicenceeIds = targetUser.assignedLicencees.map(id => String(id));
     }
-    rawLicenseeIdsRef.current = rawLicenseeIds;
+    rawLicenceeIdsRef.current = rawLicenceeIds;
 
-    const currentLicensees = licenseesRef.current;
-    if (currentLicensees.length > 0) {
-      const normalizedLicenseeIds = rawLicenseeIds.map(value => {
-        const idMatch = currentLicensees.find(
-          lic => String(lic._id) === String(value)
-        );
-        if (idMatch) {
-          return String(idMatch._id);
-        }
-        const nameMatch = currentLicensees.find(
-          lic =>
-            lic.name && lic.name.toLowerCase() === String(value).toLowerCase()
-        );
-        return nameMatch ? String(nameMatch._id) : String(value);
-      });
+    const currentLicencees = licenceesRef.current;
+    if (rawLicenceeIds.includes('all')) {
+      // 'all' stored — map to all known licencees
+      const allIds = currentLicencees.map(l => String(l._id));
+      setSelectedLicenceeIds(allIds);
+      setAllLicenceesSelected(currentLicencees.length > 0);
+    } else if (currentLicencees.length > 0) {
+      // Normalize IDs — filter out orphaned (stale) IDs that no longer exist
+      const normalizedLicenceeIds = rawLicenceeIds
+        .map(value => {
+          const idMatch = currentLicencees.find(
+            lic => String(lic._id) === String(value)
+          );
+          if (idMatch) return String(idMatch._id);
+          const nameMatch = currentLicencees.find(
+            lic =>
+              lic.name && lic.name.toLowerCase() === String(value).toLowerCase()
+          );
+          return nameMatch ? String(nameMatch._id) : null;
+        })
+        .filter((id): id is string => id !== null);
 
-      setSelectedLicenseeIds(prev =>
-        arraysEqual(prev, normalizedLicenseeIds) ? prev : normalizedLicenseeIds
+      setSelectedLicenceeIds(prev =>
+        arraysEqual(prev, normalizedLicenceeIds) ? prev : normalizedLicenceeIds
       );
 
       const shouldSelectAll =
-        normalizedLicenseeIds.length > 1 &&
-        normalizedLicenseeIds.length === currentLicensees.length &&
+        normalizedLicenceeIds.length > 0 &&
+        normalizedLicenceeIds.length === currentLicencees.length &&
         !targetUser.roles?.includes('vault-manager');
-      setAllLicenseesSelected(shouldSelectAll);
+      setAllLicenceesSelected(shouldSelectAll);
     } else {
-      setSelectedLicenseeIds(prev =>
-        arraysEqual(prev, rawLicenseeIds) ? prev : rawLicenseeIds
+      setSelectedLicenceeIds(prev =>
+        arraysEqual(prev, rawLicenceeIds) ? prev : rawLicenceeIds
       );
-      setAllLicenseesSelected(false);
+      setAllLicenceesSelected(false);
     }
   }, []);
 
@@ -344,7 +350,7 @@ export default function AdministrationUserModal({
       if (currentUserIdRef.current !== userId) {
         currentUserIdRef.current = userId;
         hasInitializedLocationsFromUserRef.current = false;
-        hasInitializedLicenseesFromLocationsRef.current = false;
+        hasInitializedLicenceesFromLocationsRef.current = false;
         setIsLoading(false);
         hydrateFormFromUser(user);
       }
@@ -352,9 +358,9 @@ export default function AdministrationUserModal({
       currentUserIdRef.current = null;
       setIsLoading(true);
 
-      if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
-        setSelectedLicenseeIds(currentUserLicenseeIds);
-        setAllLicenseesSelected(false);
+      if (isLocationAdmin && currentUserLicenceeIds.length > 0) {
+        setSelectedLicenceeIds(currentUserLicenceeIds);
+        setAllLicenceesSelected(false);
       }
     }
   }, [
@@ -362,18 +368,18 @@ export default function AdministrationUserModal({
     open,
     hydrateFormFromUser,
     isLocationAdmin,
-    currentUserLicenseeIds,
+    currentUserLicenceeIds,
   ]);
 
   const hasLoadedLocationsRef = useRef(false);
   const hasInitializedLocationsFromUserRef = useRef(false);
-  const hasInitializedLicenseesFromLocationsRef = useRef(false);
+  const hasInitializedLicenceesFromLocationsRef = useRef(false);
 
   useEffect(() => {
     if (!open) {
       hasLoadedLocationsRef.current = false;
       hasInitializedLocationsFromUserRef.current = false;
-      hasInitializedLicenseesFromLocationsRef.current = false;
+      hasInitializedLicenceesFromLocationsRef.current = false;
       setSelectedLocationIds([]);
       setAllLocationsSelected(false);
       setCheckingUsername(false);
@@ -422,11 +428,11 @@ export default function AdministrationUserModal({
             id?: string;
             name?: string;
             locationName?: string;
-            licenseeId?: string | null;
+            licenceeId?: string | null;
           }) => ({
             _id: loc._id?.toString() || loc.id?.toString() || '',
             name: loc.name || loc.locationName || 'Unknown Location',
-            licenseeId: loc.licenseeId ? String(loc.licenseeId) : null,
+            licenceeId: loc.licenceeId ? String(loc.licenceeId) : null,
           })
         );
 
@@ -467,7 +473,7 @@ export default function AdministrationUserModal({
 
     if (lastUserIdRef.current !== user._id) {
       hasInitializedLocationsFromUserRef.current = false;
-      hasInitializedLicenseesFromLocationsRef.current = false;
+      hasInitializedLicenceesFromLocationsRef.current = false;
       lastUserIdRef.current = user._id;
     }
 
@@ -475,7 +481,7 @@ export default function AdministrationUserModal({
       return;
     }
 
-    if (licensees.length === 0) {
+    if (licencees.length === 0) {
       return;
     }
 
@@ -499,45 +505,45 @@ export default function AdministrationUserModal({
 
         if (
           validLocationIds.length > 0 &&
-          licensees.length > 0 &&
-          !hasInitializedLicenseesFromLocationsRef.current
+          licencees.length > 0 &&
+          !hasInitializedLicenceesFromLocationsRef.current
         ) {
-          const locationLicenseeIds = new Set<string>();
+          const locationLicenceeIds = new Set<string>();
           validLocationIds.forEach(locId => {
             const location = locations.find(
               (loc: LocationSelectItem) =>
                 String(loc._id).trim() === String(locId).trim()
             );
-            if (location?.licenseeId) {
-              locationLicenseeIds.add(String(location.licenseeId));
+            if (location?.licenceeId) {
+              locationLicenceeIds.add(String(location.licenceeId));
             }
           });
 
-          if (locationLicenseeIds.size > 0) {
-            const licenseeIdsArray = Array.from(locationLicenseeIds);
-            setSelectedLicenseeIds(prevSelectedLicenseeIds => {
-              const missingLicenseeIds = licenseeIdsArray.filter(
-                licId => !prevSelectedLicenseeIds.includes(licId)
+          if (locationLicenceeIds.size > 0) {
+            const licenceeIdsArray = Array.from(locationLicenceeIds);
+            setSelectedLicenceeIds(prevSelectedLicenceeIds => {
+              const missingLicenceeIds = licenceeIdsArray.filter(
+                licId => !prevSelectedLicenceeIds.includes(licId)
               );
 
-              if (missingLicenseeIds.length > 0) {
-                const newSelectedLicenseeIds = [
-                  ...prevSelectedLicenseeIds,
-                  ...missingLicenseeIds,
+              if (missingLicenceeIds.length > 0) {
+                const newSelectedLicenceeIds = [
+                  ...prevSelectedLicenceeIds,
+                  ...missingLicenceeIds,
                 ];
-                const allLicenseeIds = licensees.map(lic => String(lic._id));
-                setAllLicenseesSelected(
-                  newSelectedLicenseeIds.length === allLicenseeIds.length &&
-                    allLicenseeIds.every(id =>
-                      newSelectedLicenseeIds.includes(id)
+                const allLicenceeIds = licencees.map(lic => String(lic._id));
+                setAllLicenceesSelected(
+                  newSelectedLicenceeIds.length === allLicenceeIds.length &&
+                    allLicenceeIds.every(id =>
+                      newSelectedLicenceeIds.includes(id)
                     )
                 );
-                return newSelectedLicenseeIds;
+                return newSelectedLicenceeIds;
               }
-              return prevSelectedLicenseeIds;
+              return prevSelectedLicenceeIds;
             });
           }
-          hasInitializedLicenseesFromLocationsRef.current = true;
+          hasInitializedLicenceesFromLocationsRef.current = true;
         }
 
         setSelectedLocationIds(userLocationIds);
@@ -553,67 +559,67 @@ export default function AdministrationUserModal({
         hasInitializedLocationsFromUserRef.current = true;
       }
     }
-  }, [open, user, locations, licensees, roles]);
+  }, [open, user, locations, licencees, roles]);
 
-  const hasLoadedLicenseesRef = useRef(false);
-  const selectedLicenseeIdsRef = useRef<string[]>([]);
+  const hasLoadedLicenceesRef = useRef(false);
+  const selectedLicenceeIdsRef = useRef<string[]>([]);
 
   useEffect(() => {
-    selectedLicenseeIdsRef.current = selectedLicenseeIds;
-  }, [selectedLicenseeIds]);
+    selectedLicenceeIdsRef.current = selectedLicenceeIds;
+  }, [selectedLicenceeIds]);
 
   useEffect(() => {
     if (!open) {
-      hasLoadedLicenseesRef.current = false;
+      hasLoadedLicenceesRef.current = false;
       return;
     }
 
-    if (hasLoadedLicenseesRef.current) {
+    if (hasLoadedLicenceesRef.current) {
       return;
     }
 
     let cancelled = false;
 
-    const loadLicensees = async () => {
+    const loadLicencees = async () => {
       try {
-        const result = await fetchLicensees(1, 1000);
+        const result = await fetchLicencees(1, 1000);
         if (cancelled) return;
 
-        hasLoadedLicenseesRef.current = true;
+        hasLoadedLicenceesRef.current = true;
 
-        let lics = Array.isArray(result.licensees) ? result.licensees : [];
+        let lics = Array.isArray(result.licencees) ? result.licencees : [];
 
-        if (isManager && currentUserLicenseeIds.length > 0) {
+        if (isManager && currentUserLicenceeIds.length > 0) {
           lics = lics.filter(lic =>
-            currentUserLicenseeIds.includes(String(lic._id))
+            currentUserLicenceeIds.includes(String(lic._id))
           );
         }
 
-        if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
+        if (isLocationAdmin && currentUserLicenceeIds.length > 0) {
           lics = lics.filter(lic =>
-            currentUserLicenseeIds.includes(String(lic._id))
+            currentUserLicenceeIds.includes(String(lic._id))
           );
-          const currentSelectedIds = selectedLicenseeIdsRef.current;
+          const currentSelectedIds = selectedLicenceeIdsRef.current;
           if (lics.length > 0 && currentSelectedIds.length === 0) {
-            setSelectedLicenseeIds([String(lics[0]._id)]);
-            setAllLicenseesSelected(false);
+            setSelectedLicenceeIds([String(lics[0]._id)]);
+            setAllLicenceesSelected(false);
           }
         }
 
-        setLicensees(lics);
+        setLicencees(lics);
 
         if (lics.length === 0) {
-          setAllLicenseesSelected(false);
+          setAllLicenceesSelected(false);
           return;
         }
 
-        if (rawLicenseeIdsRef.current.length === 0) {
-          setSelectedLicenseeIds(prev => (prev.length === 0 ? prev : []));
-          setAllLicenseesSelected(false);
+        if (rawLicenceeIdsRef.current.length === 0) {
+          setSelectedLicenceeIds(prev => (prev.length === 0 ? prev : []));
+          setAllLicenceesSelected(false);
           return;
         }
 
-        const normalizedLicenseeIds = rawLicenseeIdsRef.current.map(value => {
+        const normalizedLicenceeIds = rawLicenceeIdsRef.current.map(value => {
           const idMatch = lics.find(lic => String(lic._id) === String(value));
           if (idMatch) {
             return String(idMatch._id);
@@ -625,19 +631,19 @@ export default function AdministrationUserModal({
           return nameMatch ? String(nameMatch._id) : String(value);
         });
 
-        setSelectedLicenseeIds(prev =>
-          arraysEqual(prev, normalizedLicenseeIds)
+        setSelectedLicenceeIds(prev =>
+          arraysEqual(prev, normalizedLicenceeIds)
             ? prev
-            : normalizedLicenseeIds
+            : normalizedLicenceeIds
         );
 
         const shouldSelectAll =
-          normalizedLicenseeIds.length > 1 &&
-          normalizedLicenseeIds.length === lics.length &&
+          normalizedLicenceeIds.length > 1 &&
+          normalizedLicenceeIds.length === lics.length &&
           !roles.includes('vault-manager');
-        setAllLicenseesSelected(shouldSelectAll);
+        setAllLicenceesSelected(shouldSelectAll);
 
-        if (normalizedLicenseeIds.length > 0) {
+        if (normalizedLicenceeIds.length > 0) {
           setSelectedLocationIds(prev => {
             if (prev.length === 0) {
               return prev;
@@ -650,26 +656,26 @@ export default function AdministrationUserModal({
 
             const filtered = prev.filter(locId => {
               const location = currentLocations.find(loc => loc._id === locId);
-              if (!location || !location.licenseeId) {
+              if (!location || !location.licenceeId) {
                 return shouldSelectAll;
               }
-              return normalizedLicenseeIds.includes(location.licenseeId);
+              return normalizedLicenceeIds.includes(location.licenceeId);
             });
 
             return arraysEqual(filtered, prev) ? prev : filtered;
           });
         }
       } catch (error) {
-        console.error('Error loading licensees:', error);
+        console.error('Error loading licencees:', error);
       }
     };
 
-    void loadLicensees();
+    void loadLicencees();
 
     return () => {
       cancelled = true;
     };
-  }, [open, isManager, isLocationAdmin, currentUserLicenseeIds, roles]);
+  }, [open, isManager, isLocationAdmin, currentUserLicenceeIds, roles]);
 
 
   useEffect(() => {
@@ -949,10 +955,10 @@ export default function AdministrationUserModal({
 
     // Enforce single selection if vault-manager or cashier is selected
     if (checked && (role === 'vault-manager' || role === 'cashier')) {
-      if (selectedLicenseeIds.length > 1) {
-        setSelectedLicenseeIds([selectedLicenseeIds[0]]);
+      if (selectedLicenceeIds.length > 1) {
+        setSelectedLicenceeIds([selectedLicenceeIds[0]]);
         toast.info(
-          `${role === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to a single licensee. Assignments have been adjusted.`
+          `${role === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to a single licencee. Assignments have been adjusted.`
         );
       }
       if (selectedLocationIds.length > 1) {
@@ -961,7 +967,7 @@ export default function AdministrationUserModal({
           `${role === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to a single location. Assignments have been adjusted.`
         );
       }
-      setAllLicenseesSelected(false);
+      setAllLicenceesSelected(false);
       setAllLocationsSelected(false);
     }
   };
@@ -973,20 +979,20 @@ export default function AdministrationUserModal({
       );
     }
 
-    return allLicenseesSelected
+    return allLicenceesSelected
       ? locations
-      : selectedLicenseeIds.length > 0
+      : selectedLicenceeIds.length > 0
         ? locations.filter(
             loc =>
-              loc.licenseeId && selectedLicenseeIds.includes(loc.licenseeId)
+              loc.licenceeId && selectedLicenceeIds.includes(loc.licenceeId)
           )
         : [];
   }, [
     isLocationAdmin,
     currentUserLocationPermissions,
     locations,
-    allLicenseesSelected,
-    selectedLicenseeIds,
+    allLicenceesSelected,
+    selectedLicenceeIds,
   ]);
 
   // Sync "all selected" states to prevent Vault Manager restrictions or single-item auto-selection
@@ -994,25 +1000,25 @@ export default function AdministrationUserModal({
     if (!open) return;
     
     if (hasRestrictedAssignments) {
-      if (allLicenseesSelected) setAllLicenseesSelected(false);
+      if (allLicenceesSelected) setAllLicenceesSelected(false);
       if (allLocationsSelected) setAllLocationsSelected(false);
     } else {
-      // Also ensure "All" is not set if count is 1 or 0
-      if (allLicenseesSelected && (licensees.length <= 1 || selectedLicenseeIds.length !== licensees.length)) {
-        setAllLicenseesSelected(false);
+      // Also ensure "All" is not set if count is 0 or individual count doesn't match
+      if (allLicenceesSelected && (licencees.length === 0 || selectedLicenceeIds.length !== licencees.length)) {
+        setAllLicenceesSelected(false);
       }
-      if (allLocationsSelected && (availableLocations.length <= 1 || selectedLocationIds.length !== availableLocations.length)) {
+      if (allLocationsSelected && (availableLocations.length === 0 || selectedLocationIds.length !== availableLocations.length)) {
         setAllLocationsSelected(false);
       }
     }
   }, [
     open,
     isVaultManagerSelected,
-    allLicenseesSelected,
+    allLicenceesSelected,
     allLocationsSelected,
-    licensees.length,
+    licencees.length,
     availableLocations.length,
-    selectedLicenseeIds.length,
+    selectedLicenceeIds.length,
     selectedLocationIds.length
   ]);
 
@@ -1102,11 +1108,14 @@ export default function AdministrationUserModal({
 
     // Country validation (matches User model schema)
     if (country && country.length > 0) {
-      if (country.length < 3) {
-        newErrors.country =
-          'Country must be at least 3 characters and may only contain letters and spaces.';
-      } else if (!/^[A-Za-z\s]+$/.test(country)) {
-        newErrors.country = 'Country may only contain letters and spaces.';
+      const isCountryId = /^[0-9a-fA-F]{24}$/.test(country);
+      if (!isCountryId) {
+        if (country.length < 3) {
+          newErrors.country =
+            'Country must be at least 3 characters and may only contain letters, spaces, and ampersands (&).';
+        } else if (!/^[A-Za-z\s&]+$/.test(country)) {
+          newErrors.country = 'Country may only contain letters, spaces, and ampersands (&).';
+        }
       }
     }
 
@@ -1183,7 +1192,7 @@ export default function AdministrationUserModal({
     }
   };
 
-  const licenseeOptions: MultiSelectOption[] = licensees.map(lic => ({
+  const licenceeOptions: MultiSelectOption[] = licencees.map(lic => ({
     id: String(lic._id),
     label: lic.name,
   }));
@@ -1193,16 +1202,16 @@ export default function AdministrationUserModal({
     label: loc.name,
   }));
 
-  const handleLicenseeChange = (newSelectedIds: string[]) => {
+  const handleLicenceeChange = (newSelectedIds: string[]) => {
     let finalIds = newSelectedIds;
     if (hasRestrictedAssignments && newSelectedIds.length > 1) {
       finalIds = [newSelectedIds[newSelectedIds.length - 1]];
-      toast.info(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single licensee.`);
+      toast.info(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single licencee.`);
     }
 
-    setSelectedLicenseeIds(finalIds);
-    setAllLicenseesSelected(
-      finalIds.length === licensees.length && licensees.length > 1 && !hasRestrictedAssignments
+    setSelectedLicenceeIds(finalIds);
+    setAllLicenceesSelected(
+      finalIds.length === licencees.length && licencees.length > 1 && !hasRestrictedAssignments
     );
 
     setSelectedLocationIds(prevLocationIds => {
@@ -1211,15 +1220,15 @@ export default function AdministrationUserModal({
         if (!location) {
           return true;
         }
-        const belongsToSelectedLicensee =
-          location.licenseeId && finalIds.includes(location.licenseeId);
-        return belongsToSelectedLicensee;
+        const belongsToSelectedLicencee =
+          location.licenceeId && finalIds.includes(location.licenceeId);
+        return belongsToSelectedLicencee;
       });
 
       if (validLocationIds.length !== prevLocationIds.length) {
         const removedCount = prevLocationIds.length - validLocationIds.length;
         toast.info(
-          `${removedCount} location${removedCount > 1 ? 's' : ''} removed because ${removedCount > 1 ? "they don't" : "it doesn't"} belong to the selected licensee${finalIds.length > 1 ? 's' : ''}`
+          `${removedCount} location${removedCount > 1 ? 's' : ''} removed because ${removedCount > 1 ? "they don't" : "it doesn't"} belong to the selected licencee${finalIds.length > 1 ? 's' : ''}`
         );
       }
 
@@ -1239,23 +1248,23 @@ export default function AdministrationUserModal({
     );
   };
 
-  const handleAllLicenseesChange = (checked: boolean) => {
-    setAllLicenseesSelected(checked);
+  const handleAllLicenceesChange = (checked: boolean) => {
+    setAllLicenceesSelected(checked);
     if (checked) {
-      setSelectedLicenseeIds(licensees.map(lic => String(lic._id)));
+      setSelectedLicenceeIds(licencees.map(lic => String(lic._id)));
     } else {
-      setSelectedLicenseeIds([]);
+      setSelectedLicenceeIds([]);
       if (selectedLocationIds.length > 0) {
         setSelectedLocationIds([]);
-        toast.info('All locations cleared since no licensees are selected');
+        toast.info('All locations cleared since no licencees are selected');
       }
     }
   };
 
   const handleSave = async () => {
     if (hasRestrictedAssignments) {
-      if (selectedLicenseeIds.length !== 1 || allLicenseesSelected) {
-        toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one licensee`);
+      if (selectedLicenceeIds.length !== 1 || allLicenceesSelected) {
+        toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one licencee`);
         return;
       }
       if (selectedLocationIds.length !== 1 || allLocationsSelected) {
@@ -1353,8 +1362,8 @@ export default function AdministrationUserModal({
        if (!isCountryId) {
           if (country.length < 3) {
             validationErrors.country = 'Country must be at least 3 characters.';
-          } else if (!/^[A-Za-z\s]+$/.test(country)) {
-            validationErrors.country = 'Country may only contain letters and spaces.';
+          } else if (!/^[A-Za-z\s&]+$/.test(country)) {
+            validationErrors.country = 'Country may only contain letters, spaces, and ampersands (&).';
           }
        }
     }
@@ -1526,26 +1535,26 @@ export default function AdministrationUserModal({
         (id, idx) => id === newLocationIdsSorted[idx]
       );
 
-    let oldLicenseeIds: string[] = [];
+    let oldLicenceeIds: string[] = [];
     if (
-      Array.isArray(user?.assignedLicensees) &&
-      user.assignedLicensees.length > 0
+      Array.isArray(user?.assignedLicencees) &&
+      user.assignedLicencees.length > 0
     ) {
-      oldLicenseeIds = user.assignedLicensees.map(id => String(id));
+      oldLicenceeIds = user.assignedLicencees.map(id => String(id));
     }
-    const newLicenseeIds = selectedLicenseeIds.map(id => String(id));
+    const newLicenceeIds = selectedLicenceeIds.map(id => String(id));
 
-    const oldLicenseeIdsSorted = [...oldLicenseeIds].sort();
-    const newLicenseeIdsSorted = [...newLicenseeIds].sort();
+    const oldLicenceeIdsSorted = [...oldLicenceeIds].sort();
+    const newLicenceeIdsSorted = [...newLicenceeIds].sort();
 
-    const licenseeIdsChanged =
-      oldLicenseeIdsSorted.length !== newLicenseeIdsSorted.length ||
-      !oldLicenseeIdsSorted.every(
-        (id, idx) => id === newLicenseeIdsSorted[idx]
+    const licenceeIdsChanged =
+      oldLicenceeIdsSorted.length !== newLicenceeIdsSorted.length ||
+      !oldLicenceeIdsSorted.every(
+        (id, idx) => id === newLicenceeIdsSorted[idx]
       );
 
-    if (isManager && licenseeIdsChanged) {
-      toast.error('Managers cannot change licensee assignments');
+    if (isManager && licenceeIdsChanged) {
+      toast.error('Managers cannot change licencee assignments');
       return;
     }
 
@@ -1591,21 +1600,21 @@ export default function AdministrationUserModal({
       updatedUser.roles = roles;
     }
 
-    if (isLocationAdmin && currentUserLicenseeIds.length > 0) {
-      const currentUserLicenseeIdsSorted = [...currentUserLicenseeIds].sort();
-      const oldLicenseeIdsSortedForLocationAdmin = [...oldLicenseeIds].sort();
-      const locationAdminLicenseeChanged =
-        currentUserLicenseeIdsSorted.length !==
-          oldLicenseeIdsSortedForLocationAdmin.length ||
-        !currentUserLicenseeIdsSorted.every(
-          (id, idx) => id === oldLicenseeIdsSortedForLocationAdmin[idx]
+    if (isLocationAdmin && currentUserLicenceeIds.length > 0) {
+      const currentUserLicenceeIdsSorted = [...currentUserLicenceeIds].sort();
+      const oldLicenceeIdsSortedForLocationAdmin = [...oldLicenceeIds].sort();
+      const locationAdminLicenceeChanged =
+        currentUserLicenceeIdsSorted.length !==
+          oldLicenceeIdsSortedForLocationAdmin.length ||
+        !currentUserLicenceeIdsSorted.every(
+          (id, idx) => id === oldLicenceeIdsSortedForLocationAdmin[idx]
         );
 
-      if (locationAdminLicenseeChanged) {
-        updatedUser.assignedLicensees = currentUserLicenseeIds;
+      if (locationAdminLicenceeChanged) {
+        updatedUser.assignedLicencees = currentUserLicenceeIds;
       }
-    } else if (licenseeIdsChanged && !isManager && !isLocationAdmin) {
-      updatedUser.assignedLicensees = selectedLicenseeIds;
+    } else if (licenceeIdsChanged && !isManager && !isLocationAdmin) {
+      updatedUser.assignedLicencees = selectedLicenceeIds;
     }
 
     if (locationIdsChanged) {
@@ -1699,12 +1708,12 @@ export default function AdministrationUserModal({
       });
     }
 
-    if (licenseeIdsChanged && !isManager) {
+    if (licenceeIdsChanged && !isManager) {
       meaningfulChanges.push({
-        field: 'assignedLicensees',
-        oldValue: oldLicenseeIds,
-        newValue: newLicenseeIds,
-        path: 'assignedLicensees',
+        field: 'assignedLicencees',
+        oldValue: oldLicenceeIds,
+        newValue: newLicenceeIds,
+        path: 'assignedLicencees',
       });
     }
 
@@ -1748,7 +1757,7 @@ export default function AdministrationUserModal({
       Object.keys(updatedUser).filter(key => key !== '_id').length > 0 ||
       meaningfulChanges.length > 0 ||
       locationIdsChanged ||
-      licenseeIdsChanged;
+      licenceeIdsChanged;
 
     if (!hasAnyChanges) {
       toast.info('No changes detected');
@@ -1792,7 +1801,7 @@ export default function AdministrationUserModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] flex items-end justify-center lg:items-center">
+      <div className="fixed inset-0 z-[100000] flex items-end justify-center lg:items-center">
         <div
           ref={backdropRef}
           className="absolute inset-0 bg-black/50"
@@ -2244,8 +2253,8 @@ export default function AdministrationUserModal({
                       {availableRoles.map(role => {
                         const isRestrictedRole = role.value === 'vault-manager' || role.value === 'cashier';
                         const isVMRestricted = isRestrictedRole && (
-                          selectedLicenseeIds.length > 1 || 
-                          allLicenseesSelected || 
+                          selectedLicenceeIds.length > 1 || 
+                          allLicenceesSelected || 
                           selectedLocationIds.length > 1 || 
                           allLocationsSelected
                         );
@@ -2286,7 +2295,7 @@ export default function AdministrationUserModal({
                             </label>
                             {isVMRestricted && (
                               <p className="px-1 text-[10px] font-bold text-red-600 leading-tight">
-                                {role.value === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to 1 Licensee & Location
+                                {role.value === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to 1 Licencee & Location
                               </p>
                             )}
                           </div>
@@ -2340,7 +2349,7 @@ export default function AdministrationUserModal({
                   )}
                 </CardTitle>
                 <CardDescription>
-                  Licensee and location access permissions
+                  Licencee and location access permissions
                 </CardDescription>
               </CardHeader>
               <CardContent className="relative">
@@ -2363,31 +2372,31 @@ export default function AdministrationUserModal({
                   <div className="space-y-3">
                     <div className="mb-4">
                       <Label className="text-base font-medium text-gray-900">
-                        Assigned Licensees
+                        Assigned Licencees
                       </Label>
                       <p className="mt-1 text-sm text-gray-500">
-                        Licensees this user has access to
+                        Licencees this user has access to
                       </p>
                     </div>
 
-                    {!canEditLicensees ? (
+                    {!canEditLicencees ? (
                       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                         <p className="text-sm text-gray-900">
-                          {allLicenseesSelected
-                            ? licensees.length === 1
-                              ? licensees[0]?.name || 'Unknown Licensee'
-                              : `All Licensees (${licensees.length} licensees)`
-                            : selectedLicenseeIds.length > 0
-                              ? selectedLicenseeIds
+                          {allLicenceesSelected
+                            ? licencees.length === 1
+                              ? licencees[0]?.name || 'Unknown Licencee'
+                              : `All Licencees (${licencees.length} licencees)`
+                            : selectedLicenceeIds.length > 0
+                              ? selectedLicenceeIds
                                   .map(
                                     id =>
-                                      licensees.find(
+                                      licencees.find(
                                         l => String(l._id) === String(id)
                                       )?.name
                                   )
                                   .filter(Boolean)
                                   .join(', ')
-                              : 'No licensees assigned'}
+                              : 'No licencees assigned'}
                         </p>
                         {isManager && (
                           <p className="mt-2 text-xs text-gray-500">
@@ -2396,7 +2405,7 @@ export default function AdministrationUserModal({
                         )}
                         {isLocationAdmin && (
                           <p className="mt-2 text-xs text-gray-500">
-                            Automatically set to your assigned licensee
+                            Automatically set to your assigned licencee
                           </p>
                         )}
                       </div>
@@ -2404,44 +2413,36 @@ export default function AdministrationUserModal({
                       <div className="space-y-3">
                         <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
                           <Checkbox
-                            id="allLicensees"
-                            checked={allLicenseesSelected}
+                            id="allLicencees"
+                            checked={allLicenceesSelected}
                             onCheckedChange={checked =>
-                              handleAllLicenseesChange(checked === true)
+                              handleAllLicenceesChange(checked === true)
                             }
-                            disabled={!canEditLicensees || hasRestrictedAssignments || !isAssignmentsEnabled}
+                            disabled={!canEditLicencees || hasRestrictedAssignments || !isAssignmentsEnabled}
                           />
                           <Label
-                            htmlFor="allLicensees"
+                            htmlFor="allLicencees"
                             className="cursor-pointer text-sm font-medium text-gray-900"
                           >
-                            All Licensees
+                            All Licencees
                           </Label>
                         </div>
 
-                        {!allLicenseesSelected && (
-                          <MultiSelectDropdown
-                            options={licenseeOptions}
-                            selectedIds={selectedLicenseeIds}
-                            onChange={handleLicenseeChange}
-                            placeholder="Select licensees..."
-                            searchPlaceholder="Search licensees..."
-                            label="licensees"
-                            showSelectAll={!hasRestrictedAssignments}
-                            disabled={!isAssignmentsEnabled}
-                          />
-                        )}
-
-                        {allLicenseesSelected && (
-                          <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">
-                            All {licensees.length} licensees selected
-                          </div>
-                        )}
+                        <MultiSelectDropdown
+                          options={licenceeOptions}
+                          selectedIds={selectedLicenceeIds}
+                          onChange={handleLicenceeChange}
+                          placeholder="Select licencees..."
+                          searchPlaceholder="Search licencees..."
+                          label="licencees"
+                          showSelectAll={!hasRestrictedAssignments}
+                          disabled={!isAssignmentsEnabled}
+                        />
                       </div>
                     ) : (
                       <div className="flex flex-wrap gap-2">
-                        {allLicenseesSelected
-                          ? licensees.map(l => (
+                        {allLicenceesSelected
+                          ? licencees.map(l => (
                               <span
                                 key={l._id}
                                 className="inline-flex items-center rounded-md bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10"
@@ -2449,27 +2450,27 @@ export default function AdministrationUserModal({
                                 {l.name}
                               </span>
                             ))
-                          : selectedLicenseeIds.length > 0
-                            ? selectedLicenseeIds
+                          : selectedLicenceeIds.length > 0
+                            ? selectedLicenceeIds
                                 .map(id => {
-                                  const licensee = licensees.find(
+                                  const licencee = licencees.find(
                                     l => String(l._id) === String(id)
                                   );
-                                  return licensee ? (
+                                  return licencee ? (
                                     <span
                                       key={id}
                                       className="inline-flex items-center rounded-md bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10"
                                     >
-                                      {licensee.name}
+                                      {licencee.name}
                                     </span>
                                   ) : null;
                                 })
                                 .filter(Boolean)
                             : null}
-                        {selectedLicenseeIds.length === 0 &&
-                          !allLicenseesSelected && (
+                        {selectedLicenceeIds.length === 0 &&
+                          !allLicenceesSelected && (
                             <p className="text-sm text-gray-500">
-                              No licensees assigned
+                              No licencees assigned
                             </p>
                           )}
                       </div>
@@ -2488,16 +2489,16 @@ export default function AdministrationUserModal({
 
                     {isEditMode ? (
                       <div className="space-y-3">
-                        {!allLicenseesSelected &&
-                          selectedLicenseeIds.length === 0 && (
+                        {!allLicenceesSelected &&
+                          selectedLicenceeIds.length === 0 && (
                             <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-center text-sm font-medium text-yellow-800">
-                              ⚠️ Please select at least one licensee first to
+                              ⚠️ Please select at least one licencee first to
                               assign locations
                             </div>
                           )}
 
-                        {(allLicenseesSelected ||
-                          selectedLicenseeIds.length > 0) && (
+                        {(allLicenceesSelected ||
+                          selectedLicenceeIds.length > 0) && (
                           <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
                             <Checkbox
                               checked={allLocationsSelected}
@@ -2508,17 +2509,17 @@ export default function AdministrationUserModal({
                               className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
                             />
                             All Locations{' '}
-                            {allLicenseesSelected
+                            {allLicenceesSelected
                               ? ''
-                              : `for selected licensee${selectedLicenseeIds.length > 1 ? 's' : ''}`}
+                              : `for selected licencee${selectedLicenceeIds.length > 1 ? 's' : ''}`}
                           </label>
                         )}
 
                         {!allLocationsSelected &&
-                          (allLicenseesSelected ||
-                            selectedLicenseeIds.length > 0) && (
+                          (allLicenceesSelected ||
+                            selectedLicenceeIds.length > 0) && (
                             <MultiSelectDropdown
-                              key={`locations-${selectedLocationIds.join(',')}-${selectedLicenseeIds.join(',')}-${user?._id || 'no-user'}`}
+                              key={`locations-${selectedLocationIds.join(',')}-${selectedLicenceeIds.join(',')}-${user?._id || 'no-user'}`}
                               options={locationOptions}
                               selectedIds={selectedLocationIds.filter(id =>
                                 locationOptions.some(opt => opt.id === id)
@@ -2526,7 +2527,7 @@ export default function AdministrationUserModal({
                                onChange={handleLocationChange}
                               placeholder={
                                 availableLocations.length === 0
-                                  ? 'No locations available for selected licensees'
+                                  ? 'No locations available for selected licencees'
                                   : 'Select locations...'
                               }
                               searchPlaceholder="Search locations..."
@@ -2561,7 +2562,7 @@ export default function AdministrationUserModal({
                                       Location
                                     </th>
                                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-700">
-                                      Licensee
+                                      Licencee
                                     </th>
                                   </tr>
                                 </thead>
@@ -2586,19 +2587,19 @@ export default function AdministrationUserModal({
                                         );
                                       }
 
-                                      const licensee = location.licenseeId
-                                        ? licensees.find(
+                                      const licencee = location.licenceeId
+                                        ? licencees.find(
                                             l =>
                                               String(l._id) ===
-                                              String(location.licenseeId)
+                                              String(location.licenceeId)
                                           )
                                         : null;
 
                                       return {
                                         locationName:
                                           location.name || 'Unknown',
-                                        licenseeName:
-                                          licensee?.name || 'Unknown',
+                                        licenceeName:
+                                          licencee?.name || 'Unknown',
                                       };
                                     })
                                     .filter(
@@ -2606,7 +2607,7 @@ export default function AdministrationUserModal({
                                         item
                                       ): item is {
                                         locationName: string;
-                                        licenseeName: string;
+                                        licenceeName: string;
                                       } => item !== null
                                     )
                                     .map((item, index) => (
@@ -2618,7 +2619,7 @@ export default function AdministrationUserModal({
                                           {item.locationName}
                                         </td>
                                         <td className="px-4 py-3 text-sm text-gray-600">
-                                          {item.licenseeName}
+                                          {item.licenceeName}
                                         </td>
                                       </tr>
                                     ))}

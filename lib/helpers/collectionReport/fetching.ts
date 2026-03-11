@@ -10,8 +10,8 @@ import axios from 'axios';
 /**
  * Fetches collection reports with filtering and pagination
  */
-export async function fetchCollectionReportsByLicensee(
-  licensee?: string,
+export async function fetchCollectionReportsByLicencee(
+  licencee?: string,
   dateRange?: { from?: Date; to?: Date },
   timePeriod?: string,
   page: number = 1,
@@ -21,7 +21,7 @@ export async function fetchCollectionReportsByLicensee(
   search?: string
 ) {
   const params = new URLSearchParams();
-  if (licensee && licensee !== 'all') params.append('licensee', licensee);
+  if (licencee && licencee !== 'all') params.append('licencee', licencee);
   if (timePeriod) params.append('timePeriod', timePeriod);
   if (dateRange?.from) params.append('startDate', dateRange.from.toISOString());
   if (dateRange?.to) params.append('endDate', dateRange.to.toISOString());
@@ -41,11 +41,11 @@ export async function fetchCollectionReportsByLicensee(
  * Fetches locations with their machines for creating new reports
  */
 export async function getLocationsWithMachines(
-  licensee?: string
+  licencee?: string
 ): Promise<CollectionReportLocationWithMachines[]> {
   const params = new URLSearchParams();
   params.append('locationsWithMachines', 'true');
-  if (licensee && licensee !== 'all') params.append('licensee', licensee);
+  if (licencee && licencee !== 'all') params.append('licencee', licencee);
 
   const response = await axios.get(
     `/api/collectionReport?${params.toString()}`
@@ -83,10 +83,10 @@ export async function createCollectionReport(payload: unknown) {
 /**
  * Fetches locations for monthly reports
  */
-export async function fetchMonthlyReportLocations(licensee?: string) {
+export async function fetchMonthlyReportLocations(licencee?: string) {
   const params = new URLSearchParams();
   params.append('locationsWithMachines', 'true'); // Or a simpler endpoint if available
-  if (licensee && licensee !== 'all') params.append('licensee', licensee);
+  if (licencee && licencee !== 'all') params.append('licencee', licencee);
 
   const response = await axios.get(
     `/api/collectionReport?${params.toString()}`
@@ -106,7 +106,7 @@ export async function fetchMonthlyReportSummaryAndDetails(params: {
   locationName?: string;
   locationId?: string;
   locationIds?: string[];
-  licensee?: string;
+  licencee?: string;
 }) {
   const searchParams = new URLSearchParams();
   searchParams.append('startDate', params.startDate.toISOString());
@@ -122,8 +122,8 @@ export async function fetchMonthlyReportSummaryAndDetails(params: {
     searchParams.append('locationIds', params.locationIds.join(','));
   }
 
-  if (params.licensee && params.licensee !== 'all') {
-    searchParams.append('licensee', params.licensee);
+  if (params.licencee && params.licencee !== 'all') {
+    searchParams.append('licencee', params.licencee);
   }
 
   const response = await axios.get(

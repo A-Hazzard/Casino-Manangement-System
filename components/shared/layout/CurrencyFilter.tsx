@@ -17,7 +17,7 @@ type CurrencyFilterProps = {
   disabled?: boolean;
   onCurrencyChange?: (currency: CurrencyCode) => void;
   userRoles?: string[];
-  hasMultipleLicensees?: boolean;
+  hasMultipleLicencees?: boolean;
 };
 
 const CURRENCY_OPTIONS: CurrencyCode[] = ['USD', 'TTD', 'GYD', 'BBD'];

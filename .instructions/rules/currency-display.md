@@ -5,7 +5,7 @@ description: Currency Display and Conversion Rules
 # Currency Framework Guidelines
 
 ## 1. Overview
-The Evolution One CMS uses a dynamic currency conversion engine. Operations default to `USD` as the base currency. For individual licensees, currency is auto-resolved based on `getLicenseeCurrency` or `getCountryCurrency`. When "All Licensees" is selected, the application provides a dropdown header allowing the user (Admins/Developers) to switch the view between multiple currencies (USD, TTD, GYD, BBD, etc.).
+The Evolution One CMS uses a dynamic currency conversion engine. Operations default to `USD` as the base currency. For individual licencees, currency is auto-resolved based on `getLicenceeCurrency` or `getCountryCurrency`. When "All Licencees" is selected, the application provides a dropdown header allowing the user (Admins/Developers) to switch the view between multiple currencies (USD, TTD, GYD, BBD, etc.).
 
 ## 2. Global State and Context
 - The selected global currency is stored in `dashboardStore` as `displayCurrency`.
@@ -14,7 +14,7 @@ The Evolution One CMS uses a dynamic currency conversion engine. Operations defa
 
 ## 3. API Data Fetching
 - APIs (like `search-all/route.ts` or `reports/locations/route.ts`) take `?currency=[displayCurrency]`.
-- The APIs do the heavy lifting of converting raw DB amounts (stored in the licensee's native currency) into the request's `displayCurrency`.
+- The APIs do the heavy lifting of converting raw DB amounts (stored in the licencee's native currency) into the request's `displayCurrency`.
 - Therefore, frontend UI components **rarely** need to do math conversions. They just need to display the values properly.
 
 ## 4. Currency Display Rules

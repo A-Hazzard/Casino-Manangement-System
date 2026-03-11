@@ -4,7 +4,7 @@
  * This route handles fetching meter trend data for gaming locations.
  * It supports:
  * - Filtering by time period or custom date range
- * - Filtering by licensee
+ * - Filtering by licencee
  * - Role-based location filtering
  * - Currency conversion for admin/developer users
  * - Hourly or daily aggregation based on time period
@@ -12,7 +12,7 @@
  * @module app/api/metrics/meters/route
  */
 
-import { getUserAccessibleLicenseesFromToken } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserAccessibleLicenceesFromToken } from '@/app/api/lib/helpers/licenceeFilter';
 import {
   getMeterTrends,
   validateCustomDateRange,
@@ -92,7 +92,7 @@ function handleMongoDBError(error: unknown): NextResponse | null {
  * 1. Parse and validate request parameters
  * 2. Connect to database
  * 3. Authenticate user and get accessible locations
- * 4. Validate licensee access
+ * 4. Validate licencee access
  * 5. Validate custom date range if applicable
  * 6. Fetch meter trends data
  * 7. Return aggregated metrics
@@ -107,10 +107,10 @@ export async function GET(req: NextRequest) {
     const params = Object.fromEntries(req.nextUrl.searchParams.entries());
     const { startDate, endDate } = params;
     const timePeriod = params.timePeriod;
-    const rawLicensee =
-      params.licensee || params.licensee || params.licenseeId || '';
-    const licensee =
-      rawLicensee && rawLicensee !== 'all' ? String(rawLicensee) : '';
+    const rawLicencee =
+      params.licencee || params.licencee || params.licenceeId || '';
+    const licencee =
+      rawLicencee && rawLicencee !== 'all' ? String(rawLicencee) : '';
     const displayCurrency =
       (params.currency as CurrencyCode | undefined) || 'USD';
     const granularity = params.granularity as 'hourly' | 'minute' | undefined;
@@ -150,7 +150,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 3: Authenticate user and get accessible locations
     // ============================================================================
-    const accessibleLicensees = await getUserAccessibleLicenseesFromToken();
+    const accessibleLicencees = await getUserAccessibleLicenceesFromToken();
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
     let userLocationPermissions: string[] = [];
@@ -164,12 +164,12 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Validate licensee access
+    // STEP 4: Validate licencee access
     // ============================================================================
-    if (licensee && accessibleLicensees !== 'all') {
-      if (!accessibleLicensees.includes(licensee)) {
+    if (licencee && accessibleLicencees !== 'all') {
+      if (!accessibleLicencees.includes(licencee)) {
         return NextResponse.json(
-          { error: 'Unauthorized: You do not have access to this licensee' },
+          { error: 'Unauthorized: You do not have access to this licencee' },
           { status: 403 }
         );
       }
@@ -193,7 +193,7 @@ export async function GET(req: NextRequest) {
     const aggregatedMetrics = await getMeterTrends(
       {
         timePeriod,
-        licensee,
+        licencee,
         startDate,
         endDate,
         displayCurrency,
@@ -203,7 +203,7 @@ export async function GET(req: NextRequest) {
         onlineStatus,
         searchTerm,
       },
-      accessibleLicensees,
+      accessibleLicencees,
       userRoles,
       userLocationPermissions
     );

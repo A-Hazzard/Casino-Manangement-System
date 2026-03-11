@@ -15,13 +15,13 @@ import { getMemberCountsPerLocation } from './membershipAggregation';
  * @param startDate - Start date for aggregation.
  * @param endDate - End date for aggregation.
 
- * @param licensee - (Optional) Licensee filter for locations.
+ * @param licencee - (Optional) Licencee filter for locations.
 
 
  * @returns Promise resolving to an array of AggregatedLocation objects.
  */
 export const getLocationsWithMetrics = async (
-  licensee?: string,
+  licencee?: string,
   page: number = 1,
   limit: number = 50,
   sasEvaluationOnly: boolean = false,
@@ -48,7 +48,7 @@ export const getLocationsWithMetrics = async (
     }
     locationIdFilter._id = { $in: allowedLocationIds };
   }
-  // Note: Licensee filter is now applied directly in basePipeline instead of prefetching
+  // Note: Licencee filter is now applied directly in basePipeline instead of prefetching
 
   const basePipeline: PipelineStage[] = [
     {
@@ -58,12 +58,11 @@ export const getLocationsWithMetrics = async (
           { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
         ...locationIdFilter,
-        // Apply licensee filter directly if no specific locations provided
-        ...(licensee && licensee !== 'all' && !locationIdFilter._id
+        // Apply licencee filter directly if no specific locations provided
+        ...(licencee && licencee !== 'all' && !locationIdFilter._id
           ? {
             $or: [
-              { 'rel.licensee': licensee },
-              { 'rel.licencee': licensee }
+              { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  }
             ]
           }
           : {}),

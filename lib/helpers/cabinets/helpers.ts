@@ -6,7 +6,7 @@
  * and cabinet totals aggregation.
  *
  * Features:
- * - Fetches cabinets with filtering by licensee, time period, location, and search
+ * - Fetches cabinets with filtering by licencee, time period, location, and search
  * - Creates, updates, and deletes cabinets
  * - Fetches cabinets for specific locations
  * - Calculates cabinet financial totals
@@ -20,21 +20,21 @@ type CabinetFormData = Partial<GamingMachine>;
 
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { isAbortError } from '@/lib/utils/errors';
-import { getLicenseeObjectId } from '@/lib/utils/licensee';
+import { getLicenceeObjectId } from '@/lib/utils/licencee';
 import { formatLocalDateTimeString } from '@/shared/utils/dateFormat';
 import { DateRange } from 'react-day-picker';
 // Activity logging removed - handled via API calls
 
 /**
- * Fetch all cabinets with optional filtering by licensee and time period.
+ * Fetch all cabinets with optional filtering by licencee and time period.
  *
- * @param licensee - (Optional) Licensee filter for cabinets.
+ * @param licencee - (Optional) Licencee filter for cabinets.
  * @param timePeriod - (Optional) Time period filter for cabinets.
  * @param customDateRange - (Optional) Custom date range filter for cabinets.
  * @returns Promise resolving to an array of cabinets, or an empty array on error.
  */
 export const fetchCabinets = async (
-  licensee?: string,
+  licencee?: string,
   timePeriod?: string,
   customDateRange?: DateRange,
   currency?: string,
@@ -54,7 +54,7 @@ export const fetchCabinets = async (
 
     // Add query parameters if they exist
     const queryParams = [];
-    if (licensee) queryParams.push(`licensee=${encodeURIComponent(licensee)}`);
+    if (licencee) queryParams.push(`licencee=${encodeURIComponent(licencee)}`);
 
     if (sortBy) queryParams.push(`sortBy=${encodeURIComponent(sortBy)}`);
     if (sortOrder) queryParams.push(`sortOrder=${encodeURIComponent(sortOrder)}`);
@@ -212,7 +212,7 @@ export const fetchCabinetById = async (
   timePeriod?: string,
   customDateRange?: DateRange,
   currency?: string,
-  licensee?: string | null,
+  licencee?: string | null,
   signal?: AbortSignal
 ) => {
   try {
@@ -261,8 +261,8 @@ export const fetchCabinetById = async (
       queryParams.push(`currency=${encodeURIComponent(currency)}`);
     }
 
-    if (licensee) {
-      queryParams.push(`licensee=${encodeURIComponent(licensee)}`);
+    if (licencee) {
+      queryParams.push(`licencee=${encodeURIComponent(licencee)}`);
     }
 
     // Add cache-busting timestamp to prevent caching issues
@@ -449,18 +449,18 @@ export const updateCabinet = async (
 };
 
 /**
- * Fetch all cabinet locations, optionally filtered by licensee.
+ * Fetch all cabinet locations, optionally filtered by licencee.
  *
- * @param licensee - (Optional) Licensee filter for locations.
+ * @param licencee - (Optional) Licencee filter for locations.
  * @returns Promise resolving to an array of locations, or an empty array on error.
  */
-export const fetchCabinetLocations = async (licensee?: string) => {
+export const fetchCabinetLocations = async (licencee?: string) => {
   try {
-    // Note: API might expect either "licensee" or "licensee" so we'll try both formats
+    // Note: API might expect either "licencee" or "licencee" so we'll try both formats
     let params: Record<string, string> = {};
-    if (licensee) {
+    if (licencee) {
       // Include both parameter naming conventions to be safe
-      params = { licensee };
+      params = { licencee };
     }
 
     const response = await axios.get('/api/machines/locations', {
@@ -492,7 +492,7 @@ export const fetchCabinetLocations = async (licensee?: string) => {
  * Fetch cabinets for a specific location, with optional filters.
  *
  * @param locationId - The unique identifier for the location.
- * @param licensee - (Optional) Licensee filter.
+ * @param licencee - (Optional) Licencee filter.
  * @param timePeriod - (Optional) Time period filter.
  * @param searchTerm - (Optional) Search term filter.
  * @param customDateRange - (Optional) Custom date range for timePeriod \"Custom\".
@@ -503,7 +503,7 @@ export const fetchCabinetLocations = async (licensee?: string) => {
  */
 export async function fetchCabinetsForLocation(
   locationId: string,
-  licensee?: string,
+  licencee?: string,
   timePeriod?: string,
   searchTerm?: string,
   customDateRange?: DateRange,
@@ -534,11 +534,11 @@ export async function fetchCabinetsForLocation(
       timePeriod: timePeriod,
     };
 
-    if (licensee) {
-      // Convert licensee name to ObjectId for API compatibility
-      const licenseeObjectId = getLicenseeObjectId(licensee);
-      if (licenseeObjectId) {
-        params.licensee = licenseeObjectId;
+    if (licencee) {
+      // Convert licencee name to ObjectId for API compatibility
+      const licenceeObjectId = getLicenceeObjectId(licencee);
+      if (licenceeObjectId) {
+        params.licencee = licenceeObjectId;
       }
     }
 
@@ -663,7 +663,7 @@ export async function fetchCabinetsForLocation(
 export async function fetchCabinetTotals(
   activeMetricsFilter: string,
   customDateRange: import('@/lib/types').dateRange | undefined,
-  selectedLicensee: string | undefined,
+  selectedLicencee: string | undefined,
   displayCurrency?: string,
   signal?: AbortSignal,
   locationId?: string | string[],
@@ -688,8 +688,8 @@ export async function fetchCabinetTotals(
       }
     }
 
-    if (selectedLicensee && selectedLicensee !== 'all') {
-      url += `&licensee=${selectedLicensee}`;
+    if (selectedLicencee && selectedLicencee !== 'all') {
+      url += `&licencee=${selectedLicencee}`;
     }
 
     if (displayCurrency) {

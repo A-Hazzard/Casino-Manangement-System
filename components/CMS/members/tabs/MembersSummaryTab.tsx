@@ -24,12 +24,12 @@ import MembersKPICardsSkeleton from '../summary/MembersKPICardsSkeleton';
 import MembersTable from '../summary/MembersTable';
 
 type MembersSummaryTabProps = {
-  selectedLicensee: string;
+  selectedLicencee: string;
   forcedLocationId?: string;
 };
 
 export default function MembersSummaryTab({
-  selectedLicensee,
+  selectedLicencee,
   forcedLocationId,
 }: MembersSummaryTabProps) {
   const router = useRouter();
@@ -48,7 +48,7 @@ export default function MembersSummaryTab({
     summaryData,
     refreshData,
   } = useMembersSummaryData({
-    selectedLicensee,
+    selectedLicencee,
     search: debouncedSearchTerm,
     locationFilter: forcedLocationId || (locationFilter.length > 0 ? locationFilter.join(',') : 'all'),
     page: currentPage + 1,

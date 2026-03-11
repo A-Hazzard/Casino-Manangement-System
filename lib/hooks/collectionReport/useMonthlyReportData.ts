@@ -18,7 +18,7 @@ import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 
-export function useMonthlyReportData(selectedLicensee: string | null) {
+export function useMonthlyReportData(selectedLicencee: string | null) {
   // ============================================================================
   // State Management
   // ============================================================================
@@ -55,7 +55,7 @@ export function useMonthlyReportData(selectedLicensee: string | null) {
         endDate: pendingRange.to,
         locationId: Array.isArray(monthlyLocation) ? undefined : (monthlyLocation === 'all' ? undefined : monthlyLocation),
         locationIds: Array.isArray(monthlyLocation) ? monthlyLocation : undefined,
-        licensee: selectedLicensee || undefined,
+        licencee: selectedLicencee || undefined,
       });
       
       setMonthlySummary(summary);
@@ -66,7 +66,7 @@ export function useMonthlyReportData(selectedLicensee: string | null) {
     } finally {
       setMonthlyLoading(false);
     }
-  }, [pendingRange, monthlyLocation, selectedLicensee]);
+  }, [pendingRange, monthlyLocation, selectedLicencee]);
 
   const handleSetLastMonth = useCallback(() => {
     const lastMonth = subMonths(new Date(), 1);
@@ -94,10 +94,10 @@ export function useMonthlyReportData(selectedLicensee: string | null) {
   // ============================================================================
   // Effects
   // ============================================================================
-  // Fetch locations on mount and licensee change
+  // Fetch locations on mount and licencee change
   useEffect(() => {
-    fetchMonthlyReportLocations(selectedLicensee || undefined).then(setLocations);
-  }, [selectedLicensee]);
+    fetchMonthlyReportLocations(selectedLicencee || undefined).then(setLocations);
+  }, [selectedLicencee]);
 
   // Initial fetch and fetch on location/range change
   useEffect(() => {

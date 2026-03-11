@@ -9,14 +9,14 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import {
   convertFromUSD,
   convertToUSD,
   getCountryCurrency,
-  getLicenseeCurrency,
+  getLicenceeCurrency,
 } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { AggregatedLocation } from '@/shared/types/entities';
@@ -27,19 +27,19 @@ import { NextResponse } from 'next/server';
  */
 export async function applyLocationsCurrencyConversion(
   paginatedData: AggregatedLocation[],
-  licensee: string | undefined,
+  licencee: string | undefined,
   displayCurrency: CurrencyCode,
   isAdminOrDev: boolean
 ): Promise<AggregatedLocation[]> {
-  if (!isAdminOrDev || !shouldApplyCurrencyConversion(licensee)) {
+  if (!isAdminOrDev || !shouldApplyCurrencyConversion(licencee)) {
     return paginatedData;
   }
 
   try {
     await connectDB();
 
-    // Get licensee details for currency mapping
-    const licenseesData = await Licensee.find({
+    // Get licencee details for currency mapping
+    const licenceesData = await Licencee.find({
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
@@ -48,11 +48,11 @@ export async function applyLocationsCurrencyConversion(
       .select('_id name')
       .lean();
 
-    // Create a map of licensee ID to name
-    const licenseeIdToName = new Map<string, string>();
-    licenseesData.forEach((lic: { _id: unknown; name?: string }) => {
+    // Create a map of licencee ID to name
+    const licenceeIdToName = new Map<string, string>();
+    licenceesData.forEach((lic: { _id: unknown; name?: string }) => {
       if (lic._id && lic.name) {
-        licenseeIdToName.set(String(lic._id), lic.name);
+        licenceeIdToName.set(String(lic._id), lic.name);
       }
     });
 
@@ -67,21 +67,21 @@ export async function applyLocationsCurrencyConversion(
 
     // Convert each location's financial data
     return paginatedData.map(location => {
-      const locationLicenseeId = location.rel?.licensee as string | undefined;
+      const locationLicenceeId = location.rel?.licencee as string | undefined;
       let nativeCurrency: CurrencyCode = 'USD';
 
-      if (!locationLicenseeId) {
+      if (!locationLicenceeId) {
         const countryId = location.country as string | undefined;
         const countryName = countryId ? countryIdToName.get(countryId.toString()) : undefined;
         nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
       } else {
-        const licenseeName = licenseeIdToName.get(locationLicenseeId.toString()) || 'Unknown';
-        if (!licenseeName || licenseeName === 'Unknown') {
+        const licenceeName = licenceeIdToName.get(locationLicenceeId.toString()) || 'Unknown';
+        if (!licenceeName || licenceeName === 'Unknown') {
           const countryId = location.country as string | undefined;
           const countryName = countryId ? countryIdToName.get(countryId.toString()) : undefined;
           nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
         } else {
-          nativeCurrency = getLicenseeCurrency(licenseeName);
+          nativeCurrency = getLicenceeCurrency(licenceeName);
         }
       }
 

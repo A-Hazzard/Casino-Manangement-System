@@ -91,7 +91,7 @@ This directory contains documentation for the core business domain APIs that han
 
 ### Location-Based Operations
 - Geographic location management
-- Licensee association and filtering
+- Licencee association and filtering
 - Address and contact information
 - Operational status tracking
 
@@ -126,7 +126,7 @@ This directory contains documentation for the core business domain APIs that han
 Most list endpoints support:
 - Text search across relevant fields
 - Date range filtering
-- Licensee-based filtering
+- Licencee-based filtering
 - Pagination with configurable limits
 
 ### Data Relationships

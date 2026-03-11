@@ -18,10 +18,10 @@ The Analytics API provides comprehensive data analytics and reporting capabiliti
 ## Dashboard Analytics
 
 ### GET /api/analytics/dashboard
-Retrieves global dashboard statistics for a specific licensee.
+Retrieves global dashboard statistics for a specific licencee.
 
 **Query Parameters:**
-- `licensee` (string, required): Licensee name for filtering data
+- `licencee` (string, required): Licencee name for filtering data
 - `currency` (string, optional): Display currency (USD, TTD, GYD, BBD)
 
 **Calculations:**
@@ -40,7 +40,7 @@ Aggregates location-level metrics including machine counts, SAS status, and fina
 - `timePeriod`: "Today", "Yesterday", "7d", "30d", "All Time", "Custom"
 - `startDate`: Custom start date (ISO format)
 - `endDate`: Custom end date (ISO format)
-- `licensee`: Filter by licensee ID or name
+- `licencee`: Filter by licencee ID or name
 - `currency`: Display currency (USD, TTD, GYD, BBD)
 - `machineTypeFilter`: Comma-separated list:
   - `LocalServersOnly`: Locations with `isLocalServer: true`
@@ -81,7 +81,7 @@ Aggregates machine-level metrics across locations.
 
 **Query Parameters:**
 - `timePeriod`: Today, Yesterday, 7d, 30d, Custom
-- `licensee`: Filter by licensee
+- `licencee`: Filter by licencee
 - `locationId`: Filter by specific location(s)
 - `gameType`: Filter by game type(s)
 - `onlineStatus`: `online`, `offline`, `never-online`, `all`
@@ -95,7 +95,7 @@ Aggregates machine-level metrics across locations.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/analytics/dashboard` | GET | Global stats for licensee |
+| `/api/analytics/dashboard` | GET | Global stats for licencee |
 | `/api/locationAggregation` | GET | Aggregated location metrics |
 | `/api/analytics/location-trends` | GET | Time-series trend data |
 | `/api/machines/aggregation` | GET | Aggregated machine metrics |
@@ -105,9 +105,9 @@ Aggregates machine-level metrics across locations.
 ## Performance Considerations
 - All financial metrics respect per-location **Gaming Day Offsets**
 - Large aggregations use **MongoDB Cursors** with batch sizes of 1000
-- **Parallel Licensee Processing** is used for global dashboard totals
+- **Parallel Licencee Processing** is used for global dashboard totals
 - **Request Deduplication** prevents redundant API calls for same parameters
-- Currency conversion is only applied for **Admin/Developer** roles when viewing "All Licensees"
+- Currency conversion is only applied for **Admin/Developer** roles when viewing "All Licencees"
 
 # Analytics API Documentation
 
@@ -127,11 +127,11 @@ The Analytics API provides comprehensive data analytics and reporting capabiliti
 
 ### GET /api/analytics/dashboard
 
-Retrieves global dashboard statistics for a specific licensee.
+Retrieves global dashboard statistics for a specific licencee.
 
 **Query Parameters:**
 
-- `licensee` (string, required): Licensee name for filtering data
+- `licencee` (string, required): Licencee name for filtering data
 
 **Response (Success - 200):**
 
@@ -152,7 +152,7 @@ Retrieves global dashboard statistics for a specific licensee.
 
 ```json
 {
-  "message": "Licensee is required"
+  "message": "Licencee is required"
 }
 ```
 
@@ -160,7 +160,7 @@ Retrieves global dashboard statistics for a specific licensee.
 
 - Dashboard page (`/`) - Main dashboard metrics
 - Real-time dashboard updates
-- Licensee-specific analytics
+- Licencee-specific analytics
 
 ---
 
@@ -233,7 +233,7 @@ Retrieves chart data for various analytics visualizations.
 
 - `chartType` (string, required): Type of chart (revenue, machines, trends)
 - `dateRange` (string, optional): Date range for data
-- `licensee` (string, optional): Licensee filter
+- `licencee` (string, optional): Licencee filter
 
 **Response (Success - 200):**
 
@@ -267,7 +267,7 @@ Retrieves location-based analytics and performance metrics.
 
 **Query Parameters:**
 
-- `licensee` (string, optional): Filter by licensee
+- `licencee` (string, optional): Filter by licencee
 - `dateRange` (string, optional): Date range for metrics
 - `includeMachines` (boolean, optional): Include machine details
 
@@ -560,7 +560,7 @@ Retrieves various trend data including handle, jackpot, and win/loss trends.
   ```
 - **Financial Guide**: Uses `movement.drop` field ✅ **MATCHES**
 - **Business Context**: Aggregate physical cash inserted across all machines
-- **Aggregation Level**: Global sum across all licensee locations
+- **Aggregation Level**: Global sum across all licencee locations
 
 ##### **Total Cancelled Credits (Money Out) ✅**
 
@@ -574,7 +574,7 @@ Retrieves various trend data including handle, jackpot, and win/loss trends.
   ```
 - **Financial Guide**: Uses `movement.totalCancelledCredits` field ✅ **MATCHES**
 - **Business Context**: All credits paid out to players (vouchers + hand-paid)
-- **Aggregation Level**: Global sum across all licensee locations
+- **Aggregation Level**: Global sum across all licencee locations
 
 ##### **Total Gross Revenue ✅**
 

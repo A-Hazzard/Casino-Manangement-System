@@ -147,9 +147,9 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const currentUser = await getUserFromServer();
     const currentUserRoles = (currentUser?.roles as string[]) || [];
-    let currentUserLicensees: string[] = [];
-    if (Array.isArray((currentUser as { assignedLicensees?: string[] })?.assignedLicensees)) {
-      currentUserLicensees = (currentUser as { assignedLicensees: string[] }).assignedLicensees;
+    let currentUserLicencees: string[] = [];
+    if (Array.isArray((currentUser as { assignedLicencees?: string[] })?.assignedLicencees)) {
+      currentUserLicencees = (currentUser as { assignedLicencees: string[] }).assignedLicencees;
     }
 
     let currentUserLocationPermissions: string[] = [];
@@ -163,15 +163,20 @@ export async function GET(request: NextRequest) {
     const isManager = currentUserRoles.includes('manager') && !isAdmin;
     const isLocationAdmin = currentUserRoles.includes('location admin') && !isAdmin && !isManager;
 
-    // If manager (not admin), filter activity logs to only their licensees' resources
-    if (isManager && !isAdmin && currentUserLicensees.length > 0) {
-      // Get all resource IDs that belong to manager's licensees
+    // If manager (not admin), filter activity logs to only their licencees' resources
+    if (isManager && !isAdmin && currentUserLicencees.length > 0) {
+      // Get all resource IDs that belong to manager's licencees
       const [locations, machines, users] = await Promise.all([
-        GamingLocations.find({ 'rel.licensee': { $in: currentUserLicensees } })
+        GamingLocations.find({
+          $or: [
+            { 'rel.licencee': { $in: currentUserLicencees } },
+            { 'rel.licencee': { $in: currentUserLicencees } }
+          ]
+        })
           .select('_id')
           .lean(),
         Machine.find({}).select('_id gamingLocation').lean(), // Get all machines, will filter by location
-        User.find({ assignedLicensees: { $in: currentUserLicensees } })
+        User.find({ assignedLicencees: { $in: currentUserLicencees } })
           .select('_id')
           .lean(),
       ]);
@@ -196,12 +201,12 @@ export async function GET(request: NextRequest) {
         { resource: 'cabinet', resourceId: { $in: machineIds } },
         // Activities on users
         { resource: 'user', resourceId: { $in: userIds } },
-        // Activities by users in manager's licensees
+        // Activities by users in manager's licencees
         { userId: { $in: userIds } },
       ];
 
       console.warn('[ACTIVITY LOGS] Manager filter applied:', {
-        managerLicensees: currentUserLicensees,
+        managerLicencees: currentUserLicencees,
         locationCount: locationIds.length,
         machineCount: machineIds.length,
         userCount: userIds.length,

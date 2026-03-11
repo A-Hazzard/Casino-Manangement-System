@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * Flow:
  * 1. Check if in development mode
  * 2. Connect to database
- * 3. Parse request body (assignedLocations, assignedLicensees)
+ * 3. Parse request body (assignedLocations, assignedLicencees)
  * 4. Update user directly in database
  * 5. Return updated user data
  */
@@ -45,7 +45,7 @@ export async function PATCH(
     const resolvedParams = await params;
     const userId = resolvedParams.id;
     const body = await request.json();
-    const { assignedLocations, assignedLicensees } = body;
+    const { assignedLocations, assignedLicencees } = body;
 
     if (!userId) {
       return NextResponse.json(
@@ -67,9 +67,9 @@ export async function PATCH(
         : [];
     }
 
-    if (assignedLicensees !== undefined) {
-      updateSet.assignedLicensees = Array.isArray(assignedLicensees)
-        ? assignedLicensees.map(id => String(id))
+    if (assignedLicencees !== undefined) {
+      updateSet.assignedLicencees = Array.isArray(assignedLicencees)
+        ? assignedLicencees.map(id => String(id))
         : [];
     }
 
@@ -106,7 +106,7 @@ export async function PATCH(
       username?: string;
       emailAddress?: string;
       assignedLocations?: string[];
-      assignedLicensees?: string[];
+      assignedLicencees?: string[];
       sessionVersion?: number;
     };
 
@@ -121,7 +121,7 @@ export async function PATCH(
         username: userDoc.username,
         emailAddress: userDoc.emailAddress,
         assignedLocations: userDoc.assignedLocations || [],
-        assignedLicensees: userDoc.assignedLicensees || [],
+        assignedLicencees: userDoc.assignedLicencees || [],
         sessionVersion: userDoc.sessionVersion,
       },
     });

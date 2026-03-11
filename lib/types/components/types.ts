@@ -74,7 +74,7 @@ export type NewMovementModalProps = {
   onClose: () => void;
   onSubmit: (data: MachineMovementRecord) => void;
   onRefresh?: () => void;
-  locations?: { _id: string; name: string; licenseeId?: string }[];
+  locations?: { _id: string; name: string; licenceeId?: string }[];
 };
 
 export type ReportsLocationsRevenueTableProps = {
@@ -88,7 +88,7 @@ export type ReportsLocationsRevenueTableProps = {
   onLocationClick?: (location: AggregatedLocation) => void;
   timePeriod?: string;
   locationIds?: string[];
-  licensee?: string;
+  licencee?: string;
   className?: string;
 };
 
@@ -160,7 +160,7 @@ export type CollectorSchedule = {
   startTime: string | Date;
   endTime: string | Date;
   status: 'pending' | 'completed' | 'cancelled' | 'scheduled' | 'in-progress';
-  licensee?: string;
+  licencee?: string;
   createdAt: string;
   updatedAt: string;
 };

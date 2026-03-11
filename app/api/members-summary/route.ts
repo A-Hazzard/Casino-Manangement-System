@@ -3,7 +3,7 @@
  *
  * This route handles fetching members summary statistics.
  * It supports:
- * - Licensee-based filtering
+ * - Licencee-based filtering
  * - Basic summary statistics (total members, active members, sessions, etc.)
  *
  * @module app/api/members-summary/route
@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *
  * Flow:
  * 1. Connect to database
- * 2. Parse query parameters (licensee)
+ * 2. Parse query parameters (licencee)
  * 3. Build query filter
  * 4. Return basic summary data structure
  */
@@ -34,16 +34,16 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licensee = searchParams.get('licensee');
+    const licencee = (searchParams.get('licencee'));
 
     // ============================================================================
     // STEP 3: Build query filter
     // ============================================================================
     const matchStage: Record<string, unknown> = {};
 
-    if (licensee && licensee !== 'all') {
-      // Add licensee filtering if needed
-      matchStage.licensee = licensee;
+    if (licencee && licencee !== 'all') {
+      // Add licencee filtering if needed
+      matchStage.licencee = licencee;
     }
 
     // ============================================================================

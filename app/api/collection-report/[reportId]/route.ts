@@ -17,7 +17,7 @@ import {
   revertMachineCollectionMeters,
   updateCollectionReport,
 } from '@/app/api/lib/helpers/collectionReport/operations';
-import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenseeFilter';
+import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';

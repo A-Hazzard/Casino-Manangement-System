@@ -22,7 +22,7 @@ import axios from 'axios';
 
 /**
  * Fetches a list of users with full profile data.
- * @param licensee - (Optional) Licensee filter for users.
+ * @param licencee - (Optional) Licencee filter for users.
  * @param page - Page number (1-based, default: 1)
  * @param limit - Items per page (default: 50)
  * @param search - (Optional) Search term to filter users by username, email, or _id
@@ -32,7 +32,7 @@ import axios from 'axios';
  * @returns A promise that resolves to paginated users with pagination metadata.
  */
 export const fetchUsers = async (
-  licensee?: string,
+  licencee?: string,
   page: number = 1,
   limit: number = 50,
   search?: string,
@@ -49,8 +49,8 @@ export const fetchUsers = async (
   };
 }> => {
   const params: Record<string, string> = {};
-  if (licensee && licensee !== 'all') {
-    params.licensee = licensee;
+  if (licencee && licencee !== 'all') {
+    params.licencee = licencee;
   }
   if (search && search.trim()) {
     params.search = search.trim();
@@ -197,7 +197,7 @@ export const createUser = async (user: {
   };
   isEnabled?: boolean;
   profilePicture?: string | null;
-  assignedLicensees?: string[];
+  assignedLicencees?: string[];
   assignedLocations?: string[];
 }) => {
   const response = await axios.post('/api/users', user);

@@ -9,7 +9,7 @@
  * @module app/api/vault/add-cash/route */
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserLocationFilter } from '@/app/api/lib/helpers/licenseeFilter';
+import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { updateVaultShiftInventory, validateDenominationTotal } from '@/app/api/lib/helpers/vault/inventory';
 import { connectDB } from '@/app/api/lib/middleware/db';
@@ -24,7 +24,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * Handler flow:
  * 1. Performance tracking and authentication
  * 2. Parse and validate request body
- * 3. Licensee/location filtering via vault shift
+ * 3. Licencee/location filtering via vault shift
  * 4. Database connection
  * 5. Get active vault shift
  * 6. Create transaction and update balance
@@ -97,10 +97,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 6: Licensee/location filtering
+    // STEP 6: Licencee/location filtering
     // ============================================================================
     const allowedLocationIds = await getUserLocationFilter(
-      (userPayload?.assignedLicensees as string[]) || [],
+      (userPayload?.assignedLicencees as string[]) || [],
       undefined,
       (userPayload?.assignedLocations as string[]) || [],
       (userPayload?.roles as string[]) || []

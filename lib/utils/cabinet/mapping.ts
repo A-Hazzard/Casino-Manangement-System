@@ -59,7 +59,10 @@ export function mapToCabinetProps(cabinet: Cabinet): CabinetProps {
     gameType: cabinet.gameType || '',
     isCronosMachine: cabinet.isCronosMachine || false,
     cabinetType: cabinet.cabinetType || '',
-    custom: { name: cabinet.serialNumber || cabinet._id || 'Unknown' },
+    custom: cabinet.custom || {
+      name: cabinet.serialNumber || cabinet._id || 'Unknown',
+    },
+    online: cabinet.online,
     offlineTimeLabel: cabinet.offlineTimeLabel,
     actualOfflineTime: cabinet.actualOfflineTime,
   };

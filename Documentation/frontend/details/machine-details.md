@@ -434,8 +434,8 @@ Key features include:
 ### Stores
 
 - **`useDashBoardStore`** (`lib/store/dashboardStore.ts`) - Zustand store
-  - `selectedLicensee` - Current licensee filter
-  - `setSelectedLicensee` - Licensee selection setter
+  - `selectedLicencee` - Current licencee filter
+  - `setSelectedLicencee` - Licencee selection setter
 
 ### State Properties
 

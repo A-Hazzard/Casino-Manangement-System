@@ -26,7 +26,7 @@ export function useLocationMachineStats(
   const [machineStats, setMachineStats] = useState<MachineStats | null>(null);
   const [machineStatsLoading, setMachineStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const selectedLicensee = useDashBoardStore(state => state.selectedLicensee);
+  const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
   const makeRequest = useAbortableRequest();
 
   // Fetch machine stats
@@ -35,10 +35,10 @@ export function useLocationMachineStats(
     setError(null);
 
     try {
-      // Use selected licensee or 'all' if not selected
-      const licensee = selectedLicensee || 'all';
+      // Use selected licencee or 'all' if not selected
+      const licencee = selectedLicencee || 'all';
       const stats = await fetchMachineStats(
-        licensee,
+        licencee,
         locationId,
         machineTypeFilter,
         undefined,
@@ -67,14 +67,14 @@ export function useLocationMachineStats(
     } finally {
       setMachineStatsLoading(false);
     }
-  }, [selectedLicensee, locationId, machineTypeFilter, search, gameTypeFilter, selectedStatus]);
+  }, [selectedLicencee, locationId, machineTypeFilter, search, gameTypeFilter, selectedStatus]);
 
   // Refresh machine stats
   const refreshMachineStats = useCallback(async () => {
     await fetchMachineStatsData();
   }, [fetchMachineStatsData]);
 
-  // Load machine stats on mount and when selectedLicensee, locationId, or machineTypeFilter changes
+  // Load machine stats on mount and when selectedLicencee, locationId, or machineTypeFilter changes
   useEffect(() => {
     const loadMachineStats = async () => {
       setMachineStatsLoading(true);
@@ -82,9 +82,9 @@ export function useLocationMachineStats(
 
       try {
         const result = await makeRequest(async signal => {
-          const licensee = selectedLicensee || 'all';
+          const licencee = selectedLicencee || 'all';
           const stats = await fetchMachineStats(
-            licensee,
+            licencee,
             locationId,
             machineTypeFilter,
             signal,
@@ -123,7 +123,7 @@ export function useLocationMachineStats(
     };
 
     loadMachineStats();
-  }, [selectedLicensee, locationId, machineTypeFilter, search, gameTypeFilter, selectedStatus, makeRequest]);
+  }, [selectedLicencee, locationId, machineTypeFilter, search, gameTypeFilter, selectedStatus, makeRequest]);
 
   return {
     machineStats,

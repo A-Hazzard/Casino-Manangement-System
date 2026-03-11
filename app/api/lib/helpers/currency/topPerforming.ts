@@ -2,17 +2,17 @@
  * Top Performing Currency Conversion Helper
  *
  * This file contains helper functions for converting top performing metrics
- * between different currencies based on licensee and country settings.
+ * between different currencies based on licencee and country settings.
  */
 
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licensee } from '@/app/api/lib/models/licensee';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import {
   convertFromUSD,
   convertToUSD,
   getCountryCurrency,
-  getLicenseeCurrency,
+  getLicenceeCurrency,
 } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 
@@ -47,10 +47,10 @@ export async function convertTopPerformingCurrency(
   displayCurrency: CurrencyCode
 ): Promise<TopPerformingItem[]> {
   // Always convert when this function is called
-  // Each machine's native currency is determined by its location's licensee
+  // Each machine's native currency is determined by its location's licencee
 
   // Get currency mappings
-  const licenseesData = await Licensee.find(
+  const licenceesData = await Licencee.find(
     {
       $or: [
         { deletedAt: null },
@@ -60,10 +60,10 @@ export async function convertTopPerformingCurrency(
     { _id: 1, name: 1 }
   ).lean();
 
-  const licenseeIdToName = new Map<string, string>();
-  licenseesData.forEach(lic => {
+  const licenceeIdToName = new Map<string, string>();
+  licenceesData.forEach(lic => {
     if (lic._id && lic.name) {
-      licenseeIdToName.set(String(lic._id), lic.name);
+      licenceeIdToName.set(String(lic._id), lic.name);
     }
   });
 
@@ -75,7 +75,7 @@ export async function convertTopPerformingCurrency(
     }
   });
 
-  // We need to fetch location details to know the licensee/country for each item
+  // We need to fetch location details to know the licencee/country for each item
   // Collect all unique location IDs
   const locationIds = new Set<string>();
   data.forEach(item => {
@@ -87,17 +87,17 @@ export async function convertTopPerformingCurrency(
   // Fetch location details using Mongoose model
   const locationsData = await GamingLocations.find(
     { _id: { $in: Array.from(locationIds) } },
-    { _id: 1, 'rel.licensee': 1, 'rel.licencee': 1, country: 1 }
+    { _id: 1, 'rel.licencee': 1, country: 1 }
   ).lean();
 
   const locationDetails = new Map<
     string,
-    { licenseeId?: string; countryId?: string }
+    { licenceeId?: string; countryId?: string }
   >();
   locationsData.forEach(loc => {
     if (loc._id) {
       locationDetails.set(String(loc._id), {
-        licenseeId: loc.rel?.licensee || (loc.rel as { licencee?: string })?.licencee,
+        licenceeId: loc.rel?.licencee,
         countryId: loc.country,
       });
     }
@@ -110,11 +110,11 @@ export async function convertTopPerformingCurrency(
     if (item.locationId) {
       const details = locationDetails.get(item.locationId);
       if (details) {
-        if (details.licenseeId) {
-          // Get licensee's native currency
-          const licenseeName =
-            licenseeIdToName.get(details.licenseeId.toString()) || 'Unknown';
-          nativeCurrency = getLicenseeCurrency(licenseeName);
+        if (details.licenceeId) {
+          // Get licencee's native currency
+          const licenceeName =
+            licenceeIdToName.get(details.licenceeId.toString()) || 'Unknown';
+          nativeCurrency = getLicenceeCurrency(licenceeName);
         } else if (details.countryId) {
           // Unassigned locations - determine currency from country
           const countryName = countryIdToName.get(details.countryId.toString());

@@ -5,7 +5,7 @@
  * It supports:
  * - Filtering by location and time period
  * - Custom date range support
- * - Optional filtering by licensee
+ * - Optional filtering by licencee
  * - Aggregating metrics by manufacturer
  * - Calculating percentages for each manufacturer
  *
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
-    const licensee = searchParams.get('licensee');
+    const licencee = (searchParams.get('licencee'));
 
     if (!locationId || locationId === 'all') {
       return NextResponse.json(
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       timePeriod,
       startDate,
       endDate,
-      licensee
+      licencee
     );
 
     // ============================================================================
