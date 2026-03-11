@@ -1,0 +1,9 @@
+**/node_modules
+**/.next
+.git
+.gitlab-ci.yml
+.env*
+Dockerfile
+*.md
+.next
+.vscode

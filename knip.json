@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "app/**/*.{ts,tsx}",
+    "components/**/*.{ts,tsx}",
+    "lib/**/*.{ts,tsx}"
+  ],
+  "project": ["**/*.{ts,tsx,js,jsx,mjs,cjs}"],
+  "ignore": [
+    "**/*.test.{ts,tsx}",
+    "**/*.spec.{ts,tsx}",
+    "**/__tests__/**",
+    "**/test/**",
+    "**/tests/**",
+    "**/*.d.ts",
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/build/**",
+    "**/dist/**",
+    "**/.cursor/**",
+    "**/Documentation/**"
+  ],
+  "ignoreExportsUsedInFile": true,
+  "ignoreIssues": {
+    "lib/hooks/data/index.ts": ["exports"],
+    "lib/utils/chart/index.ts": ["exports"],
+    "lib/utils/permissions/index.ts": ["types"],
+    "lib/types/reports/index.ts": ["types"],
+    "lib/utils/financial/index.ts": ["types"],
+    "lib/types/components/props.ts": ["types"],
+    "lib/types/sessions/types.ts": ["types"]
+  }
+}

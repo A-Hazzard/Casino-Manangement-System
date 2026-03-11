@@ -1,0 +1,132 @@
+'use client';
+
+import type { CashierShift, FloatRequest } from '@/shared/types/vault';
+import { useCallback, useEffect, useState } from 'react';
+
+export type CashierActivityItem = {
+  id: string;
+  type: 'shift' | 'float_request' | 'payout';
+  action: string;
+  amount?: number;
+  status: string;
+  timestamp: Date;
+  notes?: string;
+  details?: string;
+  isOutflow?: boolean;
+};
+
+export function useCashierActivity() {
+  const [activities, setActivities] = useState<CashierActivityItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchActivity = useCallback(async (isSilent = false, startDate?: string, endDate?: string) => {
+    try {
+      if (!isSilent) setLoading(true);
+      else setRefreshing(true);
+
+      const params = new URLSearchParams();
+      params.append('limit', '20');
+      params.append('status', 'all');
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const queryString = params.toString();
+
+      // Fetch shifts, requests and payouts in parallel
+      const [shiftsRes, requestsRes, payoutsRes] = await Promise.all([
+        fetch(`/api/cashier/shifts?${queryString}`),
+        fetch(`/api/vault/float-request?${queryString}`),
+        fetch(`/api/cashier/payout?${queryString}`)
+      ]);
+
+      if (shiftsRes.ok && requestsRes.ok && payoutsRes.ok) {
+        const shiftsData = await shiftsRes.json();
+        const requestsData = await requestsRes.json();
+        const payoutsData = await payoutsRes.json();
+
+        const combined: CashierActivityItem[] = [];
+
+        // Map shifts
+        (shiftsData.shifts || []).forEach((s: CashierShift) => {
+          let actionLabel = 'Shift Activity';
+          if (s.status === 'pending_start') actionLabel = 'Opening Shift Request';
+          else if (s.status === 'active') actionLabel = 'Shift Started';
+          else if (s.status === 'closed') actionLabel = 'Shift Ended';
+          else if (s.status === 'pending_review') actionLabel = 'Shift Pending Review';
+          else if (s.status === 'cancelled') actionLabel = 'Shift Cancelled';
+
+          combined.push({
+            id: s._id,
+            type: 'shift',
+            action: actionLabel,
+            amount: s.openingBalance,
+            status: s.status,
+            timestamp: new Date(s.openedAt || s.createdAt),
+            notes: s.notes,
+            isOutflow: s.status === 'closed'
+          });
+        });
+
+        // Map float requests
+        (requestsData.data || []).forEach((r: FloatRequest) => {
+          // If it's a pending shift start, it's the initial float
+          const isInitial = r.requestNotes === 'Initial shift float';
+
+          combined.push({
+            id: r._id,
+            type: 'float_request',
+            action: isInitial ? 'Initial Float Request' : `Float ${r.type === 'increase' ? 'Increase' : 'Decrease'} Request`,
+            amount: r.requestedAmount,
+            status: r.status,
+            timestamp: new Date(r.requestedAt),
+            notes: r.vmNotes || r.requestNotes,
+            details: r.status === 'denied' ? `Reason: ${r.vmNotes || ''}` : undefined,
+            isOutflow: r.type === 'decrease'
+          });
+        });
+
+        // Map payouts
+        type PayoutItem = {
+          _id: string;
+          type: string;
+          amount: number;
+          timestamp: string | Date;
+          ticketNumber?: string;
+          machineSerialNumber?: string;
+          machineId?: string;
+          notes?: string;
+        };
+
+        (payoutsData.payouts || []).forEach((p: PayoutItem) => {
+          combined.push({
+            id: p._id,
+            type: 'payout',
+            action: p.type === 'ticket' ? `Ticket Redemption` : `Hand Pay`,
+            amount: p.amount,
+            status: 'completed',
+            timestamp: new Date(p.timestamp),
+            notes: p.type === 'ticket' ? `Ticket: ${p.ticketNumber}` : `Machine: ${p.machineSerialNumber || p.machineId}${p.notes ? ` - ${p.notes}` : ''}`,
+            isOutflow: true
+          });
+        });
+
+        // Sort by timestamp desc
+        combined.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+        setActivities(combined.slice(0, 20));
+      }
+    } catch (error) {
+      console.error('Failed to fetch activity', error);
+      // toast.error('Failed to load activity history');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchActivity(false);
+  }, [fetchActivity]);
+
+  return { activities, loading, refreshing, refresh: fetchActivity };
+}
