@@ -249,7 +249,6 @@ export const ADDITIONAL_BAD_WORDS = [
   'barf',
   'barfing',
   'barfed',
-  'gross',
   'disgusting',
   'revolting',
   'nasty',

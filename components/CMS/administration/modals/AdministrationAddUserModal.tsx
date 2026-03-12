@@ -1067,13 +1067,15 @@ export default function AdministrationAddUserModal({
                   {/* Left: Profile Picture */}
                   <div className="flex flex-col items-center lg:items-start">
                     <div className="relative">
-                      <Image
-                        src={formData.profilePicture || defaultAvatar}
-                        alt="Avatar"
-                        width={140}
-                        height={140}
-                        className="rounded-full border-4 border-gray-100 bg-gray-50 shadow-sm"
-                      />
+                      <div className="h-[140px] w-[140px] overflow-hidden rounded-full border-4 border-gray-100 bg-gray-50 shadow-sm">
+                        <Image
+                          src={formData.profilePicture || defaultAvatar}
+                          alt="Avatar"
+                          width={140}
+                          height={140}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
                       <button
                         type="button"
                         className="absolute bottom-2 right-2 flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-blue-600 shadow-md transition-colors hover:bg-blue-700"

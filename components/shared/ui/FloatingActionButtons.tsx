@@ -20,12 +20,14 @@
 
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
+import AdminFeedbackPanel from '@/components/shared/ui/AdminFeedbackPanel';
 import FeedbackForm from '@/components/shared/ui/FeedbackForm';
 import NotificationBell, { NotificationItem } from '@/components/shared/ui/NotificationBell';
 import { useNotificationStore } from '@/lib/store/notificationStore';
+import { useUserStore } from '@/lib/store/userStore';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bell, MessageSquare, RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type FloatingActionButtonsProps = {
   showRefresh: boolean;
@@ -40,10 +42,28 @@ export const FloatingActionButtons = ({
 }: FloatingActionButtonsProps) => {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const { user } = useUserStore();
+  const isPrivileged = user?.roles?.includes('admin') || user?.roles?.includes('developer');
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const refreshPendingCount = useCallback(async () => {
+    if (!isPrivileged) return;
+    try {
+      const res = await fetch('/api/feedback?status=pending&limit=1');
+      const data = await res.json();
+      if (data.success) setPendingCount(data.pagination?.total ?? 0);
+    } catch { /* ignore */ }
+  }, [isPrivileged]);
+
+  useEffect(() => {
+    refreshPendingCount();
+    const interval = setInterval(refreshPendingCount, 60_000);
+    return () => clearInterval(interval);
+  }, [refreshPendingCount]);
 
   const { 
     notifications: storeNotifications, 
@@ -130,6 +150,7 @@ export const FloatingActionButtons = ({
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.5, type: 'spring', stiffness: 200 }}
+          className="relative"
         >
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
@@ -141,14 +162,30 @@ export const FloatingActionButtons = ({
               <MessageSquare className="h-6 w-6 text-white" />
             </Button>
           </motion.div>
+          {isPrivileged && pendingCount > 0 && (
+            <Badge
+              variant="destructive"
+              className="pointer-events-none absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center border-2 border-white p-0 text-[10px] font-bold"
+            >
+              {pendingCount > 99 ? '99+' : pendingCount}
+            </Badge>
+          )}
         </motion.div>
       </div>
 
-      {/* Feedback Form Modal */}
-      <FeedbackForm
-        isOpen={isFeedbackOpen}
-        onClose={() => setIsFeedbackOpen(false)}
-      />
+      {/* Admin feedback panel (privileged users) */}
+      {isPrivileged ? (
+        <AdminFeedbackPanel
+          isOpen={isFeedbackOpen}
+          onClose={() => setIsFeedbackOpen(false)}
+          onCountChange={refreshPendingCount}
+        />
+      ) : (
+        <FeedbackForm
+          isOpen={isFeedbackOpen}
+          onClose={() => setIsFeedbackOpen(false)}
+        />
+      )}
     </>
   );
 };

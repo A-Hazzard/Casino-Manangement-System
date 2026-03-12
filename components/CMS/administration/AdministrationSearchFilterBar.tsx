@@ -61,7 +61,7 @@ export function AdministrationSearchFilterBar({
           <div className="flex h-11 w-full rounded-md bg-white shadow-sm sm:max-w-md">
             <input
               type="text"
-              placeholder="Search by username, email, or user ID..."
+              placeholder="Search by name, username, email, or user ID..."
               value={searchValue}
               onChange={e => setSearchValue(e.target.value)}
               className="h-full flex-1 cursor-text rounded-l-md border-none bg-white px-3 text-sm outline-none md:text-base"

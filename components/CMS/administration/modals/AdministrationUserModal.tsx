@@ -1861,17 +1861,19 @@ export default function AdministrationUserModal({
                 <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
                   <div className="flex flex-col items-center lg:items-start">
                     <div className="relative">
-                      <Image
-                        src={
-                          formData.profilePicture ||
-                          user.profilePicture ||
-                          defaultAvatar
-                        }
-                        alt="Avatar"
-                        width={140}
-                        height={140}
-                        className="rounded-full border-4 border-gray-100 bg-gray-50 shadow-sm"
-                      />
+                      <div className="h-[140px] w-[140px] overflow-hidden rounded-full border-4 border-gray-100 bg-gray-50 shadow-sm">
+                        <Image
+                          src={
+                            formData.profilePicture ||
+                            user.profilePicture ||
+                            defaultAvatar
+                          }
+                          alt="Avatar"
+                          width={140}
+                          height={140}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
                       {isEditMode && (
                         <>
                           <button

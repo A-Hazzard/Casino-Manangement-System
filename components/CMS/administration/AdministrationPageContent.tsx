@@ -194,7 +194,7 @@ export default function AdministrationPageContent() {
     }
     return (
       <AdministrationUsersSection
-        selectedLicencee={selectedLicencee}
+        filteredCounts={usersHook.filteredCounts}
         isLoading={usersHook.isLoading}
         isSearching={usersHook.isSearching}
         processedUsers={usersHook.processedUsers}

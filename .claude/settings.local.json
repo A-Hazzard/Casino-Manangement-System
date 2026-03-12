@@ -9,7 +9,14 @@
       "Bash(bun run dev)",
       "Bash(node scripts/investigate-location-gross.js)",
       "Bash(node scripts/investigate-meters-boundary.js)",
-      "Bash(node scripts/investigate-cumulative-delta.js)"
+      "Bash(node scripts/investigate-cumulative-delta.js)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(pnpm run:*)",
+      "Bash(ls \"C:\\\\Users\\\\pc\\\\OneDrive\\\\Documents\\\\Github\\\\evolution-one-cms\\\\components\\\\shared\\\\ui\"\" | grep -E \"separator)",
+      "Bash(scroll)",
+      "Bash(tabs)",
+      "Bash(avatar)",
+      "Bash(sheet \")"
     ]
   }
 }

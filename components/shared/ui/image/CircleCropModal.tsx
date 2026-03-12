@@ -157,35 +157,31 @@ export default function CircleCropModal({
           <div className="fixed inset-0 z-[100001] bg-black/70" />,
           document.body
         )}
-      <DialogContent className="z-[100002] w-full max-w-4xl">
+      <DialogContent className="z-[100002] w-full max-w-md sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Crop Profile Picture</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-6">
-          <div className="flex justify-center">
-            <div ref={imageWrapperRef} className="relative">
-            <ReactCrop
-              crop={crop}
-              onChange={(_, percentCrop) => setCrop(percentCrop)}
-              onComplete={c => setCompletedCrop(c)}
-              aspect={aspect}
-              circularCrop
-              className="max-h-96"
-            >
-              <img
-                ref={imgRef}
-                src={imageSrc}
-                alt="Image to crop"
-                onLoad={handleImageLoad}
-                style={{
-                  maxHeight: '400px',
-                  maxWidth: '100%',
-                }}
-              />
-            </ReactCrop>
-            </div>
-          </div>
+        <div ref={imageWrapperRef} className="flex justify-center">
+          <ReactCrop
+            crop={crop}
+            onChange={(_, percentCrop) => setCrop(percentCrop)}
+            onComplete={c => setCompletedCrop(c)}
+            aspect={aspect}
+            circularCrop
+          >
+            <img
+              ref={imgRef}
+              src={imageSrc}
+              alt="Image to crop"
+              onLoad={handleImageLoad}
+              style={{
+                maxHeight: '380px',
+                maxWidth: '100%',
+                display: 'block',
+              }}
+            />
+          </ReactCrop>
         </div>
 
         <DialogFooter>

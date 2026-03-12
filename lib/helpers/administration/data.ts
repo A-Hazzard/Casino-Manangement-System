@@ -109,8 +109,16 @@ export const filterAndSortUsers = (
     processedUsers = processedUsers.filter(user => {
       if (searchMode === 'username') {
         // Add null/undefined check for username
-        const username = user.username || '';
-        return username.toLowerCase().includes(lowerSearchValue);
+        const username = (user.username || '').toLowerCase();
+        const firstName = (user.profile?.firstName || '').toLowerCase();
+        const lastName = (user.profile?.lastName || '').toLowerCase();
+        const fullName = `${firstName} ${lastName}`.trim();
+        return (
+          username.includes(lowerSearchValue) ||
+          firstName.includes(lowerSearchValue) ||
+          lastName.includes(lowerSearchValue) ||
+          fullName.includes(lowerSearchValue)
+        );
       } else if (searchMode === 'email') {
         return (user.email || user.emailAddress || '')
           .toLowerCase()

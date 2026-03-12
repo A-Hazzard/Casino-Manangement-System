@@ -66,6 +66,34 @@ const FeedbackSchema = new Schema(
       ref: 'User',
       default: null,
     },
+    firstName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    lastName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    locationId: {
+      type: String,
+      default: null,
+    },
+    locationName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    licenceeId: {
+      type: String,
+      default: null,
+    },
+    licenceeName: {
+      type: String,
+      trim: true,
+      default: null,
+    },
   },
   {
     timestamps: true,

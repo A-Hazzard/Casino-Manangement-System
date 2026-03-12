@@ -49,7 +49,7 @@ export function useAdministrationUsers({
   const [searchValue, setSearchValue] = useState('');
   const [debouncedSearchValue, setDebouncedSearchValue] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('active');
   const [usingBackendSearch, setUsingBackendSearch] = useState(false);
   const [paginationMetadata, setPaginationMetadata] = useState<{
     total: number;
@@ -143,6 +143,18 @@ export function useAdministrationUsers({
     setSortConfig
   );
 
+  // Counts derived from the full current result set (status + search filtered, not paginated)
+  const filteredCounts = useMemo(() => {
+    const usersToCount = allUsers;
+    return {
+      total: usersToCount.length,
+      collectors: usersToCount.filter(u => (u.roles as string[] | undefined)?.includes('collector')).length,
+      admins: usersToCount.filter(u => (u.roles as string[] | undefined)?.some(r => r === 'admin' || r === 'developer')).length,
+      locationAdmins: usersToCount.filter(u => (u.roles as string[] | undefined)?.includes('location admin')).length,
+      managers: usersToCount.filter(u => (u.roles as string[] | undefined)?.includes('manager')).length,
+    };
+  }, [allUsers]);
+
   // ============================================================================
   // Effects
   // ============================================================================
@@ -216,11 +228,17 @@ export function useAdministrationUsers({
         const username = (user.username || '').toLowerCase();
         const email = (user.email || user.emailAddress || '').toLowerCase();
         const userId = String(user._id || '').toLowerCase();
+        const firstName = (user.profile?.firstName || '').toLowerCase();
+        const lastName = (user.profile?.lastName || '').toLowerCase();
+        const fullName = `${firstName} ${lastName}`.trim();
 
         return (
           username.includes(lowerSearchValue) ||
           email.includes(lowerSearchValue) ||
-          userId.includes(lowerSearchValue)
+          userId.includes(lowerSearchValue) ||
+          firstName.includes(lowerSearchValue) ||
+          lastName.includes(lowerSearchValue) ||
+          fullName.includes(lowerSearchValue)
         );
       })
       .sort((a, b) => {
@@ -229,8 +247,11 @@ export function useAdministrationUsers({
           const username = (u.username || '').toLowerCase();
           const email = (u.email || u.emailAddress || '').toLowerCase();
           const userId = String(u._id || '').toLowerCase();
+          const firstName = (u.profile?.firstName || '').toLowerCase();
+          const lastName = (u.profile?.lastName || '').toLowerCase();
 
           if (username.startsWith(lowerSearchValue)) score += 20;
+          if (firstName.startsWith(lowerSearchValue) || lastName.startsWith(lowerSearchValue)) score += 15;
           if (email.startsWith(lowerSearchValue)) score += 10;
           if (userId.startsWith(lowerSearchValue)) score += 5;
           return score;
@@ -755,6 +776,7 @@ export function useAdministrationUsers({
     isAddUserModalOpen,
     processedUsers,
     totalPages,
+    filteredCounts,
     // Setters
     setSearchValue,
     setSelectedRole,

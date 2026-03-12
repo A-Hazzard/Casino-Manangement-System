@@ -17,12 +17,17 @@ import { AdministrationUserCardSkeleton } from '@/components/CMS/administration/
 import { AdministrationUserTableSkeleton } from '@/components/CMS/administration/skeletons/AdministrationUserTableSkeleton';
 import { AdministrationUserTable } from '@/components/CMS/administration/tables/AdministrationUserTable';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
-import { useAdministrationUserCounts } from '@/lib/hooks/administration/useAdministrationUserCounts';
 import type { SortKey, User } from '@/lib/types/administration';
 import type { UserAuthPayload } from '@/shared/types/auth';
 
 type AdministrationUsersSectionProps = {
-  selectedLicencee: string | null;
+  filteredCounts: {
+    total: number;
+    collectors: number;
+    admins: number;
+    locationAdmins: number;
+    managers: number;
+  };
   isLoading: boolean;
   isSearching: boolean;
   processedUsers: User[];
@@ -61,7 +66,7 @@ type AdministrationUsersSectionProps = {
 };
 
 export default function AdministrationUsersSection({
-  selectedLicencee,
+  filteredCounts,
   isLoading,
   isSearching,
   processedUsers,
@@ -93,18 +98,12 @@ export default function AdministrationUsersSection({
   requestSort,
   refreshUsers,
 }: AdministrationUsersSectionProps) {
-  // ============================================================================
-  // Data Fetching - User Counts
-  // ============================================================================
-  const { counts, isLoading: countsLoading } =
-    useAdministrationUserCounts(selectedLicencee);
-
   return (
     <>
       {/* Summary Cards */}
       <AdministrationUserSummaryCards
-        counts={counts}
-        isLoading={countsLoading}
+        counts={filteredCounts}
+        isLoading={isLoading}
       />
 
       {/* Search Filter Bar */}

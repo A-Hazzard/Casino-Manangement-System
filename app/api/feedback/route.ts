@@ -17,6 +17,8 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { ActivityLog } from '@/app/api/lib/models/activityLog';
 import { FeedbackModel } from '@/app/api/lib/models/feedback';
+import { GamingLocations as GamingLocationsModel } from '@/app/api/lib/models/gaminglocations';
+import { Licencee as LicenceeModel } from '@/app/api/lib/models/licencee';
 import { generateMongoId } from '@/lib/utils/id';
 import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
@@ -26,6 +28,10 @@ const feedbackSchema = z.object({
   email: z.string().email('Please provide a valid email address').optional(),
   username: z.string().optional(),
   userId: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  locationId: z.string().optional(),
+  licenceeId: z.string().optional(),
   category: z.enum([
     'bug',
     'suggestion',
@@ -80,7 +86,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, username, userId, category, description } =
+    const { email, username, userId, firstName, lastName, locationId, licenceeId, category, description } =
       validationResult.data;
 
     // ============================================================================
@@ -127,6 +133,26 @@ export async function POST(request: NextRequest) {
       Math.random().toString(36).substring(2, 9);
 
     // ============================================================================
+    // STEP 5b: Resolve location and licencee names
+    // ============================================================================
+    let resolvedLocationName: string | null = null;
+    let resolvedLicenceeName: string | null = null;
+
+    if (locationId) {
+      try {
+        const loc = await GamingLocationsModel.findById(locationId).select('name').lean() as { name?: string } | null;
+        resolvedLocationName = loc?.name || null;
+      } catch { /* ignore lookup errors */ }
+    }
+
+    if (licenceeId) {
+      try {
+        const lic = await LicenceeModel.findById(licenceeId).select('name').lean() as { name?: string } | null;
+        resolvedLicenceeName = lic?.name || null;
+      } catch { /* ignore lookup errors */ }
+    }
+
+    // ============================================================================
     // STEP 6: Create feedback entry
     // ============================================================================
     const feedback = new FeedbackModel({
@@ -134,6 +160,12 @@ export async function POST(request: NextRequest) {
       email: finalEmail.toLowerCase().trim(),
       username: finalUsername,
       userId: finalUserId,
+      firstName: firstName?.trim() || null,
+      lastName: lastName?.trim() || null,
+      locationId: locationId || null,
+      locationName: resolvedLocationName,
+      licenceeId: licenceeId || null,
+      licenceeName: resolvedLicenceeName,
       category,
       description: description.trim(),
       submittedAt: new Date(),

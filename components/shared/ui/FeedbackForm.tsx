@@ -2,61 +2,37 @@
  * Feedback Form Component
  * Modal form for submitting user feedback with validation and profanity filtering.
  *
- * Features:
- * - Feedback category selection
- * - Email input (optional for logged-in users)
- * - Description textarea
- * - Profanity filtering
- * - Form validation
- * - Success/error states
- * - Toast notifications
- * - Framer Motion animations
- *
- * Large component (~414 lines) handling feedback submission workflow.
- *
  * @param isOpen - Whether the form modal is visible
  * @param onClose - Callback to close the form
  */
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/shared/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/shared/ui/select';
+import { Dialog, DialogContent, DialogTitle } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, CheckCircle2, AlertCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, MessageSquare, Send, X } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import profaneWords from 'profane-words';
 import { ADDITIONAL_BAD_WORDS } from '@/lib/constants';
 import { useUserStore } from '@/lib/store/userStore';
+import { cn } from '@/lib/utils';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
 const FEEDBACK_CATEGORIES = [
-  { value: 'bug', label: '🐛 Bug Report' },
-  { value: 'suggestion', label: '💡 Suggestion' },
-  { value: 'general-review', label: '⭐ General Review' },
-  { value: 'feature-request', label: '✨ Feature Request' },
-  { value: 'performance', label: '⚡ Performance Issue' },
-  { value: 'ui-ux', label: '🎨 UI/UX Feedback' },
-  { value: 'other', label: '📝 Other' },
+  { value: 'bug',            label: 'Bug Report',       emoji: '🐛' },
+  { value: 'suggestion',     label: 'Suggestion',        emoji: '💡' },
+  { value: 'general-review', label: 'General Review',    emoji: '⭐' },
+  { value: 'feature-request',label: 'Feature Request',   emoji: '✨' },
+  { value: 'performance',    label: 'Performance',        emoji: '⚡' },
+  { value: 'ui-ux',          label: 'UI / UX',            emoji: '🎨' },
+  { value: 'other',          label: 'Other',              emoji: '📝' },
 ] as const;
 
 type FeedbackFormProps = {
@@ -89,18 +65,14 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
   // Combine profane-words library with custom bad words list
   const badWordsSet = useMemo(() => {
     const allWords = new Set<string>();
-    // Add words from profane-words library
     profaneWords.forEach(word => allWords.add(word.toLowerCase()));
-    // Add custom bad words
     ADDITIONAL_BAD_WORDS.forEach(word => allWords.add(word.toLowerCase()));
     return allWords;
   }, []);
 
-  // Check if text contains profanity
   const checkProfanity = (text: string): { hasProfanity: boolean; badWord?: string } => {
     const words = text.toLowerCase().split(/\s+/);
     for (const word of words) {
-      // Remove punctuation for checking
       const cleanWord = word.replace(/[^\w]/g, '');
       if (cleanWord && badWordsSet.has(cleanWord)) {
         return { hasProfanity: true, badWord: cleanWord };
@@ -109,14 +81,12 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     return { hasProfanity: false };
   };
 
-  // Handle description change with profanity checking
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const currentLength = description.length;
     const newLength = newValue.length;
     const isBackspace = newLength < currentLength;
 
-    // If backspace, allow it and check if profanity is removed
     if (isBackspace) {
       setDescription(newValue);
       const check = checkProfanity(newValue);
@@ -128,19 +98,15 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
       return;
     }
 
-    // If typing forward and profanity exists, prevent typing
     if (hasProfanity && newLength > currentLength) {
       e.preventDefault();
       return;
     }
 
-    // Check for profanity in new text
     const check = checkProfanity(newValue);
     if (check.hasProfanity) {
       setHasProfanity(true);
-      setProfanityError(
-        `Inappropriate language detected. Please remove the offensive word to continue.`
-      );
+      setProfanityError('Inappropriate language detected. Please remove the offensive word to continue.');
       setDescription(newValue);
       previousLengthRef.current = newLength;
     } else {
@@ -151,22 +117,8 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     }
   };
 
-  // Handle keydown to prevent typing when profanity exists
   const handleDescriptionKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Allow backspace, delete, arrow keys, and other navigation keys
-    const allowedKeys = [
-      'Backspace',
-      'Delete',
-      'ArrowLeft',
-      'ArrowRight',
-      'ArrowUp',
-      'ArrowDown',
-      'Home',
-      'End',
-      'Tab',
-      'Enter',
-    ];
-
+    const allowedKeys = ['Backspace','Delete','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','Tab','Enter'];
     if (hasProfanity && !allowedKeys.includes(e.key) && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
       toast.error('Please remove the inappropriate word before continuing');
@@ -181,14 +133,11 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
       return;
     }
 
-    // Final profanity check before submission
     const check = checkProfanity(description);
     if (check.hasProfanity) {
       toast.error('Please remove inappropriate language before submitting');
       setHasProfanity(true);
-      setProfanityError(
-        `Inappropriate language detected. Please remove the offensive word to continue.`
-      );
+      setProfanityError('Inappropriate language detected. Please remove the offensive word to continue.');
       return;
     }
 
@@ -204,6 +153,9 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
         email?: string;
         username?: string;
         userId?: string;
+        firstName?: string;
+        lastName?: string;
+        licenceeId?: string;
         category: string;
         description: string;
       } = {
@@ -211,13 +163,14 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
         description: description.trim(),
       };
 
-      // If logged in, use user info
       if (isLoggedIn && user) {
         requestBody.email = user.emailAddress || email.trim() || undefined;
         requestBody.username = user.username || undefined;
         requestBody.userId = user._id ? String(user._id) : undefined;
+        requestBody.firstName = user.profile?.firstName || undefined;
+        requestBody.lastName = user.profile?.lastName || undefined;
+        requestBody.licenceeId = user.assignedLicencees?.[0] || undefined;
       } else {
-        // If not logged in, require email
         if (!email.trim()) {
           toast.error('Please provide your email address');
           setIsSubmitting(false);
@@ -228,9 +181,7 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
 
       const response = await fetch('/api/feedback', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
       });
 
@@ -240,10 +191,8 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
         throw new Error(data.error || 'Failed to submit feedback');
       }
 
-      // Show thank you message
       setShowThankYou(true);
 
-      // Reset form after a delay
       setTimeout(() => {
         setEmail('');
         setCategory('other');
@@ -257,9 +206,7 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     } catch (error) {
       console.error('Error submitting feedback:', error);
       toast.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to submit feedback. Please try again later.'
+        error instanceof Error ? error.message : 'Failed to submit feedback. Please try again later.'
       );
     } finally {
       setIsSubmitting(false);
@@ -279,7 +226,6 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     }
   };
 
-  // Reset profanity state when modal closes
   useEffect(() => {
     if (!isOpen) {
       setProfanityError('');
@@ -290,30 +236,51 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent
+        isMobileFullScreen={false}
+        showCloseButton={false}
+        className="flex max-h-[90vh] w-[calc(100%-2rem)] max-w-md flex-col overflow-hidden rounded-2xl p-0 shadow-2xl"
+      >
         <AnimatePresence mode="wait">
           {!showThankYou ? (
             <motion.div
               key="form"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col overflow-hidden"
             >
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-blue-600" />
-                  Customer Feedback
-                </DialogTitle>
-                <DialogDescription>
-                  We value your feedback! Please share any issues you&apos;ve found
-                  or suggestions for improvement.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+              <DialogTitle className="sr-only">Share Feedback</DialogTitle>
+              {/* ── Header ── */}
+              <div className="relative shrink-0 bg-gradient-to-br from-blue-600 to-indigo-700 px-6 pb-5 pt-5">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  disabled={isSubmitting}
+                  className="absolute right-4 top-4 rounded-full p-1 text-white/60 transition-colors hover:bg-white/20 hover:text-white"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 ring-1 ring-white/30">
+                    <MessageSquare className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-white">Share Feedback</h2>
+                    <p className="text-xs text-blue-200">Help us improve the platform</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Form body ── */}
+              <form onSubmit={handleSubmit} className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+                {/* Email — only for guests */}
                 {!isLoggedIn && (
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                      Email Address
+                    </Label>
                     <Input
                       id="email"
                       type="email"
@@ -322,110 +289,136 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
                       onChange={e => setEmail(e.target.value)}
                       required
                       disabled={isSubmitting}
+                      className="rounded-xl border-gray-200 text-sm focus:border-blue-400"
                     />
                   </div>
                 )}
+
+                {/* Category pills */}
                 <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={category}
-                    onValueChange={setCategory}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FEEDBACK_CATEGORIES.map(cat => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Category</p>
+                  <div className="flex flex-wrap gap-2">
+                    {FEEDBACK_CATEGORIES.map(cat => (
+                      <button
+                        key={cat.value}
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => setCategory(cat.value)}
+                        className={cn(
+                          'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all',
+                          category === cat.value
+                            ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm'
+                            : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50/50'
+                        )}
+                      >
+                        <span>{cat.emoji}</span>
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
+
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="description" className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Description
+                  </Label>
                   <Textarea
                     ref={textareaRef}
                     id="description"
-                    placeholder="Please describe the issue or provide your feedback..."
+                    placeholder="Describe the issue or share your thoughts…"
                     value={description}
                     onChange={handleDescriptionChange}
                     onKeyDown={handleDescriptionKeyDown}
                     required
                     disabled={isSubmitting}
-                    rows={6}
+                    rows={5}
                     minLength={10}
                     maxLength={hasProfanity ? description.length : 5000}
-                    className={`resize-none ${
-                      hasProfanity ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''
-                    }`}
+                    className={cn(
+                      'resize-none rounded-xl border-gray-200 text-sm focus:border-blue-400',
+                      hasProfanity && 'border-red-400 focus:border-red-400'
+                    )}
                   />
-                  {profanityError && (
-                    <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-800">
-                      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  {profanityError ? (
+                    <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                      <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                       <span>{profanityError}</span>
                     </div>
+                  ) : (
+                    <p className="text-right text-[11px] text-gray-400">
+                      {description.length} / 5000
+                    </p>
                   )}
-                  <p className="text-xs text-gray-500">
-                    {description.length}/5000 characters (minimum 10)
-                  </p>
                 </div>
-                <div className="flex justify-end gap-2 pt-2">
+              </form>
+
+              {/* ── Footer ── */}
+              <div className="shrink-0 border-t bg-gray-50/80 px-6 py-4">
+                <div className="flex items-center justify-end gap-2">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
+                    size="sm"
                     onClick={handleClose}
                     disabled={isSubmitting}
+                    className="text-gray-500"
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSubmitting || hasProfanity}>
-                    {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isSubmitting || hasProfanity}
+                    onClick={handleSubmit}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Send className="mr-1.5 h-3.5 w-3.5" />
+                    {isSubmitting ? 'Submitting…' : 'Submit'}
                   </Button>
                 </div>
-              </form>
+              </div>
             </motion.div>
           ) : (
             <motion.div
               key="thankyou"
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.4, type: 'spring' }}
-              className="flex flex-col items-center justify-center py-8 text-center"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, type: 'spring', stiffness: 200 }}
+              className="flex flex-col items-center justify-center px-8 py-14 text-center"
             >
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                transition={{ delay: 0.1, type: 'spring', stiffness: 250 }}
+                className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50"
               >
-                <CheckCircle2 className="h-16 w-16 text-green-500" />
+                <CheckCircle2 className="h-10 w-10 text-emerald-500" />
               </motion.div>
               <motion.h2
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="mt-4 text-2xl font-bold text-gray-900"
+                transition={{ delay: 0.2 }}
+                className="mt-5 text-xl font-bold text-gray-900"
               >
-                Thank You!
+                Thank you!
               </motion.h2>
               <motion.p
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="mt-2 text-gray-600"
+                transition={{ delay: 0.3 }}
+                className="mt-2 text-sm text-gray-500"
               >
-                We appreciate your feedback and will review it shortly.
+                Your feedback has been received. We&apos;ll review it shortly.
               </motion.p>
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
-                className="mt-4 text-sm text-gray-500"
+                className="mt-5 text-xs text-gray-400"
               >
-                This window will close automatically...
+                This window will close automatically…
               </motion.p>
             </motion.div>
           )}
@@ -434,4 +427,3 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     </Dialog>
   );
 }
-

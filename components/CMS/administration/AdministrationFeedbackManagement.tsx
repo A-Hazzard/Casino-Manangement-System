@@ -24,9 +24,6 @@ import { Checkbox } from '@/components/shared/ui/checkbox';
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
     DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
@@ -48,7 +45,7 @@ import {
 } from '@/components/shared/ui/table';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { format } from 'date-fns';
-import { Edit2, Eye, MessageSquare, RefreshCw, RotateCcw, Save, Search, Trash2 } from 'lucide-react';
+import { Building2, Edit2, Eye, MessageSquare, RefreshCw, RotateCcw, Save, Search, Trash2, User, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -74,6 +71,13 @@ type Feedback = {
   reviewedBy?: string | null;
   reviewedAt?: string | null;
   notes?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  locationId?: string | null;
+  locationName?: string | null;
+  licenceeId?: string | null;
+  licenceeName?: string | null;
+  username?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -104,6 +108,20 @@ const STATUS_COLORS: Record<string, string> = {
   reviewed: 'bg-blue-100 text-blue-800 border-blue-200',
   resolved: 'bg-green-100 text-green-800 border-green-200',
   archived: 'bg-gray-100 text-gray-800 border-gray-200',
+};
+
+const STATUS_HEADER: Record<string, { bg: string; text: string; badge: string }> = {
+  pending:  { bg: 'bg-amber-500',   text: 'text-white', badge: 'bg-amber-400/30 text-white border-amber-300/40' },
+  reviewed: { bg: 'bg-blue-600',    text: 'text-white', badge: 'bg-blue-500/30 text-white border-blue-400/40' },
+  resolved: { bg: 'bg-emerald-600', text: 'text-white', badge: 'bg-emerald-500/30 text-white border-emerald-400/40' },
+  archived: { bg: 'bg-gray-500',    text: 'text-white', badge: 'bg-gray-400/30 text-white border-gray-300/40' },
+};
+
+const getInitials = (firstName?: string | null, lastName?: string | null, email?: string) => {
+  if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase();
+  if (firstName) return firstName[0].toUpperCase();
+  if (email) return email[0].toUpperCase();
+  return '?';
 };
 
 /**
@@ -712,6 +730,16 @@ export default function AdministrationFeedbackManagement() {
                       </Badge>
                     )}
                   </div>
+                  {(item.firstName || item.lastName || item.licenceeName) && (
+                    <div className="mb-2 space-y-1 text-xs text-gray-500">
+                      {(item.firstName || item.lastName) && (
+                        <p><span className="font-medium text-gray-600">Name:</span> {[item.firstName, item.lastName].filter(Boolean).join(' ')}</p>
+                      )}
+                      {item.licenceeName && (
+                        <p className="break-words"><span className="font-medium text-gray-600">Licencee:</span> {item.licenceeName}</p>
+                      )}
+                    </div>
+                  )}
                   <p className="line-clamp-2 text-sm text-gray-600">
                     {item.description}
                   </p>
@@ -726,6 +754,8 @@ export default function AdministrationFeedbackManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Licencee</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Submitted</TableHead>
@@ -736,6 +766,16 @@ export default function AdministrationFeedbackManagement() {
                 {feedback.map(item => (
                   <TableRow key={item._id}>
                     <TableCell className="font-medium">{item.email}</TableCell>
+                    <TableCell className="text-gray-700">
+                      {[item.firstName, item.lastName].filter(Boolean).join(' ') || (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-[180px] text-gray-700">
+                      <span className="block break-words leading-snug">
+                        {item.licenceeName || <span className="text-gray-400">—</span>}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline">
                         {CATEGORY_LABELS[item.category] || item.category}
@@ -807,222 +847,229 @@ export default function AdministrationFeedbackManagement() {
         </>
       )}
 
-      {/* Detail Modal */}
+      {/* Detail Modal — Redesigned */}
       <Dialog open={isDetailModalOpen} onOpenChange={handleCloseModal}>
-        <DialogContent className="max-h-[90vh] w-[95vw] max-w-2xl overflow-y-auto sm:w-full">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Feedback Details
-            </DialogTitle>
-            <DialogDescription>
-              {isEditing ? 'Edit feedback status and notes' : 'View complete feedback information'}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedFeedback && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <Label className="text-sm font-medium text-gray-500">
-                    Email
-                  </Label>
-                  <p className="mt-1 text-sm">{selectedFeedback.email}</p>
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-500">
-                    Category
-                  </Label>
-                  <div className="mt-1">
-                    <Badge variant="outline">
-                      {CATEGORY_LABELS[selectedFeedback.category] ||
-                        selectedFeedback.category}
+        <DialogContent
+          isMobileFullScreen={false}
+          showCloseButton={false}
+          className="flex max-h-[90vh] w-[calc(100%-2rem)] max-w-xl flex-col overflow-hidden rounded-2xl p-0 shadow-2xl"
+        >
+          {selectedFeedback && (() => {
+            const header = STATUS_HEADER[selectedFeedback.archived ? 'archived' : selectedFeedback.status] ?? STATUS_HEADER.pending;
+            const initials = getInitials(selectedFeedback.firstName, selectedFeedback.lastName, selectedFeedback.email);
+            const displayName = [selectedFeedback.firstName, selectedFeedback.lastName].filter(Boolean).join(' ') || null;
+
+            return (
+              <>
+                <DialogTitle className="sr-only">Feedback Details</DialogTitle>
+                {/* ── Colored Header ── */}
+                <div className={`relative shrink-0 ${header.bg} px-6 pb-5 pt-5`}>
+                  <button
+                    onClick={handleCloseModal}
+                    className="absolute right-4 top-4 rounded-full p-1 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+
+                  <div className="flex items-start gap-4">
+                    {/* Avatar */}
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg font-bold text-white ring-2 ring-white/30">
+                      {initials}
+                    </div>
+
+                    {/* Identity */}
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-base font-semibold ${header.text}`}>
+                        {displayName ?? <span className="opacity-70">Anonymous</span>}
+                      </p>
+                      <p className={`mt-0.5 break-all text-sm ${header.text} opacity-80`}>
+                        {selectedFeedback.email}
+                      </p>
+                      {selectedFeedback.username && (
+                        <p className={`mt-0.5 text-xs ${header.text} opacity-60`}>
+                          @{selectedFeedback.username}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Pill row */}
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    {isEditing ? (
+                      <Select value={editStatus} onValueChange={setEditStatus}>
+                        <SelectTrigger className="h-7 w-36 border-white/40 bg-white/20 text-xs text-white placeholder:text-white focus:ring-white/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="reviewed">Reviewed</SelectItem>
+                          <SelectItem value="resolved">Resolved</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant="outline" className={`border text-xs font-medium ${header.badge}`}>
+                        {selectedFeedback.archived ? 'Archived' : selectedFeedback.status.charAt(0).toUpperCase() + selectedFeedback.status.slice(1)}
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className={`border text-xs ${header.badge}`}>
+                      {CATEGORY_LABELS[selectedFeedback.category] || selectedFeedback.category}
                     </Badge>
+                    <span className={`ml-auto text-xs ${header.text} opacity-60`}>
+                      {format(new Date(selectedFeedback.submittedAt), 'MMM d, yyyy · HH:mm')}
+                    </span>
                   </div>
                 </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-500">
-                    Status
-                  </Label>
-                  {isEditing ? (
-                    <Select
-                      value={editStatus}
-                      onValueChange={setEditStatus}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="reviewed">Reviewed</SelectItem>
-                        <SelectItem value="resolved">Resolved</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <div className="mt-1">
-                      <Badge
-                        variant="outline"
-                        className={STATUS_COLORS[selectedFeedback.status] || ''}
-                      >
-                        {selectedFeedback.status.charAt(0).toUpperCase() +
-                          selectedFeedback.status.slice(1)}
-                      </Badge>
+
+                {/* ── Scrollable Body ── */}
+                <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+
+                  {/* Submitter details row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                        <User className="h-3 w-3" /> Username
+                      </p>
+                      <p className="text-sm font-medium text-gray-800">
+                        {selectedFeedback.username ?? <span className="text-gray-300">—</span>}
+                      </p>
                     </div>
-                  )}
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-500">
-                    Archived
-                  </Label>
-                  {isEditing ? (
-                    <div className="mt-2 flex items-center gap-2">
+                    <div>
+                      <p className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                        <Building2 className="h-3 w-3" /> Licencee
+                      </p>
+                      <p className="break-words text-sm font-medium leading-snug text-gray-800">
+                        {selectedFeedback.licenceeName ?? <span className="text-gray-300">—</span>}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-gray-100" />
+
+                  {/* Description */}
+                  <div>
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Description</p>
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
+                        {selectedFeedback.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Admin Notes</p>
+                    {isEditing ? (
+                      <Textarea
+                        value={editNotes}
+                        onChange={e => setEditNotes(e.target.value)}
+                        placeholder="Add internal notes about this feedback..."
+                        className="min-h-[100px] resize-none rounded-xl border-gray-200 text-sm focus:border-gray-300"
+                      />
+                    ) : selectedFeedback.notes ? (
+                      <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-900">
+                          {selectedFeedback.notes}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-sm italic text-gray-300">No notes added yet.</p>
+                    )}
+                  </div>
+
+                  {/* Archive toggle (edit mode) */}
+                  {isEditing && (
+                    <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
                       <Checkbox
                         id="archived-checkbox"
                         checked={editArchived}
                         onCheckedChange={checked => setEditArchived(Boolean(checked))}
                       />
-                      <Label
-                        htmlFor="archived-checkbox"
-                        className="text-sm text-gray-700 cursor-pointer"
-                      >
-                        Archive this feedback
+                      <Label htmlFor="archived-checkbox" className="cursor-pointer text-sm text-gray-700">
+                        Mark as archived
                       </Label>
                     </div>
-                  ) : (
-                    <div className="mt-1">
-                      <Badge
-                        variant="outline"
-                        className={selectedFeedback.archived ? 'bg-gray-100 text-gray-700' : 'bg-green-50 text-green-700'}
-                      >
-                        {selectedFeedback.archived ? 'Archived' : 'Active'}
-                      </Badge>
+                  )}
+
+                  {/* Reviewed by */}
+                  {selectedFeedback.reviewedBy && selectedFeedback.reviewedAt && (
+                    <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                      <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Review Trail</p>
+                      <p className="text-sm text-gray-700">
+                        Reviewed by <span className="font-medium text-gray-900">{selectedFeedback.reviewedBy}</span>
+                        {' · '}
+                        {format(new Date(selectedFeedback.reviewedAt), 'MMM d, yyyy · HH:mm')}
+                      </p>
                     </div>
                   )}
                 </div>
-                <div>
-                  <Label className="text-sm font-medium text-gray-500">
-                    Submitted At
-                  </Label>
-                  <p className="mt-1 text-sm">
-                    {format(
-                      new Date(selectedFeedback.submittedAt),
-                      'MMM dd, yyyy HH:mm:ss'
-                    )}
-                  </p>
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  Description
-                </Label>
-                <div className="mt-2 rounded-md border bg-gray-50 p-3">
-                  <p className="whitespace-pre-wrap text-sm">
-                    {selectedFeedback.description}
-                  </p>
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  Notes
-                </Label>
-                {isEditing ? (
-                  <Textarea
-                    value={editNotes}
-                    onChange={e => setEditNotes(e.target.value)}
-                    placeholder="Add notes about this feedback..."
-                    className="mt-2 min-h-[100px]"
-                  />
-                ) : (
-                  <div className="mt-2 rounded-md border bg-blue-50 p-3">
-                    <p className="whitespace-pre-wrap text-sm">
-                      {selectedFeedback.notes || 'No notes added'}
-                    </p>
-                  </div>
-                )}
-              </div>
-              {selectedFeedback.reviewedBy && selectedFeedback.reviewedAt && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Reviewed By
-                    </Label>
-                    <p className="mt-1 text-sm">{selectedFeedback.reviewedBy}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-500">
-                      Reviewed At
-                    </Label>
-                    <p className="mt-1 text-sm">
-                      {format(
-                        new Date(selectedFeedback.reviewedAt),
-                        'MMM dd, yyyy HH:mm:ss'
-                      )}
-                    </p>
-                  </div>
-                </div>
-              )}
-              <DialogFooter>
-                {isEditing ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setIsEditing(false);
-                        setEditStatus(selectedFeedback.status);
-                        setEditArchived(Boolean(selectedFeedback.archived));
-                        setEditNotes(selectedFeedback.notes || '');
-                        setHasUnsavedChanges(false);
-                      }}
-                      disabled={isUpdating}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleUpdateFeedback}
-                      disabled={isUpdating}
-                    >
-                      <Save className="mr-2 h-4 w-4" />
-                      {isUpdating ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                  </>
-                ) : (
-                  <div className="flex flex-col gap-2 w-full sm:flex-row sm:justify-between">
-                    <Button
-                      variant="outline"
-                      onClick={() => handleDeleteClick(selectedFeedback)}
-                      disabled={isDeleting}
-                      className="text-red-600 hover:bg-red-50 hover:text-red-700 w-full sm:w-auto"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </Button>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      {selectedFeedback.archived && (
-                        <Button
-                          variant="outline"
-                          onClick={() => handleRestoreClick(selectedFeedback)}
-                          disabled={isUpdating}
-                          className="text-green-600 hover:bg-green-50 hover:text-green-700"
-                        >
-                          <RotateCcw className="mr-2 h-4 w-4" />
-                          Restore
-                        </Button>
-                      )}
+
+                {/* ── Footer Actions ── */}
+                <div className="shrink-0 border-t bg-gray-50/80 px-6 py-4">
+                  {isEditing ? (
+                    <div className="flex items-center justify-end gap-2">
                       <Button
-                        variant="outline"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => {
-                          setIsEditing(true);
+                          setIsEditing(false);
+                          setEditStatus(selectedFeedback.status);
+                          setEditArchived(Boolean(selectedFeedback.archived));
+                          setEditNotes(selectedFeedback.notes || '');
                           setHasUnsavedChanges(false);
                         }}
+                        disabled={isUpdating}
+                        className="text-gray-600"
                       >
-                        <Edit2 className="mr-2 h-4 w-4" />
-                        Edit
+                        Cancel
+                      </Button>
+                      <Button size="sm" onClick={handleUpdateFeedback} disabled={isUpdating}>
+                        <Save className="mr-1.5 h-3.5 w-3.5" />
+                        {isUpdating ? 'Saving…' : 'Save Changes'}
                       </Button>
                     </div>
-                  </div>
-                )}
-              </DialogFooter>
-            </div>
-          )}
+                  ) : (
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteClick(selectedFeedback)}
+                        disabled={isDeleting}
+                        className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                        Delete
+                      </Button>
+                      <div className="flex gap-2">
+                        {selectedFeedback.archived && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRestoreClick(selectedFeedback)}
+                            disabled={isUpdating}
+                            className="text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                          >
+                            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                            Restore
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setIsEditing(true);
+                            setHasUnsavedChanges(false);
+                          }}
+                        >
+                          <Edit2 className="mr-1.5 h-3.5 w-3.5" />
+                          Edit
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
