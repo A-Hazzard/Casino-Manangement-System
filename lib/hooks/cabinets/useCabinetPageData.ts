@@ -22,7 +22,7 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { dashboardData } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chart';
-import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -139,26 +139,17 @@ export function useCabinetPageData() {
       customDateRange?.startDate &&
       customDateRange?.endDate
     ) {
-      try {
-        const range = getGamingDayRangeForPeriod(
-          'Custom',
-          8,
-          customDateRange.startDate instanceof Date
-            ? customDateRange.startDate
-            : new Date(customDateRange.startDate),
-          customDateRange.endDate instanceof Date
-            ? customDateRange.endDate
-            : new Date(customDateRange.endDate)
-        );
-        const hoursDiff =
-          (range.rangeEnd.getTime() - range.rangeStart.getTime()) /
-          (1000 * 60 * 60);
-        const daysDiff = hoursDiff / 24;
-        return daysDiff <= 2; // Show toggle only if ≤ 2 days (48 hours)
-      } catch (error) {
-        console.error('Error calculating gaming day range:', error);
-        return false;
-      }
+      // Show minute/hourly selector only for same-day custom ranges
+      const sd = customDateRange.startDate instanceof Date
+        ? customDateRange.startDate
+        : new Date(customDateRange.startDate);
+      const ed = customDateRange.endDate instanceof Date
+        ? customDateRange.endDate
+        : new Date(customDateRange.endDate);
+      // Compare calendar dates (same year, month, day)
+      return sd.getFullYear() === ed.getFullYear() &&
+        sd.getMonth() === ed.getMonth() &&
+        sd.getDate() === ed.getDate();
     }
     // For Quarterly and All Time, show selector if we have available options (data span >= 1 week)
     if (
@@ -272,11 +263,9 @@ export function useCabinetPageData() {
   }, [activeMetricsFilter]);
 
   // Recalculate default granularity when date filters change
-  // Only update if user hasn't manually set granularity
+  // Reset manual flag so auto-detection works for the new filter
   useEffect(() => {
-    if (hasManuallySetGranularityRef.current) {
-      return;
-    }
+    hasManuallySetGranularityRef.current = false;
 
     if (!activeMetricsFilter) return;
 
@@ -353,13 +342,23 @@ export function useCabinetPageData() {
     }
   }, [activeMetricsFilter, dataSpan]);
 
+  // Check if Custom range is same-day (warrants minute/hourly granularity control)
+  const isCustomShortPeriod = useMemo(() => {
+    if (activeMetricsFilter !== 'Custom' || !customDateRange?.startDate || !customDateRange?.endDate) return false;
+    const sd = customDateRange.startDate instanceof Date ? customDateRange.startDate : new Date(customDateRange.startDate);
+    const ed = customDateRange.endDate instanceof Date ? customDateRange.endDate : new Date(customDateRange.endDate);
+    return sd.getFullYear() === ed.getFullYear() &&
+      sd.getMonth() === ed.getMonth() &&
+      sd.getDate() === ed.getDate();
+  }, [activeMetricsFilter, customDateRange?.startDate, customDateRange?.endDate]);
+
   // Memoize effective granularity - only changes when granularity matters (short periods)
   // For long periods, granularity is handled client-side and shouldn't trigger refetch
   const effectiveGranularity = useMemo(() => {
     const isShortPeriod =
       activeMetricsFilter === 'Today' || activeMetricsFilter === 'Yesterday';
-    return isShortPeriod ? chartGranularity : null;
-  }, [activeMetricsFilter, chartGranularity]);
+    return (isShortPeriod || isCustomShortPeriod) ? chartGranularity : null;
+  }, [activeMetricsFilter, chartGranularity, isCustomShortPeriod]);
 
   // Fetch chart data
   useEffect(() => {
@@ -371,12 +370,12 @@ export function useCabinetPageData() {
     makeChartRequest(async signal => {
       setLoadingChart(true);
       try {
-        // Only pass granularity to API for Today/Yesterday where it affects the response
+        // Pass granularity to API for short periods (Today/Yesterday/Custom ≤ 2 days)
         // For Quarterly/All Time, granularity is handled client-side and shouldn't trigger refetch
         const isShortPeriod =
           activeMetricsFilter === 'Today' ||
           activeMetricsFilter === 'Yesterday';
-        const granularity = isShortPeriod ? chartGranularity : undefined;
+        const granularity = (isShortPeriod || isCustomShortPeriod) ? chartGranularity : undefined;
 
         const effectiveStartDate = customDateRange?.startDate instanceof Date 
             ? customDateRange.startDate 

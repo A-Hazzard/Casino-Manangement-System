@@ -71,9 +71,12 @@ export default function CabinetsDetailsChartSection({
               }
               className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
             >
-              {/* Show hourly/minute options for Today/Yesterday periods */}
+              {/* Show hourly/minute options for Today/Yesterday/Custom single-day periods */}
               {(activeMetricsFilter === 'Today' ||
-                activeMetricsFilter === 'Yesterday') && (
+                activeMetricsFilter === 'Yesterday' ||
+                (activeMetricsFilter === 'Custom' &&
+                  !availableGranularityOptions.includes('daily') &&
+                  !availableGranularityOptions.includes('monthly'))) && (
                 <>
                   <option value="minute">Minute</option>
                   <option value="hourly">Hourly</option>
@@ -105,6 +108,7 @@ export default function CabinetsDetailsChartSection({
               loadingChartData={loadingChart}
               chartData={chartData}
               activeMetricsFilter={activeMetricsFilter as TimePeriod}
+              granularity={chartGranularity}
             />
           </div>
         </div>

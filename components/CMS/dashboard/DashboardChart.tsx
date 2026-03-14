@@ -514,7 +514,12 @@ export default function Chart({
                       }
 
                       // Validate and format the date for daily charts
-                      const date = new Date(dayValue);
+                      // Parse YYYY-MM-DD as local date (not UTC) to avoid timezone shift
+                      // e.g., "2026-03-11" should display as "Mar 11" not "Mar 10"
+                      const dateParts = dayValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                      const date = dateParts
+                        ? new Date(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3]))
+                        : new Date(dayValue);
                       if (!isNaN(date.getTime())) {
                         return formatDisplayDate(date);
                       }
@@ -584,15 +589,23 @@ export default function Chart({
                   // Try to get day from payload if available (for daily charts)
                   if (payload && payload[0] && payload[0].payload?.day) {
                     const day = payload[0].payload.day;
-                    const testDate = new Date(day);
+                    // Parse YYYY-MM-DD as local date to avoid timezone shift
+                    const dayParts = String(day).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                    const testDate = dayParts
+                      ? new Date(Number(dayParts[1]), Number(dayParts[2]) - 1, Number(dayParts[3]))
+                      : new Date(day);
                     if (!isNaN(testDate.getTime())) {
-                      return formatDisplayDate(day);
+                      return formatDisplayDate(testDate);
                     }
                   }
                   // Try to parse and validate the label as a date
-                  const testDate = new Date(String(label));
+                  const labelStr = String(label);
+                  const labelParts = labelStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                  const testDate = labelParts
+                    ? new Date(Number(labelParts[1]), Number(labelParts[2]) - 1, Number(labelParts[3]))
+                    : new Date(labelStr);
                   if (!isNaN(testDate.getTime())) {
-                    return formatDisplayDate(label);
+                    return formatDisplayDate(testDate);
                   }
                   // Fallback to string representation if label is not a valid date
                   return String(label);

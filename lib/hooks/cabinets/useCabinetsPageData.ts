@@ -23,6 +23,7 @@ import type { CabinetSortOption } from '@/lib/hooks/data/useCabinetSorting';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { TimePeriod } from '@/lib/types';
+import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { useDebounce } from '@/lib/utils/hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -215,8 +216,14 @@ export function useCabinetsPageData() {
   // ============================================================================
   // Chart Logic
   // ============================================================================
-  const [chartGranularity, setChartGranularity] = useState<'hourly' | 'minute'>(
-    'hourly'
+  const [chartGranularity, setChartGranularity] = useState<
+    'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+  >(() =>
+    getDefaultChartGranularity(
+      activeMetricsFilter || 'Today',
+      customDateRange?.startDate,
+      customDateRange?.endDate
+    )
   );
   type ChartDataPoint = {
     xValue: string;
@@ -230,11 +237,26 @@ export function useCabinetsPageData() {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [loadingChart, setLoadingChart] = useState(false);
 
+  // Recalculate default granularity when date filters change
+  useEffect(() => {
+    if (!activeMetricsFilter) return;
+    const defaultGranularity = getDefaultChartGranularity(
+      activeMetricsFilter,
+      customDateRange?.startDate,
+      customDateRange?.endDate
+    );
+    setChartGranularity(defaultGranularity);
+  }, [activeMetricsFilter, customDateRange?.startDate, customDateRange?.endDate]);
+
   const fetchChartData = useCallback(async () => {
     if (!activeMetricsFilter) return;
     setLoadingChart(true);
     try {
       await makeRequest(async signal => {
+        // Only pass minute/hourly to API - daily/weekly/monthly are handled by auto-detection
+        const apiGranularity: 'hourly' | 'minute' | undefined =
+          chartGranularity === 'minute' ? 'minute' :
+          chartGranularity === 'hourly' ? 'hourly' : undefined;
         const data = await getMetrics(
           activeMetricsFilter as TimePeriod,
           customDateRange?.startDate,
@@ -242,7 +264,7 @@ export function useCabinetsPageData() {
           selectedLicencee,
           displayCurrency,
           signal,
-          chartGranularity,
+          apiGranularity,
           selectedLocation,
           selectedGameType,
           selectedStatus === 'All' || selectedStatus === 'all'

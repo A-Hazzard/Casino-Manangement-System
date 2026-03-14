@@ -228,15 +228,6 @@ export async function getMachineChartData(
 
     const rawData = responseData.data;
 
-    // Check if API response contains minute-level data (time format is "HH:MM" with non-zero minutes)
-    const hasMinuteLevelData = rawData.some(item => {
-      if (!item.time) return false;
-      const timeParts = item.time.split(':');
-      if (timeParts.length !== 2) return false;
-      const minutes = parseInt(timeParts[1], 10);
-      return !isNaN(minutes) && minutes !== 0; // Has non-zero minutes
-    });
-
     // Determine if we should use hourly or minute aggregation
     // If granularity was manually specified, use it
     let useHourly = false;
@@ -272,21 +263,17 @@ export async function getMachineChartData(
           endDate
         );
 
-        // Use the default granularity, but also check if API returned minute-level data
         if (defaultGranularity === 'minute') {
           useMinute = true;
           useHourly = false;
+        } else if (defaultGranularity === 'daily' || defaultGranularity === 'weekly' || defaultGranularity === 'monthly') {
+          // Multi-day Custom ranges: use daily aggregation (not hourly)
+          useHourly = false;
+          useMinute = false;
         } else {
-          // Default is hourly, but check if API returned minute data
-          if (hasMinuteLevelData) {
-            // API has minute data, but we default to hourly grouping
-            // User can manually select minute granularity to see minute-level data
-            useMinute = false;
-            useHourly = true;
-          } else {
-            useMinute = false;
-            useHourly = true;
-          }
+          // Default is hourly
+          useMinute = false;
+          useHourly = true;
         }
       }
     }

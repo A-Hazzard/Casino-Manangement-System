@@ -32,7 +32,7 @@ import { useUserStore } from '@/lib/store/userStore';
 import { DashboardTotals, TopPerformingData } from '@/lib/types';
 import { CustomizedLabelProps } from '@/lib/types/components';
 import { getDefaultChartGranularity } from '@/lib/utils/chart';
-import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import { TimePeriod, type ChartGranularity } from '@/shared/types/common';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -132,25 +132,17 @@ export default function DashboardPageContent() {
       customDateRange?.startDate &&
       customDateRange?.endDate
     ) {
-      try {
-        const range = getGamingDayRangeForPeriod(
-          'Custom',
-          8,
-          customDateRange.startDate instanceof Date
-            ? customDateRange.startDate
-            : new Date(customDateRange.startDate),
-          customDateRange.endDate instanceof Date
-            ? customDateRange.endDate
-            : new Date(customDateRange.endDate)
-        );
-        const hoursDiff =
-          (range.rangeEnd.getTime() - range.rangeStart.getTime()) /
-          (1000 * 60 * 60);
-        return hoursDiff <= 24;
-      } catch (error) {
-        console.error('Error calculating gaming day range:', error);
-        return false;
-      }
+      // Show minute/hourly selector only for same-day custom ranges
+      const sd = customDateRange.startDate instanceof Date
+        ? customDateRange.startDate
+        : new Date(customDateRange.startDate);
+      const ed = customDateRange.endDate instanceof Date
+        ? customDateRange.endDate
+        : new Date(customDateRange.endDate);
+      // Compare calendar dates (same year, month, day)
+      return sd.getFullYear() === ed.getFullYear() &&
+        sd.getMonth() === ed.getMonth() &&
+        sd.getDate() === ed.getDate();
     }
     return false;
   }, [activeMetricsFilter, customDateRange]);

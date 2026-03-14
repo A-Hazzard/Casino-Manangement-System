@@ -158,6 +158,7 @@ export default function DashboardDesktopLayout(
               chartData={props.chartData}
               activeMetricsFilter={props.activeMetricsFilter}
               totals={props.totals}
+              granularity={props.chartGranularity as 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly' | undefined}
             />
           )}
         </div>

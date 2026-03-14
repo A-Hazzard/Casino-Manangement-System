@@ -18,7 +18,7 @@ import type { dashboardData } from '@/lib/types';
 import { dateRange as DateRange } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { isAbortError } from '@/lib/utils/errors';
-import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+
 import type { TimePeriod } from '@/shared/types/common';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -90,26 +90,17 @@ export function useLocationChartData({
       customDateRange?.startDate &&
       customDateRange?.endDate
     ) {
-      try {
-        const range = getGamingDayRangeForPeriod(
-          'Custom',
-          8, // Default gaming day start hour
-          customDateRange.startDate instanceof Date
-            ? customDateRange.startDate
-            : new Date(customDateRange.startDate),
-          customDateRange.endDate instanceof Date
-            ? customDateRange.endDate
-            : new Date(customDateRange.endDate)
-        );
-        const hoursDiff =
-          (range.rangeEnd.getTime() - range.rangeStart.getTime()) /
-          (1000 * 60 * 60);
-        const daysDiff = hoursDiff / 24;
-        return daysDiff <= 2; // Show toggle only if ≤ 2 days (48 hours)
-      } catch (error) {
-        console.error('Error calculating gaming day range:', error);
-        return false;
-      }
+      // Show minute/hourly selector only for same-day custom ranges
+      const sd = customDateRange.startDate instanceof Date
+        ? customDateRange.startDate
+        : new Date(customDateRange.startDate);
+      const ed = customDateRange.endDate instanceof Date
+        ? customDateRange.endDate
+        : new Date(customDateRange.endDate);
+      // Compare calendar dates (same year, month, day)
+      return sd.getFullYear() === ed.getFullYear() &&
+        sd.getMonth() === ed.getMonth() &&
+        sd.getDate() === ed.getDate();
     }
     // For Quarterly and All Time, show selector if we have available options (data span >= 1 week)
     if (
@@ -244,33 +235,23 @@ export function useLocationChartData({
         customDateRange?.startDate &&
         customDateRange?.endDate);
 
-    // For Custom periods, check if it's ≤ 2 days
+    // For Custom periods, check if it's same-day (single calendar day)
     let shouldIncludeGranularity = isShortPeriod;
     if (
       timePeriod === 'Custom' &&
       customDateRange?.startDate &&
       customDateRange?.endDate
     ) {
-      try {
-        const range = getGamingDayRangeForPeriod(
-          'Custom',
-          8, // Default gaming day start hour
-          customDateRange.startDate instanceof Date
-            ? customDateRange.startDate
-            : new Date(customDateRange.startDate),
-          customDateRange.endDate instanceof Date
-            ? customDateRange.endDate
-            : new Date(customDateRange.endDate)
-        );
-        const hoursDiff =
-          (range.rangeEnd.getTime() - range.rangeStart.getTime()) /
-          (1000 * 60 * 60);
-        const daysDiff = hoursDiff / 24;
-        shouldIncludeGranularity = daysDiff <= 2;
-      } catch (error) {
-        console.error('Error calculating gaming day range:', error);
-        shouldIncludeGranularity = false;
-      }
+      const sd = customDateRange.startDate instanceof Date
+        ? customDateRange.startDate
+        : new Date(customDateRange.startDate);
+      const ed = customDateRange.endDate instanceof Date
+        ? customDateRange.endDate
+        : new Date(customDateRange.endDate);
+      // Only include granularity for same-day custom ranges
+      shouldIncludeGranularity = sd.getFullYear() === ed.getFullYear() &&
+        sd.getMonth() === ed.getMonth() &&
+        sd.getDate() === ed.getDate();
     }
 
     // For Quarterly/All Time, include granularity if it's monthly or weekly (needs server aggregation)

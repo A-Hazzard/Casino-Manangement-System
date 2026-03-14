@@ -231,6 +231,7 @@ export default function CabinetsPageContent() {
                     chartData={chartData}
                     activeMetricsFilter={activeMetricsFilter}
                     useNetGross={useNetGross}
+                    granularity={cabinetsPageData.chartGranularity}
                   />
                 </div>
               </div>
