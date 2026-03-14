@@ -65,6 +65,13 @@ export function mapToCabinetProps(cabinet: Cabinet): CabinetProps {
     online: cabinet.online,
     offlineTimeLabel: cabinet.offlineTimeLabel,
     actualOfflineTime: cabinet.actualOfflineTime,
+    netGross:
+      cabinet.netGross ??
+      (cabinet.gross ??
+        (cabinet.moneyIn || cabinet.sasMeters?.drop || 0) -
+          (cabinet.moneyOut || 0)) -
+        (cabinet.jackpot || cabinet.sasMeters?.jackpot || 0),
+    network: cabinet.network || 'N/A',
   };
 }
 

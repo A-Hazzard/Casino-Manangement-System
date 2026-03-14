@@ -36,6 +36,7 @@ type EditCabinetBasicInfoProps = {
     isCronosMachine: boolean;
     accountingDenomination: string;
     otherGameType?: string;
+    custom: { name: string };
   };
   cabinetDataLoading: boolean;
   manufacturersLoading: boolean;
@@ -111,6 +112,30 @@ export default function EditCabinetBasicInfo({
             </>
           )}
         </div>
+      </div>
+
+      {/* Machine Custom Name */}
+      <div>
+        <label className="mb-2 block text-sm font-medium text-grayHighlight">
+          Machine Custom Name
+        </label>
+        {cabinetDataLoading ? (
+          <Skeleton className="h-10 w-full" />
+        ) : (
+          <Input
+            id="customName"
+            name="customName"
+            value={formData.custom?.name || ''}
+            onChange={e =>
+              onFormDataChange({ custom: { name: e.target.value } })
+            }
+            placeholder="Enter custom machine name"
+            className="border-border bg-container"
+          />
+        )}
+        <p className="mt-1 text-xs text-gray-500">
+          A friendly name for this machine to display in reports
+        </p>
       </div>
 
       {/* Game Type */}

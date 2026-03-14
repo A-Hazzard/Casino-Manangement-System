@@ -9,6 +9,8 @@
  * - Returns "N/A" if no identifier is available
  */
 
+import type { Types } from 'mongoose';
+
 // ============================================================================
 // Serial Number Extraction
 // ============================================================================
@@ -23,6 +25,7 @@ export function getSerialNumberIdentifier(cabinet: {
   serialNumber?: string;
   custom?: { name?: string };
   machineId?: string;
+  _id?: string | Types.ObjectId;
 }): string {
   // Primary: serialNumber
   if (cabinet.serialNumber && cabinet.serialNumber.trim() !== '') {
@@ -37,6 +40,12 @@ export function getSerialNumberIdentifier(cabinet: {
   // Fallback 2: machineId
   if (cabinet.machineId && cabinet.machineId.trim() !== '') {
     return cabinet.machineId;
+  }
+
+  // Fallback 3: _id (Direct ID from API response)
+  const idStr = cabinet._id ? String(cabinet._id) : '';
+  if (idStr.trim() !== '') {
+    return idStr;
   }
 
   // Final fallback: "N/A"

@@ -74,6 +74,17 @@ export async function PATCH(
       console.warn('⚠️ API: Removed _id field from update data');
     }
 
+    // CRITICAL: Extract sasEndTime/sasStartTime from top-level payload and map them to
+    // sasMeters.sasEndTime / sasMeters.sasStartTime using MongoDB dot notation.
+    // The Collections schema does NOT have top-level sasEndTime/sasStartTime fields —
+    // they live inside the sasMeters sub-document. Mongoose strict mode silently strips
+    // top-level unknown fields, so a plain spread would never reach the nested paths.
+    const payloadSasEndTime = safeUpdateData.sasEndTime as string | Date | undefined;
+    const payloadSasStartTime = safeUpdateData.sasStartTime as string | Date | undefined;
+    // Remove from top-level to prevent Mongoose strict-mode silently dropping them
+    delete (safeUpdateData as Record<string, unknown>).sasEndTime;
+    delete (safeUpdateData as Record<string, unknown>).sasStartTime;
+
     // Determine if cascade recalculation is needed
     const shouldCascade =
       updateData.metersIn !== undefined ||
@@ -91,15 +102,32 @@ export async function PATCH(
     // ============================================================================
     // STEP 5: Update collection document
     // ============================================================================
+    // Build the $set payload. Use explicit dot notation for sasMeters nested fields
+    // so MongoDB merges them into the subdocument rather than treating them as unknown
+    // top-level fields that Mongoose would strip due to strict mode.
+    const firstSetOperation: Record<string, unknown> = {
+      ...safeUpdateData,
+      updatedAt: new Date(),
+    };
+    if (payloadSasEndTime) {
+      firstSetOperation['sasMeters.sasEndTime'] =
+        typeof payloadSasEndTime === 'string'
+          ? payloadSasEndTime
+          : (payloadSasEndTime as Date).toISOString();
+    }
+    if (payloadSasStartTime) {
+      firstSetOperation['sasMeters.sasStartTime'] =
+        typeof payloadSasStartTime === 'string'
+          ? payloadSasStartTime
+          : (payloadSasStartTime as Date).toISOString();
+    }
+
     // Find and update the collection
     // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
     const updatedCollection = await Collections.findOneAndUpdate(
       { _id: collectionId },
-      {
-        ...safeUpdateData,
-        updatedAt: new Date(),
-      },
-      { new: true, runValidators: true }
+      { $set: firstSetOperation },
+      { new: true, runValidators: false }
     );
 
     if (!updatedCollection) {
@@ -120,7 +148,8 @@ export async function PATCH(
       updateData.ramClear !== undefined ||
       updateData.ramClearMetersIn !== undefined ||
       updateData.ramClearMetersOut !== undefined ||
-      updateData.timestamp !== undefined
+      updateData.timestamp !== undefined ||
+      updateData.collectionTime !== undefined
     ) {
       // ============================================================================
       // STEP 6.1: Recalculate movement and softMeters
@@ -222,11 +251,14 @@ export async function PATCH(
                 '@/app/api/lib/helpers/collectionReport/creation'
               );
 
-              // Get new SAS time range based on new collection timestamp
+              // Get new SAS time range based on new collection timestamp.
+              // CRITICAL: Only preserve overrides if they are provided in this specific update (updateData).
+              // If the timestamp is changing, we should recalculate the period from scratch unless the user
+              // explicitly provided new SAS overrides in the same request.
               const { sasStartTime, sasEndTime } = await getSasTimePeriod(
                 updatedCollection.machineId,
-                undefined, // customStartTime
-                new Date(updateData.timestamp) // customEndTime (new collection time)
+                updateData.sasStartTime ? new Date(updateData.sasStartTime) : undefined, // customStartTime (reset if date moves)
+                updateData.sasEndTime ? new Date(updateData.sasEndTime) : new Date(updateData.timestamp || updatedCollection.timestamp) // customEndTime
               );
 
               // Recalculate SAS metrics with new time range

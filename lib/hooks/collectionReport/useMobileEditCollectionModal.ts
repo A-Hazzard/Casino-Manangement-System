@@ -51,6 +51,9 @@ type MobileModalState = {
     ramClearMetersOut: string;
     notes: string;
     collectionTime: Date;
+    showAdvancedSas: boolean;
+    sasStartTime: Date | null;
+    sasEndTime: Date | null;
   };
 
   // Loading states
@@ -123,10 +126,9 @@ export function useMobileEditCollectionModal({
     selectedMachineId: storeMachineId,
   } = useCollectionModalStore();
 
-  // Update all dates state - syncs with form collection time
-  const [updateAllDate, setUpdateAllDate] = useState<Date | undefined>(
-    undefined
-  );
+  // Update all SAS times state
+  const [updateAllSasStartDate, setUpdateAllSasStartDate] = useState<Date | undefined>(undefined);
+  const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<Date | undefined>(undefined);
 
   // Initialize only mobile-specific UI state
   const [modalState, setModalState] = useState<MobileModalState>(() => ({
@@ -147,6 +149,9 @@ export function useMobileEditCollectionModal({
       ramClearMetersOut: storeFormData.ramClearMetersOut,
       notes: storeFormData.notes,
       collectionTime: storeFormData.collectionTime,
+      showAdvancedSas: storeFormData.showAdvancedSas,
+      sasStartTime: storeFormData.sasStartTime,
+      sasEndTime: storeFormData.sasEndTime,
     },
     isLoadingMachines: false,
     isProcessing: false,
@@ -264,27 +269,19 @@ export function useMobileEditCollectionModal({
   const popNavigation = useCallback(() => {
     setModalState(prev => {
       const newStack = [...prev.navigationStack];
-      const previousScreen = newStack.pop();
+      newStack.pop();
 
-      // Hide all panels first
-      const newState = {
+      // Get the next top panel
+      const topPanel = newStack.length > 0 ? newStack[newStack.length - 1] : null;
+
+      // Update panel visibility based on the new top
+      return {
         ...prev,
-        isMachineListVisible: false,
-        isFormVisible: false,
-        isCollectedListVisible: false,
+        isMachineListVisible: topPanel === 'machine-list' || topPanel === null, // null means home
+        isFormVisible: topPanel === 'form',
+        isCollectedListVisible: topPanel === 'list',
         navigationStack: newStack,
       };
-
-      // Show the previous screen
-      if (previousScreen === 'main') {
-        // Stay on main screen (default state)
-      } else if (previousScreen === 'form') {
-        newState.isFormVisible = true;
-      } else if (previousScreen === 'collected-list') {
-        newState.isCollectedListVisible = true;
-      }
-
-      return newState;
     });
   }, []);
 
@@ -329,6 +326,19 @@ export function useMobileEditCollectionModal({
         selectedMachineData: machine,
         isFormVisible: true,
         isMachineListVisible: false,
+        formData: {
+          ...prev.formData,
+          metersIn: '',
+          metersOut: '',
+          ramClear: false,
+          ramClearMetersIn: '',
+          ramClearMetersOut: '',
+          notes: '',
+          showAdvancedSas: false,
+          sasStartTime: null,
+          sasEndTime: null,
+          collectionTime: new Date(),
+        },
       }));
     },
   };
@@ -458,6 +468,7 @@ export function useMobileEditCollectionModal({
     );
 
     if (!validation.isValid) {
+      toast.error(validation.error || 'Invalid machine data. Please check your inputs.', { duration: 5000 });
       return;
     }
 
@@ -477,7 +488,19 @@ export function useMobileEditCollectionModal({
         metersIn: Number(modalState.formData.metersIn),
         metersOut: Number(modalState.formData.metersOut),
         notes: modalState.formData.notes,
-        timestamp: modalState.formData.collectionTime.toISOString(),
+        ...(modalState.formData.showAdvancedSas && modalState.formData.sasStartTime ? { sasStartTime: modalState.formData.sasStartTime } : {}),
+        ...(modalState.formData.showAdvancedSas && modalState.formData.sasEndTime
+          ? {
+              sasEndTime: modalState.formData.sasEndTime,
+              timestamp: modalState.formData.sasEndTime.toISOString(),
+              collectionTime: modalState.formData.sasEndTime.toISOString(),
+            }
+          : {
+              // Simple mode: sasEndTime = collectionTime (always saved, never undefined)
+              sasEndTime: modalState.formData.collectionTime,
+              timestamp: modalState.formData.collectionTime.toISOString(),
+              collectionTime: modalState.formData.collectionTime.toISOString(),
+            }),
         ramClear: modalState.formData.ramClear,
         ramClearMetersIn: modalState.formData.ramClearMetersIn
           ? Number(modalState.formData.ramClearMetersIn)
@@ -531,25 +554,38 @@ export function useMobileEditCollectionModal({
       }
 
       // Update local UI state
-      setModalState(prev => ({
-        ...prev,
-        collectedMachines: newCollectedMachines,
-        lockedLocationId: newLockedLocationId,
-        isFormVisible: false,
-        isMachineListVisible: true,
-        selectedMachine: null,
-        selectedMachineData: null,
-        editingEntryId: null,
-        formData: {
-          ...prev.formData,
-          metersIn: '',
-          metersOut: '',
-          ramClear: false,
-          ramClearMetersIn: '',
-          ramClearMetersOut: '',
-          notes: '',
-        },
-      }));
+      setModalState(prev => {
+        // Correctly handle navigation state
+        const newStack = [...prev.navigationStack];
+        // Only pop if we are actually on the form panel
+        if (newStack[newStack.length - 1] === 'form') {
+           newStack.pop();
+        }
+
+        return {
+          ...prev,
+          collectedMachines: newCollectedMachines,
+          lockedLocationId: newLockedLocationId,
+          isFormVisible: false,
+          isMachineListVisible: newStack.length === 0,
+          navigationStack: newStack,
+          selectedMachine: null,
+          selectedMachineData: null,
+          editingEntryId: null,
+          formData: {
+            ...prev.formData,
+            metersIn: '',
+            metersOut: '',
+            ramClear: false,
+            ramClearMetersIn: '',
+            ramClearMetersOut: '',
+            notes: '',
+            showAdvancedSas: false,
+            sasStartTime: null,
+            sasEndTime: null,
+          },
+        };
+      });
     } catch (error: unknown) {
       console.error('Error adding/updating machine in list:', error);
       const axiosError = error as AxiosError<{
@@ -684,6 +720,9 @@ export function useMobileEditCollectionModal({
           ramClearMetersOut: entry.ramClearMetersOut?.toString() || '',
           notes: entry.notes || '',
           collectionTime: new Date(entry.timestamp),
+          showAdvancedSas: false, // Ensure advanced is NOT selected by default when editing
+          sasStartTime: entry.sasMeters?.sasStartTime ? new Date(entry.sasMeters.sasStartTime) : null,
+          sasEndTime: entry.sasMeters?.sasEndTime ? new Date(entry.sasMeters.sasEndTime) : null,
         },
       }));
     },
@@ -1045,8 +1084,10 @@ export function useMobileEditCollectionModal({
     // State
     modalState,
     setModalState,
-    updateAllDate,
-    setUpdateAllDate,
+    updateAllSasStartDate,
+    setUpdateAllSasStartDate,
+    updateAllSasEndDate,
+    setUpdateAllSasEndDate,
     showUnsavedChangesWarning,
     setShowUnsavedChangesWarning,
     showDeleteConfirmation,
@@ -1094,6 +1135,31 @@ export function useMobileEditCollectionModal({
       setModalState(prev => ({ ...prev, baseBalanceCorrection: value }));
     },
 
+    // Form data change handler
+    onFormDataChange: (field: string, value: unknown) => {
+      setModalState(prev => {
+        const newFormData = { ...prev.formData, [field]: value };
+        
+        // If turning on advanced SAS and times are null, set defaults
+        if (field === 'showAdvancedSas' && value === true) {
+          if (!newFormData.sasEndTime) {
+            newFormData.sasEndTime = new Date(newFormData.collectionTime || new Date());
+          }
+          if (!newFormData.sasStartTime) {
+            // Default start to 24h before end so they show distinct values
+            const defaultStart = new Date(newFormData.sasEndTime as Date);
+            defaultStart.setDate(defaultStart.getDate() - 1);
+            newFormData.sasStartTime = defaultStart;
+          }
+        }
+        
+        return {
+          ...prev,
+          formData: newFormData
+        };
+      });
+    },
+
     // Collected amount change with calculations (to match PC and New modal)
     onCollectedAmountChange: (value: string) => {
       // Use the centralized store action
@@ -1112,6 +1178,36 @@ export function useMobileEditCollectionModal({
     // Helpers
     sortMachinesAlphabetically,
     getLocationIdFromMachine,
+
+    // Update All SAS Times feature
+    handleApplyAllDates: async () => {
+      if (!updateAllSasStartDate && !updateAllSasEndDate) return;
+      if (modalState.collectedMachines.length < 1) return;
+      try {
+        setModalState(prev => ({ ...prev, isProcessing: true }));
+        const patchData: Record<string, string> = {};
+        if (updateAllSasStartDate) patchData.sasStartTime = updateAllSasStartDate.toISOString();
+        if (updateAllSasEndDate) patchData.sasEndTime = updateAllSasEndDate.toISOString();
+        const results = await Promise.allSettled(
+          modalState.collectedMachines.map(async entry => {
+            if (!entry._id) return;
+            return await axios.patch(`/api/collections?id=${entry._id}`, patchData);
+          })
+        );
+        const failed = results.filter(r => r.status === 'rejected').length;
+        if (failed > 0) {
+          toast.error(`${failed} machine${failed > 1 ? 's' : ''} failed to update`);
+          return;
+        }
+        toast.success('All SAS times updated successfully!');
+        setUpdateAllSasStartDate(undefined);
+        setUpdateAllSasEndDate(undefined);
+      } catch {
+        toast.error('Failed to update SAS times');
+      } finally {
+        setModalState(prev => ({ ...prev, isProcessing: false }));
+      }
+    },
 
     // Store actions
     setStoreSelectedLocation,

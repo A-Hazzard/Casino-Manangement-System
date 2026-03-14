@@ -122,9 +122,10 @@ export default function CollectionReportNewCollectionModal({
     setCurrentRamClear,
     showAdvancedSas,
     setShowAdvancedSas,
-    customSasStartTime,
-    setCustomSasStartTime,
-    isFirstCollection,
+    sasStartTime,
+    setSasStartTime,
+    sasEndTime,
+    setSasEndTime,
     collectedMachineEntries,
     isProcessing,
     editingEntryId,
@@ -168,6 +169,11 @@ export default function CollectionReportNewCollectionModal({
     handleCancelEdit,
     handleAddEntry,
     anyConfirmationOpen,
+    updateAllSasStartDate,
+    setUpdateAllSasStartDate,
+    updateAllSasEndDate,
+    setUpdateAllSasEndDate,
+    handleApplyAllDates,
   } = useNewCollectionModal({
     show,
     locations,
@@ -189,7 +195,7 @@ export default function CollectionReportNewCollectionModal({
         }}
       >
         <DialogContent 
-          className="flex h-[calc(100vh-2rem)] max-w-6xl flex-col bg-container p-0 md:h-[95vh] lg:h-[90vh] lg:max-w-7xl"
+          className="flex h-[90vh] max-h-[98vh] max-w-6xl flex-col bg-container p-0 md:max-h-[95vh] lg:max-h-[90vh] lg:max-w-7xl"
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
@@ -243,9 +249,9 @@ export default function CollectionReportNewCollectionModal({
                     }
                     machineForDataEntry={machineForDataEntry || null}
                     currentCollectionTime={currentCollectionTime}
-                    isFirstCollection={isFirstCollection}
                     showAdvancedSas={showAdvancedSas}
-                    customSasStartTime={customSasStartTime}
+                    sasStartTime={sasStartTime}
+                    sasEndTime={sasEndTime}
                     currentMetersIn={currentMetersIn}
                     currentMetersOut={currentMetersOut}
                     currentRamClearMetersIn={currentRamClearMetersIn}
@@ -268,7 +274,8 @@ export default function CollectionReportNewCollectionModal({
                     isAddMachineEnabled={isAddMachineEnabled}
                     onCollectionTimeChange={setCurrentCollectionTime}
                     onAdvancedSasToggle={() => setShowAdvancedSas(p => !p)}
-                    onCustomSasStartTimeChange={setCustomSasStartTime}
+                    onSasStartTimeChange={setSasStartTime}
+                    onSasEndTimeChange={setSasEndTime}
                     onMetersInChange={setCurrentMetersIn}
                     onMetersOutChange={setCurrentMetersOut}
                     onRamClearMetersInChange={setCurrentRamClearMetersIn}
@@ -366,6 +373,11 @@ export default function CollectionReportNewCollectionModal({
               isProcessing={isProcessing}
               onEditEntry={handleEditCollectedEntry}
               onDeleteEntry={handleDeleteCollectedEntry}
+              updateAllSasStartDate={updateAllSasStartDate}
+              setUpdateAllSasStartDate={setUpdateAllSasStartDate}
+              updateAllSasEndDate={updateAllSasEndDate}
+              setUpdateAllSasEndDate={setUpdateAllSasEndDate}
+              onApplyAllDates={handleApplyAllDates}
             />
           </div>
 

@@ -29,8 +29,13 @@ import { useLocationCabinetsData } from '@/lib/hooks/locations/useLocationCabine
 import { useLocationChartData } from '@/lib/hooks/locations/useLocationChartData';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
-import { MapPinOff, PlusCircle, RefreshCw, Server, Users } from 'lucide-react';
+import { MapPinOff, PlusCircle, RefreshCw, Server, Settings, Users } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
+
+import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
+import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
+import { hasMissingCoordinates } from '@/lib/utils/location';
+import LocationsEditLocationModal from './modals/LocationsEditLocationModal';
 
 import MembersNavigation from '@/components/CMS/members/common/MembersNavigation';
 import {
@@ -54,8 +59,6 @@ import {
     useLocationMembershipStats,
 } from '@/lib/hooks/data';
 import { useUserStore } from '@/lib/store/userStore';
-import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
-import { hasMissingCoordinates } from '@/lib/utils/location';
 import type { AggregatedLocation } from '@/shared/types';
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
 import Image from 'next/image';
@@ -347,6 +350,7 @@ export default function LocationsDetailsPageContent() {
   ]);
 
   const { openCabinetModal } = useNewCabinetStore();
+  const { openEditModal } = useLocationsActionsStore();
 
   // ============================================================================
   // Early Returns
@@ -456,14 +460,27 @@ export default function LocationsDetailsPageContent() {
                   {cabinetsData.loading || cabinetsData.cabinetsLoading ? (
                     <div className="h-4 w-4 flex-shrink-0" />
                   ) : canManageMachines ? (
-                    <button
-                      onClick={() => openCabinetModal(locationId)}
-                      disabled={cabinetsData.refreshing}
-                      className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Create Machine"
-                    >
-                      <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          if (cabinetsData.locationData) {
+                            openEditModal(cabinetsData.locationData as AggregatedLocation);
+                          }
+                        }}
+                        className="flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900"
+                        aria-label="Location Settings"
+                      >
+                        <Settings className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => openCabinetModal(locationId)}
+                        disabled={cabinetsData.refreshing}
+                        className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Create Machine"
+                      >
+                        <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
+                      </button>
+                    </div>
                   ) : null}
                 </>
               )}
@@ -534,15 +551,30 @@ export default function LocationsDetailsPageContent() {
                 {cabinetsData.loading || cabinetsData.cabinetsLoading ? (
                   <ActionButtonSkeleton width="w-36" showIcon={false} />
                 ) : canManageMachines ? (
-                  <Button
-                    variant="default"
-                    className="bg-button text-white"
-                    disabled={cabinetsData.refreshing}
-                    onClick={() => openCabinetModal(locationId)}
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Create Machine
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      className="border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      disabled={cabinetsData.refreshing}
+                      onClick={() => {
+                        if (cabinetsData.locationData) {
+                          openEditModal(cabinetsData.locationData as AggregatedLocation);
+                        }
+                      }}
+                    >
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
+                    </Button>
+                    <Button
+                      variant="default"
+                      className="bg-button text-white"
+                      disabled={cabinetsData.refreshing}
+                      onClick={() => openCabinetModal(locationId)}
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Create Machine
+                    </Button>
+                  </div>
                 ) : null}
               </div>
             )}
@@ -640,6 +672,7 @@ export default function LocationsDetailsPageContent() {
               }
               router.push(`/locations/${newLocationId}`);
             }}
+            useNetGross={cabinetsData.useNetGross}
           />
         )}
 
@@ -652,6 +685,9 @@ export default function LocationsDetailsPageContent() {
       {/* Cabinet Action Modals */}
       <CabinetsEditCabinetModal onCabinetUpdated={handleRefresh} />
       <CabinetsDeleteCabinetModal onCabinetDeleted={handleRefresh} />
+
+      {/* Location Action Modals */}
+      <LocationsEditLocationModal onLocationUpdated={handleRefresh} />
     </>
   );
 }

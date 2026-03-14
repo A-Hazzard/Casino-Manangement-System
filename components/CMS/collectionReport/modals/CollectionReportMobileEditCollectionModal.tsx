@@ -25,6 +25,7 @@ import {
 } from '@/components/shared/ui/dialog';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { MobileCollectionModalSkeleton } from '@/components/shared/ui/skeletons/MobileCollectionModalSkeleton';
+import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { useMobileEditCollectionModal } from '@/lib/hooks/collectionReport/useMobileEditCollectionModal';
 import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
 import type {
@@ -77,11 +78,15 @@ export default function CollectionReportMobileEditCollectionModal({
     deleteMachineFromList,
     editMachineInList,
     updateCollectionReportHandler,
-    updateAllDate,
-    setUpdateAllDate,
+    updateAllSasStartDate,
+    setUpdateAllSasStartDate,
+    updateAllSasEndDate,
+    setUpdateAllSasEndDate,
     baseBalanceCorrection,
     onBaseBalanceCorrectionChange,
     onCollectedAmountChange,
+    onFormDataChange,
+    handleApplyAllDates,
   } = useMobileEditCollectionModal({
     show,
     reportId,
@@ -181,7 +186,7 @@ export default function CollectionReportMobileEditCollectionModal({
             </div>
           )}
 
-          {modalState.navigationStack.length === 0 ? (
+          {modalState.navigationStack.length === 0 && !modalState.isFormVisible && !modalState.isCollectedListVisible ? (
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-white mobile-collection-scrollbar">
               
               {/* Summary Info - Show when location is selected */}
@@ -236,7 +241,7 @@ export default function CollectionReportMobileEditCollectionModal({
                   {collectedMachines.length > 0 && (
                     <button
                       onClick={() => {
-                        pushNavigation('main');
+                        pushNavigation('list');
                         setModalState(prev => ({
                           ...prev,
                           isCollectedListVisible: true,
@@ -254,7 +259,7 @@ export default function CollectionReportMobileEditCollectionModal({
                   {collectedMachines.length >= 1 && (
                     <button
                       onClick={() => {
-                        pushNavigation('main');
+                        pushNavigation('list');
                         setModalState(prev => ({
                           ...prev,
                           isCollectedListVisible: true,
@@ -414,6 +419,9 @@ export default function CollectionReportMobileEditCollectionModal({
                 ramClearMetersIn: modalState.formData.ramClearMetersIn,
                 ramClearMetersOut: modalState.formData.ramClearMetersOut,
                 notes: modalState.formData.notes,
+                sasStartTime: modalState.formData.sasStartTime,
+                sasEndTime: modalState.formData.sasEndTime,
+                showAdvancedSas: modalState.formData.showAdvancedSas,
               }}
               financials={modalState.financials}
               collectedMachinesCount={collectedMachines.length}
@@ -424,12 +432,7 @@ export default function CollectionReportMobileEditCollectionModal({
                 <span>{machine.custom?.name || machine.serialNumber || String(machine._id)}</span>
               )}
               onViewMachine={() => setModalState(prev => ({ ...prev, showViewMachineConfirmation: true }))}
-              onFormDataChange={(field, value) => {
-                setModalState(prev => ({
-                  ...prev,
-                  formData: { ...prev.formData, [field]: value },
-                }));
-              }}
+              onFormDataChange={onFormDataChange}
               onFinancialDataChange={(field, value) => {
                 setModalState(prev => ({
                   ...prev,
@@ -471,14 +474,16 @@ export default function CollectionReportMobileEditCollectionModal({
               financials={modalState.financials}
               isProcessing={modalState.isProcessing}
               isCreateReportsEnabled={isCreateReportsEnabled}
-              updateAllDate={updateAllDate}
-              onUpdateAllDate={setUpdateAllDate}
-              onApplyAllDates={async () => {}}
+              updateAllSasStartDate={updateAllSasStartDate}
+              onUpdateAllSasStartDate={setUpdateAllSasStartDate}
+              updateAllSasEndDate={updateAllSasEndDate}
+              onUpdateAllSasEndDate={setUpdateAllSasEndDate}
+              onApplyAllDates={handleApplyAllDates}
               formatMachineDisplay={machine => {
                 const doc = machine as unknown as CollectionDocument;
                 return <span>{doc.machineCustomName || doc.machineName || doc.machineId || doc.serialNumber}</span>;
               }}
-              formatDate={date => new Date(date).toLocaleString()}
+              formatDate={date => formatDateWithOrdinal(date)}
               sortMachines={sortMachinesAlphabetically}
               onEditMachine={editMachineInList}
               onDeleteMachine={deleteMachineFromList}

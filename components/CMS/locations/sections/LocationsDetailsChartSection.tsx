@@ -29,6 +29,7 @@ type LocationsDetailsChartSectionProps = {
   ) => void;
   showGranularitySelector: boolean;
   availableGranularityOptions?: Array<'daily' | 'weekly' | 'monthly'>;
+  useNetGross: boolean;
 };
 
 export default function LocationsDetailsChartSection({
@@ -39,6 +40,7 @@ export default function LocationsDetailsChartSection({
   onGranularityChange,
   showGranularitySelector,
   availableGranularityOptions = [],
+  useNetGross,
 }: LocationsDetailsChartSectionProps) {
   // Check if all financial totals are zero
   /*
@@ -131,6 +133,7 @@ export default function LocationsDetailsChartSection({
               chartData={chartData}
               activeMetricsFilter={activeMetricsFilter as TimePeriod}
               granularity={chartGranularity}
+              useNetGross={useNetGross}
             />
           </div>
         </div>

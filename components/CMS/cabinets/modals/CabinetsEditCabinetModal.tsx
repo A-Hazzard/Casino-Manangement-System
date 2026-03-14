@@ -299,6 +299,7 @@ export default function CabinetsEditCabinetModal({
       lastMetersIn: '',
       lastMetersOut: '',
     },
+    custom: { name: '' },
   });
 
   useEffect(() => {
@@ -893,6 +894,7 @@ export default function CabinetsEditCabinetModal({
                     accountingDenomination: String(
                       formData.accountingDenomination || ''
                     ),
+                    custom: formData.custom || { name: '' },
                   }}
                   cabinetDataLoading={cabinetDataLoading}
                   manufacturersLoading={manufacturersLoading}

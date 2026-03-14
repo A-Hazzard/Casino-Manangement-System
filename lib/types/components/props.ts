@@ -11,6 +11,7 @@ export type ChartProps = {
   activeMetricsFilter: TimePeriod | '';
   totals?: DashboardTotals | null;
   granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
+  useNetGross?: boolean;
 };
 
 export type CustomizedLabelProps = {

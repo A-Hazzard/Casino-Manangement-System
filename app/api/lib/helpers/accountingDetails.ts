@@ -8,6 +8,7 @@ import type { TimePeriod } from '@/shared/types/common';
 import { AcceptedBill } from '../models/acceptedBills';
 import { CollectionReport } from '../models/collectionReport';
 import { Collections } from '../models/collections';
+import { GamingLocations } from '../models/gaminglocations';
 import { MachineEvent } from '../models/machineEvents';
 import { Machine } from '../models/machines';
 import { getDatesForTimePeriod } from '../utils/dates';
@@ -207,7 +208,7 @@ export async function getCollectionReportById(
     {
       $lookup: {
         from: 'machines',
-        localField: 'sasMeters.machine',
+        localField: 'machineId',
         foreignField: '_id',
         as: 'machineDetails',
       },
@@ -318,13 +319,16 @@ export async function getCollectionReportById(
   // This must be done BEFORE calculating location metrics so we can use it for SAS gross
   const { Meters } = await import('@/app/api/lib/models/meters');
 
-  // Collect all machine IDs and their SAS time ranges
+  // Collect machineId + SAS time ranges for all collections
+  // CRITICAL: Use collection.machineId (_id) as the lookup key.
+  // Meters stored by the cabinet/machine page use `machine = machine._id`.
+  // Do NOT use sasMeters.machine (display identifier) — it's inconsistent.
   const meterQueries = collections
     .filter(
-      c => c.sasMeters?.sasStartTime && c.sasMeters?.sasEndTime && c.machineId
+      c => c.machineId && c.sasMeters?.sasStartTime && c.sasMeters?.sasEndTime
     )
     .map(c => ({
-      machineId: c.machineId,
+      machineId: c.machineId as string,
       startTime: new Date(c.sasMeters!.sasStartTime!),
       endTime: new Date(c.sasMeters!.sasEndTime!),
     }));
@@ -334,6 +338,7 @@ export async function getCollectionReportById(
     _id: string;
     totalDrop: number;
     totalCancelled: number;
+    totalJackpot: number;
     meterCount: number;
   }> = [];
   if (meterQueries.length > 0) {
@@ -351,6 +356,7 @@ export async function getCollectionReportById(
           _id: '$machine',
           totalDrop: { $sum: '$movement.drop' },
           totalCancelled: { $sum: '$movement.totalCancelledCredits' },
+          totalJackpot: { $sum: '$movement.jackpot' },
           meterCount: { $sum: 1 },
         },
       },
@@ -365,7 +371,12 @@ export async function getCollectionReportById(
   const meterDataMap = new Map(
     allMeterData.map(m => [
       m._id,
-      { drop: m.totalDrop, cancelled: m.totalCancelled, count: m.meterCount },
+      {
+        drop: m.totalDrop,
+        cancelled: m.totalCancelled,
+        jackpot: m.totalJackpot,
+        count: m.meterCount
+      },
     ])
   );
 
@@ -384,23 +395,40 @@ export async function getCollectionReportById(
     0
   );
 
-  // Calculate total SAS gross from meter data map (same method as machine metrics)
-  // This ensures consistency between machine metrics and location metrics
+  // Fetch location's useNetGross flag BEFORE calculating total variation
+  let useNetGross = false;
+  try {
+    if (report.location) {
+      const location = await GamingLocations.findOne(
+        { _id: report.location },
+        { useNetGross: 1 }
+      ).lean() as Record<string, unknown> | null;
+      useNetGross = Boolean(location?.useNetGross);
+    }
+  } catch (err) {
+    console.warn('[Collection Report] Could not fetch location useNetGross:', err);
+  }
+
+  // Calculate total SAS gross and jackpot from meter data map
   let totalSasGross = 0;
+  let totalJackpots = 0;
   for (const collection of collections) {
-    if (
-      collection.machineId &&
-      collection.sasMeters?.sasStartTime &&
-      collection.sasMeters?.sasEndTime
-    ) {
+    if (collection.machineId && collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime) {
       const meterData = meterDataMap.get(collection.machineId);
       if (meterData) {
         totalSasGross += meterData.drop - meterData.cancelled;
+        totalJackpots += meterData.jackpot;
+      } else {
+        // fallback to snapshot value if no raw meter data found
+        totalJackpots += collection.sasMeters?.jackpot || 0;
       }
+    } else {
+      totalJackpots += collection.sasMeters?.jackpot || 0;
     }
   }
 
-  const totalVariation = totalMetersGross - totalSasGross;
+  const adjustedTotalSasGross = useNetGross ? totalSasGross - totalJackpots : totalSasGross;
+  const totalVariation = totalMetersGross - adjustedTotalSasGross;
 
   // Get total number of machines for this location
   let totalMachinesForLocation = collections.length; // Default fallback
@@ -424,6 +452,14 @@ export async function getCollectionReportById(
   const locationMetrics = {
     droppedCancelled: `${totalDrop}/${totalCancelled}`,
     metersGross: totalMetersGross,
+    jackpot: collections.reduce((sum, col) => {
+      const meterData = meterDataMap.get(col.machineId);
+      return sum + (meterData?.jackpot ?? col.sasMeters?.jackpot ?? 0);
+    }, 0),
+    netGross: totalMetersGross - collections.reduce((sum, col) => {
+      const meterData = meterDataMap.get(col.machineId);
+      return sum + (meterData?.jackpot ?? col.sasMeters?.jackpot ?? 0);
+    }, 0),
     variation: totalVariation,
     sasGross: totalSasGross,
     locationRevenue: report.partnerProfit || 0,
@@ -476,6 +512,7 @@ export async function getCollectionReportById(
     collectionDate: report.timestamp
       ? new Date(report.timestamp).toISOString()
       : '-',
+    useNetGross,
     machineMetrics: collections.map((collection, idx: number) => {
       // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
       // Get raw values with fallbacks handling older collection documents
@@ -507,6 +544,8 @@ export async function getCollectionReportById(
 
       // 🚀 OPTIMIZED: Use pre-fetched meter data from batch query (no individual queries!)
       let sasGross = 0;
+      let recalculatedJackpot = collection.sasMeters?.jackpot || 0;
+
       if (
         collection.machineId &&
         collection.sasMeters?.sasStartTime &&
@@ -515,16 +554,24 @@ export async function getCollectionReportById(
         const meterData = meterDataMap.get(collection.machineId);
         if (meterData) {
           sasGross = meterData.drop - meterData.cancelled;
+          recalculatedJackpot = meterData.jackpot;
         }
       }
+
+      const jackpot = recalculatedJackpot;
+      const netGross = meterGross - jackpot;
+
+      // If useNetGross is true, update variation calculation to compare against the jackpot-adjusted sasGross
+      const adjustedSasGross = useNetGross ? sasGross - (jackpot || 0) : sasGross;
+
       // Check if SAS data exists - if not, show "No SAS Data"
       // Note: sasMeters.gross can be 0 (valid value), so we only check for undefined/null
       const variation =
         !collection.sasMeters ||
-        collection.sasMeters.gross === undefined ||
-        collection.sasMeters.gross === null
+          collection.sasMeters.gross === undefined ||
+          collection.sasMeters.gross === null
           ? 'No SAS Data'
-          : meterGross - sasGross;
+          : meterGross - adjustedSasGross;
 
       return {
         id: String(idx + 1),
@@ -534,6 +581,8 @@ export async function getCollectionReportById(
           cancelled
         )}`,
         metersGross: meterGross,
+        jackpot,
+        netGross,
         sasGross: formatSmartDecimal(sasGross),
         variation:
           typeof variation === 'string'

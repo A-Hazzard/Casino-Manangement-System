@@ -92,6 +92,9 @@ export function useNewCollectionModal({
   const currentRamClearMetersOut = storeFormData.ramClearMetersOut;
   const currentMachineNotes = storeFormData.notes;
   const currentRamClear = storeFormData.ramClear;
+  const showAdvancedSas = storeFormData.showAdvancedSas;
+  const sasStartTime = storeFormData.sasStartTime;
+  const sasEndTime = storeFormData.sasEndTime;
 
   const setCurrentMetersIn = (val: string) => setStoreFormData({ metersIn: val });
   const setCurrentMetersOut = (val: string) => setStoreFormData({ metersOut: val });
@@ -100,11 +103,43 @@ export function useNewCollectionModal({
   const setCurrentMachineNotes = (val: string) => setStoreFormData({ notes: val });
   const setCurrentRamClear = (val: boolean) => setStoreFormData({ ramClear: val });
   const setCurrentCollectionTime = (val: Date) => setStoreFormData({ collectionTime: val });
+  const setShowAdvancedSas = (val: boolean | ((p: boolean) => boolean)) => {
+    const newVal = typeof val === 'function' ? val(showAdvancedSas) : val;
+    const updates: Partial<typeof storeFormData> = { showAdvancedSas: newVal };
 
-  const [showAdvancedSas, setShowAdvancedSas] = useState(false);
-  const [customSasStartTime, setCustomSasStartTime] = useState<Date | null>(
-    null
-  );
+    // If turning on and times are null, set reasonable defaults
+    if (newVal) {
+      const locationIdToUse = lockedLocationId || selectedLocationId;
+      const location = locations.find(l => String(l._id) === locationIdToUse);
+      const machine = locations
+        .flatMap(l => l.machines || [])
+        .find(m => String(m._id) === selectedMachineId);
+
+      if (!sasStartTime) {
+        let defaultStart = new Date();
+        if (machine?.collectionTime) {
+          defaultStart = new Date(machine.collectionTime);
+        } else if (location?.previousCollectionTime) {
+          defaultStart = new Date(location.previousCollectionTime);
+        }
+        updates.sasStartTime = defaultStart;
+      }
+      
+      if (!sasEndTime) {
+        const gameDayOffset = location?.gameDayOffset ?? 8;
+        const defaultEnd = new Date(currentCollectionTime || new Date());
+        if (defaultEnd.getHours() < gameDayOffset) {
+          defaultEnd.setDate(defaultEnd.getDate() - 1);
+        }
+        defaultEnd.setHours(gameDayOffset - 1, 59, 59, 0);
+        updates.sasEndTime = defaultEnd;
+      }
+    }
+
+    setStoreFormData(updates);
+  };
+  const setSasStartTime = (val: Date | null) => setStoreFormData({ sasStartTime: val });
+  const setSasEndTime = (val: Date | null) => setStoreFormData({ sasEndTime: val });
   const [isFirstCollection, setIsFirstCollection] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
@@ -129,6 +164,8 @@ export function useNewCollectionModal({
     useState(false);
   const [baseBalanceCorrection, setBaseBalanceCorrection] =
     useState<string>('0');
+  const [updateAllSasStartDate, setUpdateAllSasStartDate] = useState<Date | undefined>(undefined);
+  const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<Date | undefined>(undefined);
 
   const selectedLocation = useMemo(() => {
     const locationIdToUse = lockedLocationId || selectedLocationId;
@@ -539,6 +576,22 @@ export function useNewCollectionModal({
         );
         setPrevIn(existingEntry.prevIn || 0);
         setPrevOut(existingEntry.prevOut || 0);
+        
+        // Populate SAS times if available - BUT DON'T SELECT BY DEFAULT as per user request
+        if (existingEntry.sasMeters?.sasStartTime) {
+          setSasStartTime(new Date(existingEntry.sasMeters.sasStartTime));
+        } else {
+          setSasStartTime(null);
+        }
+        
+        if (existingEntry.sasMeters?.sasEndTime) {
+          setSasEndTime(new Date(existingEntry.sasMeters.sasEndTime));
+        } else {
+          setSasEndTime(null);
+        }
+
+        // Ensure advanced is NOT selected by default when editing
+        setShowAdvancedSas(false);
       } else {
         if (machineForDataEntry.collectionMeters) {
           setPrevIn(machineForDataEntry.collectionMeters.metersIn || 0);
@@ -604,6 +657,9 @@ export function useNewCollectionModal({
     setCurrentMetersOut('');
     setCurrentMachineNotes('');
     setCurrentRamClear(false);
+    setSasStartTime(null);
+    setSasEndTime(null);
+    setShowAdvancedSas(false);
 
     onClose();
   }, [hasChanges, onRefresh, onClose, resetStoreState]);
@@ -621,13 +677,13 @@ export function useNewCollectionModal({
         prevIn: prevIn || 0,
         prevOut: prevOut || 0,
         timestamp: currentCollectionTime,
-        collectionTime: currentCollectionTime,
-        ramClear: currentRamClear,
-        notes: currentMachineNotes,
+        collectionTime: currentCollectionTime, // KEEP IN SYNC
         collector: userId,
-        ...(isFirstCollection && customSasStartTime
-          ? { sasStartTime: customSasStartTime }
-          : {}),
+        notes: currentMachineNotes,
+        // sasEndTime always saved: advanced uses user-set value, simple uses collectionTime
+        sasEndTime: showAdvancedSas && sasEndTime ? sasEndTime : currentCollectionTime,
+        ...(showAdvancedSas && sasStartTime ? { sasStartTime } : {}),
+        ...(showAdvancedSas && sasEndTime ? { timestamp: sasEndTime, collectionTime: sasEndTime } : {}),
         ...(currentRamClear
           ? {
               ramClearMetersIn: Number(currentRamClearMetersIn),
@@ -647,8 +703,9 @@ export function useNewCollectionModal({
       setCurrentRamClearMetersOut('');
       setCurrentMachineNotes('');
       setCurrentRamClear(false);
-      setCustomSasStartTime(null);
-      setShowAdvancedSas(false);
+      setSasStartTime(showAdvancedSas ? sasStartTime : null);
+      setSasEndTime(showAdvancedSas ? sasEndTime : null);
+      setShowAdvancedSas(showAdvancedSas);
 
       toast.success('Machine added to list', { position: 'top-left' });
       if (selectedLocationName) {
@@ -682,11 +739,13 @@ export function useNewCollectionModal({
     currentMachineNotes,
     userId,
     isFirstCollection,
-    customSasStartTime,
+    sasStartTime,
+    sasEndTime,
     currentRamClearMetersIn,
     currentRamClearMetersOut,
     logActivityCallback,
     selectedMachineId,
+    showAdvancedSas,
   ]);
 
   const handleAddEntry = useCallback(() => {
@@ -729,6 +788,10 @@ export function useNewCollectionModal({
               ramClearMetersOut: Number(currentRamClearMetersOut),
             }
           : { ramClearMetersIn: undefined, ramClearMetersOut: undefined }),
+        // sasEndTime always saved: advanced uses user-set value, simple uses collectionTime
+        sasEndTime: showAdvancedSas && sasEndTime ? sasEndTime : currentCollectionTime,
+        ...(showAdvancedSas && sasStartTime ? { sasStartTime } : {}),
+        ...(showAdvancedSas && sasEndTime ? { timestamp: sasEndTime, collectionTime: sasEndTime } : {}),
       };
 
       const updatedCollection = await updateCollection(
@@ -748,8 +811,9 @@ export function useNewCollectionModal({
       setCurrentRamClearMetersOut('');
       setCurrentMachineNotes('');
       setCurrentRamClear(false);
-      setCustomSasStartTime(null);
-      setShowAdvancedSas(false);
+      setSasStartTime(showAdvancedSas ? sasStartTime : null);
+      setSasEndTime(showAdvancedSas ? sasEndTime : null);
+      setShowAdvancedSas(showAdvancedSas);
       setShowUpdateConfirmation(false);
       toast.success('Collection entry updated');
 
@@ -991,11 +1055,31 @@ export function useNewCollectionModal({
             entry.ramClearMetersOut?.toString() || ''
           );
         }
+        setPrevIn(entry.prevIn || 0);
+        setPrevOut(entry.prevOut || 0);
+
+        // CRITICAL: Reset to simple mode BEFORE setting collection time so the store
+        // auto-sync correctly sets sasEndTime = collectionTime in simple mode.
+        // Advanced mode must never be selected by default when editing.
+        // Pre-load sasMeters times so that when the user clicks Advanced, the correct
+        // times appear rather than auto-generated defaults.
+        setShowAdvancedSas(false);
+        setSasStartTime(
+          entry.sasMeters?.sasStartTime
+            ? new Date(entry.sasMeters.sasStartTime)
+            : null
+        );
+        setSasEndTime(
+          entry.sasMeters?.sasEndTime
+            ? new Date(entry.sasMeters.sasEndTime)
+            : null
+        );
+
+        // Set collection time — store auto-sync will set sasEndTime = this value
         setCurrentCollectionTime(
           entry.timestamp ? new Date(entry.timestamp) : new Date()
         );
-        setPrevIn(entry.prevIn || 0);
-        setPrevOut(entry.prevOut || 0);
+
         toast.info('Editing machine collection entry');
       }
     },
@@ -1027,8 +1111,41 @@ export function useNewCollectionModal({
     setCurrentMetersOut('');
     setCurrentMachineNotes('');
     setCurrentRamClear(false);
+    setSasStartTime(showAdvancedSas ? sasStartTime : null);
+    setSasEndTime(showAdvancedSas ? sasEndTime : null);
+    setShowAdvancedSas(showAdvancedSas);
     toast.info('Edit cancelled');
   }, []);
+
+  const handleApplyAllDates = useCallback(async () => {
+    if (!updateAllSasStartDate && !updateAllSasEndDate) return;
+    if (collectedMachineEntries.length < 2) return;
+    try {
+      setIsProcessing(true);
+      const axios = (await import('axios')).default;
+      const patchData: Record<string, string> = {};
+      if (updateAllSasStartDate) patchData.sasStartTime = updateAllSasStartDate.toISOString();
+      if (updateAllSasEndDate) patchData.sasEndTime = updateAllSasEndDate.toISOString();
+      const results = await Promise.allSettled(
+        collectedMachineEntries.map(async entry => {
+          if (!entry._id) return;
+          return await axios.patch(`/api/collections?id=${entry._id}`, patchData);
+        })
+      );
+      const failed = results.filter(r => r.status === 'rejected').length;
+      if (failed > 0) {
+        toast.error(`${failed} machine${failed > 1 ? 's' : ''} failed to update`);
+        return;
+      }
+      toast.success('All SAS times updated successfully!');
+      setUpdateAllSasStartDate(undefined);
+      setUpdateAllSasEndDate(undefined);
+    } catch {
+      toast.error('Failed to update SAS times');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [updateAllSasStartDate, updateAllSasEndDate, collectedMachineEntries]);
 
   return {
     selectedLocationId,
@@ -1055,8 +1172,10 @@ export function useNewCollectionModal({
     setCurrentRamClear,
     showAdvancedSas,
     setShowAdvancedSas,
-    customSasStartTime,
-    setCustomSasStartTime,
+    sasStartTime,
+    setSasStartTime,
+    sasEndTime,
+    setSasEndTime,
     isFirstCollection,
     setIsFirstCollection,
     collectedMachineEntries,
@@ -1104,6 +1223,11 @@ export function useNewCollectionModal({
     handleCancelEdit,
     handleAddEntry,
     anyConfirmationOpen,
+    updateAllSasStartDate,
+    setUpdateAllSasStartDate,
+    updateAllSasEndDate,
+    setUpdateAllSasEndDate,
+    handleApplyAllDates,
   };
 }
 

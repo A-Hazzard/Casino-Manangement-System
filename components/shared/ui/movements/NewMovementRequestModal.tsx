@@ -248,30 +248,32 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="md:max-w-3xl md:max-h-[85vh] overflow-hidden bg-white p-0 flex flex-col items-center">
-        <DialogHeader className="border-b border-gray-100 p-6 shrink-0 w-full">
-          <DialogTitle className="text-2xl font-bold text-gray-800 text-center">
+      <DialogContent className="md:max-w-4xl max-h-[95vh] md:max-h-[90vh] md:h-auto overflow-hidden bg-white p-0 flex flex-col border-none shadow-2xl">
+        <DialogHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 p-6 shrink-0 w-full relative">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-button to-buttonActive"></div>
+          <DialogTitle className="text-2xl font-extrabold tracking-tight text-gray-900 text-center">
             New Movement Request
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid flex-1 grid-cols-1 gap-6 overflow-y-auto p-8 md:grid-cols-2 custom-scrollbar w-full">
-          {/* Left Column */}
-          <div className="flex flex-col gap-5">
+        <div className="grid grid-cols-1 gap-0 overflow-y-auto md:grid-cols-2 custom-scrollbar w-full bg-white">
+          {/* Left Column - Form Inputs */}
+          <div className="flex flex-col gap-5 p-6 border-r border-gray-50">
 
             {/* Movement Type */}
-            <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                Please Select Movement Type <span className="text-red-500">*</span>
+            <div className="space-y-1">
+              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-button"></span>
+                Movement Type <span className="text-red-500">*</span>
               </label>
               <Select
                 value={movementType}
                 onValueChange={(value: 'Machine' | 'SMIB') => setMovementType(value)}
               >
-                <SelectTrigger className="h-11 w-full border-gray-300 shadow-sm focus:border-buttonActive focus:ring-buttonActive">
+                <SelectTrigger className="h-11 w-full border-gray-200 bg-gray-50/30 shadow-none hover:bg-white transition-all focus:border-buttonActive focus:ring-1 focus:ring-buttonActive/20">
                   <SelectValue placeholder="Select movement type" />
                 </SelectTrigger>
-                <SelectContent className="z-[9999]">
+                <SelectContent>
                   <SelectItem value="Machine">Machine</SelectItem>
                   <SelectItem value="SMIB">SMIB</SelectItem>
                 </SelectContent>
@@ -280,9 +282,10 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
             </div>
 
             {/* From Location — searchable */}
-            <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                Please Select Location It Is Coming From <span className="text-red-500">*</span>
+            <div className="space-y-1">
+              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                From Location <span className="text-red-500">*</span>
               </label>
               <SearchableSelect
                 options={locationOptions}
@@ -302,9 +305,10 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
             </div>
 
             {/* To Location — searchable, disabled until cabinets selected */}
-            <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                Please Select Location It Is Going To <span className="text-red-500">*</span>
+            <div className="space-y-1">
+              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                To Location <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <SearchableSelect
@@ -347,8 +351,11 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
             </div>
 
             {/* Notes */}
-            <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">Notes</label>
+            <div className="space-y-1">
+              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                Additional Notes
+              </label>
               <Textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
@@ -358,13 +365,13 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
             </div>
           </div>
 
-          {/* Right Column */}
-          <div className="flex flex-col gap-5">
-
+          {/* Right Column - Selection & Destination */}
+          <div className="flex flex-col gap-5 p-6 bg-gray-50/30">
             {/* Request To — disabled until to-location selected */}
-            <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                Request To: <span className="text-red-500">*</span>
+            <div className="space-y-1">
+              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+                Request To <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Select
@@ -382,7 +389,7 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                       <SelectValue placeholder={toLocation ? "Select user" : "Select destination location first"} />
                     )}
                   </SelectTrigger>
-                  <SelectContent className="z-[9999] max-h-[300px]">
+                  <SelectContent className="max-h-[300px]">
                     {filteredUsers.length > 0 ? (
                       filteredUsers.map(user => (
                         <SelectItem key={user._id} value={user._id}>
@@ -424,9 +431,10 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
             </div>
 
             {/* Cabinet/SMIB Selection with MultiSelectDropdown */}
-            <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                Please Select {movementType + 's'} to be Moved <span className="text-red-500">*</span>
+            <div className="space-y-1 px-1">
+              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-button"></span>
+                Select {movementType}s to move <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
@@ -497,11 +505,11 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
                               className="mt-1 h-4 w-4 border-gray-300 data-[state=checked]:bg-buttonActive data-[state=checked]:border-buttonActive"
                             />
                             <div className="flex flex-col leading-tight min-w-0 flex-1">
-                              <span className="text-sm font-bold text-gray-900 truncate">
+                              <span className="text-sm font-bold text-gray-900 truncate group-hover:text-button transition-colors">
                                 {cab.installedGame || cab.game || cab.assetNumber || cab.serialNumber || 'Unknown Machine'}
                               </span>
-                              <span className="text-[11px] text-gray-500 font-medium mt-0.5">
-                                SN: {cab.serialNumber || 'N/A'} | Asset: {cab.assetNumber || 'N/A'}
+                              <span className="text-[10px] text-gray-500 font-medium mt-0.5">
+                                <span className="text-gray-400">SN:</span> {cab.serialNumber || 'N/A'} | <span className="text-gray-400">Asset:</span> {cab.assetNumber || 'N/A'}
                               </span>
                             </div>
                           </label>
@@ -536,11 +544,12 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
             </div>
 
             {/* Selected Items */}
-            <div>
-              <label className="mb-1.5 block text-sm font-semibold text-gray-700">
-                Selected {movementType + 's'} ({selectedCabinets.length})
+            <div className="space-y-1">
+              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Selected {movementType}s ({selectedCabinets.length})
               </label>
-              <div className="h-44 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50/50 p-4 shadow-inner">
+              <div className="h-32 overflow-y-auto rounded-xl border border-dashed border-gray-200 bg-white p-3 shadow-inner">
                 {selectedCabinets.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {selectedCabinets.map(cab => {
@@ -567,24 +576,24 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="border-t border-gray-100 p-6 w-full bg-gray-50/30">
-          <div className="flex flex-col sm:flex-row justify-end gap-3 w-full max-w-sm ml-auto">
+        <DialogFooter className="border-t border-gray-100 p-5 w-full bg-white">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 w-full sm:w-auto ml-auto">
             <DialogClose asChild>
-              <Button variant="outline" className="h-11 flex-1 font-semibold text-gray-700 hover:bg-gray-100 sm:order-1">
+              <Button variant="outline" className="h-10 px-8 font-semibold text-gray-600 border-gray-200 hover:bg-gray-50 transition-colors sm:order-1">
                 Cancel
               </Button>
             </DialogClose>
             <Button
               onClick={handleSubmit}
               disabled={submitting}
-              className="h-11 flex-1 bg-green-600 hover:bg-green-700 text-white font-bold shadow-md transition-all active:scale-95 sm:order-2"
+              className="h-10 px-10 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-bold shadow-lg shadow-green-200 transition-all active:scale-95 sm:order-2"
             >
               {submitting ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Submitting...</span>
                 </div>
-              ) : 'Add'}
+              ) : 'Confirm Request'}
             </Button>
           </div>
         </DialogFooter>

@@ -86,6 +86,7 @@ export type TransformedMeterData = {
   voucherOut: number;
   attPaidCredits: number;
   gamesPlayed: number;
+  netGross: number;
   location: string;
   locationId: string;
   createdAt: Date | undefined;
@@ -694,6 +695,7 @@ export function transformMeterData(
       voucherOut,
       attPaidCredits: handPaidCredits,
       gamesPlayed,
+      netGross: validateMeterValue(metersIn - metersOut - jackpot),
       location: locationName,
       locationId: machine.gamingLocation,
       createdAt: meterData.lastReadAt || machine.lastActivity,

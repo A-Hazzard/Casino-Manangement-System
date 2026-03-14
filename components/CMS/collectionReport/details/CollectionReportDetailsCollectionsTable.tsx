@@ -8,6 +8,7 @@
  * - Sorting by multiple columns (Machine ID, Gross, Variation, etc.)
  * - Pagination (Desktop & Mobile views)
  * - Visual indicators for RAM cleared machines
+ * - Jackpot deduction indicator on SAS Gross when useNetGross is enabled
  * - Responsive layout (Cards for mobile, Table for desktop)
  */
 
@@ -41,6 +42,7 @@ import {
   ChevronUp,
   Zap,
 } from 'lucide-react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 type CollectionReportDetailsCollectionsTableProps = {
@@ -54,7 +56,83 @@ type CollectionReportDetailsCollectionsTableProps = {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  /** When true, deduct jackpot from SAS Gross display and show indicator */
+  useNetGross?: boolean;
 };
+
+// ============================================================================
+// Helper: format machine display name with bold bracket content
+// ============================================================================
+function MachineDisplayName({ name, onClick }: { name: string; onClick: () => void }) {
+  // Split the name by parenthesized parts to bold them all
+  const parts = name.split(/(\(.+?\))/g);
+  
+  return (
+    <span
+      onClick={onClick}
+      className="cursor-pointer font-medium text-gray-900 hover:text-black hover:underline transition-colors decoration-gray-300"
+    >
+      {parts.map((part, i) => 
+        part.startsWith('(') && part.endsWith(')') ? (
+          <span key={i} className="font-bold">{part}</span>
+        ) : (
+          part
+        )
+      )}
+    </span>
+  );
+}
+
+// ============================================================================
+// Helper: SAS Gross cell with optional jackpot deduction
+// ============================================================================
+function SasGrossCell({
+  metric,
+  useNetGross,
+}: {
+  metric: MachineMetric;
+  useNetGross: boolean;
+}) {
+  const jackpot = metric.jackpot ?? 0;
+  const hasJackpotDeduction = useNetGross && jackpot > 0;
+
+  const rawSasGross = Number(metric.sasGross) || 0;
+  const adjustedSasGross = hasJackpotDeduction ? rawSasGross - jackpot : rawSasGross;
+
+  const displayValue = hasJackpotDeduction
+    ? adjustedSasGross.toLocaleString(undefined, { minimumFractionDigits: 2 })
+    : rawSasGross.toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+  if (!hasJackpotDeduction) {
+    return (
+      <span className="font-medium text-gray-900">{displayValue}</span>
+    );
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="inline-flex cursor-help border-b border-dotted border-gray-400">
+            <span className={`font-medium ${adjustedSasGross < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+              {displayValue}
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs">
+          <div className="space-y-1 text-xs">
+            <p className="font-semibold text-amber-600 flex items-center gap-1">
+              <Image src="/jackpot.svg" alt="Jackpot" width={12} height={12} className="inline-block" /> Jackpot Deduction Applied
+            </p>
+            <p>SAS Gross (original): <span className="font-bold">{rawSasGross.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></p>
+            <p>Jackpot: <span className="font-bold text-red-500">- {jackpot.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></p>
+            <p className="border-t border-gray-200 pt-1">Net SAS Gross: <span className="font-bold">{displayValue}</span></p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 export default function CollectionReportDetailsCollectionsTable({
   metrics,
@@ -67,6 +145,7 @@ export default function CollectionReportDetailsCollectionsTable({
   currentPage,
   totalPages,
   onPageChange,
+  useNetGross = false,
 }: CollectionReportDetailsCollectionsTableProps) {
   const router = useRouter();
 
@@ -104,6 +183,7 @@ export default function CollectionReportDetailsCollectionsTable({
         </div>
       )}
 
+
       {/* Desktop Table View */}
       <div className="hidden lg:block overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         <Table>
@@ -131,7 +211,7 @@ export default function CollectionReportDetailsCollectionsTable({
                 onClick={onSort}
               />
               <SortableHeader
-                label="SAS GROSS"
+                label={useNetGross ? 'SAS GROSS (NET)' : 'SAS GROSS'}
                 field="sasGross"
                 currentField={sortField}
                 direction={sortDirection}
@@ -156,27 +236,39 @@ export default function CollectionReportDetailsCollectionsTable({
                   metric.ramClear ? 'bg-orange-50/30' : ''
                 }`}
               >
+                {/* === Machine Column: plain text with bold brackets === */}
                 <TableCell className="px-4 py-4">
                   <div className="flex items-center gap-2">
-                    <span
-                      onClick={() => handleMachineClick(metric)}
-                      className="cursor-pointer rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 transition-all group-hover:bg-blue-200"
-                    >
-                      {metric.machineId}
-                    </span>
-                    {metric.ramClear && <RamClearIndicator />}
+                    <div className="flex-1 min-w-0">
+                      <MachineDisplayName
+                        name={metric.machineId}
+                        onClick={() => handleMachineClick(metric)}
+                      />
+                    </div>
+                    {(metric.ramClear || (useNetGross && (metric.jackpot ?? 0) > 0)) && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {metric.ramClear && <RamClearIndicator />}
+                        {useNetGross && (metric.jackpot ?? 0) > 0 && <JackpotIndicator />}
+                      </div>
+                    )}
                   </div>
                 </TableCell>
+
                 <TableCell className="px-4 py-4 text-gray-600">{metric.dropCancelled || '0 / 0'}</TableCell>
+
                 <TableCell className="px-4 py-4 font-medium text-gray-900">
                   {metric.metersGross?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </TableCell>
-                <TableCell className="px-4 py-4 font-medium text-gray-900">
-                  {metric.sasGross?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+
+                {/* === SAS Gross with optional jackpot deduction === */}
+                <TableCell className="px-4 py-4">
+                  <SasGrossCell metric={metric} useNetGross={useNetGross} />
                 </TableCell>
+
                 <TableCell className={`px-4 py-4 font-bold ${Number(metric.variation) < 0 ? 'text-red-600' : 'text-green-600'}`}>
                   {metric.variation?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </TableCell>
+
                 <TableCell className="px-4 py-4 text-xs text-gray-500 whitespace-nowrap min-w-[160px]">
                   <div className="space-y-1">
                     <p>{formatSasTime(metric.sasStartTime || '')}</p>
@@ -191,40 +283,60 @@ export default function CollectionReportDetailsCollectionsTable({
 
       {/* Mobile Card View */}
       <div className="grid grid-cols-1 gap-4 lg:hidden">
-        {paginatedMetrics.map((metric) => (
-          <div
-            key={metric.id}
-            className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${
-              metric.ramClear ? 'border-l-4 border-l-orange-500' : ''
-            }`}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <span
-                onClick={() => handleMachineClick(metric)}
-                className="cursor-pointer font-bold text-blue-600 hover:underline"
-              >
-                {metric.machineId}
-              </span>
-              {metric.ramClear && <RamClearIndicator />}
-            </div>
-            <div className="grid grid-cols-2 gap-y-3 text-sm">
-              <MobileField label="Drop/Cancelled" value={metric.dropCancelled} />
-              <MobileField label="Machine Gross" value={metric.metersGross} isCurrency />
-              <MobileField label="SAS Gross" value={metric.sasGross ?? 0} isCurrency />
-              <MobileField 
-                label="Variation" 
-                value={metric.variation ?? 0} 
-                isCurrency 
-                isBold 
-                className={Number(metric.variation || 0) < 0 ? 'text-red-600' : 'text-green-600'}
-              />
-              <div className="col-span-2 grid grid-cols-2 gap-y-3 pt-2 border-t border-gray-100">
-                <MobileField label="Start Time" value={formatSasTime(metric.sasStartTime || '')} />
-                <MobileField label="End Time" value={formatSasTime(metric.sasEndTime || '')} />
+        {paginatedMetrics.map((metric) => {
+          const jackpot = metric.jackpot ?? 0;
+          const hasJackpotDeduction = useNetGross && jackpot > 0;
+          const rawSasGross = Number(metric.sasGross) || 0;
+          const displaySasGross = hasJackpotDeduction ? rawSasGross - jackpot : rawSasGross;
+
+          return (
+            <div
+              key={metric.id}
+              className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${
+                metric.ramClear ? 'border-l-4 border-l-orange-500' : ''
+              }`}
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <MachineDisplayName
+                  name={metric.machineId}
+                  onClick={() => handleMachineClick(metric)}
+                />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {metric.ramClear && <RamClearIndicator />}
+                  {hasJackpotDeduction && <JackpotIndicator />}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-y-3 text-sm">
+                <MobileField label="Drop/Cancelled" value={metric.dropCancelled} />
+                <MobileField label="Machine Gross" value={metric.metersGross} isCurrency />
+                <div>
+                  <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                    {useNetGross ? 'SAS Gross (Net)' : 'SAS Gross'}
+                  </p>
+                  <p className={`mt-0.5 font-medium ${hasJackpotDeduction && displaySasGross < 0 ? 'text-red-600' : ''}`}>
+                    {displaySasGross.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </p>
+                  {hasJackpotDeduction && (
+                    <p className="text-[10px] text-amber-600 mt-0.5">
+                      Jackpot: -{jackpot.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </p>
+                  )}
+                </div>
+                <MobileField
+                  label="Variation"
+                  value={metric.variation ?? 0}
+                  isCurrency
+                  isBold
+                  className={Number(metric.variation || 0) < 0 ? 'text-red-600' : 'text-green-600'}
+                />
+                <div className="col-span-2 grid grid-cols-2 gap-y-3 pt-2 border-t border-gray-100">
+                  <MobileField label="Start Time" value={formatSasTime(metric.sasStartTime || '')} />
+                  <MobileField label="End Time" value={formatSasTime(metric.sasEndTime || '')} />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Pagination */}
@@ -264,12 +376,35 @@ function RamClearIndicator() {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="flex h-5 w-5 animate-pulse items-center justify-center rounded-full bg-orange-500 text-white shadow-sm">
+          <div className="flex h-5 w-5 animate-pulse items-center justify-center rounded-full bg-orange-500 text-white shadow-sm shrink-0">
             <Zap className="h-3 w-3" />
           </div>
         </TooltipTrigger>
         <TooltipContent>
           <p className="text-xs">Machine was RAM cleared</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+function JackpotIndicator() {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex h-5 w-5 items-center justify-center shrink-0 cursor-default">
+            <Image
+              src="/jackpot.svg"
+              alt="Jackpot"
+              width={20}
+              height={20}
+              className="drop-shadow-sm"
+            />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs">Machine had a jackpot deduction</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -287,7 +422,7 @@ function MobileField({ label, value, isCurrency = false, isBold = false, classNa
     <div>
       <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">{label}</p>
       <p className={`mt-0.5 font-medium ${isBold ? 'font-bold' : ''} ${className}`}>
-        {isCurrency ? value?.toLocaleString(undefined, { minimumFractionDigits: 2 }) : (value || '-')}
+        {isCurrency ? (value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2 }) : (value || '-')}
       </p>
     </div>
   );
@@ -316,7 +451,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: {
       >
         <ChevronLeftIcon className="h-4 w-4" />
       </Button>
-      
+
       <div className="flex items-center gap-2">
         <span className="text-sm text-gray-500">Page</span>
         <input
@@ -349,7 +484,3 @@ function Pagination({ currentPage, totalPages, onPageChange }: {
     </div>
   );
 }
-
-
-
-

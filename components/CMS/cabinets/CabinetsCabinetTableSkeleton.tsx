@@ -31,6 +31,9 @@ export default function CabinetsCabinetTableSkeleton() {
               <span>ASSET NUMBER</span>
             </th>
             <th className="relative p-3 text-center font-semibold text-white">
+              <span>NETWORK</span>
+            </th>
+            <th className="relative p-3 text-center font-semibold text-white">
               <span>MONEY IN</span>
             </th>
             <th className="relative p-3 text-center font-semibold text-white">
@@ -41,6 +44,9 @@ export default function CabinetsCabinetTableSkeleton() {
             </th>
             <th className="relative p-3 text-center font-semibold text-white">
               <span>GROSS</span>
+            </th>
+            <th className="relative p-3 text-center font-semibold text-white">
+              <span>NET GROSS</span>
             </th>
             <th className="p-3 text-center font-semibold text-white">
               <span>ACTIONS</span>
@@ -62,6 +68,12 @@ export default function CabinetsCabinetTableSkeleton() {
                   <Skeleton className="h-4 w-28" />
                 </div>
               </td>
+              {/* Network */}
+              <td className="p-3">
+                <div className="flex justify-center">
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </div>
+              </td>
               {/* Money In */}
               <td className="p-3">
                 <div className="flex justify-center">
@@ -81,6 +93,12 @@ export default function CabinetsCabinetTableSkeleton() {
                 </div>
               </td>
               {/* Gross */}
+              <td className="p-3">
+                <div className="flex justify-center">
+                  <Skeleton className="h-5 w-20" />
+                </div>
+              </td>
+              {/* Net Gross */}
               <td className="p-3">
                 <div className="flex justify-center">
                   <Skeleton className="h-5 w-20" />

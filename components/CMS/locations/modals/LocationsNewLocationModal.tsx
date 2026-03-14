@@ -52,7 +52,7 @@ export default function LocationsNewLocationModal({
     isLocalServer: false,
     latitude: '',
     longitude: '',
-
+    useNetGross: false,
     dayStartTime: '08:00', // Default to 8:00 AM
 
     billValidatorOptions: {
@@ -164,7 +164,7 @@ export default function LocationsNewLocationModal({
         isLocalServer: false,
         latitude: '',
         longitude: '',
-
+        useNetGross: false,
         dayStartTime: '08:00',
 
         billValidatorOptions: {
@@ -400,6 +400,7 @@ export default function LocationsNewLocationModal({
         // Membership data
         membershipEnabled: formData.membershipEnabled,
         locationMembershipSettings: formData.locationMembershipSettings,
+        useNetGross: formData.useNetGross,
       };
 
       // Debug: Log the data being sent
@@ -777,6 +778,24 @@ export default function LocationsNewLocationModal({
                 className="flex-1 text-sm font-medium"
               >
                 No SMIB Location
+              </Label>
+            </div>
+
+            {/* Use Net Gross Checkbox */}
+            <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+              <Checkbox
+                id="useNetGross"
+                checked={formData.useNetGross}
+                onCheckedChange={checked =>
+                  handleCheckboxChange('useNetGross', checked === true)
+                }
+                className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+              />
+              <Label
+                htmlFor="useNetGross"
+                className="flex-1 text-sm font-medium"
+              >
+                Use Net Gross
               </Label>
             </div>
 

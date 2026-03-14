@@ -16,13 +16,13 @@
 
 import { Button } from '@/components/shared/ui/button';
 import { IMAGES } from '@/lib/constants';
-import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { ArrowLeftIcon, Pencil2Icon } from '@radix-ui/react-icons';
 import { Copy, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import RefreshButton from '@/components/shared/ui/RefreshButton';
+import { formatMachineDisplayNameWithBold, formatMachineDisplayName } from '@/components/shared/ui/machineDisplay';
 
 type CabinetsDetailsSummarySectionProps = {
   cabinet: Cabinet | null;
@@ -51,7 +51,8 @@ export default function CabinetsDetailsSummarySection({
   onCopyToClipboard,
   onLocationClick,
 }: CabinetsDetailsSummarySectionProps) {
-  const cabinetName = cabinet ? getSerialNumberIdentifier(cabinet) : 'Unknown';
+  const cabinetDisplayName = cabinet ? formatMachineDisplayNameWithBold(cabinet) : 'Unknown';
+  const cabinetCopyName = cabinet ? formatMachineDisplayName(cabinet) : 'Unknown';
 
   return (
     <div className="space-y-6">
@@ -88,9 +89,9 @@ export default function CabinetsDetailsSummarySection({
                 height={32}
                 className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
               />
-              <span>Name: {cabinetName}</span>
+              <span>{cabinetDisplayName}</span>
               <button
-                onClick={() => onCopyToClipboard(cabinetName, 'Cabinet Name')}
+                onClick={() => onCopyToClipboard(cabinetCopyName, 'Cabinet Name')}
                 className="ml-1 rounded p-1 transition-colors hover:bg-gray-100"
                 title="Copy cabinet name"
               >

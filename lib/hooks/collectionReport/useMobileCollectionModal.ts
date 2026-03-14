@@ -65,29 +65,97 @@ export function useMobileCollectionModal({
   const setStoreSelectedMachineExposed = setStoreSelectedMachine;
   const setStoreSelectedMachineDataExposed = setStoreSelectedMachineData;
 
-  const [modalState, setModalState] = useState({
+  type MobileModalState = {
+    isMachineListVisible: boolean;
+    isFormVisible: boolean;
+    isCollectedListVisible: boolean;
+    navigationStack: string[];
+    isViewingFinancialForm: boolean;
+    showViewMachineConfirmation: boolean;
+    searchTerm: string;
+    collectedMachinesSearchTerm: string;
+    editingEntryId: string | null;
+    isLoadingMachines: boolean;
+    isProcessing: boolean;
+    isLoadingCollections: boolean;
+    collectedMachines: CollectionDocument[];
+    lockedLocationId: string | undefined;
+    baseBalanceCorrection: string;
+    formData: {
+      metersIn: string;
+      metersOut: string;
+      ramClear: boolean;
+      ramClearMetersIn: string;
+      ramClearMetersOut: string;
+      notes: string;
+      collectionTime: Date;
+      showAdvancedSas: boolean;
+      sasStartTime: Date | null;
+      sasEndTime: Date | null;
+    };
+    financials: {
+      collectedAmount: string;
+      amountToCollect: string;
+      previousBalance: string;
+      taxes: string;
+      advance: string;
+      variance: string;
+      varianceReason: string;
+      balanceCorrection: string;
+      balanceCorrectionReason: string;
+      reasonForShortagePayment: string;
+    };
+  };
+
+  const [modalState, setModalState] = useState<MobileModalState>(() => ({
     isMachineListVisible: false,
     isFormVisible: false,
     isCollectedListVisible: false,
-    navigationStack: [] as string[],
+    navigationStack: [],
     isViewingFinancialForm: false,
     showViewMachineConfirmation: false,
     searchTerm: '',
     collectedMachinesSearchTerm: '',
-    editingEntryId: null as string | null,
+    editingEntryId: null,
     isLoadingMachines: false,
     isProcessing: false,
     isLoadingCollections: false,
-    collectedMachines: [] as CollectionDocument[],
-    lockedLocationId: undefined as string | undefined,
+    collectedMachines: [],
+    lockedLocationId: undefined,
     baseBalanceCorrection: '',
-  });
+    formData: {
+      metersIn: storeFormData.metersIn,
+      metersOut: storeFormData.metersOut,
+      ramClear: storeFormData.ramClear,
+      ramClearMetersIn: storeFormData.ramClearMetersIn,
+      ramClearMetersOut: storeFormData.ramClearMetersOut,
+      notes: storeFormData.notes,
+      collectionTime: storeFormData.collectionTime,
+      showAdvancedSas: storeFormData.showAdvancedSas,
+      sasStartTime: storeFormData.sasStartTime,
+      sasEndTime: storeFormData.sasEndTime,
+    },
+    financials: {
+      collectedAmount: financials.collectedAmount,
+      amountToCollect: financials.amountToCollect,
+      previousBalance: financials.previousBalance,
+      taxes: financials.taxes,
+      advance: financials.advance,
+      variance: financials.variance,
+      varianceReason: financials.varianceReason,
+      balanceCorrection: financials.balanceCorrection,
+      balanceCorrectionReason: financials.balanceCorrectionReason,
+      reasonForShortagePayment: financials.reasonForShortagePayment,
+    },
+  }));
 
   const [showUnsavedChangesWarning, setShowUnsavedChangesWarning] =
     useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [showCreateReportConfirmation, setShowCreateReportConfirmation] =
     useState(false);
+  const [updateAllSasStartDate, setUpdateAllSasStartDate] = useState<Date | undefined>(undefined);
+  const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<Date | undefined>(undefined);
 
   // Refs to prevent infinite loops
   const hasFetchedOnOpenRef = useRef(false);
@@ -137,18 +205,17 @@ export function useMobileCollectionModal({
       const newStack = [...prev.navigationStack];
       newStack.pop();
 
-      // Hide all panels first
-      const newState = {
+      // Get the next top panel
+      const topPanel = newStack.length > 0 ? newStack[newStack.length - 1] : null;
+
+      // Update panel visibility based on the new top
+      return {
         ...prev,
-        isMachineListVisible: false,
-        isFormVisible: false,
-        isCollectedListVisible: false,
+        isMachineListVisible: topPanel === 'machine-list' || topPanel === null, // null means home
+        isFormVisible: topPanel === 'form',
+        isCollectedListVisible: topPanel === 'list',
         navigationStack: newStack,
       };
-
-      // If we're going back to main, ensure all panels are hidden
-      // The main screen will show when navigationStack.length === 0
-      return newState;
     });
   }, []);
 
@@ -403,16 +470,18 @@ export function useMobileCollectionModal({
   // ============================================================================
 
   const handleViewForm = useCallback(() => {
+    pushNavigation('list');
     setModalState(prev => ({
       ...prev,
-      isFormVisible: true,
+      isFormVisible: false,
       isMachineListVisible: false,
-      isCollectedListVisible: false,
+      isCollectedListVisible: true,
       isViewingFinancialForm: true,
     }));
-  }, []);
+  }, [pushNavigation]);
 
   const handleViewCollectedMachines = useCallback(() => {
+    pushNavigation('list');
     setModalState(prev => ({
       ...prev,
       isCollectedListVisible: true,
@@ -420,7 +489,7 @@ export function useMobileCollectionModal({
       isMachineListVisible: false,
       isViewingFinancialForm: false,
     }));
-  }, []);
+  }, [pushNavigation]);
 
   // ============================================================================
   // Computed Values
@@ -450,11 +519,11 @@ export function useMobileCollectionModal({
     return true;
   }, [
     selectedMachineData,
-    storeFormData.metersIn,
-    storeFormData.metersOut,
-    storeFormData.ramClear,
-    storeFormData.ramClearMetersIn,
-    storeFormData.ramClearMetersOut,
+    modalState.formData.metersIn,
+    modalState.formData.metersOut,
+    modalState.formData.ramClear,
+    modalState.formData.ramClearMetersIn,
+    modalState.formData.ramClearMetersOut,
   ]);
 
   const isCreateReportsEnabled = useMemo(() => {
@@ -503,23 +572,23 @@ export function useMobileCollectionModal({
     const validation = validateMachineEntry(
       String(selectedMachineData._id),
       selectedMachineData,
-      storeFormData.metersIn,
-      storeFormData.metersOut,
+      modalState.formData.metersIn,
+      modalState.formData.metersOut,
       user?._id as string,
-      storeFormData.ramClear,
+      modalState.formData.ramClear,
       selectedMachineData.collectionMeters?.metersIn,
       selectedMachineData.collectionMeters?.metersOut,
-      storeFormData.ramClearMetersIn
-        ? Number(storeFormData.ramClearMetersIn)
+      modalState.formData.ramClearMetersIn
+        ? Number(modalState.formData.ramClearMetersIn)
         : undefined,
-      storeFormData.ramClearMetersOut
-        ? Number(storeFormData.ramClearMetersOut)
+      modalState.formData.ramClearMetersOut
+        ? Number(modalState.formData.ramClearMetersOut)
         : undefined,
       isEditing
     );
 
     if (!validation.isValid) {
-      // Validation errors are now shown inline in the form
+      toast.error(validation.error || 'Invalid machine data. Please check your inputs.', { duration: 5000 });
       return;
     }
 
@@ -531,19 +600,31 @@ export function useMobileCollectionModal({
         machineId: String(selectedMachineData._id),
         location: selectedLocationName,
         collector: user?._id || '',
-        metersIn: Number(storeFormData.metersIn),
-        metersOut: Number(storeFormData.metersOut),
+        metersIn: Number(modalState.formData.metersIn),
+        metersOut: Number(modalState.formData.metersOut),
         // CRITICAL: Don't send prevIn/prevOut values
         // Let the API calculate them from machine history
-        notes: storeFormData.notes,
-        timestamp: storeFormData.collectionTime.toISOString(),
-        ramClear: storeFormData.ramClear,
-        ramClearMetersIn: storeFormData.ramClearMetersIn
-          ? Number(storeFormData.ramClearMetersIn)
+        notes: modalState.formData.notes,
+        ramClear: modalState.formData.ramClear,
+        ramClearMetersIn: modalState.formData.ramClearMetersIn
+          ? Number(modalState.formData.ramClearMetersIn)
           : undefined,
-        ramClearMetersOut: storeFormData.ramClearMetersOut
-          ? Number(storeFormData.ramClearMetersOut)
+        ramClearMetersOut: modalState.formData.ramClearMetersOut
+          ? Number(modalState.formData.ramClearMetersOut)
           : undefined,
+        ...(modalState.formData.showAdvancedSas && modalState.formData.sasStartTime ? { sasStartTime: modalState.formData.sasStartTime } : {}),
+        ...(modalState.formData.showAdvancedSas && modalState.formData.sasEndTime
+          ? {
+              sasEndTime: modalState.formData.sasEndTime,
+              timestamp: modalState.formData.sasEndTime.toISOString(),
+              collectionTime: modalState.formData.sasEndTime.toISOString(),
+            }
+          : {
+              // Simple mode: sasEndTime = collectionTime (always saved, never undefined)
+              sasEndTime: modalState.formData.collectionTime,
+              timestamp: modalState.formData.collectionTime.toISOString(),
+              collectionTime: modalState.formData.collectionTime.toISOString(),
+            }),
         locationReportId: '', // Will be set when report is created
         isCompleted: false,
       };
@@ -589,15 +670,33 @@ export function useMobileCollectionModal({
             ? selectedLocation || undefined
             : prev.lockedLocationId;
 
+        // Correctly handle navigation state
+        const newStack = [...prev.navigationStack];
+        newStack.pop(); // Pop the 'form' panel
+
         return {
           ...prev,
           collectedMachines: newCollectedMachines,
           lockedLocationId: newLockedLocationId, // Lock on first machine
           isFormVisible: false,
-          isMachineListVisible: true, // Navigate back to machine list
+          isMachineListVisible: false, // The home screen will show because stack is empty
+          navigationStack: newStack,
           selectedMachine: null,
           selectedMachineData: null,
           editingEntryId: null, // Clear editing state
+          formData: {
+            ...prev.formData,
+            metersIn: '',
+            metersOut: '',
+            ramClear: false,
+            ramClearMetersIn: '',
+            ramClearMetersOut: '',
+            notes: '',
+            // Keep showAdvancedSas, sasStartTime, sasEndTime if active
+            showAdvancedSas: prev.formData.showAdvancedSas,
+            sasStartTime: prev.formData.showAdvancedSas ? prev.formData.sasStartTime : null,
+            sasEndTime: prev.formData.showAdvancedSas ? prev.formData.sasEndTime : null,
+          }
         };
       });
 
@@ -609,6 +708,9 @@ export function useMobileCollectionModal({
         ramClearMetersIn: '',
         ramClearMetersOut: '',
         notes: '',
+        showAdvancedSas: modalState.formData.showAdvancedSas,
+        sasStartTime: modalState.formData.showAdvancedSas ? modalState.formData.sasStartTime : null,
+        sasEndTime: modalState.formData.showAdvancedSas ? modalState.formData.sasEndTime : null,
       });
 
       // Sync to Zustand store
@@ -707,6 +809,7 @@ export function useMobileCollectionModal({
       }
 
       // Populate form with existing data
+      pushNavigation('form');
       setModalState(prev => ({
         ...prev,
         selectedMachine: String(machine!._id),
@@ -724,6 +827,9 @@ export function useMobileCollectionModal({
         ramClearMetersOut: entry.ramClearMetersOut?.toString() || '',
         notes: entry.notes || '',
         collectionTime: new Date(entry.timestamp),
+        showAdvancedSas: false, // Ensure advanced is NOT selected by default when editing
+        sasStartTime: entry.sasMeters?.sasStartTime ? new Date(entry.sasMeters.sasStartTime) : null,
+        sasEndTime: entry.sasMeters?.sasEndTime ? new Date(entry.sasMeters.sasEndTime) : null,
       });
 
       setStoreSelectedMachine(String(machine._id));
@@ -1039,8 +1145,121 @@ export function useMobileCollectionModal({
     },
     getLocationIdFromMachine,
     fetchExistingCollections,
+
+    // Form data change handler
+    onFormDataChange: (field: string, value: unknown) => {
+      // Compute the new form data outside of the setState updater to avoid
+      // calling external store setters during another component's render cycle.
+      const currentFormData = { ...storeFormData };
+      const newFormData = { ...currentFormData, [field]: value };
+
+      // If turning on advanced SAS and times are null, set defaults
+      if (field === 'showAdvancedSas' && value === true) {
+        const location = locationsRef.current.find(l => String(l._id) === selectedLocation);
+        const machine = selectedMachineData;
+
+        if (!newFormData.sasStartTime) {
+          let defaultStart = new Date();
+          if (machine?.collectionTime) {
+            defaultStart = new Date(machine.collectionTime);
+          } else if (location?.previousCollectionTime) {
+            defaultStart = new Date(location.previousCollectionTime);
+          }
+          newFormData.sasStartTime = defaultStart;
+        }
+
+        if (!newFormData.sasEndTime) {
+          const gameDayOffset = location?.gameDayOffset ?? 8;
+          const defaultEnd = new Date(newFormData.collectionTime || new Date());
+          if (defaultEnd.getHours() < gameDayOffset) {
+            defaultEnd.setDate(defaultEnd.getDate() - 1);
+          }
+          defaultEnd.setHours(gameDayOffset - 1, 59, 59, 0);
+          newFormData.sasEndTime = defaultEnd;
+        }
+      }
+
+      // Update both stores separately (never inside the other's updater)
+      setStoreFormData(newFormData);
+      setModalState(prev => ({
+        ...prev,
+        formData: newFormData,
+      }));
+    },
+
     storeFormData,
     setStoreFormData,
+
+    // Update All Dates feature
+    updateAllSasStartDate,
+    setUpdateAllSasStartDate,
+    updateAllSasEndDate,
+    setUpdateAllSasEndDate,
+    handleApplyAllDates: async () => {
+      if ((!updateAllSasStartDate && !updateAllSasEndDate) || modalState.collectedMachines.length < 1) return;
+      try {
+        setModalState(prev => ({ ...prev, isProcessing: true }));
+        const results = await Promise.allSettled(
+          modalState.collectedMachines.map(async entry => {
+            if (!entry._id) return;
+
+            const updateData: Record<string, unknown> = {};
+            if (updateAllSasStartDate) {
+              updateData['sasMeters.sasStartTime'] = updateAllSasStartDate.toISOString();
+            }
+            if (updateAllSasEndDate) {
+              updateData['sasMeters.sasEndTime'] = updateAllSasEndDate.toISOString();
+            }
+
+            return await axios.patch(`/api/collections?id=${entry._id}`, updateData);
+          })
+        );
+        const failed = results.filter(r => r.status === 'rejected').length;
+        if (failed > 0) {
+          toast.error(`${failed} machine${failed > 1 ? 's' : ''} failed to update`);
+          return;
+        }
+        // Refresh local list timestamps
+        const updated = modalState.collectedMachines.map(e => {
+          const newEntry = { ...e } as any;
+          if (!newEntry.sasMeters) {
+            newEntry.sasMeters = {
+              machine: newEntry.machineId || '',
+              drop: 0,
+              totalCancelledCredits: 0,
+              gross: 0,
+              gamesPlayed: 0,
+              jackpot: 0,
+              sasStartTime: '',
+              sasEndTime: '',
+            };
+          } else {
+            newEntry.sasMeters = { ...newEntry.sasMeters };
+          }
+          
+          if (updateAllSasStartDate) {
+            newEntry.sasMeters.sasStartTime = updateAllSasStartDate.toISOString();
+          }
+          if (updateAllSasEndDate) {
+            newEntry.sasMeters.sasEndTime = updateAllSasEndDate.toISOString();
+          }
+          return newEntry;
+        });
+
+        setModalState(prev => ({
+          ...prev,
+          collectedMachines: updated,
+          isProcessing: false
+        }));
+        setStoreCollectedMachines(updated);
+        toast.success('All SAS times updated successfully!');
+        setUpdateAllSasStartDate(undefined);
+        setUpdateAllSasEndDate(undefined);
+      } catch (error) {
+        console.error('Error applying all dates:', error);
+        toast.error('Failed to update dates');
+        setModalState(prev => ({ ...prev, isProcessing: false }));
+      }
+    },
   };
 }
-

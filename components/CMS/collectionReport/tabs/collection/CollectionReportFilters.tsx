@@ -112,7 +112,7 @@ export default function CollectionReportFilters({
   return (
     <div
       ref={filterRef}
-      className="flex w-full flex-col gap-y-3 border rounded-t-lg border-gray-200 bg-white p-4 lg:gap-y-4 lg:bg-buttonActive"
+      className="flex w-full flex-col gap-y-3 rounded-lg bg-buttonActive p-4 lg:gap-y-4"
     >
       {/* Top row - Search and Location (md: side by side, lg: with Clear Button) */}
       <div className="flex flex-col gap-y-3 md:flex-row md:items-center md:gap-3 lg:gap-4">
@@ -121,7 +121,7 @@ export default function CollectionReportFilters({
           <input
             type="text"
             placeholder="Search Collector or Location..."
-            className="w-full rounded-md border border-black bg-white px-4 py-2 pr-10 text-sm"
+            className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 pr-10 text-sm"
             value={search}
             onChange={e => onSearchChange(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -170,7 +170,7 @@ export default function CollectionReportFilters({
                 onCheckedChange={checked =>
                   onShowUncollectedOnlyChange(!!checked)
                 }
-                className="border border-buttonActive bg-white data-[state=checked]:bg-buttonActive"
+                className="border border-white bg-white data-[state=checked]:bg-buttonActive data-[state=checked]:border-white"
               />
               <span className="whitespace-nowrap text-sm font-medium">
                 SHOW UNCOLLECTED ONLY
@@ -184,14 +184,14 @@ export default function CollectionReportFilters({
       <div className="flex flex-col gap-y-3 lg:hidden">
         {/* Uncollected Only Checkbox - only visible on mobile and tablet */}
         <div ref={checkboxRef} className="flex w-full items-center">
-          <label className="flex cursor-pointer items-center gap-2 font-medium text-black">
+          <label className="flex cursor-pointer items-center gap-2 font-medium text-white">
             <Checkbox
               id="uncollected-only-mobile"
               checked={showUncollectedOnly}
               onCheckedChange={checked =>
                 onShowUncollectedOnlyChange(!!checked)
               }
-              className="border border-buttonActive bg-white data-[state=checked]:bg-buttonActive"
+              className="border border-white bg-white data-[state=checked]:bg-buttonActive data-[state=checked]:border-white"
             />
             <span className="whitespace-nowrap text-sm font-medium">
               SHOW UNCOLLECTED ONLY
@@ -208,11 +208,11 @@ export default function CollectionReportFilters({
               onCheckedChange={checked =>
                 onFilterChange('SMIBLocationsOnly', !!checked)
               }
-              className="border border-buttonActive bg-white data-[state=checked]:bg-buttonActive"
+              className="border border-white bg-white data-[state=checked]:bg-buttonActive data-[state=checked]:border-white"
             />
             <label
               htmlFor="smibFilter"
-              className="cursor-pointer whitespace-nowrap text-sm font-medium text-black lg:text-white"
+              className="cursor-pointer whitespace-nowrap text-sm font-medium text-white"
             >
               SMIB
             </label>
@@ -225,11 +225,11 @@ export default function CollectionReportFilters({
               onCheckedChange={checked =>
                 onFilterChange('NoSMIBLocation', !!checked)
               }
-              className="border border-buttonActive bg-white data-[state=checked]:bg-buttonActive"
+              className="border border-white bg-white data-[state=checked]:bg-buttonActive data-[state=checked]:border-white"
             />
             <label
               htmlFor="noSmibFilter"
-              className="cursor-pointer whitespace-nowrap text-sm font-medium text-black lg:text-white"
+              className="cursor-pointer whitespace-nowrap text-sm font-medium text-white"
             >
               No SMIB
             </label>
@@ -242,11 +242,11 @@ export default function CollectionReportFilters({
               onCheckedChange={checked =>
                 onFilterChange('LocalServersOnly', !!checked)
               }
-              className="border border-buttonActive bg-white data-[state=checked]:bg-buttonActive"
+              className="border border-white bg-white data-[state=checked]:bg-buttonActive data-[state=checked]:border-white"
             />
             <label
               htmlFor="localServerFilter"
-              className="cursor-pointer whitespace-nowrap text-sm font-medium text-black lg:text-white"
+              className="cursor-pointer whitespace-nowrap text-sm font-medium text-white"
             >
               Local Server
             </label>

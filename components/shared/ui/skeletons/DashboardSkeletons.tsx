@@ -6,9 +6,9 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
  * Matches the exact layout of FinancialMetricsCards component
  * Uses the same grid structure as the actual component
  */
-export const DashboardFinancialMetricsSkeleton = () => (
+export const DashboardFinancialMetricsSkeleton = ({ count = 3 }: { count?: number }) => (
   <div className="flex w-full flex-col gap-4 md:flex-row">
-    {Array.from({ length: 3 }).map((_, i) => (
+    {Array.from({ length: count }).map((_, i) => (
       <div
         key={i}
         className="flex min-h-[120px] flex-1 flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6"

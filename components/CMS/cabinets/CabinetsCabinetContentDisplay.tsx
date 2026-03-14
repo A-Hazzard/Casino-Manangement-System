@@ -61,6 +61,7 @@ type CabinetsCabinetContentDisplayProps = {
    * When false, hide the sort direction icons in the table header.
    */
   showSortIcons?: boolean;
+  showNetGross?: boolean;
 };
 
 export const CabinetsCabinetContentDisplay = ({
@@ -82,6 +83,7 @@ export const CabinetsCabinetContentDisplay = ({
   enableHeaderSorting = true,
   showSortIcons = true,
   totalCount,
+  showNetGross = true,
 }: CabinetsCabinetContentDisplayProps) => {
   const tableRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
@@ -322,6 +324,7 @@ export const CabinetsCabinetContentDisplay = ({
           enableHeaderSorting={enableHeaderSorting}
           showSortIcons={showSortIcons}
           hideFinancials={shouldHideFinancials}
+          showNetGross={showNetGross}
         />
       </div>
 
@@ -346,6 +349,8 @@ export const CabinetsCabinetContentDisplay = ({
                 cancelledCredits={machine.moneyOut || 0}
                 jackpot={machine.jackpot || 0}
                 gross={machine.gross || 0}
+                netGross={machine.netGross}
+                network={machine.network}
                 lastOnline={
                   machine.lastOnline instanceof Date
                     ? machine.lastOnline.toISOString()
@@ -363,6 +368,7 @@ export const CabinetsCabinetContentDisplay = ({
                 canEditMachines={canEditMachines}
                 canDeleteMachines={canDeleteMachines}
                 hideFinancials={shouldHideFinancials}
+                showNetGross={showNetGross}
               />
             ))}
           </ClientOnly>

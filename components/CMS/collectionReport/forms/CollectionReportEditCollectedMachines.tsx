@@ -7,7 +7,7 @@
  * - List of collected machines with key details
  * - Edit and delete actions for each entry
  * - Empty state display
- * - Update All Dates functionality
+ * - Update All SAS Times functionality (two date pickers for start and end)
  */
 
 'use client';
@@ -15,7 +15,7 @@
 import { Button } from '@/components/shared/ui/button';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
-import { formatDate } from '@/lib/utils/formatting';
+import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import axios from 'axios';
 import { Edit3, Trash2, Info, SendHorizontal } from 'lucide-react';
@@ -26,8 +26,10 @@ type EditCollectionCollectedMachinesProps = {
   isProcessing: boolean;
   onEditEntry: (id: string) => void;
   onDeleteEntry: (id: string) => void;
-  updateAllDate: Date | undefined;
-  setUpdateAllDate: (date: Date | undefined) => void;
+  updateAllSasStartDate: Date | undefined;
+  setUpdateAllSasStartDate: (date: Date | undefined) => void;
+  updateAllSasEndDate: Date | undefined;
+  setUpdateAllSasEndDate: (date: Date | undefined) => void;
   onRefresh?: () => void;
   financials: {
     amountToCollect: string;
@@ -43,88 +45,122 @@ export default function CollectionReportEditCollectedMachines({
   isProcessing,
   onEditEntry,
   onDeleteEntry,
-  updateAllDate,
-  setUpdateAllDate,
+  updateAllSasStartDate,
+  setUpdateAllSasStartDate,
+  updateAllSasEndDate,
+  setUpdateAllSasEndDate,
   onRefresh,
   financials,
   isUpdateReportEnabled,
   onUpdateReport,
 }: EditCollectionCollectedMachinesProps) {
-  const handleUpdateAllDates = async () => {
-    if (!updateAllDate) return;
+  const handleUpdateAllSasTimes = async () => {
+    if (!updateAllSasStartDate && !updateAllSasEndDate) return;
 
     try {
-      // Update all collections in database
+      const patchData: Record<string, string> = {};
+      if (updateAllSasStartDate) patchData.sasStartTime = updateAllSasStartDate.toISOString();
+      if (updateAllSasEndDate) patchData.sasEndTime = updateAllSasEndDate.toISOString();
+
       const results = await Promise.allSettled(
         collectedMachineEntries.map(async entry => {
           if (!entry._id) return;
-
-          return await axios.patch(`/api/collections?id=${entry._id}`, {
-            timestamp: updateAllDate.toISOString(),
-            collectionTime: updateAllDate.toISOString(),
-          });
+          return await axios.patch(`/api/collections?id=${entry._id}`, patchData);
         })
       );
 
-      // Check for failures
       const failed = results.filter(r => r.status === 'rejected').length;
       if (failed > 0) {
         toast.error(`${failed} machines failed to update`);
         return;
       }
 
-      // Refresh data if callback provided
       if (onRefresh) {
         onRefresh();
       }
 
-      toast.success('All dates updated successfully!');
-      setUpdateAllDate(undefined);
+      toast.success('All SAS times updated successfully!');
+      setUpdateAllSasStartDate(undefined);
+      setUpdateAllSasEndDate(undefined);
     } catch {
-      toast.error('Failed to update dates');
+      toast.error('Failed to update SAS times');
     }
   };
 
   return (
-    <div className="flex min-h-0 w-1/5 flex-col border-l border-gray-300 bg-gray-50">
+    <div className="flex h-[250px] lg:h-auto min-h-0 w-full lg:w-1/5 flex-col border-t lg:border-t-0 lg:border-l border-gray-300 bg-gray-50 shrink-0">
       <div className="border-b border-gray-300 bg-gray-100 p-3">
         <h3 className="text-sm font-semibold text-gray-700">
           Collected Machines ({collectedMachineEntries.length})
         </h3>
       </div>
 
-      {/* Update All Dates - Only show if 2+ machines */}
+      {/* Update All SAS Times - Only show if 2+ machines */}
       {collectedMachineEntries.length >= 2 && (
-        <div className="border-b border-gray-300 bg-blue-50 p-3">
-          <label className="mb-1 block text-xs font-medium text-gray-700">
-            Update All Dates
+        <div className="border-b border-gray-300 bg-blue-50 p-3 space-y-2">
+          <label className="block text-xs font-semibold text-gray-700">
+            Update All SAS Times
           </label>
-          <div className="w-full min-w-0">
-            <ModernCalendar
-              date={
-                updateAllDate
-                  ? { from: updateAllDate, to: updateAllDate }
-                  : undefined
-              }
-              onSelect={range => {
-                if (range?.from) {
-                  setUpdateAllDate(range.from);
-                } else {
-                  setUpdateAllDate(undefined);
+
+          {/* SAS Start Time */}
+          <div>
+            <label className="mb-1 block text-[10px] font-medium text-gray-600">
+              SAS Start Time
+            </label>
+            <div className="w-full min-w-0">
+              <ModernCalendar
+                date={
+                  updateAllSasStartDate
+                    ? { from: updateAllSasStartDate, to: updateAllSasStartDate }
+                    : undefined
                 }
-              }}
-              enableTimeInputs={true}
-              mode="single"
-              className="w-full min-w-0"
-            />
+                onSelect={range => {
+                  if (range?.from) {
+                    setUpdateAllSasStartDate(range.from);
+                  } else {
+                    setUpdateAllSasStartDate(undefined);
+                  }
+                }}
+                enableTimeInputs={true}
+                mode="single"
+                className="w-full min-w-0"
+              />
+            </div>
           </div>
+
+          {/* SAS End Time */}
+          <div>
+            <label className="mb-1 block text-[10px] font-medium text-gray-600">
+              SAS End Time
+            </label>
+            <div className="w-full min-w-0">
+              <ModernCalendar
+                date={
+                  updateAllSasEndDate
+                    ? { from: updateAllSasEndDate, to: updateAllSasEndDate }
+                    : undefined
+                }
+                onSelect={range => {
+                  if (range?.from) {
+                    setUpdateAllSasEndDate(range.from);
+                  } else {
+                    setUpdateAllSasEndDate(undefined);
+                  }
+                }}
+                enableTimeInputs={true}
+                mode="single"
+                className="w-full min-w-0"
+              />
+            </div>
+          </div>
+
           <Button
-            onClick={handleUpdateAllDates}
-            disabled={!updateAllDate || isProcessing}
-            className="mt-2 w-full bg-blue-600 text-xs hover:bg-blue-700"
+            onClick={handleUpdateAllSasTimes}
+            disabled={(!updateAllSasStartDate && !updateAllSasEndDate) || isProcessing}
+            className="mt-1 w-full bg-blue-600 text-xs hover:bg-blue-700"
             size="sm"
           >
-            {isProcessing ? 'Updating...' : 'Update All Dates'}
+            {isProcessing ? 'Updating...' : 'Update All SAS Times'}
           </Button>
         </div>
       )}
@@ -156,9 +192,16 @@ export default function CollectionReportEditCollectedMachines({
                     game: entry.game,
                   })}
                 </p>
-                <p className="text-xs text-gray-600">
-                  Time: {formatDate(entry.timestamp)}
-                </p>
+                {entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime ? (
+                  <p className="text-xs text-gray-600">
+                    SAS: {formatDateWithOrdinal(entry.sasMeters.sasStartTime)} →{' '}
+                    {formatDateWithOrdinal(entry.sasMeters.sasEndTime)}
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 italic">
+                    SAS: Not Set
+                  </p>
+                )}
                 <p className="text-xs text-gray-600">
                   Meters In:{' '}
                   {entry.ramClear
@@ -204,7 +247,7 @@ export default function CollectionReportEditCollectedMachines({
         )}
       </div>
 
-      {/* Live Reconciliation Summary - Added for PC parity with mobile/new */}
+      {/* Live Reconciliation Summary */}
       {collectedMachineEntries.length > 0 && (
         <div className="border-t border-gray-300 bg-blue-50/50 p-4">
           <div className="mb-3 rounded-lg border border-blue-100 bg-white p-3 shadow-sm">
@@ -225,7 +268,7 @@ export default function CollectionReportEditCollectedMachines({
               </div>
             </div>
           </div>
-          
+
           <Button
             onClick={onUpdateReport}
             disabled={!isUpdateReportEnabled || isProcessing}
@@ -246,4 +289,3 @@ export default function CollectionReportEditCollectedMachines({
     </div>
   );
 }
-

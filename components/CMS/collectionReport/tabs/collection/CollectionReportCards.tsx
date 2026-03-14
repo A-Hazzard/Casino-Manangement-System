@@ -283,7 +283,7 @@ export default function CollectionReportCards({
                     />
                   </Button>
                   {canEditDelete &&
-                    (!editableReportIds || editableReportIds.size === 0 || editableReportIds.has(row?.locationReportId || '')) && (
+                    (!editableReportIds || editableReportIds.has(row?.locationReportId || '')) && (
                       <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
                         {onEdit && (
                           <Button

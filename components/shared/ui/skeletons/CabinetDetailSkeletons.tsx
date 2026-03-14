@@ -146,8 +146,8 @@ const CabinetDetailPageSkeleton = () => (
             </CardHeader>
             <CardContent>
               {/* Metrics cards skeleton */}
-              <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {Array.from({ length: 4 }).map((_, i) => (
+              <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+                {Array.from({ length: 5 }).map((_, i) => (
                   <Card key={i}>
                     <CardContent className="p-4">
                       <div className="space-y-2">

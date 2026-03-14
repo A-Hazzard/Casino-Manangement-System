@@ -9,6 +9,7 @@
 - **money in** - Drop calculations and usage
 - **money out** - Cancelled credits calculations
 - **gross revenue** - Net earnings calculations
+- **net gross** - Revenue after handpaid jackpots
 - **collection calculations** - Collection system formulas
 - **dashboard metrics** - Dashboard display calculations
 - **location aggregation** - Location-level calculations
@@ -78,10 +79,17 @@ This document provides a comprehensive guide to the financial metrics used in th
 
 ### Jackpot
 
-- **Definition**: Total jackpot amounts paid out by machines
+- **Definition**: Total handpaid jackpot amounts paid out by machines
 - **Data Source**: `movement.jackpot` field in meter readings
 - **UI Usage**: Displayed in Location Tables and Machine Performance
 - **Purpose**: Tracks large payouts and jackpot activity
+
+### Net Gross
+
+- **Definition**: True net earnings after both automated manual payouts and handpaid jackpots
+- **Calculation**: `netGross = gross - jackpot`
+- **UI Usage**: Critical metric in Financial Metrics Cards and machine detail views
+- **Purpose**: Provides the most accurate representation of machine profitability after all payout types
 
 ### Handle (Coin In)
 
@@ -112,7 +120,20 @@ Where:
 - **Money In** = `movement.drop` (total money physically inserted)
 - **Money Out** = `movement.totalCancelledCredits` (manual payouts)
 
-### SAS GROSS Calculation (Updated October 9, 2025)
+### Net Gross Calculation (New)
+
+The final revenue metric after all payouts:
+
+```
+Net Gross = Gross - Jackpot
+```
+
+Where:
+
+- **Gross** = `Money In - Money Out`
+- **Jackpot** = `movement.jackpot` (handpaid jackpots)
+
+### SAS GROSS vs Machine Gross (Updated February 2026)
 
 **Current Implementation:** Movement Delta Method
 **Formula:**
@@ -122,8 +143,9 @@ SAS GROSS = Sum(movement.drop) - Sum(movement.totalCancelledCredits)
 ```
 
 **Data Source:** `meters` collection
-**Time Period:** Uses SAS time periods from collections
-**Accuracy:** High - accounts for all meter readings in period
+**Time Period:** Uses SAS time periods (interval start/end) defined during machine collections
+**Accuracy:** High - specifically represents the financial movement within the actual SAS communication windows
+**Distinction:** Unlike Machine Gross which is calculated from stored movement fields on the machine, SAS Gross is derived by calculating the delta between meter readings at specific SAS-synchronized timestamps.
 
 **Implementation Across Pages:**
 
@@ -184,6 +206,17 @@ Collection Cancelled = (RAM Clear metersOut - Previous metersOut) + Current mete
 ```
 Amount to Collect = Total Gross - Variance - Advance - Partner Profit + Previous Balance
 ```
+
+#### Variation Calculation (Collection Reports)
+
+```
+Variation = Meters Gross - SAS Gross
+```
+
+Where:
+- **Meters Gross**: Sum of `movement.gross` (Drop - Cancelled) for all collected machines.
+- **SAS Gross**: Sum of SAS meter deltas (Drop - Cancelled) calculated from raw meter logs within the SAS communication window.
+- **Note**: If Variation equals Meters Gross, it typically indicates that no SAS meter data was found for the given time period, resulting in a SAS Gross of $0.00.
 
 #### Partner Profit Calculation
 
@@ -626,6 +659,25 @@ These metrics support comprehensive financial reporting including:
 - **Collection Management**: Automated collection calculations
 - **Location Management**: Location-specific financial tracking
 - **Machine Monitoring**: Individual machine performance analysis
+
+## Collection Report Calculation Details
+
+### Dashboard Table (app/collection-report/page.tsx)
+
+The main collection report listing displays finalized financial data stored in the `CollectionReport` document. This ensures that the summary view matches exactly what was saved during the collection process, including any manual adjustments or "fixes".
+
+1.  **Gross**: The `totalSasGross` field from the `CollectionReport` document.
+    *   **Logic**: Represents the Total SAS Gross (from Serial Access System) at the time the report was closed. This value is used as the primary Gross metric in the dashboard table to align with the location metrics internal SAS totals.
+2.  **Variation**: The `variance` field from the `CollectionReport` document.
+    *   **Logic**: This matches the variance calculated or confirmed by the user during the collection. 
+    *   **Resolution of Discrepancies**: Previously, this table recalculated variation by summing individual machine records. This caused "phantom variations" (where Variation equaled Gross) if SAS communication was lost during collection. By using the stored `variance` field, the table now reflects the actual confirmed variance, which should be **$0.00** if no physical discrepancies were found, even if SAS data was partially missing.
+
+### Location Metrics Tab (app/collection-report/report/[reportId]/page.tsx)
+
+When viewing a specific report, the system performs a "live" verification to help identify and fix communication issues:
+
+*   **Variation (Recalculated)**: The detailed view recalculates SAS Gross by querying raw `Meters` logs. If meters were delayed but eventually arrived, clicking into the report will show the "True" variation.
+*   **Fixing a Report**: If the detailed view shows a different variation than the summary table (e.g., summary shows Gross but detail shows $0.00 after recalculation), the user can update the report. Saving the update will synchronize the summary table's stored `variance` with the true recalculated value.
 
 ---
 

@@ -173,6 +173,7 @@ export default function CabinetsNewCabinetModal({
     relayId: '',
     manufacturer: '',
     otherGameType: '',
+    custom: { name: '' },
     collectionSettings: {
       multiplier: '1',
       lastCollectionTime: collectionTime.toISOString().slice(0, 16),
@@ -338,6 +339,7 @@ export default function CabinetsNewCabinetModal({
       relayId: '',
       manufacturer: '',
       otherGameType: '',
+      custom: { name: '' },
       collectionSettings: {
         multiplier: '1',
         lastCollectionTime: collectionTime.toISOString().slice(0, 16),
@@ -509,6 +511,28 @@ export default function CabinetsNewCabinetModal({
                       className="h-10 border-border bg-container"
                     />
                   </div>
+                </div>
+
+                {/* Machine Custom Name */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-buttonActive">
+                    Machine Custom Name
+                  </label>
+                  <Input
+                    id="customName"
+                    placeholder="Enter Custom Name (Optional)"
+                    value={formData.custom.name}
+                    onChange={e =>
+                      setFormData(prev => ({
+                        ...prev,
+                        custom: { name: e.target.value },
+                      }))
+                    }
+                    className="h-10 border-border bg-container"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    A friendly name for this machine to display in reports
+                  </p>
                 </div>
 
                 {/* Game Type & Cabinet Type */}

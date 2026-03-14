@@ -36,11 +36,17 @@ globs: **/*
 - **Drop (Money In):** Physical cash inserted (`movement.drop`).
 - **Money Out:** Manual payouts (`movement.totalCancelledCredits`).
 - **Gross Revenue:** `Drop - Money Out`.
+- **Jackpot:** Total handpaid jackpots from the machine.
+- **Net Gross:** `Gross - Jackpot`. **MANDATORY** metric for true revenue tracking.
+- **SAS Gross vs Machine Gross:**
+  - **Machine Gross:** Calculated from movement fields stored on the machine.
+  - **SAS Gross:** Calculated by querying meters based specifically on SAS time intervals (start/end) during collection reports.
 - **Movement Delta Method:** **MANDATORY**. Sum movement fields from meters; never use cumulative approach alone for periodic analysis.
 
 ### Gaming Day Offset
 - **Business Rule:** Gaming day starts at **8 AM** Trinidad Time (UTC-4).
 - **Implementation:** All meter-based queries must apply the offset. Calendar events (logs) use UTC/Local as is.
+- **SAS Time:** SAS protocol interactions often follow specific start/end timestamps which define the "SAS Period" for collections.
 
 ## 🛠️ Engineering Guidelines (CRITICAL)
 

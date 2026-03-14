@@ -104,8 +104,9 @@ export async function GET(request: Request) {
 
     let queryFilter: Record<string, unknown>;
 
+    const normalizedUserRoles = userRoles.map(r => String(r).toLowerCase());
     const isAdminOrDeveloper =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      normalizedUserRoles.includes('admin') || normalizedUserRoles.includes('developer');
 
     // Determine the licencee filter to use
     // If forceAll is true and user is admin, ignore licencee filter (show all)
@@ -223,7 +224,7 @@ export async function GET(request: Request) {
     // STEP 5: Fetch locations with optional minimal projection
     // ============================================================================
     const projection = minimal
-      ? { _id: 1, name: 1, geoCoords: 1, 'rel.licencee': 1 }
+      ? { _id: 1, name: 1, geoCoords: 1, 'rel.licencee': 1, useNetGross: 1 }
       : undefined;
     const locations = await GamingLocations.find(queryFilter, projection)
       .sort({ name: 1 })
@@ -318,6 +319,7 @@ export async function POST(request: Request) {
       billValidatorOptions,
       membershipEnabled,
       locationMembershipSettings,
+      useNetGross,
     } = body;
 
     // ============================================================================
@@ -423,6 +425,7 @@ export async function POST(request: Request) {
         pointsMethodGameTypes: [],
         freePlayGameTypes: [],
       },
+      useNetGross: useNetGross || false,
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
@@ -608,6 +611,7 @@ export async function PUT(request: Request) {
       billValidatorOptions,
       membershipEnabled,
       locationMembershipSettings,
+      useNetGross,
     } = body;
 
     if (!locationName) {
@@ -756,6 +760,10 @@ export async function PUT(request: Request) {
 
     if (locationMembershipSettings) {
       updateData.locationMembershipSettings = locationMembershipSettings;
+    }
+    
+    if (useNetGross !== undefined) {
+      updateData.useNetGross = Boolean(useNetGross);
     }
 
     // Always update the updatedAt timestamp

@@ -16,7 +16,9 @@
       "Bash(scroll)",
       "Bash(tabs)",
       "Bash(avatar)",
-      "Bash(sheet \")"
+      "Bash(sheet \")",
+      "Bash(find /c/Users/pc/OneDrive/Documents/Github/evolution-one-cms/app/api -name *smib* -type f)",
+      "Bash(find /c/Users/pc/OneDrive/Documents/Github/evolution-one-cms/app/api/lib/helpers -name *smib* -o -name *mqtt*)"
     ]
   }
 }

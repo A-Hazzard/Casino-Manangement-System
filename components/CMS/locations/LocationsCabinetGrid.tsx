@@ -60,6 +60,7 @@ function CabinetCardMobile({
   canEditMachines = true,
   canDeleteMachines = true,
   copyToClipboard,
+  showNetGross,
 }: {
   cabinet: ExtendedCabinetDetail;
   router: AppRouterInstance;
@@ -68,6 +69,7 @@ function CabinetCardMobile({
   canEditMachines?: boolean;
   canDeleteMachines?: boolean;
   copyToClipboard: (text: string, label: string) => void;
+  showNetGross?: boolean;
 }) {
   const statusRef = useRef<HTMLSpanElement>(null);
   /**
@@ -173,6 +175,15 @@ function CabinetCardMobile({
           )}
         </button>
       </div>
+
+      {/* Network Badge */}
+      {cabinet.network && (
+        <div className="mb-1">
+          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 border border-gray-200">
+            {cabinet.network}
+          </span>
+        </div>
+      )}
       <div className="mt-2 border-t border-gray-200 pt-2">
         <div className="mb-1 flex justify-between">
           <span className="text-xs text-gray-500">Money In:</span>
@@ -190,7 +201,15 @@ function CabinetCardMobile({
             formatCurrencyFn={formatCurrency}
           />
         </div>
-        <div className="flex justify-between">
+        <div className="mb-1 flex justify-between">
+          <span className="text-xs text-gray-500">Jackpot:</span>
+          <CurrencyValueWithOverflow
+            value={cabinet.jackpot || 0}
+            className="text-xs font-medium"
+            formatCurrencyFn={formatCurrency}
+          />
+        </div>
+        <div className="mb-1 flex justify-between">
           <span className="text-xs text-gray-500">Gross:</span>
           <CurrencyValueWithOverflow
             value={cabinet.gross || 0}
@@ -198,6 +217,16 @@ function CabinetCardMobile({
             formatCurrencyFn={formatCurrency}
           />
         </div>
+        {showNetGross !== false && cabinet.netGross !== undefined && (
+          <div className="flex justify-between">
+            <span className="text-xs text-gray-500">Net Gross:</span>
+            <CurrencyValueWithOverflow
+              value={cabinet.netGross}
+              className={`text-xs font-medium ${getGrossColorClass(cabinet.netGross)}`}
+              formatCurrencyFn={formatCurrency}
+            />
+          </div>
+        )}
       </div>
 
       {/* Action Buttons */}
@@ -248,7 +277,8 @@ export default function LocationsCabinetGrid({
   sortOption: externalSortOption,
   sortOrder: externalSortOrder,
   onSortChange,
-}: LocationsCabinetGridProps) {
+  showNetGross = true,
+}: LocationsCabinetGridProps & { showNetGross?: boolean }) {
   // Use external sort state if provided, otherwise use local state
   const [internalSortOption, setInternalSortOption] =
     useState<CabinetSortOption>('moneyIn');
@@ -398,6 +428,7 @@ export default function LocationsCabinetGrid({
           onDelete={cabinet => handleDelete(cabinet as ExtendedCabinetDetail)}
           canEditMachines={canEditMachines}
           canDeleteMachines={canDeleteMachines}
+          showNetGross={showNetGross}
         />
       </div>
 
@@ -416,6 +447,7 @@ export default function LocationsCabinetGrid({
                 canEditMachines={canEditMachines}
                 canDeleteMachines={canDeleteMachines}
                 copyToClipboard={copyToClipboard}
+                showNetGross={showNetGross}
               />
             ))}
         </div>

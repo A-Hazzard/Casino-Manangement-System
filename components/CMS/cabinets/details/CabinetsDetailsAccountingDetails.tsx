@@ -78,7 +78,7 @@ const MetricsSkeleton = () => (
     className="flex w-full max-w-full flex-wrap gap-3 md:gap-4"
     style={{ rowGap: '1rem' }}
   >
-    {[1, 2, 3, 4].map(i => (
+    {[1, 2, 3, 4, 5].map(i => (
       <div
         key={i}
         className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
@@ -723,6 +723,34 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
                           </p>
                         </div>
                       </motion.div>
+
+                      {/* Net Gross */}
+                      {cabinet?.netGross !== undefined && (
+                        <motion.div
+                          className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
+                          variants={itemVariants}
+                          whileHover={{
+                            y: -5,
+                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                          }}
+                          transition={{ type: 'spring', stiffness: 300 }}
+                        >
+                          <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">
+                            Net Gross
+                          </h4>
+                          <div className="mb-4 h-1 w-full bg-greenHighlight md:mb-6"></div>
+                          <div className="flex items-center justify-center">
+                            <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getGrossColorClass(
+                              Number(cabinet?.netGross ?? 
+                                (Number(cabinet?.gross ?? (Number(cabinet?.moneyIn ?? 0) - Number(cabinet?.moneyOut ?? 0))) - 
+                                 Number(cabinet?.jackpot ?? 0))
+                              )
+                            )}`}>
+                              {formatAmount(Number(cabinet.netGross))}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
                     </motion.div>
                   )
                 ) : activeMetricsTabContent === 'Live Metrics' ? (

@@ -34,9 +34,11 @@ type MobileCollectedListPanelProps = {
   isProcessing: boolean;
   isCreateReportsEnabled: boolean;
 
-  // Update all dates feature
-  updateAllDate: Date | undefined;
-  onUpdateAllDate: (date: Date | undefined) => void;
+  // Update all SAS times feature
+  updateAllSasStartDate: Date | undefined;
+  onUpdateAllSasStartDate: (date: Date | undefined) => void;
+  updateAllSasEndDate: Date | undefined;
+  onUpdateAllSasEndDate: (date: Date | undefined) => void;
   onApplyAllDates: () => void;
 
   // Callbacks
@@ -72,8 +74,10 @@ export default function CollectionReportMobileCollectedListPanel({
   financials,
   isProcessing,
   isCreateReportsEnabled,
-  updateAllDate,
-  onUpdateAllDate,
+  updateAllSasStartDate,
+  onUpdateAllSasStartDate,
+  updateAllSasEndDate,
+  onUpdateAllSasEndDate,
   onApplyAllDates,
   formatMachineDisplay: _formatMachineDisplay,
   formatDate,
@@ -109,10 +113,10 @@ export default function CollectionReportMobileCollectedListPanel({
 
   return (
     <div
-      className={`fixed inset-0 z-[90] flex h-full w-full transform flex-col bg-white shadow-xl transition-all duration-300 ease-in-out md:h-[90vh] md:rounded-xl ${
+      className={`fixed inset-0 z-[110] flex h-full w-full transform flex-col bg-white shadow-xl transition-all duration-300 ease-in-out md:relative md:inset-auto md:flex md:h-full md:flex-1 md:w-full md:rounded-xl md:shadow-none ${
         isVisible
-          ? 'translate-y-0 opacity-100 md:left-[50%] md:top-[50%] md:-translate-x-1/2 md:-translate-y-1/2'
-          : 'translate-y-full opacity-0 md:left-[50%] md:top-[50%] md:-translate-x-1/2 md:-translate-y-1/2'
+          ? 'translate-y-0 opacity-100'
+          : 'translate-y-full opacity-0'
       } `}
     >
       {isVisible && (
@@ -184,8 +188,8 @@ export default function CollectionReportMobileCollectedListPanel({
                           Amount to Collect *
                           <CalculationHelp 
                             title="Amount to Collect" 
-                            formula="(Total Meters In - Total Meters Out) - Variance - Advance - Partner Share + Opening Balance" 
-                            description="This is the target amount of cash you should have in hand. It takes the total machine revenue and subtracts expenses (Advance/Variance) and the Partner's profit share, then adds any balance carried over from the last collection."
+                            formula="(Meters Profit - Variance - Advance) - Partner Share + Opening Balance" 
+                            description="This is the ESTIMATED target amount. It starts with the machine revenue (Meters In - Out), subtracts manual adjustments (Advance/Variance) and the Partner's share, and then adds the opening balance carried over from the previous collection."
                           />
                         </label>
                         <input
@@ -206,8 +210,8 @@ export default function CollectionReportMobileCollectedListPanel({
                           Balance Correction *
                           <CalculationHelp 
                             title="Balance Correction" 
-                            formula="Manual Adjustment to Opening Balance" 
-                            description="Use this to set or adjust the starting balance for this collection. It 'unlocks' the Collected Amount field to ensure you acknowledge the starting state before entering the collection results."
+                            formula="Manual Adjustment + (Collected - Amount to Collect)" 
+                            description="This field shows the final balance for the current location. It's calculated by taking the manual correction and adding the current collection difference (Shortage/Overage). You must set a manual value here first to unlock the 'Collected Amount' field."
                           />
                         </label>
                         <input
@@ -243,7 +247,7 @@ export default function CollectionReportMobileCollectedListPanel({
                           <CalculationHelp 
                             title="Collected Amount" 
                             formula="The actual physical cash you counted" 
-                            description="This is the most important field. Enter the total amount of cash you actually retrieved and counted from all machines. This should ideally match the 'Amount to Collect' field."
+                            description="Enter the EXACT total amount of physical cash retrieving from all machines. The system compares this to the 'Amount to Collect' to determine the shortage or overage for the next report."
                           />
                         </label>
                         <input
@@ -354,7 +358,7 @@ export default function CollectionReportMobileCollectedListPanel({
                           <CalculationHelp 
                             title="Current/New Balance" 
                             formula="Collected Amount - Amount to Collect" 
-                            description="This shows if there is a shortage (negative) or overage (positive) in the collection. This value will be carried over as the 'Opening Balance' for the next collection at this location."
+                            description="The difference between what you actually collected and what the system expected. A negative value means a shortage. This net result is carried forward to the next collection report automatically."
                           />
                         </label>
                         <input
@@ -447,8 +451,8 @@ export default function CollectionReportMobileCollectedListPanel({
             ) : (
               // === Machine List View ===
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                {/* Scrollable content */}
-                <div className="mobile-collection-scrollbar flex-1 overflow-y-auto">
+                {/* Scrollable content - ensure it grows to fill flex container */}
+                <div className="mobile-collection-scrollbar flex flex-1 flex-col overflow-y-auto min-h-0">
                 {/* Live Reconciliation Summary - ALWAYS SHOWN ABOVE LIST */}
                 <div className="border-b bg-blue-50/50 px-4 py-4">
                   <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
@@ -482,33 +486,48 @@ export default function CollectionReportMobileCollectedListPanel({
                   </div>
                 </div>
 
-                <div className="flex-1">
-                  {/* Update All Dates - Show if there are 2 or more machines */}
-                  {collectedMachines.length >= 2 && (
-                    <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
-                      <label className="mb-2 block text-sm font-medium text-gray-700">
-                        Update All Dates
+                <div className="flex-1 p-4">
+                  {/* Update All SAS Times - Show if there are 1 or more machines */}
+                  {collectedMachines.length >= 1 && (
+                    <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-3">
+                      <label className="block text-sm font-semibold text-gray-700">
+                        Update All SAS Times
                       </label>
-                      <p className="mb-2 text-xs text-gray-600">
-                        Select date/time to apply to all {collectedMachines.length} machines
-                      </p>
-                      <ModernCalendar
-                        date={updateAllDate ? { from: updateAllDate, to: updateAllDate } : undefined}
-                        onSelect={(range) => {
-                          if (range?.from) {
-                            onUpdateAllDate(range.from);
-                          }
-                        }}
-                        disabled={isProcessing}
-                        mode="single"
-                        enableTimeInputs={true}
-                      />
+                      
+                      {/* SAS Start Time */}
+                      <div>
+                        <label className="mb-1 block text-[10px] font-medium text-gray-600">
+                          SAS Start Time
+                        </label>
+                        <ModernCalendar
+                          date={updateAllSasStartDate ? { from: updateAllSasStartDate, to: updateAllSasStartDate } : undefined}
+                          onSelect={(range) => onUpdateAllSasStartDate(range?.from)}
+                          disabled={isProcessing}
+                          mode="single"
+                          enableTimeInputs={true}
+                        />
+                      </div>
+
+                      {/* SAS End Time */}
+                      <div>
+                        <label className="mb-1 block text-[10px] font-medium text-gray-600">
+                          SAS End Time
+                        </label>
+                        <ModernCalendar
+                          date={updateAllSasEndDate ? { from: updateAllSasEndDate, to: updateAllSasEndDate } : undefined}
+                          onSelect={(range) => onUpdateAllSasEndDate(range?.from)}
+                          disabled={isProcessing}
+                          mode="single"
+                          enableTimeInputs={true}
+                        />
+                      </div>
+
                       <button
                         onClick={onApplyAllDates}
-                        disabled={!updateAllDate || isProcessing}
-                        className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={(!updateAllSasStartDate && !updateAllSasEndDate) || isProcessing}
+                        className="mt-1 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {isProcessing ? 'Updating...' : 'Apply to All Machines'}
+                        {isProcessing ? 'Updating...' : 'Apply SAS Times to All'}
                       </button>
                     </div>
                   )}
@@ -555,6 +574,15 @@ export default function CollectionReportMobileCollectedListPanel({
                               <p className="col-span-2 text-[10px]">
                                 Time: <span className="font-medium">{formatDate(new Date(machine.timestamp))}</span>
                               </p>
+                              {machine.sasMeters?.sasStartTime && machine.sasMeters?.sasEndTime ? (
+                                <p className="col-span-2 text-[10px]">
+                                  SAS: <span className="font-medium">{formatDate(new Date(machine.sasMeters.sasStartTime))} → {formatDate(new Date(machine.sasMeters.sasEndTime))}</span>
+                                </p>
+                              ) : (
+                                <p className="col-span-2 text-[10px] italic text-gray-400">
+                                  SAS: Not Set
+                                </p>
+                              )}
                             </div>
                             {machine.notes && (
                               <p className="text-[10px] italic text-gray-400 line-clamp-2">

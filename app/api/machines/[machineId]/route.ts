@@ -29,8 +29,14 @@ import {
 import type { MachineDocument } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
+import mongoose from 'mongoose';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
+
+// Extend Machine type for temporary storage of location settings
+type MachineWithLocationSettings = mongoose.Document & {
+  locationUseNetGross?: boolean;
+} & Record<string, unknown>;
 
 /**
  * Main GET handler for fetching a single machine by ID
@@ -155,12 +161,13 @@ export async function GET(
         const location = (await GamingLocations.findOne({
           _id: machine.gamingLocation,
         })
-          .select('name locationName gameDayOffset rel')
+          .select('name locationName gameDayOffset rel useNetGross')
           .lean()) as {
             name?: string;
             locationName?: string;
             gameDayOffset?: number;
             rel?: { licencee?: string };
+            useNetGross?: boolean;
           } | null;
 
         if (location) {
@@ -181,6 +188,8 @@ export async function GET(
           locationName =
             location.name || location.locationName || 'Unknown Location';
           gameDayOffset = location.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
+          const locationUseNetGross = location.useNetGross || false;
+          (machine as MachineWithLocationSettings).locationUseNetGross = locationUseNetGross; // Temporarily store for transform
         } else {
           locationName = 'Location Not Found';
         }
@@ -423,6 +432,7 @@ export async function GET(
       cancelledCredits: finalCancelledCredits, // Same as moneyOut (totalCancelledCredits)
       jackpot: finalJackpot,
       gross: finalGross,
+      netGross: (machine as MachineWithLocationSettings).locationUseNetGross ? (finalGross - (finalJackpot || 0)) : undefined,
       // Additional metrics for comprehensive financial tracking
       coinIn: finalCoinIn,
       coinOut: finalCoinOut,

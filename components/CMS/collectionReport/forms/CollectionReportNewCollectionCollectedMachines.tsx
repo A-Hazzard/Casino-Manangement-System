@@ -7,13 +7,15 @@
  * - List of collected machines with key details
  * - Edit and delete actions for each entry
  * - Empty state display
+ * - Update All SAS Times functionality (two date pickers for start and end)
  */
 
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
+import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
-import { formatDate } from '@/lib/utils/formatting';
+import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { Edit3, Trash2 } from 'lucide-react';
 
@@ -22,6 +24,11 @@ type NewCollectionCollectedMachinesProps = {
   isProcessing: boolean;
   onEditEntry: (id: string) => void;
   onDeleteEntry: (id: string) => void;
+  updateAllSasStartDate?: Date | undefined;
+  setUpdateAllSasStartDate?: (date: Date | undefined) => void;
+  updateAllSasEndDate?: Date | undefined;
+  setUpdateAllSasEndDate?: (date: Date | undefined) => void;
+  onApplyAllDates?: () => void;
 };
 
 export default function CollectionReportNewCollectionCollectedMachines({
@@ -29,6 +36,11 @@ export default function CollectionReportNewCollectionCollectedMachines({
   isProcessing,
   onEditEntry,
   onDeleteEntry,
+  updateAllSasStartDate,
+  setUpdateAllSasStartDate,
+  updateAllSasEndDate,
+  setUpdateAllSasEndDate,
+  onApplyAllDates,
 }: NewCollectionCollectedMachinesProps) {
   return (
     <div className="flex min-h-0 w-1/5 flex-col border-l border-gray-300 bg-gray-50">
@@ -37,6 +49,77 @@ export default function CollectionReportNewCollectionCollectedMachines({
           Collected Machines ({collectedMachineEntries.length})
         </h3>
       </div>
+
+      {/* Update All SAS Times - Only show if 2+ machines */}
+      {collectedMachineEntries.length >= 2 && setUpdateAllSasStartDate && setUpdateAllSasEndDate && onApplyAllDates && (
+        <div className="border-b border-gray-300 bg-blue-50 p-3 space-y-2">
+          <label className="block text-xs font-semibold text-gray-700">
+            Update All SAS Times
+          </label>
+
+          {/* SAS Start Time */}
+          <div>
+            <label className="mb-1 block text-[10px] font-medium text-gray-600">
+              SAS Start Time
+            </label>
+            <div className="w-full min-w-0">
+              <ModernCalendar
+                date={
+                  updateAllSasStartDate
+                    ? { from: updateAllSasStartDate, to: updateAllSasStartDate }
+                    : undefined
+                }
+                onSelect={range => {
+                  if (range?.from) {
+                    setUpdateAllSasStartDate(range.from);
+                  } else {
+                    setUpdateAllSasStartDate(undefined);
+                  }
+                }}
+                enableTimeInputs={true}
+                mode="single"
+                className="w-full min-w-0"
+              />
+            </div>
+          </div>
+
+          {/* SAS End Time */}
+          <div>
+            <label className="mb-1 block text-[10px] font-medium text-gray-600">
+              SAS End Time
+            </label>
+            <div className="w-full min-w-0">
+              <ModernCalendar
+                date={
+                  updateAllSasEndDate
+                    ? { from: updateAllSasEndDate, to: updateAllSasEndDate }
+                    : undefined
+                }
+                onSelect={range => {
+                  if (range?.from) {
+                    setUpdateAllSasEndDate(range.from);
+                  } else {
+                    setUpdateAllSasEndDate(undefined);
+                  }
+                }}
+                enableTimeInputs={true}
+                mode="single"
+                className="w-full min-w-0"
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={onApplyAllDates}
+            disabled={(!updateAllSasStartDate && !updateAllSasEndDate) || isProcessing}
+            className="mt-1 w-full bg-blue-600 text-xs hover:bg-blue-700"
+            size="sm"
+          >
+            {isProcessing ? 'Updating...' : 'Update All SAS Times'}
+          </Button>
+        </div>
+      )}
+
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
         {collectedMachineEntries.length === 0 ? (
           <p className="py-10 text-center text-xs text-gray-500">
@@ -64,9 +147,16 @@ export default function CollectionReportNewCollectionCollectedMachines({
                     game: entry.game,
                   })}
                 </p>
-                <p className="text-xs text-gray-600">
-                  Time: {formatDate(entry.timestamp)}
-                </p>
+                {entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime ? (
+                  <p className="text-xs text-gray-600">
+                    SAS: {formatDateWithOrdinal(entry.sasMeters.sasStartTime)} →{' '}
+                    {formatDateWithOrdinal(entry.sasMeters.sasEndTime)}
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 italic">
+                    SAS: Not Set
+                  </p>
+                )}
                 <p className="text-xs text-gray-600">
                   Meters In:{' '}
                   {entry.ramClear
@@ -114,4 +204,3 @@ export default function CollectionReportNewCollectionCollectedMachines({
     </div>
   );
 }
-

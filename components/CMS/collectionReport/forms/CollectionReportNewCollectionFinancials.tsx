@@ -141,8 +141,8 @@ export default function CollectionReportNewCollectionFinancials({
             <span className="text-red-500 ml-1">*</span>
             <CalculationHelp 
               title="Amount to Collect" 
-              formula="(Total Meters In - Total Meters Out) - Variance - Advance - Partner Share + Opening Balance" 
-              description="This is the target amount of cash you should have in hand. It takes the total machine revenue and subtracts expenses (Advance/Variance) and the Partner's profit share, then adds any balance carried over from the last collection."
+              formula="(Meters Profit - Variance - Advance) - Partner Share + Opening Balance" 
+              description="This is the ESTIMATED target amount. It starts with the machine revenue (Meters In - Out), subtracts manual adjustments (Advance/Variance) and the Partner's share, and then adds the opening balance carried over from the previous collection."
             />
           </label>
           <Input
@@ -163,7 +163,7 @@ export default function CollectionReportNewCollectionFinancials({
             <CalculationHelp 
               title="Collected Amount" 
               formula="The actual physical cash you counted" 
-              description="This is the most important field. Enter the total amount of cash you actually retrieved and counted from all machines. This should ideally match the 'Amount to Collect' field."
+              description="Enter the EXACT total amount of physical cash retrieving from all machines. The system compares this to the 'Amount to Collect' to determine the shortage or overage for the next report."
             />
           </label>
           <TooltipProvider>
@@ -220,8 +220,8 @@ export default function CollectionReportNewCollectionFinancials({
             <span className="text-red-500 ml-1">*</span>
             <CalculationHelp 
               title="Balance Correction" 
-              formula="Manual Adjustment to Opening Balance" 
-              description="Use this to set or adjust the starting balance for this collection. It 'unlocks' the Collected Amount field to ensure you acknowledge the starting state before entering the collection results."
+              formula="Manual Adjustment + (Collected - Amount to Collect)" 
+              description="This field shows the final balance for the current location. It's calculated by taking the manual correction and adding the current collection difference (Shortage/Overage). You must set a manual value here first to unlock the 'Collected Amount' field."
             />
           </label>
           <TooltipProvider>
@@ -292,7 +292,7 @@ export default function CollectionReportNewCollectionFinancials({
             <CalculationHelp 
               title="Current/New Balance" 
               formula="Collected Amount - Amount to Collect" 
-              description="This shows if there is a shortage (negative) or overage (positive) in the collection. This value will be carried over as the 'Opening Balance' for the next collection at this location."
+              description="The difference between what you actually collected and what the system expected. A negative value means a shortage. This net result is carried forward to the next collection report automatically."
             />
           </label>
           <Input

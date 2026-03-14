@@ -59,8 +59,8 @@ export function useDashboardFilters({
 
   // Reset all filters to default state
   const resetFilters = useCallback(() => {
-    setActiveMetricsFilter('');
-    setActivePieChartFilter('');
+    setActiveMetricsFilter('Today');
+    setActivePieChartFilter('Today');
     setCustomDateRange({
       startDate: new Date(new Date().setHours(0, 0, 0, 0)),
       endDate: new Date(new Date().setHours(23, 59, 59, 999)),

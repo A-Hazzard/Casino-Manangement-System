@@ -69,6 +69,8 @@ export type CollectionDocument = {
   ramClear?: boolean;
   ramClearMetersIn?: number;
   ramClearMetersOut?: number;
+  sasStartTime?: Date;
+  sasEndTime?: Date;
   serialNumber?: string;
   createdAt: Date;
   updatedAt: Date;

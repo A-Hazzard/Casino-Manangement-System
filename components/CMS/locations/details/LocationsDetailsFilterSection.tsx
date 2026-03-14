@@ -115,25 +115,27 @@ export default function LocationsDetailsFilterSection({
       </div>
 
       {/* Mobile Checkboxes (Visible only on small screens) */}
-      <div className="flex flex-wrap justify-center gap-4 md:hidden">
-        {STATUS_OPTIONS.map(opt => (
-          <div key={`${opt.id}-mobile`} className="flex items-center space-x-2">
-            <Checkbox
-              id={`${opt.id}-mobile`}
-              checked={selectedFilters.includes(opt.id as LocationFilter)}
-              onCheckedChange={checked =>
-                onFilterChange(opt.id as LocationFilter, checked === true)
-              }
-              className="border-purple-200"
-            />
-            <Label
-              htmlFor={`${opt.id}-mobile`}
-              className="cursor-pointer text-sm font-medium text-gray-700"
-            >
-              {opt.name}
-            </Label>
-          </div>
-        ))}
+      <div className="bg-buttonActive p-4 rounded-lg md:hidden">
+        <div className="flex flex-wrap justify-center gap-4">
+          {STATUS_OPTIONS.map(opt => (
+            <div key={`${opt.id}-mobile`} className="flex items-center space-x-2">
+              <Checkbox
+                id={`${opt.id}-mobile`}
+                checked={selectedFilters.includes(opt.id as LocationFilter)}
+                onCheckedChange={checked =>
+                  onFilterChange(opt.id as LocationFilter, checked === true)
+                }
+                className="border-white data-[state=checked]:bg-white data-[state=checked]:text-purple-700"
+              />
+              <Label
+                htmlFor={`${opt.id}-mobile`}
+                className="cursor-pointer text-sm font-medium text-white"
+              >
+                {opt.name}
+              </Label>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

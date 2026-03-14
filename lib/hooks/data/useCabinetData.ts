@@ -31,10 +31,10 @@ type UseCabinetDataReturn = {
   // Data states
   allCabinets: Cabinet[];
   filteredCabinets: Cabinet[];
-  locations: { _id: string; name: string }[];
+  locations: { _id: string; name: string; useNetGross?: boolean }[];
   gameTypes: string[];
   financialTotals: ReturnType<typeof calculateCabinetFinancialTotals>;
-  metricsTotals: { moneyIn: number; moneyOut: number; gross: number } | null;
+  metricsTotals: { moneyIn: number; moneyOut: number; gross: number; jackpot: number; netGross: number } | null;
   totalCount: number;
 
   // Loading states
@@ -110,7 +110,7 @@ export const useCabinetData = ({
   }, [allCabinets.length, initialLoading, loading]);
 
   // Removed filteredCabinets state - now using memoized value for better performance
-  const [locations, setLocations] = useState<{ _id: string; name: string }[]>(
+  const [locations, setLocations] = useState<{ _id: string; name: string; useNetGross?: boolean }[]>(
     []
   );
   const [gameTypes, setGameTypes] = useState<string[]>([]);
@@ -121,6 +121,8 @@ export const useCabinetData = ({
     moneyIn: number;
     moneyOut: number;
     gross: number;
+    jackpot: number;
+    netGross: number;
   } | null>(null);
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
 

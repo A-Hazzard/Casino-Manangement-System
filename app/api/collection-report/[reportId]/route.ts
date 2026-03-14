@@ -81,7 +81,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     if (report.location) {
-      const hasAccess = await checkUserLocationAccess(String(report.location));
+      const hasAccess = await checkUserLocationAccess(report.location);
+      
       if (!hasAccess) {
         const duration = Date.now() - startTime;
         console.error(
@@ -95,6 +96,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           { status: 403 }
         );
       }
+
     }
 
     // ============================================================================

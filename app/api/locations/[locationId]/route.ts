@@ -120,6 +120,7 @@ export async function GET(request: NextRequest) {
           _id: locationData._id,
           name: locationData.name,
           licenceeId: licenceeIdArray,
+          useNetGross: location.useNetGross || false,
         },
       });
     }
@@ -386,7 +387,6 @@ export async function GET(request: NextRequest) {
         manufacturer: 1,
         manuf: 1,
         cabinetType: 1,
-        assetStatus: 1,
         gameType: 1,
         isCronosMachine: 1,
         sasMeters: 1,
@@ -705,6 +705,7 @@ export async function GET(request: NextRequest) {
           moneyOut,
           jackpot,
           gross,
+          netGross: locationCheck.useNetGross ? (gross - (jackpot || 0)) : undefined,
           gamesPlayed: Number(cabinet.gamesPlayed) || 0,
           gamesWon: Number(cabinet.gamesWon) || 0,
           cancelledCredits: moneyOut, // Use converted moneyOut

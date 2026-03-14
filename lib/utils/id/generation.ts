@@ -20,5 +20,3 @@ export async function generateMongoId(): Promise<string> {
   const mongoose = await import('mongoose');
   return new mongoose.default.Types.ObjectId().toHexString();
 }
-
-

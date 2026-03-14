@@ -24,6 +24,9 @@ type MobileFormPanelProps = {
     ramClearMetersIn: string;
     ramClearMetersOut: string;
     notes: string;
+    sasStartTime: Date | null;
+    sasEndTime: Date | null;
+    showAdvancedSas: boolean;
   };
 
   // Financials
@@ -50,7 +53,7 @@ type MobileFormPanelProps = {
     machine: CollectionReportMachineSummary
   ) => string | React.ReactElement;
   onViewMachine: () => void;
-  onFormDataChange: (field: string, value: string | boolean | Date) => void;
+  onFormDataChange: (field: string, value: string | boolean | Date | null) => void;
   onFinancialDataChange: (field: string, value: string) => void;
   onAddMachine: () => void;
 
@@ -93,10 +96,10 @@ export default function CollectionReportMobileFormPanel({
 }: MobileFormPanelProps) {
   return (
     <div
-      className={`fixed inset-0 z-[90] flex h-full w-full transform flex-col bg-white transition-all duration-300 ease-in-out md:h-[90vh] md:rounded-xl ${
+      className={`fixed inset-0 z-[110] flex h-full w-full transform flex-col bg-white shadow-xl transition-all duration-300 ease-in-out md:relative md:inset-auto md:flex md:h-full md:flex-1 md:w-full md:rounded-xl md:shadow-none ${
         isVisible
-          ? 'translate-y-0 opacity-100 md:left-[50%] md:top-[50%] md:-translate-x-1/2 md:-translate-y-1/2'
-          : 'translate-y-full opacity-0 md:left-[50%] md:top-[50%] md:-translate-x-1/2 md:-translate-y-1/2'
+          ? 'translate-y-0 opacity-100'
+          : 'translate-y-full opacity-0'
       } `}
     >
       {isVisible && (
@@ -129,7 +132,7 @@ export default function CollectionReportMobileFormPanel({
           </div>
 
           {/* Scrollable Form Content */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 flex flex-col overflow-y-auto min-h-0">
             {/* Form Content */}
             {!isManager && (
               <CollectionReportFormMachineDataEntry
@@ -177,6 +180,12 @@ export default function CollectionReportMobileFormPanel({
                 onAdvanceChange={val => onFinancialDataChange('advance', val)}
                 disabled={!inputsEnabled}
                 isProcessing={isProcessing}
+                showAdvancedSas={formData.showAdvancedSas}
+                onAdvancedSasToggle={() => onFormDataChange('showAdvancedSas', !formData.showAdvancedSas)}
+                sasStartTime={formData.sasStartTime}
+                onSasStartTimeChange={val => onFormDataChange('sasStartTime', val || null)}
+                sasEndTime={formData.sasEndTime}
+                onSasEndTimeChange={val => onFormDataChange('sasEndTime', val || null)}
               />
             )}
 
@@ -278,8 +287,8 @@ export default function CollectionReportMobileFormPanel({
                        Amount To Collect: <span className="text-red-500 ml-1">*</span>
                        <CalculationHelp 
                          title="Amount to Collect" 
-                         formula="(Total Meters In - Total Meters Out) - Variance - Advance - Partner Share + Opening Balance" 
-                         description="This is the target amount of cash you should have in hand. It takes the total machine revenue and subtracts expenses (Advance/Variance) and the Partner's profit share, then adds any balance carried over from the last collection."
+                         formula="(Meters Profit - Variance - Advance) - Partner Share + Opening Balance" 
+                         description="This is the ESTIMATED target amount. It starts with the machine revenue (Meters In - Out), subtracts manual adjustments (Advance/Variance) and the Partner's share, and then adds the opening balance carried over from the previous collection."
                        />
                      </label>
                     <input
@@ -302,7 +311,7 @@ export default function CollectionReportMobileFormPanel({
                        <CalculationHelp 
                          title="Collected Amount" 
                          formula="The actual physical cash you counted" 
-                         description="This is the most important field. Enter the total amount of cash you actually retrieved and counted from all machines. This should ideally match the 'Amount to Collect' field."
+                         description="Enter the EXACT total amount of physical cash retrieving from all machines. The system compares this to the 'Amount to Collect' to determine the shortage or overage for the next report."
                        />
                      </label>
                     <input
@@ -335,8 +344,8 @@ export default function CollectionReportMobileFormPanel({
                        <span className="text-red-500 ml-1">*</span>
                        <CalculationHelp 
                          title="Balance Correction" 
-                         formula="Manual Adjustment to Opening Balance" 
-                         description="Use this to set or adjust the starting balance for this collection. It 'unlocks' the Collected Amount field to ensure you acknowledge the starting state before entering the collection results."
+                         formula="Manual Adjustment + (Collected - Amount to Collect)" 
+                         description="This field shows the final balance for the current location. It's calculated by taking the manual correction and adding the current collection difference (Shortage/Overage). You must set a manual value here first to unlock the 'Collected Amount' field."
                        />
                      </label>
                     <input
@@ -399,7 +408,7 @@ export default function CollectionReportMobileFormPanel({
                        <CalculationHelp 
                          title="Current/New Balance" 
                          formula="Collected Amount - Amount to Collect" 
-                         description="This shows if there is a shortage (negative) or overage (positive) in the collection. This value will be carried over as the 'Opening Balance' for the next collection at this location."
+                         description="The difference between what you actually collected and what the system expected. A negative value means a shortage. This net result is carried forward to the next collection report automatically."
                        />
                      </label>
                     <input

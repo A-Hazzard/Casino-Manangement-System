@@ -15,6 +15,8 @@ export type dashboardData = {
   moneyIn: number;
   moneyOut: number;
   gross: number;
+  jackpot?: number;
+  netGross?: number;
   location?: string;
   machine?: string;
   geoCoords?: {
@@ -28,6 +30,8 @@ export type DashboardTotals = {
   moneyIn: number;
   moneyOut: number;
   gross: number;
+  jackpot?: number;
+  netGross?: number;
 };
 
 // Report types

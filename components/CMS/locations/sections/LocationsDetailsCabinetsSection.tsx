@@ -61,6 +61,7 @@ type LocationsDetailsCabinetsSectionProps = {
     gross: number;
     jackpot?: number;
   } | null;
+  useNetGross: boolean;
   chartData: dashboardData[] | null;
   filteredCabinets: Cabinet[];
   gameTypes: string[];
@@ -119,6 +120,7 @@ type LocationsDetailsCabinetsSectionProps = {
 
 export default function LocationsDetailsCabinetsSection({
   financialTotals,
+  useNetGross,
   chartData,
   filteredCabinets,
   gameTypes,
@@ -276,16 +278,12 @@ export default function LocationsDetailsCabinetsSection({
       {/* Financial Metrics Section: Location-specific financial overview */}
       <div className="mt-6">
         <FinancialMetricsCards
-          totals={
-            financialTotals || {
-              moneyIn: 0,
-              moneyOut: 0,
-              gross: 0,
-            }
-          }
+          totals={financialTotals}
           loading={loading || cabinetsLoading}
           title={`Financial Metrics for ${locationName || 'Location'}`}
           disableCurrencyConversion={true}
+          locationFiltered={true}
+          useNetGross={useNetGross}
         />
       </div>
 
@@ -298,6 +296,7 @@ export default function LocationsDetailsCabinetsSection({
         onGranularityChange={setChartGranularity}
         showGranularitySelector={showGranularitySelector}
         availableGranularityOptions={availableGranularityOptions}
+        useNetGross={useNetGross}
       />
 
       {/* Date Filters and Machine Status Section: Responsive layout for filters and status */}
@@ -350,11 +349,9 @@ export default function LocationsDetailsCabinetsSection({
       </div>
 
       {/* Search and Location Selection Section: Desktop search bar with location dropdown */}
-      <div className="mt-4 hidden bg-buttonActive p-4 md:flex">
-        {/* Search Input, Sort, and Filters on same row */}
-        <div className="flex w-full flex-wrap items-center gap-4">
-          {/* Search Input - Takes available space */}
-          <div className="relative min-w-0 flex-1">
+      <div className="mt-4 hidden w-full bg-buttonActive p-4 md:block rounded-lg shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative w-full flex-1 md:max-w-none lg:max-w-2xl xl:max-w-3xl">
             <Input
               type="text"
               placeholder="Search machines (Asset, SMID, Serial, Game)..."
@@ -365,10 +362,10 @@ export default function LocationsDetailsCabinetsSection({
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           </div>
 
-          {/* Filter Buttons - On the right, wrap when needed */}
-          <div className="flex flex-wrap items-center gap-4">
+          {/* Filter Buttons - On the right */}
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:min-w-min lg:gap-4">
             {showLocationSelect && (
-              <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
+              <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[150px] lg:min-w-[180px]">
                 <LocationSingleSelect
                   locations={locationSelectOptions}
                   selectedLocation={selectedLocationId || locationId}
@@ -382,7 +379,7 @@ export default function LocationsDetailsCabinetsSection({
             )}
 
             {/* Game Type Filter */}
-            <div className="w-auto min-w-[180px] max-w-[200px] flex-shrink-0">
+            <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[140px] lg:min-w-[180px]">
               <CustomSelect
                 value={selectedGameType}
                 onValueChange={setSelectedGameType}
@@ -404,7 +401,7 @@ export default function LocationsDetailsCabinetsSection({
             </div>
 
             {/* Status Filter */}
-            <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
+            <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[150px] lg:min-w-[180px]">
               <CustomSelect
                 value={selectedStatus}
                 onValueChange={value =>
@@ -589,11 +586,11 @@ export default function LocationsDetailsCabinetsSection({
           <>
             {/* Use CabinetTableSkeleton for lg+ only */}
             <div className="hidden lg:block">
-              <LocationsCabinetTableSkeleton />
+              <LocationsCabinetTableSkeleton showNetGross={useNetGross} />
             </div>
             {/* Use LocationsCabinetCardsSkeleton for mobile and tablet (up to md) */}
             <div className="block lg:hidden">
-              <LocationsCabinetCardsSkeleton />
+              <LocationsCabinetCardsSkeleton showNetGross={useNetGross} />
             </div>
           </>
         ) : /* Show empty state if no cabinets match filters */ filteredCabinets.length ===
@@ -628,6 +625,7 @@ export default function LocationsDetailsCabinetsSection({
                   setSortOption(option);
                   setSortOrder(order);
                 }}
+                showNetGross={useNetGross}
               />
             </div>
 

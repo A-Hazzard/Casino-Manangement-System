@@ -150,6 +150,7 @@ export default function LocationsPageContent() {
             }
             loading={loading || metricsTotalsLoading}
             title="Total for all Locations"
+            useNetGross={false}
           />
         </div>
 

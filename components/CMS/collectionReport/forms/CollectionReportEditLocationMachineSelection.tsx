@@ -54,7 +54,7 @@ export default function CollectionReportEditLocationMachineSelection({
   editingEntryId,
 }: EditCollectionLocationMachineSelectionProps) {
   return (
-    <div className="flex min-h-0 w-1/5 flex-col space-y-3 overflow-y-auto border-r border-gray-300 p-3 md:p-4">
+    <div className="flex h-[200px] lg:h-auto min-h-0 w-full lg:w-1/5 flex-col space-y-3 overflow-y-auto border-b lg:border-b-0 lg:border-r border-gray-300 p-3 md:p-4 shrink-0 transition-all">
       <LocationSelect
         value={selectedLocationId}
         onValueChange={setSelectedLocationId}

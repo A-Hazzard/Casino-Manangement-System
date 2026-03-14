@@ -59,8 +59,10 @@ export default function CollectionReportEditCollectionModal({
     machinesOfSelectedLocation,
     machineSearchTerm,
     setMachineSearchTerm,
-    updateAllDate,
-    setUpdateAllDate,
+    updateAllSasStartDate,
+    setUpdateAllSasStartDate,
+    updateAllSasEndDate,
+    setUpdateAllSasEndDate,
     isLoadingMachines,
     isProcessing,
     editingEntryId,
@@ -88,11 +90,12 @@ export default function CollectionReportEditCollectionModal({
     setCurrentRamClear,
     showAdvancedSas,
     setShowAdvancedSas,
-    customSasStartTime,
-    setCustomSasStartTime,
+    sasStartTime,
+    setSasStartTime,
+    sasEndTime,
+    setSasEndTime,
     prevIn,
     prevOut,
-    isFirstCollection,
     financials,
     setFinancials,
     calculateCarryover,
@@ -138,7 +141,7 @@ export default function CollectionReportEditCollectionModal({
     <>
       <Dialog open={show} onOpenChange={handleDialogOpenChange}>
         <DialogContent
-          className="flex h-[calc(100vh-2rem)] max-w-6xl flex-col bg-container p-0 md:h-[95vh] lg:h-[90vh] lg:max-w-7xl"
+          className="flex h-[90vh] max-h-[98vh] max-w-6xl flex-col bg-container p-0 md:max-h-[95vh] lg:max-h-[90vh] lg:max-w-7xl"
           onInteractOutside={e => e.preventDefault()}
         >
           <DialogHeader className="p-4 pb-0 md:p-6">
@@ -150,7 +153,7 @@ export default function CollectionReportEditCollectionModal({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex min-h-0 flex-grow flex-row overflow-hidden">
+          <div className="flex min-h-0 flex-grow flex-col lg:flex-row overflow-hidden">
             {/* Left sidebar: Location selector and machine list - 1/5 width */}
             <CollectionReportEditLocationMachineSelection
               locations={locations}
@@ -169,7 +172,7 @@ export default function CollectionReportEditCollectionModal({
             />
 
             {/* Middle section: Form fields - 3/5 width (60%) */}
-            <div className="flex min-h-0 w-3/5 flex-col space-y-3 overflow-y-auto p-3 md:p-4">
+            <div className="flex min-h-0 w-full lg:w-3/5 flex-col space-y-3 overflow-y-auto p-3 md:p-4 border-b lg:border-b-0 border-gray-200">
               {(selectedMachineId && machineForDataEntry) ||
               collectedMachineEntries.length > 0 ? (
                 <>
@@ -178,11 +181,12 @@ export default function CollectionReportEditCollectionModal({
                     machineForDataEntry={machineForDataEntry}
                     currentCollectionTime={currentCollectionTime}
                     setCurrentCollectionTime={setCurrentCollectionTime}
-                    isFirstCollection={isFirstCollection}
                     showAdvancedSas={showAdvancedSas}
                     setShowAdvancedSas={setShowAdvancedSas}
-                    customSasStartTime={customSasStartTime}
-                    setCustomSasStartTime={setCustomSasStartTime}
+                    sasStartTime={sasStartTime}
+                    setSasStartTime={setSasStartTime}
+                    sasEndTime={sasEndTime}
+                    setSasEndTime={setSasEndTime}
                     currentMetersIn={currentMetersIn}
                     setCurrentMetersIn={setCurrentMetersIn}
                     currentMetersOut={currentMetersOut}
@@ -215,8 +219,6 @@ export default function CollectionReportEditCollectionModal({
                     baseBalanceCorrection={baseBalanceCorrection}
                     setBaseBalanceCorrection={setBaseBalanceCorrection}
                     isProcessing={isProcessing}
-                    isUpdateReportEnabled={isUpdateReportEnabled}
-                    onUpdateReport={handleUpdateReport}
                     onCollectedAmountChange={(value: string) => {
                       calculateCarryover(value, baseBalanceCorrection);
                     }}
@@ -260,8 +262,10 @@ export default function CollectionReportEditCollectionModal({
               isProcessing={isProcessing}
               onEditEntry={handleEditEntry}
               onDeleteEntry={handleDeleteEntry}
-              updateAllDate={updateAllDate}
-              setUpdateAllDate={setUpdateAllDate}
+              updateAllSasStartDate={updateAllSasStartDate}
+              setUpdateAllSasStartDate={setUpdateAllSasStartDate}
+              updateAllSasEndDate={updateAllSasEndDate}
+              setUpdateAllSasEndDate={setUpdateAllSasEndDate}
               onRefresh={onRefresh}
               financials={financials}
               isUpdateReportEnabled={isUpdateReportEnabled}

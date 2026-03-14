@@ -166,6 +166,7 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
         totals={props.totals}
         loading={props.loadingTotals ?? props.loadingChartData}
         title="Total for all Locations and Machines"
+        locationFiltered={false}
       />
 
       {/* Chart Section */}

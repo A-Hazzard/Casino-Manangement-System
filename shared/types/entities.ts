@@ -167,6 +167,7 @@ export type GamingMachine = {
   jackpot?: number;
   cancelledCredits?: number;
   gross?: number;
+  netGross?: number;
   coinIn?: number;
   coinOut?: number;
   gamesPlayed?: number;
@@ -311,6 +312,7 @@ export type GamingMachine = {
   timePeriod?: string;
   offlineTimeLabel?: string;
   actualOfflineTime?: string;
+  network?: string;
 };
 
 export type SmibConfig = {
@@ -580,6 +582,7 @@ export type NewCabinetFormData = {
   smbId?: string;
   manufacturer: string;
   otherGameType?: string;
+  custom: { name: string };
   collectionSettings: {
     multiplier: string;
     lastCollectionTime: string;

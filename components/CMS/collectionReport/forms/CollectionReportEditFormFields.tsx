@@ -28,11 +28,12 @@ type EditCollectionFormFieldsProps = {
   machineForDataEntry: CollectionReportMachineSummary | undefined;
   currentCollectionTime: Date;
   setCurrentCollectionTime: (date: Date) => void;
-  isFirstCollection: boolean;
   showAdvancedSas: boolean;
   setShowAdvancedSas: (show: boolean) => void;
-  customSasStartTime: Date | null;
-  setCustomSasStartTime: (date: Date | null) => void;
+  sasStartTime: Date | null;
+  setSasStartTime: (date: Date | null) => void;
+  sasEndTime: Date | null;
+  setSasEndTime: (date: Date | null) => void;
   currentMetersIn: string;
   setCurrentMetersIn: (val: string) => void;
   currentMetersOut: string;
@@ -64,11 +65,12 @@ export default function CollectionReportEditFormFields({
   machineForDataEntry,
   currentCollectionTime,
   setCurrentCollectionTime,
-  isFirstCollection,
   showAdvancedSas,
   setShowAdvancedSas,
-  customSasStartTime,
-  setCustomSasStartTime,
+  sasStartTime,
+  setSasStartTime,
+  sasEndTime,
+  setSasEndTime,
   currentMetersIn,
   setCurrentMetersIn,
   currentMetersOut,
@@ -137,67 +139,28 @@ export default function CollectionReportEditFormFields({
       </div>
 
       <div className="mb-4">
-        <label className="mb-2 block text-sm font-medium text-grayHighlight">
-          Collection Time:
-        </label>
-        <ModernCalendar
-          date={{
-            from: currentCollectionTime,
-            to: currentCollectionTime,
-          }}
-          onSelect={range => {
-            if (range?.from) {
-              console.warn('🕐 Collection time changed:', {
-                newDate: range.from.toISOString(),
-                newDateLocal: range.from.toLocaleString(),
-                timestamp: range.from.getTime(),
-                previousTime: currentCollectionTime.toISOString(),
-              });
-              setCurrentCollectionTime(range.from);
-            }
-          }}
-          enableTimeInputs={true}
-          mode="single"
-          disabled={!inputsEnabled || isProcessing}
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          This time applies to the current machine being added/edited
-        </p>
+        <button
+          type="button"
+          className="text-xs text-button hover:underline flex items-center gap-1 font-medium"
+          onClick={() => setShowAdvancedSas(!showAdvancedSas)}
+        >
+          {showAdvancedSas ? '← Hide Advanced Options' : 'Advanced: Manual SAS Times'}
+        </button>
       </div>
 
-      {isFirstCollection && (
-        <div className="mb-2">
-          <button
-            type="button"
-            className="text-xs text-button underline"
-            onClick={() => setShowAdvancedSas(!showAdvancedSas)}
-          >
-            {showAdvancedSas
-              ? 'Hide Advanced'
-              : 'Advanced: Custom previous SAS start'}
-          </button>
-        </div>
-      )}
-
-      {isFirstCollection && showAdvancedSas && (
+      {!showAdvancedSas ? (
         <div className="mb-4">
           <label className="mb-2 block text-sm font-medium text-grayHighlight">
-            Previous SAS Start (optional):
+            Collection Time:
           </label>
           <ModernCalendar
-            date={
-              customSasStartTime
-                ? {
-                    from: customSasStartTime,
-                    to: customSasStartTime,
-                  }
-                : undefined
-            }
+            date={{
+              from: currentCollectionTime,
+              to: currentCollectionTime,
+            }}
             onSelect={range => {
               if (range?.from) {
-                setCustomSasStartTime(range.from);
-              } else {
-                setCustomSasStartTime(null);
+                setCurrentCollectionTime(range.from);
               }
             }}
             enableTimeInputs={true}
@@ -205,7 +168,60 @@ export default function CollectionReportEditFormFields({
             disabled={!inputsEnabled || isProcessing}
           />
           <p className="mt-1 text-xs text-gray-500">
-            Leave empty to auto-use last collection time or 24h before.
+            This time applies to the current machine being added/edited
+          </p>
+        </div>
+      ) : (
+        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
+          <p className="mb-4 text-[11px] font-bold text-blue-900 uppercase tracking-wide">
+            Manual SAS Period:
+          </p>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
+                SAS Start Time:
+              </label>
+              <ModernCalendar
+                date={
+                  sasStartTime
+                    ? {
+                        from: sasStartTime,
+                        to: sasStartTime,
+                      }
+                    : undefined
+                }
+                onSelect={range => {
+                  setSasStartTime(range?.from || null);
+                }}
+                enableTimeInputs={true}
+                mode="single"
+                disabled={!inputsEnabled || isProcessing}
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
+                SAS End Time:
+              </label>
+              <ModernCalendar
+                date={
+                  sasEndTime
+                    ? {
+                        from: sasEndTime,
+                        to: sasEndTime,
+                      }
+                    : undefined
+                }
+                onSelect={range => {
+                  setSasEndTime(range?.from || null);
+                }}
+                enableTimeInputs={true}
+                mode="single"
+                disabled={!inputsEnabled || isProcessing}
+              />
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-blue-600 leading-relaxed italic">
+            Note: Manually setting these times will override the automatic SAS period calculation based on collection time.
           </p>
         </div>
       )}

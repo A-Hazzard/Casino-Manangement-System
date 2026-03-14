@@ -34,7 +34,7 @@ export function SessionsFilters({
       </div>
 
       {/* Mobile: Search + Horizontal scroll filters */}
-      <div className="md:hidden">
+      <div className="bg-buttonActive p-4 rounded-lg md:hidden">
         {/* Search */}
         <div className="relative mb-3 w-full">
           <Input
@@ -48,7 +48,7 @@ export function SessionsFilters({
         </div>
 
         {/* Filters - Horizontal scrollable */}
-        <div className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 flex gap-2 overflow-x-auto pb-2">
+        <div className="scrollbar-thin scrollbar-white flex gap-2 overflow-x-auto pb-2">
           <div className="flex min-w-max gap-2">
             {/* Sort Field */}
             <div className="relative w-40 flex-shrink-0">

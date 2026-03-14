@@ -37,11 +37,15 @@ type FinancialMetricsCardsProps = {
     moneyIn: number;
     moneyOut: number;
     gross: number;
+    jackpot?: number;
+    netGross?: number;
   } | null;
   loading?: boolean;
   title?: string;
   className?: string;
   disableCurrencyConversion?: boolean;
+  locationFiltered?: boolean;
+  useNetGross?: boolean;
 };
 
 const licenceeCurrencyCache: Record<string, CurrencyCode> = {};
@@ -51,6 +55,8 @@ export default function FinancialMetricsCards({
   loading = false,
   title = 'Financial Metrics',
   className = '',
+  locationFiltered = true, // Default to true so it shows on detail pages
+  useNetGross = true, // Default to true if not provided (for backward compatibility if missing)
 }: FinancialMetricsCardsProps) {
   const { selectedLicencee } = useDashBoardStore();
   const { displayCurrency } = useCurrencyFormat();
@@ -148,7 +154,9 @@ export default function FinancialMetricsCards({
   // If loading is false but totals is null, it means fetching finished with no data,
   // in which case we show 0 values instead of getting stuck on a skeleton.
   if (loading) {
-    return <DashboardFinancialMetricsSkeleton />;
+    // Show 4 skeletons only if net gross is approved and we are on a location filtered view (e.g. details page)
+    // Otherwise show 3 skeletons by default.
+    return <DashboardFinancialMetricsSkeleton count={locationFiltered && useNetGross ? 4 : 3} />;
   }
 
   const formatNumberOnly = (value: number): string => {
@@ -202,6 +210,9 @@ export default function FinancialMetricsCards({
     };
   };
 
+  const netGross = totals?.netGross;
+  const showNetGross = locationFiltered && useNetGross && netGross !== undefined;
+
   return (
     <div className={`space-y-4 ${className}`}>
       {title && (
@@ -209,7 +220,7 @@ export default function FinancialMetricsCards({
       )}
 
       <div className="block md:hidden">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
           <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
             <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-purple-500 to-purple-600"></div>
 
@@ -287,11 +298,39 @@ export default function FinancialMetricsCards({
               </div>
             </div>
           </div>
+
+          {showNetGross && (
+            <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
+              <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-green-500 to-emerald-600"></div>
+
+              <div className="p-4 sm:p-6">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-medium uppercase tracking-wide text-gray-600">
+                    Net Gross
+                  </h3>
+                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                </div>
+
+                <div className="space-y-2">
+                  <div
+                    className={`font-bold ${getGrossColorClass(netGross)} ${formatCurrencyWithScaling(netGross).size}`}
+                  >
+                    <CurrencyValueWithOverflow
+                      value={netGross}
+                      formatCurrencyFn={formatCurrencyAmount}
+                      formatCurrencyWithScalingFn={formatCurrencyWithScaling}
+                      currencyCode={currencyCode}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="hidden md:block">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${showNetGross ? 'xl:grid-cols-4' : 'xl:grid-cols-3'}`}>
           <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6">
             <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
               Money In
@@ -330,7 +369,7 @@ export default function FinancialMetricsCards({
             </div>
           </div>
 
-          <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6 md:col-span-2 lg:col-span-2 xl:col-span-1">
+          <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6">
             <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
               Gross
             </p>
@@ -348,6 +387,27 @@ export default function FinancialMetricsCards({
               </p>
             </div>
           </div>
+
+          {showNetGross && (
+            <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6">
+              <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
+                Net Gross
+              </p>
+              <div className="my-2 h-[4px] w-full rounded-full bg-green-500"></div>
+              <div className="flex flex-1 items-center justify-center">
+                <p
+                  className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getGrossColorClass(netGross)}`}
+                >
+                  <CurrencyValueWithOverflow
+                    value={netGross}
+                    formatCurrencyFn={formatCurrencyAmount}
+                    formatCurrencyWithScalingFn={formatCurrencyWithScaling}
+                    currencyCode={currencyCode}
+                  />
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

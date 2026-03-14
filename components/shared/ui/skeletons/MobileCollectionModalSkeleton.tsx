@@ -6,8 +6,8 @@ export const MobileCollectionModalSkeleton = () => {
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50" />
 
-      {/* Modal Content */}
-      <div className="relative z-50 mx-4 my-8 flex max-h-[95vh] w-full max-w-md flex-col rounded-lg bg-white shadow-xl">
+      {/* Modal Content - Match the look and feel of the real DialogContent */}
+      <div className="relative z-50 flex h-[100dvh] w-full flex-col bg-white shadow-xl md:h-[90vh] md:w-[95vw] md:max-w-6xl md:rounded-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 p-4">
           <Skeleton className="h-6 w-48" />

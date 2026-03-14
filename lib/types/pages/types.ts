@@ -9,6 +9,7 @@ export type ExtendedCabinetDetail = GamingMachine & {
   moneyOut?: number;
   gross?: number;
   net?: number;
+  netGross?: number;
   lastActivity?: string | Date;
 };
 

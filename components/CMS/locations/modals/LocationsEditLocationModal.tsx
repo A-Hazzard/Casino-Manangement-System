@@ -31,6 +31,7 @@ import {
     getChangesSummary,
 } from '@/lib/utils/changeDetection';
 
+import type { AggregatedLocation } from '@/shared/types';
 import { SelectedLocation } from '@/lib/types/location';
 import LocationsLocationPickerMap from '../LocationsLocationPickerMap';
 
@@ -80,6 +81,7 @@ type LocationDetails = {
     freePlayGameTypes?: string[];
     freePlayCreditsTimeout?: number;
   };
+  useNetGross?: boolean;
   createdAt?: Date | string;
 };
 
@@ -201,6 +203,7 @@ export default function LocationsEditLocationModal({
     isLocalServer: false,
     latitude: '',
     longitude: '',
+    useNetGross: false,
     dayStartTime: '08:00', // Default to 8:00 AM
     billValidatorOptions: {
       denom1: false,
@@ -332,22 +335,35 @@ export default function LocationsEditLocationModal({
     }
   };
 
-  // Initialize form data when a location is selected
   useEffect(() => {
-    if (selectedLocation && selectedLocation.location) {
-      // Fetch full location details to get billValidatorOptions and other fields
-      fetchLocationDetails(selectedLocation.location);
+    if (!isEditModalOpen) return;
+
+      const locationId = (selectedLocation._id as string) || 
+                         (selectedLocation.location as string) || 
+                         (typeof selectedLocation.location === 'string' ? selectedLocation.location : '') ||
+                         ((selectedLocation as AggregatedLocation & { id?: string }).id);
+      
+      if (locationId && typeof locationId === 'string' && locationId.length > 5) {
+        // Fetch full location details to get billValidatorOptions and other fields
+        fetchLocationDetails(locationId);
+      } else if (isEditModalOpen) {
+        // Only log error if the modal is actually open and we can't find an ID
+        console.error('[EditLocationModal] Invalid locationId:', locationId, selectedLocation);
+      }
 
       setFormData({
         name: selectedLocation.locationName || '',
         street: '', // Will be loaded from locationDetails
         city: '', // Will be loaded from locationDetails
-        country: '', // Will be loaded from locationDetails
+        country: selectedLocation.country || '', // Use country from selectedLocation if available
         profitShare: '', // Will be loaded from locationDetails
-        licencee: '', // Will be loaded from locationDetails
+        licencee: selectedLocation.rel?.licencee || '', // Use licencee from selectedLocation
         isLocalServer: selectedLocation.isLocalServer || false,
-        latitude: '', // Will be loaded from locationDetails
-        longitude: '', // Will be loaded from locationDetails
+        latitude: selectedLocation.geoCoords?.latitude?.toString() || 
+                  selectedLocation.geoCoords?.lat?.toString() || '',
+        longitude: selectedLocation.geoCoords?.longitude?.toString() || 
+                   selectedLocation.geoCoords?.lng?.toString() || '',
+        useNetGross: false, // Will be loaded from locationDetails
         dayStartTime: '08:00', // Will be loaded from locationDetails (default 8 AM)
         billValidatorOptions: {
           denom1: false,
@@ -365,7 +381,7 @@ export default function LocationsEditLocationModal({
           denom10000: false,
         },
         // Membership settings
-        membershipEnabled: false,
+        membershipEnabled: selectedLocation.membershipEnabled || false,
         locationMembershipSettings: {
           locationLimit: 0,
           freePlayAmount: 0,
@@ -379,8 +395,7 @@ export default function LocationsEditLocationModal({
           freePlayCreditsTimeout: 0,
         },
       });
-    }
-  }, [selectedLocation]);
+  }, [selectedLocation, isEditModalOpen]);
 
   // Load licencees and countries when modal opens
   useEffect(() => {
@@ -456,15 +471,12 @@ export default function LocationsEditLocationModal({
     );
   };
 
-  // Update form data when location details are fetched
   useEffect(() => {
     if (locationDetails) {
       console.warn('🔍 LOCATION DETAILS LOADED:', {
         name: locationDetails.name,
         country: locationDetails.country,
-        countryType: typeof locationDetails.country,
-        billValidatorOptions: locationDetails.billValidatorOptions,
-        hasBillValidatorOptions: !!locationDetails.billValidatorOptions,
+        _id: locationDetails._id,
       });
 
       // Convert gameDayOffset to time format (e.g., 11 -> "11:00")
@@ -510,6 +522,7 @@ export default function LocationsEditLocationModal({
         isLocalServer: locationDetails.isLocalServer || false,
         latitude: locationDetails.geoCoords?.latitude?.toString() || '',
         longitude: locationDetails.geoCoords?.longitude?.toString() || '',
+        useNetGross: locationDetails.useNetGross || false,
         dayStartTime: dayStartTime,
         billValidatorOptions: {
           denom1: locationDetails.billValidatorOptions?.denom1 || false,
@@ -723,6 +736,7 @@ export default function LocationsEditLocationModal({
         billValidatorOptions: originalFormData.billValidatorOptions,
         membershipEnabled: originalFormData.membershipEnabled,
         locationMembershipSettings: originalFormData.locationMembershipSettings,
+        useNetGross: originalFormData.useNetGross,
       };
 
       const formDataComparison = {
@@ -753,6 +767,7 @@ export default function LocationsEditLocationModal({
         billValidatorOptions: formData.billValidatorOptions,
         membershipEnabled: formData.membershipEnabled,
         locationMembershipSettings: formData.locationMembershipSettings,
+        useNetGross: formData.useNetGross,
       };
 
       // Detect changes by comparing original loaded data with current form data
@@ -896,675 +911,661 @@ export default function LocationsEditLocationModal({
 
           {/* Form Content */}
           <div className="max-h-[calc(95vh-120px)] space-y-4 overflow-y-auto px-4 pb-4 md:max-h-[calc(90vh-120px)] md:px-8 md:pb-8">
-            {locationDetailsLoading ? (
-              // Show skeleton content while loading
-              <>
-                {/* Location Name */}
-                <div className="mb-4">
-                  <div className="mb-2 h-4 w-24 animate-pulse rounded bg-gray-200" />
-                  <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+            {/* Form Fields Section */}
+            {/* Location ID & Creation Date Display */}
+            <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700">
+                    Location ID
+                  </h3>
+                  <p className="mt-1 font-mono text-sm text-gray-600">
+                    {locationDetails?._id ||
+                      selectedLocation.location ||
+                      'Unknown'}
+                  </p>
                 </div>
-
-                {/* Address */}
-                <div className="mb-4">
-                  <div className="mb-2 h-4 w-16 animate-pulse rounded bg-gray-200" />
-                  <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
-                </div>
-
-                {/* City */}
-                <div className="mb-4">
-                  <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
-                </div>
-
-                {/* Licencee */}
-                <div className="mb-4">
-                  <div className="mb-2 h-4 w-20 animate-pulse rounded bg-gray-200" />
-                  <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
-                </div>
-
-                {/* Profit Share and Day Start Time */}
-                <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="flex items-center">
-                    <div className="h-12 w-24 animate-pulse rounded-l-md bg-gray-200" />
-                    <div className="h-12 flex-1 animate-pulse rounded-r-md bg-gray-200" />
-                  </div>
-                  <div className="flex items-center">
-                    <div className="h-12 w-24 animate-pulse rounded-l-md bg-gray-200" />
-                    <div className="h-12 flex-1 animate-pulse rounded-r-md bg-gray-200" />
-                  </div>
-                </div>
-
-                {/* No SMIB Location Checkbox */}
-                <div className="mb-4 flex justify-center">
-                  <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
-                    <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
-                    <div className="h-4 w-32 animate-pulse rounded bg-gray-200" />
-                  </div>
-                </div>
-
-                {/* GEO Coordinates */}
-                <div className="mb-4">
-                  <div className="mb-3 h-4 w-32 animate-pulse rounded bg-gray-200" />
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="flex items-center">
-                      <div className="h-12 w-20 animate-pulse rounded-l-md bg-gray-200" />
-                      <div className="h-12 flex-1 animate-pulse rounded-r-md bg-gray-200" />
-                    </div>
-                    <div className="flex items-center">
-                      <div className="h-12 w-20 animate-pulse rounded-l-md bg-gray-200" />
-                      <div className="h-12 flex-1 animate-pulse rounded-r-md bg-gray-200" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bill Validator Options */}
-                <div className="mb-4">
-                  <div className="mb-3 flex justify-center">
-                    <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
-                      <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
-                      <div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                    {Array.from({ length: 13 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center space-x-2 rounded-lg bg-gray-50 p-2"
-                      >
-                        <div className="h-5 w-5 animate-pulse rounded bg-gray-200" />
-                        <div className="h-4 w-8 animate-pulse rounded bg-gray-200" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-                  <div className="h-12 w-20 animate-pulse rounded bg-gray-200" />
-                  <div className="h-12 w-20 animate-pulse rounded bg-gray-200" />
-                </div>
-              </>
-            ) : (
-              // Show actual form content when loaded
-              <>
-                {/* Location ID & Creation Date Display */}
-                <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-700">
-                        Location ID
-                      </h3>
-                      <p className="mt-1 font-mono text-sm text-gray-600">
-                        {locationDetails?._id ||
-                          selectedLocation.location ||
-                          'Unknown'}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <h3 className="text-sm font-medium text-gray-700">
-                        Created
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-600">
-                        {locationDetails?.createdAt
-                          ? new Date(
-                              locationDetails.createdAt
-                            ).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : 'Unknown'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Location Name */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                    Location Name
-                  </label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="h-12 w-full border-border bg-container text-base"
-                  />
-                </div>
-
-                {/* Address */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                    Address
-                  </label>
-                  <Input
-                    name="street"
-                    value={formData.street}
-                    onChange={handleInputChange}
-                    placeholder="Street"
-                    className="h-12 w-full border-border bg-container text-base"
-                  />
-                </div>
-
-                {/* City */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                    City
-                  </label>
-
-                  <Input
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    placeholder="City"
-                    className="h-12 w-full border-border bg-container text-base"
-                  />
-                </div>
-
-                {/* Country and Profit Share - Mobile: Stacked, Desktop: Side by side */}
-                <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {/* Country */}
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                      Country
-                    </label>
-                    <select
-                      name="country"
-                      value={formData.country}
-                      onChange={e =>
-                        handleSelectChange('country', e.target.value)
-                      }
-                      className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                    >
-                      <option value="">Select Country</option>
-                      {countriesLoading ? (
-                        <option value="" disabled>
-                          Loading countries...
-                        </option>
-                      ) : (
-                        countries.map(country => (
-                          <option key={country._id} value={country._id}>
-                            {country.name}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                  </div>
-
-                  {/* Profit Share */}
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                      Profit Share (%)
-                    </label>
-                    <div className="relative">
-                      <Input
-                        name="profitShare"
-                        type="text"
-                        value={formData.profitShare}
-                        onChange={handleInputChange}
-                        onKeyDown={e => {
-                          // Prevent non-numeric characters except backspace, delete, tab, escape, enter
-                          if (
-                            !/[0-9]/.test(e.key) &&
-                            ![
-                              'Backspace',
-                              'Delete',
-                              'Tab',
-                              'Escape',
-                              'Enter',
-                              'ArrowLeft',
-                              'ArrowRight',
-                            ].includes(e.key)
-                          ) {
-                            e.preventDefault();
-                          }
-                        }}
-                        className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 pr-12 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 transform text-base text-gray-500">
-                        %
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Licencee */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                    Licencee <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    name="licencee"
-                    value={formData.licencee}
-                    onChange={e =>
-                      handleSelectChange('licencee', e.target.value)
-                    }
-                    className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                    required
-                  >
-                    <option value="">Select Licencee</option>
-                    {licenceesLoading ? (
-                      <option value="" disabled>
-                        Loading licencees...
-                      </option>
+                <div className="text-right">
+                  <h3 className="text-sm font-medium text-gray-700">
+                    Created
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-600">
+                    {locationDetailsLoading && !locationDetails?.createdAt ? (
+                      <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
+                    ) : locationDetails?.createdAt ? (
+                      new Date(locationDetails.createdAt).toLocaleDateString(
+                        'en-US',
+                        {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        }
+                      )
                     ) : (
-                      licencees.map(licencee => (
-                        <option key={licencee._id} value={licencee._id}>
-                          {licencee.name}
-                        </option>
-                      ))
+                      'Unknown'
                     )}
-                  </select>
+                  </p>
                 </div>
+              </div>
+            </div>
 
-                {/* Day Start Time */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-medium text-grayHighlight">
-                    Day Start Time
-                  </label>
+            {/* Location Name */}
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                Location Name
+              </label>
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className="h-12 w-full border-border bg-container text-base"
+              />
+            </div>
+
+            {/* Address */}
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                Address
+              </label>
+              {locationDetailsLoading && !formData.street ? (
+                <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+              ) : (
+                <Input
+                  name="street"
+                  value={formData.street}
+                  onChange={handleInputChange}
+                  placeholder="Street"
+                  className="h-12 w-full border-border bg-container text-base"
+                />
+              )}
+            </div>
+
+            {/* City */}
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                City
+              </label>
+              {locationDetailsLoading && !formData.city ? (
+                <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+              ) : (
+                <Input
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  placeholder="City"
+                  className="h-12 w-full border-border bg-container text-base"
+                />
+              )}
+            </div>
+
+            {/* Country and Profit Share */}
+            <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              {/* Country */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                  Country
+                </label>
+                {countriesLoading || (locationDetailsLoading && !formData.country) ? (
+                  <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+                ) : (
                   <select
-                    name="dayStartTime"
-                    value={
-                      timeOptions.find(
-                        opt => opt.displayValue === formData.dayStartTime
-                      )?.value || ''
+                    name="country"
+                    value={formData.country}
+                    onChange={e =>
+                      handleSelectChange('country', e.target.value)
                     }
-                    onChange={e => {
-                      const selectedOption = timeOptions.find(
-                        opt => opt.value === e.target.value
-                      );
-                      handleSelectChange(
-                        'dayStartTime',
-                        selectedOption?.displayValue || e.target.value
-                      );
-                    }}
                     className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
                   >
-                    {timeOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
+                    <option value="">Select Country</option>
+                    {countries.map(country => (
+                      <option key={country._id} value={country._id}>
+                        {country.name}
                       </option>
                     ))}
                   </select>
-                </div>
+                )}
+              </div>
 
-                {/* Membership Configuration Section */}
-                <div className="mb-4 rounded-lg border border-gray-200 p-4">
-                  <div className="mb-4 flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
-                    <Checkbox
-                      id="membershipEnabled"
-                      checked={formData.membershipEnabled}
-                      onCheckedChange={checked =>
-                        handleCheckboxChange('membershipEnabled', checked === true)
-                      }
-                      className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+              {/* Profit Share */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                  Profit Share (%)
+                </label>
+                {locationDetailsLoading && !formData.profitShare ? (
+                  <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+                ) : (
+                  <div className="relative">
+                    <input
+                      name="profitShare"
+                      type="text"
+                      value={formData.profitShare}
+                      onChange={handleInputChange}
+                      onKeyDown={e => {
+                        if (
+                          !/[0-9]/.test(e.key) &&
+                          ![
+                            'Backspace',
+                            'Delete',
+                            'Tab',
+                            'Escape',
+                            'Enter',
+                            'ArrowLeft',
+                            'ArrowRight',
+                          ].includes(e.key)
+                        ) {
+                          e.preventDefault();
+                        }
+                      }}
+                      className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 pr-12 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
                     />
-                    <Label
-                      htmlFor="membershipEnabled"
-                      className="text-lg font-semibold text-gray-800"
-                    >
-                      Membership Enabled
-                    </Label>
-                  </div>
-
-                  {formData.membershipEnabled && (
-                    <div className="mt-4 space-y-6">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div>
-                          <Label className="mb-2 block text-sm font-medium text-grayHighlight">
-                            Location Limit
-                          </Label>
-                          <Input
-                            type="number"
-                            value={formData.locationMembershipSettings.locationLimit}
-                            onChange={e => handleMembershipSettingsChange('locationLimit', parseInt(e.target.value) || 0)}
-                            className="h-12 w-full border-border bg-container text-base"
-                          />
-                        </div>
-                        <div>
-                          <Label className="mb-2 block text-sm font-medium text-grayHighlight">
-                            Free Play Amount
-                          </Label>
-                          <Input
-                            type="number"
-                            value={formData.locationMembershipSettings.freePlayAmount}
-                            onChange={e => handleMembershipSettingsChange('freePlayAmount', parseInt(e.target.value) || 0)}
-                            className="h-12 w-full border-border bg-container text-base"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
-                          <Checkbox
-                            id="enablePoints"
-                            checked={formData.locationMembershipSettings.enablePoints}
-                            onCheckedChange={checked =>
-                              handleMembershipSettingsChange('enablePoints', checked === true)
-                            }
-                          />
-                          <Label htmlFor="enablePoints">Enable Points</Label>
-                        </div>
-                        <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
-                          <Checkbox
-                            id="enableFreePlays"
-                            checked={formData.locationMembershipSettings.enableFreePlays}
-                            onCheckedChange={checked =>
-                              handleMembershipSettingsChange('enableFreePlays', checked === true)
-                            }
-                          />
-                          <Label htmlFor="enableFreePlays">Enable Free Plays</Label>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div>
-                          <Label className="mb-2 block text-sm font-medium text-grayHighlight">
-                            Points Ratio Method
-                          </Label>
-                          <select
-                            value={formData.locationMembershipSettings.pointsRatioMethod}
-                            onChange={e => handleMembershipSettingsChange('pointsRatioMethod', e.target.value)}
-                            className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-                          >
-                            <option value="">Select Method</option>
-                            <option value="Wager">Wager</option>
-                            <option value="Games Played">Games Played</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Label className="mb-2 block text-sm font-medium text-grayHighlight">
-                            Point Method Value
-                          </Label>
-                          <Input
-                            type="number"
-                            value={formData.locationMembershipSettings.pointMethodValue}
-                            onChange={e => handleMembershipSettingsChange('pointMethodValue', parseInt(e.target.value) || 0)}
-                            className="h-12 w-full border-border bg-container text-base"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div>
-                          <Label className="mb-2 block text-sm font-medium text-grayHighlight">
-                            Games Played Ratio
-                          </Label>
-                          <Input
-                            type="number"
-                            value={formData.locationMembershipSettings.gamesPlayedRatio}
-                            onChange={e => handleMembershipSettingsChange('gamesPlayedRatio', parseInt(e.target.value) || 0)}
-                            className="h-12 w-full border-border bg-container text-base"
-                          />
-                        </div>
-                        <div>
-                          <Label className="mb-2 block text-sm font-medium text-grayHighlight">
-                            Free Play Credits Timeout (min)
-                          </Label>
-                          <Input
-                            type="number"
-                            value={formData.locationMembershipSettings.freePlayCreditsTimeout}
-                            onChange={e => handleMembershipSettingsChange('freePlayCreditsTimeout', parseInt(e.target.value) || 0)}
-                            className="h-12 w-full border-border bg-container text-base"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label className="mb-2 block text-sm font-medium text-grayHighlight">
-                          Points Method Game Types
-                        </Label>
-                        <div className="grid grid-cols-2 gap-2 rounded-md border border-gray-200 p-3 sm:grid-cols-3">
-                          {['Slot', 'Roulette', 'Pulse'].map(type => (
-                            <div key={`points-${type}`} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`points-${type}`}
-                                checked={formData.locationMembershipSettings.pointsMethodGameTypes?.includes(type)}
-                                onCheckedChange={() => handleGameTypeToggle('pointsMethodGameTypes', type)}
-                              />
-                              <Label htmlFor={`points-${type}`} className="text-xs">{type}</Label>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label className="mb-2 block text-sm font-medium text-grayHighlight">
-                          Free Play Game Types
-                        </Label>
-                        <div className="grid grid-cols-2 gap-2 rounded-md border border-gray-200 p-3 sm:grid-cols-3">
-                          {['Slot', 'Roulette', 'Pulse'].map(type => (
-                            <div key={`freeplay-${type}`} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`freeplay-${type}`}
-                                checked={formData.locationMembershipSettings.freePlayGameTypes?.includes(type)}
-                                onCheckedChange={() => handleGameTypeToggle('freePlayGameTypes', type)}
-                              />
-                              <Label htmlFor={`freeplay-${type}`} className="text-xs">{type}</Label>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Checkboxes - Mobile: Stacked, Desktop: Side by side */}
-                <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {/* No SMIB Location Checkbox */}
-                  <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
-                    <Checkbox
-                      id="isLocalServer"
-                      checked={formData.isLocalServer}
-                      onCheckedChange={checked =>
-                        handleCheckboxChange('isLocalServer', checked === true)
-                      }
-                      className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
-                    />
-
-                    <Label
-                      htmlFor="isLocalServer"
-                      className="flex-1 text-sm font-medium"
-                    >
-                      No SMIB Location
-                    </Label>
-                  </div>
-
-                  {isDeveloper && (
-                    <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
-                      <Checkbox
-                        id="useMap"
-                        checked={useMap}
-                        onCheckedChange={checked => {
-                          setUseMap(checked === true);
-                          if (checked === true) {
-                            getCurrentLocation();
-                          }
-                        }}
-                        className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
-                      />
-                      <Label
-                        htmlFor="useMap"
-                        className="flex-1 text-sm font-medium"
-                      >
-                        Use Map to Select Location
-                      </Label>
-                    </div>
-                  )}
-                </div>
-
-                {/* GEO Coordinates - Mobile: Stacked, Desktop: Side by side */}
-                <div className="mb-4">
-                  <p className="mb-3 text-sm font-medium">GEO Coordinates</p>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="flex items-center">
-                      <div className="min-w-[80px] rounded-l-md bg-button px-4 py-3 text-primary-foreground">
-                        <span className="text-sm font-medium">Latitude</span>
-                      </div>
-                      <Input
-                        name="latitude"
-                        value={formData.latitude}
-                        onChange={handleInputChange}
-                        readOnly={useMap}
-                        className="h-12 flex-1 rounded-r-md border border-l-0 border-border bg-container text-base focus-visible:ring-0 focus-visible:ring-offset-0"
-                      />
-                    </div>
-                    <div className="flex items-center">
-                      <div className="min-w-[80px] rounded-l-md bg-button px-4 py-3 text-primary-foreground">
-                        <span className="text-sm font-medium">Longitude</span>
-                      </div>
-                      <Input
-                        name="longitude"
-                        value={formData.longitude}
-                        onChange={handleInputChange}
-                        readOnly={useMap}
-                        className="h-12 flex-1 rounded-r-md border border-l-0 border-border bg-container text-base focus-visible:ring-0 focus-visible:ring-offset-0"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Map Component */}
-                {useMap && (
-                  <div className="mt-4">
-                    {/* Map Load Error Indicator */}
-                    {mapLoadError && (
-                      <div className="relative z-10 mb-2 rounded-md border border-yellow-200 bg-yellow-50 p-2">
-                        <p className="text-xs text-yellow-700">
-                          ?? Map hasn&apos;t loaded properly. Please uncheck and
-                          check the &quot;Use Map&quot; button again. ?? Map
-                          hasn&apos;t loaded properly. Please uncheck and check
-                          the &quot;Use Map&quot; button again.
-                        </p>
-                      </div>
-                    )}
-                    <LocationsLocationPickerMap
-                      initialLat={
-                        formData.latitude
-                          ? parseFloat(formData.latitude)
-                          : 10.6599 // Trinidad center for map display when no coords
-                      }
-                      initialLng={
-                        formData.longitude
-                          ? parseFloat(formData.longitude)
-                          : -61.5199 // Trinidad center for map display when no coords
-                      }
-                      mapType="street"
-                      onLocationSelect={handleLocationSelect}
-                      onMapLoadError={handleMapLoadError}
-                      onMapLoadSuccess={handleMapLoadSuccess}
-                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 transform text-base text-gray-500">
+                      %
+                    </span>
                   </div>
                 )}
+              </div>
+            </div>
 
-                {/* Bill Validator Options */}
-                <div className="mb-4">
-                  <div className="mb-3 flex justify-center">
+            {/* Licencee */}
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                Licencee <span className="text-red-500">*</span>
+              </label>
+              {licenceesLoading ? (
+                <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+              ) : (
+                <select
+                  name="licencee"
+                  value={formData.licencee}
+                  onChange={e => handleSelectChange('licencee', e.target.value)}
+                  className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+                  required
+                >
+                  <option value="">Select Licencee</option>
+                  {licencees.map(licencee => (
+                    <option key={licencee._id} value={licencee._id}>
+                      {licencee.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Day Start Time */}
+            <div className="mb-4">
+              <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                Day Start Time
+              </label>
+              {locationDetailsLoading && !formData.dayStartTime ? (
+                <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+              ) : (
+                <select
+                  name="dayStartTime"
+                  value={
+                    timeOptions.find(
+                      opt => opt.displayValue === formData.dayStartTime
+                    )?.value || ''
+                  }
+                  onChange={e => {
+                    const selectedOption = timeOptions.find(
+                      opt => opt.value === e.target.value
+                    );
+                    handleSelectChange(
+                      'dayStartTime',
+                      selectedOption?.displayValue || e.target.value
+                    );
+                  }}
+                  className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+                >
+                  {timeOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Membership Configuration Section */}
+            <div className="mb-4 rounded-lg border border-gray-200 p-4">
+              <div className="mb-4 flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+                <Checkbox
+                  id="membershipEnabled"
+                  checked={formData.membershipEnabled}
+                  onCheckedChange={checked =>
+                    handleCheckboxChange('membershipEnabled', checked === true)
+                  }
+                  className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+                />
+                <Label
+                  htmlFor="membershipEnabled"
+                  className="text-lg font-semibold text-gray-800"
+                >
+                  Membership Enabled
+                </Label>
+              </div>
+
+              {formData.membershipEnabled && (
+                <div className="mt-4 space-y-6">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                        Location Limit
+                      </Label>
+                      {locationDetailsLoading ? (
+                        <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+                      ) : (
+                        <Input
+                          type="number"
+                          value={
+                            formData.locationMembershipSettings.locationLimit
+                          }
+                          onChange={e =>
+                            handleMembershipSettingsChange(
+                              'locationLimit',
+                              parseInt(e.target.value) || 0
+                            )
+                          }
+                          className="h-12 w-full border-border bg-container text-base"
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                        Free Play Amount
+                      </Label>
+                      {locationDetailsLoading ? (
+                        <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+                      ) : (
+                        <Input
+                          type="number"
+                          value={
+                            formData.locationMembershipSettings.freePlayAmount
+                          }
+                          onChange={e =>
+                            handleMembershipSettingsChange(
+                              'freePlayAmount',
+                              parseInt(e.target.value) || 0
+                            )
+                          }
+                          className="h-12 w-full border-border bg-container text-base"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
                       <Checkbox
-                        id="billValidatorOptions"
-                        checked={Object.values(
-                          formData.billValidatorOptions
-                        ).every(checked => checked)}
-                        onCheckedChange={checked => {
-                          // Toggle all bill validator options
-                          const allChecked = checked === true;
-                          setFormData(prev => ({
-                            ...prev,
-                            billValidatorOptions: {
-                              denom1: allChecked,
-                              denom2: allChecked,
-                              denom5: allChecked,
-                              denom10: allChecked,
-                              denom20: allChecked,
-                              denom50: allChecked,
-                              denom100: allChecked,
-                              denom200: allChecked,
-                              denom500: allChecked,
-                              denom1000: allChecked,
-                              denom2000: allChecked,
-                              denom5000: allChecked,
-                              denom10000: allChecked,
-                            },
-                          }));
-                        }}
+                        id="enablePoints"
+                        checked={formData.locationMembershipSettings.enablePoints}
+                        onCheckedChange={checked =>
+                          handleMembershipSettingsChange('enablePoints', checked === true)
+                        }
+                      />
+                      <Label htmlFor="enablePoints">Enable Points</Label>
+                    </div>
+                    <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+                      <Checkbox
+                        id="enableFreePlays"
+                        checked={formData.locationMembershipSettings.enableFreePlays}
+                        onCheckedChange={checked =>
+                          handleMembershipSettingsChange('enableFreePlays', checked === true)
+                        }
+                      />
+                      <Label htmlFor="enableFreePlays">Enable Free Plays</Label>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                        Points Ratio Method
+                      </Label>
+                      {locationDetailsLoading ? (
+                        <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+                      ) : (
+                        <select
+                          value={formData.locationMembershipSettings.pointsRatioMethod}
+                          onChange={e => handleMembershipSettingsChange('pointsRatioMethod', e.target.value)}
+                          className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+                        >
+                          <option value="">Select Method</option>
+                          <option value="Wager">Wager</option>
+                          <option value="Games Played">Games Played</option>
+                        </select>
+                      )}
+                    </div>
+                    <div>
+                      <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                        Point Method Value
+                      </Label>
+                      {locationDetailsLoading ? (
+                        <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+                      ) : (
+                        <Input
+                          type="number"
+                          value={formData.locationMembershipSettings.pointMethodValue}
+                          onChange={e => handleMembershipSettingsChange('pointMethodValue', parseInt(e.target.value) || 0)}
+                          className="h-12 w-full border-border bg-container text-base"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                        Games Played Ratio
+                      </Label>
+                      {locationDetailsLoading ? (
+                        <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+                      ) : (
+                        <Input
+                          type="number"
+                          value={formData.locationMembershipSettings.gamesPlayedRatio}
+                          onChange={e => handleMembershipSettingsChange('gamesPlayedRatio', parseInt(e.target.value) || 0)}
+                          className="h-12 w-full border-border bg-container text-base"
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                        Free Play Credits Timeout (min)
+                      </Label>
+                      {locationDetailsLoading ? (
+                        <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
+                      ) : (
+                        <Input
+                          type="number"
+                          value={formData.locationMembershipSettings.freePlayCreditsTimeout}
+                          onChange={e => handleMembershipSettingsChange('freePlayCreditsTimeout', parseInt(e.target.value) || 0)}
+                          className="h-12 w-full border-border bg-container text-base"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                      Points Method Game Types
+                    </Label>
+                    {locationDetailsLoading ? (
+                      <div className="h-24 w-full animate-pulse rounded bg-gray-200" />
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 rounded-md border border-gray-200 p-3 sm:grid-cols-3">
+                        {['Slot', 'Roulette', 'Pulse'].map(type => (
+                          <div key={`points-${type}`} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`points-${type}`}
+                              checked={formData.locationMembershipSettings.pointsMethodGameTypes?.includes(type)}
+                              onCheckedChange={() => handleGameTypeToggle('pointsMethodGameTypes', type)}
+                            />
+                            <Label htmlFor={`points-${type}`} className="text-xs">{type}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                      Free Play Game Types
+                    </Label>
+                    {locationDetailsLoading ? (
+                      <div className="h-24 w-full animate-pulse rounded bg-gray-200" />
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 rounded-md border border-gray-200 p-3 sm:grid-cols-3">
+                        {['Slot', 'Roulette', 'Pulse'].map(type => (
+                          <div key={`freeplay-${type}`} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`freeplay-${type}`}
+                              checked={formData.locationMembershipSettings.freePlayGameTypes?.includes(type)}
+                              onCheckedChange={() => handleGameTypeToggle('freePlayGameTypes', type)}
+                            />
+                            <Label htmlFor={`freeplay-${type}`} className="text-xs">{type}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Checkboxes */}
+            <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+                <Checkbox
+                  id="isLocalServer"
+                  checked={formData.isLocalServer}
+                  onCheckedChange={checked =>
+                    handleCheckboxChange('isLocalServer', checked === true)
+                  }
+                  className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+                />
+                <Label
+                  htmlFor="isLocalServer"
+                  className="flex-1 text-sm font-medium"
+                >
+                  No SMIB Location
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+                <Checkbox
+                  id="useNetGross"
+                  checked={formData.useNetGross}
+                  onCheckedChange={checked =>
+                    handleCheckboxChange('useNetGross', checked === true)
+                  }
+                  className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+                />
+                <Label
+                  htmlFor="useNetGross"
+                  className="flex-1 text-sm font-medium"
+                >
+                  Use Net Gross
+                </Label>
+              </div>
+
+              {isDeveloper && (
+                <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+                  <Checkbox
+                    id="useMap"
+                    checked={useMap}
+                    onCheckedChange={checked => {
+                      setUseMap(checked === true);
+                      if (checked === true) {
+                        getCurrentLocation();
+                      }
+                    }}
+                    className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+                  />
+                  <Label
+                    htmlFor="useMap"
+                    className="flex-1 text-sm font-medium"
+                  >
+                    Use Map to Select Location
+                  </Label>
+                </div>
+              )}
+            </div>
+
+            {/* GEO Coordinates */}
+            <div className="mb-4">
+              <p className="mb-3 text-sm font-medium">GEO Coordinates</p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="flex items-center">
+                  <div className="min-w-[80px] rounded-l-md bg-button px-4 py-3 text-primary-foreground">
+                    <span className="text-sm font-medium">Latitude</span>
+                  </div>
+                  <Input
+                    name="latitude"
+                    value={formData.latitude}
+                    onChange={handleInputChange}
+                    readOnly={useMap}
+                    className="h-12 flex-1 rounded-r-md border border-l-0 border-border bg-container text-base focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </div>
+                <div className="flex items-center">
+                  <div className="min-w-[80px] rounded-l-md bg-button px-4 py-3 text-primary-foreground">
+                    <span className="text-sm font-medium">Longitude</span>
+                  </div>
+                  <Input
+                    name="longitude"
+                    value={formData.longitude}
+                    onChange={handleInputChange}
+                    readOnly={useMap}
+                    className="h-12 flex-1 rounded-r-md border border-l-0 border-border bg-container text-base focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Map Component */}
+            {useMap && (
+              <div className="mt-4">
+                {/* Map Load Error Indicator */}
+                {mapLoadError && (
+                  <div className="relative z-10 mb-2 rounded-md border border-yellow-200 bg-yellow-50 p-2">
+                    <p className="text-xs text-yellow-700">
+                      ⚠️ Map hasn&apos;t loaded properly. Please uncheck and
+                      check the &quot;Use Map&quot; button again.
+                    </p>
+                  </div>
+                )}
+                <LocationsLocationPickerMap
+                  initialLat={
+                    formData.latitude
+                      ? parseFloat(formData.latitude)
+                      : 10.6599 // Trinidad center for map display when no coords
+                  }
+                  initialLng={
+                    formData.longitude
+                      ? parseFloat(formData.longitude)
+                      : -61.5199 // Trinidad center for map display when no coords
+                  }
+                  mapType="street"
+                  onLocationSelect={handleLocationSelect}
+                  onMapLoadError={handleMapLoadError}
+                  onMapLoadSuccess={handleMapLoadSuccess}
+                />
+              </div>
+            )}
+
+            {/* Bill Validator Options */}
+            <div className="mb-4">
+              <div className="mb-3 flex justify-center">
+                <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+                  <Checkbox
+                    id="billValidatorOptions"
+                    checked={Object.values(
+                      formData.billValidatorOptions
+                    ).every(checked => checked)}
+                    onCheckedChange={checked => {
+                      const allChecked = checked === true;
+                      setFormData(prev => ({
+                        ...prev,
+                        billValidatorOptions: {
+                          denom1: allChecked,
+                          denom2: allChecked,
+                          denom5: allChecked,
+                          denom10: allChecked,
+                          denom20: allChecked,
+                          denom50: allChecked,
+                          denom100: allChecked,
+                          denom200: allChecked,
+                          denom500: allChecked,
+                          denom1000: allChecked,
+                          denom2000: allChecked,
+                          denom5000: allChecked,
+                          denom10000: allChecked,
+                        },
+                      }));
+                    }}
+                    className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+                  />
+                  <Label
+                    htmlFor="billValidatorOptions"
+                    className="text-sm font-medium"
+                  >
+                    Bill Validator Options (Check All)
+                  </Label>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                {locationDetailsLoading ? (
+                  Array.from({ length: 12 }).map((_, i) => (
+                    <div key={i} className="h-10 w-full animate-pulse rounded bg-gray-200" />
+                  ))
+                ) : (
+                  [
+                    { denom: 1, label: '$1' },
+                    { denom: 2, label: '$2' },
+                    { denom: 5, label: '$5' },
+                    { denom: 10, label: '$10' },
+                    { denom: 20, label: '$20' },
+                    { denom: 50, label: '$50' },
+                    { denom: 100, label: '$100' },
+                    { denom: 200, label: '$200' },
+                    { denom: 500, label: '$500' },
+                    { denom: 1000, label: '$1,000' },
+                    { denom: 2000, label: '$2,000' },
+                    { denom: 5000, label: '$5,000' },
+                    { denom: 10000, label: '$10,000' },
+                  ].map(({ denom, label }) => (
+                    <div
+                      key={denom}
+                      className="flex items-center space-x-2 rounded-lg bg-gray-50 p-2"
+                    >
+                      <Checkbox
+                        id={`denom-${denom}`}
+                        checked={
+                          (formData.billValidatorOptions as Record<string, unknown>)[
+                            `denom${denom}`
+                          ] as boolean
+                        }
+                        onCheckedChange={checked =>
+                          handleBillValidatorChange(
+                            `denom${denom}`,
+                            checked === true
+                          )
+                        }
                         className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
                       />
                       <Label
-                        htmlFor="billValidatorOptions"
-                        className="text-sm font-medium"
+                        htmlFor={`denom-${denom}`}
+                        className="flex-1 text-sm font-medium"
                       >
-                        Bill Validator Options (Check All)
+                        {label}
                       </Label>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                    {[
-                      { denom: 1, label: '$1' },
-                      { denom: 2, label: '$2' },
-                      { denom: 5, label: '$5' },
-                      { denom: 10, label: '$10' },
-                      { denom: 20, label: '$20' },
-                      { denom: 50, label: '$50' },
-                      { denom: 100, label: '$100' },
-                      { denom: 200, label: '$200' },
-                      { denom: 500, label: '$500' },
-                      { denom: 1000, label: '$1,000' },
-                      { denom: 2000, label: '$2,000' },
-                      { denom: 5000, label: '$5,000' },
-                      { denom: 10000, label: '$10,000' },
-                    ].map(({ denom, label }) => (
-                      <div
-                        key={denom}
-                        className="flex items-center space-x-2 rounded-lg bg-gray-50 p-2"
-                      >
-                        <Checkbox
-                          id={`denom-${denom}`}
-                          checked={
-                            (formData.billValidatorOptions as Record<string, unknown>)[
-                              `denom${denom}`
-                            ] as boolean
-                          }
-                          onCheckedChange={checked =>
-                            handleBillValidatorChange(
-                              `denom${denom}`,
-                              checked === true
-                            )
-                          }
-                          className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
-                        />
-                        <Label
-                          htmlFor={`denom-${denom}`}
-                          className="flex-1 text-sm font-medium"
-                        >
-                          {label}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {/* Actions */}
-                <div className="mt-6 flex flex-row justify-center gap-3">
-                  <Button
-                    className="h-12 flex-1 bg-button px-6 py-3 text-base text-primary-foreground hover:bg-button/90 sm:w-auto sm:flex-initial"
-                    onClick={handleSubmit}
-                    disabled={loading}
-                  >
-                    {loading ? 'Saving...' : 'Save'}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-12 flex-1 border-button px-6 py-3 text-base text-button hover:bg-button/10 sm:w-auto sm:flex-initial"
-                    onClick={handleClose}
-                  >
-                    Close
-                  </Button>
-                </div>
-              </>
-            )}
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-6 flex flex-row justify-center gap-3">
+              <Button
+                className="h-12 flex-1 bg-button px-6 py-3 text-base text-primary-foreground hover:bg-button/90 sm:w-auto sm:flex-initial"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? 'Saving...' : 'Save'}
+              </Button>
+              <Button
+                variant="outline"
+                className="h-12 flex-1 border-button px-6 py-3 text-base text-button hover:bg-button/10 sm:w-auto sm:flex-initial"
+                onClick={handleClose}
+              >
+                Close
+              </Button>
+            </div>
           </div>
         </div>
       </div>

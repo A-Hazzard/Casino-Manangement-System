@@ -332,20 +332,31 @@ export async function POST(req: NextRequest) {
     const machineData = machine as Record<string, unknown>;
 
     // ============================================================================
-    // STEP 5: Extract SAS times from payload
+    // STEP 5: Extract and normalize dates from payload
     // ============================================================================
     // Extract SAS times from payload for backend calculation
     const payloadWithSasMeters = payload as CreateCollectionPayload & {
       sasMeters?: { sasStartTime?: string; sasEndTime?: string };
     };
-    const sasStartTime = payloadWithSasMeters.sasMeters?.sasStartTime
-      ? new Date(payloadWithSasMeters.sasMeters.sasStartTime)
-      : payload.sasStartTime;
-    // Prefer explicit sasEndTime; fallback to payload.timestamp to enforce deterministic windows
-    const sasEndTime = payloadWithSasMeters.sasMeters?.sasEndTime
-      ? new Date(payloadWithSasMeters.sasMeters.sasEndTime)
-      : payload.sasEndTime ||
-        (payload.timestamp ? new Date(payload.timestamp) : undefined);
+
+    // Ensure all date-like fields are converted to actual Date objects
+    const sasStartTimeRaw = payloadWithSasMeters.sasMeters?.sasStartTime || payload.sasStartTime;
+    const sasEndTimeRaw = payloadWithSasMeters.sasMeters?.sasEndTime || payload.sasEndTime;
+    
+    const sasStartTime = sasStartTimeRaw ? new Date(sasStartTimeRaw) : undefined;
+    const sasEndTime = sasEndTimeRaw 
+      ? new Date(sasEndTimeRaw) 
+      : (payload.timestamp ? new Date(payload.timestamp) : undefined);
+
+    const calculationPayload: Record<string, unknown> = {
+      ...payload,
+      sasStartTime,
+      sasEndTime,
+      timestamp: payload.timestamp ? new Date(payload.timestamp) : new Date(),
+      collectionTime: payload.collectionTime 
+        ? new Date(payload.collectionTime) 
+        : (payload.timestamp ? new Date(payload.timestamp) : new Date()),
+    };
 
     // ============================================================================
     // STEP 6: Calculate SAS metrics and movement
@@ -356,11 +367,7 @@ export async function POST(req: NextRequest) {
       movement,
       previousMeters,
       locationReportId: calculatedLocationReportId,
-    } = await createCollectionWithCalculations({
-      ...payload,
-      sasStartTime,
-      sasEndTime,
-    });
+    } = await createCollectionWithCalculations(calculationPayload);
 
     // Use the calculated locationReportId if one was generated during the calculation
     if (
@@ -377,35 +384,31 @@ export async function POST(req: NextRequest) {
     // Create collection document with all calculated fields
     const collectionData = {
       _id: await generateMongoId(),
-      isCompleted: payload.isCompleted ?? false,
-      metersIn: payload.metersIn,
-      metersOut: payload.metersOut,
+      isCompleted: calculationPayload.isCompleted ?? false,
+      metersIn: calculationPayload.metersIn,
+      metersOut: calculationPayload.metersOut,
       // CRITICAL: Use client-provided prevIn/prevOut if available, otherwise use calculated values
       // This ensures accuracy when client has the correct previous meter values
       prevIn:
-        payload.prevIn !== undefined ? payload.prevIn : previousMeters.metersIn,
+        calculationPayload.prevIn !== undefined ? calculationPayload.prevIn : previousMeters.metersIn,
       prevOut:
-        payload.prevOut !== undefined
-          ? payload.prevOut
+        calculationPayload.prevOut !== undefined
+          ? calculationPayload.prevOut
           : previousMeters.metersOut,
-      softMetersIn: payload.metersIn,
-      softMetersOut: payload.metersOut,
-      notes: payload.notes || '',
-      timestamp: payload.timestamp ? new Date(payload.timestamp) : new Date(),
-      collectionTime: payload.collectionTime
-        ? new Date(payload.collectionTime)
-        : payload.timestamp
-          ? new Date(payload.timestamp)
-          : new Date(),
-      location: payload.location,
-      collector: payload.collector,
+      softMetersIn: calculationPayload.metersIn,
+      softMetersOut: calculationPayload.metersOut,
+      notes: calculationPayload.notes || '',
+      timestamp: calculationPayload.timestamp,
+      collectionTime: calculationPayload.collectionTime,
+      location: calculationPayload.location,
+      collector: calculationPayload.collector,
       locationReportId: finalLocationReportId,
       sasMeters: {
         machine:
           (machineData.serialNumber as string) ||
           (machineData.custom as { name?: string })?.name ||
           (machineData.machineName as string) ||
-          payload.machineId,
+          calculationPayload.machineId,
         drop: sasMeters.drop,
         totalCancelledCredits: sasMeters.totalCancelledCredits,
         gross: sasMeters.gross,
@@ -420,22 +423,22 @@ export async function POST(req: NextRequest) {
         gross: movement.gross,
       },
       machineCustomName:
-        payload.machineCustomName ||
+        calculationPayload.machineCustomName ||
         (machineData.custom as { name?: string })?.name ||
         (machineData.machineName as string) ||
         (machineData.serialNumber as string) ||
         'Unknown Machine',
       custom: {
         name:
-          payload.machineCustomName ||
+          calculationPayload.machineCustomName ||
           (machineData.custom as { name?: string })?.name ||
           (machineData.machineName as string) ||
           (machineData.serialNumber as string) ||
           'Unknown Machine',
       },
-      machineId: payload.machineId,
+      machineId: calculationPayload.machineId,
       machineName:
-        payload.machineName ||
+        calculationPayload.machineName ||
         (machineData.custom as { name?: string })?.name ||
         (machineData.machineName as string) ||
         (machineData.serialNumber as string) ||
@@ -444,11 +447,11 @@ export async function POST(req: NextRequest) {
         (machineData.game as string) ||
         (machineData.installedGame as string) ||
         '',
-      ramClear: payload.ramClear || false,
-      ramClearMetersIn: payload.ramClearMetersIn,
-      ramClearMetersOut: payload.ramClearMetersOut,
+      ramClear: calculationPayload.ramClear || false,
+      ramClearMetersIn: calculationPayload.ramClearMetersIn,
+      ramClearMetersOut: calculationPayload.ramClearMetersOut,
       serialNumber:
-        payload.serialNumber || (machineData.serialNumber as string) || '',
+        calculationPayload.serialNumber || (machineData.serialNumber as string) || '',
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -590,9 +593,12 @@ export async function PATCH(req: NextRequest) {
     // CRITICAL FIX: When timestamp changes, we must recalculate SAS times and metrics
     // This fixes the "Update All Dates" button issue where SAS times weren't being recalculated
     const timestampChanged =
-      updateData.timestamp !== undefined &&
-      new Date(updateData.timestamp).getTime() !==
-        new Date(originalCollection.timestamp).getTime();
+      (updateData.timestamp !== undefined &&
+        new Date(updateData.timestamp).getTime() !==
+          new Date(originalCollection.timestamp).getTime()) ||
+      (updateData.collectionTime !== undefined &&
+        new Date(updateData.collectionTime).getTime() !==
+          new Date(originalCollection.collectionTime || originalCollection.timestamp).getTime());
 
     // ============================================================================
     // STEP 6: Recalculate prevIn/prevOut and movement if meters changed
@@ -677,10 +683,15 @@ export async function PATCH(req: NextRequest) {
           : originalCollection.timestamp;
 
         // Get correct SAS time period based on previous collections
+        // CRITICAL: Only preserve manual overrides if they are provided in the current update (updateData).
+        // If the date is changing, we should recalculate the SAS period from scratch.
+        const customStartTime = updateData.sasStartTime ? new Date(updateData.sasStartTime) : undefined;
+        const customEndTime = updateData.sasEndTime ? new Date(updateData.sasEndTime) : undefined;
+
         const { sasStartTime, sasEndTime } = await getSasTimePeriod(
           originalCollection.machineId as string,
-          undefined,
-          collectionTimestamp
+          customStartTime,
+          customEndTime || collectionTimestamp
         );
 
         // Recalculate SAS metrics with the correct time window
@@ -713,6 +724,39 @@ export async function PATCH(req: NextRequest) {
         // This prevents the entire update from failing
       }
     }
+
+    // ============================================================================
+    // STEP 7.5: Fallback — ensure sasMeters.sasEndTime / sasMeters.sasStartTime are updated
+    // ============================================================================
+    // If the SAS recalculation in step 7 ran successfully, updateData.sasMeters is already
+    // populated with correct nested sasEndTime/sasStartTime values.
+    //
+    // If step 7 was skipped (no timestamp/meter change) OR threw an error, updateData.sasMeters
+    // is not set. In that case, if the caller explicitly sent sasEndTime / sasStartTime, we must
+    // apply them to the nested sasMeters sub-document using MongoDB dot notation.
+    // We cannot add BOTH updateData.sasMeters (full object) AND a dot-notation path like
+    // 'sasMeters.sasEndTime' in the same $set — MongoDB would reject that as a conflict.
+    // So we only apply dot notation when sasMeters was NOT set by step 7.
+    if (!updateData.sasMeters) {
+      if (updateData.sasEndTime) {
+        updateData['sasMeters.sasEndTime'] =
+          typeof updateData.sasEndTime === 'string'
+            ? updateData.sasEndTime
+            : new Date(updateData.sasEndTime as string | Date).toISOString();
+      }
+      if (updateData.sasStartTime) {
+        updateData['sasMeters.sasStartTime'] =
+          typeof updateData.sasStartTime === 'string'
+            ? updateData.sasStartTime
+            : new Date(updateData.sasStartTime as string | Date).toISOString();
+      }
+    }
+    // Remove top-level sasEndTime/sasStartTime from updateData.
+    // The Collections schema has no top-level fields with these names — they live inside
+    // the sasMeters sub-document. Mongoose strict mode silently strips them, but removing
+    // them explicitly also prevents any potential conflict with dot-notation paths above.
+    delete updateData.sasEndTime;
+    delete updateData.sasStartTime;
 
     // ============================================================================
     // STEP 8: Update collection document

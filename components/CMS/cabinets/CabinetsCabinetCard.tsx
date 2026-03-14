@@ -138,6 +138,14 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
         >
           {smbId || 'N/A'}
         </button>
+        {/* Network Badge */}
+        {props.network && (
+          <div className="mb-1">
+            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 border border-gray-200">
+              {props.network}
+            </span>
+          </div>
+        )}
         {/* Location Name - Navigate to location details with icon */}
         <div className="mb-1 flex items-center gap-1.5">
           {props.locationId ? (
@@ -224,7 +232,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
             />
           )}
         </div>
-        <div className="flex justify-between">
+        <div className="mb-1 flex justify-between">
           <span className="text-gray-500">Gross</span>
           {props.hideFinancials ? (
             <span className="font-medium text-gray-500">-</span>
@@ -236,6 +244,20 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
             />
           )}
         </div>
+        {props.showNetGross !== false && (
+          <div className="flex justify-between">
+            <span className="text-gray-500">Net Gross</span>
+            {props.hideFinancials ? (
+              <span className="font-medium text-gray-500">-</span>
+            ) : (
+              <CurrencyValueWithOverflow
+                value={props.netGross || 0}
+                className={`font-medium ${getGrossColorClass(props.netGross)}`}
+                formatCurrencyFn={formatCurrency}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Action Buttons - Fixed at bottom */}

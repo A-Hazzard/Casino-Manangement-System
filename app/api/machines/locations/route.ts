@@ -152,6 +152,7 @@ export async function GET(request: NextRequest) {
           _id: 1,
           name: 1,
           countryName: '$countryDetails.name',
+          useNetGross: 1,
         },
       },
       // Sort by name

@@ -20,6 +20,7 @@ import {
 } from '@/components/shared/ui/dialog';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { Skeleton } from '@/components/shared/ui/skeleton';
+import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { useMobileCollectionModal } from '@/lib/hooks/collectionReport/useMobileCollectionModal';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
@@ -75,6 +76,12 @@ export default function CollectionReportMobileNewCollectionModal({
     onBaseBalanceCorrectionChange,
     storeFormData,
     setStoreFormData,
+    onFormDataChange,
+    updateAllSasStartDate,
+    setUpdateAllSasStartDate,
+    updateAllSasEndDate,
+    setUpdateAllSasEndDate,
+    handleApplyAllDates,
   } = useMobileCollectionModal({
     show,
     locations,
@@ -129,7 +136,7 @@ export default function CollectionReportMobileNewCollectionModal({
           </div>
         )}
 
-        {modalState.navigationStack.length === 0 ? (
+        {modalState.navigationStack.length === 0 && !modalState.isFormVisible && !modalState.isCollectedListVisible ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-white mobile-collection-scrollbar">
 
             {/* Summary Info - Show when location is selected and we have machines */}
@@ -231,7 +238,7 @@ export default function CollectionReportMobileNewCollectionModal({
                   {collectedMachines.length > 0 && (
                     <button
                       onClick={() => {
-                        pushNavigation('main');
+                        pushNavigation('list');
                         setModalState(prev => ({
                           ...prev,
                           isCollectedListVisible: true,
@@ -249,7 +256,7 @@ export default function CollectionReportMobileNewCollectionModal({
                   {collectedMachines.length >= 1 && (
                     <button
                       onClick={() => {
-                        pushNavigation('main');
+                        pushNavigation('list');
                         setModalState(prev => ({
                           ...prev,
                           isCollectedListVisible: true,
@@ -416,7 +423,12 @@ export default function CollectionReportMobileNewCollectionModal({
                                         ramClear: false,
                                         ramClearMetersIn: '',
                                         ramClearMetersOut: '',
+                                        showAdvancedSas: false,
+                                        sasStartTime: null,
+                                        sasEndTime: null,
+                                        collectionTime: new Date(),
                                       });
+                                      pushNavigation('form');
                                       setModalState(prev => ({
                                         ...prev,
                                         isFormVisible: true,
@@ -498,13 +510,16 @@ export default function CollectionReportMobileNewCollectionModal({
             selectedMachineData={selectedMachineData ?? null}
             editingEntryId={modalState.editingEntryId}
             formData={{
-              collectionTime: storeFormData.collectionTime,
-              metersIn: storeFormData.metersIn,
-              metersOut: storeFormData.metersOut,
-              ramClear: storeFormData.ramClear,
-              ramClearMetersIn: storeFormData.ramClearMetersIn,
-              ramClearMetersOut: storeFormData.ramClearMetersOut,
-              notes: storeFormData.notes,
+              collectionTime: modalState.formData.collectionTime,
+              metersIn: modalState.formData.metersIn,
+              metersOut: modalState.formData.metersOut,
+              ramClear: modalState.formData.ramClear,
+              ramClearMetersIn: modalState.formData.ramClearMetersIn,
+              ramClearMetersOut: modalState.formData.ramClearMetersOut,
+              notes: modalState.formData.notes,
+              sasStartTime: modalState.formData.sasStartTime,
+              sasEndTime: modalState.formData.sasEndTime,
+              showAdvancedSas: modalState.formData.showAdvancedSas,
             }}
             financials={financials}
             collectedMachinesCount={collectedMachines.length}
@@ -526,11 +541,7 @@ export default function CollectionReportMobileNewCollectionModal({
                 showViewMachineConfirmation: true,
               }));
             }}
-            onFormDataChange={(field, value) => {
-              setStoreFormData({
-                [field]: value,
-              });
-            }}
+            onFormDataChange={onFormDataChange}
             onFinancialDataChange={(field, value) => {
               setStoreFinancials({ [field]: value });
             }}
@@ -575,13 +586,11 @@ export default function CollectionReportMobileNewCollectionModal({
             financials={financials}
             isProcessing={modalState.isProcessing}
             isCreateReportsEnabled={isCreateReportsEnabled}
-            updateAllDate={undefined}
-            onUpdateAllDate={() => {
-              // Not implemented yet for new collection
-            }}
-            onApplyAllDates={async () => {
-              // Not implemented yet for new collection
-            }}
+            updateAllSasStartDate={updateAllSasStartDate}
+            onUpdateAllSasStartDate={setUpdateAllSasStartDate}
+            updateAllSasEndDate={updateAllSasEndDate}
+            onUpdateAllSasEndDate={setUpdateAllSasEndDate}
+            onApplyAllDates={handleApplyAllDates}
             formatMachineDisplay={machine => {
               // Type assertion needed because formatMachineDisplay type definition
               // doesn't match CollectionDocument, but that's what we pass
@@ -595,7 +604,7 @@ export default function CollectionReportMobileNewCollectionModal({
               return <span>{displayName}</span>;
             }}
             formatDate={date => {
-              return new Date(date).toLocaleString();
+              return formatDateWithOrdinal(date);
             }}
             sortMachines={sortMachinesAlphabetically}
             onEditMachine={editMachineInList}

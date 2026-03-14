@@ -265,6 +265,7 @@ export async function GET(req: NextRequest) {
       locations.map((loc: Record<string, unknown>) => ({
         _id: (loc._id as { toString: () => string }).toString(),
         gameDayOffset: (loc.gameDayOffset as number) ?? 8, // Default to 8 AM Trinidad time
+        useNetGross: (loc.useNetGross as boolean) || false,
       })),
       timePeriodForGamingDay,
       customStartDateForGamingDay,
@@ -539,6 +540,7 @@ export async function GET(req: NextRequest) {
             moneyIn,
             moneyOut,
             gross,
+            netGross: (location.useNetGross as boolean) ? (gross - (jackpot || 0)) : undefined,
             jackpot: jackpot || 0,
             coinIn: (metrics.coinIn || 0) * multiplier,
             coinOut: (metrics.coinOut || 0) * multiplier,
@@ -867,8 +869,9 @@ export async function GET(req: NextRequest) {
               moneyIn,
               moneyOut,
               cancelledCredits: moneyOut,
-              jackpot,
               gross,
+              netGross: (location.useNetGross as boolean) ? (gross - (jackpot || 0)) : undefined,
+              jackpot,
               coinIn,
               coinOut,
               gamesPlayed,
@@ -1137,6 +1140,9 @@ export async function GET(req: NextRequest) {
           ),
           jackpot: convertFromUSD(jackpotUSD, displayCurrency),
           gross: convertFromUSD(grossUSD, displayCurrency),
+          netGross: (locationDetails?.useNetGross as boolean)
+            ? (convertFromUSD(grossUSD, displayCurrency) - convertFromUSD(jackpotUSD, displayCurrency)) 
+            : undefined,
           coinIn: convertFromUSD(coinInUSD, displayCurrency),
           coinOut: convertFromUSD(coinOutUSD, displayCurrency),
         };

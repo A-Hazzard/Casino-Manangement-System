@@ -18,6 +18,8 @@ export type CabinetCardProps = {
   moneyOut?: number;
   jackpot?: number;
   gross?: number;
+  netGross?: number;
+  network?: string;
   lastActivity?: string | Date;
   customView?: boolean;
   cancelledCredits?: number;
@@ -33,6 +35,7 @@ export type CabinetCardProps = {
   offlineTimeLabel?: string;
   actualOfflineTime?: string;
   hideFinancials?: boolean;
+  showNetGross?: boolean;
 };
 
 

@@ -62,6 +62,7 @@ type CabinetsCabinetTableProps = Omit<
    * When false, hide the sort direction icon in the header.
    */
   showSortIcons?: boolean;
+  showNetGross?: boolean;
 };
 
 export default function CabinetsCabinetTable({
@@ -76,6 +77,7 @@ export default function CabinetsCabinetTable({
   enableHeaderSorting = true,
   showSortIcons = true,
   hideFinancials = false,
+  showNetGross = true,
 }: CabinetsCabinetTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
   const router = useRouter();
@@ -140,6 +142,7 @@ export default function CabinetsCabinetTable({
                 </span>
               )}
             </TableHead>
+
             <TableHead
               className="relative font-semibold text-white"
               onClick={
@@ -190,6 +193,19 @@ export default function CabinetsCabinetTable({
                 </span>
               )}
             </TableHead>
+            {showNetGross && (
+              <TableHead
+                className="relative font-semibold text-white"
+                onClick={enableHeaderSorting ? () => onSort('netGross') : undefined}
+              >
+                <span>NET GROSS</span>
+                {showSortIcons && sortOption === 'netGross' && (
+                  <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                    {sortOrder === 'desc' ? '▼' : '▲'}
+                  </span>
+                )}
+              </TableHead>
+            )}
             <TableHead className="font-semibold text-white">ACTIONS</TableHead>
           </TableRow>
         </TableHeader>
@@ -303,6 +319,7 @@ export default function CabinetsCabinetTable({
                     )}
                   </div>
                 </TableCell>
+
                 <TableCell>
                   <span
                     className={`font-semibold ${!hideFinancials ? getMoneyInColorClass() : 'text-gray-500'}`}
@@ -329,6 +346,15 @@ export default function CabinetsCabinetTable({
                     {hideFinancials ? '-' : formatCurrency(cab.gross)}
                   </span>
                 </TableCell>
+                {showNetGross && (
+                  <TableCell>
+                    <span
+                      className={`font-semibold ${!hideFinancials ? getGrossColorClass(cab.netGross) : 'text-gray-500'}`}
+                    >
+                      {hideFinancials ? '-' : formatCurrency(cab.netGross)}
+                    </span>
+                  </TableCell>
+                )}
                 <TableCell>
                   <div className="action-buttons flex items-center justify-center gap-2">
                     <Button

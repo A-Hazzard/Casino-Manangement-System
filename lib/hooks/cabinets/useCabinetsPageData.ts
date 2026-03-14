@@ -193,6 +193,24 @@ export function useCabinetsPageData() {
 
     return apiMachineStats;
   }, [apiMachineStats, filteredCabinets, machineStatsLoading]);
+  
+  // Determine if Net Gross should be shown based on selected location(s)
+  const useNetGross = useMemo(() => {
+    if (selectedLocation.length === 0 || selectedLocation.includes('all')) {
+      return false;
+    }
+    
+    // If specific locations are selected, check if ALL of them have useNetGross enabled
+    // Or at least if there's only one and it has it enabled
+    const selectedLocsData = locations.filter(loc => selectedLocation.includes(loc._id));
+    if (selectedLocsData.length === 0) return false;
+    
+    // If only one is selected, use its value
+    if (selectedLocsData.length === 1) return selectedLocsData[0].useNetGross === true;
+    
+    // If multiple are selected, only show if all of them have it enabled to avoid confusing totals
+    return selectedLocsData.every(loc => loc.useNetGross === true);
+  }, [selectedLocation, locations]);
 
   // ============================================================================
   // Chart Logic
@@ -241,6 +259,7 @@ export function useCabinetsPageData() {
               moneyIn: d.moneyIn,
               moneyOut: d.moneyOut,
               gross: d.gross,
+              netGross: d.netGross,
             }))
           );
       }, 'chart');
@@ -404,6 +423,7 @@ export function useCabinetsPageData() {
     chartData,
     loadingChart,
     totalPages: effectiveTotalPages,
+    useNetGross,
     // Setters & Handlers
     setActiveSection,
     setSearchTerm: handleSetSearchTerm,

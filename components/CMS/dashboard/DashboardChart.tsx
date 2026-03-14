@@ -26,13 +26,16 @@ export default function Chart({
   chartData,
   activeMetricsFilter,
   granularity,
+  useNetGross = true,
 }: ChartProps) {
   // State for selected metrics (all selected by default)
-  const [selectedMetrics, setSelectedMetrics] = useState<string[]>([
-    'Money In',
-    'Money Out',
-    'Gross',
-  ]);
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(() => {
+    const defaultMetrics = ['Money In', 'Money Out', 'Gross'];
+    if (useNetGross) {
+      defaultMetrics.push('Net Gross');
+    }
+    return defaultMetrics;
+  });
   // Chart data received for rendering
 
   // Always show skeleton when loading or if we have no data state yet
@@ -234,8 +237,9 @@ export default function Chart({
     const hasMoneyOut =
       selectedMetrics.includes('Money Out') && moneyOut > threshold;
     const hasGross = selectedMetrics.includes('Gross') && gross > threshold;
+    const hasNetGross = selectedMetrics.includes('Net Gross') && (item.netGross || 0) > threshold;
 
-    return hasMoneyIn || hasMoneyOut || hasGross;
+    return hasMoneyIn || hasMoneyOut || hasGross || hasNetGross;
   });
 
   // Filter out leading and trailing zero-value entries to show only actual data range
@@ -249,7 +253,8 @@ export default function Chart({
         (selectedMetrics.includes('Money In') && (item.moneyIn || 0) >= 0.01) ||
         (selectedMetrics.includes('Money Out') &&
           (item.moneyOut || 0) >= 0.01) ||
-        (selectedMetrics.includes('Gross') && (item.gross || 0) >= 0.01);
+        (selectedMetrics.includes('Gross') && (item.gross || 0) >= 0.01) ||
+        (selectedMetrics.includes('Net Gross') && (item.netGross || 0) >= 0.01);
       if (hasData) {
         firstNonZeroIndex = i;
         break;
@@ -303,7 +308,8 @@ export default function Chart({
             (previous.moneyIn || 0) >= 0.01) ||
           (selectedMetrics.includes('Money Out') &&
             (previous.moneyOut || 0) >= 0.01) ||
-          (selectedMetrics.includes('Gross') && (previous.gross || 0) >= 0.01)
+          (selectedMetrics.includes('Gross') && (previous.gross || 0) >= 0.01) ||
+          (selectedMetrics.includes('Net Gross') && (previous.netGross || 0) >= 0.01)
         : false;
 
       // Check if next point has activity
@@ -312,14 +318,16 @@ export default function Chart({
             (next.moneyIn || 0) >= 0.01) ||
           (selectedMetrics.includes('Money Out') &&
             (next.moneyOut || 0) >= 0.01) ||
-          (selectedMetrics.includes('Gross') && (next.gross || 0) >= 0.01)
+          (selectedMetrics.includes('Gross') && (next.gross || 0) >= 0.01) ||
+          (selectedMetrics.includes('Net Gross') && (next.netGross || 0) >= 0.01)
         : false;
 
       // Check if current point values differ from previous
       const valuesChanged = previous
         ? (current.moneyIn || 0) !== (previous.moneyIn || 0) ||
           (current.moneyOut || 0) !== (previous.moneyOut || 0) ||
-          (current.gross || 0) !== (previous.gross || 0)
+          (current.gross || 0) !== (previous.gross || 0) ||
+          (current.netGross || 0) !== (previous.netGross || 0)
         : true;
 
       // Keep the point if it's first/last, has activity, is a transition, or values changed
@@ -345,6 +353,9 @@ export default function Chart({
     if (selectedMetrics.includes('Gross')) {
       allValues.push(item.gross || 0);
     }
+    if (selectedMetrics.includes('Net Gross')) {
+      allValues.push(item.netGross || 0);
+    }
   });
 
   let yAxisDomain: [number, number] | undefined = undefined;
@@ -368,6 +379,7 @@ export default function Chart({
     { label: 'Money In', color: '#a855f7' },
     { label: 'Money Out', color: '#3b82f6' },
     { label: 'Gross', color: '#f97316' },
+    ...(useNetGross ? [{ label: 'Net Gross', color: '#10b981' }] : []),
   ];
 
   return (
@@ -599,6 +611,10 @@ export default function Chart({
                   <stop offset="5%" stopColor="#f97316" stopOpacity={0.8} />
                   <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                 </linearGradient>
+                <linearGradient id="colorNetGross" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
               </defs>
               {selectedMetrics.includes('Money In') && (
                 <Area
@@ -625,6 +641,15 @@ export default function Chart({
                   stroke="#f97316"
                   strokeWidth={3}
                   fill="url(#colorGross)"
+                />
+              )}
+              {selectedMetrics.includes('Net Gross') && (
+                <Area
+                  type="monotone"
+                  dataKey="netGross"
+                  stroke="#10b981"
+                  strokeWidth={3}
+                  fill="url(#colorNetGross)"
                 />
               )}
             </AreaChart>

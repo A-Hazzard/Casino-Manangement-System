@@ -1,11 +1,17 @@
 import React from 'react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
+interface LocationsCabinetCardsSkeletonProps {
+  showNetGross?: boolean;
+}
+
 /**
  * Locations Cabinet Cards Skeleton Loader
  * Matches the exact structure of CabinetCardMobile component
  */
-const LocationsCabinetCardsSkeleton: React.FC = () => (
+const LocationsCabinetCardsSkeleton: React.FC<LocationsCabinetCardsSkeletonProps> = ({
+  showNetGross = false,
+}) => (
   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
     {[...Array(10)].map((_, i) => (
       <div
@@ -28,7 +34,7 @@ const LocationsCabinetCardsSkeleton: React.FC = () => (
           <Skeleton className="h-4 w-12" />
           <Skeleton className="h-4 w-24" />
         </div>
-
+        
         {/* Financial Data */}
         <div className="mt-2 border-t border-gray-200 pt-2">
           <div className="mb-1 flex justify-between">
@@ -39,10 +45,20 @@ const LocationsCabinetCardsSkeleton: React.FC = () => (
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-3 w-20" />
           </div>
-          <div className="flex justify-between">
+          <div className="mb-1 flex justify-between">
             <Skeleton className="h-3 w-12" />
             <Skeleton className="h-3 w-20" />
           </div>
+          <div className={`${showNetGross ? 'mb-1' : ''} flex justify-between`}>
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          {showNetGross && (
+            <div className="flex justify-between">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}

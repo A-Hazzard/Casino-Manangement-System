@@ -565,12 +565,20 @@ function validateCollectionPayload(payload: unknown): {
     errors.push("Meters Out must be a valid non-negative number");
   }
 
-  if (p.sasStartTime && !(p.sasStartTime instanceof Date)) {
-    errors.push("SAS Start Time must be a valid Date object");
+  if (p.sasStartTime) {
+    if (!(p.sasStartTime instanceof Date)) {
+      errors.push("SAS Start Time must be a valid Date object");
+    } else if (isNaN(p.sasStartTime.getTime())) {
+      errors.push("SAS Start Time is an invalid Date");
+    }
   }
 
-  if (p.sasEndTime && !(p.sasEndTime instanceof Date)) {
-    errors.push("SAS End Time must be a valid Date object");
+  if (p.sasEndTime) {
+    if (!(p.sasEndTime instanceof Date)) {
+      errors.push("SAS End Time must be a valid Date object");
+    } else if (isNaN(p.sasEndTime.getTime())) {
+      errors.push("SAS End Time is an invalid Date");
+    }
   }
 
   return {

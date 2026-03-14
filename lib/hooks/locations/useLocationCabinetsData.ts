@@ -106,8 +106,11 @@ export function useLocationCabinetsData({
     moneyIn: number;
     moneyOut: number;
     gross: number;
+    jackpot: number;
+    netGross: number;
   } | null>(null);
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
+  const [useNetGross, setUseNetGross] = useState<boolean>(false);
 
   // Effect to handle automatic sorting when status changes to Offline sorting variants
   useEffect(() => {
@@ -460,7 +463,7 @@ export function useLocationCabinetsData({
               displayCurrency,
               signal,
               locationId,
-              undefined, // gameType handled by filteredCabinets or we could pass it here
+              selectedGameType !== 'all' ? selectedGameType : undefined,
               onlineStatus,
               debouncedSearchTerm
             ),
@@ -561,6 +564,7 @@ export function useLocationCabinetsData({
               locationData.enableMembership === true
             );
             setLocationData(locationData);
+            setUseNetGross(Boolean(locationData.useNetGross));
           }
         } catch (locationError) {
           const errorWithStatus = locationError as Error & {
@@ -857,6 +861,7 @@ export function useLocationCabinetsData({
     debouncedSearchTerm,
     financialTotals,
     totalCount,
+    useNetGross,
     // Setters
     setSearchTerm: useCallback((term: string) => {
       if (term !== searchTerm) {

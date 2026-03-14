@@ -59,6 +59,9 @@ type CollectionModalState = {
     ramClearMetersOut: string;
     notes: string;
     collectionTime: Date;
+    sasStartTime: Date | null;
+    sasEndTime: Date | null;
+    showAdvancedSas: boolean;
   };
 
   // Actions
@@ -118,6 +121,9 @@ const initialFormData = {
   ramClearMetersOut: '',
   notes: '',
   collectionTime: new Date(),
+  sasStartTime: null,
+  sasEndTime: null,
+  showAdvancedSas: false,
 };
 
 // ============================================================================
@@ -207,10 +213,26 @@ const createStore = () => {
       financials: { ...state.financials, ...financials },
     })),
 
-  setFormData: formData =>
-    set(state => ({
-      formData: { ...state.formData, ...formData },
-    })),
+  setFormData: (formData) =>
+    set(state => {
+      const newFormData = { ...state.formData, ...formData };
+      
+      // If collectionTime is updated and we are NOT in advanced mode,
+      // sync sasEndTime to match collectionTime.
+      if (formData.collectionTime && !newFormData.showAdvancedSas) {
+        newFormData.sasEndTime = formData.collectionTime;
+      }
+      
+      // If toggling advanced mode OFF, sync sasEndTime to collectionTime
+      if (formData.showAdvancedSas === false) {
+        newFormData.sasEndTime = newFormData.collectionTime;
+        newFormData.sasStartTime = null; // Clear manual start time override
+      }
+
+      return {
+        formData: newFormData,
+      };
+    }),
 
   calculateCarryover: (collectedAmount: string, baseBalanceCorrection: string) => {
     set(state => {

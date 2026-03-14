@@ -6,7 +6,6 @@
 
 'use client';
 
-import { Button } from '@/components/shared/ui/button';
 import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { Input } from '@/components/shared/ui/input';
 import { Textarea } from '@/components/shared/ui/textarea';
@@ -31,8 +30,6 @@ type EditCollectionFinancialsProps = {
   baseBalanceCorrection: string;
   setBaseBalanceCorrection: (val: string) => void;
   isProcessing: boolean;
-  isUpdateReportEnabled: boolean;
-  onUpdateReport: () => Promise<void>;
   onCollectedAmountChange?: (value: string) => void;
 };
 
@@ -42,8 +39,6 @@ export default function CollectionReportEditFinancials({
   baseBalanceCorrection,
   setBaseBalanceCorrection,
   isProcessing,
-  isUpdateReportEnabled,
-  onUpdateReport,
   onCollectedAmountChange,
 }: EditCollectionFinancialsProps) {
   const onFinancialsChange = (updates: Partial<FinancialsData>) => {
@@ -142,8 +137,8 @@ export default function CollectionReportEditFinancials({
             Amount To Collect:
             <CalculationHelp 
               title="Amount to Collect" 
-              formula="(Total Meters In - Total Meters Out) - Variance - Advance - Partner Share + Opening Balance" 
-              description="This is the target amount of cash you should have in hand. It takes the total machine revenue and subtracts expenses (Advance/Variance) and the Partner's profit share, then adds any balance carried over from the last collection."
+              formula="(Meters Profit - Variance - Advance) - Partner Share + Opening Balance" 
+              description="This is the ESTIMATED target amount. It starts with the machine revenue (Meters In - Out), subtracts manual adjustments (Advance/Variance) and the Partner's share, and then adds the opening balance carried over from the previous collection."
             />
           </label>
           <Input
@@ -164,7 +159,7 @@ export default function CollectionReportEditFinancials({
             <CalculationHelp 
               title="Collected Amount" 
               formula="The actual physical cash you counted" 
-              description="This is the most important field. Enter the total amount of cash you actually retrieved and counted from all machines. This should ideally match the 'Amount to Collect' field."
+              description="Enter the EXACT total amount of physical cash retrieving from all machines. The system compares this to the 'Amount to Collect' to determine the shortage or overage for the next report."
             />
           </label>
           <Input
@@ -217,8 +212,8 @@ export default function CollectionReportEditFinancials({
             Balance Correction:
             <CalculationHelp 
               title="Balance Correction" 
-              formula="Manual Adjustment to Opening Balance" 
-              description="Use this to set or adjust the starting balance for this collection. It 'unlocks' the Collected Amount field to ensure you acknowledge the starting state before entering the collection results."
+              formula="Manual Adjustment + (Collected - Amount to Collect)" 
+              description="This field shows the final balance for the current location. It's calculated by taking the manual correction and adding the current collection difference (Shortage/Overage). You must set a manual value here first to unlock the 'Collected Amount' field."
             />
           </label>
           <Input
@@ -270,7 +265,7 @@ export default function CollectionReportEditFinancials({
             <CalculationHelp 
               title="Current/New Balance" 
               formula="Collected Amount - Amount to Collect" 
-              description="This shows if there is a shortage (negative) or overage (positive) in the collection. This value will be carried over as the 'Opening Balance' for the next collection at this location."
+              description="The difference between what you actually collected and what the system expected. A negative value means a shortage. This net result is carried forward to the next collection report automatically."
             />
           </label>
           <Input
@@ -357,15 +352,6 @@ export default function CollectionReportEditFinancials({
         </div>
       </div>
 
-      <div className="mt-8 flex justify-end">
-        <Button
-          onClick={onUpdateReport}
-          disabled={!isUpdateReportEnabled || isProcessing}
-          className="bg-green-600 px-8 py-6 text-lg font-bold text-white hover:bg-green-700"
-        >
-          {isProcessing ? 'Updating Report...' : 'UPDATE COLLECTION REPORT'}
-        </Button>
-      </div>
     </div>
   );
 }

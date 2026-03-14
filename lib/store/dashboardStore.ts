@@ -15,14 +15,14 @@ const dummyState: DashBoardStore = {
   showDatePicker: false,
   activeTab: 'Cabinets',
   activeFilters: {
-    Today: true,
-    Yesterday: false,
+    Today: false,
+    Yesterday: true,
     last7days: false,
     last30days: false,
     Custom: false,
   },
-  activeMetricsFilter: 'Today',
-  activePieChartFilter: 'Today',
+  activeMetricsFilter: 'Yesterday',
+  activePieChartFilter: 'Yesterday',
   totals: null,
   chartData: null,
   gamingLocations: [],
@@ -78,13 +78,13 @@ const createStore = () => {
         activeTab: 'Cabinets',
         activeFilters: {
           Today: false,
-          Yesterday: false,
+          Yesterday: true,
           last7days: false,
           last30days: false,
           Custom: false,
         },
-        activeMetricsFilter: 'Today',
-        activePieChartFilter: 'Today',
+        activeMetricsFilter: 'Yesterday',
+        activePieChartFilter: 'Yesterday',
         totals: null,
         chartData: null,
         gamingLocations: [],
@@ -157,9 +157,18 @@ const createStore = () => {
                 : new Date(range.endDate);
             revivedRange = { startDate: sd, endDate: ed };
           }
+          // Ensure activeMetricsFilter is always a valid truthy value.
+          // A persisted '' or undefined (e.g. from resetFilters or old localStorage) would
+          // override the default 'Yesterday' via spread, leaving no button highlighted.
+          const activeMetricsFilter =
+            (persisted.activeMetricsFilter as string) ||
+            cur.activeMetricsFilter ||
+            'Yesterday';
           return {
             ...cur,
             ...persisted,
+            activeMetricsFilter,
+            activePieChartFilter: activeMetricsFilter,
             ...(revivedRange ? { customDateRange: revivedRange } : {}),
             // Force reset loading states and chartData to ensure consistent initial load
             initialLoading: true,

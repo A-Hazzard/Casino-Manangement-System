@@ -37,6 +37,7 @@ export type DailyTrendItem = {
   drop: number;
   totalCancelledCredits: number;
   gross: number;
+  netGross?: number;
 };
 
 export type LocationTrendData = {
@@ -51,6 +52,7 @@ export type LocationTrendData = {
     drop: number;
     totalCancelledCredits: number;
     gross: number;
+    netGross?: number;
   }
   | string
   | undefined;
@@ -409,6 +411,23 @@ function buildLocationTrendsPipeline(
         drop: 1,
         totalCancelledCredits: 1,
         gross: 1,
+        netGross: {
+          $cond: [
+            { $eq: [{ $ifNull: ['$locationDetails.useNetGross', false] }, true] },
+            { 
+              $subtract: [
+                {
+                  $subtract: [
+                    { $ifNull: ['$movement.drop', 0] },
+                    { $ifNull: ['$movement.totalCancelledCredits', 0] },
+                  ],
+                },
+                { $ifNull: ['$movement.jackpot', 0] }
+              ]
+            },
+            { $literal: undefined }
+          ]
+        },
       },
     } as PipelineStage
   );
@@ -509,6 +528,10 @@ function convertDailyTrendItems(
         convertToUSD(item.gross, nativeCurrency),
         displayCurrency
       ),
+      netGross: item.netGross !== undefined ? convertFromUSD(
+        convertToUSD(item.netGross, nativeCurrency),
+        displayCurrency
+      ) : undefined,
     };
   });
 }
@@ -544,6 +567,7 @@ function formatHourlyTrends(
         drop: locationData?.drop || 0,
         totalCancelledCredits: locationData?.totalCancelledCredits || 0,
         gross: locationData?.gross || 0,
+        netGross: locationData?.netGross || 0,
       };
     });
 
@@ -581,6 +605,7 @@ function convertDailyTrendsToLocationTrends(
       drop: item.drop,
       totalCancelledCredits: item.totalCancelledCredits,
       gross: item.gross,
+      netGross: item.netGross || 0,
     };
   });
 
@@ -596,6 +621,7 @@ function convertDailyTrendsToLocationTrends(
           drop: 0,
           totalCancelledCredits: 0,
           gross: 0,
+          netGross: 0,
         };
       }
     });
@@ -640,6 +666,7 @@ function formatDailyTrends(
         drop: locationData?.drop || 0,
         totalCancelledCredits: locationData?.totalCancelledCredits || 0,
         gross: locationData?.gross || 0,
+        netGross: locationData?.netGross || 0,
       };
     });
 
@@ -686,6 +713,7 @@ function formatWeeklyTrends(
         drop: locationData?.drop || 0,
         totalCancelledCredits: locationData?.totalCancelledCredits || 0,
         gross: locationData?.gross || 0,
+        netGross: locationData?.netGross || 0,
       };
     });
 
@@ -734,6 +762,7 @@ function formatMonthlyTrends(
         drop: locationData?.drop || 0,
         totalCancelledCredits: locationData?.totalCancelledCredits || 0,
         gross: locationData?.gross || 0,
+        netGross: locationData?.netGross || 0,
       };
     });
 
@@ -759,6 +788,7 @@ function calculateLocationTotals(
     drop: number;
     totalCancelledCredits: number;
     gross: number;
+    netGross: number;
   }
 > {
   const totals: Record<
@@ -771,6 +801,7 @@ function calculateLocationTotals(
       drop: number;
       totalCancelledCredits: number;
       gross: number;
+      netGross: number;
     }
   > = {};
 
@@ -783,6 +814,7 @@ function calculateLocationTotals(
       drop: 0,
       totalCancelledCredits: 0,
       gross: 0,
+      netGross: 0,
     };
   });
 
@@ -795,6 +827,7 @@ function calculateLocationTotals(
       totals[item.location].drop += item.drop;
       totals[item.location].totalCancelledCredits += item.totalCancelledCredits;
       totals[item.location].gross += item.gross;
+      totals[item.location].netGross += (item.netGross || 0);
     }
   });
 
@@ -829,6 +862,7 @@ export async function getLocationTrends(
       plays: number;
       drop: number;
       gross: number;
+      netGross: number;
     }
   >;
   locations: string[];

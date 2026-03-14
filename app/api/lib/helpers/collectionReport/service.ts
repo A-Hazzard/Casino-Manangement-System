@@ -165,8 +165,15 @@ export async function getAllCollectionReportsWithMachineCounts(
       $group: {
         _id: '$locationReportId',
         collectedMachines: { $sum: 1 },
-        calculatedGross: { $sum: '$movement.gross' },
-        calculatedSasGross: { $sum: '$sasMeters.gross' },
+        calculatedGross: {
+          $sum: {
+            $subtract: [
+              { $subtract: [{ $toDouble: { $ifNull: ['$metersIn', 0] } }, { $toDouble: { $ifNull: ['$prevIn', 0] } }] },
+              { $subtract: [{ $toDouble: { $ifNull: ['$metersOut', 0] } }, { $toDouble: { $ifNull: ['$prevOut', 0] } }] },
+            ],
+          },
+        },
+        calculatedSasGross: { $sum: { $toDouble: { $ifNull: ['$sasMeters.gross', 0] } } },
       },
     },
   ]);
@@ -261,14 +268,22 @@ export async function getAllCollectionReportsWithMachineCounts(
       machineCountMap.get(locationId as string) ||
       collectionData.collectedMachines;
 
-    // Calculate variation (metersGross - sasGross)
-    const calculatedVariation =
-      collectionData.calculatedGross - collectionData.calculatedSasGross;
-
     // Use stored values for financial data (not calculated from meters)
+    const storedVariance = (doc.variance as number) ?? (doc.variation as number);
+    
+    // Use SAS gross if available, fallback to machine total gross (matches "Total Machine Gross" in UI)
+    const storedGross = (doc.totalSasGross as number) || (doc.totalGross as number);
     const calculatedCollected = (doc.amountCollected as number) || 0;
     const calculatedLocationRevenue = (doc.partnerProfit as number) || 0;
     const calculatedBalance = (doc.currentBalance as number) || 0;
+
+    // Priority: calculatedGross (Machine Delta) -> stored totalGross -> totalSasGross from report -> calculatedSasGross
+    const displayGross = collectionData.calculatedGross || storedGross || collectionData.calculatedSasGross;
+
+    // Use stored variance if available
+    const displayVariation = typeof storedVariance === 'number'
+      ? storedVariance
+      : (collectionData.calculatedGross - (collectionData.calculatedSasGross || 0));
 
     // Determine collector value (user ID) and display name
     const collectorUserId = (doc.collector as string) || '';
@@ -345,14 +360,14 @@ export async function getAllCollectionReportsWithMachineCounts(
       collectorTooltipData, // Tooltip data with firstName, lastName, ID, email
       collectorUserNotFound, // Flag to indicate user no longer exists
       location: locationName,
-      gross: formatSmartDecimal(collectionData.calculatedGross),
+      gross: formatSmartDecimal(displayGross),
       machines: `${collectionData.collectedMachines || 0}/${totalMachines || 0}`,
       collected: formatSmartDecimal(calculatedCollected),
       uncollected:
         typeof doc.amountUncollected === 'number'
           ? formatSmartDecimal(doc.amountUncollected as number)
           : (doc.amountUncollected as string) || '-',
-      variation: formatSmartDecimal(calculatedVariation),
+      variation: formatSmartDecimal(displayVariation),
       balance: formatSmartDecimal(calculatedBalance),
       locationRevenue: formatSmartDecimal(calculatedLocationRevenue),
       time: (() => {

@@ -91,6 +91,9 @@ export default function CabinetsPageContent() {
     refreshTrigger,
     chartData,
     loadingChart,
+    totalPages,
+    totalCount,
+    useNetGross,
     setActiveSection,
     setSearchTerm,
     setSelectedLocation,
@@ -213,6 +216,8 @@ export default function CabinetsPageContent() {
                   totals={metricsTotals || financialTotals}
                   loading={loading || metricsTotalsLoading}
                   title="Total for all Machines"
+                  locationFiltered={selectedLocation.length > 0 && !selectedLocation.includes('all')}
+                  useNetGross={useNetGross}
                 />
               </div>
             )}
@@ -225,6 +230,7 @@ export default function CabinetsPageContent() {
                     loadingChartData={loadingChart}
                     chartData={chartData}
                     activeMetricsFilter={activeMetricsFilter}
+                    useNetGross={useNetGross}
                   />
                 </div>
               </div>
@@ -285,14 +291,15 @@ export default function CabinetsPageContent() {
                 sortOption={sortOption}
                 sortOrder={sortOrder}
                 currentPage={currentPage}
-                totalPages={cabinetsPageData.totalPages}
-                totalCount={cabinetsPageData.totalCount}
+                totalPages={totalPages}
+                totalCount={totalCount}
                 onPageChange={setCurrentPage}
                 onSort={handleColumnSort}
                 onEdit={() => {}}
                 onDelete={() => {}}
                 onRetry={loadCabinets}
                 transformCabinet={transformCabinet}
+                showNetGross={useNetGross}
               />
             </div>
           </div>

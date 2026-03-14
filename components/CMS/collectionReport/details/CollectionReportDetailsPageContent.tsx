@@ -227,6 +227,7 @@ export default function CollectionReportDetailsPageContent() {
               currentPage={machinePage}
               totalPages={machineTotalPages}
               onPageChange={setMachinePage}
+              useNetGross={reportData.useNetGross || false}
             />
           )}
 
@@ -272,6 +273,7 @@ export default function CollectionReportDetailsPageContent() {
               currentPage={machinePage}
               totalPages={machineTotalPages}
               onPageChange={setMachinePage}
+              useNetGross={reportData.useNetGross || false}
             />
           )}
 

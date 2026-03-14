@@ -123,10 +123,10 @@ export default function ReportsMetersLocationSelection({
         {/* Location Selection and Top Machines - Conditionally in grid if chart on right */}
         <div className={`grid grid-cols-1 gap-4 ${shouldShowChartOnRight ? 'lg:grid-cols-2' : ''}`}>
           {/* Location Selection Controls */}
-          <div className="space-y-3">
+          <div className="bg-buttonActive p-4 rounded-lg space-y-3">
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-white">
                   Select Locations
                 </label>
                 {selectedLocations.length > 0 && (
@@ -134,7 +134,7 @@ export default function ReportsMetersLocationSelection({
                     variant="outline"
                     size="sm"
                     onClick={() => onSelectionChange([])}
-                    className="h-7 text-xs"
+                    className="h-7 border-white bg-white/20 text-xs text-white hover:bg-white/30"
                   >
                     Clear Selection
                   </Button>

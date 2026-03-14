@@ -1,17 +1,26 @@
 import React from 'react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
+interface LocationsCabinetTableSkeletonProps {
+  showNetGross?: boolean;
+}
+
 /**
  * Locations Cabinet Table Skeleton Loader
  * Matches the exact structure of CabinetTable component
  */
-const LocationsCabinetTableSkeleton: React.FC = () => (
+const LocationsCabinetTableSkeleton: React.FC<LocationsCabinetTableSkeletonProps> = ({
+  showNetGross = false,
+}) => (
   <div className="w-full overflow-x-auto bg-white shadow">
     <table className="w-full">
       <thead>
         <tr className="bg-[#00b517] hover:bg-[#00b517]">
           <th className="relative w-[240px] p-3 text-left font-semibold text-white">
             <span>ASSET NUMBER</span>
+          </th>
+          <th className="relative p-3 text-center font-semibold text-white">
+            <span>NETWORK</span>
           </th>
           <th className="relative p-3 text-center font-semibold text-white">
             <span>MONEY IN</span>
@@ -25,6 +34,11 @@ const LocationsCabinetTableSkeleton: React.FC = () => (
           <th className="relative p-3 text-center font-semibold text-white">
             <span>GROSS</span>
           </th>
+          {showNetGross && (
+            <th className="relative p-3 text-center font-semibold text-white">
+              <span>NET GROSS</span>
+            </th>
+          )}
           <th className="p-3 text-center font-semibold text-white">
             <span>ACTIONS</span>
           </th>
@@ -57,6 +71,12 @@ const LocationsCabinetTableSkeleton: React.FC = () => (
                 </div>
               </div>
             </td>
+            {/* Network Row 1 */}
+            <td className="p-3">
+              <div className="flex justify-center">
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+            </td>
             {/* Financial Columns (Centered) */}
             {[...Array(4)].map((_, colIndex) => (
               <td
@@ -66,6 +86,12 @@ const LocationsCabinetTableSkeleton: React.FC = () => (
                 <Skeleton className="mx-auto h-4 w-20" />
               </td>
             ))}
+            {/* Net Gross Column */}
+            {showNetGross && (
+              <td className="p-3 text-center align-middle text-sm">
+                <Skeleton className="mx-auto h-4 w-20" />
+              </td>
+            )}
             {/* Actions Column (Centered) */}
             <td className="p-3 text-center align-middle text-sm">
               <div className="flex items-center justify-center gap-2">

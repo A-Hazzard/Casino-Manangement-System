@@ -17,6 +17,8 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
+import { Meters } from '@/app/api/lib/models/meters';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -38,9 +40,13 @@ export async function GET(
 
   try {
     // ============================================================================
-    // STEP 1: Parse route parameters
+    // STEP 1: Parse route parameters and query params
     // ============================================================================
     const { locationId, cabinetId } = await params;
+    const { searchParams } = new URL(request.url);
+    const timePeriod = searchParams.get('timePeriod');
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -63,7 +69,7 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 4: Verify location exists
+    // STEP 4: Verify location exists and get gameDayOffset
     // ============================================================================
     const location = await GamingLocations.findOne({
       _id: locationId,
@@ -71,13 +77,14 @@ export async function GET(
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    });
+    }).lean<{ gameDayOffset?: number } | null>();
     if (!location) {
       return NextResponse.json(
         { success: false, error: 'Location not found or has been deleted' },
         { status: 404 }
       );
     }
+    const gameDayOffset = location.gameDayOffset ?? 8;
 
     // ============================================================================
     // STEP 5: Fetch cabinet from database
@@ -89,7 +96,7 @@ export async function GET(
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    });
+    }).lean<Record<string, unknown>>();
 
     if (!cabinet) {
       return NextResponse.json(
@@ -99,7 +106,90 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 6: Return cabinet data
+    // STEP 6: Compute date-filtered metrics from Meters if a time period is given
+    // ============================================================================
+    const hasDateFilter =
+      timePeriod && timePeriod !== 'All Time';
+
+    if (hasDateFilter) {
+      try {
+        let startDate: Date | undefined;
+        let endDate: Date | undefined;
+
+        if (timePeriod === 'Custom' && startDateParam && endDateParam) {
+          const customStart = new Date(startDateParam);
+          const customEnd = new Date(endDateParam);
+          if (!isNaN(customStart.getTime()) && !isNaN(customEnd.getTime())) {
+            startDate = customStart;
+            endDate = customEnd;
+          }
+        } else if (timePeriod) {
+          const range = getGamingDayRangeForPeriod(timePeriod, gameDayOffset);
+          startDate = range.rangeStart;
+          endDate = range.rangeEnd;
+        }
+
+        if (startDate && endDate) {
+          const metricsResult = await Meters.aggregate([
+            {
+              $match: {
+                machine: cabinetId,
+                readAt: { $gte: startDate, $lte: endDate },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                drop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+                totalCancelledCredits: {
+                  $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+                },
+                jackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
+              },
+            },
+          ]).exec();
+
+          if (metricsResult.length > 0) {
+            const raw = metricsResult[0] as {
+              drop: number;
+              totalCancelledCredits: number;
+              jackpot: number;
+            };
+            const multiplier =
+              Number((cabinet as Record<string, unknown>).collectionMultiplier) || 1;
+
+            const moneyIn = raw.drop * multiplier;
+            const moneyOut = raw.totalCancelledCredits * multiplier;
+            const jackpot = raw.jackpot * multiplier;
+            const gross = moneyIn - moneyOut;
+            const netGross = gross - jackpot;
+
+            // Overlay computed metrics onto the cabinet document
+            (cabinet as Record<string, unknown>).moneyIn = moneyIn;
+            (cabinet as Record<string, unknown>).moneyOut = moneyOut;
+            (cabinet as Record<string, unknown>).gross = gross;
+            (cabinet as Record<string, unknown>).jackpot = jackpot;
+            (cabinet as Record<string, unknown>).netGross = netGross;
+          } else {
+            // No meter readings in the range → zero out the metrics
+            (cabinet as Record<string, unknown>).moneyIn = 0;
+            (cabinet as Record<string, unknown>).moneyOut = 0;
+            (cabinet as Record<string, unknown>).gross = 0;
+            (cabinet as Record<string, unknown>).jackpot = 0;
+            (cabinet as Record<string, unknown>).netGross = 0;
+          }
+        }
+      } catch (metricsError) {
+        // Non-fatal: log but still return the cabinet with raw all-time values
+        console.error(
+          '[Location Cabinet API GET] Failed to aggregate date-filtered metrics:',
+          metricsError
+        );
+      }
+    }
+
+    // ============================================================================
+    // STEP 7: Return cabinet data
     // ============================================================================
     return NextResponse.json({
       success: true,

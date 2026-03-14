@@ -120,6 +120,7 @@ export default function DashboardDesktopLayout(
           totals={props.totals}
           loading={props.loadingTotals ?? props.loadingChartData}
           title="Total for all Locations and Machines"
+          locationFiltered={false}
         />
 
         {/* Trend Chart Section */}

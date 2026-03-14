@@ -47,6 +47,14 @@ type MachineDataEntryFormProps = {
   // State
   disabled?: boolean;
   isProcessing?: boolean;
+
+  // SAS manual overrides
+  showAdvancedSas?: boolean;
+  onAdvancedSasToggle?: () => void;
+  sasStartTime?: Date | null;
+  onSasStartTimeChange?: (date: Date | null) => void;
+  sasEndTime?: Date | null;
+  onSasEndTimeChange?: (date: Date | null) => void;
 };
 
 /**
@@ -83,6 +91,12 @@ export default function CollectionReportFormMachineDataEntry({
   onAdvanceChange,
   disabled = false,
   isProcessing = false,
+  showAdvancedSas = false,
+  onAdvancedSasToggle,
+  sasStartTime = null,
+  onSasStartTimeChange,
+  sasEndTime = null,
+  onSasEndTimeChange,
 }: MachineDataEntryFormProps) {
   const inputsEnabled = !disabled && !isProcessing;
 
@@ -97,12 +111,68 @@ export default function CollectionReportFormMachineDataEntry({
         onViewMachine={onViewMachine}
       />
 
-      {/* Collection Time */}
-      <CollectionReportFormTimeInput
-        date={collectionTime}
-        onDateChange={onCollectionTimeChange}
-        disabled={isProcessing}
-      />
+      {/* Advanced SAS Overrides Toggle */}
+      <div className="mb-2">
+        <button
+          type="button"
+          className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-semibold bg-blue-50 px-3 py-2 rounded-lg w-full justify-center border border-blue-100"
+          onClick={onAdvancedSasToggle}
+        >
+          {showAdvancedSas ? '← Hide Manual SAS Options' : 'Advanced: Manual SAS Times'}
+        </button>
+      </div>
+
+      {!showAdvancedSas ? (
+        <CollectionReportFormTimeInput
+          date={collectionTime}
+          onDateChange={onCollectionTimeChange}
+          disabled={isProcessing}
+        />
+      ) : (
+        <div className="space-y-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+          <p className="text-[10px] font-bold text-blue-900 uppercase tracking-widest text-center">
+            Manual SAS Reporting Period
+          </p>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-gray-700">
+                SAS Start Time
+              </label>
+              <CollectionReportFormTimeInput
+                date={
+                  sasStartTime && !isNaN(new Date(sasStartTime).getTime())
+                    ? new Date(sasStartTime)
+                    : new Date()
+                }
+                onDateChange={date => onSasStartTimeChange?.(date || null)}
+                disabled={isProcessing}
+                showHelpText={false}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-gray-700">
+                SAS End Time
+              </label>
+              <CollectionReportFormTimeInput
+                date={
+                  sasEndTime && !isNaN(new Date(sasEndTime).getTime())
+                    ? new Date(sasEndTime)
+                    : new Date()
+                }
+                onDateChange={date => onSasEndTimeChange?.(date || null)}
+                disabled={isProcessing}
+                showHelpText={false}
+              />
+            </div>
+          </div>
+          
+          <p className="text-[10px] text-blue-600 italic leading-relaxed text-center px-2">
+            * Overrides automatic calculation based on collection time.
+          </p>
+        </div>
+      )}
 
       {/* Meter Inputs */}
       <CollectionReportFormMachineMeters

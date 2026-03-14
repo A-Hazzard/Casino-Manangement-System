@@ -187,6 +187,8 @@ export type MachineMetric = {
   actualMachineId?: string;
   dropCancelled: string;
   metersGross: number;
+  jackpot?: number;
+  netGross?: number;
   sasGross?: number | string;
   variation?: number | string;
   sasStartTime?: string;
@@ -198,6 +200,8 @@ export type MachineMetric = {
 export type LocationMetric = {
   droppedCancelled: string;
   metersGross: number;
+  jackpot?: number;
+  netGross?: number;
   variation: number;
   sasGross: number;
   locationRevenue: number;
@@ -230,4 +234,5 @@ export type CollectionReportData = {
   locationMetrics: LocationMetric;
   sasMetrics?: SASMetric;
   isEditing?: boolean;
+  useNetGross?: boolean;
 };

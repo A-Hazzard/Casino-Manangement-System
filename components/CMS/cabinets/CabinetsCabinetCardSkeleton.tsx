@@ -28,6 +28,7 @@ export default function CabinetsCabinetCardSkeleton() {
           {/* SMIB ID and Details */}
           <div className="mb-3">
             <Skeleton className="mb-1 h-4 w-24" />
+            <Skeleton className="mb-1 h-3 w-16 rounded-full" />
             <Skeleton className="mb-1 h-4 w-40" />
             <Skeleton className="h-4 w-48" />
           </div>
@@ -46,8 +47,12 @@ export default function CabinetsCabinetCardSkeleton() {
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-4 w-24" />
             </div>
-            <div className="flex justify-between">
+            <div className="mb-1 flex justify-between">
               <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-20" />
               <Skeleton className="h-4 w-24" />
             </div>
           </div>
