@@ -406,7 +406,7 @@ export const fetchMetricsData = async (
   setShowDatePicker: (show: boolean) => void,
   displayCurrency?: string,
   signal?: AbortSignal,
-  granularity?: 'hourly' | 'minute'
+  granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
 ) => {
   // Fetch both totals and chart data in parallel to ensure they complete together
   // This prevents the skeleton from disappearing when totals is set but chartData is still loading

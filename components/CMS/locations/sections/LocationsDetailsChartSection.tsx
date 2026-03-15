@@ -104,6 +104,13 @@ export default function LocationsDetailsChartSection({
                   <option value="hourly">Hourly</option>
                 </>
               )}
+              {/* Show daily/weekly options for Last 30 Days */}
+              {(activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days') && (
+                <>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                </>
+              )}
               {/* Show monthly/weekly options for longer time periods with sufficient data */}
               {availableGranularityOptions &&
                 availableGranularityOptions.includes('monthly') && (
@@ -115,7 +122,8 @@ export default function LocationsDetailsChartSection({
               {/* Show daily/weekly options for medium time periods */}
               {availableGranularityOptions &&
                 availableGranularityOptions.includes('daily') &&
-                !availableGranularityOptions.includes('monthly') && (
+                !availableGranularityOptions.includes('monthly') &&
+                activeMetricsFilter !== '30d' && activeMetricsFilter !== 'last30days' && (
                   <>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>

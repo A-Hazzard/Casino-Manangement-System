@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
       rawLicencee && rawLicencee !== 'all' ? String(rawLicencee) : '';
     const displayCurrency =
       (params.currency as CurrencyCode | undefined) || 'USD';
-    const granularity = params.granularity as 'hourly' | 'minute' | undefined;
+    const granularity = params.granularity as 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly' | undefined;
 
     // Parse filter parameters
     const locationIdParam = params.locationId;
@@ -197,7 +197,7 @@ export async function GET(req: NextRequest) {
         startDate,
         endDate,
         displayCurrency,
-        granularity,
+        granularity: granularity === 'monthly' ? undefined : granularity,
         locationIds,
         gameTypes,
         onlineStatus,

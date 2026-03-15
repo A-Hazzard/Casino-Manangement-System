@@ -253,10 +253,13 @@ export function useCabinetsPageData() {
     setLoadingChart(true);
     try {
       await makeRequest(async signal => {
-        // Only pass minute/hourly to API - daily/weekly/monthly are handled by auto-detection
-        const apiGranularity: 'hourly' | 'minute' | undefined =
+        // Pass granularity to API for short periods and 30d daily/weekly
+        const apiGranularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly' | undefined =
           chartGranularity === 'minute' ? 'minute' :
-          chartGranularity === 'hourly' ? 'hourly' : undefined;
+          chartGranularity === 'hourly' ? 'hourly' :
+          chartGranularity === 'daily' ? 'daily' :
+          chartGranularity === 'weekly' ? 'weekly' :
+          chartGranularity === 'monthly' ? 'monthly' : undefined;
         const data = await getMetrics(
           activeMetricsFilter as TimePeriod,
           customDateRange?.startDate,

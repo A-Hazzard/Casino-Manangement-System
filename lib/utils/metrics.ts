@@ -32,7 +32,7 @@ export async function switchFilter(
   setShowDatePicker?: (state: boolean) => void,
   displayCurrency?: string,
   signal?: AbortSignal,
-  granularity?: 'hourly' | 'minute'
+  granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
 ): Promise<void> {
   try {
     // If setActiveFilters is provided, update the filter state

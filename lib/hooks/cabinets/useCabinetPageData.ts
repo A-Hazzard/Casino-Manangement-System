@@ -151,6 +151,10 @@ export function useCabinetPageData() {
         sd.getMonth() === ed.getMonth() &&
         sd.getDate() === ed.getDate();
     }
+    // Show daily/weekly selector for Last 30 Days
+    if (activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days') {
+      return true;
+    }
     // For Quarterly and All Time, show selector if we have available options (data span >= 1 week)
     if (
       (activeMetricsFilter === 'Quarterly' ||
@@ -352,12 +356,13 @@ export function useCabinetPageData() {
       sd.getDate() === ed.getDate();
   }, [activeMetricsFilter, customDateRange?.startDate, customDateRange?.endDate]);
 
-  // Memoize effective granularity - only changes when granularity matters (short periods)
-  // For long periods, granularity is handled client-side and shouldn't trigger refetch
+  // Memoize effective granularity - triggers refetch when granularity changes for supported periods
   const effectiveGranularity = useMemo(() => {
     const isShortPeriod =
       activeMetricsFilter === 'Today' || activeMetricsFilter === 'Yesterday';
-    return (isShortPeriod || isCustomShortPeriod) ? chartGranularity : null;
+    const is30d = activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days';
+    const isLongPeriod = activeMetricsFilter === 'Quarterly' || activeMetricsFilter === 'All Time';
+    return (isShortPeriod || isCustomShortPeriod || is30d || isLongPeriod) ? chartGranularity : null;
   }, [activeMetricsFilter, chartGranularity, isCustomShortPeriod]);
 
   // Fetch chart data
@@ -370,12 +375,13 @@ export function useCabinetPageData() {
     makeChartRequest(async signal => {
       setLoadingChart(true);
       try {
-        // Pass granularity to API for short periods (Today/Yesterday/Custom ≤ 2 days)
-        // For Quarterly/All Time, granularity is handled client-side and shouldn't trigger refetch
+        // Pass granularity to API for all periods that support granularity selection
         const isShortPeriod =
           activeMetricsFilter === 'Today' ||
           activeMetricsFilter === 'Yesterday';
-        const granularity = (isShortPeriod || isCustomShortPeriod) ? chartGranularity : undefined;
+        const is30d = activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days';
+        const isLongPeriod = activeMetricsFilter === 'Quarterly' || activeMetricsFilter === 'All Time';
+        const granularity = (isShortPeriod || isCustomShortPeriod || is30d || isLongPeriod) ? chartGranularity : undefined;
 
         const effectiveStartDate = customDateRange?.startDate instanceof Date 
             ? customDateRange.startDate 

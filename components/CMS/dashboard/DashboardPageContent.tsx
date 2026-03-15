@@ -144,6 +144,10 @@ export default function DashboardPageContent() {
         sd.getMonth() === ed.getMonth() &&
         sd.getDate() === ed.getDate();
     }
+    // Show daily/weekly selector for Last 30 Days
+    if (activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days') {
+      return true;
+    }
     return false;
   }, [activeMetricsFilter, customDateRange]);
 
@@ -265,7 +269,11 @@ export default function DashboardPageContent() {
             setShowDatePicker,
             displayCurrency,
             signal,
-            chartGranularity === 'minute' ? 'minute' : 'hourly'
+            // Pass granularity to API for short periods (minute/hourly) and 30d (daily/weekly)
+            (chartGranularity === 'minute' || chartGranularity === 'hourly' ||
+              chartGranularity === 'daily' || chartGranularity === 'weekly')
+              ? chartGranularity
+              : undefined
           );
         });
 

@@ -212,6 +212,76 @@ export default function Chart({
     finalChartData = sortedChartData;
   }
 
+  // Client-side weekly aggregation: group daily data points by week
+  if (granularity === 'weekly' && !isHourlyChart && finalChartData.length > 0) {
+    const weeklyData: Record<string, dashboardData> = {};
+    finalChartData.forEach(item => {
+      if (!item.day) return;
+      const dateParts = item.day.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const date = dateParts
+        ? new Date(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3]))
+        : new Date(item.day);
+      if (isNaN(date.getTime())) return;
+      // Get Monday of the week
+      const dayOfWeek = date.getDay();
+      const monday = new Date(date);
+      monday.setDate(date.getDate() - ((dayOfWeek + 6) % 7));
+      const weekKey = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+
+      if (!weeklyData[weekKey]) {
+        weeklyData[weekKey] = {
+          xValue: weekKey,
+          day: weekKey,
+          time: '',
+          moneyIn: 0,
+          moneyOut: 0,
+          gross: 0,
+          netGross: 0,
+          location: item.location,
+          geoCoords: item.geoCoords,
+        };
+      }
+      weeklyData[weekKey].moneyIn += item.moneyIn || 0;
+      weeklyData[weekKey].moneyOut += item.moneyOut || 0;
+      weeklyData[weekKey].gross += item.gross || 0;
+      weeklyData[weekKey].netGross = (weeklyData[weekKey].netGross || 0) + (item.netGross || 0);
+    });
+    finalChartData = Object.values(weeklyData).sort((a, b) => parseDay(a.day) - parseDay(b.day));
+  }
+
+  // Client-side monthly aggregation: group daily data points by month
+  if (granularity === 'monthly' && !isHourlyChart && finalChartData.length > 0) {
+    const monthlyData: Record<string, dashboardData> = {};
+    finalChartData.forEach(item => {
+      if (!item.day) return;
+      const dateParts = item.day.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const date = dateParts
+        ? new Date(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3]))
+        : new Date(item.day);
+      if (isNaN(date.getTime())) return;
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = {
+          xValue: monthKey,
+          day: monthKey,
+          time: '',
+          moneyIn: 0,
+          moneyOut: 0,
+          gross: 0,
+          netGross: 0,
+          location: item.location,
+          geoCoords: item.geoCoords,
+        };
+      }
+      monthlyData[monthKey].moneyIn += item.moneyIn || 0;
+      monthlyData[monthKey].moneyOut += item.moneyOut || 0;
+      monthlyData[monthKey].gross += item.gross || 0;
+      monthlyData[monthKey].netGross = (monthlyData[monthKey].netGross || 0) + (item.netGross || 0);
+    });
+    finalChartData = Object.values(monthlyData).sort((a, b) => parseDay(a.day) - parseDay(b.day));
+  }
+
   // Filter out $0 values for both minute and hourly views
   // For minute-level data: show ALL non-zero values (even if < $0.01) to show every minute with activity
   // For hourly/daily data: use $0.01 threshold to filter out noise
@@ -372,8 +442,13 @@ export default function Chart({
     ];
   }
 
-  // Calculate responsive minWidth - smaller on mobile to prevent horizontal overflow
-  const minWidth = Math.max(600, gapFilteredChartData.length * 50);
+  // Calculate minWidth to ensure x-axis labels don't get hidden on narrow screens.
+  // The chart container scrolls horizontally only when minWidth exceeds the container width.
+  // Use moderate widths per point so charts fit on desktop but scroll on mobile.
+  const pxPerPoint = isHourlyChart ? 65 : 120;
+  const minWidth = gapFilteredChartData.length >= 5
+    ? Math.min(gapFilteredChartData.length * pxPerPoint, 2400)
+    : 0; // 0 means no minWidth constraint — chart fits container naturally
 
   const legendItems = [
     { label: 'Money In', color: '#a855f7' },
@@ -383,7 +458,7 @@ export default function Chart({
   ];
 
   return (
-    <div className="w-full max-w-full overflow-x-hidden rounded-lg bg-container p-4 shadow-md">
+    <div className="w-full max-w-full rounded-lg bg-container p-4 shadow-md">
       {/* Metric selection checkboxes */}
       <div className="mb-6 overflow-x-auto border-b pb-4">
         <div className="flex min-w-max flex-wrap items-center justify-center gap-x-6 gap-y-2">
@@ -420,14 +495,11 @@ export default function Chart({
         </div>
       </div>
 
-      {/* Scrollable Container - Desktop only, Mobile fits viewport */}
-      <div className="w-full max-w-full overflow-x-hidden lg:touch-pan-x lg:overflow-x-auto">
+      {/* Scrollable chart container — scrolls horizontally only when chart needs more space */}
+      <div className="w-full touch-pan-x overflow-x-auto overflow-y-hidden">
         <div
           className="w-full"
-          style={{
-            // On mobile: fit viewport, on desktop: use calculated minWidth
-            minWidth: `clamp(100%, ${minWidth}px, 100%)`,
-          }}
+          style={minWidth > 0 ? { minWidth: `${minWidth}px` } : undefined}
         >
           <ResponsiveContainer width="100%" height={320}>
             <AreaChart data={gapFilteredChartData}>
@@ -440,6 +512,7 @@ export default function Chart({
                       ? 'day'
                       : 'day'
                 }
+                interval={minWidth > 0 ? 0 : 'preserveStartEnd'}
                 tickFormatter={(val, index) => {
                   if (isHourlyChart) {
                     const day = gapFilteredChartData[index]?.day;

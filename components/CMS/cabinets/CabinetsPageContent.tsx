@@ -224,16 +224,47 @@ export default function CabinetsPageContent() {
 
             {/* Performance Visualization Chart */}
             {!shouldHideFinancials(user) && (
-              <div className="mb-6 w-full max-w-full overflow-x-hidden">
-                <div className="w-full max-w-full overflow-x-auto lg:overflow-x-visible">
-                  <DashboardChart
-                    loadingChartData={loadingChart}
-                    chartData={chartData}
-                    activeMetricsFilter={activeMetricsFilter}
-                    useNetGross={useNetGross}
-                    granularity={cabinetsPageData.chartGranularity}
-                  />
-                </div>
+              <div className="mb-6 w-full max-w-full">
+                {/* Granularity Selector for Last 30 Days and Quarterly */}
+                {((activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days' || activeMetricsFilter === 'Quarterly') && !loadingChart) && (
+                  <div className="mb-3 flex items-center justify-end gap-2">
+                    <label
+                      htmlFor="chart-granularity-cabinets"
+                      className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                    >
+                      Granularity:
+                    </label>
+                    <select
+                      id="chart-granularity-cabinets"
+                      value={cabinetsPageData.chartGranularity}
+                      onChange={e =>
+                        cabinetsPageData.setChartGranularity(
+                          e.target.value as 'daily' | 'weekly' | 'monthly'
+                        )
+                      }
+                      className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                    >
+                      {activeMetricsFilter === 'Quarterly' ? (
+                        <>
+                          <option value="monthly">Monthly</option>
+                          <option value="weekly">Weekly</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+                )}
+                <DashboardChart
+                  loadingChartData={loadingChart}
+                  chartData={chartData}
+                  activeMetricsFilter={activeMetricsFilter}
+                  useNetGross={useNetGross}
+                  granularity={cabinetsPageData.chartGranularity}
+                />
               </div>
             )}
 
@@ -246,6 +277,7 @@ export default function CabinetsPageContent() {
               ) : (
                 <DateFilters
                   hideAllTime
+                  showQuarterly
                   onCustomRangeGo={loadCabinets}
                   enableTimeInputs
                 />

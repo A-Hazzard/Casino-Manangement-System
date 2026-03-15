@@ -114,7 +114,7 @@ function determineAggregationGranularity(
   customEndDate?: Date,
   startDateParam?: string | null,
   endDateParam?: string | null,
-  manualGranularity?: 'hourly' | 'minute'
+  manualGranularity?: 'hourly' | 'minute' | 'daily' | 'weekly'
 ): { useHourly: boolean; useMinute: boolean } {
   // If manual granularity is specified, use it (but only for Today/Yesterday or appropriate custom ranges)
   if (manualGranularity) {
@@ -851,7 +851,7 @@ export async function getMeterTrends(
     startDate?: string | null;
     endDate?: string | null;
     displayCurrency: CurrencyCode;
-    granularity?: 'hourly' | 'minute';
+    granularity?: 'hourly' | 'minute' | 'daily' | 'weekly';
     locationIds?: string[];
     gameTypes?: string[];
     onlineStatus?: string;

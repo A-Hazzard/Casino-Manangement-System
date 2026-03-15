@@ -46,7 +46,7 @@ export async function getMetrics(
   licencee?: string,
   displayCurrency?: string,
   signal?: AbortSignal,
-  granularity?: 'hourly' | 'minute',
+  granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly',
   locationId?: string | string[],
   gameType?: string | string[],
   onlineStatus?: string,

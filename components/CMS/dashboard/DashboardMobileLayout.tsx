@@ -189,13 +189,22 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
                 value={props.chartGranularity}
                 onChange={e =>
                   props.setChartGranularity?.(
-                    e.target.value as 'hourly' | 'minute'
+                    e.target.value as 'hourly' | 'minute' | 'daily' | 'weekly'
                   )
                 }
                 className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
               >
-                <option value="minute">Minute</option>
-                <option value="hourly">Hourly</option>
+                {(props.activeMetricsFilter === '30d' || props.activeMetricsFilter === 'last30days') ? (
+                  <>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="minute">Minute</option>
+                    <option value="hourly">Hourly</option>
+                  </>
+                )}
               </select>
             </div>
           )}

@@ -471,6 +471,11 @@ function fillMissingIntervals(
     return filledData;
   }
 
+  // For Quarterly/All Time, return data as-is (already aggregated by the API)
+  if (timePeriod === 'Quarterly' || timePeriod === 'All Time') {
+    return data;
+  }
+
   const filledData: dashboardData[] = [];
 
   // Hourly filling logic (only for Today/Yesterday/Custom single-day)

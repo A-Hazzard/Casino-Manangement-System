@@ -102,6 +102,10 @@ export function useLocationChartData({
         sd.getMonth() === ed.getMonth() &&
         sd.getDate() === ed.getDate();
     }
+    // Show daily/weekly selector for Last 30 Days
+    if (activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days') {
+      return true;
+    }
     // For Quarterly and All Time, show selector if we have available options (data span >= 1 week)
     if (
       (activeMetricsFilter === 'Quarterly' ||
@@ -254,6 +258,10 @@ export function useLocationChartData({
         sd.getDate() === ed.getDate();
     }
 
+    // For Last 30 Days, include granularity when user selects weekly (needs server aggregation)
+    const is30dPeriod = timePeriod === '30d' || timePeriod === 'last30days';
+    const needs30dGranularity = is30dPeriod && (chartGranularity === 'daily' || chartGranularity === 'weekly');
+
     // For Quarterly/All Time, include granularity if it's monthly or weekly (needs server aggregation)
     const isLongPeriod =
       timePeriod === 'Quarterly' || timePeriod === 'All Time';
@@ -263,7 +271,7 @@ export function useLocationChartData({
 
     // Include granularity in fetch key if it affects the API response
     const shouldIncludeInFetchKey =
-      shouldIncludeGranularity || needsServerAggregation;
+      shouldIncludeGranularity || needsServerAggregation || needs30dGranularity;
 
     // Create a stable key for this fetch to prevent duplicate requests
     // Include refreshTrigger to force refresh when refresh button is clicked
@@ -297,7 +305,7 @@ export function useLocationChartData({
         // 1. Short periods (Today/Yesterday/Custom ≤ 2 days) - affects hourly/minute aggregation
         // 2. Long periods (Quarterly/All Time) with monthly/weekly - needs server aggregation
         const granularity =
-          shouldIncludeGranularity || needsServerAggregation
+          shouldIncludeGranularity || needsServerAggregation || needs30dGranularity
             ? chartGranularity
             : undefined;
 
