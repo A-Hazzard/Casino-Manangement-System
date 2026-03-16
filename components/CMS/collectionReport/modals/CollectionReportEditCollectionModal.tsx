@@ -72,8 +72,11 @@ export default function CollectionReportEditCollectionModal({
     setShowDeleteConfirmation,
     showViewMachineConfirmation,
     setShowViewMachineConfirmation,
+    showMachineRolloverWarning,
     showUnsavedChangesWarning,
     setShowUnsavedChangesWarning,
+    handleConfirmMachineRollover,
+    handleCancelMachineRollover,
     currentCollectionTime,
     setCurrentCollectionTime,
     currentMetersIn,
@@ -321,6 +324,17 @@ export default function CollectionReportEditCollectionModal({
         title="View Machine Details"
         message={`Open ${machineForDataEntry?.name || 'machine'} details in a new tab?`}
         confirmText="Open in New Tab"
+        cancelText="Cancel"
+      />
+
+      {/* Machine Rollover/Ramclear Warning */}
+      <InfoConfirmationDialog
+        isOpen={showMachineRolloverWarning}
+        onClose={handleCancelMachineRollover}
+        onConfirm={handleConfirmMachineRollover}
+        title="Rollover/Ramclear Warning"
+        message="This machine has a meters value less than its previous value. This typically indicates a rollover or RAM clear situation. Are you sure you want to save this machine collection?"
+        confirmText="Yes, Save Machine"
         cancelText="Cancel"
       />
     </>

@@ -103,6 +103,10 @@ export function useCollectionReportPageData() {
     async (batch: number = 1) => {
       if (activeTab !== 'collection') {
         setLoading(false);
+        if (!hasReceivedFirstResponseRef.current) {
+          hasReceivedFirstResponseRef.current = true;
+          setInitialLoading(false);
+        }
         return;
       }
 
@@ -137,7 +141,7 @@ export function useCollectionReportPageData() {
             return [...prev, ...uniqueNewReports];
           });
           // Update total count from pagination
-          if (result.pagination?.total) {
+          if (result.pagination?.total !== undefined) {
             setTotalReports(result.pagination.total);
           }
         }

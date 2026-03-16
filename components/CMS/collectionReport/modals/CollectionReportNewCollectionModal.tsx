@@ -132,7 +132,6 @@ export default function CollectionReportNewCollectionModal({
     showUpdateConfirmation,
     setShowUpdateConfirmation,
     showMachineRolloverWarning,
-    setShowMachineRolloverWarning,
     showDeleteConfirmation,
     setShowDeleteConfirmation,
     showViewMachineConfirmation,
@@ -428,51 +427,16 @@ export default function CollectionReportNewCollectionModal({
         </DialogContent>
       </Dialog>
 
-      {/* Machine Rollover/Ramclear Warning Modal */}
-      <Dialog
-        open={showMachineRolloverWarning}
-        onOpenChange={setShowMachineRolloverWarning}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-red-600">
-              ⚠️ Rollover/Ramclear Warning
-            </DialogTitle>
-            <DialogDescription>
-              This machine has detected a rollover or ramclear event. Proceed
-              with caution.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="mb-4 text-gray-700">
-              This machine has <strong>metersIn</strong> value less than its{' '}
-              <strong>previous metersIn</strong> value.
-            </p>
-            <p className="mb-4 text-gray-700">
-              This typically indicates a <strong>rollover</strong> or{' '}
-              <strong>ramclear</strong> situation.
-            </p>
-            <p className="font-medium text-gray-700">
-              Are you sure you want to add this machine with rollover/ramclear?
-            </p>
-          </div>
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCancelMachineRollover}
-              className="flex-1"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirmMachineRollover}
-              className="flex-1 bg-red-600 text-white hover:bg-red-700"
-            >
-              Yes, Add Machine
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Machine Rollover/Ramclear Warning */}
+      <InfoConfirmationDialog
+        isOpen={showMachineRolloverWarning}
+        onClose={handleCancelMachineRollover}
+        onConfirm={handleConfirmMachineRollover}
+        title="Rollover/Ramclear Warning"
+        message="This machine has a meters value less than its previous value. This typically indicates a rollover or RAM clear situation. Are you sure you want to add this machine?"
+        confirmText="Yes, Add Machine"
+        cancelText="Cancel"
+      />
 
       {/* Delete Confirmation Dialog */}
       <ConfirmationDialog

@@ -121,13 +121,13 @@ export function useEditCollectionModal({
   const currentMachineNotes = storeFormData.notes;
   const currentRamClear = storeFormData.ramClear;
 
-  const setCurrentMetersIn = (val: string) => setStoreFormData({ metersIn: val });
-  const setCurrentMetersOut = (val: string) => setStoreFormData({ metersOut: val });
-  const setCurrentRamClearMetersIn = (val: string) => setStoreFormData({ ramClearMetersIn: val });
-  const setCurrentRamClearMetersOut = (val: string) => setStoreFormData({ ramClearMetersOut: val });
-  const setCurrentMachineNotes = (val: string) => setStoreFormData({ notes: val });
-  const setCurrentRamClear = (val: boolean) => setStoreFormData({ ramClear: val });
-  const setCurrentCollectionTime = (val: Date) => setStoreFormData({ collectionTime: val });
+  const setCurrentMetersIn = useCallback((val: string) => setStoreFormData({ metersIn: val }), [setStoreFormData]);
+  const setCurrentMetersOut = useCallback((val: string) => setStoreFormData({ metersOut: val }), [setStoreFormData]);
+  const setCurrentRamClearMetersIn = useCallback((val: string) => setStoreFormData({ ramClearMetersIn: val }), [setStoreFormData]);
+  const setCurrentRamClearMetersOut = useCallback((val: string) => setStoreFormData({ ramClearMetersOut: val }), [setStoreFormData]);
+  const setCurrentMachineNotes = useCallback((val: string) => setStoreFormData({ notes: val }), [setStoreFormData]);
+  const setCurrentRamClear = useCallback((val: boolean) => setStoreFormData({ ramClear: val }), [setStoreFormData]);
+  const setCurrentCollectionTime = useCallback((val: Date) => setStoreFormData({ collectionTime: val }), [setStoreFormData]);
   const setSelectedLocationId = (id: string) => setStoreSelectedLocation(id, locations.find(l => String(l._id) === id)?.name || '');
   const setSelectedLocationName = (name: string) => setStoreSelectedLocation(selectedLocationId, name);
   const setSelectedMachineId = (id: string) => setStoreMachineId(id || undefined);
@@ -135,44 +135,72 @@ export function useEditCollectionModal({
   const showAdvancedSas = storeFormData.showAdvancedSas;
   const sasStartTime = storeFormData.sasStartTime;
   const sasEndTime = storeFormData.sasEndTime;
-  
-  const setShowAdvancedSas = (val: boolean | ((p: boolean) => boolean)) => {
-    const newVal = typeof val === 'function' ? val(showAdvancedSas) : val;
-    const updates: Partial<typeof storeFormData> = { showAdvancedSas: newVal };
-    
-    // If turning on and times are null, set reasonable defaults
-    if (newVal) {
-      const location = locations.find(l => String(l._id) === selectedLocationId);
-      const machineEntry = collectedMachineEntries.find(e => String(e.machineId) === selectedMachineId);
-      const machineInfo = location?.machines?.find(m => String(m._id) === selectedMachineId);
-      
-      if (!sasStartTime) {
-        let defaultStart = new Date();
-        if (machineEntry?.timestamp) {
-          defaultStart = new Date(machineEntry.timestamp);
-        } else if (machineInfo?.collectionTime) {
-          defaultStart = new Date(machineInfo.collectionTime);
-        } else if (location?.previousCollectionTime) {
-          defaultStart = new Date(location.previousCollectionTime);
+
+  const setShowAdvancedSas = useCallback(
+    (val: boolean | ((p: boolean) => boolean)) => {
+      const newVal = typeof val === 'function' ? val(showAdvancedSas) : val;
+      const updates: Partial<typeof storeFormData> = {
+        showAdvancedSas: newVal,
+      };
+
+      // If turning on and times are null, set reasonable defaults
+      if (newVal) {
+        const location = locations.find(
+          l => String(l._id) === selectedLocationId
+        );
+        const machineEntry = collectedMachineEntries.find(
+          e => String(e.machineId) === selectedMachineId
+        );
+        const machineInfo = location?.machines?.find(
+          m => String(m._id) === selectedMachineId
+        );
+
+        if (!sasStartTime) {
+          let defaultStart = new Date();
+          if (machineEntry?.timestamp) {
+            defaultStart = new Date(machineEntry.timestamp);
+          } else if (machineInfo?.collectionTime) {
+            defaultStart = new Date(machineInfo.collectionTime);
+          } else if (location?.previousCollectionTime) {
+            defaultStart = new Date(location.previousCollectionTime);
+          }
+          updates.sasStartTime = defaultStart;
         }
-        updates.sasStartTime = defaultStart;
-      }
-      
-      if (!sasEndTime) {
-        const gameDayOffset = location?.gameDayOffset ?? 8;
-        const defaultEnd = new Date(currentCollectionTime || new Date());
-        if (defaultEnd.getHours() < gameDayOffset) {
-          defaultEnd.setDate(defaultEnd.getDate() - 1);
+
+        if (!sasEndTime) {
+          const gameDayOffset = location?.gameDayOffset ?? 8;
+          const defaultEnd = new Date(currentCollectionTime || new Date());
+          if (defaultEnd.getHours() < gameDayOffset) {
+            defaultEnd.setDate(defaultEnd.getDate() - 1);
+          }
+          defaultEnd.setHours(gameDayOffset - 1, 59, 59, 0);
+          updates.sasEndTime = defaultEnd;
         }
-        defaultEnd.setHours(gameDayOffset - 1, 59, 59, 0);
-        updates.sasEndTime = defaultEnd;
       }
-    }
-    
-    setStoreFormData(updates);
-  };
-  const setSasStartTime = (val: Date | null) => setStoreFormData({ sasStartTime: val });
-  const setSasEndTime = (val: Date | null) => setStoreFormData({ sasEndTime: val });
+
+      setStoreFormData(updates);
+    },
+    [
+      showAdvancedSas,
+      selectedLocationId,
+      locations,
+      sasStartTime,
+      sasEndTime,
+      currentCollectionTime,
+      setStoreFormData,
+      selectedMachineId,
+      collectedMachineEntries,
+    ]
+  );
+
+  const setSasStartTime = useCallback(
+    (val: Date | null) => setStoreFormData({ sasStartTime: val }),
+    [setStoreFormData]
+  );
+  const setSasEndTime = useCallback(
+    (val: Date | null) => setStoreFormData({ sasEndTime: val }),
+    [setStoreFormData]
+  );
   const [prevIn, setPrevIn] = useState<number | null>(null);
   const [prevOut, setPrevOut] = useState<number | null>(null);
   const [isFirstCollection, setIsFirstCollection] = useState(false);
@@ -180,6 +208,11 @@ export function useEditCollectionModal({
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [showUpdateReportConfirmation, setShowUpdateReportConfirmation] =
     useState(false);
+  const [showMachineRolloverWarning, setShowMachineRolloverWarning] =
+    useState(false);
+  const [pendingMachineSubmission, setPendingMachineSubmission] = useState<
+    (() => void) | null
+  >(null);
 
   const [baseBalanceCorrection, setBaseBalanceCorrection] =
     useState<string>('');
@@ -509,6 +542,20 @@ export function useEditCollectionModal({
     toast.info('Edit cancelled', { position: 'top-left' });
   }, [setSasStartTime, setSasEndTime, setShowAdvancedSas]);
 
+  const handleConfirmMachineRollover = useCallback(() => {
+    if (pendingMachineSubmission) {
+      pendingMachineSubmission();
+      setPendingMachineSubmission(null);
+    }
+    setShowMachineRolloverWarning(false);
+  }, [pendingMachineSubmission]);
+
+  const handleCancelMachineRollover = useCallback(() => {
+    setPendingMachineSubmission(null);
+    setShowMachineRolloverWarning(false);
+    setIsProcessing(false);
+  }, []);
+
   const confirmAddOrUpdateEntry = useCallback(async () => {
     if (isProcessing) return;
 
@@ -534,8 +581,32 @@ export function useEditCollectionModal({
       return;
     }
 
-    setIsProcessing(true);
+    const onConfirm = () => executeAddOrUpdateEntry();
 
+    if (prevIn !== null && Number(currentMetersIn) < prevIn) {
+      setPendingMachineSubmission(() => onConfirm);
+      setShowMachineRolloverWarning(true);
+      return;
+    }
+
+    onConfirm();
+  }, [
+    isProcessing,
+    selectedMachineId,
+    machineForDataEntry,
+    currentMetersIn,
+    currentMetersOut,
+    userId,
+    currentRamClear,
+    prevIn,
+    prevOut,
+    currentRamClearMetersIn,
+    currentRamClearMetersOut,
+    editingEntryId,
+  ]);
+
+  const executeAddOrUpdateEntry = useCallback(async () => {
+    setIsProcessing(true);
     try {
       if (editingEntryId) {
         // Find the existing collection to get its locationReportId
@@ -734,26 +805,40 @@ export function useEditCollectionModal({
       setIsProcessing(false);
     }
   }, [
-    isProcessing,
-    selectedMachineId,
-    machineForDataEntry,
+    editingEntryId,
+    collectedMachineEntries,
     currentMetersIn,
     currentMetersOut,
     currentMachineNotes,
-    collectedMachineEntries,
     currentRamClear,
     currentRamClearMetersIn,
     currentRamClearMetersOut,
     currentCollectionTime,
-    editingEntryId,
     prevIn,
     prevOut,
-    userId,
+    reportId,
+    showAdvancedSas,
     sasStartTime,
     sasEndTime,
-    showAdvancedSas,
-    reportId,
+    selectedMachineId,
+    machineForDataEntry,
     selectedLocationName,
+    userId,
+    setCollectedMachineEntries,
+    setHasChanges,
+    setEditingEntryId,
+    setSelectedMachineId,
+    setCurrentMetersIn,
+    setCurrentMetersOut,
+    setCurrentMachineNotes,
+    setCurrentRamClear,
+    setCurrentRamClearMetersIn,
+    setCurrentRamClearMetersOut,
+    setPrevIn,
+    setPrevOut,
+    setSasStartTime,
+    setSasEndTime,
+    setShowAdvancedSas,
   ]);
 
   const confirmUpdateEntry = useCallback(() => {
@@ -1637,6 +1722,7 @@ export function useEditCollectionModal({
     setShowUpdateConfirmation,
     showViewMachineConfirmation,
     setShowViewMachineConfirmation,
+    showMachineRolloverWarning,
     viewMode,
     setViewMode,
     currentCollectionTime,
@@ -1709,6 +1795,8 @@ export function useEditCollectionModal({
     handleDeleteEntry,
     confirmDeleteEntry,
     handleUpdateReport,
+    handleConfirmMachineRollover,
+    handleCancelMachineRollover,
 
     // User
     user,

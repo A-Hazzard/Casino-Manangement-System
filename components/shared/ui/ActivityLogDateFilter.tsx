@@ -25,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/shared/ui/select';
-import { useUserStore } from '@/lib/store/userStore';
 import { useMemo, useState } from 'react';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 
@@ -44,9 +43,6 @@ export default function ActivityLogDateFilter({
   const [showCustomPicker, setShowCustomPicker] = useState(false);
   const [pendingCustomDateRange, setPendingCustomDateRange] =
     useState<RDPDateRange>();
-  const user = useUserStore(state => state.user);
-  const isDeveloper = (user?.roles || []).includes('developer');
-
   const timeFilterButtons: { label: string; value: TimePeriod }[] =
     useMemo(() => {
       const baseButtons = [
@@ -55,10 +51,7 @@ export default function ActivityLogDateFilter({
         { label: 'Last 7 Days', value: '7d' as TimePeriod },
       ];
 
-      // Only show "Last 30 Days" to developers
-      if (isDeveloper) {
-        baseButtons.push({ label: 'Last 30 Days', value: '30d' as TimePeriod });
-      }
+      baseButtons.push({ label: 'Last 30 Days', value: '30d' as TimePeriod });
 
       baseButtons.push(
         { label: 'All Time', value: 'All Time' as TimePeriod },
@@ -66,7 +59,7 @@ export default function ActivityLogDateFilter({
       );
 
       return baseButtons;
-    }, [isDeveloper]);
+    }, []);
 
   const handleFilterClick = (filter: TimePeriod) => {
     if (filter === 'Custom') {

@@ -21,7 +21,6 @@ import { CustomSelect } from '@/components/shared/ui/custom-select';
 import DateRangeIndicator from '@/components/shared/ui/DateRangeIndicator';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useUserStore } from '@/lib/store/userStore';
 import type { DateFiltersProps } from '@/lib/types/components';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -46,9 +45,6 @@ export default function DateFilters({
   } = useDashBoardStore();
 
   const [shouldTriggerCallback, setShouldTriggerCallback] = useState(false);
-  const user = useUserStore(state => state.user);
-  const isDeveloper = (user?.roles || []).includes('developer');
-
   useEffect(() => {
     if (hideAllTime && activeMetricsFilter === 'All Time') {
       setActiveMetricsFilter('30d');
@@ -63,10 +59,7 @@ export default function DateFilters({
         { label: 'Last 7 Days', value: '7d' as TimePeriod },
       ];
 
-      // Only show "Last 30 Days" to developers
-      if (isDeveloper) {
-        baseButtons.push({ label: 'Last 30 Days', value: '30d' as TimePeriod });
-      }
+      baseButtons.push({ label: 'Last 30 Days', value: '30d' as TimePeriod });
 
       // Add Quarterly option if enabled
       if (showQuarterly) {
@@ -86,7 +79,7 @@ export default function DateFilters({
       }
 
       return baseButtons;
-    }, [hideAllTime, showQuarterly, isDeveloper]);
+    }, [hideAllTime, showQuarterly]);
 
   // Handle callback after state updates
   useEffect(() => {

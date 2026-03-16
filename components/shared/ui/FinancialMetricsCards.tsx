@@ -273,7 +273,7 @@ export default function FinancialMetricsCards({
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md">
+          <div className={`relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md${!showNetGross ? ' sm:col-span-2' : ''}`}>
             <div className="absolute left-0 right-0 top-0 h-1 bg-gradient-to-r from-orange-500 to-orange-600"></div>
 
             <div className="p-4 sm:p-6">
@@ -369,7 +369,7 @@ export default function FinancialMetricsCards({
             </div>
           </div>
 
-          <div className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6">
+          <div className={`flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6${!showNetGross ? ' md:col-span-2 xl:col-span-1' : ''}`}>
             <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
               Gross
             </p>

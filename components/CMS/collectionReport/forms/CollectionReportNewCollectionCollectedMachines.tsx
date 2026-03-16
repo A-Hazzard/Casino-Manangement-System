@@ -12,12 +12,13 @@
 
 'use client';
 
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
-import { Edit3, Trash2 } from 'lucide-react';
+import { Edit3, Trash2, Search } from 'lucide-react';
 
 type NewCollectionCollectedMachinesProps = {
   collectedMachineEntries: CollectionDocument[];
@@ -42,6 +43,20 @@ export default function CollectionReportNewCollectionCollectedMachines({
   setUpdateAllSasEndDate,
   onApplyAllDates,
 }: NewCollectionCollectedMachinesProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredEntries = useMemo(() => {
+    const reversed = collectedMachineEntries.slice().reverse();
+    if (!searchQuery.trim()) return reversed;
+    const q = searchQuery.toLowerCase();
+    return reversed.filter(entry =>
+      (entry.serialNumber?.toLowerCase() || '').includes(q) ||
+      (entry.machineCustomName?.toLowerCase() || '').includes(q) ||
+      (entry.machineId?.toLowerCase() || '').includes(q) ||
+      (entry.game?.toLowerCase() || '').includes(q)
+    );
+  }, [collectedMachineEntries, searchQuery]);
+
   return (
     <div className="flex min-h-0 w-1/5 flex-col border-l border-gray-300 bg-gray-50">
       <div className="border-b border-gray-300 bg-gray-100 p-3">
@@ -120,16 +135,33 @@ export default function CollectionReportNewCollectionCollectedMachines({
         </div>
       )}
 
+      {/* Search collected machines */}
+      {collectedMachineEntries.length > 0 && (
+        <div className="border-b border-gray-300 px-3 py-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search collected..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-xs text-gray-700 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
         {collectedMachineEntries.length === 0 ? (
           <p className="py-10 text-center text-xs text-gray-500">
             No machines collected yet.
           </p>
+        ) : filteredEntries.length === 0 ? (
+          <p className="py-10 text-center text-xs text-gray-500">
+            No machines match your search.
+          </p>
         ) : (
-          collectedMachineEntries
-            .slice()
-            .reverse()
-            .map((entry, index) => (
+          filteredEntries.map((entry, index) => (
               <div
                 key={
                   entry._id

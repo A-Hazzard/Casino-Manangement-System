@@ -162,16 +162,7 @@ export default function CollectionReportMobileCollectedListPanel({
 
           {/* Content Area - Show either machine list or financial form */}
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {collectedMachines.length === 0 ? (
-              <div className="flex flex-1 items-center justify-center p-8">
-                <div className="text-center text-gray-500">
-                  <p>No machines added to collection yet.</p>
-                  <p className="mt-2 text-sm">
-                    Go back and select machines to add them here.
-                  </p>
-                </div>
-              </div>
-            ) : isViewingFinancialForm ? (
+            {isViewingFinancialForm ? (
               // Show Financial Form
               <div className="flex flex-1 flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto pb-4">
@@ -446,6 +437,15 @@ export default function CollectionReportMobileCollectedListPanel({
                         ? `UPDATE COLLECTION REPORT (${collectedMachines.length} machines)`
                         : `CREATE COLLECTION REPORT (${collectedMachines.length} machines)`}
                   </button>
+                </div>
+              </div>
+            ) : collectedMachines.length === 0 ? (
+              <div className="flex flex-1 items-center justify-center p-8">
+                <div className="text-center text-gray-500">
+                  <p>No machines added to collection yet.</p>
+                  <p className="mt-2 text-sm">
+                    Go back and select machines to add them here.
+                  </p>
                 </div>
               </div>
             ) : (

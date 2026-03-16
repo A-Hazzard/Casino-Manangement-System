@@ -1221,7 +1221,7 @@ export function useMobileCollectionModal({
         }
         // Refresh local list timestamps
         const updated = modalState.collectedMachines.map(e => {
-          const newEntry = { ...e } as any;
+          const newEntry = { ...e } as CollectionDocument;
           if (!newEntry.sasMeters) {
             newEntry.sasMeters = {
               machine: newEntry.machineId || '',

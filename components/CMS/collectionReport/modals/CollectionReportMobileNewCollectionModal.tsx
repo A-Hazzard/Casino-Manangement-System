@@ -234,8 +234,8 @@ export default function CollectionReportMobileNewCollectionModal({
               {/* Action Buttons - Only show when location is selected */}
               {(lockedLocationId || selectedLocation) && (
                 <div className="mt-6 space-y-3">
-                  {/* View Form Button - Show when there are collected machines */}
-                  {collectedMachines.length > 0 && (
+                  {/* View Form Button - Always show once location is selected */}
+                  {(lockedLocationId || selectedLocation) && (
                     <button
                       onClick={() => {
                         pushNavigation('list');

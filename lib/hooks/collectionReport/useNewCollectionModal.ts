@@ -750,14 +750,15 @@ export function useNewCollectionModal({
 
   const handleAddEntry = useCallback(() => {
     if (!isAddMachineEnabled || isProcessing) return;
+    
+    const onConfirm = () => executeAddEntry();
+    
     if (prevIn !== null && Number(currentMetersIn) < prevIn) {
-      setPendingMachineSubmission(() => async () => {
-        await executeAddEntry();
-      });
+      setPendingMachineSubmission(() => onConfirm);
       setShowMachineRolloverWarning(true);
       return;
     }
-    executeAddEntry();
+    onConfirm();
   }, [
     isAddMachineEnabled,
     isProcessing,
@@ -766,7 +767,7 @@ export function useNewCollectionModal({
     executeAddEntry,
   ]);
 
-  const confirmUpdateEntry = async () => {
+  const executeUpdateEntry = useCallback(async () => {
     if (!editingEntryId) return;
     try {
       setIsProcessing(true);
@@ -811,11 +812,9 @@ export function useNewCollectionModal({
       setCurrentRamClearMetersOut('');
       setCurrentMachineNotes('');
       setCurrentRamClear(false);
-      setSasStartTime(showAdvancedSas ? sasStartTime : null);
-      setSasEndTime(showAdvancedSas ? sasEndTime : null);
-      setShowAdvancedSas(showAdvancedSas);
-      setShowUpdateConfirmation(false);
-      toast.success('Collection entry updated');
+      setPrevIn(null);
+      setPrevOut(null);
+      toast.success('Machine updated successfully!');
 
       if (selectedLocationName) {
         await logActivityCallback(
@@ -828,12 +827,53 @@ export function useNewCollectionModal({
           updatedCollection as unknown as Record<string, unknown>
         );
       }
-    } catch {
-      toast.error('Failed to update collection entry');
+    } catch (error) {
+      console.error('Error updating collection:', error);
+      toast.error('Failed to update machine. Please try again.');
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [
+    editingEntryId,
+    collectedMachineEntries,
+    currentMetersIn,
+    currentMetersOut,
+    currentCollectionTime,
+    currentRamClear,
+    currentMachineNotes,
+    currentRamClearMetersIn,
+    currentRamClearMetersOut,
+    showAdvancedSas,
+    sasStartTime,
+    sasEndTime,
+    selectedLocationName,
+    logActivityCallback,
+    setCollectedMachineEntries,
+    setHasChanges,
+    setEditingEntryId,
+    setSelectedMachineId,
+    setCurrentMetersIn,
+    setCurrentMetersOut,
+    setCurrentRamClearMetersIn,
+    setCurrentRamClearMetersOut,
+    setCurrentMachineNotes,
+    setCurrentRamClear,
+    setPrevIn,
+    setPrevOut,
+  ]);
+
+  const confirmUpdateEntry = useCallback(async () => {
+    if (!editingEntryId) return;
+    
+    const onConfirm = () => executeUpdateEntry();
+    
+    if (prevIn !== null && Number(currentMetersIn) < prevIn) {
+      setPendingMachineSubmission(() => onConfirm);
+      setShowMachineRolloverWarning(true);
+      return;
+    }
+    onConfirm();
+  }, [editingEntryId, prevIn, currentMetersIn, executeUpdateEntry]);
 
   const confirmDeleteEntry = async () => {
     if (!entryToDelete) return;

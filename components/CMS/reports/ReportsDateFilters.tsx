@@ -5,7 +5,6 @@ import { Button } from '@/components/shared/ui/button';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
-import { useUserStore } from '@/lib/store/userStore';
 import { useSearchParams } from 'next/navigation';
 
 /**
@@ -24,8 +23,6 @@ export default function ReportsDateFilters() {
   } = useDashBoardStore();
 
   const { setDateRange, activeView } = useReportsStore();
-  const user = useUserStore(state => state.user);
-  const isDeveloper = (user?.roles || []).includes('developer');
   const searchParams = useSearchParams();
 
   // Check if we're in location-evaluation or location-revenue sub-tabs
@@ -45,10 +42,7 @@ export default function ReportsDateFilters() {
     // Only show 7/30 day filters for non-meters tabs
     if (activeView !== 'meters') {
       baseButtons.push({ label: 'Last 7 Days', value: '7d' as TimePeriod });
-      // Only show "Last 30 Days" to developers
-      if (isDeveloper) {
-        baseButtons.push({ label: 'Last 30 Days', value: '30d' as TimePeriod });
-      }
+      baseButtons.push({ label: 'Last 30 Days', value: '30d' as TimePeriod });
       // Show "Quarterly" only for location-evaluation and location-revenue tabs
       if (isLocationEvaluationOrRevenue) {
         baseButtons.push({

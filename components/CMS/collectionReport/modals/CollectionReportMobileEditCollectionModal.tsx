@@ -237,8 +237,8 @@ export default function CollectionReportMobileEditCollectionModal({
               {/* Action Buttons */}
               <div className="p-6 bg-gray-50/20">
                 <div className="space-y-3">
-                  {/* View Form Button */}
-                  {collectedMachines.length > 0 && (
+                  {/* View Form Button - Always show once location is selected */}
+                  {(lockedLocationId || selectedLocationId) && (
                     <button
                       onClick={() => {
                         pushNavigation('list');

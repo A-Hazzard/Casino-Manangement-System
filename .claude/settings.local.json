@@ -20,7 +20,20 @@
       "Bash(find /c/Users/pc/OneDrive/Documents/Github/evolution-one-cms/app/api -name *smib* -type f)",
       "Bash(find /c/Users/pc/OneDrive/Documents/Github/evolution-one-cms/app/api/lib/helpers -name *smib* -o -name *mqtt*)",
       "Bash(find /c/Users/pc/OneDrive/Documents/Github/evolution-one-cms/components -type f -name *chart* -o -name *Cabinet*)",
-      "Bash(node scripts/seed-test-meters.js)"
+      "Bash(node scripts/seed-test-meters.js)",
+      "Bash(find /c/Users/pc/OneDrive/Documents/Github/evolution-one-cms -type f \\\\\\(-name *seed* -o -name *mock* -o -name *fixture* \\\\\\) ! -path */node_modules/*)",
+      "Bash(find /c/Users/pc/OneDrive/Documents/Github/evolution-one-cms/app/api/lib/models -type f -name *.ts ! -path */node_modules/*)",
+      "Bash(node scripts/seed-cr-test-machine.js)",
+      "Bash(node query-meters.js)",
+      "Bash(node query-meters2.js)",
+      "Bash(node tmp/query_collection_data.js)",
+      "Bash(node tmp/query_collection_data2.js)",
+      "Bash(node cleanup-script.js)",
+      "Bash(ls -la \"/c/Users/pc/OneDrive/Documents/Github/evolution-one-cms/.env\"*)",
+      "Bash(npm list:*)",
+      "Bash(netstat -tlnp)",
+      "Bash(netstat -tln)",
+      "Bash(pkill -f \"next dev\")"
     ]
   }
 }
