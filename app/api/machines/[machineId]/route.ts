@@ -206,28 +206,27 @@ export async function GET(
     let endDate: Date | undefined;
 
     if (timePeriod === 'Custom' && startDateParam && endDateParam) {
-      // Parse ISO timestamps with timezone offset (sent from frontend with local time + offset)
-      // Frontend sends with times: "2025-12-07T11:45:00-04:00" (Trinidad local time with offset)
-      // Frontend sends date-only: "2025-12-07" (for gaming day offset to apply)
-      // new Date() correctly parses timezone-aware strings and converts to UTC internally
-      // For custom time periods, use the exact times provided without gaming day expansion
-      // This ensures metrics match the chart data for the exact selected time range
-      const customStart = new Date(startDateParam);
-      const customEnd = new Date(endDateParam);
+      // Parse dates from parameters
+      // If they don't contain 'T', they are date-only strings from the picker
+      const customStart = new Date(startDateParam.includes('T') ? startDateParam : startDateParam + 'T00:00:00.000Z');
+      const customEnd = new Date(endDateParam.includes('T') ? endDateParam : endDateParam + 'T00:00:00.000Z');
 
-      // Validate dates
       if (isNaN(customStart.getTime()) || isNaN(customEnd.getTime())) {
         return NextResponse.json(
-          { success: false, error: 'Invalid date parameters' },
+          { success: false, error: 'Invalid custom dates provided' },
           { status: 400 }
         );
       }
 
-      // Use exact times provided - no gaming day expansion for custom ranges
-      // Date objects are already in UTC internally (JavaScript Date always stores UTC)
-      // This is correct for MongoDB queries which expect UTC dates
-      startDate = customStart;
-      endDate = customEnd;
+      // Use getGamingDayRangeForPeriod to handle both specific times and date-only expansion
+      const gamingDayRange = getGamingDayRangeForPeriod(
+        'Custom',
+        gameDayOffset,
+        customStart,
+        customEnd
+      );
+      startDate = gamingDayRange.rangeStart;
+      endDate = gamingDayRange.rangeEnd;
     } else if (timePeriod === 'All Time') {
       // For "All Time", don't apply any date filtering - query all records
       startDate = undefined;
@@ -249,8 +248,17 @@ export async function GET(
     // Use aggregation to sum deltas (movement.* fields contain deltas, not cumulative values)
     const pipeline: PipelineStage[] = [];
 
+    // Support both String and ObjectId matching for machine ID in Meters collection
+    // This ensures data is found regardless of how the machine ID was stored
+    const machineMatch: Record<string, unknown>[] = [{ machine: machineId }];
+    if (mongoose.Types.ObjectId.isValid(machineId)) {
+      machineMatch.push({ machine: new mongoose.Types.ObjectId(machineId) });
+    }
+
     // Add match stage with date filtering (only if dates are provided)
-    const matchStage: Record<string, unknown> = { machine: machineId };
+    const matchStage: Record<string, unknown> = {
+      $or: machineMatch
+    };
     if (startDate && endDate) {
       matchStage.readAt = { $gte: startDate, $lte: endDate };
     }

@@ -45,6 +45,10 @@ export async function PATCH(
     await connectDB();
     const { reportId } = await params;
     const body = await request.json();
+    
+    // CRITICAL: Do not update the collector field during edit
+    delete body.collector;
+    delete body.collectorName;
 
     const updatedReport = await CollectionReport.findOneAndUpdate(
       { _id: reportId },

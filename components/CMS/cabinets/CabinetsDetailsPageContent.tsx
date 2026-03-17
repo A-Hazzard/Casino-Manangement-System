@@ -83,7 +83,9 @@ export default function CabinetsDetailsPageContent() {
     );
   }
 
-  if (!cabinet && !error) {
+  // Show loading skeleton for initial load OR when moving between data states
+  // This provides visual feedback during filter changes
+  if ((!cabinet || hook.loading) && !error) {
     return (
       <CabinetDetailsLoadingState
         selectedLicencee={selectedLicencee}
@@ -245,6 +247,7 @@ export default function CabinetsDetailsPageContent() {
           <CabinetsDetailsAccountingSection
             cabinet={cabinet}
             activeTab={activeTab}
+            loading={refreshing}
             onTabChange={handleTabChange}
             onRefresh={handleRefresh}
           />

@@ -73,14 +73,15 @@ export function useCabinetDetailsData({
         return;
       }
 
-      // If Custom is selected but dates aren't available, don't fetch
-      // This prevents the 500 error "Custom start and end dates are required"
-      if (
-        activeMetricsFilter === 'Custom' &&
-        (!customDateRange ||
-          !customDateRange.startDate ||
-          !customDateRange.endDate)
-      ) {
+      // Robustly check for custom dates - support both {from, to} and {startDate, endDate}
+      const hasCustomDates = 
+        activeMetricsFilter === 'Custom' && (
+          (customDateRange?.startDate && customDateRange?.endDate) ||
+          (customDateRange?.from && customDateRange?.to) ||
+          (customDateRange?.start && customDateRange?.end)
+        );
+
+      if (activeMetricsFilter === 'Custom' && !hasCustomDates) {
         setMetricsLoading(false);
         return;
       }
@@ -99,18 +100,26 @@ export function useCabinetDetailsData({
                   customDateRange.startDate instanceof Date
                     ? customDateRange.startDate
                     : customDateRange.startDate
-                      ? new Date(customDateRange.startDate)
-                      : (customDateRange as Record<string, unknown>).from
-                        ? new Date((customDateRange as Record<string, unknown>).from as string | Date)
-                        : undefined,
+                    ? new Date(customDateRange.startDate as unknown as string)
+                    : customDateRange.from instanceof Date
+                    ? (customDateRange.from as Date)
+                    : customDateRange.from
+                    ? new Date(customDateRange.from as unknown as string)
+                    : customDateRange.start
+                    ? new Date(customDateRange.start as unknown as string)
+                    : undefined,
                 to:
                   customDateRange.endDate instanceof Date
                     ? customDateRange.endDate
                     : customDateRange.endDate
-                      ? new Date(customDateRange.endDate)
-                      : (customDateRange as Record<string, unknown>).to
-                        ? new Date((customDateRange as Record<string, unknown>).to as string | Date)
-                        : undefined,
+                    ? new Date(customDateRange.endDate as unknown as string)
+                    : customDateRange.to instanceof Date
+                    ? (customDateRange.to as Date)
+                    : customDateRange.to
+                    ? new Date(customDateRange.to as unknown as string)
+                    : customDateRange.end
+                    ? new Date(customDateRange.end as unknown as string)
+                    : undefined,
               }
             : undefined,
           currency,

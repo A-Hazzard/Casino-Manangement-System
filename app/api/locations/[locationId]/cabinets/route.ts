@@ -168,7 +168,8 @@ export async function POST(request: NextRequest) {
         lockBvOnLogOut: false,
       },
       playableBalance: 0,
-      custom: { name: data.serialNumber },
+      custom: { name: data.custom?.name || data.serialNumber },
+
       balances: { cashable: 0 },
       curProcess: { name: '', next: '' },
       tasks: {

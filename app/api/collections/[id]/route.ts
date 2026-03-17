@@ -84,6 +84,8 @@ export async function PATCH(
     // Remove from top-level to prevent Mongoose strict-mode silently dropping them
     delete (safeUpdateData as Record<string, unknown>).sasEndTime;
     delete (safeUpdateData as Record<string, unknown>).sasStartTime;
+    delete (safeUpdateData as Record<string, unknown>).collector;
+    delete (safeUpdateData as Record<string, unknown>).collectorName;
 
     // Determine if cascade recalculation is needed
     const shouldCascade =

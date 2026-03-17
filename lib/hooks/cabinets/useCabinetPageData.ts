@@ -50,6 +50,7 @@ export function useCabinetPageData() {
     isOnline,
     fetchCabinetDetailsData,
     handleCabinetUpdated,
+    metricsLoading: baseMetricsLoading,
   } = useCabinetDetailsData({
     slug,
     selectedLicencee,
@@ -135,17 +136,17 @@ export function useCabinetPageData() {
       return true;
     }
     if (
-      activeMetricsFilter === 'Custom' &&
-      customDateRange?.startDate &&
-      customDateRange?.endDate
+      activeMetricsFilter === 'Custom' && (
+        (customDateRange?.startDate && customDateRange?.endDate) ||
+        (customDateRange?.from && customDateRange?.to)
+      )
     ) {
       // Show minute/hourly selector only for same-day custom ranges
-      const sd = customDateRange.startDate instanceof Date
-        ? customDateRange.startDate
-        : new Date(customDateRange.startDate);
-      const ed = customDateRange.endDate instanceof Date
-        ? customDateRange.endDate
-        : new Date(customDateRange.endDate);
+      const customStart = customDateRange?.startDate || customDateRange?.from || (customDateRange as Record<string, unknown>)?.start;
+      const customEnd = customDateRange?.endDate || customDateRange?.to || (customDateRange as Record<string, unknown>)?.end;
+      
+      const sd = customStart instanceof Date ? customStart : new Date(customStart as unknown as string);
+      const ed = customEnd instanceof Date ? customEnd : new Date(customEnd as unknown as string);
       // Compare calendar dates (same year, month, day)
       return sd.getFullYear() === ed.getFullYear() &&
         sd.getMonth() === ed.getMonth() &&
@@ -348,13 +349,18 @@ export function useCabinetPageData() {
 
   // Check if Custom range is same-day (warrants minute/hourly granularity control)
   const isCustomShortPeriod = useMemo(() => {
-    if (activeMetricsFilter !== 'Custom' || !customDateRange?.startDate || !customDateRange?.endDate) return false;
-    const sd = customDateRange.startDate instanceof Date ? customDateRange.startDate : new Date(customDateRange.startDate);
-    const ed = customDateRange.endDate instanceof Date ? customDateRange.endDate : new Date(customDateRange.endDate);
+    const customStart = customDateRange?.startDate || customDateRange?.from || (customDateRange as Record<string, unknown>)?.start;
+    const customEnd = customDateRange?.endDate || customDateRange?.to || (customDateRange as Record<string, unknown>)?.end;
+
+    if (activeMetricsFilter !== 'Custom' || !customStart || !customEnd) return false;
+    
+    const sd = customStart instanceof Date ? customStart : new Date(customStart as unknown as string);
+    const ed = customEnd instanceof Date ? customEnd : new Date(customEnd as unknown as string);
+    
     return sd.getFullYear() === ed.getFullYear() &&
       sd.getMonth() === ed.getMonth() &&
       sd.getDate() === ed.getDate();
-  }, [activeMetricsFilter, customDateRange?.startDate, customDateRange?.endDate]);
+  }, [activeMetricsFilter, customDateRange]);
 
   // Memoize effective granularity - triggers refetch when granularity changes for supported periods
   const effectiveGranularity = useMemo(() => {
@@ -383,16 +389,17 @@ export function useCabinetPageData() {
         const isLongPeriod = activeMetricsFilter === 'Quarterly' || activeMetricsFilter === 'All Time';
         const granularity = (isShortPeriod || isCustomShortPeriod || is30d || isLongPeriod) ? chartGranularity : undefined;
 
-        const effectiveStartDate = customDateRange?.startDate instanceof Date 
-            ? customDateRange.startDate 
-            : customDateRange?.startDate ? new Date(customDateRange.startDate) 
-            : (customDateRange as Record<string, unknown>)?.from ? new Date((customDateRange as Record<string, unknown>).from as string | Date) 
+        const customStart = customDateRange?.startDate || customDateRange?.from || (customDateRange as Record<string, unknown>)?.start;
+        const customEnd = customDateRange?.endDate || customDateRange?.to || (customDateRange as Record<string, unknown>)?.end;
+
+        const effectiveStartDate = customStart instanceof Date 
+            ? customStart 
+            : customStart ? new Date(customStart as unknown as string) 
             : undefined;
 
-        const effectiveEndDate = customDateRange?.endDate instanceof Date 
-            ? customDateRange.endDate 
-            : customDateRange?.endDate ? new Date(customDateRange.endDate) 
-            : (customDateRange as Record<string, unknown>)?.to ? new Date((customDateRange as Record<string, unknown>).to as string | Date) 
+        const effectiveEndDate = customEnd instanceof Date 
+            ? customEnd 
+            : customEnd ? new Date(customEnd as unknown as string) 
             : undefined;
 
         const result = await getMachineChartData(
@@ -455,7 +462,8 @@ export function useCabinetPageData() {
     errorType,
     isOnline,
     activeTab,
-    refreshing,
+    refreshing: refreshing || baseMetricsLoading,
+    loading: baseMetricsLoading,
     editingSection,
     chartData,
     loadingChart,

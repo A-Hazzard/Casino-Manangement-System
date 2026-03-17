@@ -967,14 +967,17 @@ export default function CabinetsEditCabinetModal({
                         // Handle custom field updates
                         if ('custom' in updates) {
                           const customValue = updates.custom;
-                          if (customValue && typeof customValue === 'object' && 'name' in customValue) {
+                          if (customValue && typeof customValue === 'object') {
+                            const val = customValue as Record<string, unknown>;
                             updated.custom = {
-                              name: (customValue.name as string) || prev.custom?.name || '',
+                              name: typeof val.name === 'string' ? val.name : (prev.custom?.name || ''),
                             };
                           } else {
-                            updated.custom = undefined;
+                            updated.custom = { name: '' };
                           }
+
                         }
+
                         // Handle other field updates
                         if ('locationId' in updates) {
                           updated.locationId = updates.locationId as string | undefined;

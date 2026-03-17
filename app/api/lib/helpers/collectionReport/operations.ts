@@ -264,6 +264,10 @@ export async function updateCollectionReport(
     new Date(updateData.timestamp).getTime() !==
       existingReport.timestamp.getTime();
 
+  // CRITICAL: Do not update the collector field during edit
+  delete updateData.collector;
+  delete updateData.collectorName;
+
   // Update the report
   const updatedReport = await CollectionReport.findOneAndUpdate(
     { locationReportId: reportId },

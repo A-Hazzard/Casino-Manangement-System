@@ -44,36 +44,89 @@ const TimeInput: React.FC<TimeInputProps> = ({ hours, minutes, onChange }) => {
   const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
   const isPM = hours >= 12;
 
-  const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputHour = parseInt(e.target.value) || 1;
-    const newDisplayHour = Math.max(1, Math.min(12, inputHour));
-    // Convert 12-hour to 24-hour format based on current AM/PM state
-    let newHours24: number;
-    if (isPM) {
-      // PM: 12 PM = 12, 1-11 PM = 13-23
-      newHours24 = newDisplayHour === 12 ? 12 : newDisplayHour + 12;
-    } else {
-      // AM: 12 AM = 0, 1-11 AM = 1-11
-      newHours24 = newDisplayHour === 12 ? 0 : newDisplayHour;
+  // Local state for string inputs
+  const [hourInput, setHourInput] = React.useState(displayHour.toString());
+  const [minuteInput, setMinuteInput] = React.useState(
+    minutes.toString().padStart(2, '0')
+  );
+
+  // Focus tracking to prevent props syncing from overriding user typing
+  const [isHourFocused, setIsHourFocused] = React.useState(false);
+  const [isMinuteFocused, setIsMinuteFocused] = React.useState(false);
+
+  // Synchronize local state ONLY when NOT focused
+  React.useEffect(() => {
+    if (!isHourFocused) {
+      setHourInput(displayHour.toString());
     }
-    onChange(newHours24, minutes);
+  }, [displayHour, isHourFocused]);
+
+  React.useEffect(() => {
+    if (!isMinuteFocused) {
+      setMinuteInput(minutes.toString().padStart(2, '0'));
+    }
+  }, [minutes, isMinuteFocused]);
+
+  const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow digits 0-9
+    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+    setHourInput(value);
+
+    if (value === '') return;
+
+    const parsedHour = parseInt(value);
+    
+    // We only propagate to parent if it's a valid 12h value (1-12)
+    // We handle 0 as a temporary state while typing "01", "02" etc.
+    if (parsedHour > 0 && parsedHour <= 12) {
+      let newHours24: number;
+      if (isPM) {
+        newHours24 = parsedHour === 12 ? 12 : parsedHour + 12;
+      } else {
+        newHours24 = parsedHour === 12 ? 0 : parsedHour;
+      }
+      onChange(newHours24, minutes);
+    }
   };
 
   const handleMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newMinutes = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
-    onChange(hours, newMinutes);
+    // Only allow digits 0-9
+    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+    setMinuteInput(value);
+
+    if (value === '') return;
+
+    const parsedMinutes = parseInt(value);
+    if (parsedMinutes >= 0 && parsedMinutes <= 59) {
+      onChange(hours, parsedMinutes);
+    }
+  };
+
+  const handleHourBlur = () => {
+    setIsHourFocused(false);
+    // On blur, if it's empty or invalid, reset to current valid prop
+    if (hourInput === '' || parseInt(hourInput) === 0 || parseInt(hourInput) > 12) {
+      setHourInput(displayHour.toString());
+    }
+  };
+
+  const handleMinuteBlur = () => {
+    setIsMinuteFocused(false);
+    // On blur, ensure padding and validity
+    if (minuteInput === '' || parseInt(minuteInput) > 59) {
+      setMinuteInput(minutes.toString().padStart(2, '0'));
+    } else {
+      setMinuteInput(parseInt(minuteInput).toString().padStart(2, '0'));
+    }
   };
 
   const handleAMPMChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newIsPM = e.target.value === 'PM';
     let newHours24: number;
 
-    // Convert current display hour (1-12) to 24-hour format based on new AM/PM selection
     if (newIsPM) {
-      // PM: 12 PM = 12, 1-11 PM = 13-23
       newHours24 = displayHour === 12 ? 12 : displayHour + 12;
     } else {
-      // AM: 12 AM = 0, 1-11 AM = 1-11
       newHours24 = displayHour === 12 ? 0 : displayHour;
     }
 
@@ -84,21 +137,23 @@ const TimeInput: React.FC<TimeInputProps> = ({ hours, minutes, onChange }) => {
     <div className="flex w-full flex-col gap-2">
       <div className="flex flex-wrap items-center gap-1.5">
         <input
-          type="number"
-          min="1"
-          max="12"
-          value={displayHour}
+          type="text"
+          inputMode="numeric"
+          value={hourInput}
+          onFocus={() => setIsHourFocused(true)}
           onChange={handleHoursChange}
+          onBlur={handleHourBlur}
           className="w-12 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-14"
           placeholder="HH"
         />
         <span className="flex-shrink-0 font-medium text-gray-500">:</span>
         <input
-          type="number"
-          min="0"
-          max="59"
-          value={minutes}
+          type="text"
+          inputMode="numeric"
+          value={minuteInput}
+          onFocus={() => setIsMinuteFocused(true)}
           onChange={handleMinutesChange}
+          onBlur={handleMinuteBlur}
           className="w-12 rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-14"
           placeholder="MM"
         />

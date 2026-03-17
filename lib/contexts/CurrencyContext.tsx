@@ -34,13 +34,41 @@ export function CurrencyProvider({
   children,
   initialCurrency = 'USD',
 }: CurrencyProviderProps) {
-  const [displayCurrency, setDisplayCurrency] =
-    useState<CurrencyCode>(initialCurrency);
-  const { selectedLicencee, setDisplayCurrency: setDashboardCurrency } =
-    useDashBoardStore();
+  // Initialize state from dashboard store or localStorage if available
+  const { 
+    displayCurrency: storeDisplayCurrency, 
+    setDisplayCurrency: setDashboardCurrency,
+    selectedLicencee 
+  } = useDashBoardStore();
+
+  const [displayCurrency, setDisplayCurrency] = useState<CurrencyCode>(() => {
+    // Priority 1: Persistent store (if already loaded)
+    if (storeDisplayCurrency && storeDisplayCurrency !== 'USD') {
+      return storeDisplayCurrency;
+    }
+    // Priority 2: LocalStorage (direct access for immediate mount consistency)
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('evolution-currency') as CurrencyCode;
+      if (saved && ['USD', 'TTD', 'GYD', 'BBD'].includes(saved)) {
+        return saved;
+      }
+    }
+    return initialCurrency;
+  });
+
   const user = useUserStore(state => state.user);
   const lastAutoSetUserId = useRef<string | null>(null); // Track which user we auto-set currency for
   const lastAutoSetLicenceeId = useRef<string | null>(null); // Track which licencee we auto-set currency for
+  const lastActiveLicenceeId = useRef<string | null>(
+    selectedLicencee ?? null
+  ); // Track active licencee to detect changes
+
+  // Sync with store if it changes elsewhere
+  useEffect(() => {
+    if (storeDisplayCurrency && storeDisplayCurrency !== displayCurrency) {
+      setDisplayCurrency(storeDisplayCurrency);
+    }
+  }, [storeDisplayCurrency, displayCurrency]);
 
   // Determine if we're in "All Licencee" mode
   const isAllLicencee =
@@ -189,6 +217,63 @@ export function CurrencyProvider({
     handleSetDisplayCurrency,
   ]);
 
+  const roles = user?.roles || [];
+  const isAdmin = roles.includes('admin') || roles.includes('developer');
+  const userLicencees = Array.isArray(user?.assignedLicencees)
+    ? user.assignedLicencees
+    : [];
+  const isSingleLicenceeNonAdmin = !isAdmin && userLicencees.length === 1;
+
+  // Handle currency sync for admins or multi-licencee users when licencee changes
+  useEffect(() => {
+    // Skip for single-licencee users (handled by dedicated effect)
+    if (isSingleLicenceeNonAdmin) return;
+
+    // Detect if the licencee has actually changed in the dashboard store
+    if (selectedLicencee !== lastActiveLicenceeId.current) {
+      lastActiveLicenceeId.current = selectedLicencee || 'all';
+
+      // Only perform auto-sync if we're switching TO a specific licencee (not "All")
+      // Switching TO "All" should persist the current currency choice
+      const isSwitchingToSpecific =
+        selectedLicencee && selectedLicencee !== 'all' && selectedLicencee !== '';
+
+      if (isSwitchingToSpecific) {
+        // Sync to the native currency of the new licencee
+        const mappedCurrency = getLicenceeCurrency(selectedLicencee);
+        
+        // CRITICAL FIX: Only auto-switch if the current currency is 'USD' (default)
+        // This ensures if the user manually chose GYD, it persists even when switching licencees
+        if (mappedCurrency && mappedCurrency !== displayCurrency && displayCurrency === 'USD') {
+          handleSetDisplayCurrency(mappedCurrency);
+          console.log(
+            `💰 [CurrencyContext] Auto-switched currency to ${mappedCurrency} for new licencee: ${selectedLicencee}`
+          );
+        }
+
+        // Verify with API for accuracy
+        fetchLicenceeById(selectedLicencee)
+          .then(licencee => {
+            if (licencee?.name) {
+              const apiCurrency = getLicenceeCurrency(licencee.name);
+              // Only auto-switch if no manual choice was made (current is USD or matches the initial mapping)
+              if (apiCurrency && apiCurrency !== mappedCurrency && (displayCurrency === 'USD' || displayCurrency === mappedCurrency)) {
+                handleSetDisplayCurrency(apiCurrency);
+              }
+            }
+          })
+          .catch(() => {
+            // Mapping is sufficient if API fails
+          });
+      }
+    }
+  }, [
+    selectedLicencee,
+    isSingleLicenceeNonAdmin,
+    displayCurrency,
+    handleSetDisplayCurrency,
+  ]);
+
   // Load currency from localStorage on mount (only if user is admin or has multiple licencees)
   // This runs AFTER the auto-set logic to avoid race conditions
   // IMPORTANT: This must run AFTER the auto-set effect to prevent overriding single-licencee currency
@@ -201,46 +286,28 @@ export function CurrencyProvider({
         return;
       }
 
-      // Only load from localStorage if user is not a single-licencee non-admin
-      // This prevents localStorage from overriding auto-set currency for single-licencee users
-      const roles = user.roles || [];
-      const isAdmin = roles.includes('admin') || roles.includes('developer');
-      const userLicencees =
-        Array.isArray(user?.assignedLicencees) &&
-        user.assignedLicencees.length > 0
-          ? user.assignedLicencees
-          : [];
-      const isSingleLicenceeNonAdmin = !isAdmin && userLicencees.length === 1;
-
       // NEVER load from localStorage for single-licencee non-admin users
       // Their currency is ALWAYS auto-set based on their licencee (handled in the previous effect)
-      // This prevents stale currency (like TTD) from overriding the correct currency (like BBD)
       if (isSingleLicenceeNonAdmin) {
         // Clear any stale currency from localStorage for single-licencee users
         const savedCurrency = localStorage.getItem('evolution-currency');
         if (savedCurrency) {
-          console.log(
-            `💰 [CurrencyContext] Clearing stale currency from localStorage for single-licencee user: ${savedCurrency}`
-          );
           localStorage.removeItem('evolution-currency');
         }
         return;
       }
 
       // For admins or multi-licencee users, load from localStorage if not already auto-set
-      if (!isSingleLicenceeNonAdmin && lastAutoSetUserId.current !== user._id) {
-        const savedCurrency = localStorage.getItem(
-          'evolution-currency'
-        ) as CurrencyCode;
-        if (
-          savedCurrency &&
-          ['USD', 'TTD', 'GYD', 'BBD'].includes(savedCurrency)
-        ) {
-          setDisplayCurrency(savedCurrency);
-        }
+      const savedCurrency = localStorage.getItem('evolution-currency') as CurrencyCode;
+      if (
+        savedCurrency &&
+        ['USD', 'TTD', 'GYD', 'BBD'].includes(savedCurrency) &&
+        savedCurrency !== displayCurrency
+      ) {
+        setDisplayCurrency(savedCurrency);
       }
     }
-  }, [user, setDisplayCurrency]);
+  }, [user, isSingleLicenceeNonAdmin]); // Reduced dependencies to prevent infinite loop
 
   const value: CurrencyContextType = {
     displayCurrency,

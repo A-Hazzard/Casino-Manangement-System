@@ -275,12 +275,11 @@ export default function Header({
     // Update currency context based on licencee selection
     const isAllLicencee =
       !newLicencee || newLicencee === 'all' || newLicencee === '';
-    if (isAllLicencee) {
-      // Reset to USD when "All Licencee" is selected
-      setDisplayCurrency('USD');
-    } else {
-      const mappedCurrency = await resolveLicenceeCurrency(newLicencee);
-      setDisplayCurrency(mappedCurrency);
+    
+    let targetCurrency = displayCurrency;
+    if (!isAllLicencee && displayCurrency === 'USD') {
+      targetCurrency = await resolveLicenceeCurrency(newLicencee);
+      setDisplayCurrency(targetCurrency);
     }
 
     // If we're on the dashboard and have an active filter, refresh data
@@ -295,7 +294,7 @@ export default function Header({
           setChartData,
           setActiveFilters,
           setShowDatePicker,
-          displayCurrency
+          targetCurrency
         );
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
@@ -322,30 +321,6 @@ export default function Header({
   const isReportsPath =
     pathname === '/reports' || pathname.startsWith('/reports/');
 
-  useEffect(() => {
-    let cancelled = false;
-    const syncCurrency = async () => {
-      const isAll =
-        !selectedLicencee ||
-        selectedLicencee === 'all' ||
-        selectedLicencee === '';
-      if (isAll) {
-        setDisplayCurrency('USD');
-        return;
-      }
-
-      const currency = await resolveLicenceeCurrency(selectedLicencee);
-      if (!cancelled) {
-        setDisplayCurrency(currency);
-      }
-    };
-
-    syncCurrency();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedLicencee, setDisplayCurrency, resolveLicenceeCurrency]);
 
   // Check if the current path is the specific location details page
   const isSpecificLocationPath =

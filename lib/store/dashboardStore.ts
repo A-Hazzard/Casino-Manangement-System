@@ -137,6 +137,7 @@ const createStore = () => {
             selectedLicencee: state.selectedLicencee,
             activeMetricsFilter: state.activeMetricsFilter,
             customDateRange: state.customDateRange,
+            displayCurrency: state.displayCurrency,
           }) as unknown as DashBoardStore,
         // Merge persisted state while reviving customDateRange to Date instances
         merge: (persistedState: unknown, currentState: unknown) => {

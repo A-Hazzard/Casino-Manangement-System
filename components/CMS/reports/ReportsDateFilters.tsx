@@ -6,6 +6,7 @@ import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
 import { useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
 
 /**
  * Reports Date Filters Component
@@ -31,6 +32,13 @@ export default function ReportsDateFilters() {
     activeView === 'locations' &&
     (activeLocationSubTab === 'location-evaluation' ||
       activeLocationSubTab === 'location-revenue');
+
+  // Reset to "Today" if Quarterly is active but not available on this tab
+  useEffect(() => {
+    if (!isLocationEvaluationOrRevenue && activeMetricsFilter === 'Quarterly') {
+      setActiveMetricsFilter('Today');
+    }
+  }, [activeMetricsFilter, isLocationEvaluationOrRevenue, setActiveMetricsFilter]);
 
   // Conditional filter buttons based on active tab
   const getTimeFilterButtons = () => {

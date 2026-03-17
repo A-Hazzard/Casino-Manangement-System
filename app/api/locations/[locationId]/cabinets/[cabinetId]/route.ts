@@ -19,6 +19,7 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import mongoose from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -117,13 +118,23 @@ export async function GET(
         let endDate: Date | undefined;
 
         if (timePeriod === 'Custom' && startDateParam && endDateParam) {
-          const customStart = new Date(startDateParam);
-          const customEnd = new Date(endDateParam);
+          // Parse dates from parameters
+          // If they don't contain 'T', they are date-only strings from the picker
+          const customStart = new Date(startDateParam.includes('T') ? startDateParam : startDateParam + 'T00:00:00.000Z');
+          const customEnd = new Date(endDateParam.includes('T') ? endDateParam : endDateParam + 'T00:00:00.000Z');
+
           if (!isNaN(customStart.getTime()) && !isNaN(customEnd.getTime())) {
-            startDate = customStart;
-            endDate = customEnd;
+            // Use getGamingDayRangeForPeriod for consistent range calculation
+            const range = getGamingDayRangeForPeriod(
+              'Custom',
+              gameDayOffset,
+              customStart,
+              customEnd
+            );
+            startDate = range.rangeStart;
+            endDate = range.rangeEnd;
           }
-        } else if (timePeriod) {
+        } else if (timePeriod && timePeriod !== 'All Time') {
           const range = getGamingDayRangeForPeriod(timePeriod, gameDayOffset);
           startDate = range.rangeStart;
           endDate = range.rangeEnd;
@@ -133,7 +144,12 @@ export async function GET(
           const metricsResult = await Meters.aggregate([
             {
               $match: {
-                machine: cabinetId,
+                $or: [
+                  { machine: cabinetId },
+                  ...(mongoose.Types.ObjectId.isValid(cabinetId)
+                    ? [{ machine: new mongoose.Types.ObjectId(cabinetId) }]
+                    : []),
+                ],
                 readAt: { $gte: startDate, $lte: endDate },
               },
             },
@@ -403,6 +419,12 @@ export async function PUT(
     ) {
       updateFields.collectorDenomination = Number(data.collectorDenomination);
     }
+    if (data.custom !== undefined) {
+      if (data.custom && typeof data.custom === 'object' && data.custom.name !== undefined) {
+        updateFields['custom.name'] = data.custom.name;
+      }
+    }
+
 
     // ============================================================================
     // STEP 7: Update cabinet in database
@@ -567,6 +589,12 @@ export async function PATCH(
     if (data.smibVersion !== undefined) {
       updateFields.smibVersion = data.smibVersion;
     }
+    if (data.custom !== undefined) {
+      if (data.custom && typeof data.custom === 'object' && data.custom.name !== undefined) {
+        updateFields['custom.name'] = data.custom.name;
+      }
+    }
+
 
     // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
     const updatedMachine = await Machine.findOneAndUpdate(

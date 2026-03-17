@@ -51,6 +51,13 @@ export default function DateFilters({
     }
   }, [activeMetricsFilter, hideAllTime, setActiveMetricsFilter]);
 
+  // Reset to "Today" if navigating to a page that doesn't support the Quarterly filter
+  useEffect(() => {
+    if (!showQuarterly && activeMetricsFilter === 'Quarterly') {
+      setActiveMetricsFilter('Today');
+    }
+  }, [activeMetricsFilter, showQuarterly, setActiveMetricsFilter]);
+
   const timeFilterButtons: { label: string; value: TimePeriod }[] =
     useMemo(() => {
       const baseButtons = [

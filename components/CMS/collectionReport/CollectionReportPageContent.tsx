@@ -203,9 +203,10 @@ export default function CollectionReportPageContent() {
         {/* Date Filter Integration (applicable to main collections tab) */}
         {effectiveTab === 'collection' && (
           <div className="mb-6">
-            <DateFilters hideAllTime={false} onCustomRangeGo={handleRefresh} />
+            <DateFilters hideAllTime={false} />
           </div>
         )}
+
 
         {/* ============================================================================
            Tab Content Area: Animated transition between views

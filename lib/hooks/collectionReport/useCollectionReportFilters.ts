@@ -9,12 +9,15 @@
 import { filterCollectionReports } from '@/lib/helpers/collectionReport';
 import type { CollectionReportRow } from '@/lib/types/components';
 import type { LocationSelectItem } from '@/lib/types/location';
+import type { dateRange as DashboardDateRange } from '@/lib/types';
 import { useMemo, useState } from 'react';
 
 export function useCollectionReportFilters(
   allReports: CollectionReportRow[],
   locations: LocationSelectItem[],
   searchTerm: string = '',
+  timePeriod: string = '',
+  dateRange?: DashboardDateRange
 ) {
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [showUncollectedOnly, setShowUncollectedOnly] = useState(false);
@@ -23,13 +26,20 @@ export function useCollectionReportFilters(
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const filteredReports = useMemo(() => {
-    // Apply basic filters
+    // Convert dashboard date range to react-day-picker format for the helper
+    const rdpDateRange = dateRange ? {
+      from: dateRange.from || dateRange.startDate || dateRange.start,
+      to: dateRange.to || dateRange.endDate || dateRange.end
+    } : undefined;
+
+    // Apply basic filters including date range if timePeriod is 'Custom'
     const filtered = filterCollectionReports(
       allReports,
       selectedLocation,
       '', // Server-side search handled via debouncedSearch
       showUncollectedOnly,
-      locations
+      locations,
+      timePeriod === 'Custom' ? rdpDateRange : undefined
     );
 
     // Apply specific SMIB filters
@@ -83,7 +93,8 @@ export function useCollectionReportFilters(
 
       return 0;
     });
-  }, [allReports, selectedLocation, showUncollectedOnly, locations, selectedFilters, sortField, sortDirection, searchTerm]);
+  }, [allReports, selectedLocation, showUncollectedOnly, locations, selectedFilters, sortField, sortDirection, searchTerm, timePeriod, dateRange]);
+
 
   const handleSort = (field: keyof CollectionReportRow) => {
     if (sortField === field) {

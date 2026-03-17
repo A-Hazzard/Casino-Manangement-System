@@ -23,6 +23,7 @@ import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 type CabinetsDetailsAccountingSectionProps = {
   cabinet: Cabinet;
   activeTab: string;
+  loading?: boolean;
   onTabChange: (tab: string) => void;
   onRefresh: () => void;
 };
@@ -30,6 +31,7 @@ type CabinetsDetailsAccountingSectionProps = {
 export default function CabinetsDetailsAccountingSection({
   cabinet,
   activeTab,
+  loading = false,
   onTabChange,
   onRefresh,
 }: CabinetsDetailsAccountingSectionProps) {
@@ -61,7 +63,7 @@ export default function CabinetsDetailsAccountingSection({
       <div className="min-h-[400px] w-full max-w-full overflow-x-auto">
         <CabinetsDetailsAccountingDetails
           cabinet={cabinet}
-          loading={false}
+          loading={loading}
           activeMetricsTabContent={activeTab}
           setActiveMetricsTabContent={onTabChange}
         />

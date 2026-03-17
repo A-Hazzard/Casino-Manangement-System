@@ -21,8 +21,11 @@ import type { CollectionView } from '@/lib/types/collection';
 import type { CollectionReportRow } from '@/lib/types/components';
 import type { LocationSelectItem } from '@/lib/types/location';
 import axios from 'axios';
+
+import { parse } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
 import { toast } from 'sonner';
 import { useCollectionReportFilters } from './useCollectionReportFilters';
 
@@ -65,7 +68,13 @@ export function useCollectionReportPageData() {
   const itemsPerBatch = 50;
   const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
 
-  const filters = useCollectionReportFilters(allReports, locations, debouncedSearch);
+  const filters = useCollectionReportFilters(
+    allReports,
+    locations,
+    debouncedSearch,
+    activeMetricsFilter,
+    customDateRange
+  );
 
   // ============================================================================
   // Modal State
@@ -78,6 +87,11 @@ export function useCollectionReportPageData() {
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<string | null>(null);
+
+  // ============================================================================
+  // Abort Controller for Fetching
+  // ============================================================================
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // ============================================================================
   // Handlers
@@ -110,6 +124,12 @@ export function useCollectionReportPageData() {
         return;
       }
 
+      // Abort previous request if it exists
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
       // Mark that we've started the first load
       if (!hasStartedFirstLoadRef.current) {
         hasStartedFirstLoadRef.current = true;
@@ -129,8 +149,10 @@ export function useCollectionReportPageData() {
           itemsPerBatch,
           0,
           undefined,
-          debouncedSearch
+          debouncedSearch,
+          abortControllerRef.current?.signal
         );
+
         if (result) {
           // Merge new reports into allReports, avoiding duplicates
           setAllReports(prev => {
@@ -145,12 +167,20 @@ export function useCollectionReportPageData() {
             setTotalReports(result.pagination.total);
           }
         }
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'CanceledError') {
+          // Ignore canceled requests
+          return;
+        }
+        console.error('[fetchReports] error:', err);
       } finally {
-        setLoading(false);
-        // Only set initialLoading to false after first response (success or error)
-        if (!hasReceivedFirstResponseRef.current) {
-          hasReceivedFirstResponseRef.current = true;
-          setInitialLoading(false);
+        if (!abortControllerRef.current?.signal.aborted) {
+          setLoading(false);
+          // Only set initialLoading to false after first response (success or error)
+          if (!hasReceivedFirstResponseRef.current) {
+            hasReceivedFirstResponseRef.current = true;
+            setInitialLoading(false);
+          }
         }
       }
     },
@@ -163,6 +193,7 @@ export function useCollectionReportPageData() {
       itemsPerBatch,
     ]
   );
+
 
   const refreshReports = useCallback(async () => {
     setAllReports([]);
@@ -383,10 +414,19 @@ export function useCollectionReportPageData() {
       // For each location, sort by time and take the top 2
       Object.keys(reportsByLocation).forEach(loc => {
         const sorted = [...reportsByLocation[loc]].sort((a, b) => {
-          const aTime = new Date(a.time || 0).getTime();
-          const bTime = new Date(b.time || 0).getTime();
+          const aTime = parse(
+            a.time || '',
+            'dd LLL yyyy, hh:mm:ss a',
+            new Date()
+          ).getTime();
+          const bTime = parse(
+            b.time || '',
+            'dd LLL yyyy, hh:mm:ss a',
+            new Date()
+          ).getTime();
           return bTime - aTime;
         });
+
 
         sorted.slice(0, 2).forEach(report => {
           if (report.locationReportId) {

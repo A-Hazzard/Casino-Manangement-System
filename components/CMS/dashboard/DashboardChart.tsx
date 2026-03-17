@@ -512,7 +512,8 @@ export default function Chart({
                       ? 'day'
                       : 'day'
                 }
-                interval={minWidth > 0 ? 0 : 'preserveStartEnd'}
+                interval={minWidth > 0 ? (isHourlyChart ? 0 : 'preserveStartEnd') : 'preserveStartEnd'}
+                minTickGap={isHourlyChart ? 30 : 80}
                 tickFormatter={(val, index) => {
                   if (isHourlyChart) {
                     const day = gapFilteredChartData[index]?.day;
@@ -594,7 +595,7 @@ export default function Chart({
                         ? new Date(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3]))
                         : new Date(dayValue);
                       if (!isNaN(date.getTime())) {
-                        return formatDisplayDate(date);
+                        return formatDate(date, { month: 'short', day: 'numeric' });
                       }
                       // If val is already a formatted string, return it
                       return String(val);

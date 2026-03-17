@@ -18,7 +18,8 @@ export async function fetchCollectionReportsByLicencee(
   limit: number = 50,
   skip: number = 0,
   locationName?: string,
-  search?: string
+  search?: string,
+  signal?: AbortSignal
 ) {
   const params = new URLSearchParams();
   if (licencee && licencee !== 'all') params.append('licencee', licencee);
@@ -32,10 +33,12 @@ export async function fetchCollectionReportsByLicencee(
   if (search) params.append('search', search);
 
   const response = await axios.get(
-    `/api/collectionReport?${params.toString()}`
+    `/api/collectionReport?${params.toString()}`,
+    { signal }
   );
   return response.data;
 }
+
 
 /**
  * Fetches locations with their machines for creating new reports

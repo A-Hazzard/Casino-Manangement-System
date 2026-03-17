@@ -184,6 +184,10 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     const body =
       (await request.json()) as Partial<CreateCollectionReportPayload>;
+    
+    // CRITICAL: Do not update the collector field during edit
+    delete body.collector;
+    delete body.collectorName;
 
     // ============================================================================
     // STEP 4: Get existing report for logging

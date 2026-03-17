@@ -751,12 +751,10 @@ export async function PATCH(req: NextRequest) {
             : new Date(updateData.sasStartTime as string | Date).toISOString();
       }
     }
-    // Remove top-level sasEndTime/sasStartTime from updateData.
-    // The Collections schema has no top-level fields with these names — they live inside
-    // the sasMeters sub-document. Mongoose strict mode silently strips them, but removing
-    // them explicitly also prevents any potential conflict with dot-notation paths above.
+    // Remove fields that should not be updated manually or by system automatically during edit
     delete updateData.sasEndTime;
     delete updateData.sasStartTime;
+    delete updateData.collector;
 
     // ============================================================================
     // STEP 8: Update collection document
