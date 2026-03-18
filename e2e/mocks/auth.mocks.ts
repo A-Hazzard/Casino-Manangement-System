@@ -157,18 +157,34 @@ export const MOCK_LOGIN_FAILURE = {
   timestamp: new Date().toISOString(),
 };
 
-/** Current-user endpoint response (admin) */
-export const MOCK_CURRENT_USER = {
-  success: true,
-  data: MOCK_USER_PAYLOAD,
-  timestamp: new Date().toISOString(),
-};
-
-/** Build a current-user response for any role's mock user */
+/**
+ * Build a current-user API response that matches the EXACT shape returned by
+ * GET /api/auth/current-user (see app/api/auth/current-user/route.ts).
+ *
+ * The response uses "user" (not "data") as the key, and "id" (not "_id").
+ * useCurrentUserQuery reads data.user.id and data.user.roles to update Zustand.
+ */
 export function mockCurrentUserResponse(userPayload: MockUserPayload) {
   return {
     success: true,
-    data: userPayload,
-    timestamp: new Date().toISOString(),
+    user: {
+      id: userPayload._id,
+      _id: userPayload._id,
+      username: userPayload.username,
+      emailAddress: userPayload.emailAddress,
+      profile: userPayload.profile,
+      roles: userPayload.roles,
+      isEnabled: userPayload.isEnabled,
+      assignedLocations: userPayload.assignedLocations,
+      assignedLicencees: userPayload.assignedLicencees,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      requiresProfileUpdate: false,
+      requiresPasswordUpdate: false,
+      tempPasswordChanged: true,
+    },
   };
 }
+
+/** Current-user endpoint response (admin) — matches GET /api/auth/current-user shape */
+export const MOCK_CURRENT_USER = mockCurrentUserResponse(MOCK_USER_PAYLOAD);

@@ -166,6 +166,10 @@ export async function loginViaMock(
   await page.waitForURL((url) => !url.pathname.includes('/login'), {
     timeout: 15_000,
   });
+  // Wait for the current-user API call to complete and Zustand to hydrate.
+  // This ensures context.storageState() captures the admin user in localStorage,
+  // so subsequent tests that load the storageState start with a hydrated Zustand store.
+  await page.waitForLoadState('networkidle');
 }
 
 // ─── Main exported setup function ─────────────────────────────────────────────
