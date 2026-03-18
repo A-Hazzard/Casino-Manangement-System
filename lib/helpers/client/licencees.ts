@@ -19,7 +19,6 @@ export async function fetchLicencees(
   pagination: { page: number; limit: number; total: number; totalPages: number };
 }> {
   try {
-    console.log('[fetchLicencees] Calling /api/licencees...', { page, limit });
     const params = new URLSearchParams();
     params.append('page', String(page));
     params.append('limit', String(limit));
@@ -32,8 +31,6 @@ export async function fetchLicencees(
       },
     });
 
-    console.log('[fetchLicencees] Response status:', response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[fetchLicencees] API error:', response.status, errorText);
@@ -41,12 +38,9 @@ export async function fetchLicencees(
     }
 
     const data = await response.json();
-    console.log('[fetchLicencees] Response data:', data);
-    console.log('[fetchLicencees] Licencees count:', data.licencees?.length || 0);
     
     // Ensure licencees is always an array
     const licencees = Array.isArray(data.licencees) ? data.licencees : [];
-    console.log('[fetchLicencees] Returning licencees:', licencees.map((l: Licencee) => ({ id: l._id, name: l.name })));
     
     return {
       licencees,

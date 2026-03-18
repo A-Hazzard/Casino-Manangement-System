@@ -33,20 +33,11 @@ export default async function getAllGamingLocations(
     if (licencee && licencee !== 'all') {
       // Convert licencee name to ObjectId for API compatibility
       const licenceeObjectId = getLicenceeObjectId(licencee);
-      console.log('[getAllGamingLocations] Input licencee:', licencee);
-      console.log(
-        '[getAllGamingLocations] Converted ObjectId:',
-        licenceeObjectId
-      );
       if (licenceeObjectId) {
         params.licencee = licenceeObjectId;
       }
     }
 
-    console.log(
-      '[getAllGamingLocations] Calling /api/locations with params:',
-      params
-    );
     const response = await axios.get<{ locations: locations }>(
       '/api/locations',
       {
@@ -55,10 +46,6 @@ export default async function getAllGamingLocations(
       }
     );
     const fetchedLocations = response.data.locations;
-    console.log(
-      '[getAllGamingLocations] Received locations:',
-      fetchedLocations?.length || 0
-    );
 
     return Array.isArray(fetchedLocations) ? fetchedLocations : [];
   } catch {
@@ -267,15 +254,11 @@ export async function fetchAggregatedLocationsData(
   } catch (error) {
     // Check if this is an axios cancellation using axios.isCancel()
     if (axios.isCancel(error)) {
-      console.log(
-        '[fetchAggregatedLocationsData] Request canceled (filter/page change)'
-      );
       throw error; // Re-throw so caller (useAbortableRequest) can handle it silently
     }
 
     // Check for AbortError (fetch API)
     if (error instanceof Error && error.name === 'AbortError') {
-      console.log('[fetchAggregatedLocationsData] Request aborted');
       throw error; // Re-throw so caller can handle it silently
     }
 

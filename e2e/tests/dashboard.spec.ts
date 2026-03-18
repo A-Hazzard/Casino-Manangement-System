@@ -41,11 +41,14 @@ import { setRoleAuthCookie } from '../fixtures/auth.fixture';
 
 async function mockDashboardAPIs(
   page: Page,
-  chartData = MOCK_METRICS_METERS
+  chartData = MOCK_METRICS_METERS,
+  mockCurrentUser = true
 ) {
-  await page.route('**/api/auth/current-user**', (route) =>
-    route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
-  );
+  if (mockCurrentUser) {
+    await page.route('**/api/auth/current-user**', (route) =>
+      route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
+    );
+  }
   const combinedChartData = [
     ...MOCK_METRICS_METERS,
     ...MOCK_METRICS_METERS_YESTERDAY
@@ -342,7 +345,8 @@ test.describe('Dashboard — Role-based access', () => {
     test(`${label} can access the dashboard`, async ({ page }) => {
       await test.step(`Inject ${label} auth cookie and mock APIs`, async () => {
         await setRoleAuthCookie(page, userPayload);
-        await mockDashboardAPIs(page);
+        // Do not override current-user mock!
+        await mockDashboardAPIs(page, undefined, false);
       });
 
       await test.step('Navigate to /', async () => {
@@ -350,7 +354,7 @@ test.describe('Dashboard — Role-based access', () => {
         await page.waitForLoadState('networkidle');
         // Throw a clear error if redirected to login despite having a mock current-user
         if (page.url().includes('/login')) {
-           throw new Error(`[Role Failure] ${label} was redirected to /login. Check setRoleAuthCookie and CurrentUser mock.`);
+           throw new Error(`[Role Failure] ${label} was redirected to ${page.url()}. Check setRoleAuthCookie and CurrentUser mock.`);
         }
       });
 

@@ -2,10 +2,10 @@
   "cookies": [
     {
       "name": "token",
-      "value": "eyJhbGciOiJIUzI1NiJ9.eyJfaWQiOiI2OWI0NmU4ODU0Njk0ZWEyMjQ2ZGE2OTgiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWxBZGRyZXNzIjoiYWRtaW5AZ21haWwuY29tIiwiaXNFbmFibGVkIjp0cnVlLCJyb2xlcyI6WyJkZXZlbG9wZXIiLCJhZG1pbiJdLCJhc3NpZ25lZExvY2F0aW9ucyI6W10sImFzc2lnbmVkTGljZW5jZWVzIjpbIjlhNWRiMmNiMjlmZmQyZDk2MmZkMWQ5MSIsIjczMmIwOTQwODMyMjZmMjE2YjNmYzExYSIsImMwM2IwOTQwODMyMjZmMjE2YjNmYzM5YyJdLCJzZXNzaW9uSWQiOiJlMmUtc2Vzc2lvbi02OWI0NmU4ODU0Njk0ZWEyMjQ2ZGE2OTgiLCJkYkNvbnRleHQiOnsiY29ubmVjdGlvblN0cmluZyI6Im1vbmdvZGI6Ly9zdW5ueTE6ODd5ZGFpdWhkc2lhMmVAMTQ3LjE4Mi4xMzMuMTM2OjI3MDE3L3Nhcy1hYXJvbj9hdXRoU291cmNlPWFkbWluIiwidGltZXN0YW1wIjoxNzczODEzNDQ1NTQzfSwiaWF0IjoxNzczODEzNDQ1LCJleHAiOjE3NzQ0MTgyNDUsImp0aSI6IjI1OTVjOTUxLTRlYzUtNDM0ZC1hZmFiLWRiNWVhNzdjYWEyOCJ9.5LpF3DhzXl0EpMPykigi_XzK2xEbP1AjT994fJU8GDU",
+      "value": "eyJhbGciOiJIUzI1NiJ9.eyJfaWQiOiI2OWI0NmU4ODU0Njk0ZWEyMjQ2ZGE2OTgiLCJ1c2VybmFtZSI6ImFkbWluIiwiZW1haWxBZGRyZXNzIjoiYWRtaW5AZ21haWwuY29tIiwiaXNFbmFibGVkIjp0cnVlLCJyb2xlcyI6WyJkZXZlbG9wZXIiLCJhZG1pbiJdLCJhc3NpZ25lZExvY2F0aW9ucyI6W10sImFzc2lnbmVkTGljZW5jZWVzIjpbIjlhNWRiMmNiMjlmZmQyZDk2MmZkMWQ5MSIsIjczMmIwOTQwODMyMjZmMjE2YjNmYzExYSIsImMwM2IwOTQwODMyMjZmMjE2YjNmYzM5YyJdLCJzZXNzaW9uSWQiOiJlMmUtc2Vzc2lvbi02OWI0NmU4ODU0Njk0ZWEyMjQ2ZGE2OTgiLCJkYkNvbnRleHQiOnsiY29ubmVjdGlvblN0cmluZyI6Im1vbmdvZGI6Ly9zdW5ueTE6ODd5ZGFpdWhkc2lhMmVAMTQ3LjE4Mi4xMzMuMTM2OjI3MDE3L3Nhcy1hYXJvbj9hdXRoU291cmNlPWFkbWluIiwidGltZXN0YW1wIjoxNzczODE4NTI4NDE3fSwiaWF0IjoxNzczODE4NTI4LCJleHAiOjE3NzQ0MjMzMjgsImp0aSI6ImM4ZTE1YWNlLTQ2YjItNDk2MC04OTJlLWRhNjA5ZTY5ZTllZiJ9.WUraeJhRZzw4GkN_4EwKb-lXO5_Vxo6JQbc-aUpPeoM",
       "domain": "localhost",
       "path": "/",
-      "expires": 1774418245.546,
+      "expires": 1774423328.457,
       "httpOnly": true,
       "secure": false,
       "sameSite": "Lax"
@@ -16,8 +16,16 @@
       "origin": "http://localhost:3000",
       "localStorage": [
         {
+          "name": "evolution-currency",
+          "value": "TTD"
+        },
+        {
           "name": "dashboard-store",
-          "value": "{\"state\":{\"selectedLicencee\":\"9a5db2cb29ffd2d962fd1d91\",\"activeMetricsFilter\":\"Today\",\"displayCurrency\":\"TTD\",\"gameDayOffset\":8,\"customDateRange\":{\"startDate\":\"2026-03-18T05:57:25.207Z\",\"endDate\":\"2026-03-18T05:57:25.207Z\"}},\"version\":0}"
+          "value": "{\"state\":{\"selectedLicencee\":\"9a5db2cb29ffd2d962fd1d91\",\"activeMetricsFilter\":\"Today\",\"customDateRange\":{\"startDate\":\"2026-03-18T07:22:08.029Z\",\"endDate\":\"2026-03-18T07:22:08.029Z\"},\"displayCurrency\":\"TTD\",\"gameDayOffset\":8},\"version\":0}"
+        },
+        {
+          "name": "sidebar-collapsed",
+          "value": "false"
         },
         {
           "name": "user-auth-store",

@@ -27,7 +27,6 @@ import { type BrowserContext, type Page, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as nodePath from 'path';
 import {
-  MOCK_CURRENT_USER,
   MOCK_USER_PAYLOAD,
   MockUserPayload,
   mockCurrentUserResponse,
@@ -153,6 +152,8 @@ async function obtainAuthCookie(
       'Ensure the Next.js dev server is running and NODE_ENV !== "production".'
     );
   }
+
+  await page.context().cookies();
 }
 
 // ─── Role-based cookie injection ──────────────────────────────────────────────
@@ -185,6 +186,22 @@ export async function setRoleAuthCookie(
     route.fulfill({
       status: 200,
       json: mockCurrentUserResponse(userPayload),
+    })
+  );
+
+  // Mock token API so fetchUserId doesn't hit the DB and return 401
+  await page.route('**/api/auth/token**', (route) =>
+    route.fulfill({
+      status: 200,
+      json: { userId: userPayload._id }
+    })
+  );
+
+  // Mock profile API so AppSidebar doesn't get 404
+  await page.route(`**/api/users/${userPayload._id}**`, (route) =>
+    route.fulfill({
+      status: 200,
+      json: { success: true, user: mockCurrentUserResponse(userPayload).user }
     })
   );
 
@@ -235,7 +252,23 @@ export async function loginViaMock(
   await page.route('**/api/auth/current-user**', (route) =>
     route.fulfill({
       status: 200,
-      json: MOCK_CURRENT_USER,
+      json: mockCurrentUserResponse(userPayload),
+    })
+  );
+
+  // Mock token API so fetchUserId doesn't hit the DB and return 401
+  await page.route('**/api/auth/token**', (route) =>
+    route.fulfill({
+      status: 200,
+      json: { userId: userPayload._id }
+    })
+  );
+
+  // Mock profile API so AppSidebar doesn't get 404
+  await page.route(`**/api/users/${userPayload._id}**`, (route) =>
+    route.fulfill({
+      status: 200,
+      json: { success: true, user: mockCurrentUserResponse(userPayload).user }
     })
   );
 

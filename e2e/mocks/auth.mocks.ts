@@ -46,9 +46,9 @@ export const MOCK_USER_PAYLOAD: MockUserPayload = {
 };
 
 export const MOCK_USER_DEVELOPER: MockUserPayload = {
-  _id: 'e2e_dev_id',
-  username: 'e2e_developer',
-  emailAddress: 'e2e_dev@gmail.com',
+  _id: '69b46e8854694ea2246da699',
+  username: 'developer',
+  emailAddress: 'developer@gmail.com',
   roles: ['developer', 'admin'],
   isEnabled: true,
   assignedLocations: [],
@@ -70,9 +70,9 @@ export const MOCK_USER_MANAGER: MockUserPayload = {
 };
 
 export const MOCK_USER_LOCATION_ADMIN: MockUserPayload = {
-  _id: 'e2e_locadmin_id',
-  username: 'e2e_locadmin',
-  emailAddress: 'e2e_locadmin@gmail.com',
+  _id: '69b46e8854694ea2246da69a',
+  username: 'location admin',
+  emailAddress: 'locationadmin@gmail.com',
   roles: ['location admin'],
   isEnabled: true,
   assignedLocations: [],
@@ -81,9 +81,9 @@ export const MOCK_USER_LOCATION_ADMIN: MockUserPayload = {
 };
 
 export const MOCK_USER_VAULT_MANAGER: MockUserPayload = {
-  _id: 'e2e_vm_id',
-  username: 'e2e_vault_manager',
-  emailAddress: 'e2e_vm@gmail.com',
+  _id: '69b46e8854694ea2246da69b',
+  username: 'vaultManager',
+  emailAddress: 'vaultmanager@gmail.com',
   roles: ['vault-manager'],
   isEnabled: true,
   assignedLocations: [],
@@ -92,9 +92,9 @@ export const MOCK_USER_VAULT_MANAGER: MockUserPayload = {
 };
 
 export const MOCK_USER_CASHIER: MockUserPayload = {
-  _id: 'e2e_cashier_id',
-  username: 'e2e_cashier',
-  emailAddress: 'e2e_cashier@gmail.com',
+  _id: '69b46e8854694ea2246da69c',
+  username: 'cashier',
+  emailAddress: 'cashier@gmail.com',
   roles: ['cashier'],
   isEnabled: true,
   assignedLocations: [],
@@ -103,9 +103,9 @@ export const MOCK_USER_CASHIER: MockUserPayload = {
 };
 
 export const MOCK_USER_TECHNICIAN: MockUserPayload = {
-  _id: 'e2e_tech_id',
-  username: 'e2e_tech',
-  emailAddress: 'e2e_tech@gmail.com',
+  _id: '69b46e8854694ea2246da69d',
+  username: 'technician',
+  emailAddress: 'technician@gmail.com',
   roles: ['technician'],
   isEnabled: true,
   assignedLocations: [],
@@ -114,9 +114,9 @@ export const MOCK_USER_TECHNICIAN: MockUserPayload = {
 };
 
 export const MOCK_USER_COLLECTOR: MockUserPayload = {
-  _id: 'e2e_collector_id',
-  username: 'e2e_collector',
-  emailAddress: 'e2e_collector@gmail.com',
+  _id: '  69b46e8854694ea2246da69e',
+  username: 'collector',
+  emailAddress: 'collector@gmail.com',
   roles: ['collector'],
   isEnabled: true,
   assignedLocations: [],

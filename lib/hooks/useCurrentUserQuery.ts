@@ -125,12 +125,6 @@ export function useCurrentUserQuery() {
       if (hasChanged) {
         setUser(userPayload);
 
-        if (process.env.NODE_ENV === 'development') {
-          console.log(
-            '✅ User store updated with assignedLicencees:',
-            dbUser.assignedLicencees
-          );
-        }
       }
 
       userCache.set(
