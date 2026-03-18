@@ -15,6 +15,7 @@
  * page.route() so tests are fully deterministic and require no real DB.
  */
 
+import { type Page } from '@playwright/test';
 import { test, expect } from '../fixtures/test.fixture';
 import {
   MOCK_DASHBOARD_STATS,
@@ -32,7 +33,7 @@ import { MOCK_CURRENT_USER } from '../mocks/auth.mocks';
 // ─── Shared route setup helper ────────────────────────────────────────────────
 
 async function mockDashboardAPIs(
-  page: Parameters<Parameters<typeof test>[1]>[0]['page'],
+  page: Page,
   statsPayload = MOCK_DASHBOARD_STATS
 ) {
   await page.route('**/api/auth/current-user**', (route) =>
