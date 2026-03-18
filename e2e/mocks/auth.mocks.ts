@@ -26,98 +26,102 @@ export type MockUserPayload = {
 // no dashboard access: vault-manager ❌  cashier ❌  technician ❌  collector ❌
 
 export const MOCK_USER_PAYLOAD: MockUserPayload = {
-  _id: 'user_test_001',
-  username: 'testadmin',
-  emailAddress: 'testadmin@evolution1.com',
-  roles: ['admin'],
+  _id: '69b46e8854694ea2246da698',
+  username: 'admin',
+  emailAddress: 'admin@gmail.com',
+  roles: ['developer', 'admin'],
   isEnabled: true,
-  assignedLocations: ['loc_001', 'loc_002'],
-  assignedLicencees: ['lic_001'],
+  assignedLocations: [],
+  assignedLicencees: [
+    '9a5db2cb29ffd2d962fd1d91',
+    '732b094083226f216b3fc11a',
+    'c03b094083226f216b3fc39c'
+  ],
   profile: {
-    firstName: 'Test',
+    firstName: 'Evolution',
     lastName: 'Admin',
-    gender: 'male',
-    phoneNumber: '+18681234567',
+    gender: 'other',
+    phoneNumber: '18681234566',
   },
 };
 
 export const MOCK_USER_DEVELOPER: MockUserPayload = {
-  _id: 'user_dev_001',
-  username: 'testdeveloper',
-  emailAddress: 'developer@evolution1.com',
-  roles: ['developer'],
+  _id: 'e2e_dev_id',
+  username: 'e2e_developer',
+  emailAddress: 'e2e_dev@gmail.com',
+  roles: ['developer', 'admin'],
   isEnabled: true,
-  assignedLocations: ['loc_001'],
-  assignedLicencees: ['lic_001'],
-  profile: { firstName: 'Dev', lastName: 'User', gender: 'male' },
+  assignedLocations: [],
+  assignedLicencees: ['9a5db2cb29ffd2d962fd1d91'],
+  profile: { firstName: 'E2E', lastName: 'Developer', gender: 'other' },
 };
 
-export const MOCK_USER_ADMIN = MOCK_USER_PAYLOAD; // alias
+export const MOCK_USER_ADMIN = MOCK_USER_PAYLOAD; // admin@gmail.com
 
 export const MOCK_USER_MANAGER: MockUserPayload = {
-  _id: 'user_mgr_001',
-  username: 'testmanager',
-  emailAddress: 'manager@evolution1.com',
-  roles: ['manager'],
+  _id: '69b6ff3588664816450beac8', // Real manager from list_users
+  username: 'manager',
+  emailAddress: 'manager@gmail.com',
+  roles: ['manager', 'admin'],
   isEnabled: true,
-  assignedLocations: ['loc_001'],
-  assignedLicencees: ['lic_001'],
-  profile: { firstName: 'Manager', lastName: 'User', gender: 'female' },
+  assignedLocations: [],
+  assignedLicencees: ['9a5db2cb29ffd2d962fd1d91'],
+  profile: { firstName: 'E2E', lastName: 'Manager', gender: 'other' },
 };
 
 export const MOCK_USER_LOCATION_ADMIN: MockUserPayload = {
-  _id: 'user_locadmin_001',
-  username: 'testlocationadmin',
-  emailAddress: 'locadmin@evolution1.com',
+  _id: 'e2e_locadmin_id',
+  username: 'e2e_locadmin',
+  emailAddress: 'e2e_locadmin@gmail.com',
   roles: ['location admin'],
   isEnabled: true,
-  assignedLocations: ['loc_001'],
-  assignedLicencees: ['lic_001'],
-  profile: { firstName: 'Location', lastName: 'Admin', gender: 'male' },
+  assignedLocations: [],
+  assignedLicencees: ['9a5db2cb29ffd2d962fd1d91'],
+  profile: { firstName: 'E2E', lastName: 'LocAdmin', gender: 'other' },
 };
 
 export const MOCK_USER_VAULT_MANAGER: MockUserPayload = {
-  _id: 'user_vm_001',
-  username: 'testvaultmanager',
-  emailAddress: 'vaultmanager@evolution1.com',
+  _id: 'e2e_vm_id',
+  username: 'e2e_vault_manager',
+  emailAddress: 'e2e_vm@gmail.com',
   roles: ['vault-manager'],
   isEnabled: true,
-  assignedLocations: ['loc_001'],
-  assignedLicencees: ['lic_001'],
-  profile: { firstName: 'Vault', lastName: 'Manager', gender: 'male' },
+  assignedLocations: [],
+  assignedLicencees: ['9a5db2cb29ffd2d962fd1d91'],
+  profile: { firstName: 'E2E', lastName: 'VaultManager', gender: 'other' },
 };
 
 export const MOCK_USER_CASHIER: MockUserPayload = {
-  _id: 'user_cashier_001',
-  username: 'testcashier',
-  emailAddress: 'cashier@evolution1.com',
+  _id: 'e2e_cashier_id',
+  username: 'e2e_cashier',
+  emailAddress: 'e2e_cashier@gmail.com',
   roles: ['cashier'],
   isEnabled: true,
-  assignedLocations: ['loc_001'],
-  assignedLicencees: ['lic_001'],
-  profile: { firstName: 'Test', lastName: 'Cashier', gender: 'female' },
+  assignedLocations: [],
+  assignedLicencees: ['9a5db2cb29ffd2d962fd1d91'],
+  profile: { firstName: 'E2E', lastName: 'Cashier', gender: 'other' },
 };
 
 export const MOCK_USER_TECHNICIAN: MockUserPayload = {
-  _id: 'user_tech_001',
-  username: 'testtechnician',
-  emailAddress: 'technician@evolution1.com',
+  _id: 'e2e_tech_id',
+  username: 'e2e_tech',
+  emailAddress: 'e2e_tech@gmail.com',
   roles: ['technician'],
   isEnabled: true,
-  assignedLocations: ['loc_001'],
-  assignedLicencees: ['lic_001'],
-  profile: { firstName: 'Test', lastName: 'Technician', gender: 'male' },
+  assignedLocations: [],
+  assignedLicencees: ['9a5db2cb29ffd2d962fd1d91'],
+  profile: { firstName: 'E2E', lastName: 'Technician', gender: 'other' },
 };
 
 export const MOCK_USER_COLLECTOR: MockUserPayload = {
-  _id: 'user_collector_001',
-  username: 'testcollector',
-  emailAddress: 'collector@evolution1.com',
+  _id: 'e2e_collector_id',
+  username: 'e2e_collector',
+  emailAddress: 'e2e_collector@gmail.com',
   roles: ['collector'],
   isEnabled: true,
-  assignedLocations: ['loc_001'],
-  assignedLicencees: ['lic_001'],
-  profile: { firstName: 'Test', lastName: 'Collector', gender: 'female' },
+  assignedLocations: [],
+  assignedLicencees: ['9a5db2cb29ffd2d962fd1d91'],
+  profile: { firstName: 'E2E', lastName: 'Collector', gender: 'other' },
 };
 
 // ─── All role users map ───────────────────────────────────────────────────────

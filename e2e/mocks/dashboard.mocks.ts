@@ -98,7 +98,7 @@ export const MOCK_LOCATIONS_ANALYTICS = {
       performance: 'excellent',
       sasEnabled: true,
       holdPercentage: 89.9,
-      coordinates: { lat: 10.6918, lng: -61.2225 },
+      geoCoords: { latitude: 10.6918, longitude: -61.2225 },
     },
     {
       locationId: 'loc_002',
@@ -111,7 +111,7 @@ export const MOCK_LOCATIONS_ANALYTICS = {
       performance: 'good',
       sasEnabled: true,
       holdPercentage: 91.6,
-      coordinates: { lat: 10.2745, lng: -61.4589 },
+      geoCoords: { latitude: 10.2745, longitude: -61.4589 },
     },
   ],
   timestamp: new Date().toISOString(),
@@ -170,8 +170,28 @@ export const MOCK_TOP_MACHINES = {
   timestamp: new Date().toISOString(),
 };
 
-// ─── Charts data ─────────────────────────────────────────────────────────────
+// ─── Metrics Meters data (used for charts) ───────────────────────────────────
 
+export const MOCK_METRICS_METERS = [
+  { day: '2026-03-18', time: '08:00', drop: 4200, totalCancelledCredits: 420, gross: 3780, moneyIn: 4200, moneyOut: 420, jackpot: 0 },
+  { day: '2026-03-18', time: '09:00', drop: 6800, totalCancelledCredits: 680, gross: 6120, moneyIn: 6800, moneyOut: 680, jackpot: 0 },
+  { day: '2026-03-18', time: '10:00', drop: 9300, totalCancelledCredits: 930, gross: 8370, moneyIn: 9300, moneyOut: 930, jackpot: 0 },
+  { day: '2026-03-18', time: '11:00', drop: 11200, totalCancelledCredits: 1120, gross: 10080, moneyIn: 11200, moneyOut: 1120, jackpot: 0 },
+  { day: '2026-03-18', time: '12:00', drop: 13500, totalCancelledCredits: 1350, gross: 12150, moneyIn: 13500, moneyOut: 1350, jackpot: 0 },
+  { day: '2026-03-18', time: '13:00', drop: 10800, totalCancelledCredits: 1080, gross: 9720, moneyIn: 10800, moneyOut: 1080, jackpot: 0 },
+  { day: '2026-03-18', time: '14:00', drop: 8700, totalCancelledCredits: 870, gross: 7830, moneyIn: 8700, moneyOut: 870, jackpot: 0 },
+];
+
+export const MOCK_METRICS_METERS_YESTERDAY = MOCK_METRICS_METERS.map(m => ({
+  ...m,
+  day: '2026-03-17',
+  drop: m.drop * 0.9,
+  gross: m.gross * 0.9,
+  moneyIn: m.moneyIn * 0.9,
+  moneyOut: m.moneyOut * 0.9,
+}));
+
+// legacy chart data mock (still kept if needed for other tests)
 export const MOCK_CHARTS_DATA = {
   success: true,
   data: {

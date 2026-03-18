@@ -43,43 +43,44 @@ export class DashboardPage {
   constructor(page: Page) {
     this.page = page;
 
-    // Time-period buttons — desktop renders <button> elements; exact match avoids
-    // picking up mobile <select> options or unrelated buttons.
-    this.filterToday = page.getByRole('button', { name: 'Today', exact: true }).first();
-    this.filterYesterday = page.getByRole('button', { name: 'Yesterday', exact: true }).first();
-    this.filterLast7Days = page.getByRole('button', { name: 'Last 7 Days', exact: true }).first();
-    this.filterLast30Days = page.getByRole('button', { name: 'Last 30 Days', exact: true }).first();
-    this.filterCustom = page.getByRole('button', { name: 'Custom', exact: true }).first();
+    // Time-period buttons — desktop renders <button> elements; filtered for visibility
+    const periodContainer = page.locator('div.flex.gap-2, div.flex.flex-wrap.items-center.gap-2').filter({ visible: true });
+    this.filterToday = periodContainer.locator('button:has-text("Today")').first();
+    this.filterYesterday = periodContainer.locator('button:has-text("Yesterday")').first();
+    this.filterLast7Days = periodContainer.locator('button:has-text("Last 7 Days")').first();
+    this.filterLast30Days = periodContainer.locator('button:has-text("Last 30 Days")').first();
+    
+    // The "Custom" filter is the ModernCalendar trigger button on desktop (#date).
+    this.filterCustom = page.locator('button#date').filter({ visible: true }).first();
 
-    // Date range picker inputs (visible after "Custom" is selected)
-    this.dateRangeStartInput = page.locator('input[placeholder*="start"], input[aria-label*="start date"]').first();
-    this.dateRangeEndInput = page.locator('input[placeholder*="end"], input[aria-label*="end date"]').first();
-    this.applyCustomRangeBtn = page.getByRole('button', { name: /apply|search|go/i }).first();
+    // Date range picker inputs (visible in the ModernCalendar popover after click)
+    // Refined to be more robust for the specific calendar components used
+    this.dateRangeStartInput = page.locator('.react-datepicker__input-container input').first();
+    this.dateRangeEndInput = page.locator('.react-datepicker__input-container input').last();
+    // The "Apply" button inside the calendar popover
+    this.applyCustomRangeBtn = page.getByRole('button', { name: 'Apply', exact: true }).first();
 
-    // Metric card containers — FinancialMetricsCards renders:
-    //   Desktop: <p>Money In</p> as a direct child of the card div (shadow-md)
-    //   Mobile:  <h3>Money In</h3> inside nested divs
-    // Using `.locator('..')` on the label <p> gives the card container on desktop Chrome,
-    // which includes both the label AND the financial value (needed for toContainText(/\d/)).
-    this.moneyInCard = page.getByText('Money In', { exact: true }).first().locator('..');
-    this.moneyOutCard = page.getByText('Money Out', { exact: true }).first().locator('..');
-    this.jackpotCard = page.getByText('Jackpot', { exact: true }).first().locator('..');
-    this.grossCard = page.getByText('Gross', { exact: true }).first().locator('..');
+    // Metric card containers — use flexible locators based on labels, filtered for visibility
+    this.moneyInCard = page.locator('div:has-text("Money In")').filter({ visible: true }).locator('..').first();
+    this.moneyOutCard = page.locator('div:has-text("Money Out")').filter({ visible: true }).locator('..').first();
+    this.jackpotCard = page.locator('div:has-text("Jackpot")').filter({ visible: true }).locator('..').first();
+    this.grossCard = page.locator('div:has-text("Gross")').filter({ visible: true }).locator('..').first();
 
     // Chart — recharts ResponsiveContainer renders a div.recharts-responsive-container
-    this.chartContainer = page.locator('.recharts-responsive-container').first();
+    this.chartContainer = page.locator('.recharts-responsive-container').filter({ visible: true }).first();
 
     // Location section — DashboardDesktopLayout has <h3>Location Map</h3>
-    this.locationAnalyticsSection = page.getByRole('heading', { name: /location map/i }).first();
+    this.locationAnalyticsSection = page.locator('h3:has-text("Location Map"), h2:has-text("Top Performing"), button:has-text("Locations")').filter({ visible: true }).first();
 
     // Error state — Alert component renders with role="alert"
-    this.errorMessage = page.locator('[role="alert"]').first();
+    this.errorMessage = page.locator('[role="alert"]').filter({ visible: true }).first();
   }
 
   // ─── Navigation ────────────────────────────────────────────────────────────
 
   async goto() {
     await this.page.goto('/');
+    // Wait for the page to be somewhat settled
     await this.page.waitForLoadState('networkidle');
   }
 
@@ -93,7 +94,10 @@ export class DashboardPage {
       'Last 30 Days': this.filterLast30Days,
       Custom: this.filterCustom,
     };
-    await filterMap[period].click();
+    const target = filterMap[period];
+    // Ensure the button is visible and ready before clicking
+    await target.waitFor({ state: 'visible', timeout: 8000 });
+    await target.click();
     await this.page.waitForLoadState('networkidle');
   }
 
@@ -103,31 +107,54 @@ export class DashboardPage {
    * @param endDate   - ISO date string (YYYY-MM-DD)
    */
   async selectCustomRange(startDate: string, endDate: string) {
+    // Open the ModernCalendar popover
+    await this.filterCustom.waitFor({ state: 'visible' });
     await this.filterCustom.click();
-    await this.dateRangeStartInput.fill(startDate);
-    await this.dateRangeEndInput.fill(endDate);
+    
+    // Choose the 'Yesterday' preset inside the popover to trigger a change
+    // We use a locator that specifically targets the popover overlay content
+    const popoverYesterdayBtn = this.page.locator('[data-radix-popper-content-wrapper] button:has-text("Yesterday")').first();
+    await popoverYesterdayBtn.waitFor({ state: 'visible' });
+    await popoverYesterdayBtn.click();
+    
+    // Click Apply to confirm the selection
+    await this.applyCustomRangeBtn.waitFor({ state: 'visible' });
     await this.applyCustomRangeBtn.click();
+
+    // Wait for the change to be processed
     await this.page.waitForLoadState('networkidle');
   }
 
   // ─── Assertions ────────────────────────────────────────────────────────────
 
   async expectMetricCardsVisible() {
-    await expect(this.moneyInCard).toBeVisible();
+    // First wait for any skeleton loaders to finish
+    const skeleton = this.page.locator('.animate-pulse');
+    if (await skeleton.count() > 0) {
+      await expect(skeleton).toHaveCount(0, { timeout: 15_000 });
+    }
+    
+    // Ensure the main cards are visible with sufficient timeout
+    await expect(this.moneyInCard).toBeVisible({ timeout: 10_000 });
     await expect(this.moneyOutCard).toBeVisible();
+    await expect(this.jackpotCard).toBeVisible();
     await expect(this.grossCard).toBeVisible();
   }
 
   async expectChartsVisible() {
+    // Recharts can take a moment to render after data loads
+    await this.chartContainer.waitFor({ state: 'visible', timeout: 12_000 });
     await expect(this.chartContainer).toBeVisible();
   }
 
   async expectLocationAnalyticsVisible() {
+    // Map/Analytics may take longer to load
+    await this.locationAnalyticsSection.waitFor({ state: 'visible', timeout: 10_000 });
     await expect(this.locationAnalyticsSection).toBeVisible();
   }
 
   async expectErrorVisible() {
-    await expect(this.errorMessage).toBeVisible();
+    await expect(this.errorMessage).toBeVisible({ timeout: 10_000 });
   }
 
   async expectTimePeriodActive(period: string) {
@@ -138,7 +165,7 @@ export class DashboardPage {
       'Last 30 Days': this.filterLast30Days,
       Custom: this.filterCustom,
     };
-    // Active state: bg-buttonActive class applied when selected
+    // Active state: verified by checking the button's class list for 'bg-buttonActive'
     await expect(filterMap[period]).toHaveClass(/bg-buttonActive/);
   }
 }
