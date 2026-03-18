@@ -18,6 +18,7 @@
  *  11. Edit licencee — toggling subtractJackpot checkbox updates the display
  */
 
+import { type Page } from '@playwright/test';
 import { test, expect } from '../fixtures/test.fixture';
 import {
   MOCK_USERS_LIST,
@@ -35,12 +36,21 @@ import {
   MOCK_LICENCEE_1,
   MOCK_LICENCEE_2,
 } from '../mocks/locations.mocks';
-import { MOCK_CURRENT_USER } from '../mocks/auth.mocks';
+import {
+  MOCK_CURRENT_USER,
+  MOCK_USER_MANAGER,
+  MOCK_USER_LOCATION_ADMIN,
+  MOCK_USER_VAULT_MANAGER,
+  MOCK_USER_CASHIER,
+  MOCK_USER_TECHNICIAN,
+  MOCK_USER_COLLECTOR,
+} from '../mocks/auth.mocks';
+import { setRoleAuthCookie } from '../fixtures/auth.fixture';
 
 // ─── Shared mock helper ───────────────────────────────────────────────────────
 
 async function mockUsersAPIs(
-  page: Parameters<Parameters<typeof test>[1]>[0]['page'],
+  page: Page,
   listPayload = MOCK_USERS_LIST
 ) {
   await page.route('**/api/auth/current-user**', (route) =>
@@ -444,7 +454,7 @@ test.describe('Administration — User Management', () => {
  * Mocks all APIs needed for the licencees section of the Administration page.
  */
 async function mockLicenceesAPIs(
-  page: Parameters<Parameters<typeof test>[1]>[0]['page'],
+  page: Page,
   licenceesPayload = MOCK_LICENCEES_LIST
 ) {
   await page.route('**/api/auth/current-user**', (route) =>
@@ -577,5 +587,62 @@ test.describe('Administration — Licencee Management (subtractJackpot)', () => 
     await test.step('Assert the badge now shows "Yes" for lic_001', async () => {
       await administrationPage.expectSubtractJackpot(MOCK_LICENCEE_1.name, true);
     });
+  });
+});
+
+// ─── Role-based access restriction tests ─────────────────────────────────────
+//
+// Administration page accessible to: developer, admin, manager, location admin
+// Blocked: cashier (→ /vault/cashier/payouts), vault-manager (→ /vault/management),
+//          technician (→ /unauthorized), collector (→ /collection-report)
+
+test.describe('Administration — Role-based access', () => {
+  for (const [label, userPayload] of [
+    ['manager', MOCK_USER_MANAGER],
+    ['location admin', MOCK_USER_LOCATION_ADMIN],
+  ] as const) {
+    test(`${label} can access /administration`, async ({ page, administrationPage }) => {
+      await test.step(`Inject ${label} auth cookie and mock APIs`, async () => {
+        await setRoleAuthCookie(page, userPayload);
+        await mockUsersAPIs(page);
+      });
+
+      await test.step('Navigate to /administration', async () => {
+        await administrationPage.goto();
+        await page.waitForLoadState('networkidle');
+      });
+
+      await test.step('Assert no redirect away from /administration', async () => {
+        expect(page.url()).not.toMatch(/\/login|\/unauthorized|\/vault/);
+      });
+    });
+  }
+
+  test('cashier is redirected from /administration', async ({ page }) => {
+    await setRoleAuthCookie(page, MOCK_USER_CASHIER);
+    await page.goto('/administration');
+    await page.waitForURL(/vault\/cashier\/payouts/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/vault\/cashier\/payouts/);
+  });
+
+  test('vault-manager is redirected from /administration', async ({ page }) => {
+    await setRoleAuthCookie(page, MOCK_USER_VAULT_MANAGER);
+    await page.goto('/administration');
+    await page.waitForURL(/vault\/management/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/vault\/management/);
+  });
+
+  test('technician is redirected from /administration to /unauthorized', async ({ page }) => {
+    await setRoleAuthCookie(page, MOCK_USER_TECHNICIAN);
+    await page.goto('/administration');
+    await page.waitForURL(/unauthorized/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/unauthorized/);
+  });
+
+  test('collector is redirected from /administration', async ({ page }) => {
+    await setRoleAuthCookie(page, MOCK_USER_COLLECTOR);
+    await page.goto('/administration');
+    await page.waitForURL(/collection-report/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/collection-report/);
   });
 });

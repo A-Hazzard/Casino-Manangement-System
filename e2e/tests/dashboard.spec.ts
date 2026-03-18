@@ -28,7 +28,17 @@ import {
   MOCK_CHARTS_DATA,
   MOCK_DASHBOARD_SERVER_ERROR,
 } from '../mocks/dashboard.mocks';
-import { MOCK_CURRENT_USER } from '../mocks/auth.mocks';
+import {
+  MOCK_CURRENT_USER,
+  MOCK_USER_DEVELOPER,
+  MOCK_USER_MANAGER,
+  MOCK_USER_LOCATION_ADMIN,
+  MOCK_USER_VAULT_MANAGER,
+  MOCK_USER_CASHIER,
+  MOCK_USER_TECHNICIAN,
+  MOCK_USER_COLLECTOR,
+} from '../mocks/auth.mocks';
+import { setRoleAuthCookie } from '../fixtures/auth.fixture';
 
 // ─── Shared route setup helper ────────────────────────────────────────────────
 
@@ -276,6 +286,105 @@ test.describe('Dashboard', () => {
 
     await test.step('Assert an error indicator is displayed', async () => {
       await dashboardPage.expectErrorVisible();
+    });
+  });
+});
+
+// ─── Role-based access restriction tests ─────────────────────────────────────
+//
+// Dashboard is restricted to: developer, admin, manager, location admin
+// Blocked roles and their expected redirects:
+//   cashier       → /vault/cashier/payouts
+//   vault-manager → /vault/management
+//   collector     → /collection-report
+//   technician    → /unauthorized
+//
+// Allowed roles (non-admin/developer) also verified to confirm no redirect.
+
+test.describe('Dashboard — Role-based access', () => {
+  // ── Roles that CAN access the dashboard ────────────────────────────────────
+
+  for (const [label, userPayload] of [
+    ['developer', MOCK_USER_DEVELOPER],
+    ['manager', MOCK_USER_MANAGER],
+    ['location admin', MOCK_USER_LOCATION_ADMIN],
+  ] as const) {
+    test(`${label} can access the dashboard`, async ({ page }) => {
+      await test.step(`Inject ${label} auth cookie and mock APIs`, async () => {
+        await setRoleAuthCookie(page, userPayload);
+        await mockDashboardAPIs(page, MOCK_DASHBOARD_STATS);
+      });
+
+      await test.step('Navigate to /', async () => {
+        await page.goto('/');
+        await page.waitForLoadState('networkidle');
+      });
+
+      await test.step('Assert URL is still on dashboard (no redirect)', async () => {
+        expect(page.url()).not.toMatch(/\/login|\/unauthorized|\/vault/);
+      });
+    });
+  }
+
+  // ── Roles that CANNOT access the dashboard ─────────────────────────────────
+
+  test('cashier is redirected to /vault/cashier/payouts', async ({ page }) => {
+    await test.step('Inject cashier auth cookie', async () => {
+      await setRoleAuthCookie(page, MOCK_USER_CASHIER);
+    });
+
+    await test.step('Navigate to /', async () => {
+      await page.goto('/');
+      await page.waitForURL(/vault\/cashier\/payouts/, { timeout: 10_000 });
+    });
+
+    await test.step('Assert redirect to /vault/cashier/payouts', async () => {
+      await expect(page).toHaveURL(/vault\/cashier\/payouts/);
+    });
+  });
+
+  test('vault-manager is redirected to /vault/management', async ({ page }) => {
+    await test.step('Inject vault-manager auth cookie', async () => {
+      await setRoleAuthCookie(page, MOCK_USER_VAULT_MANAGER);
+    });
+
+    await test.step('Navigate to /', async () => {
+      await page.goto('/');
+      await page.waitForURL(/vault\/management/, { timeout: 10_000 });
+    });
+
+    await test.step('Assert redirect to /vault/management', async () => {
+      await expect(page).toHaveURL(/vault\/management/);
+    });
+  });
+
+  test('collector is redirected to /collection-report', async ({ page }) => {
+    await test.step('Inject collector auth cookie', async () => {
+      await setRoleAuthCookie(page, MOCK_USER_COLLECTOR);
+    });
+
+    await test.step('Navigate to /', async () => {
+      await page.goto('/');
+      await page.waitForURL(/collection-report/, { timeout: 10_000 });
+    });
+
+    await test.step('Assert redirect to /collection-report', async () => {
+      await expect(page).toHaveURL(/collection-report/);
+    });
+  });
+
+  test('technician is redirected to /unauthorized', async ({ page }) => {
+    await test.step('Inject technician auth cookie', async () => {
+      await setRoleAuthCookie(page, MOCK_USER_TECHNICIAN);
+    });
+
+    await test.step('Navigate to /', async () => {
+      await page.goto('/');
+      await page.waitForURL(/unauthorized/, { timeout: 10_000 });
+    });
+
+    await test.step('Assert redirect to /unauthorized', async () => {
+      await expect(page).toHaveURL(/unauthorized/);
     });
   });
 });

@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
+import * as dotenv from 'dotenv';
 import path from 'path';
+
+// Load .env.local so JWT_SECRET and MONGODB_URI are available to the test process
+// (needed for generating valid JWTs in auth fixtures)
+dotenv.config({ path: path.join(__dirname, '../.env.local') });
 
 /**
  * Auth state file — produced by auth.setup.ts and reused by all test projects.
@@ -9,6 +14,15 @@ export const AUTH_STATE_PATH = path.join(__dirname, '.auth', 'user.json');
 
 export default defineConfig({
   testDir: './tests',
+
+  /* Auto-start the Next.js dev server before running tests */
+  webServer: {
+    command: 'pnpm run dev',
+    url: 'http://localhost:3000',
+    cwd: path.join(__dirname, '..'),
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source */
