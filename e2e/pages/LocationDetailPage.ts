@@ -11,7 +11,6 @@ import { type Page, type Locator, expect } from '@playwright/test';
  */
 export class LocationDetailPage {
   readonly page: Page;
-  private locationId: string = '';
 
   // ─── Tabs ─────────────────────────────────────────────────────────────────
   readonly machinesTab: Locator;
@@ -97,7 +96,6 @@ export class LocationDetailPage {
   // ─── Navigation ────────────────────────────────────────────────────────────
 
   async goto(locationId: string) {
-    this.locationId = locationId;
     await this.page.goto(`/locations/${locationId}`);
     await this.page.waitForLoadState('networkidle');
   }

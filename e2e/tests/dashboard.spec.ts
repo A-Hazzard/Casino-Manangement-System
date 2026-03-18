@@ -41,7 +41,7 @@ import { setRoleAuthCookie } from '../fixtures/auth.fixture';
 
 async function mockDashboardAPIs(
   page: Page,
-  chartData = MOCK_METRICS_METERS,
+  _chartData = MOCK_METRICS_METERS,
   mockCurrentUser = true
 ) {
   if (mockCurrentUser) {

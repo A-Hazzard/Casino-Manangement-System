@@ -12,7 +12,6 @@ import { type Page, type Locator, expect } from '@playwright/test';
  */
 export class CabinetDetailPage {
   readonly page: Page;
-  private cabinetId: string = '';
 
   // ─── Time-period filters ───────────────────────────────────────────────────
   readonly filterAllTime: Locator;
@@ -73,7 +72,6 @@ export class CabinetDetailPage {
   // ─── Navigation ─────────────────────────────────────────────────────────────
 
   async goto(cabinetId: string) {
-    this.cabinetId = cabinetId;
     await this.page.goto(`/cabinets/${cabinetId}`);
     await this.page.waitForLoadState('networkidle');
   }

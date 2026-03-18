@@ -78,7 +78,7 @@ export async function switchFilter(
       setTotals(null);
       setChartData([]);
     }
-  } catch (error) {
+  } catch {
     // Error handled by caller or silently failed for UI
   }
 }

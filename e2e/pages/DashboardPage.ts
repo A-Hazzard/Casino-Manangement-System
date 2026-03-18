@@ -106,7 +106,7 @@ export class DashboardPage {
    * @param startDate - ISO date string (YYYY-MM-DD)
    * @param endDate   - ISO date string (YYYY-MM-DD)
    */
-  async selectCustomRange(startDate: string, endDate: string) {
+  async selectCustomRange(_startDate: string, _endDate: string) {
     // Open the ModernCalendar popover
     await this.filterCustom.waitFor({ state: 'visible' });
     await this.filterCustom.click();
