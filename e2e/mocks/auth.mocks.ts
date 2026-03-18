@@ -3,9 +3,29 @@
  * Shape mirrors the standardised ApiResponse<T> envelope used throughout the app.
  */
 
-// ─── Base mock user (admin) ───────────────────────────────────────────────────
+// ─── Shared type for mock user payloads ──────────────────────────────────────
 
-export const MOCK_USER_PAYLOAD = {
+export type MockUserPayload = {
+  _id: string;
+  username: string;
+  emailAddress: string;
+  roles: string[];
+  isEnabled: boolean;
+  assignedLocations: string[];
+  assignedLicencees: string[];
+  profile: {
+    firstName: string;
+    lastName: string;
+    gender: string;
+    phoneNumber?: string;
+  };
+};
+
+// ─── Mock users — one per role ────────────────────────────────────────────────
+// dashboard access: developer ✅  admin ✅  manager ✅  location admin ✅
+// no dashboard access: vault-manager ❌  cashier ❌  technician ❌  collector ❌
+
+export const MOCK_USER_PAYLOAD: MockUserPayload = {
   _id: 'user_test_001',
   username: 'testadmin',
   emailAddress: 'testadmin@evolution1.com',
@@ -21,11 +41,7 @@ export const MOCK_USER_PAYLOAD = {
   },
 };
 
-// ─── Role-specific mock users ─────────────────────────────────────────────────
-// dashboard access: developer ✅  admin ✅  manager ✅  location admin ✅
-// no dashboard access: vault-manager ❌  cashier ❌  technician ❌  collector ❌
-
-export const MOCK_USER_DEVELOPER = {
+export const MOCK_USER_DEVELOPER: MockUserPayload = {
   _id: 'user_dev_001',
   username: 'testdeveloper',
   emailAddress: 'developer@evolution1.com',
@@ -38,7 +54,7 @@ export const MOCK_USER_DEVELOPER = {
 
 export const MOCK_USER_ADMIN = MOCK_USER_PAYLOAD; // alias
 
-export const MOCK_USER_MANAGER = {
+export const MOCK_USER_MANAGER: MockUserPayload = {
   _id: 'user_mgr_001',
   username: 'testmanager',
   emailAddress: 'manager@evolution1.com',
@@ -49,7 +65,7 @@ export const MOCK_USER_MANAGER = {
   profile: { firstName: 'Manager', lastName: 'User', gender: 'female' },
 };
 
-export const MOCK_USER_LOCATION_ADMIN = {
+export const MOCK_USER_LOCATION_ADMIN: MockUserPayload = {
   _id: 'user_locadmin_001',
   username: 'testlocationadmin',
   emailAddress: 'locadmin@evolution1.com',
@@ -60,7 +76,7 @@ export const MOCK_USER_LOCATION_ADMIN = {
   profile: { firstName: 'Location', lastName: 'Admin', gender: 'male' },
 };
 
-export const MOCK_USER_VAULT_MANAGER = {
+export const MOCK_USER_VAULT_MANAGER: MockUserPayload = {
   _id: 'user_vm_001',
   username: 'testvaultmanager',
   emailAddress: 'vaultmanager@evolution1.com',
@@ -71,7 +87,7 @@ export const MOCK_USER_VAULT_MANAGER = {
   profile: { firstName: 'Vault', lastName: 'Manager', gender: 'male' },
 };
 
-export const MOCK_USER_CASHIER = {
+export const MOCK_USER_CASHIER: MockUserPayload = {
   _id: 'user_cashier_001',
   username: 'testcashier',
   emailAddress: 'cashier@evolution1.com',
@@ -82,7 +98,7 @@ export const MOCK_USER_CASHIER = {
   profile: { firstName: 'Test', lastName: 'Cashier', gender: 'female' },
 };
 
-export const MOCK_USER_TECHNICIAN = {
+export const MOCK_USER_TECHNICIAN: MockUserPayload = {
   _id: 'user_tech_001',
   username: 'testtechnician',
   emailAddress: 'technician@evolution1.com',
@@ -93,7 +109,7 @@ export const MOCK_USER_TECHNICIAN = {
   profile: { firstName: 'Test', lastName: 'Technician', gender: 'male' },
 };
 
-export const MOCK_USER_COLLECTOR = {
+export const MOCK_USER_COLLECTOR: MockUserPayload = {
   _id: 'user_collector_001',
   username: 'testcollector',
   emailAddress: 'collector@evolution1.com',
@@ -104,9 +120,9 @@ export const MOCK_USER_COLLECTOR = {
   profile: { firstName: 'Test', lastName: 'Collector', gender: 'female' },
 };
 
-// ─── All role users map (for parameterised tests) ─────────────────────────────
+// ─── All role users map ───────────────────────────────────────────────────────
 
-export const MOCK_USERS_BY_ROLE = {
+export const MOCK_USERS_BY_ROLE: Record<string, MockUserPayload> = {
   developer: MOCK_USER_DEVELOPER,
   admin: MOCK_USER_ADMIN,
   manager: MOCK_USER_MANAGER,
@@ -115,7 +131,7 @@ export const MOCK_USERS_BY_ROLE = {
   cashier: MOCK_USER_CASHIER,
   technician: MOCK_USER_TECHNICIAN,
   collector: MOCK_USER_COLLECTOR,
-} as const;
+};
 
 // ─── Auth API response helpers ────────────────────────────────────────────────
 
@@ -149,7 +165,7 @@ export const MOCK_CURRENT_USER = {
 };
 
 /** Build a current-user response for any role's mock user */
-export function mockCurrentUserResponse(userPayload: typeof MOCK_USER_PAYLOAD) {
+export function mockCurrentUserResponse(userPayload: MockUserPayload) {
   return {
     success: true,
     data: userPayload,

@@ -208,7 +208,7 @@ test.describe('Administration — User Management', () => {
     });
 
     await test.step('Assert the username error message is shown', async () => {
-      await administrationPage.expectUsernameError(/already exists|duplicate/i);
+      await administrationPage.expectUsernameError('already exists');
     });
 
     await test.step('Assert the modal remains open', async () => {

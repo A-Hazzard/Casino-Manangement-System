@@ -23,6 +23,7 @@ import {
   MOCK_LOGIN_SUCCESS,
   MOCK_CURRENT_USER,
   MOCK_USER_PAYLOAD,
+  MockUserPayload,
   mockCurrentUserResponse,
 } from '../mocks/auth.mocks';
 
@@ -53,7 +54,7 @@ const AUTH_STRATEGY: AuthStrategy =
  * need a properly signed token with a matching connectionString.
  */
 export async function createTestJwt(
-  userPayload: typeof MOCK_USER_PAYLOAD
+  userPayload: MockUserPayload
 ): Promise<string> {
   const JWT_SECRET =
     process.env.JWT_SECRET ?? 'e2e-playwright-test-secret-key-32chars';
@@ -97,7 +98,7 @@ export async function createTestJwt(
  */
 export async function setRoleAuthCookie(
   page: Page,
-  userPayload: typeof MOCK_USER_PAYLOAD
+  userPayload: MockUserPayload
 ): Promise<void> {
   const token = await createTestJwt(userPayload);
 
