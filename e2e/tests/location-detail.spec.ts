@@ -12,6 +12,7 @@
  *  8. Meter data section is visible for a machine row (drill-down)
  */
 
+import { type Page } from '@playwright/test';
 import { test, expect } from '../fixtures/test.fixture';
 import {
   MOCK_LOCATION_DETAIL,
@@ -23,14 +24,23 @@ import {
   MOCK_LICENCEES_LIST,
 } from '../mocks/locations.mocks';
 import { MOCK_MANUFACTURERS } from '../mocks/cabinets.mocks';
-import { MOCK_CURRENT_USER } from '../mocks/auth.mocks';
+import {
+  MOCK_CURRENT_USER,
+  MOCK_USER_TECHNICIAN,
+  MOCK_USER_MANAGER,
+  MOCK_USER_LOCATION_ADMIN,
+  MOCK_USER_VAULT_MANAGER,
+  MOCK_USER_CASHIER,
+  MOCK_USER_COLLECTOR,
+} from '../mocks/auth.mocks';
+import { setRoleAuthCookie } from '../fixtures/auth.fixture';
 
 const LOCATION_ID = 'loc_001';
 
 // ─── Shared mock helper ───────────────────────────────────────────────────────
 
 async function mockLocationDetailAPIs(
-  page: Parameters<Parameters<typeof test>[1]>[0]['page'],
+  page: Page,
   machinesPayload = MOCK_LOCATION_MACHINES
 ) {
   await page.route('**/api/auth/current-user**', (route) =>
@@ -384,5 +394,57 @@ test.describe('Location Detail', () => {
         page.getByText(/SAS Meter|Meter Data|Coin In/i).first()
       ).toBeVisible({ timeout: 10_000 });
     });
+  });
+});
+
+// ─── Role-based access restriction tests ─────────────────────────────────────
+//
+// Location-details accessible to: developer, admin, manager, location admin, technician
+// Blocked: cashier (→ /vault/cashier/payouts), vault-manager (→ /vault/management),
+//          collector (→ /collection-report)
+// Note: technician CAN access location-details (unlike the locations list page)
+
+test.describe('Location Detail — Role-based access', () => {
+  for (const [label, userPayload] of [
+    ['manager', MOCK_USER_MANAGER],
+    ['location admin', MOCK_USER_LOCATION_ADMIN],
+    ['technician', MOCK_USER_TECHNICIAN],
+  ] as const) {
+    test(`${label} can access location detail page`, async ({ page, locationDetailPage }) => {
+      await test.step(`Inject ${label} auth cookie and mock APIs`, async () => {
+        await setRoleAuthCookie(page, userPayload);
+        await mockLocationDetailAPIs(page);
+      });
+
+      await test.step('Navigate to location detail', async () => {
+        await locationDetailPage.goto(LOCATION_ID);
+        await page.waitForLoadState('networkidle');
+      });
+
+      await test.step('Assert no redirect away from location detail', async () => {
+        expect(page.url()).not.toMatch(/\/login|\/unauthorized|\/vault/);
+      });
+    });
+  }
+
+  test('cashier is redirected from location detail', async ({ page }) => {
+    await setRoleAuthCookie(page, MOCK_USER_CASHIER);
+    await page.goto(`/locations/${LOCATION_ID}`);
+    await page.waitForURL(/vault\/cashier\/payouts/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/vault\/cashier\/payouts/);
+  });
+
+  test('vault-manager is redirected from location detail', async ({ page }) => {
+    await setRoleAuthCookie(page, MOCK_USER_VAULT_MANAGER);
+    await page.goto(`/locations/${LOCATION_ID}`);
+    await page.waitForURL(/vault\/management/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/vault\/management/);
+  });
+
+  test('collector is redirected from location detail', async ({ page }) => {
+    await setRoleAuthCookie(page, MOCK_USER_COLLECTOR);
+    await page.goto(`/locations/${LOCATION_ID}`);
+    await page.waitForURL(/collection-report/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/collection-report/);
   });
 });

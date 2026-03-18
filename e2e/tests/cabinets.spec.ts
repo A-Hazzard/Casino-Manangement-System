@@ -17,6 +17,7 @@
  * 11. Meter history entries are listed
  */
 
+import { type Page } from '@playwright/test';
 import { test, expect } from '../fixtures/test.fixture';
 import {
   MOCK_CABINETS_LIST,
@@ -32,14 +33,23 @@ import {
   MOCK_LOCATIONS_LIST,
   MOCK_LICENCEES_LIST,
 } from '../mocks/locations.mocks';
-import { MOCK_CURRENT_USER } from '../mocks/auth.mocks';
+import {
+  MOCK_CURRENT_USER,
+  MOCK_USER_TECHNICIAN,
+  MOCK_USER_MANAGER,
+  MOCK_USER_LOCATION_ADMIN,
+  MOCK_USER_VAULT_MANAGER,
+  MOCK_USER_CASHIER,
+  MOCK_USER_COLLECTOR,
+} from '../mocks/auth.mocks';
+import { setRoleAuthCookie } from '../fixtures/auth.fixture';
 
 const CABINET_ID = 'mach_001';
 
 // ─── Shared mock helpers ──────────────────────────────────────────────────────
 
 async function mockCabinetsListAPIs(
-  page: Parameters<Parameters<typeof test>[1]>[0]['page'],
+  page: Page,
   listPayload = MOCK_CABINETS_LIST
 ) {
   await page.route('**/api/auth/current-user**', (route) =>
@@ -63,7 +73,7 @@ async function mockCabinetsListAPIs(
 }
 
 async function mockCabinetDetailAPIs(
-  page: Parameters<Parameters<typeof test>[1]>[0]['page']
+  page: Page
 ) {
   await page.route('**/api/auth/current-user**', (route) =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
@@ -460,5 +470,57 @@ test.describe('Cabinet Detail', () => {
       );
       await expect(historyRows.first()).toBeVisible();
     });
+  });
+});
+
+// ─── Role-based access restriction tests ─────────────────────────────────────
+//
+// Cabinets/Machines page accessible to: developer, admin, manager, location admin, technician
+// Blocked: cashier (→ /vault/cashier/payouts), vault-manager (→ /vault/management),
+//          collector (→ /collection-report)
+// Note: technician CAN access cabinets
+
+test.describe('Cabinets — Role-based access', () => {
+  for (const [label, userPayload] of [
+    ['manager', MOCK_USER_MANAGER],
+    ['location admin', MOCK_USER_LOCATION_ADMIN],
+    ['technician', MOCK_USER_TECHNICIAN],
+  ] as const) {
+    test(`${label} can access /cabinets`, async ({ page, cabinetsPage }) => {
+      await test.step(`Inject ${label} auth cookie and mock APIs`, async () => {
+        await setRoleAuthCookie(page, userPayload);
+        await mockCabinetsListAPIs(page);
+      });
+
+      await test.step('Navigate to /cabinets', async () => {
+        await cabinetsPage.goto();
+        await page.waitForLoadState('networkidle');
+      });
+
+      await test.step('Assert no redirect away from /cabinets', async () => {
+        expect(page.url()).not.toMatch(/\/login|\/unauthorized|\/vault/);
+      });
+    });
+  }
+
+  test('cashier is redirected from /cabinets', async ({ page }) => {
+    await setRoleAuthCookie(page, MOCK_USER_CASHIER);
+    await page.goto('/cabinets');
+    await page.waitForURL(/vault\/cashier\/payouts/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/vault\/cashier\/payouts/);
+  });
+
+  test('vault-manager is redirected from /cabinets', async ({ page }) => {
+    await setRoleAuthCookie(page, MOCK_USER_VAULT_MANAGER);
+    await page.goto('/cabinets');
+    await page.waitForURL(/vault\/management/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/vault\/management/);
+  });
+
+  test('collector is redirected from /cabinets', async ({ page }) => {
+    await setRoleAuthCookie(page, MOCK_USER_COLLECTOR);
+    await page.goto('/cabinets');
+    await page.waitForURL(/collection-report/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/collection-report/);
   });
 });
