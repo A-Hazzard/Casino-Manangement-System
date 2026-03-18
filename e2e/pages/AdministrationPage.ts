@@ -22,6 +22,15 @@ export class AdministrationPage {
   readonly tableBody: Locator;
   readonly tableRows: Locator;
 
+  // ─── Licencee table / cards ────────────────────────────────────────────────
+  readonly licenceeTableRows: Locator;
+  readonly addLicenceeButton: Locator;
+
+  // ─── Edit Licencee modal ───────────────────────────────────────────────────
+  readonly editLicenceeModal: Locator;
+  readonly subtractJackpotCheckbox: Locator;
+  readonly submitEditLicenceeButton: Locator;
+
   // ─── Add User modal ────────────────────────────────────────────────────────
   readonly addUserModal: Locator;
 
@@ -133,6 +142,24 @@ export class AdministrationPage {
     this.usernameError = this.addUserModal.locator('#username-error, [id*="username"][id*="error"]');
     this.emailError = this.addUserModal.locator('#email-error, [id*="email"][id*="error"]');
     this.passwordError = this.addUserModal.locator('#password-error, [id*="password"][id*="error"]').first();
+
+    // ── Licencee table / cards ──────────────────────────────────────────────────
+    // The licencee section may render a <table> or card grid depending on viewport
+    this.licenceeTableRows = page.locator('table tbody tr');
+    this.addLicenceeButton = page.getByRole('button', {
+      name: /add licencee|new licencee|create licencee/i,
+    });
+
+    // ── Edit Licencee modal ─────────────────────────────────────────────────────
+    this.editLicenceeModal = page.locator('[role="dialog"]').filter({
+      hasText: /edit.*licencee|update.*licencee/i,
+    });
+    this.subtractJackpotCheckbox = this.editLicenceeModal.locator(
+      '#subtractJackpot, input[name="subtractJackpot"]'
+    );
+    this.submitEditLicenceeButton = this.editLicenceeModal.getByRole('button', {
+      name: /save|update/i,
+    });
   }
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
@@ -144,6 +171,11 @@ export class AdministrationPage {
 
   async gotoUsersSection() {
     await this.page.goto('/administration?section=users');
+    await this.page.waitForLoadState('networkidle');
+  }
+
+  async gotoLicenceesSection() {
+    await this.page.goto('/administration?section=licencees');
     await this.page.waitForLoadState('networkidle');
   }
 
@@ -294,5 +326,46 @@ export class AdministrationPage {
   async expectUserRowEnabled(username: string) {
     const row = this.rowByUsername(username);
     await expect(row).toContainText(/active/i);
+  }
+
+  // ─── Licencee assertions ─────────────────────────────────────────────────────
+
+  /**
+   * Asserts that a licencee row/card displays the expected subtractJackpot badge.
+   * @param licenceeName - Name of the licencee to locate
+   * @param expected - `true` expects "Yes", `false` expects "No"
+   */
+  async expectSubtractJackpot(licenceeName: string, expected: boolean) {
+    // The licencee may be rendered as a table row or a mobile card — look for either
+    const licenceeContainer = this.page
+      .locator('tr, [class*="card"]')
+      .filter({ hasText: licenceeName })
+      .first();
+    await expect(licenceeContainer).toContainText(
+      expected ? /\bYes\b/i : /\bNo\b/i
+    );
+  }
+
+  /**
+   * Opens the edit modal for the licencee at the given table row index.
+   */
+  async clickEditLicencee(rowIndex: number) {
+    const row = this.licenceeTableRows.nth(rowIndex);
+    await row.locator('button[aria-label*="edit" i]').click();
+  }
+
+  /**
+   * Checks or unchecks the Subtract Jackpot checkbox inside the edit licencee modal.
+   */
+  async setSubtractJackpot(checked: boolean) {
+    const isChecked = await this.subtractJackpotCheckbox.isChecked();
+    if (isChecked !== checked) {
+      await this.subtractJackpotCheckbox.click();
+    }
+  }
+
+  async submitEditLicenceeForm() {
+    await this.submitEditLicenceeButton.click();
+    await this.page.waitForLoadState('networkidle');
   }
 }

@@ -1,7 +1,8 @@
 /**
- * Administration — User Management E2E Tests
- * ────────────────────────────────────────────
+ * Administration — User Management & Licencee Management E2E Tests
+ * ──────────────────────────────────────────────────────────────────
  * Covers:
+ *  User Management:
  *  1. Users table renders with data from the API
  *  2. Create user — happy path (username, email, password, role)
  *  3. Create user — duplicate username triggers an inline error
@@ -9,6 +10,12 @@
  *  5. Edit user — form is pre-populated; updating email reflects in table
  *  6. Disable user — toggling isEnabled marks the user as Inactive
  *  7. Delete user — confirmation dialog → user removed from table
+ *
+ *  Licencee Management (subtractJackpot):
+ *  8.  Licencees section renders with subtractJackpot displayed per licencee
+ *  9.  Licencee with subtractJackpot=true shows "Yes" badge
+ *  10. Licencee with subtractJackpot=false shows "No" badge
+ *  11. Edit licencee — toggling subtractJackpot checkbox updates the display
  */
 
 import { test, expect } from '../fixtures/test.fixture';
@@ -22,7 +29,12 @@ import {
   MOCK_USER_DELETE_SUCCESS,
   MOCK_USER_DUPLICATE_USERNAME,
 } from '../mocks/users.mocks';
-import { MOCK_LICENCEES_LIST } from '../mocks/locations.mocks';
+import {
+  MOCK_LICENCEES_LIST,
+  MOCK_LICENCEES_LIST_AFTER_EDIT,
+  MOCK_LICENCEE_1,
+  MOCK_LICENCEE_2,
+} from '../mocks/locations.mocks';
 import { MOCK_CURRENT_USER } from '../mocks/auth.mocks';
 
 // ─── Shared mock helper ───────────────────────────────────────────────────────
@@ -422,6 +434,148 @@ test.describe('Administration — User Management', () => {
 
     await test.step('Assert the table now has 2 rows', async () => {
       await administrationPage.expectTableRowCount(2);
+    });
+  });
+});
+
+// ─── Licencee Management Tests ────────────────────────────────────────────────
+
+/**
+ * Mocks all APIs needed for the licencees section of the Administration page.
+ */
+async function mockLicenceesAPIs(
+  page: Parameters<Parameters<typeof test>[1]>[0]['page'],
+  licenceesPayload = MOCK_LICENCEES_LIST
+) {
+  await page.route('**/api/auth/current-user**', (route) =>
+    route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
+  );
+  await page.route('**/api/licencees**', (route) =>
+    route.fulfill({ status: 200, json: licenceesPayload })
+  );
+  await page.route('**/api/users**', (route) =>
+    route.fulfill({
+      status: 200,
+      json: { success: true, data: { users: [], pagination: { page: 1, limit: 10, totalCount: 0, totalPages: 1 } }, timestamp: new Date().toISOString() },
+    })
+  );
+  await page.route('**/api/gaming-locations**', (route) =>
+    route.fulfill({
+      status: 200,
+      json: { success: true, data: [], timestamp: new Date().toISOString() },
+    })
+  );
+}
+
+test.describe('Administration — Licencee Management (subtractJackpot)', () => {
+  test('8. Licencees section renders both licencees from the API', async ({
+    page,
+    administrationPage,
+  }) => {
+    await test.step('Mock licencees API', async () => {
+      await mockLicenceesAPIs(page);
+    });
+
+    await test.step('Navigate to the licencees section', async () => {
+      await administrationPage.gotoLicenceesSection();
+    });
+
+    await test.step('Assert "Evolution1 Ltd" is present on the page', async () => {
+      await expect(page.getByText('Evolution1 Ltd')).toBeVisible();
+    });
+
+    await test.step('Assert "Caribbean Gaming Corp" is present on the page', async () => {
+      await expect(page.getByText('Caribbean Gaming Corp')).toBeVisible();
+    });
+  });
+
+  test('9. Licencee with subtractJackpot=false displays "No" badge', async ({
+    page,
+    administrationPage,
+  }) => {
+    await test.step('Mock licencees API — lic_001 has subtractJackpot=false', async () => {
+      await mockLicenceesAPIs(page);
+    });
+
+    await test.step('Navigate to the licencees section', async () => {
+      await administrationPage.gotoLicenceesSection();
+    });
+
+    await test.step(`Assert "${MOCK_LICENCEE_1.name}" shows subtractJackpot "No"`, async () => {
+      await administrationPage.expectSubtractJackpot(MOCK_LICENCEE_1.name, false);
+    });
+  });
+
+  test('10. Licencee with subtractJackpot=true displays "Yes" badge', async ({
+    page,
+    administrationPage,
+  }) => {
+    await test.step('Mock licencees API — lic_002 has subtractJackpot=true', async () => {
+      await mockLicenceesAPIs(page);
+    });
+
+    await test.step('Navigate to the licencees section', async () => {
+      await administrationPage.gotoLicenceesSection();
+    });
+
+    await test.step(`Assert "${MOCK_LICENCEE_2.name}" shows subtractJackpot "Yes"`, async () => {
+      await administrationPage.expectSubtractJackpot(MOCK_LICENCEE_2.name, true);
+    });
+  });
+
+  test('11. Edit licencee — enabling subtractJackpot updates the badge to "Yes"', async ({
+    page,
+    administrationPage,
+  }) => {
+    await test.step('Mock licencees API — lic_001 starts with subtractJackpot=false', async () => {
+      await mockLicenceesAPIs(page);
+    });
+
+    await test.step('Intercept PUT /api/licencees and respond with success', async () => {
+      await page.route('**/api/licencees/**', async (route) => {
+        if (route.request().method() === 'PUT' || route.request().method() === 'PATCH') {
+          await route.fulfill({
+            status: 200,
+            json: {
+              success: true,
+              data: { ...MOCK_LICENCEE_1, subtractJackpot: true },
+              message: 'Licencee updated successfully',
+              timestamp: new Date().toISOString(),
+            },
+          });
+        } else {
+          await route.continue();
+        }
+      });
+    });
+
+    await test.step('Navigate to the licencees section', async () => {
+      await administrationPage.gotoLicenceesSection();
+    });
+
+    await test.step('Verify initial subtractJackpot badge is "No" for lic_001', async () => {
+      await administrationPage.expectSubtractJackpot(MOCK_LICENCEE_1.name, false);
+    });
+
+    await test.step('Click edit on the first licencee row', async () => {
+      await administrationPage.clickEditLicencee(0);
+      await expect(administrationPage.editLicenceeModal).toBeVisible();
+    });
+
+    await test.step('Enable the Subtract Jackpot checkbox', async () => {
+      await administrationPage.setSubtractJackpot(true);
+    });
+
+    await test.step('Submit the edit form', async () => {
+      // Swap the licencees mock to return subtractJackpot=true for lic_001
+      await page.route('**/api/licencees**', (route) =>
+        route.fulfill({ status: 200, json: MOCK_LICENCEES_LIST_AFTER_EDIT })
+      );
+      await administrationPage.submitEditLicenceeForm();
+    });
+
+    await test.step('Assert the badge now shows "Yes" for lic_001', async () => {
+      await administrationPage.expectSubtractJackpot(MOCK_LICENCEE_1.name, true);
     });
   });
 });
