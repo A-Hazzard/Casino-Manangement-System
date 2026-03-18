@@ -192,6 +192,17 @@ export const MOCK_CHARTS_DATA = {
   timestamp: new Date().toISOString(),
 };
 
+// ─── Top performing locations (for /api/metrics/top-performing?activeTab=locations) ──
+
+export const MOCK_TOP_PERFORMING_LOCATIONS = {
+  success: true,
+  data: [
+    { name: 'Grand Casino North', totalDrop: 312_000, locationId: 'loc_001' },
+    { name: 'South Bay Gaming', totalDrop: 200_450, locationId: 'loc_002' },
+  ],
+  timestamp: new Date().toISOString(),
+};
+
 // ─── Error response ───────────────────────────────────────────────────────────
 
 export const MOCK_DASHBOARD_SERVER_ERROR = {

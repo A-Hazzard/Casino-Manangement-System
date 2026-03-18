@@ -91,6 +91,14 @@ export async function setRoleAuthCookie(
   page: Page,
   userPayload: MockUserPayload
 ): Promise<void> {
+  // Clear the existing auth cookie so the old admin session is gone
+  await page.context().clearCookies();
+
+  // Register an init script to wipe localStorage on the next navigation.
+  // This evicts Zustand's persisted admin user BEFORE the page JS runs,
+  // ensuring ProtectedRoute fetches from the mocked current-user endpoint.
+  await page.addInitScript(() => localStorage.clear());
+
   // Mock current-user so ProtectedRoute resolves the correct role
   await page.route('**/api/auth/current-user**', (route) =>
     route.fulfill({

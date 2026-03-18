@@ -25,6 +25,7 @@ import {
   MOCK_DASHBOARD_STATS_CUSTOM,
   MOCK_LOCATIONS_ANALYTICS,
   MOCK_TOP_MACHINES,
+  MOCK_TOP_PERFORMING_LOCATIONS,
   MOCK_CHARTS_DATA,
   MOCK_DASHBOARD_SERVER_ERROR,
 } from '../mocks/dashboard.mocks';
@@ -60,6 +61,10 @@ async function mockDashboardAPIs(
   );
   await page.route('**/api/analytics/charts**', (route) =>
     route.fulfill({ status: 200, json: MOCK_CHARTS_DATA })
+  );
+  // Top-performing data (used by the "Top Performing" section — Locations tab active by default)
+  await page.route('**/api/metrics/top-performing**', (route) =>
+    route.fulfill({ status: 200, json: MOCK_TOP_PERFORMING_LOCATIONS })
   );
 }
 

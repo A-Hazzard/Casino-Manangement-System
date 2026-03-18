@@ -3,11 +3,12 @@ import { type Page, type Locator, expect } from '@playwright/test';
 /**
  * Page Object for the Dashboard / root page (/).
  *
- * The dashboard renders:
- *   - Time-period filter buttons (Today, Yesterday, Last 7 Days, Last 30 Days, Custom)
- *   - Financial metric cards (Money In, Money Out, Gross, etc.)
- *   - Location analytics section
- *   - Chart containers
+ * Selectors are based on the actual component structure:
+ *   - FinancialMetricsCards: label text "Money In" / "Money Out" / "Jackpot" / "Gross"
+ *   - DateFilters: <button> elements with exact text labels on desktop
+ *   - DashboardChart: recharts ResponsiveContainer → .recharts-responsive-container
+ *   - DashboardDesktopLayout: <h3>Location Map</h3>
+ *   - Error state: <div role="alert"> from the Alert component
  */
 export class DashboardPage {
   readonly page: Page;
@@ -24,10 +25,10 @@ export class DashboardPage {
   readonly dateRangeEndInput: Locator;
   readonly applyCustomRangeBtn: Locator;
 
-  // ─── Metric cards ─────────────────────────────────────────────────────────
-  readonly metricCards: Locator;
+  // ─── Metric card labels ───────────────────────────────────────────────────
   readonly moneyInCard: Locator;
   readonly moneyOutCard: Locator;
+  readonly jackpotCard: Locator;
   readonly grossCard: Locator;
 
   // ─── Charts ───────────────────────────────────────────────────────────────
@@ -35,50 +36,50 @@ export class DashboardPage {
 
   // ─── Location analytics ───────────────────────────────────────────────────
   readonly locationAnalyticsSection: Locator;
-  readonly locationRows: Locator;
 
   // ─── Loading / error states ───────────────────────────────────────────────
-  readonly loadingSkeleton: Locator;
   readonly errorMessage: Locator;
 
   constructor(page: Page) {
     this.page = page;
 
-    // Time-period buttons — the app uses button elements with text labels
-    this.filterToday = page.getByRole('button', { name: /today/i });
-    this.filterYesterday = page.getByRole('button', { name: /yesterday/i });
-    this.filterLast7Days = page.getByRole('button', { name: /last 7 days/i });
-    this.filterLast30Days = page.getByRole('button', { name: /last 30 days/i });
-    this.filterCustom = page.getByRole('button', { name: /custom/i });
+    // Time-period buttons — desktop renders <button> elements; exact match avoids
+    // picking up mobile <select> options or unrelated buttons.
+    this.filterToday = page.getByRole('button', { name: 'Today', exact: true }).first();
+    this.filterYesterday = page.getByRole('button', { name: 'Yesterday', exact: true }).first();
+    this.filterLast7Days = page.getByRole('button', { name: 'Last 7 Days', exact: true }).first();
+    this.filterLast30Days = page.getByRole('button', { name: 'Last 30 Days', exact: true }).first();
+    this.filterCustom = page.getByRole('button', { name: 'Custom', exact: true }).first();
 
-    // Date range picker inputs (Calendar/DatePicker component)
+    // Date range picker inputs (visible after "Custom" is selected)
     this.dateRangeStartInput = page.locator('input[placeholder*="start"], input[aria-label*="start date"]').first();
     this.dateRangeEndInput = page.locator('input[placeholder*="end"], input[aria-label*="end date"]').first();
-    this.applyCustomRangeBtn = page.getByRole('button', { name: /apply|search|go/i });
+    this.applyCustomRangeBtn = page.getByRole('button', { name: /apply|search|go/i }).first();
 
-    // Metric cards — each card wraps its value in a heading or strong element
-    this.metricCards = page.locator('[data-testid="metric-card"], .metric-card, [class*="MetricCard"]');
-    this.moneyInCard = page.locator('text=Money In').locator('..');
-    this.moneyOutCard = page.locator('text=Money Out').locator('..');
-    this.grossCard = page.locator('text=Gross').locator('..');
+    // Metric card containers — FinancialMetricsCards renders:
+    //   Desktop: <p>Money In</p> as a direct child of the card div (shadow-md)
+    //   Mobile:  <h3>Money In</h3> inside nested divs
+    // Using `.locator('..')` on the label <p> gives the card container on desktop Chrome,
+    // which includes both the label AND the financial value (needed for toContainText(/\d/)).
+    this.moneyInCard = page.getByText('Money In', { exact: true }).first().locator('..');
+    this.moneyOutCard = page.getByText('Money Out', { exact: true }).first().locator('..');
+    this.jackpotCard = page.getByText('Jackpot', { exact: true }).first().locator('..');
+    this.grossCard = page.getByText('Gross', { exact: true }).first().locator('..');
 
-    // Charts rendered via recharts / canvas elements
-    this.chartContainer = page.locator('.recharts-wrapper, canvas, [data-testid="chart"]').first();
+    // Chart — recharts ResponsiveContainer renders a div.recharts-responsive-container
+    this.chartContainer = page.locator('.recharts-responsive-container').first();
 
-    // Location analytics
-    this.locationAnalyticsSection = page.locator('text=Locations').locator('..').first();
-    this.locationRows = page.locator('table tbody tr, [data-testid="location-row"]');
+    // Location section — DashboardDesktopLayout has <h3>Location Map</h3>
+    this.locationAnalyticsSection = page.getByRole('heading', { name: /location map/i }).first();
 
-    // States
-    this.loadingSkeleton = page.locator('[data-testid="skeleton"], .animate-pulse').first();
-    this.errorMessage = page.locator('[role="alert"], [data-testid="error"]').first();
+    // Error state — Alert component renders with role="alert"
+    this.errorMessage = page.locator('[role="alert"]').first();
   }
 
   // ─── Navigation ────────────────────────────────────────────────────────────
 
   async goto() {
     await this.page.goto('/');
-    // Wait for at least one metric card to appear before proceeding
     await this.page.waitForLoadState('networkidle');
   }
 
@@ -93,7 +94,6 @@ export class DashboardPage {
       Custom: this.filterCustom,
     };
     await filterMap[period].click();
-    // Wait for re-fetch to settle
     await this.page.waitForLoadState('networkidle');
   }
 
@@ -138,9 +138,7 @@ export class DashboardPage {
       'Last 30 Days': this.filterLast30Days,
       Custom: this.filterCustom,
     };
-    // Active state is usually indicated by an aria-pressed="true" or a CSS class
-    await expect(filterMap[period]).toHaveAttribute('aria-pressed', 'true').catch(async () => {
-      await expect(filterMap[period]).toHaveClass(/active|selected|bg-/);
-    });
+    // Active state: bg-buttonActive class applied when selected
+    await expect(filterMap[period]).toHaveClass(/bg-buttonActive/);
   }
 }
