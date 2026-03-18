@@ -9,6 +9,15 @@ export const AUTH_STATE_PATH = path.join(__dirname, '.auth', 'user.json');
 
 export default defineConfig({
   testDir: './tests',
+
+  /* Auto-start the Next.js dev server before running tests */
+  webServer: {
+    command: 'pnpm run dev',
+    url: 'http://localhost:3000',
+    cwd: path.join(__dirname, '..'),
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source */

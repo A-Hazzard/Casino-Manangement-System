@@ -35,7 +35,7 @@ export const AUTH_STATE_PATH = './e2e/.auth/user.json';
 
 type AuthStrategy = 'real' | 'mock';
 const AUTH_STRATEGY: AuthStrategy =
-  (process.env.AUTH_STRATEGY as AuthStrategy) ?? 'real';
+  (process.env.AUTH_STRATEGY as AuthStrategy) ?? 'mock';
 
 // ─── Helper: perform real login via the app's login page ──────────────────────
 
