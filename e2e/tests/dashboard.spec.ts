@@ -24,6 +24,7 @@ import {
   MOCK_DASHBOARD_STATS_LAST30,
   MOCK_DASHBOARD_STATS_CUSTOM,
   MOCK_LOCATIONS_ANALYTICS,
+  MOCK_LOCATION_AGGREGATION,
   MOCK_TOP_MACHINES,
   MOCK_TOP_PERFORMING_LOCATIONS,
   MOCK_CHARTS_DATA,
@@ -65,6 +66,10 @@ async function mockDashboardAPIs(
   // Top-performing data (used by the "Top Performing" section — Locations tab active by default)
   await page.route('**/api/metrics/top-performing**', (route) =>
     route.fulfill({ status: 200, json: MOCK_TOP_PERFORMING_LOCATIONS })
+  );
+  // Location aggregation provides moneyIn / moneyOut / gross for the metric cards
+  await page.route('**/api/locationAggregation**', (route) =>
+    route.fulfill({ status: 200, json: MOCK_LOCATION_AGGREGATION })
   );
 }
 

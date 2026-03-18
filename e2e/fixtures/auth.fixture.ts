@@ -55,8 +55,14 @@ const AUTH_STRATEGY: AuthStrategy =
 const ZUSTAND_STORE_KEY = 'user-auth-store';
 
 /**
+ * The localStorage key used by the Zustand `persist` middleware in
+ * lib/store/dashboardStore.ts — must stay in sync with that file's `name` option.
+ */
+const DASHBOARD_STORE_KEY = 'dashboard-store';
+
+/**
  * Registers a Playwright init script that seeds the Zustand user-auth-store
- * in localStorage BEFORE any page JavaScript runs.
+ * and dashboard-store in localStorage BEFORE any page JavaScript runs.
  *
  * Why this matters:
  *   ProtectedRoute waits for `isLoading` (React Query) to be false before
@@ -66,38 +72,61 @@ const ZUSTAND_STORE_KEY = 'user-auth-store';
  *   `useCurrentUserQuery`'s own effect is about to call `setUser` in the same
  *   tick. Seeding localStorage ensures Zustand hydrates with the correct user
  *   from the very first render, so the closure never contains a null user.
+ *
+ *   We also seed the dashboard-store with a selectedLicencee so the dashboard
+ *   renders metric cards instead of the <NoLicenceeAssigned> placeholder.
+ *
+ * Implementation note — string-based addInitScript:
+ *   We embed the serialized JSON directly into the script string rather than
+ *   using the page.addInitScript(fn, arg) overload. The function+arg overload
+ *   relies on Playwright serializing the arg via structured-clone, which can
+ *   silently fail for some payloads. The string overload is always reliable.
  */
 async function seedZustandUser(
   page: Page,
   userPayload: MockUserPayload
 ): Promise<void> {
-  await page.addInitScript(
-    ({ storeKey, storeData }) => {
-      localStorage.setItem(storeKey, JSON.stringify(storeData));
-    },
-    {
-      storeKey: ZUSTAND_STORE_KEY,
-      storeData: {
-        state: {
-          user: {
-            _id: userPayload._id,
-            username: userPayload.username,
-            emailAddress: userPayload.emailAddress,
-            profile: userPayload.profile,
-            roles: userPayload.roles,
-            isEnabled: userPayload.isEnabled,
-            assignedLocations: userPayload.assignedLocations,
-            assignedLicencees: userPayload.assignedLicencees,
-          },
-          isInitialized: true,
-          hasActiveVaultShift: false,
-          isVaultReconciled: false,
-          isStaleShift: false,
-        },
-        version: 0,
+  const userStoreJSON = JSON.stringify({
+    state: {
+      user: {
+        _id: userPayload._id,
+        username: userPayload.username,
+        emailAddress: userPayload.emailAddress,
+        profile: userPayload.profile,
+        roles: userPayload.roles,
+        isEnabled: userPayload.isEnabled,
+        assignedLocations: userPayload.assignedLocations,
+        assignedLicencees: userPayload.assignedLicencees,
       },
-    }
-  );
+      isInitialized: true,
+      hasActiveVaultShift: false,
+      isVaultReconciled: false,
+      isStaleShift: false,
+    },
+    version: 0,
+  });
+
+  // Use the first assignedLicencee as the active licencee context, falling
+  // back to empty string (which triggers the NoLicenceeAssigned UI).
+  const activeLicencee = userPayload.assignedLicencees[0] ?? '';
+  const dashboardStoreJSON = JSON.stringify({
+    state: {
+      selectedLicencee: activeLicencee,
+      activeMetricsFilter: 'Today',
+      displayCurrency: 'TTD',
+      gameDayOffset: 8,
+      customDateRange: {
+        startDate: new Date().toISOString(),
+        endDate: new Date().toISOString(),
+      },
+    },
+    version: 0,
+  });
+
+  await page.addInitScript(`
+    localStorage.setItem(${JSON.stringify(ZUSTAND_STORE_KEY)}, ${JSON.stringify(userStoreJSON)});
+    localStorage.setItem(${JSON.stringify(DASHBOARD_STORE_KEY)}, ${JSON.stringify(dashboardStoreJSON)});
+  `);
 }
 
 /**

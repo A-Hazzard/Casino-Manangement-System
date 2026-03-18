@@ -203,6 +203,63 @@ export const MOCK_TOP_PERFORMING_LOCATIONS = {
   timestamp: new Date().toISOString(),
 };
 
+// ─── Location aggregation (provides moneyIn / moneyOut / gross for metric cards) ─
+
+export const MOCK_LOCATION_AGGREGATION = {
+  data: [
+    {
+      _id: 'loc_001',
+      location: 'loc_001',
+      locationName: 'Grand Casino North',
+      moneyIn: 512_450.75,
+      moneyOut: 48_230.0,
+      gross: 464_220.75,
+      jackpot: 9_800.0,
+      coinIn: 1_024_900.5,
+      coinOut: 512_679.75,
+      gamesPlayed: 87_432,
+      totalMachines: 50,
+      onlineMachines: 42,
+      sasMachines: 38,
+      nonSasMachines: 12,
+      hasSasMachines: true,
+      hasNonSasMachines: true,
+      isLocalServer: false,
+      noSMIBLocation: false,
+      hasSmib: true,
+      totalDrop: 512_450.75,
+    },
+    {
+      _id: 'loc_002',
+      location: 'loc_002',
+      locationName: 'South Bay Gaming',
+      moneyIn: 200_450.75,
+      moneyOut: 16_730.0,
+      gross: 183_720.75,
+      jackpot: 2_500.0,
+      coinIn: 400_901.5,
+      coinOut: 200_450.75,
+      gamesPlayed: 42_100,
+      totalMachines: 22,
+      onlineMachines: 17,
+      sasMachines: 17,
+      nonSasMachines: 5,
+      hasSasMachines: true,
+      hasNonSasMachines: true,
+      isLocalServer: false,
+      noSMIBLocation: false,
+      hasSmib: true,
+      totalDrop: 200_450.75,
+    },
+  ],
+  totalCount: 2,
+  page: 1,
+  limit: 1_000_000,
+  hasMore: false,
+  currency: 'TTD',
+  converted: false,
+};
+
 // ─── Error response ───────────────────────────────────────────────────────────
 
 export const MOCK_DASHBOARD_SERVER_ERROR = {
