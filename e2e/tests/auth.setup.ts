@@ -20,9 +20,10 @@
 
 import { test as setup } from '@playwright/test';
 import { setupAuthState } from '../fixtures/auth.fixture';
+import { AUTH_STATE_PATH } from '../playwright.config';
 
 setup('authenticate and persist session', async ({ page, context }) => {
   await setup.step('Perform login and save auth state to disk', async () => {
-    await setupAuthState(page, context);
+    await setupAuthState(page, context, AUTH_STATE_PATH);
   });
 });
