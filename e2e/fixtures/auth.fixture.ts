@@ -46,7 +46,59 @@ type AuthStrategy = 'real' | 'mock';
 const AUTH_STRATEGY: AuthStrategy =
   (process.env.AUTH_STRATEGY as AuthStrategy) ?? 'mock';
 
-// ─── Server-side JWT generation ───────────────────────────────────────────────
+// ─── Zustand store seeding ────────────────────────────────────────────────────
+
+/**
+ * The localStorage key used by the Zustand `persist` middleware in
+ * lib/store/userStore.ts — must stay in sync with that file's `name` option.
+ */
+const ZUSTAND_STORE_KEY = 'user-auth-store';
+
+/**
+ * Registers a Playwright init script that seeds the Zustand user-auth-store
+ * in localStorage BEFORE any page JavaScript runs.
+ *
+ * Why this matters:
+ *   ProtectedRoute waits for `isLoading` (React Query) to be false before
+ *   checking the user. When isLoading becomes false, it reads `user` from the
+ *   Zustand store via a closure captured at render time. If that closure
+ *   captured `user = null`, it calls `router.push('/login')` — even if
+ *   `useCurrentUserQuery`'s own effect is about to call `setUser` in the same
+ *   tick. Seeding localStorage ensures Zustand hydrates with the correct user
+ *   from the very first render, so the closure never contains a null user.
+ */
+async function seedZustandUser(
+  page: Page,
+  userPayload: MockUserPayload
+): Promise<void> {
+  await page.addInitScript(
+    ({ storeKey, storeData }) => {
+      localStorage.setItem(storeKey, JSON.stringify(storeData));
+    },
+    {
+      storeKey: ZUSTAND_STORE_KEY,
+      storeData: {
+        state: {
+          user: {
+            _id: userPayload._id,
+            username: userPayload.username,
+            emailAddress: userPayload.emailAddress,
+            profile: userPayload.profile,
+            roles: userPayload.roles,
+            isEnabled: userPayload.isEnabled,
+            assignedLocations: userPayload.assignedLocations,
+            assignedLicencees: userPayload.assignedLicencees,
+          },
+          isInitialized: true,
+          hasActiveVaultShift: false,
+          isVaultReconciled: false,
+          isStaleShift: false,
+        },
+        version: 0,
+      },
+    }
+  );
+}
 
 /**
  * Calls the dev-only /api/e2e/auth endpoint to obtain a real signed JWT
@@ -94,12 +146,12 @@ export async function setRoleAuthCookie(
   // Clear the existing auth cookie so the old admin session is gone
   await page.context().clearCookies();
 
-  // Register an init script to wipe localStorage on the next navigation.
-  // This evicts Zustand's persisted admin user BEFORE the page JS runs,
-  // ensuring ProtectedRoute fetches from the mocked current-user endpoint.
-  await page.addInitScript(() => localStorage.clear());
+  // Seed Zustand's localStorage with the role user BEFORE page navigation.
+  // This prevents the ProtectedRoute race condition where user=null is captured
+  // in the effect closure when isLoading transitions to false.
+  await seedZustandUser(page, userPayload);
 
-  // Mock current-user so ProtectedRoute resolves the correct role
+  // Mock current-user so the API confirms the role (keeps Zustand in sync)
   await page.route('**/api/auth/current-user**', (route) =>
     route.fulfill({
       status: 200,
@@ -150,7 +202,7 @@ export async function loginViaMock(
   page: Page,
   userPayload = MOCK_USER_PAYLOAD
 ): Promise<void> {
-  // Mock current-user so ProtectedRoute resolves successfully
+  // Mock current-user so the API confirms the user (keeps Zustand in sync)
   await page.route('**/api/auth/current-user**', (route) =>
     route.fulfill({
       status: 200,
@@ -158,18 +210,19 @@ export async function loginViaMock(
     })
   );
 
+  // Seed Zustand's localStorage so ProtectedRoute has the user immediately on
+  // first render — avoids the race condition where user=null is in the closure
+  // when isLoading first becomes false.
+  await seedZustandUser(page, userPayload);
+
   // Get a real JWT cookie from the server (uses server's JWT_SECRET + MONGODB_URI)
   await obtainAuthCookie(page, userPayload);
 
-  // Navigate to the dashboard — the cookie is already set, middleware accepts it
+  // Navigate to the dashboard — the cookie and seeded Zustand state are ready
   await page.goto('/');
   await page.waitForURL((url) => !url.pathname.includes('/login'), {
     timeout: 15_000,
   });
-  // Wait for the current-user API call to complete and Zustand to hydrate.
-  // This ensures context.storageState() captures the admin user in localStorage,
-  // so subsequent tests that load the storageState start with a hydrated Zustand store.
-  await page.waitForLoadState('networkidle');
 }
 
 // ─── Main exported setup function ─────────────────────────────────────────────
