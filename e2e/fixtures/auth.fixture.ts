@@ -24,6 +24,8 @@
  */
 
 import { type BrowserContext, type Page, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   MOCK_CURRENT_USER,
   MOCK_USER_PAYLOAD,
@@ -38,9 +40,11 @@ export const TEST_USER = {
   password: process.env.TEST_USER_PASSWORD ?? 'Test@Password1!',
 };
 
-// ─── Auth state file path (kept in sync with playwright.config.ts) ────────────
+// ─── Auth state file path ─────────────────────────────────────────────────────
+// __dirname here is e2e/fixtures/ → go up one level to get e2e/.auth/user.json
+// Must match the storageState path in playwright.config.ts.
 
-export const AUTH_STATE_PATH = './e2e/.auth/user.json';
+export const AUTH_STATE_PATH = path.join(__dirname, '..', '.auth', 'user.json');
 
 // ─── Strategy selector ────────────────────────────────────────────────────────
 
@@ -174,5 +178,7 @@ export async function setupAuthState(
     await loginViaUI(page);
   }
 
+  // Ensure the directory exists before writing the storage state file
+  fs.mkdirSync(path.dirname(AUTH_STATE_PATH), { recursive: true });
   await context.storageState({ path: AUTH_STATE_PATH });
 }
