@@ -4,30 +4,34 @@
  * Provides helpers for authentication in Playwright tests.
  *
  * Key exports:
- *   loginViaMock        — intercepts the login API and navigates through the UI
- *                         using a REAL signed JWT so the Next.js middleware
- *                         (proxy.ts) accepts the token.
- *   setRoleAuthCookie   — directly injects a signed JWT cookie for a given role
- *                         without going through the login UI. Use this in
- *                         role-restriction tests.
+ *   loginViaMock        — calls /api/e2e/auth (dev-only server endpoint) to get a
+ *                         real signed JWT, then navigates to the app so the cookie
+ *                         is applied. No login form interaction needed.
+ *   setRoleAuthCookie   — same as above but accepts any role user payload.
+ *                         Use this in role-restriction tests BEFORE page.goto().
+ *
+ * Why /api/e2e/auth instead of generating JWTs in the test process?
+ *   The Next.js middleware (proxy.ts) verifies the JWT with JWT_SECRET and
+ *   validates dbContext.connectionString == MONGODB_URI. These secrets live in
+ *   .env.local which dotenvx may not expose to the test process. Calling the
+ *   server endpoint lets the server sign the token with the correct secrets.
  *
  * Auth strategy (AUTH_STRATEGY env var):
- *   "mock" (default) — intercepts login API; no real DB or server needed.
+ *   "mock" (default) — uses /api/e2e/auth; no real user in DB needed.
  *   "real"           — hits the actual /api/auth/login endpoint.
- *                       Requires a running app with a seeded test user.
+ *                       Requires TEST_USER_IDENTIFIER / TEST_USER_PASSWORD
+ *                       env vars pointing to a real user in the database.
  */
 
-import { SignJWT } from 'jose';
 import { type BrowserContext, type Page, expect } from '@playwright/test';
 import {
-  MOCK_LOGIN_SUCCESS,
   MOCK_CURRENT_USER,
   MOCK_USER_PAYLOAD,
   MockUserPayload,
   mockCurrentUserResponse,
 } from '../mocks/auth.mocks';
 
-// ─── Test credentials (override via env vars) ─────────────────────────────────
+// ─── Test credentials (real login only) ──────────────────────────────────────
 
 export const TEST_USER = {
   identifier: process.env.TEST_USER_IDENTIFIER ?? 'testadmin',
@@ -44,52 +48,41 @@ type AuthStrategy = 'real' | 'mock';
 const AUTH_STRATEGY: AuthStrategy =
   (process.env.AUTH_STRATEGY as AuthStrategy) ?? 'mock';
 
-// ─── JWT generation ───────────────────────────────────────────────────────────
+// ─── Server-side JWT generation ───────────────────────────────────────────────
 
 /**
- * Generates a real JWT signed with JWT_SECRET that includes the dbContext
- * required by the Next.js middleware (proxy.ts).
+ * Calls the dev-only /api/e2e/auth endpoint to obtain a real signed JWT
+ * for the given user. The server uses its own JWT_SECRET + MONGODB_URI so
+ * the token passes proxy.ts middleware verification.
  *
- * The middleware calls jwtVerify() + validateDatabaseContext(), both of which
- * need a properly signed token with a matching connectionString.
+ * The Set-Cookie header in the response is automatically stored in
+ * page.context()'s cookie jar (Playwright shares cookies between
+ * page.request and page navigation).
  */
-export async function createTestJwt(
+async function obtainAuthCookie(
+  page: Page,
   userPayload: MockUserPayload
-): Promise<string> {
-  const JWT_SECRET =
-    process.env.JWT_SECRET ?? 'e2e-playwright-test-secret-key-32chars';
-  const MONGODB_URI = process.env.MONGODB_URI ?? '';
+): Promise<void> {
+  const response = await page.request.post('/api/e2e/auth', {
+    data: { user: userPayload },
+  });
 
-  const payload = {
-    _id: userPayload._id,
-    emailAddress: userPayload.emailAddress,
-    username: userPayload.username,
-    isEnabled: userPayload.isEnabled,
-    roles: userPayload.roles,
-    assignedLocations: userPayload.assignedLocations,
-    assignedLicencees: userPayload.assignedLicencees,
-    sessionId: `test-session-${userPayload._id}`,
-    dbContext: {
-      connectionString: MONGODB_URI,
-      timestamp: Date.now(),
-    },
-  };
-
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('7d')
-    .sign(new TextEncoder().encode(JWT_SECRET));
+  if (!response.ok()) {
+    const body = await response.text();
+    throw new Error(
+      `[auth.fixture] /api/e2e/auth failed (${response.status()}): ${body}\n` +
+      'Ensure the Next.js dev server is running and NODE_ENV !== "production".'
+    );
+  }
 }
 
 // ─── Role-based cookie injection ──────────────────────────────────────────────
 
 /**
- * Injects a valid signed JWT as the `token` cookie and mocks the
- * /api/auth/current-user endpoint to return the given user's payload.
+ * Injects a real signed JWT cookie for the given role user and mocks
+ * the /api/auth/current-user endpoint to return that user's payload.
  *
- * Use this in role-restriction tests instead of going through the login UI.
- * Call BEFORE page.goto().
+ * Call BEFORE page.goto() in role-restriction tests.
  *
  * @example
  *   await setRoleAuthCookie(page, MOCK_USER_CASHIER);
@@ -100,21 +93,6 @@ export async function setRoleAuthCookie(
   page: Page,
   userPayload: MockUserPayload
 ): Promise<void> {
-  const token = await createTestJwt(userPayload);
-
-  // Replace any existing auth cookies with this role's JWT
-  await page.context().clearCookies();
-  await page.context().addCookies([
-    {
-      name: 'token',
-      value: token,
-      domain: 'localhost',
-      path: '/',
-      httpOnly: true,
-      sameSite: 'Lax',
-    },
-  ]);
-
   // Mock current-user so ProtectedRoute resolves the correct role
   await page.route('**/api/auth/current-user**', (route) =>
     route.fulfill({
@@ -122,6 +100,9 @@ export async function setRoleAuthCookie(
       json: mockCurrentUserResponse(userPayload),
     })
   );
+
+  // Obtain a real JWT from the server and store it in the context cookie jar
+  await obtainAuthCookie(page, userPayload);
 }
 
 // ─── Login via real UI ────────────────────────────────────────────────────────
@@ -153,55 +134,29 @@ export async function loginViaAPI(context: BrowserContext): Promise<void> {
   expect(body.success).toBe(true);
 }
 
-// ─── Login via mock (no real server / DB needed) ──────────────────────────────
+// ─── Login via mock (no real user in DB needed) ───────────────────────────────
 
 /**
- * Generates a real signed JWT, sets it via the intercepted login response,
- * and navigates through the login UI so the auth cookie is properly applied.
- *
- * The token is signed with JWT_SECRET and contains the correct dbContext so
- * proxy.ts middleware accepts it without redirecting to /login.
+ * Obtains a real JWT from the dev-only test endpoint, mocks current-user,
+ * then navigates to the dashboard. Skips the login form entirely.
  */
 export async function loginViaMock(
   page: Page,
   userPayload = MOCK_USER_PAYLOAD
 ): Promise<void> {
-  const token = await createTestJwt(userPayload);
-
-  // Intercept login API — return success with a real signed cookie
-  await page.route('**/api/auth/login', (route) =>
+  // Mock current-user so ProtectedRoute resolves successfully
+  await page.route('**/api/auth/current-user**', (route) =>
     route.fulfill({
       status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        ...MOCK_LOGIN_SUCCESS,
-        data: { ...MOCK_LOGIN_SUCCESS.data, user: userPayload },
-      }),
-      headers: {
-        'Set-Cookie': [
-          `token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`,
-          'refreshToken=fake-refresh-token; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000',
-        ].join(', '),
-      },
+      json: MOCK_CURRENT_USER,
     })
   );
 
-  // Intercept current-user so ProtectedRoute resolves successfully
-  await page.route('**/api/auth/current-user', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(MOCK_CURRENT_USER),
-    })
-  );
+  // Get a real JWT cookie from the server (uses server's JWT_SECRET + MONGODB_URI)
+  await obtainAuthCookie(page, userPayload);
 
-  // Navigate to login and submit — the mock handles the API call
-  await page.goto('/login');
-  await page.locator('#identifier').fill(TEST_USER.identifier);
-  await page.locator('#password').fill(TEST_USER.password);
-  await page.locator('button[type="submit"]').click();
-
-  // Wait for redirect away from /login
+  // Navigate to the dashboard — the cookie is already set, middleware accepts it
+  await page.goto('/');
   await page.waitForURL((url) => !url.pathname.includes('/login'), {
     timeout: 15_000,
   });

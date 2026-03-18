@@ -1,10 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import * as dotenv from 'dotenv';
 import path from 'path';
-
-// Load .env.local so JWT_SECRET and MONGODB_URI are available to the test process
-// (needed for generating valid JWTs in auth fixtures)
-dotenv.config({ path: path.join(__dirname, '../.env.local') });
 
 /**
  * Auth state file — produced by auth.setup.ts and reused by all test projects.
