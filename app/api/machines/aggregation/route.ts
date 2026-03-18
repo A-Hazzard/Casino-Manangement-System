@@ -25,6 +25,7 @@ import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
@@ -220,13 +221,27 @@ export async function GET(req: NextRequest) {
       timePeriodForGamingDay = timePeriod;
     }
 
+    const isArchivedRequested = onlineStatus === 'archived';
+    const deletedFilter: Record<string, unknown> = isArchivedRequested
+      ? { deletedAt: { $ne: null, $gte: new Date('2025-01-01') } }
+      : {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      };
+
     // Build location match stage with access control
-    const matchStage: MachineAggregationMatchStage = {
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2025-01-01') } },
-      ],
-    };
+    // If archived is requested, we need to fetch all locations (both active and archived)
+    // to find archived machines within them.
+    const matchStage: MachineAggregationMatchStage = isArchivedRequested
+      ? {}
+      : {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      };
 
     // Apply location filter based on user permissions
     if (locationIdArray.length > 0) {
@@ -256,17 +271,26 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, data: [] });
     }
 
+    // Fetch licencee settings for all locations in the query
+    const licenceeIds = Array.from(new Set(locations.map(loc => (loc as Record<string, unknown>).rel as Record<string, unknown> | undefined).map(rel => rel?.licencee).filter(Boolean)));
+    const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean();
+    const licenceeSubtractJackpotMap = new Map(licencees.map(l => [String((l as Record<string, unknown>)._id), !!(l as Record<string, unknown>).subtractJackpot]));
+
     // ============================================================================
     // STEP 7: Calculate gaming day ranges per location
     // ============================================================================
     // Calculate gaming day ranges for each location
     // Always use gaming day offset logic (including for custom dates)
     const gamingDayRanges = getGamingDayRangesForLocations(
-      locations.map((loc: Record<string, unknown>) => ({
-        _id: (loc._id as { toString: () => string }).toString(),
-        gameDayOffset: (loc.gameDayOffset as number) ?? 8, // Default to 8 AM Trinidad time
-        useNetGross: (loc.useNetGross as boolean) || false,
-      })),
+      locations.map((loc) => {
+        const locRecord = loc as Record<string, unknown>;
+        const rel = locRecord.rel as Record<string, unknown> | undefined;
+        return {
+          _id: String(locRecord._id),
+          gameDayOffset: (locRecord.gameDayOffset as number) ?? 8, // Default to 8 AM Trinidad time
+          subtractJackpot: licenceeSubtractJackpotMap.get(String(rel?.licencee)) || false,
+        };
+      }),
       timePeriodForGamingDay,
       customStartDateForGamingDay,
       customEndDateForGamingDay
@@ -291,12 +315,7 @@ export async function GET(req: NextRequest) {
       const machineMatchQuery: Record<string, unknown> = {
         gamingLocation: { $in: allLocationIds },
         $and: [
-          {
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          },
+          deletedFilter,
         ],
       };
 
@@ -491,10 +510,21 @@ export async function GET(req: NextRequest) {
             meterCount: 0,
           };
 
+          const subtractJackpot = licenceeSubtractJackpotMap.get(String(location.rel?.licencee)) || false;
           const multiplier = Number(machine.collectorDenomination) || 1;
-          const moneyIn = (metrics.moneyIn || 0) * multiplier;
-          const moneyOut = (metrics.moneyOut || 0) * multiplier;
-          const jackpot = (metrics.jackpot || 0) * multiplier;
+
+          const rawMoneyIn = (metrics.moneyIn || 0);
+          const rawMoneyOut = (metrics.moneyOut || 0);
+          const rawJackpot = (metrics.jackpot || 0);
+
+          // Apply new Money Out logic: if subtractJackpot is ENABLED (Low Gross), 
+          // moneyOut = Net Cancelled + Jackpot (Total payout)
+          // IF subtractJackpot is DISABLED (High Gross), we keep as Net Payout
+          const moneyOutValue = rawMoneyOut + (subtractJackpot ? rawJackpot : 0);
+
+          const moneyIn = rawMoneyIn * multiplier;
+          const moneyOut = moneyOutValue * multiplier;
+          const jackpot = rawJackpot * multiplier;
           const gross = moneyIn - moneyOut;
 
           // Get serialNumber with fallback to custom.name
@@ -540,12 +570,12 @@ export async function GET(req: NextRequest) {
             moneyIn,
             moneyOut,
             gross,
-            netGross: (location.useNetGross as boolean) ? (gross - (jackpot || 0)) : undefined,
             jackpot: jackpot || 0,
             coinIn: (metrics.coinIn || 0) * multiplier,
             coinOut: (metrics.coinOut || 0) * multiplier,
             gamesPlayed: metrics.gamesPlayed || 0,
             gamesWon: metrics.gamesWon || 0,
+            subtractJackpot,
             handPaidCancelledCredits: (metrics.handPaidCancelledCredits || 0) * multiplier,
             meterCount: metrics.meterCount || 0,
             rel: location.rel,
@@ -572,12 +602,7 @@ export async function GET(req: NextRequest) {
         const batchMachineMatchQuery: Record<string, unknown> = {
           gamingLocation: { $in: batchLocationIds },
           $and: [
-            {
-              $or: [
-                { deletedAt: null },
-                { deletedAt: { $lt: new Date('2025-01-01') } },
-              ],
-            },
+            deletedFilter,
           ],
         };
 
@@ -818,10 +843,21 @@ export async function GET(req: NextRequest) {
               meterCount: 0,
             };
 
+            const subtractJackpot = licenceeSubtractJackpotMap.get(String(location.rel?.licencee)) || false;
             const multiplier = Number(machine.collectorDenomination) || 1;
-            const moneyIn = (metrics.moneyIn || 0) * multiplier;
-            const moneyOut = (metrics.moneyOut || 0) * multiplier;
-            const jackpot = (metrics.jackpot || 0) * multiplier;
+
+            const rawMoneyIn = (metrics.moneyIn || 0);
+            const rawMoneyOut = (metrics.moneyOut || 0);
+            const rawJackpot = (metrics.jackpot || 0);
+
+            // Apply new Money Out logic: if subtractJackpot is ENABLED (Low Gross), 
+            // moneyOut = Net Cancelled + Jackpot (Total payout)
+            // IF subtractJackpot is DISABLED (High Gross), we keep as Net Payout
+            const moneyOutValue = rawMoneyOut + (subtractJackpot ? rawJackpot : 0);
+
+            const moneyIn = rawMoneyIn * multiplier;
+            const moneyOut = moneyOutValue * multiplier;
+            const jackpot = rawJackpot * multiplier;
             const coinIn = (metrics.coinIn || 0) * multiplier;
             const coinOut = (metrics.coinOut || 0) * multiplier;
             const gamesPlayed = metrics.gamesPlayed || 0;
@@ -865,17 +901,18 @@ export async function GET(req: NextRequest) {
                 new Date(Date.now() - 3 * 60 * 1000)
                 : false,
               createdAt: machine.createdAt as Date | undefined,
+              deletedAt: machine.deletedAt as Date | undefined,
               timePeriod: timePeriod,
               moneyIn,
               moneyOut,
               cancelledCredits: moneyOut,
               gross,
-              netGross: (location.useNetGross as boolean) ? (gross - (jackpot || 0)) : undefined,
               jackpot,
               coinIn,
               coinOut,
               gamesPlayed,
               gamesWon,
+              subtractJackpot,
             };
           });
           batchResults.push(...locationResults);
@@ -1041,15 +1078,18 @@ export async function GET(req: NextRequest) {
             { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
         },
-        { _id: 1, name: 1 }
+        { _id: 1, name: 1, subtractJackpot: 1 }
       )
         .lean()
         .exec();
 
-      // Create a map of licencee ID to name
+      // Create maps of licencee ID to name and subtractJackpot
       const licenceeIdToName = new Map<string, string>();
+      const licenceeIdToSubtractJackpot = new Map<string, boolean>();
       licenceesData.forEach(lic => {
-        licenceeIdToName.set(String(lic._id), lic.name);
+        const licRecord = lic as Record<string, unknown>;
+        licenceeIdToName.set(String(licRecord._id), licRecord.name as string);
+        licenceeIdToSubtractJackpot.set(String(licRecord._id), Boolean(licRecord.subtractJackpot));
       });
 
       // Get country details for currency mapping
@@ -1140,8 +1180,8 @@ export async function GET(req: NextRequest) {
           ),
           jackpot: convertFromUSD(jackpotUSD, displayCurrency),
           gross: convertFromUSD(grossUSD, displayCurrency),
-          netGross: (locationDetails?.useNetGross as boolean)
-            ? (convertFromUSD(grossUSD, displayCurrency) - convertFromUSD(jackpotUSD, displayCurrency)) 
+          netGross: (machineLicenceeId && licenceeIdToSubtractJackpot.get(machineLicenceeId.toString()))
+            ? (convertFromUSD(grossUSD, displayCurrency) - convertFromUSD(jackpotUSD, displayCurrency))
             : undefined,
           coinIn: convertFromUSD(coinInUSD, displayCurrency),
           coinOut: convertFromUSD(coinOutUSD, displayCurrency),

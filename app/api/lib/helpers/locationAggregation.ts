@@ -1,4 +1,5 @@
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
@@ -62,7 +63,7 @@ export const getLocationsWithMetrics = async (
         ...(licencee && licencee !== 'all' && !locationIdFilter._id
           ? {
             $or: [
-              { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  }
+              { 'rel.licencee': licencee  }
             ]
           }
           : {}),
@@ -201,6 +202,13 @@ export const getLocationsWithMetrics = async (
       timePeriod === '30d' ||
       timePeriod === 'last7days' ||
       timePeriod === 'last30days';
+
+    // Fetch licencee subtractJackpot settings
+    const licencees = await Licencee.find({}, { _id: 1, subtractJackpot: 1 }).lean().exec();
+    const licenceeSettingsMap = new Map<string, boolean>();
+    licencees.forEach((l: Record<string, unknown>) => {
+      licenceeSettingsMap.set(String(l._id), Boolean(l.subtractJackpot));
+    });
 
     const locationsWithMetrics: AggregatedLocation[] = [];
 
@@ -414,18 +422,26 @@ export const getLocationsWithMetrics = async (
           const sasMachines = machines.filter(m => m.isSasMachine).length;
           const nonSasMachines = totalMachines - sasMachines;
 
+          const licenceeId = location.rel?.licencee ? String(location.rel.licencee) : '';
+          const subtractJackpot = licenceeSettingsMap.get(licenceeId) || false;
+          
+          // Logic: TRUE = Low Gross (Include jackpot in deduction), FALSE = High Gross (Exclude jackpot from deduction)
+          // Metrics.moneyOut is totalCancelledCredits which is typically NET handpays.
+          const adjustedMoneyOut = (metrics.moneyOut || 0) + (subtractJackpot ? (metrics.jackpot || 0) : 0);
+
           locationsWithMetrics.push({
             location: locationId,
             locationName: location.name || 'Unknown Location',
             moneyIn: Math.round((metrics.moneyIn || 0) * 100) / 100,
-            moneyOut: Math.round((metrics.moneyOut || 0) * 100) / 100,
+            moneyOut: Math.round((adjustedMoneyOut || 0) * 100) / 100,
             gross:
               Math.round(
-                ((metrics.moneyIn || 0) - (metrics.moneyOut || 0)) * 100
+                ((metrics.moneyIn || 0) - (adjustedMoneyOut || 0)) * 100
               ) / 100,
             coinIn: metrics.coinIn,
             coinOut: metrics.coinOut,
             jackpot: metrics.jackpot,
+            subtractJackpot: subtractJackpot,
             totalMachines,
             onlineMachines,
             sasMachines,
@@ -713,20 +729,28 @@ export const getLocationsWithMetrics = async (
           const sasMachines = machines.filter(m => m.isSasMachine).length;
           const nonSasMachines = totalMachines - sasMachines;
 
+          const licenceeId = location.rel?.licencee ? String(location.rel.licencee) : '';
+          const subtractJackpot = licenceeSettingsMap.get(licenceeId) || false;
+          
+          // Logic: TRUE = Low Gross (Include jackpot in deduction), FALSE = High Gross (Exclude jackpot from deduction)
+          // meterMetrics.totalMoneyOut is totalCancelledCredits which is typically NET handpays.
+          const adjustedMoneyOut = (meterMetrics.totalMoneyOut || 0) + (subtractJackpot ? (meterMetrics.totalJackpot || 0) : 0);
+
           return {
             location: locationId,
             locationName: location.name || 'Unknown Location',
             moneyIn: Math.round((meterMetrics.totalDrop || 0) * 100) / 100,
-            moneyOut: Math.round((meterMetrics.totalMoneyOut || 0) * 100) / 100,
+            moneyOut: Math.round((adjustedMoneyOut || 0) * 100) / 100,
             gross:
               Math.round(
                 ((meterMetrics.totalDrop || 0) -
-                  (meterMetrics.totalMoneyOut || 0)) *
+                  (adjustedMoneyOut || 0)) *
                 100
               ) / 100,
             coinIn: meterMetrics.totalCoinIn,
             coinOut: meterMetrics.totalCoinOut,
             jackpot: meterMetrics.totalJackpot,
+            subtractJackpot: subtractJackpot,
             totalMachines,
             onlineMachines,
             sasMachines,

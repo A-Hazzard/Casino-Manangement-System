@@ -101,5 +101,6 @@ export type LocationTableProps = {
   onAction: (action: 'edit' | 'delete', location: AggregatedLocation) => void;
   formatCurrency: (amount: number) => string;
   selectedFilters?: LocationFilter[]; // Add selectedFilters prop
+  showArchived?: boolean;
 };
 

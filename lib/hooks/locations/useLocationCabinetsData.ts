@@ -110,7 +110,7 @@ export function useLocationCabinetsData({
     netGross: number;
   } | null>(null);
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
-  const [useNetGross, setUseNetGross] = useState<boolean>(false);
+  const [subtractJackpot, setSubtractJackpot] = useState<boolean>(false);
 
   // Effect to handle automatic sorting when status changes to Offline sorting variants
   useEffect(() => {
@@ -564,7 +564,7 @@ export function useLocationCabinetsData({
               locationData.enableMembership === true
             );
             setLocationData(locationData);
-            setUseNetGross(Boolean(locationData.useNetGross));
+            setSubtractJackpot(Boolean(locationData.subtractJackpot));
           }
         } catch (locationError) {
           const errorWithStatus = locationError as Error & {
@@ -861,7 +861,7 @@ export function useLocationCabinetsData({
     debouncedSearchTerm,
     financialTotals,
     totalCount,
-    useNetGross,
+    subtractJackpot,
     // Setters
     setSearchTerm: useCallback((term: string) => {
       if (term !== searchTerm) {

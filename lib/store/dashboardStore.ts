@@ -29,14 +29,15 @@ const dummyState: DashBoardStore = {
   selectedLicencee: '',
   sortBy: 'totalDrop',
   customDateRange: {
-    startDate: new Date(new Date().setHours(0, 0, 0, 0)),
-    endDate: new Date(new Date().setHours(23, 59, 59, 999)),
+    startDate: new Date(new Date().setHours(8, 0, 0, 0)),
+    endDate: new Date(new Date(new Date().setHours(8, 0, 0, 0)).getTime() + 24 * 60 * 60 * 1000 - 60000),
   },
   // Currency support
   displayCurrency: 'USD' as CurrencyCode,
   isAllLicencee: false,
   pendingCustomDateRange: undefined,
   topPerformingData: [],
+  gameDayOffset: 8,
   setInitialLoading: () => {},
   setLoadingChartData: () => {},
   setLoadingTotals: () => {},
@@ -60,6 +61,7 @@ const dummyState: DashBoardStore = {
   // Currency methods
   setDisplayCurrency: () => {},
   setIsAllLicencee: () => {},
+  setGameDayOffset: () => {},
 };
 
 // Make sure store is created only on client-side
@@ -90,14 +92,15 @@ const createStore = () => {
         gamingLocations: [],
   selectedLicencee: '',
   sortBy: 'totalDrop',
-  customDateRange: {
-          startDate: new Date(new Date().setHours(0, 0, 0, 0)),
-          endDate: new Date(new Date().setHours(23, 59, 59, 999)),
+        customDateRange: {
+          startDate: new Date(new Date().setHours(8, 0, 0, 0)),
+          endDate: new Date(new Date(new Date().setHours(8, 0, 0, 0)).getTime() + 24 * 60 * 60 * 1000 - 60000),
         },
         pendingCustomDateRange: undefined,
         topPerformingData: [],
         displayCurrency: 'USD' as CurrencyCode,
         isAllLicencee: false,
+        gameDayOffset: 8,
 
         setInitialLoading: initialLoading => set({ initialLoading }),
         setLoadingChartData: loadingChartData => set({ loadingChartData }),
@@ -129,6 +132,7 @@ const createStore = () => {
         // Currency methods
         setDisplayCurrency: displayCurrency => set({ displayCurrency }),
         setIsAllLicencee: isAllLicencee => set({ isAllLicencee }),
+        setGameDayOffset: gameDayOffset => set({ gameDayOffset }),
       }),
       {
         name: 'dashboard-store',
@@ -138,6 +142,7 @@ const createStore = () => {
             activeMetricsFilter: state.activeMetricsFilter,
             customDateRange: state.customDateRange,
             displayCurrency: state.displayCurrency,
+            gameDayOffset: state.gameDayOffset,
           }) as unknown as DashBoardStore,
         // Merge persisted state while reviving customDateRange to Date instances
         merge: (persistedState: unknown, currentState: unknown) => {

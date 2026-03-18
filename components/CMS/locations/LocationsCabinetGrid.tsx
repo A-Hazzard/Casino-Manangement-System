@@ -27,6 +27,7 @@
 import CabinetTable from '@/components/CMS/cabinets/CabinetsCabinetTable';
 import { Button } from '@/components/shared/ui/button';
 import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
+import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import type { CabinetSortOption } from '@/lib/hooks/data';
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
@@ -35,9 +36,8 @@ import type { LocationsCabinetGridProps } from '@/lib/types/components';
 import type { ExtendedCabinetDetail } from '@/lib/types/pages';
 import { formatCurrency } from '@/lib/utils';
 import {
-    getGrossColorClass,
-    getMoneyInColorClass,
-    getMoneyOutColorClass,
+  getGrossColorClass,
+  getMoneyInColorClass,
 } from '@/lib/utils/financial';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { formatDistanceToNow } from 'date-fns';
@@ -60,7 +60,7 @@ function CabinetCardMobile({
   canEditMachines = true,
   canDeleteMachines = true,
   copyToClipboard,
-  showNetGross,
+  subtractJackpot,
 }: {
   cabinet: ExtendedCabinetDetail;
   router: AppRouterInstance;
@@ -69,7 +69,7 @@ function CabinetCardMobile({
   canEditMachines?: boolean;
   canDeleteMachines?: boolean;
   copyToClipboard: (text: string, label: string) => void;
-  showNetGross?: boolean;
+  subtractJackpot?: boolean;
 }) {
   const statusRef = useRef<HTMLSpanElement>(null);
   /**
@@ -195,11 +195,15 @@ function CabinetCardMobile({
         </div>
         <div className="mb-1 flex justify-between">
           <span className="text-xs text-gray-500">Money Out:</span>
-          <CurrencyValueWithOverflow
-            value={cabinet.moneyOut || 0}
-            className={`text-xs font-medium ${getMoneyOutColorClass(cabinet.moneyOut, cabinet.moneyIn)}`}
-            formatCurrencyFn={formatCurrency}
-          />
+            <MoneyOutCell
+              moneyOut={cabinet.moneyOut || 0}
+              moneyIn={cabinet.moneyIn || 0}
+              jackpot={cabinet.jackpot || 0}
+              displayValue={formatCurrency(cabinet.moneyOut || 0)}
+              className="text-xs"
+              subtractJackpot={!!(cabinet).subtractJackpot}
+              showInfoIcon={true}
+            />
         </div>
         <div className="mb-1 flex justify-between">
           <span className="text-xs text-gray-500">Jackpot:</span>
@@ -217,9 +221,9 @@ function CabinetCardMobile({
             formatCurrencyFn={formatCurrency}
           />
         </div>
-        {showNetGross !== false && cabinet.netGross !== undefined && (
+        {subtractJackpot !== false && cabinet.netGross !== undefined && (
           <div className="flex justify-between">
-            <span className="text-xs text-gray-500">Net Gross:</span>
+            <span className="text-xs text-gray-500">Jackpot:</span>
             <CurrencyValueWithOverflow
               value={cabinet.netGross}
               className={`text-xs font-medium ${getGrossColorClass(cabinet.netGross)}`}
@@ -277,8 +281,8 @@ export default function LocationsCabinetGrid({
   sortOption: externalSortOption,
   sortOrder: externalSortOrder,
   onSortChange,
-  showNetGross = true,
-}: LocationsCabinetGridProps & { showNetGross?: boolean }) {
+  subtractJackpot = true,
+}: LocationsCabinetGridProps & { subtractJackpot?: boolean }) {
   // Use external sort state if provided, otherwise use local state
   const [internalSortOption, setInternalSortOption] =
     useState<CabinetSortOption>('moneyIn');
@@ -428,7 +432,7 @@ export default function LocationsCabinetGrid({
           onDelete={cabinet => handleDelete(cabinet as ExtendedCabinetDetail)}
           canEditMachines={canEditMachines}
           canDeleteMachines={canDeleteMachines}
-          showNetGross={showNetGross}
+          subtractJackpot={subtractJackpot}
         />
       </div>
 
@@ -447,7 +451,7 @@ export default function LocationsCabinetGrid({
                 canEditMachines={canEditMachines}
                 canDeleteMachines={canDeleteMachines}
                 copyToClipboard={copyToClipboard}
-                showNetGross={showNetGross}
+                subtractJackpot={subtractJackpot}
               />
             ))}
         </div>

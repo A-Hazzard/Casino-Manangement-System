@@ -173,7 +173,8 @@ export async function POST(request: NextRequest) {
     // STEP 2: Parse request body
     // ============================================================================
     const body = await request.json();
-    const { name, description, country, startDate, expiryDate } = body;
+    const { name, description, country, startDate, expiryDate, subtractJackpot } =
+      body;
 
     // ============================================================================
     // STEP 3: Validate required fields
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
     // STEP 4: Create licencee via helper function
     // ============================================================================
     const licencee = await createLicenceeHelper(
-      { name, description, country, startDate, expiryDate },
+      { name, description, country, startDate, expiryDate, subtractJackpot },
       request
     );
 
@@ -256,6 +257,7 @@ export async function PUT(request: NextRequest) {
       isPaid,
       prevStartDate,
       prevExpiryDate,
+      subtractJackpot,
     } = body;
 
     // ============================================================================
@@ -286,6 +288,7 @@ export async function PUT(request: NextRequest) {
         isPaid,
         prevStartDate,
         prevExpiryDate,
+        subtractJackpot,
       },
       request
     );

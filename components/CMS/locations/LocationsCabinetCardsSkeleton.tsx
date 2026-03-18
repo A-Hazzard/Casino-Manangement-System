@@ -2,7 +2,7 @@ import React from 'react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 interface LocationsCabinetCardsSkeletonProps {
-  showNetGross?: boolean;
+  subtractJackpot?: boolean;
 }
 
 /**
@@ -10,7 +10,7 @@ interface LocationsCabinetCardsSkeletonProps {
  * Matches the exact structure of CabinetCardMobile component
  */
 const LocationsCabinetCardsSkeleton: React.FC<LocationsCabinetCardsSkeletonProps> = ({
-  showNetGross = false,
+  subtractJackpot = false,
 }) => (
   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
     {[...Array(10)].map((_, i) => (
@@ -49,11 +49,11 @@ const LocationsCabinetCardsSkeleton: React.FC<LocationsCabinetCardsSkeletonProps
             <Skeleton className="h-3 w-12" />
             <Skeleton className="h-3 w-20" />
           </div>
-          <div className={`${showNetGross ? 'mb-1' : ''} flex justify-between`}>
+          <div className={`${subtractJackpot ? 'mb-1' : ''} flex justify-between`}>
             <Skeleton className="h-3 w-16" />
             <Skeleton className="h-3 w-20" />
           </div>
-          {showNetGross && (
+          {subtractJackpot && (
             <div className="flex justify-between">
               <Skeleton className="h-3 w-16" />
               <Skeleton className="h-3 w-20" />

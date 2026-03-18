@@ -42,10 +42,12 @@ export async function calculateCollectionReportTotals(
   let totalDrop = 0;
   let totalCancelled = 0;
   let totalSasGross = 0;
+  let totalJackpot = 0;
 
   console.log(`🔄 [Calculations] Processing ${machines.length} machines...`, {
     hasCollectionIds: collectionIds.length > 0,
     collectionIdsCount: collectionIds.length,
+    subtractJackpot: payload.subtractJackpot,
   });
 
   // Helper function to query collection by machineId and meters (fallback method)
@@ -89,23 +91,9 @@ export async function calculateCollectionReportTotals(
       // Try direct lookup by collection ID first
       if (collectionId) {
         try {
-          console.log(
-            `🔍 [Calculations] Looking up collection ${collectionId} for machine ${m.machineId}...`
-          );
-
           collection = (await Collections.findOne({ _id: collectionId })
             .maxTimeMS(10000) // 10 second timeout
             .lean()) as CollectionDocument | null;
-
-          if (collection) {
-            console.log(
-              `✅ [Calculations] Found collection ${collectionId} via direct lookup`
-            );
-          } else {
-            console.warn(
-              `⚠️ [Calculations] Collection ${collectionId} not found. Trying query method...`
-            );
-          }
         } catch (err) {
           console.error(
             `❌ [Calculations] Error looking up collection ${collectionId}:`,
@@ -117,15 +105,7 @@ export async function calculateCollectionReportTotals(
       // If direct lookup failed, try query method as fallback
       if (!collection) {
         try {
-          console.log(
-            `🔍 [Calculations] Querying collection for machine ${m.machineId} with meters ${m.metersIn}/${m.metersOut}...`
-          );
           collection = await queryCollectionByMachine(m, reportTimestamp);
-          if (collection) {
-            console.log(
-              `✅ [Calculations] Found collection for machine ${m.machineId} via query method`
-            );
-          }
         } catch (err) {
           console.error(
             `❌ [Calculations] Error querying collection for machine ${m.machineId}:`,
@@ -138,24 +118,18 @@ export async function calculateCollectionReportTotals(
       if (collection) {
         const moveIn = collection.movement?.metersIn || 0;
         const moveOut = collection.movement?.metersOut || 0;
+        const jackpot = collection.sasMeters?.jackpot || 0;
 
         totalDrop += moveIn;
         totalCancelled += moveOut;
+        totalJackpot += jackpot;
 
         const sasGross = collection.sasMeters?.gross || 0;
         totalSasGross += sasGross;
-      } else {
-        console.warn(
-          `⚠️ [Calculations] Collection document not found for machine ${m.machineId} with meters ${m.metersIn}/${m.metersOut}. Skipping totals for this machine.`
-        );
       }
     }
   } else {
     // Fallback: Query by machineId and meters (original method)
-    console.log(
-      '🔄 [Calculations] Using query method (no collection IDs provided)...'
-    );
-
     for (const m of machines) {
       if (!m.machineId) continue;
 
@@ -165,51 +139,54 @@ export async function calculateCollectionReportTotals(
         if (collection) {
           const moveIn = collection.movement?.metersIn || 0;
           const moveOut = collection.movement?.metersOut || 0;
+          const jackpot = collection.sasMeters?.jackpot || 0;
 
           totalDrop += moveIn;
           totalCancelled += moveOut;
+          totalJackpot += jackpot;
 
           const sasGross = collection.sasMeters?.gross || 0;
           totalSasGross += sasGross;
-
-          console.log(
-            `✅ [Calculations] Found collection for machine ${m.machineId}:`,
-            {
-              collectionId: collection._id,
-              moveIn,
-              moveOut,
-              sasGross,
-            }
-          );
-        } else {
-          console.warn(
-            `⚠️ [Calculations] Collection document not found for machine ${m.machineId} with meters ${m.metersIn}/${m.metersOut}. Skipping totals for this machine.`
-          );
         }
       } catch (err) {
         console.error(
           `❌ [Calculations] Error processing machine ${m.machineId}:`,
           err
         );
-        // Continue processing other machines even if one fails
       }
     }
   }
 
-  const totalGross = totalDrop - totalCancelled;
+  // Apply subtractJackpot logic
+  // If enabled, totalCancelled is adjusted (Money Out = Cancelled Credits - Jackpots)
+  // Which makes totalGross = totalDrop - (totalCancelled - totalJackpot)
+  const useSubtractJackpot = !!payload.subtractJackpot;
+  const effectiveTotalCancelled = useSubtractJackpot 
+    ? Math.max(0, totalCancelled - totalJackpot)
+    : totalCancelled;
+  
+  const totalGross = totalDrop - effectiveTotalCancelled;
+  const effectiveTotalSasGross = useSubtractJackpot
+    ? Math.max(0, totalSasGross - totalJackpot)
+    : totalSasGross;
 
   console.log('✅ [Calculations] Totals calculated:', {
     totalDrop,
     totalCancelled,
+    totalJackpot,
+    useSubtractJackpot,
+    effectiveTotalCancelled,
     totalGross,
     totalSasGross,
+    effectiveTotalSasGross,
   });
 
   return {
     totalDrop,
-    totalCancelled,
+    totalCancelled: effectiveTotalCancelled,
     totalGross,
-    totalSasGross,
+    totalSasGross: effectiveTotalSasGross,
+    totalJackpot, // Include raw jackpot total for reference
   };
 }
 

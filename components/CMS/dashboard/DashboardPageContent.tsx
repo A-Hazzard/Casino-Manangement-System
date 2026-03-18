@@ -159,16 +159,28 @@ export default function DashboardPageContent() {
     [user]
   );
 
-  const effectiveDateRange = useMemo(
-    () => ({
-      startDate:
-        customDateRange?.startDate || new Date(new Date().setHours(0, 0, 0, 0)),
-      endDate:
-        customDateRange?.endDate ||
-        new Date(new Date().setHours(23, 59, 59, 999)),
-    }),
-    [customDateRange]
-  );
+  const { gameDayOffset } = useDashBoardStore();
+
+  const effectiveDateRange = useMemo(() => {
+    if (customDateRange?.startDate && customDateRange?.endDate) {
+      return {
+        startDate: customDateRange.startDate,
+        endDate: customDateRange.endDate,
+      };
+    }
+
+    const startDate = new Date();
+    startDate.setHours(gameDayOffset, 0, 0, 0);
+
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 1);
+    endDate.setMinutes(endDate.getMinutes() - 1);
+
+    return {
+      startDate,
+      endDate,
+    };
+  }, [customDateRange, gameDayOffset]);
 
   const dateRangeKey = useMemo(
     () =>

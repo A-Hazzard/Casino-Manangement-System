@@ -81,7 +81,6 @@ type LocationDetails = {
     freePlayGameTypes?: string[];
     freePlayCreditsTimeout?: number;
   };
-  useNetGross?: boolean;
   createdAt?: Date | string;
 };
 
@@ -203,7 +202,6 @@ export default function LocationsEditLocationModal({
     isLocalServer: false,
     latitude: '',
     longitude: '',
-    useNetGross: false,
     dayStartTime: '08:00', // Default to 8:00 AM
     billValidatorOptions: {
       denom1: false,
@@ -359,11 +357,10 @@ export default function LocationsEditLocationModal({
         profitShare: '', // Will be loaded from locationDetails
         licencee: selectedLocation.rel?.licencee || '', // Use licencee from selectedLocation
         isLocalServer: selectedLocation.isLocalServer || false,
-        latitude: selectedLocation.geoCoords?.latitude?.toString() || 
+        latitude: selectedLocation.geoCoords?.latitude?.toString() ||
                   selectedLocation.geoCoords?.lat?.toString() || '',
-        longitude: selectedLocation.geoCoords?.longitude?.toString() || 
+        longitude: selectedLocation.geoCoords?.longitude?.toString() ||
                    selectedLocation.geoCoords?.lng?.toString() || '',
-        useNetGross: false, // Will be loaded from locationDetails
         dayStartTime: '08:00', // Will be loaded from locationDetails (default 8 AM)
         billValidatorOptions: {
           denom1: false,
@@ -522,7 +519,6 @@ export default function LocationsEditLocationModal({
         isLocalServer: locationDetails.isLocalServer || false,
         latitude: locationDetails.geoCoords?.latitude?.toString() || '',
         longitude: locationDetails.geoCoords?.longitude?.toString() || '',
-        useNetGross: locationDetails.useNetGross || false,
         dayStartTime: dayStartTime,
         billValidatorOptions: {
           denom1: locationDetails.billValidatorOptions?.denom1 || false,
@@ -736,7 +732,6 @@ export default function LocationsEditLocationModal({
         billValidatorOptions: originalFormData.billValidatorOptions,
         membershipEnabled: originalFormData.membershipEnabled,
         locationMembershipSettings: originalFormData.locationMembershipSettings,
-        useNetGross: originalFormData.useNetGross,
       };
 
       const formDataComparison = {
@@ -767,7 +762,6 @@ export default function LocationsEditLocationModal({
         billValidatorOptions: formData.billValidatorOptions,
         membershipEnabled: formData.membershipEnabled,
         locationMembershipSettings: formData.locationMembershipSettings,
-        useNetGross: formData.useNetGross,
       };
 
       // Detect changes by comparing original loaded data with current form data
@@ -1352,23 +1346,6 @@ export default function LocationsEditLocationModal({
                   className="flex-1 text-sm font-medium"
                 >
                   No SMIB Location
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
-                <Checkbox
-                  id="useNetGross"
-                  checked={formData.useNetGross}
-                  onCheckedChange={checked =>
-                    handleCheckboxChange('useNetGross', checked === true)
-                  }
-                  className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
-                />
-                <Label
-                  htmlFor="useNetGross"
-                  className="flex-1 text-sm font-medium"
-                >
-                  Use Net Gross
                 </Label>
               </div>
 

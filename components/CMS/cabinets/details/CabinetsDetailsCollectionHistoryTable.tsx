@@ -36,15 +36,29 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/shared/ui/tooltip';
+import { ConfirmationDialog } from '@/components/shared/ui/ConfirmationDialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/shared/ui/dialog';
+import { Input } from '@/components/shared/ui/input';
+import { Label } from '@/components/shared/ui/label';
 import { useUserStore } from '@/lib/store/userStore';
+import axios from 'axios';
 import {
     ChevronDown,
     ChevronsUpDown,
-    ChevronUp
+    ChevronUp,
+    Edit,
+    Trash2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useMemo, useState } from 'react';
 import type { DateRange } from 'react-day-picker';
+import { toast } from 'sonner';
 
 // ============================================================================
 // Helper Functions
@@ -52,8 +66,7 @@ import type { DateRange } from 'react-day-picker';
 
 const formatLargeNumber = (num: number): string => {
   if (num === 0) return '0';
-  if (num < 1000) return num.toLocaleString();
-  if (num < 1000000) return `${(num / 1000).toFixed(1)}K`;
+  if (num < 1000000) return num.toLocaleString();
   if (num < 1000000000) return `${(num / 1000000).toFixed(1)}M`;
   if (num < 1000000000000) return `${(num / 1000000000).toFixed(1)}B`;
   return `${(num / 1000000000000).toFixed(1)}T`;
@@ -62,7 +75,7 @@ const formatLargeNumber = (num: number): string => {
 const SmartNumberDisplay: React.FC<{ value: number }> = ({ value }) => {
   const formattedFull = value.toLocaleString();
   const formattedCompact = formatLargeNumber(value);
-  const shouldAbbreviate = value >= 1000;
+  const shouldAbbreviate = value >= 1000000;
   const displayValue = shouldAbbreviate ? formattedCompact : formattedFull;
 
   if (!shouldAbbreviate) {
@@ -97,6 +110,7 @@ type CollectionData = {
   prevIn: number;
   prevOut: number;
   locationReportId: string;
+  machineId?: string;
 };
 
 type SortField = 'timestamp' | 'metersIn' | 'metersOut' | 'prevIn' | 'prevOut';
@@ -107,22 +121,107 @@ type CabinetsDetailsCollectionHistoryTableProps = {
   data: CollectionData[];
   defaultTimeFilter?: TimeFilter;
   customRange?: { from: Date; to: Date };
+  onRefresh?: () => void;
 };
 
 export function CabinetsDetailsCollectionHistoryTable({
   data,
   defaultTimeFilter = 'all',
   customRange,
+  onRefresh,
 }: CabinetsDetailsCollectionHistoryTableProps) {
   const router = useRouter();
   const user = useUserStore(state => state.user);
   const isDeveloper = (user?.roles || []).includes('developer');
+  const isAdmin = (user?.roles || []).includes('admin');
+  const isManager = (user?.roles || []).includes('manager');
+  const canModifyHistory = isDeveloper || isAdmin || isManager;
 
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(defaultTimeFilter);
   const [sortField, setSortField] = useState<SortField>('timestamp');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [page, setPage] = useState(1);
   const pageSize = 20;
+
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<CollectionData | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [entryToEdit, setEntryToEdit] = useState<CollectionData | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    metersIn: 0,
+    metersOut: 0,
+    prevIn: 0,
+    prevOut: 0,
+  });
+
+  // Handle delete action
+  const handleDeleteConfirm = async () => {
+    if (!entryToDelete || !entryToDelete.machineId) return;
+
+    try {
+      const res = await axios.patch(`/api/machines/${entryToDelete.machineId}/collection-history`, {
+        operation: 'delete',
+        entryId: entryToDelete._id,
+      });
+
+      if (res.data.success) {
+        toast.success('Collection entry deleted successfully');
+        if (onRefresh) onRefresh();
+        setIsDeleting(false);
+        setEntryToDelete(null);
+      } else {
+        toast.error(res.data.error || 'Failed to delete entry');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('An error occurred while deleting the entry');
+    }
+  };
+
+  // Handle edit action
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!entryToEdit || !entryToEdit.machineId) return;
+
+    try {
+      const res = await axios.patch(`/api/machines/${entryToEdit.machineId}/collection-history`, {
+        operation: 'update',
+        entryId: entryToEdit._id,
+        entry: {
+          metersIn: Number(editFormData.metersIn),
+          metersOut: Number(editFormData.metersOut),
+          prevMetersIn: Number(editFormData.prevIn),
+          prevMetersOut: Number(editFormData.prevOut),
+          timestamp: entryToEdit.timestamp,
+          locationReportId: entryToEdit.locationReportId,
+        }
+      });
+
+      if (res.data.success) {
+        toast.success('Collection entry updated successfully');
+        if (onRefresh) onRefresh();
+        setIsEditing(false);
+        setEntryToEdit(null);
+      } else {
+        toast.error(res.data.error || 'Failed to update entry');
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      toast.error('An error occurred while updating the entry');
+    }
+  };
+
+  // Pre-fill edit form when entryToEdit changes
+  React.useEffect(() => {
+    if (entryToEdit) {
+      setEditFormData({
+        metersIn: entryToEdit.metersIn,
+        metersOut: entryToEdit.metersOut,
+        prevIn: entryToEdit.prevIn,
+        prevOut: entryToEdit.prevOut,
+      });
+    }
+  }, [entryToEdit]);
 
   // Local state for custom date range picker
   const [localDateRange, setLocalDateDateRange] = useState<DateRange | undefined>({
@@ -412,9 +511,14 @@ export function CabinetsDetailsCollectionHistoryTable({
                     {getSortIcon('prevOut')}
                   </div>
                 </TableHead>
-                <TableHead className="w-[110px] px-2 text-left">
+                 <TableHead className="w-[110px] px-2 text-left">
                   Collection Report
                 </TableHead>
+                {canModifyHistory && (
+                  <TableHead className="w-[100px] px-2 text-center">
+                    Actions
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -449,7 +553,7 @@ export function CabinetsDetailsCollectionHistoryTable({
                     <TableCell className="truncate px-2 text-left">
                       <SmartNumberDisplay value={row.prevOut || 0} />
                     </TableCell>
-                    <TableCell className="truncate px-2 text-left">
+                     <TableCell className="truncate px-2 text-left">
                       {row.locationReportId && (
                         <Button
                           variant="outline"
@@ -461,6 +565,34 @@ export function CabinetsDetailsCollectionHistoryTable({
                         </Button>
                       )}
                     </TableCell>
+                    {canModifyHistory && (
+                      <TableCell className="px-2 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                            onClick={() => {
+                              setEntryToEdit(row);
+                              setIsEditing(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-600 hover:bg-red-50"
+                            onClick={() => {
+                              setEntryToDelete(row);
+                              setIsDeleting(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 )
               )}
@@ -524,6 +656,32 @@ export function CabinetsDetailsCollectionHistoryTable({
                     VIEW REPORT
                   </Button>
                 )}
+                {canModifyHistory && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-blue-600 hover:bg-blue-50"
+                      onClick={() => {
+                        setEntryToEdit(row);
+                        setIsEditing(true);
+                      }}
+                    >
+                      <Edit className="mr-2 h-4 w-4" /> Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-red-600 hover:bg-red-50"
+                      onClick={() => {
+                        setEntryToDelete(row);
+                        setIsDeleting(true);
+                      }}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -536,6 +694,77 @@ export function CabinetsDetailsCollectionHistoryTable({
           <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>{'>'}</Button>
           <Button variant="outline" size="sm" onClick={() => setPage(totalPages)} disabled={page === totalPages}>{'>>'}</Button>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={isDeleting}
+          onClose={() => {
+            setIsDeleting(false);
+            setEntryToDelete(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+          title="Delete Collection Entry"
+          message="Are you sure you want to permanently delete this collection entry? This action cannot be undone."
+          confirmText="Yes, Delete"
+          cancelText="Cancel"
+        />
+
+        {/* Edit Collection Entry Dialog */}
+        <Dialog open={isEditing} onOpenChange={setIsEditing}>
+          <DialogContent className="sm:max-w-[425px]" isMobileFullScreen={false}>
+            <DialogHeader>
+              <DialogTitle>Edit Collection Entry</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleEditSubmit}>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="metersIn" className="text-right">Meters In</Label>
+                  <Input
+                    id="metersIn"
+                    type="number"
+                    value={editFormData.metersIn}
+                    onChange={(e) => setEditFormData({ ...editFormData, metersIn: Number(e.target.value) })}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="metersOut" className="text-right">Meters Out</Label>
+                  <Input
+                    id="metersOut"
+                    type="number"
+                    value={editFormData.metersOut}
+                    onChange={(e) => setEditFormData({ ...editFormData, metersOut: Number(e.target.value) })}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="prevIn" className="text-right">Prev. In</Label>
+                  <Input
+                    id="prevIn"
+                    type="number"
+                    value={editFormData.prevIn}
+                    onChange={(e) => setEditFormData({ ...editFormData, prevIn: Number(e.target.value) })}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="prevOut" className="text-right">Prev. Out</Label>
+                  <Input
+                    id="prevOut"
+                    type="number"
+                    value={editFormData.prevOut}
+                    onChange={(e) => setEditFormData({ ...editFormData, prevOut: Number(e.target.value) })}
+                    className="col-span-3"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                <Button type="submit">Save Changes</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );

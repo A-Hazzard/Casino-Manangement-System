@@ -87,6 +87,7 @@ export type TransformedMeterData = {
   attPaidCredits: number;
   gamesPlayed: number;
   netGross: number;
+  subtractJackpot: boolean;
   location: string;
   locationId: string;
   createdAt: Date | undefined;
@@ -361,7 +362,7 @@ export async function fetchMachinesData(
     const licenceeLocations = await GamingLocations.find(
       {
         $or: [
-          { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  }
+          { 'rel.licencee': licencee  }
         ]
       },
       { _id: 1 }
@@ -641,16 +642,23 @@ function validateMeterValue(value: unknown): number {
  * @param machinesData - Array of machine data
  * @param metersMap - Map of machine ID to meter aggregation result
  * @param locationMap - Map of location ID to location name
+ * @param licenceeSettingsMap - Map of licencee ID to subtractJackpot setting
+ * @param locationLicenceeMap - Map of location ID to licencee ID
  * @returns Array of transformed meter report data
  */
 export function transformMeterData(
   machinesData: MachineData[],
   metersMap: Map<string, MeterAggregationResult>,
-  locationMap: Map<string, string>
+  locationMap: Map<string, string>,
+  licenceeSettingsMap: Map<string, boolean>,
+  locationLicenceeMap: Map<string, string>
 ): TransformedMeterData[] {
   return machinesData.map(machine => {
     const locationName =
       locationMap.get(machine.gamingLocation) || 'Unknown Location';
+    const licenceeId = locationLicenceeMap.get(machine.gamingLocation) || '';
+    const subtractJackpot = licenceeSettingsMap.get(licenceeId) || false;
+    
     const machineId = formatMachineId(machine);
     const machineDocumentId = machine._id;
 
@@ -686,6 +694,11 @@ export function transformMeterData(
       totalCancelledCredits - handPaidCredits
     );
 
+    // Logic: TRUE = Low Gross (subtract jackpot), FALSE = High Gross (do not subtract)
+    const netGross = subtractJackpot 
+      ? validateMeterValue(metersIn - metersOut - jackpot)
+      : validateMeterValue(metersIn - metersOut);
+
     return {
       machineId,
       metersIn,
@@ -695,7 +708,8 @@ export function transformMeterData(
       voucherOut,
       attPaidCredits: handPaidCredits,
       gamesPlayed,
-      netGross: validateMeterValue(metersIn - metersOut - jackpot),
+      netGross,
+      subtractJackpot,
       location: locationName,
       locationId: machine.gamingLocation,
       createdAt: meterData.lastReadAt || machine.lastActivity,

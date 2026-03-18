@@ -664,6 +664,7 @@ export default function LocationsDetailsPageContent() {
             setChartGranularity={chartDataHook.setChartGranularity}
             setSelectedLocationId={cabinetsData.setSelectedLocationId}
             handleRefresh={handleRefresh}
+            subtractJackpot={cabinetsData.subtractJackpot}
             handleFilterChange={handleFilterChange}
             handleLocationChangeInPlace={(newLocationId: string) => {
               if (newLocationId === 'all') {
@@ -672,7 +673,6 @@ export default function LocationsDetailsPageContent() {
               }
               router.push(`/locations/${newLocationId}`);
             }}
-            useNetGross={cabinetsData.useNetGross}
           />
         )}
 

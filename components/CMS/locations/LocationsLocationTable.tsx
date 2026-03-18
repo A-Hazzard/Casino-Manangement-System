@@ -14,6 +14,7 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
+import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import {
     Table,
     TableBody,
@@ -26,7 +27,6 @@ import { LocationTableProps } from '@/lib/types/location';
 import {
     getGrossColorClass,
     getMoneyInColorClass,
-    getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import { hasMissingCoordinates } from '@/lib/utils/location';
 import {
@@ -44,6 +44,7 @@ import { useRef } from 'react';
 
 import deleteIcon from '@/public/deleteIcon.svg';
 import editIcon from '@/public/editIcon.svg';
+import { format, formatDistanceToNow } from 'date-fns';
 import React from 'react';
 
 const LocationsLocationTable: React.FC<LocationTableProps> = ({
@@ -56,6 +57,7 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
   formatCurrency,
   canManageLocations = true,
   selectedFilters = [],
+  showArchived = false,
 }) => {
   const router = useRouter();
   const tableRef = useRef<HTMLTableElement>(null);
@@ -112,6 +114,19 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                 )}
               </TableHead>
               <TableHead className="font-semibold text-white">
+                JACKPOT
+              </TableHead>
+              {showArchived && (
+                <>
+                  <TableHead className="font-semibold text-white">
+                    ARCHIVED WHEN
+                  </TableHead>
+                  <TableHead className="font-semibold text-white">
+                    ARCHIVED FOR
+                  </TableHead>
+                </>
+              )}
+              <TableHead className="font-semibold text-white">
                 ACTIONS
               </TableHead>
             </TableRow>
@@ -133,18 +148,20 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                         onClick={e => {
                           e.stopPropagation();
                           const locationId = location.location as string;
-                          // Navigate to location details page when clicked
                           if (locationId) {
                             onLocationClick(locationId);
                           }
                         }}
-                        className="inline-flex cursor-pointer items-center gap-1.5 text-left font-medium text-gray-900 hover:text-blue-600 hover:underline"
+                        className="cursor-pointer text-left font-medium text-gray-900 hover:text-blue-600 hover:underline"
                         title="Click to view location details"
                         disabled={!location.location}
                       >
                         {(location.locationName as string) ||
                           'Unknown Location'}
-                        {/* SMIB Icon - Show if location has SMIB machines */}
+                      </button>
+                      {/* Status icons row */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {/* SMIB Icon */}
                         {Boolean(
                           (location as { hasSmib?: boolean }).hasSmib ||
                             !(location as { noSMIBLocation?: boolean })
@@ -157,7 +174,7 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                             </div>
                           </div>
                         )}
-                        {/* Local Server Icon - Show if location uses local server */}
+                        {/* Local Server Icon */}
                         {Boolean(
                           (location as { isLocalServer?: boolean })
                             .isLocalServer
@@ -169,7 +186,7 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                             </div>
                           </div>
                         )}
-                        {/* Membership Icon - Show if location has membership enabled */}
+                        {/* Membership Icon */}
                         {Boolean(
                           (location as { membershipEnabled?: boolean })
                             .membershipEnabled
@@ -181,7 +198,7 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                             </div>
                           </div>
                         )}
-                        {/* Warning Icon - Show if location has no recent collection report and NoSMIBLocation filter is active */}
+                        {/* Warning Icon - No recent collection report */}
                         {selectedFilters.some(f => f === 'NoSMIBLocation') &&
                           Boolean(
                             (
@@ -206,7 +223,7 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                             </div>
                           </div>
                         )}
-                        {/* Unknown Type Icon - Show if location doesn't match any known type */}
+                        {/* Unknown Type Icon */}
                         {(() => {
                           const hasSmib = Boolean(
                             (location as { hasSmib?: boolean }).hasSmib ||
@@ -226,7 +243,6 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                           );
                           const hasMissingCoords = hasMissingCoordinates(loc);
 
-                          // Show unknown icon if location doesn't match any known type (no SMIB, no local server, no membership, no missing coords)
                           const isUnknownType =
                             !hasSmib &&
                             !isLocalServer &&
@@ -242,7 +258,7 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                             </div>
                           ) : null;
                         })()}
-                      </button>
+                      </div>
 
                       {/* Row 2: Status badges - machine online/offline and member count */}
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -318,19 +334,43 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span
-                      className={`font-semibold ${getMoneyOutColorClass(loc.moneyOut, loc.moneyIn)}`}
-                    >
-                      {formatCurrency(loc.moneyOut || 0)}
-                    </span>
+                    <MoneyOutCell
+                      moneyOut={loc.moneyOut || 0}
+                      moneyIn={loc.moneyIn || 0}
+                      jackpot={loc.jackpot || 0}
+                      displayValue={formatCurrency(loc.moneyOut || 0)}
+                      subtractJackpot={!!(loc).subtractJackpot}
+                    />
                   </TableCell>
-                  <TableCell>
+                  <TableCell centered>
                     <span
                       className={`font-semibold ${getGrossColorClass(loc.gross)}`}
                     >
                       {formatCurrency(loc.gross || 0)}
                     </span>
                   </TableCell>
+                  <TableCell centered>
+                    <span className="font-semibold text-amber-600">
+                      {formatCurrency(loc.jackpot || 0)}
+                    </span>
+                  </TableCell>
+                  {showArchived && (
+                    <>
+                      <TableCell className="text-gray-600">
+                        {loc.deletedAt ? (
+                          <>
+                            {format(new Date(loc.deletedAt), 'dd/MM/yyyy HH:mm')}
+                            <span className="ml-1 text-xs opacity-70">
+                              ({formatDistanceToNow(new Date(loc.deletedAt), { addSuffix: true })})
+                            </span>
+                          </>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell className="text-gray-600">
+                        {loc.deletedAt ? formatDistanceToNow(new Date(loc.deletedAt), { addSuffix: true }) : '-'}
+                      </TableCell>
+                    </>
+                  )}
                   <TableCell>
                     <div className="flex items-center justify-center gap-2">
                       <Button

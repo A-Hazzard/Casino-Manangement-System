@@ -17,5 +17,7 @@ export type Licencee = {
     longitude?: number;
     zoomRatio?: number;
   };
+  subtractJackpot?: boolean;
+  gameDayOffset?: number;
 };
 

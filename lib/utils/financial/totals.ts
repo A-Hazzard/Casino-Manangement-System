@@ -17,7 +17,6 @@ export type FinancialTotals = {
   moneyOut: number;
   gross: number;
   jackpot?: number;
-  netGross?: number;
 };
 
 /**
@@ -29,7 +28,7 @@ export function calculateLocationFinancialTotals(
   locations: AggregatedLocation[]
 ): FinancialTotals {
   if (!locations || !Array.isArray(locations) || locations.length === 0) {
-    return { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0, netGross: 0 };
+    return { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0 };
   }
 
   const totals = locations.reduce(
@@ -39,19 +38,14 @@ export function calculateLocationFinancialTotals(
       const jackpot = location.jackpot || 0;
       const gross = location.gross !== undefined ? location.gross : (moneyIn - moneyOut);
       
-      // If netGross is missing (due to jackpot=0 rule), it should NOT be included in the total.
-      const locData = location as AggregatedLocation & { netGross?: number };
-      const netGross = locData.netGross !== undefined ? locData.netGross : 0;
-
       return {
         moneyIn: acc.moneyIn + moneyIn,
         moneyOut: acc.moneyOut + moneyOut,
         gross: acc.gross + gross,
         jackpot: (acc.jackpot || 0) + jackpot,
-        netGross: (acc.netGross || 0) + netGross,
       };
     },
-    { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0, netGross: 0 }
+    { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0 }
   );
 
   return totals;
@@ -66,7 +60,7 @@ export function calculateCabinetFinancialTotals(
   cabinets: Cabinet[]
 ): FinancialTotals {
   if (!cabinets || !Array.isArray(cabinets) || cabinets.length === 0) {
-    return { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0, netGross: 0 };
+    return { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0 };
   }
 
   const totals = cabinets.reduce(
@@ -78,19 +72,14 @@ export function calculateCabinetFinancialTotals(
       // Gross is calculated as moneyIn - moneyOut according to financial metrics guide
       const gross = cabinet.gross !== undefined ? cabinet.gross : (moneyIn - moneyOut);
       
-      // If netGross is missing from the API (due to jackpot=0 rule), 
-      // it should NOT be included in the netGross total.
-      const netGross = cabinet.netGross !== undefined ? cabinet.netGross : 0;
-
       return {
         moneyIn: acc.moneyIn + moneyIn,
         moneyOut: acc.moneyOut + moneyOut,
         gross: acc.gross + gross,
         jackpot: (acc.jackpot || 0) + jackpot,
-        netGross: (acc.netGross || 0) + netGross,
       };
     },
-    { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0, netGross: 0 }
+    { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0 }
   );
 
   return totals;

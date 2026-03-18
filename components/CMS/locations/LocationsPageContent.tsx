@@ -150,16 +150,17 @@ export default function LocationsPageContent() {
             }
             loading={loading || metricsTotalsLoading}
             title="Total for all Locations"
-            useNetGross={false}
           />
         </div>
 
         {/* Filters and Status Section */}
         <div className="flex flex-col gap-4">
           {/* Date range picker and machine status indicator */}
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <DateFilters hideAllTime />
-            <div className="w-auto flex-shrink-0">
+          <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center mt-4">
+            <div className="order-1 w-auto flex-shrink-0">
+              <DateFilters hideAllTime />
+            </div>
+            <div className="order-2 w-auto flex-shrink-0">
               <MachineStatusWidget
                 isLoading={
                   machineStatsLoading ||
@@ -194,7 +195,7 @@ export default function LocationsPageContent() {
         {/* ============================================================================
            Locations Listing: Responsive card/table view
            ============================================================================ */}
-        <div className="mt-0 flex-1">
+        <div className="mt-4 lg:mt-0 flex-1">
           {/* Show loading skeletons while data is being fetched */}
           {loading ? (
             <div>
@@ -236,6 +237,7 @@ export default function LocationsPageContent() {
                 <LocationsLocationTable
                   locations={filteredLocationData}
                   onLocationClick={handleLocationClick}
+                  showArchived={locationsPageData.selectedStatus === 'Archived'}
                   onAction={(action, loc) => {
                     if (action === 'edit') openEditModal(loc);
                     if (action === 'delete') openDeleteModal(loc);
@@ -249,7 +251,7 @@ export default function LocationsPageContent() {
 
               {/* Data Pagination Controls */}
               {totalPages > 1 && (
-                <div className="mb-8 mt-8 flex w-full justify-center">
+                <div className="my-4 flex w-full justify-center">
                   <PaginationControls
                     currentPage={currentPage}
                     totalPages={totalPages}

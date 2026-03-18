@@ -33,6 +33,7 @@ import {
   applyCurrencyConversion,
   buildCurrencyMaps,
 } from '@/app/api/lib/helpers/reports/metersCurrency';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
@@ -193,8 +194,19 @@ export async function GET(req: NextRequest) {
 
     // Create location name map for quick lookup
     const locationMap = new Map<string, string>();
+    const locationLicenceeMap = new Map<string, string>();
     locationsData.forEach(loc => {
       locationMap.set(loc._id, loc.name);
+      if (loc.rel?.licencee) {
+        locationLicenceeMap.set(loc._id, String(loc.rel.licencee));
+      }
+    });
+
+    // Fetch licencee subtractJackpot settings
+    const licencees = await Licencee.find({}, { _id: 1, subtractJackpot: 1 }).lean().exec();
+    const licenceeSettingsMap = new Map<string, boolean>();
+    licencees.forEach((l: Record<string, unknown>) => {
+      licenceeSettingsMap.set(String(l._id), Boolean(l.subtractJackpot));
     });
 
     // Calculate gaming day ranges for all locations
@@ -266,7 +278,9 @@ export async function GET(req: NextRequest) {
     let transformedData = transformMeterData(
       machinesData,
       metersMap,
-      locationMap
+      locationMap,
+      licenceeSettingsMap,
+      locationLicenceeMap
     );
 
     // ============================================================================

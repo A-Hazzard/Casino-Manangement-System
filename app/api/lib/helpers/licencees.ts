@@ -93,6 +93,8 @@ export async function getAllLicencees() {
       isPaid: 1,
       prevStartDate: 1,
       prevExpiryDate: 1,
+      subtractJackpot: 1,
+      gameDayOffset: 1,
     }
   )
     .sort({ name: 1 })
@@ -109,10 +111,13 @@ export async function createLicencee(
     country: string;
     startDate?: string;
     expiryDate?: string;
+    subtractJackpot?: boolean;
+    gameDayOffset?: number;
   },
   request: NextRequest
 ) {
-  const { name, description, country, startDate, expiryDate } = data;
+  const { name, description, country, startDate, expiryDate, subtractJackpot, gameDayOffset } =
+    data;
   const currentUser = await getUserFromServer();
   const newId = await generateMongoId();
   const licenceKey = await generateUniqueLicenceKey();
@@ -135,6 +140,8 @@ export async function createLicencee(
     expiryDate: finalExpiryDate,
     licenceKey,
     lastEdited: new Date(),
+    subtractJackpot: subtractJackpot || false,
+    gameDayOffset: gameDayOffset ?? 8,
   });
 
   if (currentUser && currentUser.emailAddress) {
@@ -194,6 +201,8 @@ export async function updateLicencee(
     isPaid?: boolean;
     prevStartDate?: string;
     prevExpiryDate?: string;
+    subtractJackpot?: boolean;
+    gameDayOffset?: number;
   },
   request: NextRequest
 ) {
@@ -207,6 +216,8 @@ export async function updateLicencee(
     isPaid,
     prevStartDate,
     prevExpiryDate,
+    subtractJackpot,
+    gameDayOffset,
   } = data;
 
   const currentUser = await getUserFromServer();
@@ -260,6 +271,12 @@ export async function updateLicencee(
   }
   if (isPaid !== undefined) {
     updateData.isPaid = isPaid;
+  }
+  if (subtractJackpot !== undefined) {
+    updateData.subtractJackpot = Boolean(subtractJackpot);
+  }
+  if (gameDayOffset !== undefined) {
+    updateData.gameDayOffset = Number(gameDayOffset);
   }
 
   const updated = await Licencee.findOneAndUpdate({ _id }, updateData, {

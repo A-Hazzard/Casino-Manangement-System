@@ -15,6 +15,7 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
+import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { CabinetCardProps } from '@/lib/types/components';
@@ -22,7 +23,6 @@ import { formatCurrency } from '@/lib/utils';
 import {
     getGrossColorClass,
     getMoneyInColorClass,
-    getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -213,10 +213,13 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
           {props.hideFinancials ? (
             <span className="font-medium text-gray-500">-</span>
           ) : (
-            <CurrencyValueWithOverflow
-              value={props.moneyOut || 0}
-              className={`font-medium ${getMoneyOutColorClass(props.moneyOut, props.moneyIn)}`}
-              formatCurrencyFn={formatCurrency}
+            <MoneyOutCell
+              moneyOut={props.moneyOut || 0}
+              moneyIn={props.moneyIn || 0}
+              jackpot={props.jackpot || 0}
+              displayValue={formatCurrency(props.moneyOut || 0)}
+              subtractJackpot={!!props.subtractJackpot}
+              showInfoIcon={true}
             />
           )}
         </div>
@@ -244,14 +247,14 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
             />
           )}
         </div>
-        {props.showNetGross !== false && (
-          <div className="flex justify-between">
-            <span className="text-gray-500">Net Gross</span>
+        {props.subtractJackpot && props.netGross !== undefined && (
+          <div className="mb-1 flex justify-between">
+            <span className="text-gray-500">Jackpot</span>
             {props.hideFinancials ? (
               <span className="font-medium text-gray-500">-</span>
             ) : (
               <CurrencyValueWithOverflow
-                value={props.netGross || 0}
+                value={props.netGross}
                 className={`font-medium ${getGrossColorClass(props.netGross)}`}
                 formatCurrencyFn={formatCurrency}
               />

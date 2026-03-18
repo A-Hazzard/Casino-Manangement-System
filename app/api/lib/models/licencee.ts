@@ -20,6 +20,14 @@ const LicenceeSchema = new Schema(
       longitude: { type: Number },
       zoomRatio: { type: Number },
     },
+    subtractJackpot: {
+      type: Boolean,
+      default: false,
+    },
+    gameDayOffset: {
+      type: Number,
+      default: 8,
+    },
   },
   { timestamps: true, versionKey: false }
 );

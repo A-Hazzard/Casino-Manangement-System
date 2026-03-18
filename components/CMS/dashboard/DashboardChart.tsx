@@ -26,15 +26,10 @@ export default function Chart({
   chartData,
   activeMetricsFilter,
   granularity,
-  useNetGross = true,
 }: ChartProps) {
   // State for selected metrics (all selected by default)
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(() => {
-    const defaultMetrics = ['Money In', 'Money Out', 'Gross'];
-    if (useNetGross) {
-      defaultMetrics.push('Net Gross');
-    }
-    return defaultMetrics;
+    return ['Money In', 'Money Out', 'Jackpot', 'Gross'];
   });
   // Chart data received for rendering
 
@@ -236,7 +231,7 @@ export default function Chart({
           moneyIn: 0,
           moneyOut: 0,
           gross: 0,
-          netGross: 0,
+          jackpot: 0,
           location: item.location,
           geoCoords: item.geoCoords,
         };
@@ -244,7 +239,7 @@ export default function Chart({
       weeklyData[weekKey].moneyIn += item.moneyIn || 0;
       weeklyData[weekKey].moneyOut += item.moneyOut || 0;
       weeklyData[weekKey].gross += item.gross || 0;
-      weeklyData[weekKey].netGross = (weeklyData[weekKey].netGross || 0) + (item.netGross || 0);
+      weeklyData[weekKey].jackpot = (weeklyData[weekKey].jackpot || 0) + (item.jackpot || 0);
     });
     finalChartData = Object.values(weeklyData).sort((a, b) => parseDay(a.day) - parseDay(b.day));
   }
@@ -269,7 +264,7 @@ export default function Chart({
           moneyIn: 0,
           moneyOut: 0,
           gross: 0,
-          netGross: 0,
+          jackpot: 0,
           location: item.location,
           geoCoords: item.geoCoords,
         };
@@ -277,7 +272,7 @@ export default function Chart({
       monthlyData[monthKey].moneyIn += item.moneyIn || 0;
       monthlyData[monthKey].moneyOut += item.moneyOut || 0;
       monthlyData[monthKey].gross += item.gross || 0;
-      monthlyData[monthKey].netGross = (monthlyData[monthKey].netGross || 0) + (item.netGross || 0);
+      monthlyData[monthKey].jackpot = (monthlyData[monthKey].jackpot || 0) + (item.jackpot || 0);
     });
     finalChartData = Object.values(monthlyData).sort((a, b) => parseDay(a.day) - parseDay(b.day));
   }
@@ -307,9 +302,9 @@ export default function Chart({
     const hasMoneyOut =
       selectedMetrics.includes('Money Out') && moneyOut > threshold;
     const hasGross = selectedMetrics.includes('Gross') && gross > threshold;
-    const hasNetGross = selectedMetrics.includes('Net Gross') && (item.netGross || 0) > threshold;
+    const hasJackpot = selectedMetrics.includes('Jackpot') && (item.jackpot || 0) > threshold;
 
-    return hasMoneyIn || hasMoneyOut || hasGross || hasNetGross;
+    return hasMoneyIn || hasMoneyOut || hasGross || hasJackpot;
   });
 
   // Filter out leading and trailing zero-value entries to show only actual data range
@@ -324,7 +319,7 @@ export default function Chart({
         (selectedMetrics.includes('Money Out') &&
           (item.moneyOut || 0) >= 0.01) ||
         (selectedMetrics.includes('Gross') && (item.gross || 0) >= 0.01) ||
-        (selectedMetrics.includes('Net Gross') && (item.netGross || 0) >= 0.01);
+        (selectedMetrics.includes('Jackpot') && (item.jackpot || 0) >= 0.01);
       if (hasData) {
         firstNonZeroIndex = i;
         break;
@@ -379,7 +374,7 @@ export default function Chart({
           (selectedMetrics.includes('Money Out') &&
             (previous.moneyOut || 0) >= 0.01) ||
           (selectedMetrics.includes('Gross') && (previous.gross || 0) >= 0.01) ||
-          (selectedMetrics.includes('Net Gross') && (previous.netGross || 0) >= 0.01)
+          (selectedMetrics.includes('Jackpot') && (previous.jackpot || 0) >= 0.01)
         : false;
 
       // Check if next point has activity
@@ -389,7 +384,7 @@ export default function Chart({
           (selectedMetrics.includes('Money Out') &&
             (next.moneyOut || 0) >= 0.01) ||
           (selectedMetrics.includes('Gross') && (next.gross || 0) >= 0.01) ||
-          (selectedMetrics.includes('Net Gross') && (next.netGross || 0) >= 0.01)
+          (selectedMetrics.includes('Jackpot') && (next.jackpot || 0) >= 0.01)
         : false;
 
       // Check if current point values differ from previous
@@ -397,7 +392,7 @@ export default function Chart({
         ? (current.moneyIn || 0) !== (previous.moneyIn || 0) ||
           (current.moneyOut || 0) !== (previous.moneyOut || 0) ||
           (current.gross || 0) !== (previous.gross || 0) ||
-          (current.netGross || 0) !== (previous.netGross || 0)
+          (current.jackpot || 0) !== (previous.jackpot || 0)
         : true;
 
       // Keep the point if it's first/last, has activity, is a transition, or values changed
@@ -423,8 +418,8 @@ export default function Chart({
     if (selectedMetrics.includes('Gross')) {
       allValues.push(item.gross || 0);
     }
-    if (selectedMetrics.includes('Net Gross')) {
-      allValues.push(item.netGross || 0);
+    if (selectedMetrics.includes('Jackpot')) {
+      allValues.push(item.jackpot || 0);
     }
   });
 
@@ -453,8 +448,8 @@ export default function Chart({
   const legendItems = [
     { label: 'Money In', color: '#a855f7' },
     { label: 'Money Out', color: '#3b82f6' },
+    { label: 'Jackpot', color: '#f59e0b' },
     { label: 'Gross', color: '#f97316' },
-    ...(useNetGross ? [{ label: 'Net Gross', color: '#10b981' }] : []),
   ];
 
   return (
@@ -698,9 +693,9 @@ export default function Chart({
                   <stop offset="5%" stopColor="#f97316" stopOpacity={0.8} />
                   <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                 </linearGradient>
-                <linearGradient id="colorNetGross" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                <linearGradient id="colorJackpot" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                 </linearGradient>
               </defs>
               {selectedMetrics.includes('Money In') && (
@@ -721,6 +716,15 @@ export default function Chart({
                   fill="url(#colorMoneyOut)"
                 />
               )}
+              {selectedMetrics.includes('Jackpot') && (
+                <Area
+                  type="monotone"
+                  dataKey="jackpot"
+                  stroke="#f59e0b"
+                  strokeWidth={3}
+                  fill="url(#colorJackpot)"
+                />
+              )}
               {selectedMetrics.includes('Gross') && (
                 <Area
                   type="monotone"
@@ -728,15 +732,6 @@ export default function Chart({
                   stroke="#f97316"
                   strokeWidth={3}
                   fill="url(#colorGross)"
-                />
-              )}
-              {selectedMetrics.includes('Net Gross') && (
-                <Area
-                  type="monotone"
-                  dataKey="netGross"
-                  stroke="#10b981"
-                  strokeWidth={3}
-                  fill="url(#colorNetGross)"
                 />
               )}
             </AreaChart>

@@ -45,9 +45,6 @@ export default function CabinetsCabinetTableSkeleton() {
             <th className="relative p-3 text-center font-semibold text-white">
               <span>GROSS</span>
             </th>
-            <th className="relative p-3 text-center font-semibold text-white">
-              <span>NET GROSS</span>
-            </th>
             <th className="p-3 text-center font-semibold text-white">
               <span>ACTIONS</span>
             </th>
@@ -93,12 +90,6 @@ export default function CabinetsCabinetTableSkeleton() {
                 </div>
               </td>
               {/* Gross */}
-              <td className="p-3">
-                <div className="flex justify-center">
-                  <Skeleton className="h-5 w-20" />
-                </div>
-              </td>
-              {/* Net Gross */}
               <td className="p-3">
                 <div className="flex justify-center">
                   <Skeleton className="h-5 w-20" />

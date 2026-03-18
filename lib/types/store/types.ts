@@ -99,6 +99,8 @@ export type DashBoardStore = {
   setDisplayCurrency: (state: CurrencyCode) => void;
   isAllLicencee: boolean;
   setIsAllLicencee: (state: boolean) => void;
+  gameDayOffset: number;
+  setGameDayOffset: (state: number) => void;
 };
 
 

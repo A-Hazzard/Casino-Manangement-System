@@ -81,7 +81,7 @@ function buildMachineAnalyticsPipeline(
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': selectedLicencee  }, { 'locationDetails.rel.licencee': selectedLicencee  },
+        { 'locationDetails.rel.licencee': selectedLicencee }
         ],
       },
     } as PipelineStage);
@@ -212,19 +212,53 @@ export async function getMachineStatsForAnalytics(
       Machine.aggregate([
         { $match: machineMatchStage },
         {
+          $lookup: {
+            from: 'gaminglocations',
+            localField: 'gamingLocation',
+            foreignField: '_id',
+            as: 'locationDetails',
+          },
+        },
+        { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: 'licencees',
+            localField: 'locationDetails.rel.licencee',
+            foreignField: '_id',
+            as: 'licenceeDetails',
+          },
+        },
+        {
+          $project: {
+            moneyIn: { $ifNull: ['$sasMeters.drop', 0] },
+            rawMoneyOut: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
+            jackpot: { $ifNull: ['$sasMeters.jackpot', 0] },
+            subtractJackpot: {
+              $ifNull: [{ $arrayElemAt: ['$licenceeDetails.subtractJackpot', 0] }, false],
+            },
+          },
+        },
+        {
+          $project: {
+            moneyIn: 1,
+            totalJackpot: '$jackpot',
+            moneyOut: {
+              $add: [
+                '$rawMoneyOut',
+                {
+                  $cond: [{ $eq: ['$subtractJackpot', true] }, '$jackpot', 0],
+                },
+              ],
+            },
+          },
+        },
+        {
           $group: {
             _id: null,
-            totalDrop: { $sum: { $ifNull: ['$sasMeters.drop', 0] } },
-            totalCancelledCredits: {
-              $sum: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
-            },
+            totalDrop: { $sum: '$moneyIn' },
+            totalCancelledCredits: { $sum: '$moneyOut' },
             totalGross: {
-              $sum: {
-                $subtract: [
-                  { $ifNull: ['$sasMeters.drop', 0] },
-                  { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
-                ],
-              },
+              $sum: { $subtract: ['$moneyIn', '$moneyOut'] },
             },
           },
         },
@@ -272,7 +306,7 @@ export type DashboardAnalyticsResult = {
  * @param licencee - Licencee ID to filter by
  * @returns Aggregation pipeline stages
  */
-function buildDashboardAnalyticsPipeline(licencee: string): PipelineStage[] {
+function buildDashboardAnalyticsPipeline(licencee: string, subtractJackpot: boolean = false): PipelineStage[] {
   return [
     {
       $lookup: {
@@ -288,7 +322,7 @@ function buildDashboardAnalyticsPipeline(licencee: string): PipelineStage[] {
     {
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
+          { 'locationDetails.rel.licencee': licencee }
         ],
       },
     },
@@ -299,14 +333,7 @@ function buildDashboardAnalyticsPipeline(licencee: string): PipelineStage[] {
         totalCancelledCredits: {
           $sum: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
         },
-        totalGross: {
-          $sum: {
-            $subtract: [
-              { $ifNull: ['$sasMeters.drop', 0] },
-              { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
-            ],
-          },
-        },
+        totalJackpot: { $sum: { $ifNull: ['$sasMeters.jackpot', 0] } },
         totalMachines: { $sum: 1 },
         onlineMachines: {
           $sum: {
@@ -323,6 +350,24 @@ function buildDashboardAnalyticsPipeline(licencee: string): PipelineStage[] {
     {
       $project: {
         _id: 0,
+        totalDrop: 1,
+        totalJackpot: 1,
+        totalMachines: 1,
+        onlineMachines: 1,
+        sasMachines: 1,
+        totalCancelledCredits: {
+          $add: [
+            '$totalCancelledCredits',
+            {
+              $cond: [{ $eq: [subtractJackpot, true] }, '$totalJackpot', 0],
+            },
+          ],
+        },
+      },
+    },
+    {
+      $addFields: {
+        totalGross: { $subtract: ['$totalDrop', '$totalCancelledCredits'] },
       },
     },
   ];
@@ -337,7 +382,10 @@ function buildDashboardAnalyticsPipeline(licencee: string): PipelineStage[] {
 export async function getDashboardAnalytics(
   licencee: string
 ): Promise<DashboardAnalyticsResult> {
-  const pipeline = buildDashboardAnalyticsPipeline(licencee);
+  const licenceeDoc = (await Licencee.findOne({ _id: licencee }).lean()) as Record<string, unknown> | null;
+  const subtractJackpot = !!licenceeDoc?.subtractJackpot;
+
+  const pipeline = buildDashboardAnalyticsPipeline(licencee, subtractJackpot);
   const statsResult = await Machine.aggregate(pipeline);
 
   return (
@@ -363,7 +411,8 @@ export async function getDashboardAnalytics(
 function buildChartsPipeline(
   licenceeId: mongoose.Types.ObjectId,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  subtractJackpot: boolean = false
 ): PipelineStage[] {
   return [
     // Stage 1: Filter meter records by date range
@@ -401,7 +450,7 @@ function buildChartsPipeline(
     // Stage 6: Filter by licencee
     {
       $match: {
-        'locationDetails.licencee': licenceeId,
+        'locationDetails.rel.licencee': licenceeId,
       },
     },
     // Stage 7: Group by date to aggregate daily financial metrics
@@ -412,14 +461,7 @@ function buildChartsPipeline(
         cancelledCredits: {
           $sum: { $ifNull: ['$totalCancelledCredits', 0] },
         },
-        gross: {
-          $sum: {
-            $subtract: [
-              { $ifNull: ['$drop', 0] },
-              { $ifNull: ['$totalCancelledCredits', 0] },
-            ],
-          },
-        },
+        totalJackpot: { $sum: { $ifNull: ['$jackpot', 0] } },
       },
     },
     // Stage 8: Sort by date for chronological order
@@ -432,8 +474,20 @@ function buildChartsPipeline(
         _id: 0,
         date: '$_id',
         totalDrop: '$totalDrop',
-        cancelledCredits: '$cancelledCredits',
-        gross: '$gross',
+        totalJackpot: '$totalJackpot',
+        cancelledCredits: {
+          $add: [
+            '$cancelledCredits',
+            {
+              $cond: [{ $eq: [subtractJackpot, true] }, '$totalJackpot', 0],
+            },
+          ],
+        },
+      },
+    },
+    {
+      $addFields: {
+        gross: { $subtract: ['$totalDrop', '$cancelledCredits'] },
       },
     },
   ];
@@ -497,7 +551,10 @@ export async function getChartsData(
     period === 'last7days' ? subDays(endDate, 7) : subDays(endDate, 30);
   const licenceeId = new mongoose.Types.ObjectId(licencee);
 
-  const chartsPipeline = buildChartsPipeline(licenceeId, startDate, endDate);
+  const licenceeDoc2 = (await Licencee.findOne({ _id: licencee }).lean()) as Record<string, unknown> | null;
+  const subtractJackpot = !!licenceeDoc2?.subtractJackpot;
+
+  const chartsPipeline = buildChartsPipeline(licenceeId, startDate, endDate, subtractJackpot);
   // Use cursor for Meters aggregation
   const series: Array<Record<string, unknown>> = [];
   const seriesCursor = Meters.aggregate(chartsPipeline).cursor({
@@ -564,7 +621,7 @@ export async function getTopLocationsAnalytics(
     {
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
+          { 'locationDetails.rel.licencee': licencee }
         ],
       },
     },
@@ -631,6 +688,7 @@ export async function getTopLocationsAnalytics(
     _id: string;
     totalDrop: number;
     totalCancelledCredits: number;
+    totalJackpot: number;
   }> = [];
   const allTopMetersCursor = Meters.aggregate([
     {
@@ -645,6 +703,7 @@ export async function getTopLocationsAnalytics(
         totalCancelledCredits: {
           $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
         },
+        totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
       },
     },
   ]).cursor({ batchSize: 1000 });
@@ -656,14 +715,31 @@ export async function getTopLocationsAnalytics(
   // Create map for fast lookup
   const topFinancialMetricsMap = new Map<
     string,
-    { totalDrop: number; totalCancelledCredits: number }
+    { totalDrop: number; totalCancelledCredits: number; totalJackpot: number }
   >();
   allTopMetersAggregation.forEach(agg => {
     topFinancialMetricsMap.set(String(agg._id), {
       totalDrop: (agg.totalDrop as number) || 0,
       totalCancelledCredits: (agg.totalCancelledCredits as number) || 0,
+      totalJackpot: (agg.totalJackpot as number) || 0,
     });
   });
+
+  // Fetch licencee settings (subtractJackpot) for all top locations
+  const topLocationLicenceeIds = [
+    ...new Set(
+      topLocations
+        .map(loc => String((loc as Record<string, unknown> & { locationInfo?: { rel?: { licencee?: string } } }).locationInfo?.rel?.licencee))
+        .filter(id => id && id !== 'undefined')
+    ),
+  ];
+  const licenceesForTopLocationsSettings = await Licencee.find(
+    { _id: { $in: topLocationLicenceeIds } },
+    { _id: 1, subtractJackpot: 1 }
+  ).lean();
+  const licenceeSettingsMap = new Map(
+    licenceesForTopLocationsSettings.map((l: Record<string, unknown>) => [String(l._id), !!l.subtractJackpot])
+  );
 
   // Combine location data with financial metrics
   let topLocationsWithMetrics = topLocations.map(location => {
@@ -671,15 +747,22 @@ export async function getTopLocationsAnalytics(
     const financialMetrics = topFinancialMetricsMap.get(locationId) || {
       totalDrop: 0,
       totalCancelledCredits: 0,
+      totalJackpot: 0,
     };
-    const gross =
-      financialMetrics.totalDrop - financialMetrics.totalCancelledCredits;
+
+    const licenceeId = String(location.locationInfo?.rel?.licencee);
+    const subtractJackpot = licenceeSettingsMap.get(licenceeId) || false;
+
+    // financialMetrics.totalCancelledCredits is usually the NET payout (Excl. Jackpot)
+    const moneyOut = financialMetrics.totalCancelledCredits + (subtractJackpot ? (financialMetrics.totalJackpot || 0) : 0);
+
+    const gross = financialMetrics.totalDrop - moneyOut;
 
     return {
       id: locationId,
       name: location.locationInfo?.name || location.name,
       totalDrop: financialMetrics.totalDrop,
-      cancelledCredits: financialMetrics.totalCancelledCredits,
+      cancelledCredits: moneyOut,
       gross: gross,
       machineCount: location.machineCount,
       onlineMachines: location.onlineMachines,

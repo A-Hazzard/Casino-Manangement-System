@@ -78,6 +78,7 @@ export default function Header({
     setActiveFilters,
     setShowDatePicker,
     setLoadingChartData,
+    setGameDayOffset,
   } = useDashBoardStore();
   const {
     displayCurrency,
@@ -211,6 +212,17 @@ export default function Header({
     };
   }, [shouldShowLicenceeName, hasSingleLicencee, userLicencees]);
 
+  // Load initial gameDayOffset on mount if selectedLicencee is present
+  useEffect(() => {
+    if (selectedLicencee && selectedLicencee !== 'all') {
+      fetchLicenceeById(selectedLicencee).then(licencee => {
+        if (licencee && typeof licencee.gameDayOffset === 'number') {
+          setGameDayOffset(licencee.gameDayOffset);
+        }
+      });
+    }
+  }, [selectedLicencee, setGameDayOffset]);
+
   const resolveLicenceeCurrency = useCallback(
     async (licenceeId: string): Promise<CurrencyCode> => {
       if (!licenceeId || licenceeId === 'all' || licenceeId === '') {
@@ -280,6 +292,22 @@ export default function Header({
     if (!isAllLicencee && displayCurrency === 'USD') {
       targetCurrency = await resolveLicenceeCurrency(newLicencee);
       setDisplayCurrency(targetCurrency);
+    }
+
+    // Update gameDayOffset based on licencee
+    if (!isAllLicencee) {
+      try {
+        const licencee = await fetchLicenceeById(newLicencee);
+        if (licencee && typeof licencee.gameDayOffset === 'number') {
+          setGameDayOffset(licencee.gameDayOffset);
+        } else {
+          setGameDayOffset(8);
+        }
+      } catch {
+        setGameDayOffset(8);
+      }
+    } else {
+      setGameDayOffset(8);
     }
 
     // If we're on the dashboard and have an active filter, refresh data

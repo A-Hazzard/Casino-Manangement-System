@@ -73,6 +73,7 @@ export async function GET(request: Request) {
     const forceAll =
       searchParams.get('forceAll') === 'true' ||
       searchParams.get('forceAll') === '1';
+    const showArchived = searchParams.get('archived') === 'true';
 
     // ============================================================================
     // STEP 3: Get user's accessible licencees and permissions
@@ -95,12 +96,14 @@ export async function GET(request: Request) {
     // ============================================================================
     // STEP 4: Build query filter based on access control
     // ============================================================================
-    const deletionFilter = {
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2025-01-01') } },
-      ],
-    };
+    const deletionFilter = showArchived
+      ? { deletedAt: { $gte: new Date('2025-01-01') } }
+      : {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      };
 
     let queryFilter: Record<string, unknown>;
 
@@ -224,16 +227,34 @@ export async function GET(request: Request) {
     // STEP 5: Fetch locations with optional minimal projection
     // ============================================================================
     const projection = minimal
-      ? { _id: 1, name: 1, geoCoords: 1, 'rel.licencee': 1, useNetGross: 1 }
+      ? { _id: 1, name: 1, geoCoords: 1, 'rel.licencee': 1 }
       : undefined;
     const locations = await GamingLocations.find(queryFilter, projection)
       .sort({ name: 1 })
       .lean();
 
     // ============================================================================
-    // STEP 6: Add licenceeId field for frontend filtering
+    // STEP 6: Add licenceeId and settings for frontend
     // ============================================================================
-    const locationsWithLicenceeId = locations.map(loc => {
+    const allLicenceeIds = Array.from(
+      new Set(
+        locations
+          .map(loc => {
+            const l = loc.rel?.licencee;
+            return Array.isArray(l) ? l[0] : l;
+          })
+          .filter(Boolean)
+      )
+    );
+    const licenceeDocs = await Licencee.find(
+      { _id: { $in: allLicenceeIds } },
+      { subtractJackpot: 1 }
+    ).lean();
+    const subtractJackpotMap = new Map(
+      licenceeDocs.map(l => [String((l as Record<string, unknown>)._id), !!(l as Record<string, unknown>).subtractJackpot])
+    );
+
+    const locationsWithSettings = locations.map(loc => {
       const licenceeRaw = loc.rel?.licencee;
       let licenceeId: string | null = null;
 
@@ -249,6 +270,9 @@ export async function GET(request: Request) {
       return {
         ...loc,
         licenceeId,
+        subtractJackpot: licenceeId
+          ? subtractJackpotMap.get(licenceeId) || false
+          : false,
       };
     });
 
@@ -261,7 +285,7 @@ export async function GET(request: Request) {
       `Successfully fetched ${locations.length} locations (minimal: ${minimal}, showAll: ${showAll}) in ${duration}ms`
     );
     return NextResponse.json(
-      { locations: locationsWithLicenceeId },
+      { locations: locationsWithSettings },
       { status: 200 }
     );
   } catch (error) {
@@ -319,7 +343,6 @@ export async function POST(request: Request) {
       billValidatorOptions,
       membershipEnabled,
       locationMembershipSettings,
-      useNetGross,
     } = body;
 
     // ============================================================================
@@ -425,7 +448,6 @@ export async function POST(request: Request) {
         pointsMethodGameTypes: [],
         freePlayGameTypes: [],
       },
-      useNetGross: useNetGross || false,
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
@@ -611,7 +633,6 @@ export async function PUT(request: Request) {
       billValidatorOptions,
       membershipEnabled,
       locationMembershipSettings,
-      useNetGross,
     } = body;
 
     if (!locationName) {
@@ -760,10 +781,6 @@ export async function PUT(request: Request) {
 
     if (locationMembershipSettings) {
       updateData.locationMembershipSettings = locationMembershipSettings;
-    }
-    
-    if (useNetGross !== undefined) {
-      updateData.useNetGross = Boolean(useNetGross);
     }
 
     // Always update the updatedAt timestamp
@@ -1019,19 +1036,29 @@ export async function DELETE(request: Request) {
     }
 
     // ============================================================================
-    // STEP 4: Perform soft delete
+    // STEP 4: Perform delete (Hard for Developers if requested, Soft for others)
     // ============================================================================
-    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-    await GamingLocations.findOneAndUpdate(
-      { _id: id },
-      { deletedAt: new Date() },
-      { new: true }
-    );
+    const hardDelete = searchParams.get('hardDelete') === 'true';
+    const currentUser = await getUserFromServer();
+    const userRoles = (currentUser?.roles as string[]) || [];
+    const isDeveloper = userRoles.map(r => r?.toLowerCase()).includes('developer');
+
+    if (hardDelete && isDeveloper) {
+      // Permanent removal
+      await GamingLocations.deleteOne({ _id: id });
+      console.log(`[Locations API] Hard deleted location: ${id} by ${currentUser?.emailAddress}`);
+    } else {
+      // Soft delete (Archive)
+      await GamingLocations.findOneAndUpdate(
+        { _id: id },
+        { deletedAt: new Date() },
+        { new: true }
+      );
+    }
 
     // ============================================================================
     // STEP 5: Log activity
     // ============================================================================
-    const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
         const deleteChanges = [

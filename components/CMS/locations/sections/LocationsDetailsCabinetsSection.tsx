@@ -33,7 +33,7 @@ import type { ExtendedCabinetDetail } from '@/lib/types/pages';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import gsap from 'gsap';
-import { Search } from 'lucide-react';
+import { Info, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import LocationsCabinetCardsSkeleton from '../LocationsCabinetCardsSkeleton';
@@ -61,7 +61,6 @@ type LocationsDetailsCabinetsSectionProps = {
     gross: number;
     jackpot?: number;
   } | null;
-  useNetGross: boolean;
   chartData: dashboardData[] | null;
   filteredCabinets: Cabinet[];
   gameTypes: string[];
@@ -115,12 +114,12 @@ type LocationsDetailsCabinetsSectionProps = {
   // Handlers
   handleRefresh: () => Promise<void>;
   handleFilterChange: (status: string) => void;
+  subtractJackpot?: boolean;
   handleLocationChangeInPlace: (newLocationId: string) => void;
 };
 
 export default function LocationsDetailsCabinetsSection({
   financialTotals,
-  useNetGross,
   chartData,
   filteredCabinets,
   gameTypes,
@@ -155,6 +154,7 @@ export default function LocationsDetailsCabinetsSection({
   setSortOrder,
   setCurrentPage,
   setChartGranularity,
+  subtractJackpot = false,
   handleRefresh,
   handleFilterChange,
   handleLocationChangeInPlace,
@@ -277,13 +277,27 @@ export default function LocationsDetailsCabinetsSection({
     <>
       {/* Financial Metrics Section: Location-specific financial overview */}
       <div className="mt-6">
+        <div className="mb-2 flex items-center gap-2">
+          <h2 className="text-base font-semibold text-gray-800 sm:text-lg">
+            Financial Metrics for {locationName || 'Location'}
+          </h2>
+          {subtractJackpot && (
+            <div className="group relative inline-flex flex-shrink-0">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 sm:px-2.5 sm:py-1 sm:text-xs">
+                <Info className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                Subtracts Jackpot
+              </span>
+              <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                Money Out includes Jackpot — Gross = Money In - (Money Out incl. Jackpot)
+              </div>
+            </div>
+          )}
+        </div>
         <FinancialMetricsCards
           totals={financialTotals}
           loading={loading || cabinetsLoading}
-          title={`Financial Metrics for ${locationName || 'Location'}`}
           disableCurrencyConversion={true}
           locationFiltered={true}
-          useNetGross={useNetGross}
         />
       </div>
 
@@ -296,55 +310,28 @@ export default function LocationsDetailsCabinetsSection({
         onGranularityChange={setChartGranularity}
         showGranularitySelector={showGranularitySelector}
         availableGranularityOptions={availableGranularityOptions}
-        useNetGross={useNetGross}
       />
 
       {/* Date Filters and Machine Status Section: Responsive layout for filters and status */}
-      <div className="mt-4">
-        {/* Desktop and md: Side by side layout */}
-        <div className="hidden items-start gap-4 md:flex md:flex-wrap">
-          <div className="min-w-0 flex-1 md:min-w-[300px]">
-            <DateFilters
-              onCustomRangeGo={handleRefresh}
-              hideAllTime={false}
-              showQuarterly={true}
-              enableTimeInputs={true}
-            />
-          </div>
-          <div className="w-auto flex-shrink-0 md:min-w-[200px]">
-            <MachineStatusWidget
-              isLoading={machineStatsLoading || membershipStatsLoading || machineStats === null || machineStats === undefined}
-              onlineCount={machineStats?.onlineMachines || 0}
-              offlineCount={machineStats?.offlineMachines || 0}
-              totalCount={machineStats?.totalMachines}
-              showTotal={true}
-              membershipCount={membershipStats?.membershipCount || 0}
-              showMembership={true}
-            />
-          </div>
+      <div className="mt-4 flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
+        <div className="order-1 flex-1">
+          <DateFilters
+            onCustomRangeGo={handleRefresh}
+            hideAllTime={false}
+            showQuarterly={true}
+            enableTimeInputs={true}
+          />
         </div>
-
-        {/* Mobile: Stacked layout */}
-        <div className="flex flex-col gap-4 md:hidden">
-          <div className="w-full">
-            <DateFilters
-              onCustomRangeGo={handleRefresh}
-              hideAllTime={false}
-              showQuarterly={true}
-              enableTimeInputs={true}
-            />
-          </div>
-          <div className="w-full">
-            <MachineStatusWidget
-              isLoading={machineStatsLoading || membershipStatsLoading || machineStats === null || machineStats === undefined}
-              onlineCount={machineStats?.onlineMachines || 0}
-              offlineCount={machineStats?.offlineMachines || 0}
-              totalCount={machineStats?.totalMachines}
-              showTotal={true}
-              membershipCount={membershipStats?.membershipCount || 0}
-              showMembership={true}
-            />
-          </div>
+        <div className="order-2 w-auto flex-shrink-0">
+          <MachineStatusWidget
+            isLoading={machineStatsLoading || membershipStatsLoading || machineStats === null || machineStats === undefined}
+            onlineCount={machineStats?.onlineMachines || 0}
+            offlineCount={machineStats?.offlineMachines || 0}
+            totalCount={machineStats?.totalMachines}
+            showTotal={true}
+            membershipCount={membershipStats?.membershipCount || 0}
+            showMembership={true}
+          />
         </div>
       </div>
 
@@ -581,16 +568,16 @@ export default function LocationsDetailsCabinetsSection({
       </div>
 
       {/* Content Section: Main cabinet data display with responsive layouts */}
-      <div className="w-full flex-1">
+      <div className="mt-4 w-full flex-1">
         {loading || cabinetsLoading ? (
           <>
             {/* Use CabinetTableSkeleton for lg+ only */}
             <div className="hidden lg:block">
-              <LocationsCabinetTableSkeleton showNetGross={useNetGross} />
+              <LocationsCabinetTableSkeleton />
             </div>
             {/* Use LocationsCabinetCardsSkeleton for mobile and tablet (up to md) */}
             <div className="block lg:hidden">
-              <LocationsCabinetCardsSkeleton showNetGross={useNetGross} />
+              <LocationsCabinetCardsSkeleton />
             </div>
           </>
         ) : /* Show empty state if no cabinets match filters */ filteredCabinets.length ===
@@ -625,13 +612,13 @@ export default function LocationsDetailsCabinetsSection({
                   setSortOption(option);
                   setSortOrder(order);
                 }}
-                showNetGross={useNetGross}
+                subtractJackpot={subtractJackpot}
               />
             </div>
 
             {/* Show pagination only if there are multiple pages */}
             {!loading && effectiveTotalPages > 1 && (
-              <div className="mb-8 mt-4 flex w-full justify-center">
+              <div className="my-4 flex w-full justify-center">
                 <PaginationControls
                   currentPage={currentPage}
                   totalPages={effectiveTotalPages}

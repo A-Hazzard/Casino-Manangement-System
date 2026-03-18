@@ -16,6 +16,7 @@
 
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
+import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import {
     Table,
@@ -31,12 +32,11 @@ import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import {
     getGrossColorClass,
     getMoneyInColorClass,
-    getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import type { DataTableProps } from '@/shared/types/components';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { ClockIcon, Cross1Icon, MobileIcon } from '@radix-ui/react-icons';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ExternalLink, Eye } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -62,7 +62,8 @@ type CabinetsCabinetTableProps = Omit<
    * When false, hide the sort direction icon in the header.
    */
   showSortIcons?: boolean;
-  showNetGross?: boolean;
+  showArchived?: boolean;
+  subtractJackpot?: boolean;
 };
 
 export default function CabinetsCabinetTable({
@@ -77,7 +78,8 @@ export default function CabinetsCabinetTable({
   enableHeaderSorting = true,
   showSortIcons = true,
   hideFinancials = false,
-  showNetGross = true,
+  showArchived = false,
+  subtractJackpot: _subtractJackpot = true,
 }: CabinetsCabinetTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
   const router = useRouter();
@@ -193,18 +195,15 @@ export default function CabinetsCabinetTable({
                 </span>
               )}
             </TableHead>
-            {showNetGross && (
-              <TableHead
-                className="relative font-semibold text-white"
-                onClick={enableHeaderSorting ? () => onSort('netGross') : undefined}
-              >
-                <span>NET GROSS</span>
-                {showSortIcons && sortOption === 'netGross' && (
-                  <span className="sort-icon absolute right-2 top-1/2 -translate-y-1/2 text-xs">
-                    {sortOrder === 'desc' ? '▼' : '▲'}
-                  </span>
-                )}
-              </TableHead>
+            {showArchived && (
+              <>
+                <TableHead className="font-semibold text-white">
+                  ARCHIVED WHEN
+                </TableHead>
+                <TableHead className="font-semibold text-white">
+                  ARCHIVED FOR
+                </TableHead>
+              </>
             )}
             <TableHead className="font-semibold text-white">ACTIONS</TableHead>
           </TableRow>
@@ -328,11 +327,17 @@ export default function CabinetsCabinetTable({
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span
-                    className={`font-semibold ${!hideFinancials ? getMoneyOutColorClass(cab.moneyOut, cab.moneyIn) : 'text-gray-500'}`}
-                  >
-                    {hideFinancials ? '-' : formatCurrency(cab.moneyOut)}
-                  </span>
+                  {hideFinancials ? (
+                    <span className="text-gray-500">-</span>
+                  ) : (
+                    <MoneyOutCell
+                      moneyOut={cab.moneyOut || 0}
+                      moneyIn={cab.moneyIn || 0}
+                      jackpot={cab.jackpot || 0}
+                      displayValue={formatCurrency(cab.moneyOut)}
+                      subtractJackpot={!!(cab).subtractJackpot}
+                    />
+                  )}
                 </TableCell>
                 <TableCell>
                   <span className="font-semibold text-gray-500">
@@ -346,14 +351,22 @@ export default function CabinetsCabinetTable({
                     {hideFinancials ? '-' : formatCurrency(cab.gross)}
                   </span>
                 </TableCell>
-                {showNetGross && (
-                  <TableCell>
-                    <span
-                      className={`font-semibold ${!hideFinancials ? getGrossColorClass(cab.netGross) : 'text-gray-500'}`}
-                    >
-                      {hideFinancials ? '-' : formatCurrency(cab.netGross)}
-                    </span>
-                  </TableCell>
+                {showArchived && (
+                  <>
+                    <TableCell className="text-gray-600">
+                      {cab.deletedAt ? (
+                        <>
+                          {format(new Date(cab.deletedAt), 'dd/MM/yyyy HH:mm')}
+                          <span className="ml-1 text-xs opacity-70">
+                            ({formatDistanceToNow(new Date(cab.deletedAt), { addSuffix: true })})
+                          </span>
+                        </>
+                      ) : '-'}
+                    </TableCell>
+                    <TableCell className="text-gray-600">
+                      {cab.deletedAt ? formatDistanceToNow(new Date(cab.deletedAt), { addSuffix: true }) : '-'}
+                    </TableCell>
+                  </>
                 )}
                 <TableCell>
                   <div className="action-buttons flex items-center justify-center gap-2">

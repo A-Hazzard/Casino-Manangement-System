@@ -113,6 +113,17 @@ export async function GET(request: NextRequest) {
           : [licenceeId]
         : [];
 
+      // Look up licencee's subtractJackpot setting
+      let subtractJackpot = false;
+      if (licenceeIdArray.length > 0) {
+        const { Licencee } = await import('@/app/api/lib/models/licencee');
+        const licenceeDoc = await Licencee.findOne(
+          { _id: licenceeIdArray[0] },
+          { subtractJackpot: 1 }
+        ).lean() as Record<string, unknown> | null;
+        subtractJackpot = Boolean(licenceeDoc?.subtractJackpot);
+      }
+
       const locationData = location as { _id: unknown; name?: string };
       return NextResponse.json({
         success: true,
@@ -120,7 +131,7 @@ export async function GET(request: NextRequest) {
           _id: locationData._id,
           name: locationData.name,
           licenceeId: licenceeIdArray,
-          useNetGross: location.useNetGross || false,
+          subtractJackpot,
         },
       });
     }
@@ -166,9 +177,22 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // Look up licencee's subtractJackpot setting
+      const locObj = location.toObject ? location.toObject() : location;
+      const licId = locObj.rel?.licencee;
+      const firstLicId = Array.isArray(licId) ? licId[0] : licId;
+      let subtractJackpot = false;
+      if (firstLicId) {
+        const licDoc = await Licencee.findOne(
+          { _id: firstLicId },
+          { subtractJackpot: 1 }
+        ).lean() as Record<string, unknown> | null;
+        subtractJackpot = Boolean(licDoc?.subtractJackpot);
+      }
+
       return NextResponse.json({
         success: true,
-        location: location,
+        location: { ...locObj, subtractJackpot },
       });
     }
 
@@ -323,6 +347,17 @@ export async function GET(request: NextRequest) {
       customStartDateForGamingDay,
       customEndDateForGamingDay
     );
+
+    // Fetch licencee subtractJackpot setting
+    const locationLicenceeId = locationCheck.rel?.licencee;
+    let subtractJackpotSetting = false;
+    if (locationLicenceeId) {
+      const licenceeDoc = (await Licencee.findOne(
+        { _id: Array.isArray(locationLicenceeId) ? locationLicenceeId[0] : locationLicenceeId },
+        { subtractJackpot: 1 }
+      ).lean()) as Record<string, unknown> | null;
+      subtractJackpotSetting = !!licenceeDoc?.subtractJackpot;
+    }
 
     // ============================================================================
     // STEP 8: Build aggregation pipeline (OPTIMIZED)
@@ -541,6 +576,20 @@ export async function GET(request: NextRequest) {
         lastActivity &&
         new Date(lastActivity) > new Date(Date.now() - 3 * 60 * 1000); // 3 minutes threshold
 
+      const rawMoneyIn = Number(metrics.moneyIn) || 0;
+      const rawMoneyOut = Number(metrics.moneyOut) || 0;
+      const rawJackpot = Number(metrics.jackpot) || 0;
+
+      // Apply new Money Out logic: if subtractJackpot is ENABLED (Low Gross), 
+      // moneyOut = Net Cancelled + Jackpot (Total payout)
+      // IF subtractJackpot is DISABLED (High Gross), we keep as Net Payout
+      const moneyOutValue = rawMoneyOut + (subtractJackpotSetting ? rawJackpot : 0);
+
+      const moneyIn = rawMoneyIn * multiplier;
+      const moneyOut = moneyOutValue * multiplier;
+      const jackpot = rawJackpot * multiplier;
+      const gross = moneyIn - moneyOut;
+
       return {
         _id: machineId,
         locationId: locationId,
@@ -565,15 +614,16 @@ export async function GET(request: NextRequest) {
         status: (machine.assetStatus as string) || '',
         gameType: (machine.gameType as string) || '',
         isCronosMachine: Boolean(machine.isCronosMachine),
-        moneyIn: (Number(metrics.moneyIn) || 0) * multiplier,
-        moneyOut: (Number(metrics.moneyOut) || 0) * multiplier,
-        gross: (Number(metrics.gross) || 0) * multiplier,
-        jackpot: (Number(metrics.jackpot) || 0) * multiplier,
+        moneyIn,
+        moneyOut,
+        gross,
+        jackpot,
         gamesPlayed: Number(metrics.gamesPlayed) || 0,
         gamesWon: Number(metrics.gamesWon) || 0,
-        cancelledCredits: (Number(metrics.moneyOut) || 0) * multiplier,
+        cancelledCredits: moneyOut,
         sasMeters: (machine.sasMeters as Record<string, unknown>) || null,
         online: Boolean(online),
+        subtractJackpot: subtractJackpotSetting,
       };
     });
 
@@ -705,12 +755,13 @@ export async function GET(request: NextRequest) {
           moneyOut,
           jackpot,
           gross,
-          netGross: locationCheck.useNetGross ? (gross - (jackpot || 0)) : undefined,
+          netGross: cabinet.subtractJackpot ? (gross - (jackpot || 0)) : undefined,
           gamesPlayed: Number(cabinet.gamesPlayed) || 0,
           gamesWon: Number(cabinet.gamesWon) || 0,
           cancelledCredits: moneyOut, // Use converted moneyOut
           sasMeters: (cabinet.sasMeters as Record<string, unknown>) || null,
           online: Boolean(cabinet.online),
+          subtractJackpot: cabinet.subtractJackpot,
           // Add any missing fields that might be expected
           metersData: null, // This was in the original structure
         };
