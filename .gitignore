@@ -46,6 +46,7 @@ tsconfig.tsbuildinfo
 /backup/
 backup/
 
+tmp/
 scripts/
 scripts/backups
 scripts/backups/*.js

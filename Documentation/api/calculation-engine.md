@@ -1,0 +1,63 @@
+# Financial Calculation Engine (The Core)
+
+**Author:** Aaron Hazzard - Senior Software Engineer  
+**Last Updated:** March 2026  
+**Version:** 4.0.0
+
+---
+
+## 1. System Overview
+
+The Calculation Engine is the mathematical foundation of Evolution One. It is responsible for transforming raw hex-meters and periodic snapshots into a consistent, audit-ready financial timeline.
+
+---
+
+## 2. Primary Accounting Methodologies
+
+### 💹 The "Movement Delta" Method
+This is the **primary method** for all Dashboard and Real-time reporting.
+- **How "Money In" works**: Instead of looking at cumulative meter values, the system pre-calculates the "diff" between every 15-minute SAS poll.
+- **Query Snippet**: 
+  ```typescript
+  // Summing the pre-calculated diffs in the Meters collection
+  { $sum: "$movement.drop" }
+  ```
+- **Why?**: This prevents "Ghost Revenue" issues during RAM clears or hardware swaps. If a machine's cumulative meter resets to 0, only the 15-minute movement is affected, preserving the historical truth.
+
+---
+
+## 3. Logic: Gross vs. Net Revenue
+
+### 💎 Jackpot Interaction (High vs. Low Gross)
+The system supports two reporting "Visions" based on the Licencee's `subtractJackpot` flag.
+- **Vision A (High Gross)**: `Revenue = Drop - Cancelled Credits`. Jackpots are treated as separate operational expenses.
+- **Vision B (Low Gross)**: `Revenue = Drop - Cancelled Credits - Jackpots`. All payouts to players are deducted from the top line.
+- **Role Detection**: The engine detects this flag at the moment of API query to ensure the Dashboard and Collection Wizard always show identical numbers.
+
+---
+
+## 4. Time & Gaming Day Normalization
+
+### 🕒 The 8 AM Offset (Trinidad Standard)
+Casino operations do not end at midnight. The engine uses a "Gaming Day" logic:
+- **How it works**: A session occurring at 3 AM on Tuesday is attributed to the "Monday Gaming Day."
+- **Logic**: Implementation resides in `getGamingDayRangeForPeriod.ts`. It shifts the audit window by `-8 hours` before querying the database.
+
+### 🌐 UTC Baseline
+- **Storage**: All timestamps are stored as **UTC** in MongoDB.
+- **Display**: The engine applies a `(UTC-4)` transformation (`convertResponseToTrinidadTime`) at the API exit point to ensure managers see local business time.
+
+---
+
+## 5. Failure Recovery & Bridges
+
+### 🌉 RAM Clear Bridge Logic
+When hardware is reset, cumulative meters drop to zero. 
+- **The Check**: `if (currentMeter < previousMeter)`.
+- **The Fix**: The engine detects the reset and uses the **Floor Count** (or the movement from the last 15 mins) to bridge the gap, preventing the system from showing negative revenue.
+
+### 🚧 History Gaps
+If a SMIB is offline for a week, the engine identifies the "Missing Period" and generates a `Bridge entry` during the next collection to maintain continuity in the 30-day performance charts.
+
+---
+**Core Technical Document** - Evolution One Engineering

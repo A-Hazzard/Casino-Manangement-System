@@ -1,0 +1,25 @@
+{
+  "cookies": [
+    {
+      "name": "token",
+      "value": "eyJhbGciOiJIUzI1NiJ9.eyJfaWQiOiJ1c2VyX3Rlc3RfMDAxIiwidXNlcm5hbWUiOiJ0ZXN0YWRtaW4iLCJlbWFpbEFkZHJlc3MiOiJ0ZXN0YWRtaW5AZXZvbHV0aW9uMS5jb20iLCJpc0VuYWJsZWQiOnRydWUsInJvbGVzIjpbImFkbWluIl0sImFzc2lnbmVkTG9jYXRpb25zIjpbImxvY18wMDEiLCJsb2NfMDAyIl0sImFzc2lnbmVkTGljZW5jZWVzIjpbImxpY18wMDEiXSwic2Vzc2lvbklkIjoiZTJlLXNlc3Npb24tdXNlcl90ZXN0XzAwMSIsImRiQ29udGV4dCI6eyJjb25uZWN0aW9uU3RyaW5nIjoibW9uZ29kYjovL3N1bm55MTo4N3lkYWl1aGRzaWEyZUAxNDcuMTgyLjEzMy4xMzY6MjcwMTcvc2FzLWFhcm9uP2F1dGhTb3VyY2U9YWRtaW4iLCJ0aW1lc3RhbXAiOjE3NzM4MDU2NzAwMTV9LCJpYXQiOjE3NzM4MDU2NzAsImV4cCI6MTc3NDQxMDQ3MCwianRpIjoiMTExZDYyYzctM2I2NS00NjY5LTk4YmUtOTAwOTZiMDA1YTc5In0.BLOcFo24_6XUO2jVU3iqUprG4R0OlpFelMfPJIRPbk0",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1774410470.019,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "user-auth-store",
+          "value": "{\"state\":{\"user\":{\"_id\":\"user_test_001\",\"username\":\"testadmin\",\"emailAddress\":\"testadmin@evolution1.com\",\"profile\":{\"firstName\":\"Test\",\"lastName\":\"Admin\",\"gender\":\"male\",\"phoneNumber\":\"+18681234567\"},\"roles\":[\"admin\"],\"isEnabled\":true,\"assignedLocations\":[\"loc_001\",\"loc_002\"],\"assignedLicencees\":[\"lic_001\"]},\"isInitialized\":true,\"hasActiveVaultShift\":false,\"isVaultReconciled\":false,\"isStaleShift\":false},\"version\":0}"
+        }
+      ]
+    }
+  ]
+}
