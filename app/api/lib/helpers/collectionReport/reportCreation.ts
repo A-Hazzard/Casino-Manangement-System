@@ -97,6 +97,7 @@ export function sanitizeCollectionReportPayload(
  *
  * @param machines - Array of machines from the payload
  * @param locationReportId - The location report ID
+ * @param collectionIds - Optional array of specific collection IDs from the frontend
  * @returns Promise<void>
  */
 async function updateCollectionsWithReportId(
@@ -105,8 +106,30 @@ async function updateCollectionsWithReportId(
     metersIn?: number;
     metersOut?: number;
   }>,
-  locationReportId: string
+  locationReportId: string,
+  collectionIds?: string[]
 ): Promise<void> {
+  // If we have collectionIds, update them directly by ID (most precise)
+  if (collectionIds && collectionIds.length > 0) {
+    await Collections.updateMany(
+      { _id: { $in: collectionIds } },
+      {
+        $set: {
+          locationReportId,
+          isCompleted: true,
+          updatedAt: new Date(),
+        },
+      }
+    ).catch((err: unknown) => {
+      console.warn(
+        `Failed to update specific collection documents with reportId ${locationReportId}:`,
+        err
+      );
+    });
+    return;
+  }
+
+  // Fallback to fuzzy matching if no IDs provided
   for (const m of machines) {
     if (!m.machineId) continue;
 
@@ -214,9 +237,19 @@ async function updateMachineCollectionData(
     currentCollectionMeters?.metersOut ??
     0;
 
+  // ============================================================================
+  // IDEMPOTENCY CHECK: Check if this history entry already exists
+  // ============================================================================
+  const existingHistoryEntry = (currentMachineData.collectionMetersHistory as Record<string, unknown>[] || [])
+    .find((h: Record<string, unknown>) => h.locationReportId === locationReportId);
+
+  if (existingHistoryEntry) 
+    console.warn(`[updateMachineCollectionData] History entry for report ${locationReportId} already exists on machine ${machineId}. Skipping push.`);
+  
+
   // Create collection history entry
   const historyEntry = {
-    _id: new mongoose.Types.ObjectId(),
+    _id: new mongoose.Types.ObjectId().toHexString(),
     metersIn,
     metersOut,
     prevMetersIn: baselinePrevIn,
@@ -248,23 +281,32 @@ async function updateMachineCollectionData(
     );
   }
 
+  // Prepare machine update
+  const machineSetUpdate: Record<string, unknown> = {
+    'collectionMeters.metersIn': metersIn,
+    'collectionMeters.metersOut': metersOut,
+    collectionTime,
+    previousCollectionTime: currentMachineCollectionTime || undefined,
+    updatedAt: new Date(),
+  };
+
+  const machineUpdateOps: Record<string, unknown> = {
+    $set: machineSetUpdate,
+  };
+
+  // Only push if it doesn't already exist
+  if (!existingHistoryEntry) {
+    machineUpdateOps.$push = {
+      collectionMetersHistory: historyEntry,
+    };
+  }
+
   // Update machine collectionMeters + timestamps
   // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
   updatePromises.push(
     Machine.findOneAndUpdate(
       { _id: machineId },
-      {
-        $set: {
-          'collectionMeters.metersIn': metersIn,
-          'collectionMeters.metersOut': metersOut,
-          collectionTime,
-          previousCollectionTime: currentMachineCollectionTime || undefined,
-          updatedAt: new Date(),
-        },
-        $push: {
-          collectionMetersHistory: historyEntry,
-        },
-      }
+      machineUpdateOps
     ).catch((err: unknown) => {
       console.error(
         `Failed to update collectionMeters and history for machine ${machineId}:`,
@@ -412,7 +454,8 @@ export async function createCollectionReport(
                 : (m.metersOut ?? 0),
           })
         ),
-        body.locationReportId
+        body.locationReportId,
+        body.collectionIds
       );
       console.log(
         '✅ [createCollectionReport] Collections updated with report ID'

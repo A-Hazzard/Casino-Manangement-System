@@ -33,10 +33,6 @@ import mongoose from 'mongoose';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
-// Extend Machine type for temporary storage of location settings
-type MachineWithLocationSettings = mongoose.Document & {
-  locationUseNetGross?: boolean;
-} & Record<string, unknown>;
 
 /**
  * Main GET handler for fetching a single machine by ID
@@ -161,13 +157,12 @@ export async function GET(
         const location = (await GamingLocations.findOne({
           _id: machine.gamingLocation,
         })
-          .select('name locationName gameDayOffset rel useNetGross')
+          .select('name locationName gameDayOffset rel')
           .lean()) as {
             name?: string;
             locationName?: string;
             gameDayOffset?: number;
             rel?: { licencee?: string };
-            useNetGross?: boolean;
           } | null;
 
         if (location) {
@@ -188,8 +183,18 @@ export async function GET(
           locationName =
             location.name || location.locationName || 'Unknown Location';
           gameDayOffset = location.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
-          const locationUseNetGross = location.useNetGross || false;
-          (machine as MachineWithLocationSettings).locationUseNetGross = locationUseNetGross; // Temporarily store for transform
+          
+          // STEP 6: Fetch licensee-level subtractJackpot setting
+          let subtractJackpot = false;
+          const licenceeId = location.rel?.licencee;
+          if (licenceeId) {
+            const licenceeDoc = await Licencee.findOne({
+              $or: [{ _id: licenceeId }, { name: licenceeId }]
+            }).select('subtractJackpot').lean() as { subtractJackpot?: boolean } | null;
+            subtractJackpot = !!licenceeDoc?.subtractJackpot;
+          }
+          
+          (machine as Record<string, unknown>).subtractJackpot = subtractJackpot; // Store for transform
         } else {
           locationName = 'Location Not Found';
         }
@@ -298,9 +303,19 @@ export async function GET(
 
     // Apply collectorDenomination multiplier to monetary metrics
     const multiplier = Number(machine.collectorDenomination) || 1;
-    const moneyIn = (metrics.moneyIn || 0) * multiplier;
-    const moneyOut = (metrics.moneyOut || 0) * multiplier;
-    const jackpot = (metrics.jackpot || 0) * multiplier;
+    const rawMoneyIn = (metrics.moneyIn || 0);
+    const rawMoneyOut = (metrics.moneyOut || 0);
+    const rawJackpot = (metrics.jackpot || 0);
+
+    const subtractJackpotSetting = (machine as Record<string, unknown>).subtractJackpot || false;
+
+    // Apply new Money Out logic: if subtractJackpot is ENABLED (Low Gross), 
+    // moneyOut = Net Cancelled + Jackpot (Total payout)
+    const moneyOutValue = rawMoneyOut + (subtractJackpotSetting ? rawJackpot : 0);
+
+    const moneyIn = rawMoneyIn * multiplier;
+    const moneyOut = moneyOutValue * multiplier;
+    const jackpot = rawJackpot * multiplier;
     const coinIn = (metrics.coinIn || 0) * multiplier;
     const coinOut = (metrics.coinOut || 0) * multiplier;
     const gamesPlayed = metrics.gamesPlayed || 0;
@@ -440,7 +455,8 @@ export async function GET(
       cancelledCredits: finalCancelledCredits, // Same as moneyOut (totalCancelledCredits)
       jackpot: finalJackpot,
       gross: finalGross,
-      netGross: (machine as MachineWithLocationSettings).locationUseNetGross ? (finalGross - (finalJackpot || 0)) : undefined,
+      subtractJackpot: (machine as Record<string, unknown>).subtractJackpot || false,
+      netGross: (machine as Record<string, unknown>).subtractJackpot ? (finalGross - (finalJackpot || 0)) : undefined,
       // Additional metrics for comprehensive financial tracking
       coinIn: finalCoinIn,
       coinOut: finalCoinOut,

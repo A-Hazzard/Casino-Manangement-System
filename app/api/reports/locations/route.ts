@@ -139,12 +139,15 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 4: Build location match filters
     // ============================================================================
-    const locationMatchStage: Record<string, unknown> = {
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2025-01-01') } },
-      ],
-    };
+    const showArchived = searchParams.get('archived') === 'true';
+    const locationMatchStage: Record<string, unknown> = showArchived
+      ? { deletedAt: { $gte: new Date('2025-01-01') } }
+      : {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
+          ],
+        };
 
     if (allowedLocationIds !== 'all') {
       if (allowedLocationIds.length === 0)
@@ -168,7 +171,7 @@ export async function GET(req: NextRequest) {
       }
       (locationMatchStage.$and as Array<Record<string, unknown>>).push({
         $or: [
-          { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  }
+          { 'rel.licencee': licencee }
         ]
       });
     }
@@ -306,6 +309,11 @@ export async function GET(req: NextRequest) {
       geoCoords: 1,
     }).lean();
 
+    // Fetch licencee settings for all locations
+    const licenceeIds = Array.from(new Set(locations.map(loc => loc.rel?.licencee).filter(Boolean)));
+    const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean();
+    const licenceeSubtractJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.subtractJackpot]));
+
     if (searchParams.get('summary') === 'true') {
       return await handleSummaryMode(
         locations as unknown as Array<{
@@ -397,6 +405,9 @@ export async function GET(req: NextRequest) {
           totalCancelledCredits: {
             $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
           },
+          totalJackpot: {
+            $sum: { $ifNull: ['$movement.jackpot', 0] },
+          },
         },
       },
     ])
@@ -405,7 +416,7 @@ export async function GET(req: NextRequest) {
 
     const metricsMap = new Map<
       string,
-      { totalDrop: number; totalCancelledCredits: number }
+      { totalDrop: number; totalCancelledCredits: number; totalJackpot: number }
     >();
 
     for await (const doc of metersCursor) {
@@ -424,12 +435,13 @@ export async function GET(req: NextRequest) {
 
       if (isWithinRange) {
         if (!metricsMap.has(locId)) {
-          metricsMap.set(locId, { totalDrop: 0, totalCancelledCredits: 0 });
+          metricsMap.set(locId, { totalDrop: 0, totalCancelledCredits: 0, totalJackpot: 0 });
         }
         const current = metricsMap.get(locId)!;
         current.totalDrop += (doc.totalDrop as number) || 0;
         current.totalCancelledCredits +=
           (doc.totalCancelledCredits as number) || 0;
+        current.totalJackpot += (doc.totalJackpot as number) || 0;
       }
     }
 
@@ -447,6 +459,7 @@ export async function GET(req: NextRequest) {
       const metrics = metricsMap.get(locId) || {
         totalDrop: 0,
         totalCancelledCredits: 0,
+        totalJackpot: 0,
       };
 
       const totalMachines = machines.length;
@@ -479,22 +492,31 @@ export async function GET(req: NextRequest) {
         (loc as { enableMembership?: boolean }).enableMembership
       );
 
+      const subtractJackpot = licenceeSubtractJackpotMap.get(String(loc.rel?.licencee)) || false;
+      const rawDrop = (metrics.totalDrop as number) || 0;
+      const rawCancelled = (metrics.totalCancelledCredits as number) || 0;
+      const rawJackpot = (metrics.totalJackpot as number) || 0;
+
+      // Logic: TRUE = Low Gross (Include jackpot in deduction), FALSE = High Gross (Exclude jackpot from deduction)
+      // rawCancelled is totalCancelledCredits which is typically NET handpays.
+      const moneyOutValue = rawCancelled + (subtractJackpot ? rawJackpot : 0);
+      const moneyIn = Math.round(rawDrop * 100) / 100;
+      const moneyOut = Math.round(moneyOutValue * 100) / 100;
+      const jackpot = Math.round(rawJackpot * 100) / 100;
+      const gross = Math.round((moneyIn - moneyOut) * 100) / 100;
+
       locationResults.push({
         _id: locId,
         location: locId,
         locationName: loc.name,
+        subtractJackpot,
         ...(membershipEnabled && { memberCount: memberCountMap.get(locId) || 0 }),
         isLocalServer: loc.isLocalServer || false,
         membershipEnabled,
-        moneyIn: Math.round((metrics.totalDrop as number) * 100) / 100,
-        moneyOut:
-          Math.round((metrics.totalCancelledCredits as number) * 100) / 100,
-        gross:
-          Math.round(
-            ((metrics.totalDrop as number) -
-              (metrics.totalCancelledCredits as number)) *
-            100
-          ) / 100,
+        moneyIn,
+        moneyOut,
+        gross,
+        jackpot,
         totalMachines,
         onlineMachines,
         sasMachines,
@@ -506,6 +528,7 @@ export async function GET(req: NextRequest) {
         rel: loc.rel,
         country: loc.country,
         geoCoords: (loc as { geoCoords?: GeoCoordinates }).geoCoords,
+        deletedAt: loc.deletedAt,
         machines: machines.map(m => ({
           _id: (m._id as string).toString(),
           assetNumber: m.assetNumber as string,
@@ -517,7 +540,6 @@ export async function GET(req: NextRequest) {
         })),
         coinIn: 0,
         coinOut: 0,
-        jackpot: 0,
         gamesPlayed: 0,
       });
     }

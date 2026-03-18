@@ -17,6 +17,7 @@ export type AccountingDetailsProps = {
   loading: boolean;
   activeMetricsTabContent: string;
   setActiveMetricsTabContent: (content: string) => void;
+  onRefresh?: () => void;
 };
 
 // Props for CabinetsCabinetSearchFilters component

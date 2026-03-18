@@ -42,6 +42,7 @@ export default function DateFilters({
     setActiveMetricsFilter,
     setActivePieChartFilter,
     setCustomDateRange,
+    gameDayOffset,
   } = useDashBoardStore();
 
   const [shouldTriggerCallback, setShouldTriggerCallback] = useState(false);
@@ -171,6 +172,7 @@ export default function DateFilters({
                 }
               }}
               enableTimeInputs={enableTimeInputs}
+              gameDayOffset={gameDayOffset}
               className="w-full"
             />
           )}
@@ -229,6 +231,7 @@ export default function DateFilters({
                 }
               }}
               enableTimeInputs={enableTimeInputs}
+              gameDayOffset={gameDayOffset}
               className="w-auto"
             />
           </div>

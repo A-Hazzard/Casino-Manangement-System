@@ -61,7 +61,14 @@ type CabinetsCabinetContentDisplayProps = {
    * When false, hide the sort direction icons in the table header.
    */
   showSortIcons?: boolean;
-  showNetGross?: boolean;
+  /**
+   * When true, show archived columns.
+   */
+  showArchived?: boolean;
+  /**
+   * Whether to show subtract jackpot column.
+   */
+  subtractJackpot?: boolean;
 };
 
 export const CabinetsCabinetContentDisplay = ({
@@ -83,7 +90,8 @@ export const CabinetsCabinetContentDisplay = ({
   enableHeaderSorting = true,
   showSortIcons = true,
   totalCount,
-  showNetGross = true,
+  subtractJackpot = true,
+  showArchived = false,
 }: CabinetsCabinetContentDisplayProps) => {
   const tableRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
@@ -324,7 +332,8 @@ export const CabinetsCabinetContentDisplay = ({
           enableHeaderSorting={enableHeaderSorting}
           showSortIcons={showSortIcons}
           hideFinancials={shouldHideFinancials}
-          showNetGross={showNetGross}
+          subtractJackpot={subtractJackpot}
+          showArchived={showArchived}
         />
       </div>
 
@@ -368,7 +377,7 @@ export const CabinetsCabinetContentDisplay = ({
                 canEditMachines={canEditMachines}
                 canDeleteMachines={canDeleteMachines}
                 hideFinancials={shouldHideFinancials}
-                showNetGross={showNetGross}
+                subtractJackpot={subtractJackpot}
               />
             ))}
           </ClientOnly>
@@ -377,7 +386,7 @@ export const CabinetsCabinetContentDisplay = ({
 
       {/* Pagination */}
       {!loading && paginatedCabinets.length > 0 && totalPages > 1 && (
-        <div className="mb-8 mt-8 flex w-full justify-center">
+        <div className="my-4 flex w-full justify-center">
           <PaginationControls
             currentPage={currentPage}
             totalPages={totalPages}

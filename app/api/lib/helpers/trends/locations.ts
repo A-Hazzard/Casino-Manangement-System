@@ -256,6 +256,18 @@ function buildLocationTrendsPipeline(
     {
       $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
     },
+    // Lookup licencee to get subtractJackpot setting
+    {
+      $lookup: {
+        from: 'licencees',
+        localField: 'locationDetails.rel.licencee',
+        foreignField: '_id',
+        as: 'licenceeDetails',
+      },
+    },
+    {
+      $unwind: { path: '$licenceeDetails', preserveNullAndEmptyArrays: true },
+    },
   ];
 
   if (licencee && licencee !== 'all') {
@@ -413,7 +425,7 @@ function buildLocationTrendsPipeline(
         gross: 1,
         netGross: {
           $cond: [
-            { $eq: [{ $ifNull: ['$locationDetails.useNetGross', false] }, true] },
+            { $eq: [{ $ifNull: ['$licenceeDetails.subtractJackpot', false] }, true] },
             { 
               $subtract: [
                 {

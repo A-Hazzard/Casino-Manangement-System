@@ -117,6 +117,7 @@ export async function GET(request: NextRequest) {
     const id = request.nextUrl.searchParams.get('id');
     const locationId = request.nextUrl.searchParams.get('locationId');
     const timePeriod = request.nextUrl.searchParams.get('timePeriod');
+    const showArchived = request.nextUrl.searchParams.get('archived') === 'true';
 
     // ============================================================================
     // STEP 3: Validate parameters
@@ -154,12 +155,18 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // STEP 6: Fetch machines from database
       // ============================================================================
+      const deletionFilter = showArchived
+        ? { deletedAt: { $gte: new Date('2025-01-01') } }
+        : {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ],
+          };
+
       const machines = await Machine.find({
         gamingLocation: locationId,
-        $or: [
-          { deletedAt: null },
-          { deletedAt: { $lt: new Date('2025-01-01') } },
-        ],
+        ...deletionFilter,
       }).sort({ serialNumber: 1 });
 
       // ============================================================================
@@ -187,12 +194,18 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 6: Fetch machine from database
     // ============================================================================
+    const deletionFilter = showArchived
+      ? { deletedAt: { $gte: new Date('2025-01-01') } }
+      : {
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
+          ],
+        };
+
     const machine = await Machine.findOne({
       _id: id,
-      $or: [
-        { deletedAt: null },
-        { deletedAt: { $lt: new Date('2025-01-01') } },
-      ],
+      ...deletionFilter,
     });
 
     if (!machine) {
@@ -1192,23 +1205,33 @@ export async function DELETE(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 4: Perform soft delete
+    // STEP 4: Perform delete (Hard for Developers if requested, Soft for others)
     // ============================================================================
-    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-    await Machine.findOneAndUpdate(
-      { _id: id },
-      {
-        $set: {
-          deletedAt: new Date(),
-          updatedAt: new Date(),
-        },
-      }
-    );
+    const hardDelete = request.nextUrl.searchParams.get('hardDelete') === 'true';
+    const currentUser = await getUserFromServer();
+    const userRoles = (currentUser?.roles as string[]) || [];
+    const isDeveloper = userRoles.map(r => r?.toLowerCase()).includes('developer');
+
+    if (hardDelete && isDeveloper) {
+      // Permanent removal
+      await Machine.deleteOne({ _id: id });
+      console.log(`[Machines API] Hard deleted machine: ${id} by ${currentUser?.emailAddress}`);
+    } else {
+      // Soft delete (Archive)
+      await Machine.findOneAndUpdate(
+        { _id: id },
+        {
+          $set: {
+            deletedAt: new Date(),
+            updatedAt: new Date(),
+          },
+        }
+      );
+    }
 
     // ============================================================================
     // STEP 5: Log activity
     // ============================================================================
-    const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
         const deleteChanges = [

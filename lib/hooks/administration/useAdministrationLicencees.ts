@@ -301,6 +301,7 @@ export function useAdministrationLicencees({
       country: string;
       startDate?: Date | string;
       expiryDate?: Date | string;
+      subtractJackpot?: boolean;
     } = {
       name: licenceeForm.name,
       country: licenceeForm.country,
@@ -311,6 +312,9 @@ export function useAdministrationLicencees({
     }
     if (licenceeForm.expiryDate) {
       licenceeData.expiryDate = licenceeForm.expiryDate;
+    }
+    if (licenceeForm.subtractJackpot !== undefined) {
+      licenceeData.subtractJackpot = licenceeForm.subtractJackpot;
     }
 
     try {
@@ -423,6 +427,7 @@ export function useAdministrationLicencees({
         prevExpiryDate: licencee.prevExpiryDate
           ? new Date(licencee.prevExpiryDate)
           : undefined,
+        subtractJackpot: licencee.subtractJackpot ?? false,
       });
       setIsEditLicenceeModalOpen(true);
     },
@@ -441,6 +446,7 @@ export function useAdministrationLicencees({
         prevStartDate: selectedLicencee.prevStartDate,
         prevExpiryDate: selectedLicencee.prevExpiryDate,
         isPaid: selectedLicencee.isPaid,
+        subtractJackpot: selectedLicencee.subtractJackpot ?? false,
       };
 
       const formDataComparison = {
@@ -451,6 +457,7 @@ export function useAdministrationLicencees({
         prevStartDate: licenceeForm.prevStartDate,
         prevExpiryDate: licenceeForm.prevExpiryDate,
         isPaid: selectedLicencee.isPaid,
+        subtractJackpot: licenceeForm.subtractJackpot ?? false,
       };
 
       const changes = detectChanges(originalData, formDataComparison);

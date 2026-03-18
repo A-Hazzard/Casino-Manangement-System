@@ -11,6 +11,7 @@ export type ChartProps = {
   activeMetricsFilter: TimePeriod | '';
   totals?: DashboardTotals | null;
   granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
+  /** @deprecated useNetGross is no longer used - Jackpot metric replaces Net Gross in the chart */
   useNetGross?: boolean;
 };
 

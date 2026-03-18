@@ -21,13 +21,13 @@ import {
     containerVariants,
     itemVariants,
 } from '@/lib/constants';
+import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { AccountingDetailsProps } from '@/lib/types/cabinet';
 import { formatCurrency } from '@/lib/utils';
 import {
     getGrossColorClass,
     getMoneyInColorClass,
-    getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -318,6 +318,7 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
   loading,
   activeMetricsTabContent,
   setActiveMetricsTabContent,
+  onRefresh,
 }) => {
   const { formatAmount } = useCurrencyFormat();
   const { activeMetricsFilter, customDateRange } = useDashBoardStore();
@@ -426,6 +427,7 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
                   prevIn: (entry.prevMetersIn as number) || 0,
                   prevOut: (entry.prevMetersOut as number) || 0,
                   locationReportId: (entry.locationReportId as string) || '',
+                  machineId: cabinet._id,
                 };
               })
               .sort((a, b) => {
@@ -657,16 +659,15 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
                         </h4>
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getMoneyOutColorClass(Number(cabinet?.moneyOut ?? cabinet?.sasMeters?.totalCancelledCredits ?? 0), Number(cabinet?.moneyIn ?? cabinet?.sasMeters?.drop ?? 0))}`}>
-                            {formatAmount(
-                              Number(
-                                cabinet?.moneyOut ??
-                                  cabinet?.sasMeters
-                                    ?.totalCancelledCredits ??
-                                  0
-                              )
-                            )}
-                          </p>
+                          <MoneyOutCell
+                            moneyOut={Number(cabinet?.moneyOut ?? 0)}
+                            moneyIn={Number(cabinet?.moneyIn ?? 0)}
+                            jackpot={Number(cabinet?.jackpot ?? 0)}
+                            displayValue={formatAmount(Number(cabinet?.moneyOut ?? cabinet?.sasMeters?.totalCancelledCredits ?? 0))}
+                            subtractJackpot={!!cabinet?.subtractJackpot}
+                            showInfoIcon={true}
+                            className="text-base font-bold md:text-xl"
+                          />
                         </div>
                       </motion.div>
 
@@ -724,7 +725,7 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
                         </div>
                       </motion.div>
 
-                      {/* Net Gross */}
+                      {/* Jackpot */}
                       {cabinet?.netGross !== undefined && (
                         <motion.div
                           className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
@@ -736,7 +737,7 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
                           transition={{ type: 'spring', stiffness: 300 }}
                         >
                           <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">
-                            Net Gross
+                            Jackpot
                           </h4>
                           <div className="mb-4 h-1 w-full bg-greenHighlight md:mb-6"></div>
                           <div className="flex items-center justify-center">
@@ -1012,20 +1013,21 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.4 }}
                     >
-                      <CabinetsDetailsCollectionHistoryTable
-                        data={collectionHistory}
-                        defaultTimeFilter={(() => {
-                          const filter = activeMetricsFilter;
-                          if (filter === 'Today') return 'today';
-                          if (filter === 'Yesterday') return 'yesterday';
-                          if (filter === '7d') return '7d';
-                          if (filter === '30d') return '30d';
-                          if (filter === 'All Time') return 'all';
-                          if (filter === 'Custom') return 'custom';
-                          return 'all';
-                        })() as TimeFilter}
-                        customRange={customDateRange as { from: Date; to: Date } | undefined}
-                      />
+                        <CabinetsDetailsCollectionHistoryTable
+                          data={collectionHistory}
+                          defaultTimeFilter={(() => {
+                            const filter = activeMetricsFilter;
+                            if (filter === 'Today') return 'today';
+                            if (filter === 'Yesterday') return 'yesterday';
+                            if (filter === '7d') return '7d';
+                            if (filter === '30d') return '30d';
+                            if (filter === 'All Time') return 'all';
+                            if (filter === 'Custom') return 'custom';
+                            return 'all';
+                          })() as TimeFilter}
+                          customRange={customDateRange as { from: Date; to: Date } | undefined}
+                          onRefresh={onRefresh}
+                        />
                     </motion.div>
                   ) : (
                     <motion.div

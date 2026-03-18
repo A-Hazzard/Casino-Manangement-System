@@ -89,6 +89,9 @@ function AdministrationLicenceeTable({
               PAYMENT STATUS
             </TableHead>
             <TableHead centered className="font-semibold text-white">
+              SUBTRACT JACKPOT
+            </TableHead>
+            <TableHead centered className="font-semibold text-white">
               LAST EDITED
             </TableHead>
             <TableHead centered className="font-semibold text-white">
@@ -99,7 +102,7 @@ function AdministrationLicenceeTable({
         <TableBody>
           {licencees.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="py-6 text-center text-gray-500">
+              <TableCell colSpan={8} className="py-6 text-center text-gray-500">
                 No licencees found.
               </TableCell>
             </TableRow>
@@ -202,6 +205,17 @@ function AdministrationLicenceeTable({
                         </span>
                       </div>
                     )}
+                  </TableCell>
+                  <TableCell centered>
+                    <span
+                      className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
+                        licencee.subtractJackpot
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {licencee.subtractJackpot ? 'Yes' : 'No'}
+                    </span>
                   </TableCell>
                   <TableCell centered className="text-gray-700">
                     {formatLicenceeDate(licencee.lastEdited)}

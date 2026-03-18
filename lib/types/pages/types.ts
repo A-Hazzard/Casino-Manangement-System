@@ -46,5 +46,6 @@ export type AddLicenceeForm = {
   expiryDate?: Date | string | undefined;
   prevStartDate?: Date | string | undefined;
   prevExpiryDate?: Date | string | undefined;
+  subtractJackpot?: boolean;
 };
 

@@ -39,22 +39,30 @@ export default function DateRangeIndicator({
         return 'All Time';
       case 'Custom':
         if (customDateRange?.startDate && customDateRange?.endDate) {
+          const { gameDayOffset } = useDashBoardStore.getState();
+          const sd = customDateRange.startDate;
+          const ed = customDateRange.endDate;
+
           // Display the local time dates as calendar dates
-          const startDate = format(customDateRange.startDate, 'MMM d, yyyy');
-          const endDate = format(customDateRange.endDate, 'MMM d, yyyy');
+          const startDate = format(sd, 'MMM d, yyyy');
+          const endDate = format(ed, 'MMM d, yyyy');
 
-          // Check if times are different from midnight/end of day (indicating custom time was set)
-          const startTime =
-            customDateRange.startDate.getHours() * 60 +
-            customDateRange.startDate.getMinutes();
-          const isEndOfDay =
-            customDateRange.endDate.getHours() === 23 &&
-            customDateRange.endDate.getMinutes() === 59;
+          // Check if times are different from the gaming day default
+          const startHours = sd.getHours();
+          const startMinutes = sd.getMinutes();
+          const endHours = ed.getHours();
+          const endMinutes = ed.getMinutes();
 
-          if (startTime !== 0 || !isEndOfDay) {
+          const isDefaultStartTime =
+            startHours === gameDayOffset && startMinutes === 0;
+          const isDefaultEndTime =
+            endHours === (gameDayOffset === 0 ? 23 : gameDayOffset - 1) &&
+            endMinutes === 59;
+
+          if (!isDefaultStartTime || !isDefaultEndTime) {
             // Show time information
-            const startTimeStr = format(customDateRange.startDate, 'h:mm a');
-            const endTimeStr = format(customDateRange.endDate, 'h:mm a');
+            const startTimeStr = format(sd, 'h:mm a');
+            const endTimeStr = format(ed, 'h:mm a');
             return `${startDate} ${startTimeStr} - ${endDate} ${endTimeStr}`;
           }
 
@@ -86,25 +94,30 @@ export default function DateRangeIndicator({
         return 'All available data';
       case 'Custom':
         if (customDateRange?.startDate && customDateRange?.endDate) {
+          const { gameDayOffset } = useDashBoardStore.getState();
+          const sd = customDateRange.startDate;
+          const ed = customDateRange.endDate;
+
           // Display the local time dates as calendar dates
-          const startDate = format(
-            customDateRange.startDate,
-            'EEEE, MMMM d, yyyy'
-          );
-          const endDate = format(customDateRange.endDate, 'EEEE, MMMM d, yyyy');
+          const startDate = format(sd, 'EEEE, MMMM d, yyyy');
+          const endDate = format(ed, 'EEEE, MMMM d, yyyy');
 
-          // Check if times are different from midnight/end of day (indicating custom time was set)
-          const startTime =
-            customDateRange.startDate.getHours() * 60 +
-            customDateRange.startDate.getMinutes();
-          const isEndOfDay =
-            customDateRange.endDate.getHours() === 23 &&
-            customDateRange.endDate.getMinutes() === 59;
+          // Check if times are different from the gaming day default
+          const startHours = sd.getHours();
+          const startMinutes = sd.getMinutes();
+          const endHours = ed.getHours();
+          const endMinutes = ed.getMinutes();
 
-          if (startTime !== 0 || !isEndOfDay) {
+          const isDefaultStartTime =
+            startHours === gameDayOffset && startMinutes === 0;
+          const isDefaultEndTime =
+            endHours === (gameDayOffset === 0 ? 23 : gameDayOffset - 1) &&
+            endMinutes === 59;
+
+          if (!isDefaultStartTime || !isDefaultEndTime) {
             // Show time information
-            const startTimeStr = format(customDateRange.startDate, 'h:mm a');
-            const endTimeStr = format(customDateRange.endDate, 'h:mm a');
+            const startTimeStr = format(sd, 'h:mm a');
+            const endTimeStr = format(ed, 'h:mm a');
             return `${startDate} at ${startTimeStr} to ${endDate} at ${endTimeStr}`;
           }
 

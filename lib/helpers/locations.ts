@@ -174,7 +174,8 @@ export async function fetchAggregatedLocationsData(
   locations?: string[],
   onlineStatus?: string,
   sortBy?: string,
-  sortOrder?: 'asc' | 'desc'
+  sortOrder?: 'asc' | 'desc',
+  archived?: boolean
 ): Promise<{
   data: AggregatedLocation[];
   pagination?: {
@@ -204,6 +205,7 @@ export async function fetchAggregatedLocationsData(
       queryParams.push(`onlineStatus=${encodeURIComponent(onlineStatus)}`);
     if (sortBy) queryParams.push(`sortBy=${encodeURIComponent(sortBy)}`);
     if (sortOrder) queryParams.push(`sortOrder=${encodeURIComponent(sortOrder)}`);
+    if (archived) queryParams.push('archived=true');
 
     // Add specific locations filter
     if (locations && locations.length > 0) {

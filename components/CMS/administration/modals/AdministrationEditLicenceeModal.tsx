@@ -35,6 +35,7 @@ type AdministrationEditLicenceeModalProps = {
     expiryDate?: Date | string;
     prevStartDate?: Date | string;
     prevExpiryDate?: Date | string;
+    subtractJackpot?: boolean;
   };
   setFormState: (data: {
     _id?: string;
@@ -45,6 +46,7 @@ type AdministrationEditLicenceeModalProps = {
     expiryDate?: Date | string;
     prevStartDate?: Date | string;
     prevExpiryDate?: Date | string;
+    subtractJackpot?: boolean;
   }) => void;
   countries: Country[];
   countriesLoading?: boolean;
@@ -222,6 +224,24 @@ function AdministrationEditLicenceeModal({
               }
               setDate={handleExpiryDateChange}
             />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="editSubtractJackpot"
+              checked={formState.subtractJackpot || false}
+              onChange={e =>
+                setFormState({ subtractJackpot: e.target.checked })
+              }
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <label
+              htmlFor="editSubtractJackpot"
+              className="text-sm font-semibold text-gray-700"
+            >
+              Subtract Jackpot
+            </label>
           </div>
 
           <button

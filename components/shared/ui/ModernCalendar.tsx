@@ -181,6 +181,7 @@ type ModernCalendarProps = {
   mode?: 'single' | 'range';
   disabled?: boolean;
   maxDate?: Date;
+  gameDayOffset?: number;
 }
 
 export function ModernCalendar({
@@ -191,6 +192,7 @@ export function ModernCalendar({
   mode = 'range',
   disabled = false,
   maxDate,
+  gameDayOffset = 8,
 }: ModernCalendarProps) {
   const [startDate, setStartDate] = React.useState<Date | null>(
     date?.from || null
@@ -209,6 +211,13 @@ export function ModernCalendar({
         minutes: date.from.getMinutes(),
       };
     }
+    // Default to gameDayOffset:00
+    if (enableTimeInputs) {
+      return {
+        hours: gameDayOffset,
+        minutes: 0,
+      };
+    }
     return null;
   });
 
@@ -222,11 +231,13 @@ export function ModernCalendar({
         minutes: date.to.getMinutes(),
       };
     }
-    // For range mode, default end time to same as start or end of day
-    if (date?.from && enableTimeInputs && mode === 'range') {
+    // For range mode, default end time to 1 minute before gameDayOffset
+    if (enableTimeInputs && mode === 'range') {
+      // If offset is 0, end time is 23:59
+      const endHours = gameDayOffset === 0 ? 23 : (gameDayOffset - 1 + 24) % 24;
       return {
-        hours: date.from.getHours(),
-        minutes: date.from.getMinutes(),
+        hours: endHours,
+        minutes: 59,
       };
     }
     return null;

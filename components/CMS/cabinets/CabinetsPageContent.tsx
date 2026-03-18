@@ -25,7 +25,7 @@ import { useCabinetsPageData } from '@/lib/hooks/cabinets/useCabinetsPageData';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
-import { RefreshCw } from 'lucide-react';
+import { Info, RefreshCw } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import CabinetsDeleteCabinetModal from './modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from './modals/CabinetsEditCabinetModal';
@@ -93,7 +93,6 @@ export default function CabinetsPageContent() {
     loadingChart,
     totalPages,
     totalCount,
-    useNetGross,
     setActiveSection,
     setSearchTerm,
     setSelectedLocation,
@@ -204,6 +203,16 @@ export default function CabinetsPageContent() {
           onChange={setActiveSection}
         />
 
+        {/* Subtract Jackpot Indicator */}
+        {cabinetsPageData.subtractJackpot && (
+          <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            <Info className="h-4 w-4 flex-shrink-0 text-amber-600" />
+            <p className="text-xs font-medium text-amber-800">
+              Jackpot is subtracted from Money Out for this licencee
+            </p>
+          </div>
+        )}
+
         {/* ============================================================================
            Tab Content: Main Cabinets View
            ============================================================================ */}
@@ -216,8 +225,6 @@ export default function CabinetsPageContent() {
                   totals={metricsTotals || financialTotals}
                   loading={loading || metricsTotalsLoading}
                   title="Total for all Machines"
-                  locationFiltered={selectedLocation.length > 0 && !selectedLocation.includes('all')}
-                  useNetGross={useNetGross}
                 />
               </div>
             )}
@@ -262,33 +269,36 @@ export default function CabinetsPageContent() {
                   loadingChartData={loadingChart}
                   chartData={chartData}
                   activeMetricsFilter={activeMetricsFilter}
-                  useNetGross={useNetGross}
                   granularity={cabinetsPageData.chartGranularity}
                 />
               </div>
             )}
 
             {/* Filter Controls Row: Date selection and machine status widget */}
-            <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-              {isTechnicianOnly ? (
-                <div className="flex h-10 items-center rounded-lg bg-blue-50 px-4 text-sm font-medium text-blue-700">
-                  <span className="mr-2 italic">Showing data within the last hour</span>
-                </div>
-              ) : (
-                <DateFilters
-                  hideAllTime
-                  showQuarterly
-                  onCustomRangeGo={loadCabinets}
-                  enableTimeInputs
+            <div className="mb-6 mt-4 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
+              <div className="order-1">
+                {isTechnicianOnly ? (
+                  <div className="flex h-10 items-center rounded-lg bg-blue-50 px-4 text-sm font-medium text-blue-700">
+                    <span className="mr-2 italic">Showing data within the last hour</span>
+                  </div>
+                ) : (
+                  <DateFilters
+                    hideAllTime
+                    showQuarterly
+                    onCustomRangeGo={loadCabinets}
+                    enableTimeInputs
+                  />
+                )}
+              </div>
+              <div className="order-2">
+                <MachineStatusWidget
+                  isLoading={refreshing}
+                  onlineCount={machineStats?.onlineMachines ?? 0}
+                  offlineCount={machineStats?.offlineMachines ?? 0}
+                  totalCount={machineStats?.totalMachines ?? 0}
+                  showTotal
                 />
-              )}
-              <MachineStatusWidget
-                isLoading={refreshing}
-                onlineCount={machineStats?.onlineMachines ?? 0}
-                offlineCount={machineStats?.offlineMachines ?? 0}
-                totalCount={machineStats?.totalMachines ?? 0}
-                showTotal
-              />
+              </div>
             </div>
 
             {/* Search & Advanced Filters */}
@@ -313,7 +323,7 @@ export default function CabinetsPageContent() {
             </div>
 
             {/* Cabinet Listing: Table and Mobile Card Views */}
-            <div className="w-full max-w-full overflow-x-hidden">
+            <div className="mt-4 w-full max-w-full overflow-x-hidden">
               <CabinetsCabinetContentDisplay
                 paginatedCabinets={paginatedCabinets}
                 filteredCabinets={filteredCabinets || paginatedCabinets}
@@ -332,7 +342,8 @@ export default function CabinetsPageContent() {
                 onDelete={() => {}}
                 onRetry={loadCabinets}
                 transformCabinet={transformCabinet}
-                showNetGross={useNetGross}
+                subtractJackpot={cabinetsPageData.subtractJackpot}
+                showArchived={selectedStatus === 'Archived'}
               />
             </div>
           </div>

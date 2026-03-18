@@ -195,23 +195,27 @@ export function useCabinetsPageData() {
     return apiMachineStats;
   }, [apiMachineStats, filteredCabinets, machineStatsLoading]);
   
-  // Determine if Net Gross should be shown based on selected location(s)
-  const useNetGross = useMemo(() => {
-    if (selectedLocation.length === 0 || selectedLocation.includes('all')) {
-      return false;
+  // subtractJackpot is configured at the Licencee level
+  const [subtractJackpot, setSubtractJackpot] = useState(false);
+  useEffect(() => {
+    if (!selectedLicencee || selectedLicencee === 'all') {
+      setSubtractJackpot(false);
+      return;
     }
-    
-    // If specific locations are selected, check if ALL of them have useNetGross enabled
-    // Or at least if there's only one and it has it enabled
-    const selectedLocsData = locations.filter(loc => selectedLocation.includes(loc._id));
-    if (selectedLocsData.length === 0) return false;
-    
-    // If only one is selected, use its value
-    if (selectedLocsData.length === 1) return selectedLocsData[0].useNetGross === true;
-    
-    // If multiple are selected, only show if all of them have it enabled to avoid confusing totals
-    return selectedLocsData.every(loc => loc.useNetGross === true);
-  }, [selectedLocation, locations]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/licencees?licencee=${encodeURIComponent(selectedLicencee)}&limit=1`);
+        if (cancelled) return;
+        const data = await res.json();
+        const lic = data?.licencees?.[0];
+        setSubtractJackpot(Boolean(lic?.subtractJackpot));
+      } catch {
+        if (!cancelled) setSubtractJackpot(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedLicencee]);
 
   // ============================================================================
   // Chart Logic
@@ -272,7 +276,9 @@ export function useCabinetsPageData() {
           selectedGameType,
           selectedStatus === 'All' || selectedStatus === 'all'
             ? 'all'
-            : selectedStatus.toLowerCase(),
+            : selectedStatus === 'Archived'
+              ? 'archived'
+              : selectedStatus.toLowerCase(),
           debouncedSearchTerm
         );
         if (data)
@@ -448,7 +454,7 @@ export function useCabinetsPageData() {
     chartData,
     loadingChart,
     totalPages: effectiveTotalPages,
-    useNetGross,
+    subtractJackpot,
     // Setters & Handlers
     setActiveSection,
     setSearchTerm: handleSetSearchTerm,

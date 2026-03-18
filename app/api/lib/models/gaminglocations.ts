@@ -70,10 +70,6 @@ const GamingLocationsSchema = new Schema(
     status: String,
     statusHistory: [Schema.Types.Mixed],
     noSMIBLocation: Boolean,
-    useNetGross: {
-      type: Boolean,
-      default: false,
-    },
   },
   {
     timestamps: true,

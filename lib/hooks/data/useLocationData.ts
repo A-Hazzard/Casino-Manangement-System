@@ -128,9 +128,10 @@ export function useLocationData({
         limit,
         undefined,
         undefined,
-        selectedStatus,
+        selectedStatus === 'Archived' ? undefined : selectedStatus,
         sortBy,
-        sortOrder
+        sortOrder,
+        selectedStatus === 'Archived'
       );
     },
     [

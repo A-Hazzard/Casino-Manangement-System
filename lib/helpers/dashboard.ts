@@ -141,10 +141,10 @@ export const fetchDashboardTotals = async (
       customDateRange.startDate &&
       customDateRange.endDate
     ) {
-      // Extract just the date part (YYYY-MM-DD)
-      const fromDate = customDateRange.startDate.toISOString().split('T')[0];
-      const toDate = customDateRange.endDate.toISOString().split('T')[0];
-      url += `&startDate=${fromDate}&endDate=${toDate}`;
+      // Use full ISO string to include time (important for gameDayOffset)
+      const fromDate = customDateRange.startDate.toISOString();
+      const toDate = customDateRange.endDate.toISOString();
+      url += `&startDate=${encodeURIComponent(fromDate)}&endDate=${encodeURIComponent(toDate)}`;
     }
 
     if (selectedLicencee && selectedLicencee !== 'all') {

@@ -2,7 +2,7 @@ import React from 'react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 interface LocationsCabinetTableSkeletonProps {
-  showNetGross?: boolean;
+  subtractJackpot?: boolean;
 }
 
 /**
@@ -10,7 +10,7 @@ interface LocationsCabinetTableSkeletonProps {
  * Matches the exact structure of CabinetTable component
  */
 const LocationsCabinetTableSkeleton: React.FC<LocationsCabinetTableSkeletonProps> = ({
-  showNetGross = false,
+  subtractJackpot = false,
 }) => (
   <div className="w-full overflow-x-auto bg-white shadow">
     <table className="w-full">
@@ -34,9 +34,9 @@ const LocationsCabinetTableSkeleton: React.FC<LocationsCabinetTableSkeletonProps
           <th className="relative p-3 text-center font-semibold text-white">
             <span>GROSS</span>
           </th>
-          {showNetGross && (
+          {subtractJackpot && (
             <th className="relative p-3 text-center font-semibold text-white">
-              <span>NET GROSS</span>
+              <span>SUBTRACT JACKPOT</span>
             </th>
           )}
           <th className="p-3 text-center font-semibold text-white">
@@ -86,8 +86,8 @@ const LocationsCabinetTableSkeleton: React.FC<LocationsCabinetTableSkeletonProps
                 <Skeleton className="mx-auto h-4 w-20" />
               </td>
             ))}
-            {/* Net Gross Column */}
-            {showNetGross && (
+            {/* Subtract Jackpot Column */}
+            {subtractJackpot && (
               <td className="p-3 text-center align-middle text-sm">
                 <Skeleton className="mx-auto h-4 w-20" />
               </td>

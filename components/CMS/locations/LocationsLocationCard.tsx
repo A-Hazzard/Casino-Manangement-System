@@ -14,24 +14,24 @@
 
 import { Button } from '@/components/shared/ui/button';
 import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
+import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { LocationCardData } from '@/lib/types/location';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import {
-    getGrossColorClass,
-    getMoneyInColorClass,
-    getMoneyOutColorClass,
+  getGrossColorClass,
+  getMoneyInColorClass,
 } from '@/lib/utils/financial';
 import { hasMissingCoordinates } from '@/lib/utils/location';
 import {
-    BadgeCheck,
-    Eye,
-    FileWarning,
-    HelpCircle,
-    Home,
-    MapPinOff,
-    Pencil,
-    Server,
+  BadgeCheck,
+  Eye,
+  FileWarning,
+  HelpCircle,
+  Home,
+  MapPinOff,
+  Pencil,
+  Server,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
@@ -247,12 +247,25 @@ export default function LocationsLocationCard({
         </div>
         <div className="flex justify-between">
           <span className="font-medium">Money Out</span>
-          <CurrencyValueWithOverflow
-            value={location.moneyOut ?? 0}
-            className={`break-words text-right font-semibold ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
-            formatCurrencyFn={formatCurrency}
+          <MoneyOutCell
+            moneyOut={location.moneyOut ?? 0}
+            moneyIn={location.moneyIn ?? 0}
+            jackpot={location.jackpot ?? 0}
+            displayValue={formatCurrency(location.moneyOut ?? 0)}
+            subtractJackpot={!!(location).subtractJackpot}
+            showInfoIcon={true}
           />
         </div>
+        {location.subtractJackpot && (
+          <div className="flex justify-between">
+            <span className="font-medium">Jackpot</span>
+            <CurrencyValueWithOverflow
+              value={location.netGross || (location.gross ?? 0)}
+              className={`break-words text-right font-semibold ${getGrossColorClass(location.netGross || location.gross)}`}
+              formatCurrencyFn={formatCurrency}
+            />
+          </div>
+        )}
       </div>
 
       <div className="mb-3 mt-1 flex justify-between">

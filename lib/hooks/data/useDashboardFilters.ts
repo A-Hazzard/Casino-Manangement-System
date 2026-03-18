@@ -59,11 +59,19 @@ export function useDashboardFilters({
 
   // Reset all filters to default state
   const resetFilters = useCallback(() => {
+    const { gameDayOffset } = useDashBoardStore.getState();
+    const startDate = new Date();
+    startDate.setHours(gameDayOffset, 0, 0, 0);
+
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 1);
+    endDate.setMinutes(endDate.getMinutes() - 1);
+
     setActiveMetricsFilter('Today');
     setActivePieChartFilter('Today');
     setCustomDateRange({
-      startDate: new Date(new Date().setHours(0, 0, 0, 0)),
-      endDate: new Date(new Date().setHours(23, 59, 59, 999)),
+      startDate,
+      endDate,
     });
     setShowDatePicker(false);
   }, [

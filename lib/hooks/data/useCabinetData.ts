@@ -31,7 +31,7 @@ type UseCabinetDataReturn = {
   // Data states
   allCabinets: Cabinet[];
   filteredCabinets: Cabinet[];
-  locations: { _id: string; name: string; useNetGross?: boolean }[];
+  locations: { _id: string; name: string; subtractJackpot?: boolean }[];
   gameTypes: string[];
   financialTotals: ReturnType<typeof calculateCabinetFinancialTotals>;
   metricsTotals: { moneyIn: number; moneyOut: number; gross: number; jackpot: number; netGross: number } | null;
@@ -110,7 +110,7 @@ export const useCabinetData = ({
   }, [allCabinets.length, initialLoading, loading]);
 
   // Removed filteredCabinets state - now using memoized value for better performance
-  const [locations, setLocations] = useState<{ _id: string; name: string; useNetGross?: boolean }[]>(
+  const [locations, setLocations] = useState<{ _id: string; name: string; subtractJackpot?: boolean }[]>(
     []
   );
   const [gameTypes, setGameTypes] = useState<string[]>([]);
@@ -275,7 +275,9 @@ export const useCabinetData = ({
                 ? 'never-online'
                 : selectedStatus.startsWith('Offline')
                   ? 'offline'
-                  : 'all';
+                  : selectedStatus === 'Archived'
+                    ? 'archived'
+                    : 'all';
 
         const result = await fetchCabinets(
           selectedLicencee,
@@ -547,7 +549,9 @@ export const useCabinetData = ({
                   ? 'never-online'
                   : selectedStatus.startsWith('Offline')
                     ? 'offline'
-                    : selectedStatus.toLowerCase(),
+                    : selectedStatus === 'Archived'
+                      ? 'archived'
+                      : selectedStatus.toLowerCase(),
               searchTerm
             ),
           'totals'

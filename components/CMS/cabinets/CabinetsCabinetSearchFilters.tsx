@@ -138,6 +138,7 @@ export const CabinetsCabinetSearchFilters = ({
                   { value: 'OfflineLongest', label: 'Offline (Longest First)' },
                   { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
                   { value: 'NeverOnline', label: 'Never Online' },
+                  { value: 'Archived', label: 'Archived' },
                 ]}
                 placeholder="All Status"
                 className="w-full"
@@ -214,6 +215,7 @@ export const CabinetsCabinetSearchFilters = ({
                   { value: 'OfflineLongest', label: 'Offline (Longest First)' },
                   { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
                   { value: 'NeverOnline', label: 'Never Online' },
+                  { value: 'Archived', label: 'Archived' },
                 ]}
                 placeholder="All Status"
                 className="w-full"

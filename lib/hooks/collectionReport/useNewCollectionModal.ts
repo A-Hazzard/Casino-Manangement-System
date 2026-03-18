@@ -7,12 +7,10 @@
 
 'use client';
 
-import { updateMachineCollectionHistory } from '@/lib/helpers/cabinets';
 import { createCollectionReport } from '@/lib/helpers/collectionReport';
 import {
     addMachineCollection,
     deleteMachineCollection,
-    updateCollectionsWithReportId,
 } from '@/lib/helpers/collectionReport/newCollectionModalHelpers';
 import { updateCollection } from '@/lib/helpers/collections';
 import { useDebounce } from '@/lib/hooks/useDebounce';
@@ -983,6 +981,7 @@ export function useNewCollectionModal({
         reasonShortagePayment: financials.reasonForShortagePayment,
         balanceCorrection: Number(financials.balanceCorrection) || 0,
         balanceCorrectionReas: financials.balanceCorrectionReason,
+        subtractJackpot: selectedLocation?.subtractJackpot || false,
         machines: collectedMachineEntries.map(e => ({
           machineId: String(e.machineId),
           metersIn: e.metersIn,
@@ -1015,23 +1014,6 @@ export function useNewCollectionModal({
         null,
         result.report as unknown as Record<string, unknown>
       );
-      await updateCollectionsWithReportId(
-        collectedMachineEntries,
-        String(result.report._id)
-      );
-      for (const entry of collectedMachineEntries) {
-        if (entry.machineId) {
-          await updateMachineCollectionHistory(String(entry.machineId), {
-            _id: String(entry._id),
-            metersIn: entry.metersIn,
-            metersOut: entry.metersOut,
-            prevMetersIn: entry.prevIn || 0,
-            prevMetersOut: entry.prevOut || 0,
-            timestamp: entry.timestamp,
-            locationReportId: String(result.report._id),
-          });
-        }
-      }
 
       toast.success('Collection report created successfully', {
         duration: 5000,

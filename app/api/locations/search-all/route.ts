@@ -44,6 +44,8 @@ type LocationAggregationResult = {
   onlineMachines: number;
   moneyIn: number;
   moneyOut: number;
+  jackpot: number;
+  subtractJackpot: boolean;
   gross: number;
   isLocalServer: boolean;
   hasSmib: boolean;
@@ -167,7 +169,7 @@ export async function GET(request: NextRequest) {
     if (licencee) {
       locationMatch.$and.push({
         $or: [
-          { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  }
+          { 'rel.licencee': licencee }, { 'rel.licencee': licencee }
         ]
       });
     }
@@ -417,7 +419,7 @@ export async function GET(request: NextRequest) {
     // Step 6: Get ALL meters for ALL locations
     const metersByLocation = new Map<
       string,
-      { totalMoneyIn: number; totalMoneyOut: number }
+      { totalMoneyIn: number; totalMoneyOut: number; totalJackpot: number }
     >();
 
     if (allLocationIds.length > 0) {
@@ -443,6 +445,9 @@ export async function GET(request: NextRequest) {
             totalMoneyOut: {
               $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
             },
+            totalJackpot: {
+              $sum: { $ifNull: ['$movement.jackpot', 0] },
+            },
           },
         },
       ]).cursor({ batchSize: 1000 });
@@ -464,16 +469,23 @@ export async function GET(request: NextRequest) {
             metersByLocation.set(locationId, {
               totalMoneyIn: 0,
               totalMoneyOut: 0,
+              totalJackpot: 0,
             });
           }
           const current = metersByLocation.get(locationId)!;
           current.totalMoneyIn += (doc.totalMoneyIn as number) || 0;
           current.totalMoneyOut += (doc.totalMoneyOut as number) || 0;
+          current.totalJackpot += (doc.totalJackpot as number) || 0;
         }
       }
     }
 
     const memberCountMap = await getMemberCountsPerLocation(allLocationIds);
+
+    // Fetch licencee settings for all locations
+    const licenceeIds = Array.from(new Set(matchingLocations.map(loc => loc.rel?.licencee).filter(Boolean)));
+    const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean();
+    const licenceeSubtractJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.subtractJackpot]));
 
     // Step 8: Combine results and create the initial AggregatedLocation objects
     const locations: LocationAggregationResult[] = matchingLocations.map(location => {
@@ -481,12 +493,21 @@ export async function GET(request: NextRequest) {
       const financialData = metersByLocation.get(locationId) || {
         totalMoneyIn: 0,
         totalMoneyOut: 0,
+        totalJackpot: 0,
       };
 
       const membershipEnabled = Boolean(
         location.membershipEnabled ||
         (location as { enableMembership?: boolean }).enableMembership
       );
+
+      const subtractJackpot = licenceeSubtractJackpotMap.get(String(location.rel?.licencee)) || false;
+      const rawMoneyOut = financialData.totalMoneyOut || 0;
+      const jackpot = financialData.totalJackpot || 0;
+
+      // Logic: TRUE = Low Gross (Include jackpot in deduction), FALSE = High Gross (Exclude jackpot from deduction)
+      // rawMoneyOut is totalCancelledCredits which is typically NET handpays.
+      const moneyOutValue = rawMoneyOut + (subtractJackpot ? jackpot : 0);
 
       return {
         _id: locationId,
@@ -499,8 +520,10 @@ export async function GET(request: NextRequest) {
         totalMachines: location.machineStats?.[0]?.totalMachines || 0,
         onlineMachines: location.machineStats?.[0]?.onlineMachines || 0,
         moneyIn: financialData.totalMoneyIn || 0,
-        moneyOut: financialData.totalMoneyOut || 0,
-        gross: (financialData.totalMoneyIn || 0) - (financialData.totalMoneyOut || 0),
+        moneyOut: moneyOutValue,
+        jackpot: jackpot,
+        subtractJackpot: subtractJackpot,
+        gross: (financialData.totalMoneyIn || 0) - moneyOutValue,
         isLocalServer: location.isLocalServer || false,
         hasSmib: location.hasSmib || false,
         noSMIBLocation: !(location.hasSmib || false),
@@ -625,12 +648,14 @@ export async function GET(request: NextRequest) {
         // Convert from licencee's native currency to USD, then to display currency
         const moneyInUSD = convertToUSD(loc.moneyIn, licenceeName);
         const moneyOutUSD = convertToUSD(loc.moneyOut, licenceeName);
+        const jackpotUSD = convertToUSD(loc.jackpot, licenceeName);
         const grossUSD = convertToUSD(loc.gross, licenceeName);
 
         return {
           ...loc,
           moneyIn: convertFromUSD(moneyInUSD, displayCurrency),
           moneyOut: convertFromUSD(moneyOutUSD, displayCurrency),
+          jackpot: convertFromUSD(jackpotUSD, displayCurrency),
           gross: convertFromUSD(grossUSD, displayCurrency),
         };
       });
@@ -652,6 +677,8 @@ export async function GET(request: NextRequest) {
       onlineMachines: loc.onlineMachines,
       moneyIn: loc.moneyIn,
       moneyOut: loc.moneyOut,
+      jackpot: loc.jackpot,
+      subtractJackpot: (loc).subtractJackpot,
       gross: loc.gross,
       isLocalServer: loc.isLocalServer,
       hasSmib: loc.hasSmib,
