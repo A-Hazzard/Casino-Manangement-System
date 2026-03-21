@@ -83,6 +83,7 @@ export default function ProfileAssignments({
     'location admin',
     'technician',
     'collector',
+    'reviewer',
   ];
 
   const displayRows = useMemo(() => {
@@ -161,7 +162,7 @@ export default function ProfileAssignments({
 
   // Only admins and developers can edit assigned locations and licencees
   const canEditAssignments = userData.roles?.some(role =>
-    ['admin', 'developer'].includes(role.toLowerCase())
+    ['admin', 'developer'].includes(role?.toLowerCase())
   );
 
   return (
@@ -180,7 +181,7 @@ export default function ProfileAssignments({
             <p className="mb-4 text-sm text-gray-500">
               Your assigned roles and permissions
             </p>
-            {isEditMode && userData.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase())) ? (
+            {isEditMode && userData.roles?.some(r => ['admin', 'developer'].includes(r?.toLowerCase())) ? (
               <div className="space-y-2">
                 {roles.map(role => (
                   <div
@@ -190,20 +191,20 @@ export default function ProfileAssignments({
                     <Checkbox
                       id={`role-${role}`}
                       checked={selectedRoles
-                        .map(r => r.toLowerCase())
-                        .includes(role.toLowerCase())}
+                        .map(r => r?.toLowerCase())
+                        .includes(role?.toLowerCase())}
                       onCheckedChange={checked => {
                         if (checked) {
                           setSelectedRoles(prev => [
                             ...prev.filter(
-                              r => r.toLowerCase() !== role.toLowerCase()
+                              r => r?.toLowerCase() !== role?.toLowerCase()
                             ),
                             role,
                           ]);
                         } else {
                           setSelectedRoles(prev =>
                             prev.filter(
-                              r => r.toLowerCase() !== role.toLowerCase()
+                              r => r?.toLowerCase() !== role?.toLowerCase()
                             )
                           );
                         }

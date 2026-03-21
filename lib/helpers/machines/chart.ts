@@ -178,8 +178,8 @@ export async function getMachineChartData(
         // Send local time with timezone offset to preserve user's time selection
         url += `&startDate=${formatLocalDateTimeString(sd, -4)}&endDate=${formatLocalDateTimeString(ed, -4)}`;
       } else {
-        // Date-only: send ISO date format for gaming day offset to apply
-        url += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
+        // Date-only: always include time component so backend doesn't need format detection
+        url += `&startDate=${sd.toISOString().split('T')[0]}T00:00:00.000Z&endDate=${ed.toISOString().split('T')[0]}T00:00:00.000Z`;
       }
     }
 
@@ -197,28 +197,35 @@ export async function getMachineChartData(
       url += `&granularity=${granularity}`;
     }
 
-    // Use deduplication to prevent duplicate requests for the same machine chart
-    const response = await deduplicateRequest(url, async abortSignal => {
-      return axios.get<{
-        success: boolean;
-        data: Array<{
-          day: string;
-          time?: string;
-          drop: number;
-          totalCancelledCredits: number;
-          gross: number;
-        }>;
-        dataSpan?: {
-          minDate: string;
-          maxDate: string;
-        };
-      }>(url, {
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-        signal: abortSignal || signal,
-      });
-    });
+    // When an external abort signal is provided (e.g. from useAbortableRequest),
+    // use it directly so the caller can properly cancel previous requests and
+    // prevent race conditions. Only use deduplication when no external signal.
+    type ChartResponse = {
+      success: boolean;
+      data: Array<{
+        day: string;
+        time?: string;
+        drop: number;
+        totalCancelledCredits: number;
+        gross: number;
+      }>;
+      dataSpan?: {
+        minDate: string;
+        maxDate: string;
+      };
+    };
+
+    const response = signal
+      ? await axios.get<ChartResponse>(url, {
+          headers: { 'Cache-Control': 'no-cache' },
+          signal,
+        })
+      : await deduplicateRequest(url, async abortSignal => {
+          return axios.get<ChartResponse>(url, {
+            headers: { 'Cache-Control': 'no-cache' },
+            signal: abortSignal,
+          });
+        });
 
     const responseData = response.data;
 
@@ -266,7 +273,11 @@ export async function getMachineChartData(
         if (defaultGranularity === 'minute') {
           useMinute = true;
           useHourly = false;
-        } else if (defaultGranularity === 'daily' || defaultGranularity === 'weekly' || defaultGranularity === 'monthly') {
+        } else if (
+          defaultGranularity === 'daily' ||
+          defaultGranularity === 'weekly' ||
+          defaultGranularity === 'monthly'
+        ) {
           // Multi-day Custom ranges: use daily aggregation (not hourly)
           useHourly = false;
           useMinute = false;
@@ -561,4 +572,3 @@ function fillMissingIntervals(
 
   return filledData;
 }
-

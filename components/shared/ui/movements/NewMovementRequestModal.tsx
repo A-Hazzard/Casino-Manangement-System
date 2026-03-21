@@ -64,7 +64,7 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
   const [machineSearchTerm, setMachineSearchTerm] = useState('');
 
   const { user: currentUser } = useUserStore();
-  const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
+  const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
   const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role));
 
   // Use prop locations or fetch if not provided
@@ -228,7 +228,7 @@ const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
     if (!user.emailAddress || user.emailAddress.trim() === '') return false;
     if (!toLocation) return false;
     
-    const roleLower = user.roles?.map(r => r.toLowerCase()) || [];
+    const roleLower = user.roles?.map(r => r?.toLowerCase()) || [];
     const hasRole = roleLower.includes('technician') || roleLower.includes('location admin');
     
     // Admins/developers bypass location assignment validation for recipients

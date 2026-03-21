@@ -35,7 +35,7 @@ export type CabinetCardProps = {
   offlineTimeLabel?: string;
   actualOfflineTime?: string;
   hideFinancials?: boolean;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
 };
 
 

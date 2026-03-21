@@ -19,6 +19,11 @@
 'use client';
 
 import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/shared/ui/popover';
 import { DashboardFinancialMetricsSkeleton } from '@/components/shared/ui/skeletons/DashboardSkeletons';
 import { fetchLicenceeById } from '@/lib/helpers/client';
 import { getCountryCurrency, getLicenceeCurrency } from '@/lib/helpers/rates';
@@ -30,6 +35,7 @@ import {
     getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import type { CurrencyCode } from '@/shared/types/currency';
+import { Info } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type FinancialMetricsCardsProps = {
@@ -44,6 +50,7 @@ type FinancialMetricsCardsProps = {
   className?: string;
   disableCurrencyConversion?: boolean;
   locationFiltered?: boolean;
+  includeJackpot?: boolean;
   /** @deprecated useNetGross is now configured at the Licencee level and no longer needed as a prop */
   useNetGross?: boolean;
 };
@@ -55,6 +62,7 @@ export default function FinancialMetricsCards({
   loading = false,
   title = '',
   className = '',
+  includeJackpot = false,
 }: FinancialMetricsCardsProps) {
   const { selectedLicencee } = useDashBoardStore();
   const { displayCurrency } = useCurrencyFormat();
@@ -206,6 +214,40 @@ export default function FinancialMetricsCards({
     };
   };
 
+  const showJackpotIndicator = includeJackpot && (totals?.jackpot ?? 0) > 0;
+  const jackpotBreakdownPopover = showJackpotIndicator ? (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex flex-shrink-0 cursor-pointer text-amber-500 hover:text-amber-600 focus:outline-none ml-1"
+          aria-label="Money Out breakdown"
+        >
+          <Info className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto max-w-xs p-3" side="top" align="center">
+        <div className="space-y-1 text-xs">
+          <p className="font-semibold text-blue-600 flex items-center gap-1">
+            Money Out Breakdown
+          </p>
+          <p>
+            Base Total Cancelled Credits: <span className="font-bold">{((totals?.moneyOut || 0) - (totals?.jackpot || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          </p>
+          <p>
+            + Jackpot: <span className="font-bold text-amber-600">{(totals?.jackpot || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          </p>
+          <p className="border-t border-gray-200 pt-1">
+            Total Money Out: <span className="font-bold">{(totals?.moneyOut || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          </p>
+          <p className="mt-2 text-[10px] text-gray-500 italic">
+            * Jackpot is included in Money Out for this licencee.
+          </p>
+        </div>
+      </PopoverContent>
+    </Popover>
+  ) : null;
+
   return (
     <div className={`space-y-4 ${className}`}>
       {title && (
@@ -240,8 +282,11 @@ export default function FinancialMetricsCards({
                 <div className="h-2 w-2 rounded-full bg-blue-500"></div>
               </div>
               <div className="space-y-2">
-                <div className={`font-bold ${getMoneyOutColorClass(totals?.moneyOut, totals?.moneyIn)} ${formatCurrencyWithScaling(totals?.moneyOut || 0).size}`}>
-                  <CurrencyValueWithOverflow value={totals?.moneyOut} formatCurrencyFn={formatCurrencyAmount} formatCurrencyWithScalingFn={formatCurrencyWithScaling} currencyCode={currencyCode} />
+                <div className={`inline-flex items-center font-bold ${getMoneyOutColorClass(totals?.moneyOut, totals?.moneyIn)} ${formatCurrencyWithScaling(totals?.moneyOut || 0).size}`}>
+                  <span className={showJackpotIndicator ? 'border-b border-dotted border-gray-400' : ''}>
+                    <CurrencyValueWithOverflow value={totals?.moneyOut} formatCurrencyFn={formatCurrencyAmount} formatCurrencyWithScalingFn={formatCurrencyWithScaling} currencyCode={currencyCode} />
+                  </span>
+                  {jackpotBreakdownPopover}
                 </div>
               </div>
             </div>
@@ -300,9 +345,12 @@ export default function FinancialMetricsCards({
             <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">Money Out</p>
             <div className="my-2 h-[4px] w-full rounded-full bg-lighterBlueHighlight"></div>
             <div className="flex flex-1 items-center justify-center">
-              <p className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getMoneyOutColorClass(totals?.moneyOut, totals?.moneyIn)}`}>
-                <CurrencyValueWithOverflow value={totals?.moneyOut} formatCurrencyFn={formatCurrencyAmount} formatCurrencyWithScalingFn={formatCurrencyWithScaling} currencyCode={currencyCode} />
-              </p>
+              <span className={`inline-flex items-center overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getMoneyOutColorClass(totals?.moneyOut, totals?.moneyIn)}`}>
+                <span className={showJackpotIndicator ? 'border-b border-dotted border-gray-400' : ''}>
+                  <CurrencyValueWithOverflow value={totals?.moneyOut} formatCurrencyFn={formatCurrencyAmount} formatCurrencyWithScalingFn={formatCurrencyWithScaling} currencyCode={currencyCode} />
+                </span>
+                {jackpotBreakdownPopover}
+              </span>
             </div>
           </div>
 

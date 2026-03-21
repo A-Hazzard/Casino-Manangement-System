@@ -22,10 +22,14 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
+import type { AggregatedLocation } from '@/shared/types';
+import { SHOW_REVIEWER_DEBUG_PANEL } from '@/lib/constants/uiConstants';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
+import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import LocationsLocationCard from './LocationsLocationCard';
 import LocationsLocationSkeleton from './LocationsLocationSkeleton';
 import LocationsLocationTable from './LocationsLocationTable';
@@ -51,7 +55,7 @@ export default function LocationsPageContent() {
   const {
     loading,
     refreshing,
-    filteredLocationData,
+    locationData,
     financialTotals,
     metricsTotals,
     metricsTotalsLoading,
@@ -86,6 +90,11 @@ export default function LocationsPageContent() {
     );
   }, [user]);
 
+  const isReviewer = useMemo(() => {
+    const roles = user?.roles || [];
+    return roles.includes('reviewer');
+  }, [user]);
+
   // ============================================================================
   // Event Handlers
   // ============================================================================
@@ -95,6 +104,24 @@ export default function LocationsPageContent() {
   const handleLocationClick = (locationId: string) => {
     if (locationId) {
       router.push(`/locations/${locationId}`);
+    }
+  };
+
+  /**
+   * Restore an archived location back to active status.
+   */
+  const handleRestore = async (location: Partial<AggregatedLocation>) => {
+    const loc = location as Record<string, unknown>;
+    const locationId = loc.location as string;
+    const locationName = loc.locationName as string;
+    if (!locationId) return;
+
+    try {
+      await axios.patch('/api/locations', { id: locationId, action: 'restore' });
+      toast.success(`${locationName || 'Location'} restored successfully`);
+      handleRefresh();
+    } catch {
+      toast.error('Failed to restore location');
     }
   };
 
@@ -152,6 +179,79 @@ export default function LocationsPageContent() {
             title="Total for all Locations"
           />
         </div>
+
+        {/* ── REVIEWER DEBUG PANEL ─────────────────────────────────────────── */}
+        {SHOW_REVIEWER_DEBUG_PANEL && isReviewer && !loading && locationData.length > 0 && (
+          <div className="mt-4 rounded-lg border-2 border-yellow-400 bg-yellow-50 p-4">
+            <p className="mb-2 text-base font-bold text-yellow-800">
+              🔍 REVIEWER DEBUG — RAW values (accounting denomination applied, reviewer multiplier NOT yet applied)
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm font-mono">
+                <thead>
+                  <tr className="border-b border-yellow-300 text-yellow-900">
+                    <th className="pr-4 pb-1">Location</th>
+                    <th className="pr-4 pb-1">Raw Money In</th>
+                    <th className="pr-4 pb-1">Final Money In</th>
+                    <th className="pr-4 pb-1">Raw Money Out</th>
+                    <th className="pr-4 pb-1">Final Money Out</th>
+                    <th className="pr-4 pb-1">Raw Jackpot</th>
+                    <th className="pr-4 pb-1">Final Jackpot</th>
+                    <th className="pr-4 pb-1">Raw Gross</th>
+                    <th className="pr-4 pb-1">Final Gross</th>
+                    <th className="pb-1">Multiplier</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {locationData.map(loc => {
+                    const raw = loc as unknown as Record<string, unknown>;
+                    const mult = raw._reviewerMultiplier as number | undefined;
+                    const rawMI = raw._rawMoneyIn as number | undefined;
+                    const rawMO = raw._rawMoneyOut as number | undefined;
+                    const rawJP = raw._rawJackpot as number | undefined;
+                    const rawGR = raw._rawGross as number | undefined;
+                    return (
+                      <tr key={String(loc._id || loc.location)} className="border-b border-yellow-200 text-yellow-900">
+                        <td className="pr-4 py-1 font-semibold">{loc.name || '—'}</td>
+                        <td className="pr-4 py-1 text-orange-700 font-bold">
+                          {rawMI != null ? rawMI.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
+                        </td>
+                        <td className="pr-4 py-1">
+                          {loc.moneyIn != null ? loc.moneyIn.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
+                        </td>
+                        <td className="pr-4 py-1 text-orange-700 font-bold">
+                          {rawMO != null ? rawMO.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
+                        </td>
+                        <td className="pr-4 py-1">
+                          {loc.moneyOut != null ? loc.moneyOut.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
+                        </td>
+                        <td className="pr-4 py-1 text-orange-700 font-bold">
+                          {rawJP != null ? rawJP.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
+                        </td>
+                        <td className="pr-4 py-1">
+                          {loc.jackpot != null ? loc.jackpot.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
+                        </td>
+                        <td className="pr-4 py-1 text-orange-700 font-bold">
+                          {rawGR != null ? rawGR.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
+                        </td>
+                        <td className="pr-4 py-1">
+                          {loc.gross != null ? loc.gross.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
+                        </td>
+                        <td className="py-1 text-purple-700 font-bold">
+                          {mult != null ? `×${mult}` : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-xs text-yellow-700">
+              Orange = pre-multiplier (denominated). Black = post-multiplier (what you see in the UI). Expected: Final = Raw × Multiplier.
+            </p>
+          </div>
+        )}
+        {/* ── END REVIEWER DEBUG PANEL ─────────────────────────────────────── */}
 
         {/* Filters and Status Section */}
         <div className="flex flex-col gap-4">
@@ -213,7 +313,7 @@ export default function LocationsPageContent() {
               </ClientOnly>
             </div>
           ) : /* Show empty state message if no locations match the filters */
-          filteredLocationData.length === 0 ? (
+          locationData.length === 0 ? (
             <div className="py-12 text-center text-gray-500">
               No locations found matching your criteria.
             </div>
@@ -222,12 +322,15 @@ export default function LocationsPageContent() {
             <div>
               {/* Mobile View: Cards display */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
-                {filteredLocationData.map(loc => (
+                {locationData.map(loc => (
                   <LocationsLocationCard
                     key={String(loc._id || loc.location || Math.random())}
                     location={loc}
                     onLocationClick={handleLocationClick}
                     onEdit={location => openEditModal(location)}
+                    onDelete={location => openDeleteModal(location)}
+                    onRestore={location => handleRestore(location)}
+                    showArchived={locationsPageData.selectedStatus === 'Archived'}
                   />
                 ))}
               </div>
@@ -235,12 +338,13 @@ export default function LocationsPageContent() {
               {/* Desktop View: Interactive data table */}
               <div className="hidden overflow-x-auto border border-gray-200 bg-white shadow-sm lg:block">
                 <LocationsLocationTable
-                  locations={filteredLocationData}
+                  locations={locationData}
                   onLocationClick={handleLocationClick}
                   showArchived={locationsPageData.selectedStatus === 'Archived'}
                   onAction={(action, loc) => {
                     if (action === 'edit') openEditModal(loc);
                     if (action === 'delete') openDeleteModal(loc);
+                    if (action === 'restore') handleRestore(loc);
                   }}
                   onSort={locationsPageData.handleSort}
                   sortOption={locationsPageData.sortOption}

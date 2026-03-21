@@ -25,6 +25,18 @@ import type { PipelineStage } from 'mongoose';
 import { NextResponse } from 'next/server';
 
 /**
+ * Build a map of licenceeId -> includeJackpot boolean
+ */
+async function buildLicenceeJackpotMap(): Promise<Map<string, boolean>> {
+  const licencees = await Licencee.find({}, { _id: 1, includeJackpot: 1 }).lean();
+  const map = new Map<string, boolean>();
+  licencees.forEach((l) => {
+    map.set(String(l._id), Boolean(l.includeJackpot));
+  });
+  return map;
+}
+
+/**
  * Fetches machine stats (online/offline counts and financial totals)
  */
 export async function getMachineStats(
@@ -185,6 +197,7 @@ export async function getMachineStats(
               },
               coinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
               coinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
+              jackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
             },
           },
         ],
@@ -198,41 +211,45 @@ export async function getMachineStats(
       },
     },
     {
-      $group: {
-        _id: null,
-        totalGross: {
-          $sum: {
-            $subtract: [
-              { $ifNull: ['$meterData.drop', 0] },
-              { $ifNull: ['$meterData.moneyOut', 0] },
-            ],
-          },
-        },
-        totalDrop: { $sum: { $ifNull: ['$meterData.drop', 0] } },
-        totalCancelledCredits: {
-          $sum: { $ifNull: ['$meterData.moneyOut', 0] },
-        },
+      $project: {
+        drop: { $ifNull: ['$meterData.drop', 0] },
+        moneyOut: { $ifNull: ['$meterData.moneyOut', 0] },
+        jackpot: { $ifNull: ['$meterData.jackpot', 0] },
+        licenceeId: { $ifNull: ['$locationDetails.rel.licencee', null] },
+        collectorDenomination: 1,
+        'gameConfig.accountingDenomination': 1,
       },
     },
   ];
 
-  // Use cursor for Meters aggregation
-  const financialTotalsResult: Array<{
-    totalGross: number;
-    totalDrop: number;
-    totalCancelledCredits: number;
-  }> = [];
+  // Build licencee jackpot settings map
+  const licenceeJackpotMap = await buildLicenceeJackpotMap();
+
+  // Use cursor to compute totals with per-machine jackpot adjustment
+  let totalDrop = 0;
+  let totalMoneyOut = 0;
+  let totalGross = 0;
+
   const financialCursor = Machine.aggregate(financialTotalsPipeline).cursor({
     batchSize: 1000,
   });
   for await (const doc of financialCursor) {
-    financialTotalsResult.push(doc);
+    const drop = (doc.drop || 0);
+    const moneyOut = (doc.moneyOut || 0);
+    const jackpotVal = (doc.jackpot || 0);
+    const licId = doc.licenceeId ? String(doc.licenceeId) : '';
+    const includesJackpot = licenceeJackpotMap.get(licId) || false;
+    const adjustedMoneyOut = includesJackpot ? moneyOut + jackpotVal : moneyOut;
+
+    totalDrop += drop;
+    totalMoneyOut += adjustedMoneyOut;
+    totalGross += drop - adjustedMoneyOut;
   }
 
-  const totals = financialTotalsResult[0] || {
-    totalGross: 0,
-    totalDrop: 0,
-    totalCancelledCredits: 0,
+  const totals = {
+    totalGross: Math.round(totalGross * 100) / 100,
+    totalDrop: Math.round(totalDrop * 100) / 100,
+    totalCancelledCredits: Math.round(totalMoneyOut * 100) / 100,
   };
 
   // Apply currency conversion if needed
@@ -487,50 +504,19 @@ export async function getOverviewMachines(
         lastActivity: 1,
         isSasMachine: 1,
         gameConfig: 1,
+        collectorDenomination: 1,
         locationName: '$locationDetails.name',
-        drop: { $ifNull: ['$meterData.drop', 0] },
-        moneyOut: { $ifNull: ['$meterData.moneyOut', 0] },
-        coinIn: { $ifNull: ['$meterData.coinIn', 0] },
-        coinOut: { $ifNull: ['$meterData.coinOut', 0] },
+        licenceeId: { $ifNull: ['$locationDetails.rel.licencee', null] },
+        // Denomination scaling fields
+        rawDrop: { $ifNull: ['$meterData.drop', 0] },
+        rawMoneyOut: { $ifNull: ['$meterData.moneyOut', 0] },
+        rawCoinIn: { $ifNull: ['$meterData.coinIn', 0] },
+        rawCoinOut: { $ifNull: ['$meterData.coinOut', 0] },
+        rawJackpot: { $ifNull: ['$meterData.jackpot', 0] },
         gamesPlayed: { $ifNull: ['$meterData.gamesPlayed', 0] },
-        jackpot: { $ifNull: ['$meterData.jackpot', 0] },
-        netWin: {
-          $subtract: [
-            { $ifNull: ['$meterData.coinIn', 0] },
-            { $ifNull: ['$meterData.coinOut', 0] },
-          ],
-        },
-        gross: {
-          $subtract: [
-            { $ifNull: ['$meterData.drop', 0] },
-            { $ifNull: ['$meterData.moneyOut', 0] },
-          ],
-        },
-        holdPct: {
-          $cond: [
-            { $gt: [{ $ifNull: ['$meterData.coinIn', 0] }, 0] },
-            {
-              $multiply: [
-                {
-                  $divide: [
-                    {
-                      $subtract: [
-                        { $ifNull: ['$meterData.drop', 0] },
-                        { $ifNull: ['$meterData.totalCancelledCredits', 0] },
-                      ],
-                    },
-                    { $ifNull: ['$meterData.coinIn', 0] },
-                  ],
-                },
-                100,
-              ],
-            },
-            0,
-          ],
-        },
       },
     },
-    { $sort: (searchLower ? { relevance: -1, netWin: -1 } : { netWin: -1 }) as Record<string, 1 | -1> },
+    { $sort: (searchLower ? { relevance: -1, rawDrop: -1 } : { rawDrop: -1 }) as Record<string, 1 | -1> },
     { $skip: skip },
     { $limit: limit }
   );
@@ -544,6 +530,9 @@ export async function getOverviewMachines(
   }
 
   const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+
+  // Build licencee jackpot settings map for adjusting moneyOut
+  const licenceeJackpotMap = await buildLicenceeJackpotMap();
 
   const transformedMachines = machines.map(machine => {
     const gameConfig = machine.gameConfig as
@@ -583,6 +572,22 @@ export async function getOverviewMachines(
       offlineTimeLabel = 'Never';
     }
 
+    // Adjust moneyOut with jackpot based on licencee setting
+    const licId = machine.licenceeId ? String(machine.licenceeId) : '';
+    const includesJackpot = licenceeJackpotMap.get(licId) || false;
+    
+    const jackpotVal = Math.round((Number(machine.rawJackpot) || 0) * 100) / 100;
+    const rawMoneyOut = Math.round((Number(machine.rawMoneyOut) || 0) * 100) / 100;
+    const adjustedMoneyOut = includesJackpot ? rawMoneyOut + jackpotVal : rawMoneyOut;
+    const dropVal = Math.round((Number(machine.rawDrop) || 0) * 100) / 100;
+    const adjustedGross = Math.round((dropVal - adjustedMoneyOut) * 100) / 100;
+
+    const coinInVal = Math.round((Number(machine.rawCoinIn) || 0) * 100) / 100;
+    const coinOutVal = Math.round((Number(machine.rawCoinOut) || 0) * 100) / 100;
+    const netWinVal = Math.round((coinInVal - coinOutVal) * 100) / 100;
+
+    const holdPct = coinInVal > 0 ? (adjustedGross / coinInVal) * 100 : 0;
+
     return {
       machineId: (machine._id as string).toString(),
       machineName:
@@ -606,25 +611,25 @@ export async function getOverviewMachines(
       offlineTimeLabel,
       actualOfflineTime,
       isSasEnabled: (machine.isSasMachine as boolean) || false,
-      drop: Math.round((Number(machine.drop) || 0) * 100) / 100,
-      totalCancelledCredits:
-        Math.round((Number(machine.moneyOut) || 0) * 100) / 100,
-      netWin: Math.round((Number(machine.netWin) || 0) * 100) / 100,
-      gross: Math.round((Number(machine.gross) || 0) * 100) / 100,
+      drop: dropVal,
+      totalCancelledCredits: adjustedMoneyOut,
+      netWin: netWinVal,
+      gross: adjustedGross,
       theoreticalHold: gameConfig?.theoreticalRtp
         ? (1 - Number(gameConfig.theoreticalRtp)) * 100
         : 0,
       gamesPlayed: (machine.gamesPlayed as number) || 0,
-      jackpot: Math.round((Number(machine.jackpot) || 0) * 100) / 100,
-      coinIn: Math.round((Number(machine.coinIn) || 0) * 100) / 100,
-      coinOut: Math.round((Number(machine.coinOut) || 0) * 100) / 100,
+      jackpot: jackpotVal,
+      includeJackpot: includesJackpot,
+      coinIn: coinInVal,
+      coinOut: coinOutVal,
       avgBet:
         (machine.gamesPlayed as number) > 0
           ? Math.round(
-            (Number(machine.coinIn || 0) / Number(machine.gamesPlayed)) * 100
+            (coinInVal / Number(machine.gamesPlayed)) * 100
           ) / 100
           : 0,
-      actualHold: (machine.holdPct as number) || 0,
+      actualHold: holdPct,
     };
   });
 
@@ -774,45 +779,16 @@ export async function getAllMachines(
         lastActivity: 1,
         isSasMachine: 1,
         gameConfig: 1,
+        collectorDenomination: 1,
         locationName: '$locationDetails.name',
-        drop: { $ifNull: ['$meterData.drop', 0] },
-        moneyOut: { $ifNull: ['$meterData.moneyOut', 0] },
+        licenceeId: { $ifNull: ['$locationDetails.rel.licencee', null] },
+        // Denomination scaling fields
+        rawDrop: { $ifNull: ['$meterData.drop', 0] },
+        rawMoneyOut: { $ifNull: ['$meterData.moneyOut', 0] },
+        rawCoinIn: { $ifNull: ['$meterData.coinIn', 0] },
+        rawCoinOut: { $ifNull: ['$meterData.coinOut', 0] },
+        rawJackpot: { $ifNull: ['$meterData.jackpot', 0] },
         gamesPlayed: { $ifNull: ['$meterData.gamesPlayed', 0] },
-        jackpot: { $ifNull: ['$meterData.jackpot', 0] },
-        netWin: {
-          $subtract: [
-            { $ifNull: ['$meterData.coinIn', 0] },
-            { $ifNull: ['$meterData.coinOut', 0] },
-          ],
-        },
-        gross: {
-          $subtract: [
-            { $ifNull: ['$meterData.drop', 0] },
-            { $ifNull: ['$meterData.moneyOut', 0] },
-          ],
-        },
-        holdPct: {
-          $cond: [
-            { $gt: [{ $ifNull: ['$meterData.coinIn', 0] }, 0] },
-            {
-              $multiply: [
-                {
-                  $divide: [
-                    {
-                      $subtract: [
-                        { $ifNull: ['$meterData.drop', 0] },
-                        { $ifNull: ['$meterData.totalCancelledCredits', 0] },
-                      ],
-                    },
-                    { $ifNull: ['$meterData.coinIn', 0] },
-                  ],
-                },
-                100,
-              ],
-            },
-            0,
-          ],
-        },
       },
     }
   );
@@ -825,10 +801,30 @@ export async function getAllMachines(
     machines.push(doc);
   }
 
+  // Build licencee jackpot settings map
+  const licenceeJackpotMap = await buildLicenceeJackpotMap();
+
   const transformedMachines = machines.map(machine => {
     const gameConfig = machine.gameConfig as
       | { theoreticalRtp?: number }
       | undefined;
+
+    // Adjust moneyOut with jackpot based on licencee setting
+    const licId = machine.licenceeId ? String(machine.licenceeId) : '';
+    const includesJackpot = licenceeJackpotMap.get(licId) || false;
+    
+    const jackpotVal = Math.round((Number(machine.rawJackpot) || 0) * 100) / 100;
+    const rawMoneyOut = Math.round((Number(machine.rawMoneyOut) || 0) * 100) / 100;
+    const adjustedMoneyOut = includesJackpot ? rawMoneyOut + jackpotVal : rawMoneyOut;
+    const dropVal = Math.round((Number(machine.rawDrop) || 0) * 100) / 100;
+    const adjustedGross = Math.round((dropVal - adjustedMoneyOut) * 100) / 100;
+
+    const coinInVal = Math.round((Number(machine.rawCoinIn) || 0) * 100) / 100;
+    const coinOutVal = Math.round((Number(machine.rawCoinOut) || 0) * 100) / 100;
+    const netWinVal = Math.round((coinInVal - coinOutVal) * 100) / 100;
+
+    const holdPct = coinInVal > 0 ? (adjustedGross / coinInVal) * 100 : 0;
+
     return {
       machineId: (machine._id as string).toString(),
       serialNumber:
@@ -854,23 +850,23 @@ export async function getAllMachines(
       ),
       lastActivity: machine.lastActivity as string,
       isSasEnabled: (machine.isSasMachine as boolean) || false,
-      drop: Math.round((Number(machine.drop) || 0) * 100) / 100,
-      totalCancelledCredits:
-        Math.round((Number(machine.moneyOut) || 0) * 100) / 100,
-      netWin: Math.round((Number(machine.netWin) || 0) * 100) / 100,
-      gross: Math.round((Number(machine.gross) || 0) * 100) / 100,
+      drop: dropVal,
+      totalCancelledCredits: adjustedMoneyOut,
+      netWin: netWinVal,
+      gross: adjustedGross,
       theoreticalHold: gameConfig?.theoreticalRtp
         ? (1 - Number(gameConfig.theoreticalRtp)) * 100
         : 0,
       gamesPlayed: (machine.gamesPlayed as number) || 0,
-      jackpot: (machine.jackpot as number) || 0,
-      coinIn: (machine.coinIn as number) || 0,
-      coinOut: (machine.coinOut as number) || 0,
+      jackpot: jackpotVal,
+      includeJackpot: includesJackpot,
+      coinIn: coinInVal,
+      coinOut: coinOutVal,
       avgBet:
         (machine.gamesPlayed as number) > 0
-          ? (machine.coinIn as number) / ((machine.gamesPlayed as number) || 1)
+          ? (coinInVal) / ((machine.gamesPlayed as number) || 1)
           : 0,
-      actualHold: (machine.holdPct as number) || 0,
+      actualHold: holdPct,
     };
   });
 
@@ -1067,45 +1063,16 @@ export async function getOfflineMachines(
         lastActivity: 1,
         isSasMachine: 1,
         gameConfig: 1,
+        collectorDenomination: 1,
         locationName: '$locationDetails.name',
-        drop: { $ifNull: ['$meterData.drop', 0] },
-        moneyOut: { $ifNull: ['$meterData.moneyOut', 0] },
+        licenceeId: { $ifNull: ['$locationDetails.rel.licencee', null] },
+        // Denomination scaling fields
+        rawDrop: { $ifNull: ['$meterData.drop', 0] },
+        rawMoneyOut: { $ifNull: ['$meterData.moneyOut', 0] },
+        rawCoinIn: { $ifNull: ['$meterData.coinIn', 0] },
+        rawCoinOut: { $ifNull: ['$meterData.coinOut', 0] },
+        rawJackpot: { $ifNull: ['$meterData.jackpot', 0] },
         gamesPlayed: { $ifNull: ['$meterData.gamesPlayed', 0] },
-        jackpot: { $ifNull: ['$meterData.jackpot', 0] },
-        netWin: {
-          $subtract: [
-            { $ifNull: ['$meterData.coinIn', 0] },
-            { $ifNull: ['$meterData.coinOut', 0] },
-          ],
-        },
-        gross: {
-          $subtract: [
-            { $ifNull: ['$meterData.drop', 0] },
-            { $ifNull: ['$meterData.moneyOut', 0] },
-          ],
-        },
-        holdPct: {
-          $cond: [
-            { $gt: [{ $ifNull: ['$meterData.coinIn', 0] }, 0] },
-            {
-              $multiply: [
-                {
-                  $divide: [
-                    {
-                      $subtract: [
-                        { $ifNull: ['$meterData.coinIn', 0] },
-                        { $ifNull: ['$meterData.coinOut', 0] },
-                      ],
-                    },
-                    { $ifNull: ['$meterData.coinIn', 0] },
-                  ],
-                },
-                100,
-              ],
-            },
-            0,
-          ],
-        },
       },
     },
     ...(searchLower ? [{
@@ -1120,7 +1087,7 @@ export async function getOfflineMachines(
         }
       }
     }] : []),
-    { $sort: (searchLower ? { relevance: -1, netWin: -1 } : { netWin: -1 }) as Record<string, 1 | -1> },
+    { $sort: (searchLower ? { relevance: -1, rawDrop: -1 } : { rawDrop: -1 }) as Record<string, 1 | -1> },
     { $skip: skip },
     { $limit: limit }
   );
@@ -1132,6 +1099,9 @@ export async function getOfflineMachines(
   for await (const doc of cursor) {
     machines.push(doc);
   }
+
+  // Build licencee jackpot settings map
+  const licenceeJackpotMap = await buildLicenceeJackpotMap();
 
   const transformedMachines = machines.map(machine => {
     const gameConfig = machine.gameConfig as
@@ -1171,6 +1141,22 @@ export async function getOfflineMachines(
       offlineTimeLabel = 'Never';
     }
 
+    // Adjust moneyOut with jackpot based on licencee setting
+    const licId = machine.licenceeId ? String(machine.licenceeId) : '';
+    const includesJackpot = licenceeJackpotMap.get(licId) || false;
+    
+    const jackpotVal = Math.round((Number(machine.rawJackpot) || 0) * 100) / 100;
+    const rawMoneyOut = Math.round((Number(machine.rawMoneyOut) || 0) * 100) / 100;
+    const adjustedMoneyOut = includesJackpot ? rawMoneyOut + jackpotVal : rawMoneyOut;
+    const dropVal = Math.round((Number(machine.rawDrop) || 0) * 100) / 100;
+    const adjustedGross = Math.round((dropVal - adjustedMoneyOut) * 100) / 100;
+
+    const coinInVal = Math.round((Number(machine.rawCoinIn) || 0) * 100) / 100;
+    const coinOutVal = Math.round((Number(machine.rawCoinOut) || 0) * 100) / 100;
+    const netWinVal = Math.round((coinInVal - coinOutVal) * 100) / 100;
+
+    const holdPct = coinInVal > 0 ? (adjustedGross / coinInVal) * 100 : 0;
+
     return {
       machineId: (machine._id as string).toString(),
       serialNumber:
@@ -1194,23 +1180,23 @@ export async function getOfflineMachines(
       offlineTimeLabel,
       actualOfflineTime,
       isSasEnabled: (machine.isSasMachine as boolean) || false,
-      drop: Math.round((Number(machine.drop) || 0) * 100) / 100,
-      totalCancelledCredits:
-        Math.round((Number(machine.moneyOut) || 0) * 100) / 100,
-      netWin: Math.round((Number(machine.netWin) || 0) * 100) / 100,
-      gross: Math.round((Number(machine.gross) || 0) * 100) / 100,
+      drop: dropVal,
+      totalCancelledCredits: adjustedMoneyOut,
+      netWin: netWinVal,
+      gross: adjustedGross,
       theoreticalHold: gameConfig?.theoreticalRtp
         ? (1 - Number(gameConfig.theoreticalRtp)) * 100
         : 0,
       gamesPlayed: (machine.gamesPlayed as number) || 0,
-      jackpot: (machine.jackpot as number) || 0,
-      coinIn: (machine.coinIn as number) || 0,
-      coinOut: (machine.coinOut as number) || 0,
+      jackpot: jackpotVal,
+      includeJackpot: includesJackpot,
+      coinIn: coinInVal,
+      coinOut: coinOutVal,
       avgBet:
         (machine.gamesPlayed as number) > 0
-          ? (machine.coinIn as number) / (machine.gamesPlayed as number)
+          ? (coinInVal) / (machine.gamesPlayed as number)
           : 0,
-      actualHold: (machine.holdPct as number) || 0,
+      actualHold: holdPct,
     };
   });
 

@@ -64,9 +64,9 @@ export default function SearchableSelect({
   };
 
   const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    option.value.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (option.group && option.group.toLowerCase().includes(searchTerm.toLowerCase()))
+    (option.label || '').toLowerCase().includes((searchTerm || '').toLowerCase()) || 
+    (option.value || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
+    (option.group && (option.group || '').toLowerCase().includes((searchTerm || '').toLowerCase()))
   );
 
   const selectedOption = options.find(option => option.value === value);

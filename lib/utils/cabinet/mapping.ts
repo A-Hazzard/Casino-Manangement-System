@@ -72,6 +72,7 @@ export function mapToCabinetProps(cabinet: Cabinet): CabinetProps {
           (cabinet.moneyOut || 0)) -
         (cabinet.jackpot || cabinet.sasMeters?.jackpot || 0),
     network: cabinet.network || 'N/A',
+    includeJackpot: cabinet.includeJackpot,
   };
 }
 

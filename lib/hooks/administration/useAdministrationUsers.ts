@@ -77,7 +77,7 @@ export function useAdministrationUsers({
   const isDeveloper = useMemo(() => {
     const userRoles = user?.roles || [];
     return userRoles.some(
-      role => typeof role === 'string' && role.toLowerCase() === 'developer'
+      role => typeof role === 'string' && role === 'developer'
     );
   }, [user?.roles]);
 
@@ -96,7 +96,7 @@ export function useAdministrationUsers({
       return userRoles.some(
         role =>
           typeof role === 'string' &&
-          role.toLowerCase() === selectedRole.toLowerCase()
+          role === selectedRole
       );
     });
   }, [allUsers, selectedRole]);

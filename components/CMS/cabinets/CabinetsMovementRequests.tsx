@@ -85,13 +85,13 @@ export default function CabinetsMovementRequests({
   }, [refreshTrigger, loadRequests]);
 
   const filteredRequests = requests.filter(req => {
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = (searchTerm || '').toLowerCase();
     const matchesSearch =
-      req.createdBy.toLowerCase().includes(searchLower) ||
-      req.locationFrom.toLowerCase().includes(searchLower) ||
-      req.locationTo.toLowerCase().includes(searchLower) ||
-      req.cabinetIn.toLowerCase().includes(searchLower) ||
-      req.status.toLowerCase().includes(searchLower);
+      (req.createdBy || '').toLowerCase().includes(searchLower) ||
+      (req.locationFrom || '').toLowerCase().includes(searchLower) ||
+      (req.locationTo || '').toLowerCase().includes(searchLower) ||
+      (req.cabinetIn || '').toLowerCase().includes(searchLower) ||
+      (req.status || '').toLowerCase().includes(searchLower);
     
     const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
     

@@ -41,7 +41,7 @@ export type ICollectionReport = {
   balanceCorrectionReas?: string;
   machinesCollected?: string;
   isEditing?: boolean;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
   __v?: number;
@@ -135,7 +135,7 @@ export type CreateCollectionReportPayload = {
   totalGross: number;
   totalSasGross: number;
   timestamp: string | Date;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
   varianceReason?: string;
   previousCollectionTime?: string | Date;
   locationProfitPerc?: number;
@@ -180,7 +180,7 @@ export type CollectionReportLocationWithMachines = {
   profitShare?: number;
   collectionBalance?: number;
   gameDayOffset?: number;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
 };
 
 // Types for Collection Report Page
@@ -237,6 +237,6 @@ export type CollectionReportData = {
   locationMetrics: LocationMetric;
   sasMetrics?: SASMetric;
   isEditing?: boolean;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
   useNetGross?: boolean;
 };

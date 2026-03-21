@@ -66,9 +66,9 @@ type CabinetsCabinetContentDisplayProps = {
    */
   showArchived?: boolean;
   /**
-   * Whether to show subtract jackpot column.
+   * Whether to show include jackpot column.
    */
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
 };
 
 export const CabinetsCabinetContentDisplay = ({
@@ -90,7 +90,7 @@ export const CabinetsCabinetContentDisplay = ({
   enableHeaderSorting = true,
   showSortIcons = true,
   totalCount,
-  subtractJackpot = true,
+  includeJackpot = true,
   showArchived = false,
 }: CabinetsCabinetContentDisplayProps) => {
   const tableRef = useRef<HTMLDivElement>(null);
@@ -332,7 +332,7 @@ export const CabinetsCabinetContentDisplay = ({
           enableHeaderSorting={enableHeaderSorting}
           showSortIcons={showSortIcons}
           hideFinancials={shouldHideFinancials}
-          subtractJackpot={subtractJackpot}
+          includeJackpot={includeJackpot} // Table handles per-row override internally now
           showArchived={showArchived}
         />
       </div>
@@ -377,7 +377,7 @@ export const CabinetsCabinetContentDisplay = ({
                 canEditMachines={canEditMachines}
                 canDeleteMachines={canDeleteMachines}
                 hideFinancials={shouldHideFinancials}
-                subtractJackpot={subtractJackpot}
+                includeJackpot={machine.includeJackpot ?? includeJackpot}
               />
             ))}
           </ClientOnly>

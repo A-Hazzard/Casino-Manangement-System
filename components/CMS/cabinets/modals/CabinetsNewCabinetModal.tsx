@@ -135,13 +135,13 @@ export default function CabinetsNewCabinetModal({
     }
 
     // Check if it's hexadecimal and lowercase
-    const hexPattern = /^[0-9a-f]+$/;
+    const hexPattern = /^[0-9a-fA-F]+$/;
     if (!hexPattern.test(value)) {
-      return 'SMIB Board must contain only lowercase hexadecimal characters (0-9, a-f)';
+      return 'SMIB Board must contain only hexadecimal characters (0-9, a-f, A-F)';
     }
 
     // Check if it ends with 0, 4, 8, or c
-    const lastChar = value.charAt(11);
+    const lastChar = value.charAt(11).toLowerCase();
     if (!['0', '4', '8', 'c'].includes(lastChar)) {
       return 'SMIB Board must end with 0, 4, 8, or c';
     }
@@ -361,7 +361,7 @@ export default function CabinetsNewCabinetModal({
     // Special handling for SMIB Board with validation
     if (field === 'relayId') {
       // Convert to lowercase and remove any non-hex characters
-      const cleanValue = value.toLowerCase().replace(/[^0-9a-f]/g, '');
+      const cleanValue = value.replace(/[^0-9a-fA-F]/g, '');
 
       // Limit to 12 characters
       const limitedValue = cleanValue.slice(0, 12);
@@ -756,8 +756,7 @@ export default function CabinetsNewCabinetModal({
                       </p>
                     )}
                     <p className="mt-1 text-xs text-gray-500">
-                      Must be 12 characters, lowercase hex, ending with 0, 4, 8,
-                      or c
+                      Must be 12 characters, hex, ending with 0, 4, 8, or c
                     </p>
                   </div>
                 </div>

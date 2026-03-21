@@ -229,7 +229,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     hasReconciledLicenceesRef.current = true;
 
     const isAdminOrDev = userData.roles?.some(r =>
-      ['admin', 'developer'].includes(r.toLowerCase())
+      typeof r === 'string' && ['admin', 'developer'].includes(r)
     );
 
     const validIds = selectedLicenceeIds.filter(id =>

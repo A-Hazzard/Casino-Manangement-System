@@ -16,16 +16,15 @@ import type {
   QueryFilter,
   SasMeters,
 } from '@/shared/types';
-import mongoose from 'mongoose';
 
 // Re-export shared database types for convenience
 export type { DateRangeFilter, MongoDBQueryValue, QueryFilter };
 
 // Type for machine documents from MongoDB
 export type MachineDocument = {
-  _id: mongoose.Types.ObjectId | string;
+  _id: string;
   machineId?: string;
-  gamingLocation?: mongoose.Types.ObjectId | string;
+  gamingLocation?: string;
   serialNumber?: string;
   relayId?: string;
   smibBoard?: string;
@@ -53,6 +52,43 @@ export type MachineDocument = {
   [key: string]: unknown; // Use unknown instead of any
 };
 
+// Type for location documents from MongoDB
+export type LocationDocument = {
+  _id: string;
+  name: string;
+  country?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  };
+  rel?: {
+    licencee?: string;
+    [key: string]: unknown;
+  };
+  profitShare?: number;
+  collectionBalance?: number;
+  previousCollectionTime?: Date;
+  gameDayOffset?: number;
+  isLocalServer?: boolean;
+  geoCoords?: {
+    latitude?: number;
+    longitude?: number;
+    longtitude?: number;
+  };
+  membershipEnabled?: boolean;
+  enableMembership?: boolean;
+  locationMembershipSettings?: Record<string, unknown>;
+  status?: string;
+  noSMIBLocation?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date | null;
+  [key: string]: unknown;
+};
+
 // Type for the transformed cabinet data returned by API
 export type TransformedCabinet = {
   _id: string;
@@ -60,6 +96,7 @@ export type TransformedCabinet = {
   locationName: string;
   assetNumber: string;
   serialNumber: string;
+  custom?: Record<string, unknown>;
   relayId: string;
   smibBoard: string;
   smbId: string;
@@ -68,17 +105,32 @@ export type TransformedCabinet = {
   game: string;
   installedGame: string;
   cabinetType: string;
+  manufacturer?: string;
   assetStatus: string;
   status: string;
+  gameType?: string;
+  isCronosMachine?: boolean;
   moneyIn: number;
   moneyOut: number;
   jackpot: number;
   cancelledCredits: number;
   gross: number;
+  netGross?: number;
+  gamesPlayed?: number;
+  gamesWon?: number;
   metersData: {
     readAt: Date | null;
     movement: Record<string, unknown> | null;
   } | null;
   sasMeters: Record<string, unknown> | null;
+  online?: boolean;
+  includeJackpot?: boolean;
+  _raw?: {
+    moneyIn: number;
+    moneyOut: number;
+    jackpot: number;
+    gross: number;
+  };
+  _reviewerMultiplier?: number | null;
 };
 

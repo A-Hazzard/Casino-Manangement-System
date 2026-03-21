@@ -108,6 +108,7 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
       assignedLicencees?: string[];
       isEnabled?: boolean;
       deletedAt?: Date | null;
+      multiplier?: number | null;
     } | null = null;
 
     if (jwtPayload._id) {
@@ -116,7 +117,7 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         const UserModel = (await import('@/app/api/lib/models/user')).default;
         dbUser = (await UserModel.findOne({ _id: jwtPayload._id })
           .select(
-            'sessionVersion roles permissions assignedLocations assignedLicencees isEnabled deletedAt'
+            'sessionVersion roles permissions assignedLocations assignedLicencees isEnabled deletedAt multiplier'
           )
           .lean()) as {
             sessionVersion?: number;
@@ -126,6 +127,7 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
             assignedLicencees?: string[];
             isEnabled?: boolean;
             deletedAt?: Date | null;
+            multiplier?: number | null;
           } | null;
 
         // If user doesn't exist in database (hard deleted), invalidate session
@@ -240,6 +242,11 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         // No data in JWT or DB - ensure empty array is set
         jwtPayload.assignedLicencees = [];
       }
+
+      // Always use DB value for multiplier (reviewer multiplier may change after login)
+      if (dbUser.multiplier !== undefined) {
+        jwtPayload.multiplier = dbUser.multiplier ?? null;
+      }
     }
 
     return jwtPayload;
@@ -345,6 +352,7 @@ export async function createUser(
     assignedLocations?: string[];
     assignedLicencees?: string[];
     tempPassword?: string;
+    multiplier?: number | null;
   },
   request: NextRequest
 ) {
@@ -359,6 +367,7 @@ export async function createUser(
     assignedLocations,
     assignedLicencees,
     tempPassword,
+    multiplier,
   } = data;
 
   // Get current user to check permissions for role assignment
@@ -389,11 +398,10 @@ export async function createUser(
     'cashier',
     'technician',
     'collector',
+    'reviewer',
   ];
-  const normalizedRoles = roles.map(r => r.trim().toLowerCase());
-
   // Check for invalid roles
-  const invalidRoles = normalizedRoles.filter(r => !ALLOWED_ROLES.includes(r));
+  const invalidRoles = roles.filter(r => !ALLOWED_ROLES.includes(r));
   if (invalidRoles.length > 0) {
     throw new Error(
       `Invalid roles: ${invalidRoles.join(', ')}. Allowed roles: ${ALLOWED_ROLES.join(', ')}`
@@ -410,7 +418,7 @@ export async function createUser(
   if (isManager) {
     // Manager can only assign: location admin, technician, collector
     const managerAllowedRoles = ['location admin', 'technician', 'collector'];
-    const unauthorizedRoles = normalizedRoles.filter(
+    const unauthorizedRoles = roles.filter(
       r => !managerAllowedRoles.includes(r)
     );
     if (unauthorizedRoles.length > 0) {
@@ -421,7 +429,7 @@ export async function createUser(
   } else if (isVaultManager) {
     // Vault manager can only create cashiers
     const vaultManagerAllowedRoles = ['cashier'];
-    const unauthorizedRoles = normalizedRoles.filter(
+    const unauthorizedRoles = roles.filter(
       r => !vaultManagerAllowedRoles.includes(r)
     );
     if (unauthorizedRoles.length > 0) {
@@ -429,10 +437,10 @@ export async function createUser(
     }
   } else if (isAdmin) {
     // Admin can assign all roles except developer and cashier
-    if (normalizedRoles.includes('developer')) {
+    if (roles.some(r => r.trim().toLowerCase() === 'developer')) {
       throw new Error('Admins cannot assign the developer role');
     }
-    if (normalizedRoles.includes('cashier')) {
+    if (roles.some(r => r.trim().toLowerCase() === 'cashier')) {
       throw new Error('Only Vault Managers can assign the cashier role');
     }
   } else if (!isDeveloper && !isAdmin && !isManager && !isVaultManager) {
@@ -491,7 +499,7 @@ export async function createUser(
     }
 
     // ENFORCEMENT: Vault Managers must have exactly 1 licencee and 1 location
-    if (normalizedRoles.includes('vault-manager')) {
+    if (roles.includes('vault-manager')) {
       if (finalAssignedLicencees.length !== 1 || finalAssignedLocations.length !== 1) {
         throw new Error('Vault Managers must be assigned to exactly one licencee and one location');
       }
@@ -499,7 +507,7 @@ export async function createUser(
 
     // Cashiers with a tempPassword have NOT truly set their own password yet.
     // We leave passwordUpdatedAt as null so the auth system knows they need to change it on first login.
-    const isCashier = normalizedRoles.includes('cashier');
+    const isCashier = roles.includes('cashier');
     const hasTemp = !!(tempPassword);
 
     newUser = await UserModel.create({
@@ -510,13 +518,14 @@ export async function createUser(
       emailAddress,
       password: hashedPassword,
       passwordUpdatedAt: (isCashier && hasTemp) ? null : new Date(),
-      roles: normalizedRoles,
+      roles: roles,
       profile,
       isEnabled,
       profilePicture,
       // Old fields removed - only using assignedLocations and assignedLicencees
       assignedLocations: finalAssignedLocations,
       assignedLicencees: finalAssignedLicencees,
+      multiplier: multiplier ?? null,
       tempPasswordChanged: (isCashier && hasTemp) ? false : true, // Cashiers must change on first login
       tempPassword: tempPassword || null, // Store plain text temp password
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
@@ -651,13 +660,9 @@ export async function updateUser(
 
   // Location admins cannot edit managers, developers, or admins
   if (isLocationAdmin) {
-    const targetUserRoles = (user.roles || []) as string[];
-    const normalizedTargetRoles = targetUserRoles.map(r =>
-      String(r).trim().toLowerCase()
-    );
-    const isTargetDeveloper = normalizedTargetRoles.includes('developer');
-    const isTargetAdmin = normalizedTargetRoles.includes('admin');
-    const isTargetManager = normalizedTargetRoles.includes('manager');
+    const isTargetDeveloper = user.roles.includes('developer');
+    const isTargetAdmin = user.roles.includes('admin');
+    const isTargetManager = user.roles.includes('manager');
 
     if (isTargetDeveloper || isTargetAdmin || isTargetManager) {
       throw new Error(
@@ -685,8 +690,11 @@ export async function updateUser(
     }
   }
 
+ 
   // Validate role assignments if roles are being updated
   if (updateFields.roles !== undefined) {
+    const rolesToUpdate = Array.isArray(updateFields.roles) ? (updateFields.roles as string[]) : [];
+    
     const ALLOWED_ROLES = [
       'developer',
       'admin',
@@ -696,14 +704,11 @@ export async function updateUser(
       'cashier',
       'technician',
       'collector',
+      'reviewer',
     ];
-    const newRoles = Array.isArray(updateFields.roles)
-      ? updateFields.roles
-      : [];
-    const normalizedRoles = newRoles.map(r => String(r).trim().toLowerCase());
 
     // Check for invalid roles
-    const invalidRoles = normalizedRoles.filter(
+    const invalidRoles = rolesToUpdate.filter(
       r => !ALLOWED_ROLES.includes(r)
     );
     if (invalidRoles.length > 0) {
@@ -716,7 +721,7 @@ export async function updateUser(
     if (isManager) {
       // Manager can only assign: location admin, technician, collector
       const managerAllowedRoles = ['location admin', 'technician', 'collector'];
-      const unauthorizedRoles = normalizedRoles.filter(
+      const unauthorizedRoles = rolesToUpdate.filter(
         r => !managerAllowedRoles.includes(r)
       );
       if (unauthorizedRoles.length > 0) {
@@ -726,13 +731,13 @@ export async function updateUser(
       }
     } else if (isAdmin) {
       // Admin can assign all roles except developer
-      if (normalizedRoles.includes('developer')) {
+      if (rolesToUpdate.includes('developer')) {
         throw new Error('Admins cannot assign the developer role');
       }
     } else if (isVaultManager) {
       // Vault manager can only assign 'cashier' role
       const vaultManagerAllowedRoles = ['cashier'];
-      const unauthorizedRoles = normalizedRoles.filter(
+      const unauthorizedRoles = rolesToUpdate.filter(
         r => !vaultManagerAllowedRoles.includes(r)
       );
       if (unauthorizedRoles.length > 0) {
@@ -740,7 +745,7 @@ export async function updateUser(
       }
     } else if (isAdmin) {
       // Admin cannot assign 'cashier' role
-      if (normalizedRoles.includes('cashier')) {
+      if (rolesToUpdate.includes('cashier')) {
         throw new Error('Only Vault Managers can assign the cashier role');
       }
     } else if (!isDeveloper && !isAdmin && !isVaultManager) {
@@ -749,10 +754,10 @@ export async function updateUser(
     }
 
     // Normalize roles before saving
-    updateFields.roles = normalizedRoles;
+    updateFields.roles = rolesToUpdate;
 
     // ENFORCEMENT: Vault Managers must have exactly 1 licencee and 1 location
-    if (normalizedRoles.includes('vault-manager')) {
+    if (rolesToUpdate.includes('vault-manager')) {
       const licencees = (updateFields.assignedLicencees as string[]) || (user.assignedLicencees as string[]) || [];
       const locations = (updateFields.assignedLocations as string[]) || (user.assignedLocations as string[]) || [];
 

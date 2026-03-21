@@ -205,7 +205,8 @@ export async function GET(req: NextRequest) {
       },
       accessibleLicencees,
       userRoles,
-      userLocationPermissions
+      userLocationPermissions,
+      userRoles.includes('reviewer') ? (userPayload as Record<string, unknown>)?.multiplier as number || 1 : null
     );
 
     // ============================================================================

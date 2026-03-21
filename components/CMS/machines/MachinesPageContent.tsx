@@ -110,7 +110,7 @@ export default function MachinesPageContent() {
   const isDeveloper = useMemo(() => {
     const userRoles = user?.roles || [];
     return userRoles.some(
-      role => typeof role === 'string' && role.toLowerCase() === 'developer'
+      role => typeof role === 'string' && role?.toLowerCase() === 'developer'
     );
   }, [user?.roles]);
 

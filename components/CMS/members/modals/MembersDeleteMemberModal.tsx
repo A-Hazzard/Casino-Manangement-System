@@ -14,20 +14,14 @@ import { useMembersActionsStore } from '@/lib/store/memberActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
 import axios from 'axios';
 import { toast } from 'sonner';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/shared/ui/dialog';
-import { CasinoMember as Member } from '@/shared/types/entities';
+import { Loader2, X } from 'lucide-react';
+import Image from 'next/image';
+import deleteIcon from '@/public/deleteIcon.svg';
 
 type MembersDeleteMemberModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  member: Member | null;
+  member: Record<string, unknown> | null;
   onDelete: () => void;
 };
 
@@ -46,36 +40,18 @@ export default function MembersDeleteMemberModal({
   const getUserDisplayName = () => {
     if (!user) return 'Unknown User';
 
-    // Check if user has profile with firstName and lastName
     if (user.profile?.firstName && user.profile?.lastName) {
       return `${user.profile.firstName} ${user.profile.lastName}`;
     }
 
-    // If only firstName exists, use it
-    if (user.profile?.firstName && !user.profile?.lastName) {
-      return user.profile.firstName;
-    }
-
-    // If only lastName exists, use it
-    if (!user.profile?.firstName && user.profile?.lastName) {
-      return user.profile.lastName;
-    }
-
-    // If neither firstName nor lastName exist, use username
     if (user.username && user.username.trim() !== '') {
       return user.username;
     }
 
-    // If username doesn't exist or is blank, use email
-    if (user.emailAddress && user.emailAddress.trim() !== '') {
-      return user.emailAddress;
-    }
-
-    // Fallback
-    return 'Unknown User';
+    return user.emailAddress || 'Unknown User';
   };
 
-  // Activity logging is now handled via API calls
+  // Activity logging
   const logActivity = async (
     action: string,
     resource: string,
@@ -86,7 +62,7 @@ export default function MembersDeleteMemberModal({
     newData?: Record<string, unknown> | null
   ) => {
     try {
-      const response = await fetch('/api/activity-logs', {
+      await fetch('/api/activity-logs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -100,60 +76,34 @@ export default function MembersDeleteMemberModal({
           userId: user?._id || 'unknown',
           username: getUserDisplayName(),
           userRole: 'user',
-          previousData: previousData || null,
-          newData: newData || null,
-          changes: [], // Will be calculated by the API
+          previousData,
+          newData,
         }),
       });
-
-      if (!response.ok) {
-        console.error('Failed to log activity:', response.statusText);
-      }
     } catch (error) {
       console.error('Error logging activity:', error);
     }
   };
 
   useEffect(() => {
-    if (isDeleteModalOpen) {
+    if (isDeleteModalOpen && modalRef.current && backdropRef.current) {
       gsap.fromTo(
         modalRef.current,
-        { opacity: 0, y: -20 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.3,
-          ease: 'power2.out',
-          overwrite: true,
-        }
+        { y: 100, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
       );
-
-      gsap.to(backdropRef.current, {
-        opacity: 1,
-        duration: 0.2,
-        ease: 'power2.out',
-        overwrite: true,
-      });
+      gsap.fromTo(
+        backdropRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3, ease: 'power2.out' }
+      );
+      setLoading(false);
     }
   }, [isDeleteModalOpen]);
 
   const handleClose = () => {
-    gsap.to(modalRef.current, {
-      opacity: 0,
-      y: -20,
-      duration: 0.2,
-      ease: 'power2.in',
-      onComplete: () => {
-        closeDeleteModal();
-        onClose();
-      },
-    });
-
-    gsap.to(backdropRef.current, {
-      opacity: 0,
-      duration: 0.2,
-      ease: 'power2.in',
-    });
+    closeDeleteModal();
+    onClose();
   };
 
   const handleDelete = async () => {
@@ -167,19 +117,18 @@ export default function MembersDeleteMemberModal({
       const response = await axios.delete(`/api/members/${selectedMember._id}`);
 
       if (response.status === 200) {
-        // Log the deletion activity
+        const memberName = `${selectedMember.profile?.firstName || 'Unknown'} ${
+          selectedMember.profile?.lastName || 'Member'
+        }`;
+        
         await logActivity(
           'delete',
           'member',
           selectedMember._id,
-          `${selectedMember.profile?.firstName || 'Unknown'} ${
-            selectedMember.profile?.lastName || 'Member'
-          }`,
-          `Deleted member: ${selectedMember.profile?.firstName || 'Unknown'} ${
-            selectedMember.profile?.lastName || 'Member'
-          }`,
-          selectedMember, // Previous data (the deleted member)
-          null // No new data for deletion
+          memberName,
+          `Deleted member: ${memberName}`,
+          selectedMember,
+          null
         );
 
         toast.success('Member deleted successfully');
@@ -196,65 +145,96 @@ export default function MembersDeleteMemberModal({
     }
   };
 
-  if (!isDeleteModalOpen) return null;
+  if (!isDeleteModalOpen || !selectedMember) return null;
+
+  const memberDisplayName = `${selectedMember.profile?.firstName || ''} ${
+    selectedMember.profile?.lastName || ''
+  }`.trim() || selectedMember._id;
 
   return (
-    <>
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-[100000]">
       <div
         ref={backdropRef}
-        className="fixed inset-0 z-40 bg-black bg-opacity-50"
+        className="absolute inset-0 bg-black/50"
         onClick={handleClose}
       />
-
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 flex items-center justify-center p-4">
         <div
           ref={modalRef}
-          className="mx-auto w-full max-w-md rounded-lg bg-white shadow-xl"
+          className="w-full max-w-md rounded-md bg-container shadow-lg"
+          style={{ opacity: 0, transform: 'translateY(-20px)' }}
         >
-          <Dialog open={isDeleteModalOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Delete Member</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete this member? This action
-                  cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="py-4">
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-                  <h3 className="mb-2 text-lg font-semibold text-red-800">
-                    {selectedMember?.profile?.firstName}{' '}
-                    {selectedMember?.profile?.lastName}
-                  </h3>
-                  <p className="text-sm text-red-600">
-                    Member ID: {selectedMember?._id}
-                  </p>
-                  <p className="text-sm text-red-600">
-                    Email: {selectedMember?.profile?.email}
-                  </p>
-                </div>
+          <div className="border-b border-border p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-buttonActive">
+                Delete Member
+              </h2>
+              <Button
+                variant="ghost"
+                onClick={handleClose}
+                className="h-8 w-8 p-0 text-grayHighlight hover:bg-buttonInactive/10"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="text-center">
+              <div className="mb-4 flex justify-center">
+                <Image src={deleteIcon} alt="Delete" width={64} height={64} />
               </div>
-
-              <DialogFooter>
-                <Button variant="outline" onClick={handleClose}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={loading}
-                >
-                  {loading ? 'Deleting...' : 'Delete Member'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              <p className="mb-4 text-lg font-semibold text-grayHighlight">
+                Are you sure you want to delete member
+                <span className="font-bold text-buttonActive">
+                  {' '}
+                  {memberDisplayName}{' '}
+                </span>
+                ?
+              </p>
+              <div className="mb-4 rounded-lg border border-border bg-buttonInactive/5 p-3 text-left">
+                <p className="text-sm text-grayHighlight">
+                  <span className="font-semibold">Member ID:</span> {selectedMember._id}
+                </p>
+                {selectedMember.profile?.email && (
+                  <p className="text-sm text-grayHighlight">
+                    <span className="font-semibold">Email:</span> {selectedMember.profile.email}
+                  </p>
+                )}
+              </div>
+              <p className="text-sm text-grayHighlight">
+                This action cannot be undone. The member will be permanently
+                removed from the system.
+              </p>
+            </div>
+          </div>
+          <div className="border-t border-border p-4">
+            <div className="flex justify-center space-x-4">
+              <Button
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete'
+                )}
+              </Button>
+              <Button
+                onClick={handleClose}
+                className="bg-buttonInactive text-primary-foreground hover:bg-buttonInactive/90"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 

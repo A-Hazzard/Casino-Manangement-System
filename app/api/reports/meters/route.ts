@@ -158,10 +158,7 @@ export async function GET(req: NextRequest) {
     );
 
     // Determine if user is a location admin
-    const normalizedRoles = userRoles.map(role =>
-      typeof role === 'string' ? role.toLowerCase() : role
-    );
-    const isLocationAdmin = normalizedRoles.includes('location admin');
+    const isLocationAdmin = userRoles.includes('location admin');
 
     // Determine final location list to query
     const locationList = determineLocationList(
@@ -202,11 +199,11 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    // Fetch licencee subtractJackpot settings
-    const licencees = await Licencee.find({}, { _id: 1, subtractJackpot: 1 }).lean().exec();
+    // Fetch licencee includeJackpot settings
+    const licencees = await Licencee.find({}, { _id: 1, includeJackpot: 1 }).lean().exec();
     const licenceeSettingsMap = new Map<string, boolean>();
-    licencees.forEach((l: Record<string, unknown>) => {
-      licenceeSettingsMap.set(String(l._id), Boolean(l.subtractJackpot));
+    licencees.forEach((l) => {
+      licenceeSettingsMap.set(String(l._id), Boolean(l.includeJackpot));
     });
 
     // Calculate gaming day ranges for all locations

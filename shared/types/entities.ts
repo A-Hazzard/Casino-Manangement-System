@@ -85,7 +85,7 @@ export type AggregatedLocation = {
   memberCount?: number; // Number of members at this location
   hasNoRecentCollectionReport?: boolean; // Flag indicating no collection report in past 3 months (for NON-SMIB locations)
   geoCoords?: GeoCoordinates; // Geographic coordinates for mapping
-  subtractJackpot?: boolean; // Setting from associated Licencee
+  includeJackpot?: boolean; // Setting from associated Licencee
   machines?: Array<{
     _id: string;
     assetNumber?: string;
@@ -94,6 +94,13 @@ export type AggregatedLocation = {
     lastActivity?: Date | null;
   }>; // Optional machines array for location details
   deletedAt?: string | Date | null;
+  _raw?: {
+    moneyIn: number;
+    moneyOut: number;
+    jackpot: number;
+    gross: number;
+  };
+  _reviewerMultiplier?: number | null;
 };
 
 // Location metrics for reports and analytics
@@ -176,7 +183,7 @@ export type GamingMachine = {
   gamesPlayed?: number;
   gamesWon?: number;
   handle?: number; // Same as coinIn for betting activity
-  subtractJackpot?: boolean; // Setting from associated Licencee
+  includeJackpot?: boolean; // Setting from associated Licencee
 
   // SAS and meter data
   sasMeters?: SasMeters;
@@ -317,6 +324,13 @@ export type GamingMachine = {
   offlineTimeLabel?: string;
   actualOfflineTime?: string;
   network?: string;
+  _raw?: {
+    moneyIn: number;
+    moneyOut: number;
+    jackpot: number;
+    gross: number;
+  };
+  _reviewerMultiplier?: number | null;
 };
 
 export type SmibConfig = {

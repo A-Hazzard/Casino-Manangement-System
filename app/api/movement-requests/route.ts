@@ -17,6 +17,7 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { MovementRequest } from '@/app/api/lib/models/movementrequests';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
+import type { LocationDocument } from '@/lib/types/common';
 
 /**
  * Main GET handler for fetching movement requests
@@ -201,7 +202,7 @@ export async function GET(req: NextRequest) {
     // STEP 5: Filter by licencee if provided (additional filter)
     // ============================================================================
     if (licencee && licencee !== 'all') {
-      const licenceeLocations = await GamingLocations.find(
+      const licenceeLocations = (await GamingLocations.find(
         {
           $and: [
             {
@@ -218,7 +219,7 @@ export async function GET(req: NextRequest) {
           ]
         },
         { _id: 1, name: 1 }
-      ).lean();
+      ).lean()) as unknown as Pick<LocationDocument, '_id' | 'name'>[];
 
       const licenceeLocationIds = licenceeLocations.map((loc: { _id: unknown }) =>
         String(loc._id)
@@ -234,12 +235,12 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 6: Fetch location names for lookup
     // ============================================================================
-    const locations = await GamingLocations.find(
+    const locations = (await GamingLocations.find(
       {},
       { _id: 1, name: 1 }
     )
       .sort({ name: 1 })
-      .lean();
+      .lean()) as unknown as Pick<LocationDocument, '_id' | 'name'>[];
     const idToName = Object.fromEntries(
       locations.map(l => [String(l._id), l.name])
     );

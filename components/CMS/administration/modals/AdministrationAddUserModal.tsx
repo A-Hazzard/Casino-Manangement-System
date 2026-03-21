@@ -66,6 +66,7 @@ const ROLE_OPTIONS = [
   { label: 'Cashier', value: 'cashier' },
   { label: 'Technician', value: 'technician' },
   { label: 'Collector', value: 'collector' },
+  { label: 'Reviewer', value: 'reviewer' },
 ];
 
 type AdministrationAddUserModalProps = {
@@ -107,6 +108,7 @@ export default function AdministrationAddUserModal({
           'technician',
           'collector',
           'vault-manager',
+          'reviewer',
         ].includes(role.value)
       );
     } else if (isLocationAdmin) {
@@ -192,6 +194,8 @@ export default function AdministrationAddUserModal({
 
   // Roles and permissions
   const [roles, setRoles] = useState<string[]>([]);
+  const [multiplier, setMultiplier] = useState<string>('');
+  const isReviewerSelected = roles.includes('reviewer');
   const isVaultManagerSelected = roles.includes('vault-manager');
   const isCashierSelected = roles.includes('cashier');
   const hasRestrictedAssignments = isVaultManagerSelected || isCashierSelected;
@@ -997,6 +1001,7 @@ export default function AdministrationAddUserModal({
       idType: formData.idType.trim() || undefined,
       idNumber: formData.idNumber.trim() || undefined,
       notes: formData.notes.trim() || undefined,
+      multiplier: isReviewerSelected && multiplier ? parseFloat(multiplier) / 100 : null,
     };
 
     setIsLoading(true);
@@ -1638,6 +1643,34 @@ export default function AdministrationAddUserModal({
                     <p className="mt-2 text-sm text-red-600">
                       At least one role is required
                     </p>
+                  )}
+
+                  {/* Reviewer Multiplier Input - only shown when reviewer role is selected */}
+                  {isReviewerSelected && (
+                    <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                      <Label htmlFor="multiplier" className="text-sm font-semibold text-blue-800">
+                        Reviewer Multiplier (%)
+                      </Label>
+                      <p className="mb-2 text-xs text-blue-600">
+                        Financial values (Money In, Money Out, Jackpot) will be multiplied by this percentage for this reviewer.
+                      </p>
+                      <Input
+                        id="multiplier"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        placeholder="e.g. 50 for 50%"
+                        value={multiplier}
+                        onChange={e => setMultiplier(e.target.value)}
+                        className="w-48 bg-white"
+                      />
+                      {multiplier && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Stored as: {(parseFloat(multiplier) / 100).toFixed(4)} (multiply factor)
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
 

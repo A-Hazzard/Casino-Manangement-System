@@ -15,6 +15,7 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { NextRequest, NextResponse } from 'next/server';
 import { GamingLocations } from '../../lib/models/gaminglocations';
+import type { LocationDocument } from '@/lib/types/common';
 
 export async function GET(request: NextRequest) {
   try {
@@ -131,9 +132,9 @@ export async function GET(request: NextRequest) {
     // If global view, attach location names
     let finalTransactions = transactions;
     if (locationId === 'all' || !locationId) {
-      const locations = await GamingLocations.find({
+      const locations = (await GamingLocations.find({
         _id: { $in: transactions.map(tx => tx.locationId) }
-      }, { name: 1 }).lean();
+      }, { _id: 1, name: 1, gameDayOffset: 1 }).lean()) as unknown as Pick<LocationDocument, '_id' | 'name' | 'gameDayOffset'>[];
 
       const nameMap = locations.reduce((acc, loc) => {
         acc[String(loc._id)] = loc.name;

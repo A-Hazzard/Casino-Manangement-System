@@ -13,6 +13,7 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { NextRequest, NextResponse } from 'next/server';
+import type { LocationDocument } from '@/lib/types/common';
 
 /**
  * Main GET handler for fetching gaming locations
@@ -95,13 +96,13 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 5: Fetch locations from database
     // ============================================================================
-    const locations = await GamingLocations.find(query, {
+    const locations = (await GamingLocations.find(query, {
       _id: 1,
       name: 1,
       'rel.licencee': 1,
     })
       .sort({ name: 1 })
-      .lean();
+      .lean()) as unknown as Pick<LocationDocument, '_id' | 'name' | 'rel'>[];
 
     // ============================================================================
     // STEP 6: Format locations with licencee ID

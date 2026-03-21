@@ -36,12 +36,13 @@ import {
 } from '@/components/shared/ui/skeletons/ReportsSkeletons';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { DashboardTotals } from '@/lib/types';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { AggregatedLocation } from '@/lib/types/location';
 import {
   getGrossColorClass,
   getMoneyInColorClass,
-  getMoneyOutColorClass,
 } from '@/lib/utils/financial';
+import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { TopLocation } from '@/shared/types';
 import {
   ChevronDown,
@@ -101,7 +102,18 @@ export default function ReportsLocationsOverview({
   onRefresh,
   onExportLocationOverview,
 }: ReportsLocationsOverviewProps) {
-  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
+  const { displayCurrency } = useCurrencyFormat();
+  const formatCurrency = (val: number | null | undefined) => formatCurrencyWithCodeString(val, displayCurrency);
+
+  // Check if any location has includeJackpot and compute total jackpot
+  const { anyIncludeJackpot, totalJackpot } = useMemo(() => {
+    const dataSource = (locationAggregates as AggregatedLocation[]).length > 0
+      ? (locationAggregates as AggregatedLocation[])
+      : allLocationsForDropdown;
+    const any = dataSource.some(loc => loc.includeJackpot);
+    const jackpot = dataSource.reduce((sum, loc) => sum + (loc.jackpot || 0), 0);
+    return { anyIncludeJackpot: any, totalJackpot: jackpot };
+  }, [locationAggregates, allLocationsForDropdown]);
 
   // Calculate online machines totals - use locationAggregates if available, otherwise fallback to allLocationsForDropdown
   const onlineMachinesData = useMemo(() => {
@@ -148,9 +160,7 @@ export default function ReportsLocationsOverview({
                 <div
                   className={`truncate text-xl font-bold md:text-2xl ${getGrossColorClass(metricsTotals.gross || 0)}`}
                 >
-                  {shouldShowCurrency()
-                    ? formatAmount(metricsTotals.gross || 0)
-                    : `$${(metricsTotals.gross || 0).toLocaleString()}`}
+                  {formatCurrency(metricsTotals.gross || 0)}
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
                   Gross revenue this period
@@ -163,9 +173,7 @@ export default function ReportsLocationsOverview({
               </CardHeader>
               <CardContent>
                 <div className={`truncate text-xl font-bold md:text-2xl ${getMoneyInColorClass()}`}>
-                  {shouldShowCurrency()
-                    ? formatAmount(metricsTotals.moneyIn || 0)
-                    : `$${(metricsTotals.moneyIn || 0).toLocaleString()}`}
+                  {formatCurrency(metricsTotals.moneyIn || 0)}
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
                   Total money in this period
@@ -177,12 +185,15 @@ export default function ReportsLocationsOverview({
                 <CardTitle className="text-sm font-medium">Money Out</CardTitle>
               </CardHeader>
               <CardContent>
-                <div
-                  className={`truncate text-xl font-bold md:text-2xl ${getMoneyOutColorClass(metricsTotals.moneyOut || 0, metricsTotals.moneyIn || 0)}`}
-                >
-                  {shouldShowCurrency()
-                    ? formatAmount(metricsTotals.moneyOut || 0)
-                    : `$${(metricsTotals.moneyOut || 0).toLocaleString()}`}
+                <div className="truncate text-xl font-bold md:text-2xl">
+                  <MoneyOutCell
+                    moneyOut={metricsTotals.moneyOut || 0}
+                    moneyIn={metricsTotals.moneyIn || 0}
+                    jackpot={totalJackpot}
+                    displayValue={formatCurrency(metricsTotals.moneyOut || 0)}
+                    includeJackpot={anyIncludeJackpot}
+                    showInfoIcon={true}
+                  />
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
                   Total money out this period

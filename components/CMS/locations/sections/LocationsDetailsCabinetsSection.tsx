@@ -114,7 +114,7 @@ type LocationsDetailsCabinetsSectionProps = {
   // Handlers
   handleRefresh: () => Promise<void>;
   handleFilterChange: (status: string) => void;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
   handleLocationChangeInPlace: (newLocationId: string) => void;
 };
 
@@ -154,7 +154,7 @@ export default function LocationsDetailsCabinetsSection({
   setSortOrder,
   setCurrentPage,
   setChartGranularity,
-  subtractJackpot = false,
+  includeJackpot = false,
   handleRefresh,
   handleFilterChange,
   handleLocationChangeInPlace,
@@ -276,28 +276,39 @@ export default function LocationsDetailsCabinetsSection({
   return (
     <>
       {/* Financial Metrics Section: Location-specific financial overview */}
-      <div className="mt-6">
+      <div className="">
+        {/* Jackpot badge — above heading on mobile/md, inline on lg+ */}
+        {includeJackpot && (
+          <div className="mb-2 lg:hidden">
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+              <Info className="h-3 w-3" />
+              This location adds Jackpot to Money Out
+            </span>
+          </div>
+        )}
         <div className="mb-2 flex items-center gap-2">
           <h2 className="text-base font-semibold text-gray-800 sm:text-lg">
             Financial Metrics for {locationName || 'Location'}
           </h2>
-          {subtractJackpot && (
-            <div className="group relative inline-flex flex-shrink-0">
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 sm:px-2.5 sm:py-1 sm:text-xs">
-                <Info className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                Subtracts Jackpot
+          {includeJackpot && (
+            <div className="group relative hidden flex-shrink-0 lg:inline-flex">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                <Info className="h-3.5 w-3.5" />
+                This location adds Jackpot to Money Out
               </span>
               <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                Money Out includes Jackpot — Gross = Money In - (Money Out incl. Jackpot)
+                Jackpot is added to Money Out: Money Out = Total Cancelled Credits + Jackpot
               </div>
             </div>
           )}
         </div>
+
         <FinancialMetricsCards
           totals={financialTotals}
           loading={loading || cabinetsLoading}
           disableCurrencyConversion={true}
           locationFiltered={true}
+          includeJackpot={includeJackpot}
         />
       </div>
 
@@ -336,7 +347,7 @@ export default function LocationsDetailsCabinetsSection({
       </div>
 
       {/* Search and Location Selection Section: Desktop search bar with location dropdown */}
-      <div className="mt-4 hidden w-full bg-buttonActive p-4 md:block rounded-lg shadow-sm">
+      <div className="mt-4 hidden w-full bg-buttonActive p-4 md:block rounded-lg rounded-b-none shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full flex-1 md:max-w-none lg:max-w-2xl xl:max-w-3xl">
             <Input
@@ -568,7 +579,7 @@ export default function LocationsDetailsCabinetsSection({
       </div>
 
       {/* Content Section: Main cabinet data display with responsive layouts */}
-      <div className="mt-4 w-full flex-1">
+      <div className="mt-4 lg:mt-0 w-full flex-1">
         {loading || cabinetsLoading ? (
           <>
             {/* Use CabinetTableSkeleton for lg+ only */}
@@ -612,7 +623,7 @@ export default function LocationsDetailsCabinetsSection({
                   setSortOption(option);
                   setSortOrder(order);
                 }}
-                subtractJackpot={subtractJackpot}
+                includeJackpot={includeJackpot}
               />
             </div>
 

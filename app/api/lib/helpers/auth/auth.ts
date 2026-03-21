@@ -270,6 +270,7 @@ export async function authenticateUser(
         roles: userObject.roles || [],
         sessionId,
         sessionVersion: Number(userObject.sessionVersion) || 1,
+        multiplier: userObject.multiplier ?? null,
         dbContext: {
           connectionString: getCurrentDbConnectionString(),
           timestamp: Date.now(),
@@ -290,6 +291,7 @@ export async function authenticateUser(
         profile: userObject.profile || undefined,
         assignedLocations: userObject.assignedLocations || undefined,
         assignedLicencees: userObject.assignedLicencees || undefined,
+        multiplier: userObject.multiplier ?? null,
         sessionVersion: Number(userObject.sessionVersion) || 1,
         lastLoginAt: new Date(),
         loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -354,6 +356,7 @@ export async function authenticateUser(
         // Full data is in userPayload (localStorage) and can be fetched from DB when needed
         sessionId: sessionId,
         sessionVersion: Number(userObject.sessionVersion) || 1,
+        multiplier: userObject.multiplier ?? null,
         dbContext: {
           connectionString: getCurrentDbConnectionString(),
           timestamp: Date.now(),
@@ -374,6 +377,7 @@ export async function authenticateUser(
         profile: userObject.profile || undefined,
         assignedLocations: userObject.assignedLocations || undefined,
         assignedLicencees: userObject.assignedLicencees || undefined,
+        multiplier: userObject.multiplier ?? null,
         sessionVersion: Number(userObject.sessionVersion) || 1,
         lastLoginAt: new Date(),
         loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -434,6 +438,7 @@ export async function authenticateUser(
       // Full data is in userPayload (localStorage) and can be fetched from DB when needed
       sessionId: sessionId,
       sessionVersion: userObject.sessionVersion || 1,
+      multiplier: userObject.multiplier ?? null,
       dbContext: {
         connectionString: getCurrentDbConnectionString(),
         timestamp: Date.now(),
@@ -470,6 +475,7 @@ export async function authenticateUser(
       profile: userObject.profile || undefined,
       assignedLocations: userObject.assignedLocations || undefined,
       assignedLicencees: userObject.assignedLicencees || undefined,
+      multiplier: userObject.multiplier ?? null,
       sessionVersion: Number(userObject.sessionVersion) || 1,
       lastLoginAt: new Date(),
       loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -589,6 +595,7 @@ export async function refreshAccessToken(
       assignedLicencees,
       sessionId: sessionId,
       sessionVersion: userObject.sessionVersion || 1,
+      multiplier: userObject.multiplier ?? null,
       dbContext: {
         connectionString: getCurrentDbConnectionString(),
         timestamp: Date.now(),

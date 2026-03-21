@@ -45,7 +45,7 @@ export default function VaultManagerHeader({
   vaultInventory: initialInventory
 }: VaultManagerHeaderProps) {
   const { user, hasActiveVaultShift, isStaleShift, isVaultReconciled } = useUserStore();
-  const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
+  const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r?.toLowerCase()));
   const locationId = user?.assignedLocations?.[0];
   const [vaultInventory, setVaultInventory] = useState<Denomination[]>(initialInventory || []);
 

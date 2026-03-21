@@ -31,7 +31,7 @@ const collectionReportSchema = new Schema<ICollectionReport>(
     balanceCorrectionReas: { type: String },
     machinesCollected: { type: String },
     isEditing: { type: Boolean, default: false },
-    subtractJackpot: { type: Boolean, default: false },
+    includeJackpot: { type: Boolean, default: false },
     createdAt: { type: Date },
     updatedAt: { type: Date },
     __v: { type: Number },

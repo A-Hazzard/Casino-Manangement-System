@@ -12,6 +12,7 @@ const ALLOWED_ROLES = [
   'cashier',
   'technician',
   'collector',
+  'reviewer',
 ] as const;
 
 function isBlank(value: unknown): boolean {
@@ -106,6 +107,7 @@ const UserSchema = new Schema(
     },
     assignedLocations: [{ type: String }], // Array of location IDs user has access to
     assignedLicencees: [{ type: String }], // Array of licencee IDs user has access to (UK spelling primary)
+    multiplier: { type: Number, default: null }, // Reviewer multiplier (stored as decimal, e.g. 0.5 = 50%)
     profile: {
       firstName: {
         type: String,

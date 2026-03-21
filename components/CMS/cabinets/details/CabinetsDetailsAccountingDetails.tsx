@@ -644,7 +644,7 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
                         </div>
                       </motion.div>
 
-                      {/* Total Cancelled Credits */}
+                      {/* Money Out */}
                       <motion.div
                         className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
@@ -655,7 +655,7 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
                         transition={{ type: 'spring', stiffness: 300 }}
                       >
                         <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">
-                          Total Cancelled Credits
+                          Money Out
                         </h4>
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
@@ -664,7 +664,7 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
                             moneyIn={Number(cabinet?.moneyIn ?? 0)}
                             jackpot={Number(cabinet?.jackpot ?? 0)}
                             displayValue={formatAmount(Number(cabinet?.moneyOut ?? cabinet?.sasMeters?.totalCancelledCredits ?? 0))}
-                            subtractJackpot={!!cabinet?.subtractJackpot}
+                            includeJackpot={!!cabinet?.includeJackpot}
                             showInfoIcon={true}
                             className="text-base font-bold md:text-xl"
                           />
@@ -725,33 +725,6 @@ const CabinetsDetailsAccountingDetails: React.FC<AccountingDetailsProps> = ({
                         </div>
                       </motion.div>
 
-                      {/* Jackpot */}
-                      {cabinet?.netGross !== undefined && (
-                        <motion.div
-                          className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
-                          variants={itemVariants}
-                          whileHover={{
-                            y: -5,
-                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
-                          }}
-                          transition={{ type: 'spring', stiffness: 300 }}
-                        >
-                          <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">
-                            Jackpot
-                          </h4>
-                          <div className="mb-4 h-1 w-full bg-greenHighlight md:mb-6"></div>
-                          <div className="flex items-center justify-center">
-                            <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getGrossColorClass(
-                              Number(cabinet?.netGross ?? 
-                                (Number(cabinet?.gross ?? (Number(cabinet?.moneyIn ?? 0) - Number(cabinet?.moneyOut ?? 0))) - 
-                                 Number(cabinet?.jackpot ?? 0))
-                              )
-                            )}`}>
-                              {formatAmount(Number(cabinet.netGross))}
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
                     </motion.div>
                   )
                 ) : activeMetricsTabContent === 'Live Metrics' ? (

@@ -18,6 +18,7 @@
 
 import { Badge } from '@/components/shared/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -25,7 +26,6 @@ import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import {
     getGrossColorClass,
     getMoneyInColorClass,
-    getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import { AggregatedLocation } from '@/shared/types/entities';
 import {
@@ -320,12 +320,16 @@ export default function ReportsLocationsTable({
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Cancelled Credits:</span>
-              <span
-                className={`font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
-              >
-                {formatCurrency(location.moneyOut)}
-              </span>
+              <span className="text-gray-500">Money Out:</span>
+              <MoneyOutCell
+                moneyOut={location.moneyOut || 0}
+                moneyIn={location.moneyIn || 0}
+                jackpot={location.jackpot || 0}
+                displayValue={formatCurrency(location.moneyOut)}
+                includeJackpot={!!location.includeJackpot}
+                showInfoIcon={true}
+                className="font-medium"
+              />
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Gross Revenue:</span>
@@ -454,7 +458,7 @@ export default function ReportsLocationsTable({
                       onClick={() => handleSort('moneyOut')}
                     >
                       <div className="flex items-center gap-1">
-                        Cancelled Credits (Money Out)
+                        Money Out
                         {getSortIcon('moneyOut')}
                       </div>
                     </th>
@@ -703,10 +707,15 @@ export default function ReportsLocationsTable({
                         >
                           {formatCurrency(location.moneyIn)}
                         </td>
-                        <td
-                          className={`whitespace-nowrap px-4 py-3 text-left text-sm font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
-                        >
-                          {formatCurrency(location.moneyOut)}
+                        <td className="whitespace-nowrap px-4 py-3 text-left text-sm">
+                          <MoneyOutCell
+                            moneyOut={location.moneyOut || 0}
+                            moneyIn={location.moneyIn || 0}
+                            jackpot={location.jackpot || 0}
+                            displayValue={formatCurrency(location.moneyOut)}
+                            includeJackpot={!!location.includeJackpot}
+                            className="font-medium"
+                          />
                         </td>
                         <td
                           className={`whitespace-nowrap px-4 py-3 text-left text-sm font-medium ${getGrossColorClass(location.gross)}`}

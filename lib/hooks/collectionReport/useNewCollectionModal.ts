@@ -981,7 +981,7 @@ export function useNewCollectionModal({
         reasonShortagePayment: financials.reasonForShortagePayment,
         balanceCorrection: Number(financials.balanceCorrection) || 0,
         balanceCorrectionReas: financials.balanceCorrectionReason,
-        subtractJackpot: selectedLocation?.subtractJackpot || false,
+        includeJackpot: selectedLocation?.includeJackpot || false,
         machines: collectedMachineEntries.map(e => ({
           machineId: String(e.machineId),
           metersIn: e.metersIn,

@@ -121,8 +121,9 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'location admin',
       'technician',
       'collector',
+      'reviewer',
     ],
-    locations: ['developer', 'admin', 'manager', 'location admin', 'collector'],
+    locations: ['developer', 'admin', 'manager', 'location admin', 'collector', 'reviewer'],
     'location-details': [
       'developer',
       'admin',
@@ -130,6 +131,7 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'location admin',
       'technician',
       'collector',
+      'reviewer',
     ],
     members: ['developer', 'admin'],
     'member-details': ['developer', 'admin'],

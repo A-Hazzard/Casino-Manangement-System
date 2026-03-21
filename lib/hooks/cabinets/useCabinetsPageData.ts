@@ -195,11 +195,11 @@ export function useCabinetsPageData() {
     return apiMachineStats;
   }, [apiMachineStats, filteredCabinets, machineStatsLoading]);
   
-  // subtractJackpot is configured at the Licencee level
-  const [subtractJackpot, setSubtractJackpot] = useState(false);
+  // includeJackpot is configured at the Licencee level
+  const [includeJackpot, setIncludeJackpot] = useState(false);
   useEffect(() => {
     if (!selectedLicencee || selectedLicencee === 'all') {
-      setSubtractJackpot(false);
+      setIncludeJackpot(false);
       return;
     }
     let cancelled = false;
@@ -209,9 +209,9 @@ export function useCabinetsPageData() {
         if (cancelled) return;
         const data = await res.json();
         const lic = data?.licencees?.[0];
-        setSubtractJackpot(Boolean(lic?.subtractJackpot));
+        setIncludeJackpot(Boolean(lic?.includeJackpot));
       } catch {
-        if (!cancelled) setSubtractJackpot(false);
+        if (!cancelled) setIncludeJackpot(false);
       }
     })();
     return () => { cancelled = true; };
@@ -278,10 +278,10 @@ export function useCabinetsPageData() {
             ? 'all'
             : selectedStatus === 'Archived'
               ? 'archived'
-              : selectedStatus.toLowerCase(),
+              : selectedStatus,
           debouncedSearchTerm
         );
-        if (data)
+        if (data) {
           setChartData(
             data.map(d => ({
               xValue: d.time || d.day,
@@ -293,6 +293,7 @@ export function useCabinetsPageData() {
               netGross: d.netGross,
             }))
           );
+        }
       }, 'chart');
     } finally {
       setLoadingChart(false);
@@ -454,7 +455,7 @@ export function useCabinetsPageData() {
     chartData,
     loadingChart,
     totalPages: effectiveTotalPages,
-    subtractJackpot,
+    includeJackpot,
     // Setters & Handlers
     setActiveSection,
     setSearchTerm: handleSetSearchTerm,

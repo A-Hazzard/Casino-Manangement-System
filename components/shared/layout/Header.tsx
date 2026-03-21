@@ -87,9 +87,6 @@ export default function Header({
 
   // Get user roles for permission checking
   const userRoles = user?.roles || [];
-  const normalizedRoles = userRoles.map(role =>
-    typeof role === 'string' ? role.toLowerCase() : role
-  );
 
   // Get user's licencee assignments (memoized to prevent unnecessary re-renders)
   const userLicencees = useMemo(() => {
@@ -97,8 +94,8 @@ export default function Header({
   }, [user?.assignedLicencees]);
 
   const isAdmin =
-    normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
-  const isManager = normalizedRoles.includes('manager');
+    userRoles.includes('admin') || userRoles.includes('developer');
+  const isManager = userRoles.includes('manager');
   const hasMultipleLicencees =
     Array.isArray(userLicencees) && userLicencees.length > 1;
   const hasSingleLicencee =
@@ -108,7 +105,7 @@ export default function Header({
   // Show if: admin OR user has multiple licencees (including location admins with multiple licencees)
   // Hide if: user has 0 or 1 licencee (and not admin/dev) OR location admin with single/no licencee
   const shouldShowLicenceeSelect =
-    isAdmin || (hasMultipleLicencees && !normalizedRoles.includes('cashier'));
+    isAdmin || (hasMultipleLicencees && !userRoles.includes('cashier'));
 
   // Determine if we should show licencee name next to "Evolution CMS"
   // Show if: user has exactly one licencee AND not admin/dev AND (not manager OR manager with single licencee)
@@ -128,8 +125,8 @@ export default function Header({
   const shouldRenderCurrencyFilter =
     !hideCurrencyFilter &&
     !shouldHideCurrency &&
-    !normalizedRoles.includes('vault-manager') &&
-    !normalizedRoles.includes('cashier');
+    !userRoles.includes('vault-manager') &&
+    !userRoles.includes('cashier');
 
   const [licenceeCurrencyMap, setLicenceeCurrencyMap] = useState<
     Record<string, CurrencyCode>

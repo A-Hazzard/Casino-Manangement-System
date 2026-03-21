@@ -440,7 +440,8 @@ export default function Chart({
   // Calculate minWidth to ensure x-axis labels don't get hidden on narrow screens.
   // The chart container scrolls horizontally only when minWidth exceeds the container width.
   // Use moderate widths per point so charts fit on desktop but scroll on mobile.
-  const pxPerPoint = isHourlyChart ? 65 : 120;
+  // Minute-level data has many more points so use smaller px per point.
+  const pxPerPoint = isMinuteLevel ? 30 : isHourlyChart ? 65 : 120;
   const minWidth = gapFilteredChartData.length >= 5
     ? Math.min(gapFilteredChartData.length * pxPerPoint, 2400)
     : 0; // 0 means no minWidth constraint — chart fits container naturally
@@ -507,8 +508,8 @@ export default function Chart({
                       ? 'day'
                       : 'day'
                 }
-                interval={minWidth > 0 ? (isHourlyChart ? 0 : 'preserveStartEnd') : 'preserveStartEnd'}
-                minTickGap={isHourlyChart ? 30 : 80}
+                interval={minWidth > 0 ? (isHourlyChart && !isMinuteLevel ? 0 : 'preserveStartEnd') : 'preserveStartEnd'}
+                minTickGap={isMinuteLevel ? 60 : isHourlyChart ? 30 : 80}
                 tickFormatter={(val, index) => {
                   if (isHourlyChart) {
                     const day = gapFilteredChartData[index]?.day;

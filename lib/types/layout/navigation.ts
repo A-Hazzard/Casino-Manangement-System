@@ -15,6 +15,8 @@ export type NavigationItem = {
   icon: LucideIcon;
   permissionCheck?: (userRoles: string[]) => boolean;
   children?: NavigationItem[]; // Sub-items for expandable sections
+  /** When true, page is hidden from non-developers in the sidebar */
+  underMaintenance?: boolean;
 };
 
 /**

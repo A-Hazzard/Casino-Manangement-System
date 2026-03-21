@@ -211,6 +211,9 @@ export async function getCollectionReportById(
         localField: 'machineId',
         foreignField: '_id',
         as: 'machineDetails',
+        pipeline: [
+          { $project: { _id: 1, serialNumber: 1, custom: 1, machineId: 1, 'gameConfig.accountingDenomination': 1, collectorDenomination: 1 } }
+        ]
       },
     },
     {
@@ -341,6 +344,9 @@ export async function getCollectionReportById(
     totalJackpot: number;
     meterCount: number;
   }> = [];
+  
+  // Create a machine denomination map for the second aggregation if possible, 
+  // or use $lookup in aggregation. Let's use $lookup for accuracy in aggregation sum.
   if (meterQueries.length > 0) {
     const cursor = Meters.aggregate([
       {
@@ -354,9 +360,9 @@ export async function getCollectionReportById(
       {
         $group: {
           _id: '$machine',
-          totalDrop: { $sum: '$movement.drop' },
-          totalCancelled: { $sum: '$movement.totalCancelledCredits' },
-          totalJackpot: { $sum: '$movement.jackpot' },
+          totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+          totalCancelled: { $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] } },
+          totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
           meterCount: { $sum: 1 },
         },
       },
@@ -381,22 +387,20 @@ export async function getCollectionReportById(
   );
 
   // Calculate location metrics from actual collections using the same logic as individual machines
-  const totalDrop = collections.reduce(
-    (sum, col) => sum + ((col.metersIn || 0) - (col.prevIn || 0)),
-    0
-  );
-  const totalCancelled = collections.reduce(
-    (sum, col) => sum + ((col.metersOut || 0) - (col.prevOut || 0)),
-    0
-  );
+  const totalDrop = collections.reduce((sum, col) => {
+    return sum + ((col.metersIn || 0) - (col.prevIn || 0));
+  }, 0);
 
-  const totalMetersGross = collections.reduce(
-    (sum, col) => sum + (col.movement?.gross || 0),
-    0
-  );
+  const totalCancelled = collections.reduce((sum, col) => {
+    return sum + ((col.metersOut || 0) - (col.prevOut || 0));
+  }, 0);
 
-  // Fetch licencee's subtractJackpot flag BEFORE calculating total variation
-  let subtractJackpot = false;
+  const totalMetersGross = collections.reduce((sum, col) => {
+    return sum + (col.movement?.gross || 0);
+  }, 0);
+
+  // Fetch licencee's includeJackpot flag BEFORE calculating total variation
+  let includeJackpot = false;
   try {
     if (report.location) {
       const location = await GamingLocations.findOne(
@@ -410,13 +414,13 @@ export async function getCollectionReportById(
         const { Licencee } = await import('@/app/api/lib/models/licencee');
         const licenceeDoc = await Licencee.findOne(
           { _id: licenceeId },
-          { subtractJackpot: 1 }
+          { includeJackpot: 1 }
         ).lean() as Record<string, unknown> | null;
-        subtractJackpot = Boolean(licenceeDoc?.subtractJackpot);
+        includeJackpot = Boolean(licenceeDoc?.includeJackpot);
       }
     }
   } catch (err) {
-    console.warn('[Collection Report] Could not fetch licencee subtractJackpot:', err);
+    console.warn('[Collection Report] Could not fetch licencee includeJackpot:', err);
   }
 
   // Calculate total SAS gross and jackpot from meter data map
@@ -438,9 +442,9 @@ export async function getCollectionReportById(
   }
 
   // totalSasGross is (Drop - NetCancelled), which is the HIGH GROSS.
-  // If subtractJackpot is true, we want LOW GROSS, so we subtract totalJackpots.
-  // If subtractJackpot is false, we keep it as HIGH GROSS.
-  const adjustedTotalSasGross = subtractJackpot ? totalSasGross - totalJackpots : totalSasGross;
+  // If includeJackpot is true, we want LOW GROSS, so we subtract totalJackpots.
+  // If includeJackpot is false, we keep it as HIGH GROSS.
+  const adjustedTotalSasGross = includeJackpot ? totalSasGross - totalJackpots : totalSasGross;
   const totalVariation = totalMetersGross - adjustedTotalSasGross;
 
   // Get total number of machines for this location
@@ -525,7 +529,8 @@ export async function getCollectionReportById(
     collectionDate: report.timestamp
       ? new Date(report.timestamp).toISOString()
       : '-',
-    subtractJackpot: subtractJackpot,
+    includeJackpot: includeJackpot,
+    useNetGross: includeJackpot,
     machineMetrics: collections.map((collection, idx: number) => {
       // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
       // Get raw values with fallbacks handling older collection documents
@@ -551,13 +556,13 @@ export async function getCollectionReportById(
       const machineDisplayName = `${mainIdentifier} (${bracketParts.join(', ')})`;
 
       // Calculate drop/cancelled from the difference between current and previous meters
-      const drop = (collection.metersIn || 0) - (collection.prevIn || 0);
-      const cancelled = (collection.metersOut || 0) - (collection.prevOut || 0);
-      const meterGross = collection.movement?.gross || 0;
+      const drop = ((collection.metersIn || 0) - (collection.prevIn || 0));
+      const cancelled = ((collection.metersOut || 0) - (collection.prevOut || 0));
+      const meterGross = (collection.movement?.gross || 0);
 
       // 🚀 OPTIMIZED: Use pre-fetched meter data from batch query (no individual queries!)
       let sasGross = 0;
-      let recalculatedJackpot = collection.sasMeters?.jackpot || 0;
+      let recalculatedJackpot = (collection.sasMeters?.jackpot || 0);
 
       if (
         collection.machineId &&
@@ -574,10 +579,10 @@ export async function getCollectionReportById(
       const jackpot = recalculatedJackpot;
       const netGross = meterGross - jackpot;
 
-      // Logic: subtractJackpot = true means "Subtract Jackpot from Revenue" -> Lower Gross.
+      // Logic: includeJackpot = true means "Include Jackpot in Money Out" -> Lower Gross.
       // Since sasGross is (Drop - NetCancelled), which is the HIGH GROSS.
-      // So if subtractJackpot is TRUE, we want Low Gross, so we SUBTRACT jackpot.
-      const adjustedSasGross = subtractJackpot ? sasGross - (jackpot || 0) : sasGross;
+      // So if includeJackpot is TRUE, we want Low Gross, so we SUBTRACT jackpot.
+      const adjustedSasGross = includeJackpot ? sasGross - (jackpot || 0) : sasGross;
 
       // Check if SAS data exists - if not, show "No SAS Data"
       // Note: sasMeters.gross can be 0 (valid value), so we only check for undefined/null

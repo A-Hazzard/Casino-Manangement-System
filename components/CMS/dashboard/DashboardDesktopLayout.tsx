@@ -85,9 +85,7 @@ export default function DashboardDesktopLayout(
 
         {/* Metrics Description Text with Refresh Button */}
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg text-gray-700">
-            Total for all Locations and Machines
-          </h2>
+
           {/* Refresh Button with Loading State */}
           {props.loadingChartData ? (
             <RefreshButtonSkeleton />
@@ -121,6 +119,7 @@ export default function DashboardDesktopLayout(
           loading={props.loadingTotals ?? props.loadingChartData}
           title="Total for all Locations and Machines"
           locationFiltered={false}
+          includeJackpot={props.gamingLocations?.some((loc: Record<string, unknown>) => loc.includeJackpot)}
         />
 
         {/* Trend Chart Section */}

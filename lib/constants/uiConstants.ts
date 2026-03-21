@@ -24,3 +24,7 @@ export const colorPalette = [
   '#F4C542', // Gold
 ];
 
+/**
+ * Global flags for UI features
+ */
+export const SHOW_REVIEWER_DEBUG_PANEL = process.env.SHOW_REVIEWER_DEBUG_PANEL || false;

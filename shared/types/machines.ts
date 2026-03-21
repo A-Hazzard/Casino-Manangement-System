@@ -26,6 +26,7 @@ export type MachineData = {
   avgBet?: number;
   averageWager?: number;
   totalHandPaidCancelledCredits?: number;
+  includeJackpot?: boolean;
   // Frontend-calculated fields (not from API)
   actualHold?: number;
   totalWonCredits?: number;

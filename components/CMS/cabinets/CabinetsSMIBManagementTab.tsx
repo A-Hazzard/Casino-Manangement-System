@@ -27,7 +27,7 @@ import { useSMIBDiscovery } from '@/lib/hooks/data/useSMIBDiscovery';
 import { useSmibConfiguration } from '@/lib/hooks/data/useSmibConfiguration';
 import type { GamingMachine } from '@/shared/types/entities';
 import axios from 'axios';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Server } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -37,7 +37,6 @@ import { CabinetsDetailsSMIBMqttTopics } from './smibManagement/CabinetsDetailsS
 import { CabinetsDetailsSMIBNetworkConfig } from './smibManagement/CabinetsDetailsSMIBNetworkConfig';
 import { CabinetsDetailsSMIBOTAUpdate } from './smibManagement/CabinetsDetailsSMIBOTAUpdate';
 import { CabinetsDetailsSMIBRestart } from './smibManagement/CabinetsDetailsSMIBRestart';
-import { CabinetsSMIBList } from './CabinetsSMIBList';
 
 export type CabinetsSMIBManagementTabProps = {
   refreshTrigger?: number;
@@ -814,7 +813,13 @@ export default function CabinetsSMIBManagementTab({
           </div>
         </>
       ) : (
-        <CabinetsSMIBList smibs={filteredSmibs} onSelect={handleSmibSelection} />
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 py-16">
+          <Server className="h-10 w-10 text-gray-400" />
+          <p className="text-base font-medium text-gray-600">No SMIB Selected</p>
+          <p className="max-w-sm text-center text-sm text-gray-500">
+            Use the search bar above to find and select a SMIB device by relay ID, serial number, or location.
+          </p>
+        </div>
       )}
 
       {/* Restart All SMIBs Confirmation Dialog */}

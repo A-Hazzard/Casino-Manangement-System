@@ -1,4 +1,5 @@
 /**
+/**
  * Meter Trends Helper Functions
  *
  * This module contains helper functions for meter trends API routes.
@@ -284,6 +285,7 @@ function buildLocationMetricsPipeline(
     {
       $group: {
         _id: {
+          machine: '$machine',
           day: '$day',
           time: '$time',
         },
@@ -337,6 +339,7 @@ async function processLocationMetricsSingleAggregation(
   locations: LocationData[],
   machinesByLocation: Map<string, string[]>,
   gamingDayRanges: Map<string, { rangeStart: Date; rangeEnd: Date }>,
+  denomMap: Map<string, number>,
   shouldUseHourly: boolean,
   shouldUseMinute?: boolean
 ): Promise<MeterTrendMetric[]> {
@@ -369,9 +372,6 @@ async function processLocationMetricsSingleAggregation(
   for (const location of locations) {
     locationById.set(String(location._id), location);
   }
-
-  // Single aggregation for all machines - group by machine, day, and time
-  // We'll filter by gaming day ranges per location after grouping
   const pipeline: PipelineStage[] = [
     {
       $match: {
@@ -506,25 +506,31 @@ async function processLocationMetricsSingleAggregation(
     const location = locationById.get(locationId);
     if (!location) continue;
 
+    const denom = denomMap.get(machineId) || 1;
+    const drop = (metric.drop || 0) * denom;
+    const totalCancelledCredits = (metric.totalCancelledCredits || 0) * denom;
+    const jackpot = (metric.jackpot || 0) * denom;
+    const gross = (metric.gross || 0) * denom;
+
     // Group by location/day/time
     const key = `${locationId}_${metric.day}_${metric.time}`;
     const existing = locationMetricsMap.get(key);
 
     if (existing) {
-      existing.drop += metric.drop || 0;
-      existing.totalCancelledCredits += metric.totalCancelledCredits || 0;
-      existing.gross += metric.gross || 0;
+      existing.drop += drop;
+      existing.totalCancelledCredits += totalCancelledCredits;
+      existing.gross += gross;
       existing.gamesPlayed += metric.gamesPlayed || 0;
-      existing.jackpot += metric.jackpot || 0;
+      existing.jackpot += jackpot;
     } else {
       locationMetricsMap.set(key, {
         day: metric.day,
         time: metric.time,
-        drop: metric.drop || 0,
-        totalCancelledCredits: metric.totalCancelledCredits || 0,
-        gross: metric.gross || 0,
+        drop: drop,
+        totalCancelledCredits: totalCancelledCredits,
+        gross: gross,
         gamesPlayed: metric.gamesPlayed || 0,
-        jackpot: metric.jackpot || 0,
+        jackpot: jackpot,
         licencee:
           typeof location.rel?.licencee === 'string'
             ? location.rel.licencee
@@ -558,6 +564,7 @@ async function processLocationMetricsBatches(
   locations: LocationData[],
   machinesByLocation: Map<string, string[]>,
   gamingDayRanges: Map<string, { rangeStart: Date; rangeEnd: Date }>,
+  denomMap: Map<string, number>,
   shouldUseHourly: boolean,
   shouldUseMinute?: boolean,
   batchSize: number = 20
@@ -588,6 +595,7 @@ async function processLocationMetricsBatches(
         );
 
         type PipelineMetric = {
+          machine: string;
           day: string;
           time: string;
           drop: number;
@@ -597,8 +605,6 @@ async function processLocationMetricsBatches(
           jackpot: number;
         };
 
-        // Check aggregation results directly without preflight read
-        // Use cursor for aggregation to avoid loading all results into memory
         const results: PipelineMetric[] = [];
         const resultsCursor = Meters.aggregate<PipelineMetric>(pipeline, {
           allowDiskUse: true,
@@ -606,8 +612,16 @@ async function processLocationMetricsBatches(
         }).cursor({ batchSize: 5000 });
 
         for await (const doc of resultsCursor) {
-          results.push(doc);
+          const denom = denomMap.get(doc.machine) || 1;
+          results.push({
+            ...doc,
+            drop: doc.drop * denom,
+            totalCancelledCredits: doc.totalCancelledCredits * denom,
+            gross: doc.gross * denom,
+            jackpot: doc.jackpot * denom,
+          });
         }
+
 
         return results.map(metric => ({
           ...metric,
@@ -734,7 +748,8 @@ function aggregateMetricsWithConversion(
   shouldConvert: boolean,
   displayCurrency: CurrencyCode,
   licenceeIdToName: Map<string, string>,
-  countryIdToName: Map<string, string>
+  countryIdToName: Map<string, string>,
+  reviewerMult: number | null
 ): AggregatedMetric[] {
   const aggregatedMap = new Map<string, AggregatedMetric>();
 
@@ -813,15 +828,27 @@ function aggregateMetricsWithConversion(
         convertedJackpot
       );
     } else {
+      let dropValue = Number(metric.drop) || 0;
+      let cancelledValue = Number(metric.totalCancelledCredits) || 0;
+      let grossValue = Number(metric.gross) || 0;
+      let jackpotValue = Number(metric.jackpot) || 0;
+
+      if (reviewerMult !== null) {
+        dropValue *= reviewerMult;
+        cancelledValue *= reviewerMult;
+        grossValue *= reviewerMult;
+        jackpotValue *= reviewerMult;
+      }
+
       accumulator(
         key,
         day,
         time,
-        Number(metric.drop) || 0,
-        Number(metric.totalCancelledCredits) || 0,
-        Number(metric.gross) || 0,
+        dropValue,
+        cancelledValue,
+        grossValue,
         gamesPlayedValue,
-        Number(metric.jackpot) || 0
+        jackpotValue
       );
     }
   }
@@ -859,7 +886,8 @@ export async function getMeterTrends(
   },
   accessibleLicencees: string[] | 'all',
   userRoles: string[],
-  userLocationPermissions: string[]
+  userLocationPermissions: string[],
+  userMultiplier: number | null = null
 ): Promise<AggregatedMetric[]> {
   const {
     timePeriod,
@@ -1066,9 +1094,16 @@ export async function getMeterTrends(
 
   const machineDocs = await Machine.find(
     machineQuery,
-    { _id: 1, gamingLocation: 1 }
+    { _id: 1, gamingLocation: 1, 'gameConfig.accountingDenomination': 1 }
   ).lean();
-  const machinesByLocation = buildMachinesByLocationMap(machineDocs);
+  
+  const denomMap = new Map<string, number>();
+  machineDocs.forEach(m => {
+    const machine = m as { _id: unknown; gameConfig?: { accountingDenomination?: number } };
+    denomMap.set(String(m._id), machine.gameConfig?.accountingDenomination || 1);
+  });
+
+  const machinesByLocation = buildMachinesByLocationMap((machineDocs as unknown) as Array<{ _id: string; gamingLocation: string }>);
 
   // 🚀 OPTIMIZED: Use single aggregation for 7d/30d periods (much faster)
   const useSingleAggregation = timePeriod === '7d' || timePeriod === '30d';
@@ -1078,6 +1113,7 @@ export async function getMeterTrends(
       locations as LocationData[],
       machinesByLocation,
       gamingDayRanges,
+      denomMap,
       useHourly,
       useMinute
     )
@@ -1085,6 +1121,7 @@ export async function getMeterTrends(
       locations as LocationData[],
       machinesByLocation,
       gamingDayRanges,
+      denomMap,
       useHourly,
       useMinute
     );
@@ -1107,6 +1144,7 @@ export async function getMeterTrends(
     shouldConvert,
     displayCurrency,
     licenceeIdToName,
-    countryIdToName
+    countryIdToName,
+    userMultiplier
   );
 }

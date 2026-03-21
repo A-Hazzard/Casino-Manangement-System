@@ -24,6 +24,7 @@ import {
   getLicenceeCurrency,
 } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import type { LocationDocument } from '@/lib/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { GamingMachine } from '@/shared/types/entities';
 import { PipelineStage } from 'mongoose';
@@ -87,32 +88,9 @@ export async function GET(
     // ============================================================================
     // STEP 4: Fetch machine by ID
     // ============================================================================
-    let machine = await Machine.findOne({
+    const machine = await Machine.findOne({
       _id: machineId,
     }).lean<GamingMachine | null>();
-
-    if (
-      !machine &&
-      machineId.length === 24 &&
-      /^[0-9a-fA-F]{24}$/.test(machineId)
-    ) {
-      try {
-        const { default: mongoose } = await import('mongoose');
-        const objectId = new mongoose.Types.ObjectId(machineId);
-        // Use Mongoose model with ObjectId for legacy data
-        const machineDoc = await Machine.findOne({
-          _id: objectId as unknown as string,
-        }).lean<GamingMachine | null>();
-        if (machineDoc) {
-          machine = machineDoc;
-        }
-      } catch (objectIdError) {
-        console.warn(
-          `[Machine Chart API] Failed to query as ObjectId:`,
-          objectIdError
-        );
-      }
-    }
 
     if (!machine) {
       return NextResponse.json(
@@ -149,11 +127,7 @@ export async function GET(
           _id: machine.gamingLocation,
         })
           .select('gameDayOffset rel country')
-          .lean<{
-            gameDayOffset?: number;
-            rel?: { licencee?: string };
-            country?: string;
-          } | null>();
+          .lean() as LocationDocument | null;
 
         if (location) {
           gameDayOffset = location.gameDayOffset ?? 8;
@@ -536,10 +510,7 @@ export async function GET(
             _id: machine.gamingLocation,
           })
             .select('rel country')
-            .lean()) as {
-              rel?: { licencee?: string };
-              country?: string;
-            } | null;
+            .lean()) as LocationDocument | null;
         } catch (error) {
           console.warn(
             'Failed to fetch location for currency conversion:',

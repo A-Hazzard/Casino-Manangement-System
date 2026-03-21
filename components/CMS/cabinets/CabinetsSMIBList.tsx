@@ -18,13 +18,13 @@ export function CabinetsSMIBList({ smibs, onSelect }: CabinetsSMIBListProps) {
 
   const filtered = useMemo(() => {
     if (!search.trim()) return smibs;
-    const term = search.toLowerCase();
+    const searchLower = (search || '').toLowerCase();
     return smibs.filter(
       s =>
-        s.relayId.toLowerCase().includes(term) ||
-        s.serialNumber?.toLowerCase().includes(term) ||
-        s.game?.toLowerCase().includes(term) ||
-        s.locationName?.toLowerCase().includes(term)
+        (s.relayId || '').toLowerCase().includes(searchLower) ||
+        (s.serialNumber || '').toLowerCase().includes(searchLower) ||
+        (s.game || '').toLowerCase().includes(searchLower) ||
+        (s.locationName || '').toLowerCase().includes(searchLower)
     );
   }, [smibs, search]);
 

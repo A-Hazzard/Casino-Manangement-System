@@ -11,11 +11,11 @@
  *  6. Disable user — toggling isEnabled marks the user as Inactive
  *  7. Delete user — confirmation dialog → user removed from table
  *
- *  Licencee Management (subtractJackpot):
- *  8.  Licencees section renders with subtractJackpot displayed per licencee
- *  9.  Licencee with subtractJackpot=true shows "Yes" badge
- *  10. Licencee with subtractJackpot=false shows "No" badge
- *  11. Edit licencee — toggling subtractJackpot checkbox updates the display
+ *  Licencee Management (includeJackpot):
+ *  8.  Licencees section renders with includeJackpot displayed per licencee
+ *  9.  Licencee with includeJackpot=true shows "Yes" badge
+ *  10. Licencee with includeJackpot=false shows "No" badge
+ *  11. Edit licencee — toggling includeJackpot checkbox updates the display
  */
 
 import { type Page } from '@playwright/test';
@@ -477,7 +477,7 @@ async function mockLicenceesAPIs(
   );
 }
 
-test.describe('Administration — Licencee Management (subtractJackpot)', () => {
+test.describe('Administration — Licencee Management (includeJackpot)', () => {
   test('8. Licencees section renders both licencees from the API', async ({
     page,
     administrationPage,
@@ -499,11 +499,11 @@ test.describe('Administration — Licencee Management (subtractJackpot)', () => 
     });
   });
 
-  test('9. Licencee with subtractJackpot=false displays "No" badge', async ({
+  test('9. Licencee with includeJackpot=false displays "No" badge', async ({
     page,
     administrationPage,
   }) => {
-    await test.step('Mock licencees API — lic_001 has subtractJackpot=false', async () => {
+    await test.step('Mock licencees API — lic_001 has includeJackpot=false', async () => {
       await mockLicenceesAPIs(page);
     });
 
@@ -511,16 +511,16 @@ test.describe('Administration — Licencee Management (subtractJackpot)', () => 
       await administrationPage.gotoLicenceesSection();
     });
 
-    await test.step(`Assert "${MOCK_LICENCEE_1.name}" shows subtractJackpot "No"`, async () => {
-      await administrationPage.expectSubtractJackpot(MOCK_LICENCEE_1.name, false);
+    await test.step(`Assert "${MOCK_LICENCEE_1.name}" shows includeJackpot "No"`, async () => {
+      await administrationPage.expectIncludeJackpot(MOCK_LICENCEE_1.name, false);
     });
   });
 
-  test('10. Licencee with subtractJackpot=true displays "Yes" badge', async ({
+  test('10. Licencee with includeJackpot=true displays "Yes" badge', async ({
     page,
     administrationPage,
   }) => {
-    await test.step('Mock licencees API — lic_002 has subtractJackpot=true', async () => {
+    await test.step('Mock licencees API — lic_002 has includeJackpot=true', async () => {
       await mockLicenceesAPIs(page);
     });
 
@@ -528,16 +528,16 @@ test.describe('Administration — Licencee Management (subtractJackpot)', () => 
       await administrationPage.gotoLicenceesSection();
     });
 
-    await test.step(`Assert "${MOCK_LICENCEE_2.name}" shows subtractJackpot "Yes"`, async () => {
-      await administrationPage.expectSubtractJackpot(MOCK_LICENCEE_2.name, true);
+    await test.step(`Assert "${MOCK_LICENCEE_2.name}" shows includeJackpot "Yes"`, async () => {
+      await administrationPage.expectIncludeJackpot(MOCK_LICENCEE_2.name, true);
     });
   });
 
-  test('11. Edit licencee — enabling subtractJackpot updates the badge to "Yes"', async ({
+  test('11. Edit licencee — enabling includeJackpot updates the badge to "Yes"', async ({
     page,
     administrationPage,
   }) => {
-    await test.step('Mock licencees API — lic_001 starts with subtractJackpot=false', async () => {
+    await test.step('Mock licencees API — lic_001 starts with includeJackpot=false', async () => {
       await mockLicenceesAPIs(page);
     });
 
@@ -548,7 +548,7 @@ test.describe('Administration — Licencee Management (subtractJackpot)', () => 
             status: 200,
             json: {
               success: true,
-              data: { ...MOCK_LICENCEE_1, subtractJackpot: true },
+              data: { ...MOCK_LICENCEE_1, includeJackpot: true },
               message: 'Licencee updated successfully',
               timestamp: new Date().toISOString(),
             },
@@ -563,8 +563,8 @@ test.describe('Administration — Licencee Management (subtractJackpot)', () => 
       await administrationPage.gotoLicenceesSection();
     });
 
-    await test.step('Verify initial subtractJackpot badge is "No" for lic_001', async () => {
-      await administrationPage.expectSubtractJackpot(MOCK_LICENCEE_1.name, false);
+    await test.step('Verify initial includeJackpot badge is "No" for lic_001', async () => {
+      await administrationPage.expectIncludeJackpot(MOCK_LICENCEE_1.name, false);
     });
 
     await test.step('Click edit on the first licencee row', async () => {
@@ -572,12 +572,12 @@ test.describe('Administration — Licencee Management (subtractJackpot)', () => 
       await expect(administrationPage.editLicenceeModal).toBeVisible();
     });
 
-    await test.step('Enable the Subtract Jackpot checkbox', async () => {
-      await administrationPage.setSubtractJackpot(true);
+    await test.step('Enable the Include Jackpot checkbox', async () => {
+      await administrationPage.setIncludeJackpot(true);
     });
 
     await test.step('Submit the edit form', async () => {
-      // Swap the licencees mock to return subtractJackpot=true for lic_001
+      // Swap the licencees mock to return includeJackpot=true for lic_001
       await page.route('**/api/licencees**', (route) =>
         route.fulfill({ status: 200, json: MOCK_LICENCEES_LIST_AFTER_EDIT })
       );
@@ -585,7 +585,7 @@ test.describe('Administration — Licencee Management (subtractJackpot)', () => 
     });
 
     await test.step('Assert the badge now shows "Yes" for lic_001', async () => {
-      await administrationPage.expectSubtractJackpot(MOCK_LICENCEE_1.name, true);
+      await administrationPage.expectIncludeJackpot(MOCK_LICENCEE_1.name, true);
     });
   });
 });

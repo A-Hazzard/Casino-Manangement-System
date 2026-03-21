@@ -8,16 +8,8 @@
 'use client';
 
 import PaginationControls from '@/components/shared/ui/PaginationControls';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/shared/ui/alert-dialog';
+import { ConfirmationDialog } from '@/components/shared/ui/ConfirmationDialog';
+import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Checkbox } from '@/components/shared/ui/checkbox';
@@ -1074,66 +1066,26 @@ export default function AdministrationFeedbackManagement() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Feedback</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this feedback? This action cannot be undone.
-            </AlertDialogDescription>
-            {feedbackToDelete && (
-              <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
-                <div className="font-medium">From: {feedbackToDelete.email}</div>
-                <div className="text-gray-600 mt-1">
-                  {feedbackToDelete.description.substring(0, 100)}
-                  {feedbackToDelete.description.length > 100 ? '...' : ''}
-                </div>
-              </div>
-            )}
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {isDeleting ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmationDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Feedback"
+        message={`Are you sure you want to delete feedback from ${feedbackToDelete?.email}? This action cannot be undone.`}
+        confirmText="Yes, Delete"
+        isLoading={isDeleting}
+      />
 
       {/* Restore Confirmation Dialog */}
-      <AlertDialog open={restoreConfirmOpen} onOpenChange={setRestoreConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Restore Feedback</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to restore this feedback? It will be unarchived and remain in its current status.
-            </AlertDialogDescription>
-            {feedbackToRestore && (
-              <div className="mt-2 p-2 bg-gray-50 rounded text-sm">
-                <div className="font-medium">From: {feedbackToRestore.email}</div>
-                <div className="text-gray-600 mt-1">
-                  {feedbackToRestore.description.substring(0, 100)}
-                  {feedbackToRestore.description.length > 100 ? '...' : ''}
-                </div>
-              </div>
-            )}
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isUpdating}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleRestoreConfirm}
-              disabled={isUpdating}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {isUpdating ? 'Restoring...' : 'Restore'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <InfoConfirmationDialog
+        isOpen={restoreConfirmOpen}
+        onClose={() => setRestoreConfirmOpen(false)}
+        onConfirm={handleRestoreConfirm}
+        title="Restore Feedback"
+        message={`Are you sure you want to restore feedback from ${feedbackToRestore?.email}? It will be unarchived.`}
+        confirmText="Yes, Restore"
+        isLoading={isUpdating}
+      />
     </div>
   );
 }

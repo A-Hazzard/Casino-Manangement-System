@@ -16,39 +16,18 @@
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
-import {
-  convertFromUSD,
-  convertToUSD,
-  getCountryCurrency,
-  getLicenceeCurrency,
-} from '@/lib/helpers/rates';
-import { TransformedCabinet } from '@/lib/types/common';
+import { LocationDocument, TransformedCabinet } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import type { CurrencyCode } from '@/shared/types/currency';
-import mongoose from 'mongoose';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../../lib/helpers/users';
 
-/**
- * Helper function to safely convert an ID to ObjectId if possible
- */
-function safeObjectId(id: string): string | mongoose.Types.ObjectId {
-  if (!id) return id;
-  try {
-    if (mongoose.Types.ObjectId.isValid(id)) {
-      return new mongoose.Types.ObjectId(id);
-    }
-  } catch (err) {
-    console.error(`Failed to convert ID to ObjectId: ${id}`, err);
-  }
-  return id;
-}
+
 
 /**
  * Main GET handler for fetching location details and machines
@@ -88,14 +67,14 @@ export async function GET(request: NextRequest) {
       await connectDB();
 
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const location = await GamingLocations.findOne(
+      const location = (await GamingLocations.findOne(
         { _id: locationId },
         {
           _id: 1,
           name: 1,
           'rel.licencee': 1,
         }
-      );
+      ).lean()) as unknown as Pick<LocationDocument, '_id' | 'name' | 'rel'> | null;
 
       if (!location) {
         return NextResponse.json(
@@ -113,15 +92,15 @@ export async function GET(request: NextRequest) {
           : [licenceeId]
         : [];
 
-      // Look up licencee's subtractJackpot setting
-      let subtractJackpot = false;
+      // Look up licencee's includeJackpot setting
+      let includeJackpot = false;
       if (licenceeIdArray.length > 0) {
         const { Licencee } = await import('@/app/api/lib/models/licencee');
         const licenceeDoc = await Licencee.findOne(
           { _id: licenceeIdArray[0] },
-          { subtractJackpot: 1 }
+          { includeJackpot: 1 }
         ).lean() as Record<string, unknown> | null;
-        subtractJackpot = Boolean(licenceeDoc?.subtractJackpot);
+        includeJackpot = Boolean(licenceeDoc?.includeJackpot);
       }
 
       const locationData = location as { _id: unknown; name?: string };
@@ -131,7 +110,7 @@ export async function GET(request: NextRequest) {
           _id: locationData._id,
           name: locationData.name,
           licenceeId: licenceeIdArray,
-          subtractJackpot,
+          includeJackpot,
         },
       });
     }
@@ -147,8 +126,7 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       const user = await getUserFromServer();
       const roles = (user?.roles as string[]) || [];
-      const normalizedRoles = roles.map(r => r?.toLowerCase?.() ?? r);
-      const isAdmin = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+      const isAdmin = roles.includes('admin') || roles.includes('developer');
 
       let hasAccess = false;
       if (isAdmin) {
@@ -168,7 +146,7 @@ export async function GET(request: NextRequest) {
       }
 
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const location = await GamingLocations.findOne({ _id: locationId });
+      const location = (await GamingLocations.findOne({ _id: locationId }).lean()) as unknown as LocationDocument | null;
 
       if (!location) {
         return NextResponse.json(
@@ -177,22 +155,22 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Look up licencee's subtractJackpot setting
-      const locObj = location.toObject ? location.toObject() : location;
-      const licId = locObj.rel?.licencee;
+      // Look up licencee's includeJackpot setting
+      const locObj = location;
+      const licId = locObj?.rel?.licencee;
       const firstLicId = Array.isArray(licId) ? licId[0] : licId;
-      let subtractJackpot = false;
+      let includeJackpot = false;
       if (firstLicId) {
         const licDoc = await Licencee.findOne(
           { _id: firstLicId },
-          { subtractJackpot: 1 }
+          { includeJackpot: 1 }
         ).lean() as Record<string, unknown> | null;
-        subtractJackpot = Boolean(licDoc?.subtractJackpot);
+        includeJackpot = Boolean(licDoc?.includeJackpot);
       }
 
       return NextResponse.json({
         success: true,
-        location: { ...locObj, subtractJackpot },
+        location: { ...locObj, includeJackpot },
       });
     }
 
@@ -215,8 +193,7 @@ export async function GET(request: NextRequest) {
     const timePeriod = url.searchParams.get('timePeriod') as TimePeriod;
     const customStartDate = url.searchParams.get('startDate');
     const customEndDate = url.searchParams.get('endDate');
-    const displayCurrency =
-      (url.searchParams.get('currency') as CurrencyCode) || 'USD';
+
 
     const onlineStatus = url.searchParams.get('onlineStatus') || 'all';
 
@@ -244,8 +221,12 @@ export async function GET(request: NextRequest) {
     // Re-check user for the main body of the handler if not already done
     const user = await getUserFromServer();
     const roles = (user?.roles as string[]) || [];
-    const normalizedRoles = roles.map(r => r?.toLowerCase?.() ?? r);
-    const isAdmin = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+    const isAdmin = roles.includes('admin') || roles.includes('developer');
+    const reviewerMult =
+      roles.includes('reviewer') &&
+      (user as { multiplier?: number | null })?.multiplier != null
+        ? (user as { multiplier?: number | null }).multiplier!
+        : null;
 
     let hasAccess = false;
     if (isAdmin) {
@@ -301,13 +282,10 @@ export async function GET(request: NextRequest) {
       timePeriodForGamingDay = timePeriod;
     }
 
-    // Convert locationId to ObjectId for proper matching
-    const locationIdObj = safeObjectId(locationId);
-
     // First verify the location exists
-    const locationCheck = await GamingLocations.findOne({
-      _id: { $in: [locationId, locationIdObj] },
-    });
+    const locationCheck = (await GamingLocations.findOne({
+      _id: locationId,
+    }).lean()) as unknown as LocationDocument | null;
 
     if (!locationCheck) {
       return NextResponse.json(
@@ -348,15 +326,15 @@ export async function GET(request: NextRequest) {
       customEndDateForGamingDay
     );
 
-    // Fetch licencee subtractJackpot setting
+    // Fetch licencee includeJackpot setting
     const locationLicenceeId = locationCheck.rel?.licencee;
-    let subtractJackpotSetting = false;
+    let includeJackpotSetting = false;
     if (locationLicenceeId) {
       const licenceeDoc = (await Licencee.findOne(
         { _id: Array.isArray(locationLicenceeId) ? locationLicenceeId[0] : locationLicenceeId },
-        { subtractJackpot: 1 }
+        { includeJackpot: 1 }
       ).lean()) as Record<string, unknown> | null;
-      subtractJackpotSetting = !!licenceeDoc?.subtractJackpot;
+      includeJackpotSetting = !!licenceeDoc?.includeJackpot;
     }
 
     // ============================================================================
@@ -369,10 +347,7 @@ export async function GET(request: NextRequest) {
     const machineMatchQuery: Record<string, unknown> = {
       $and: [
         {
-          $or: [
-            { gamingLocation: locationId }, // String match
-            { gamingLocation: locationIdObj }, // ObjectId match
-          ],
+          gamingLocation: locationId, // Always a string in this project
         },
         {
           // Include machines that are not deleted OR have sentinel deletedAt date
@@ -426,6 +401,7 @@ export async function GET(request: NextRequest) {
         isCronosMachine: 1,
         sasMeters: 1,
         collectorDenomination: 1,
+        'gameConfig.accountingDenomination': 1,
       }
     )
       .lean()
@@ -486,22 +462,8 @@ export async function GET(request: NextRequest) {
         {
           $match: {
             $and: [
-              {
-                $or: [
                   { location: locationId },
-                  { location: locationIdObj }
-                ]
-              },
-              {
-                $or: [
-                  { machine: { $in: machineIds } }, // String match
-                  {
-                    machine: {
-                      $in: filteredMachines.map(m => m._id),
-                    },
-                  }
-                ]
-              },
+                  { machine: { $in: machineIds } }, // Already strings from mapped IDs
               {
                 readAt: {
                   $gte: gamingDayRange.rangeStart,
@@ -563,8 +525,6 @@ export async function GET(request: NextRequest) {
         gamesWon: 0,
       };
 
-      const multiplier = Number(machine.collectorDenomination) || 1;
-
       const serialNumber = (machine.serialNumber as string)?.trim() || '';
       const customName =
         ((machine.custom as Record<string, unknown>)?.name as string)?.trim() ||
@@ -576,18 +536,15 @@ export async function GET(request: NextRequest) {
         lastActivity &&
         new Date(lastActivity) > new Date(Date.now() - 3 * 60 * 1000); // 3 minutes threshold
 
-      const rawMoneyIn = Number(metrics.moneyIn) || 0;
+      const moneyIn = Number(metrics.moneyIn) || 0;
       const rawMoneyOut = Number(metrics.moneyOut) || 0;
-      const rawJackpot = Number(metrics.jackpot) || 0;
+      const jackpot = Number(metrics.jackpot) || 0;
 
-      // Apply new Money Out logic: if subtractJackpot is ENABLED (Low Gross), 
+      // Apply new Money Out logic: if includeJackpot is ENABLED (Low Gross), 
       // moneyOut = Net Cancelled + Jackpot (Total payout)
-      // IF subtractJackpot is DISABLED (High Gross), we keep as Net Payout
-      const moneyOutValue = rawMoneyOut + (subtractJackpotSetting ? rawJackpot : 0);
+      // IF includeJackpot is DISABLED (High Gross), we keep as Net Payout
+      const moneyOut = rawMoneyOut + (includeJackpotSetting ? jackpot : 0);
 
-      const moneyIn = rawMoneyIn * multiplier;
-      const moneyOut = moneyOutValue * multiplier;
-      const jackpot = rawJackpot * multiplier;
       const gross = moneyIn - moneyOut;
 
       return {
@@ -623,7 +580,7 @@ export async function GET(request: NextRequest) {
         cancelledCredits: moneyOut,
         sasMeters: (machine.sasMeters as Record<string, unknown>) || null,
         online: Boolean(online),
-        subtractJackpot: subtractJackpotSetting,
+        includeJackpot: includeJackpotSetting,
       };
     });
 
@@ -653,85 +610,17 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 10: Transform and return results
     // ============================================================================
-    // Get location info for currency conversion
-    // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
-    const location = await GamingLocations.findOne(
-      { _id: locationId },
-      { 'rel.licencee': 1, country: 1 }
-    )
-      .lean()
-      .exec();
-
-    // Get licencee and country info for currency conversion
-    let nativeCurrency: CurrencyCode = 'USD';
-    if (location) {
-      const locationData = location as {
-        rel?: { licencee?: string };
-        country?: string;
-      };
-      const locationLicenceeId = (locationData.rel?.licencee || locationData.rel?.licencee) as
-        | string
-        | undefined;
-      if (!locationLicenceeId) {
-        // Unassigned locations - determine currency from country
-        const countryId = locationData.country as string | undefined;
-        if (countryId) {
-          // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
-          const country = await Countries.findOne(
-            { _id: countryId },
-            { name: 1 }
-          )
-            .lean()
-            .exec();
-          const countryData = country as { name?: string } | null;
-          if (countryData?.name) {
-            nativeCurrency = getCountryCurrency(countryData.name);
-          }
-        }
-      } else {
-        // Get licencee's native currency
-        // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
-        const licencee = await Licencee.findOne(
-          { _id: locationLicenceeId },
-          { name: 1 }
-        )
-          .lean()
-          .exec();
-        const licenceeData = licencee as { name?: string } | null;
-        if (licenceeData?.name) {
-          nativeCurrency = getLicenceeCurrency(licenceeData.name);
-        }
-      }
-    }
-
-    // Check if currency conversion should be applied
-    // For location details we ALWAYS convert cabinet-level financials into the
-    // currently selected display currency when a currency is provided, so that
-    // the cards, table rows, and cabinet drill‑downs all match.
-    const shouldConvert = Boolean(displayCurrency);
-
     // Transform the results to ensure proper data types
     const transformedCabinets: TransformedCabinet[] = paginatedCabinets.map(
       (cabinet: Record<string, unknown>) => {
-        let moneyIn = Number(cabinet.moneyIn) || 0;
-        let moneyOut = Number(cabinet.moneyOut) || 0;
-        let gross = Number(cabinet.gross) || 0;
-        let jackpot = Number(cabinet.jackpot) || 0;
+        const includeJackpotInMo = Boolean(cabinet.includeJackpot);
+        const moneyIn = Number(cabinet.moneyIn) || 0;
+        const moneyOut = Number(cabinet.moneyOut) || 0;
+        const jackpot = Number(cabinet.jackpot) || 0;
+        const gross = Number(cabinet.gross) || 0;
 
-        // Apply currency conversion if needed
-        if (shouldConvert && nativeCurrency !== displayCurrency) {
-          const moneyInUSD = convertToUSD(moneyIn, nativeCurrency);
-          const moneyOutUSD = convertToUSD(moneyOut, nativeCurrency);
-          const grossUSD = convertToUSD(gross, nativeCurrency);
-          const jackpotUSD = convertToUSD(jackpot, nativeCurrency);
-
-          moneyIn = convertFromUSD(moneyInUSD, displayCurrency);
-          moneyOut = convertFromUSD(moneyOutUSD, displayCurrency);
-          gross = convertFromUSD(grossUSD, displayCurrency);
-          jackpot = convertFromUSD(jackpotUSD, displayCurrency);
-        }
-
-        return {
+        // Base transformed object with all required properties
+        const transformedCabinet = {
           _id: cabinet._id?.toString() || '',
           locationId: cabinet.locationId?.toString() || '',
           locationName: (cabinet.locationName as string) || '',
@@ -749,24 +638,50 @@ export async function GET(request: NextRequest) {
           assetStatus: (cabinet.assetStatus as string) || '',
           status: (cabinet.status as string) || '',
           gameType: (cabinet.gameType as string) || '',
-          isCronosMachine: cabinet.isCronosMachine || false,
-          // Ensure all numeric fields are properly typed (with currency conversion applied)
+          isCronosMachine: !!cabinet.isCronosMachine,
           moneyIn,
           moneyOut,
           jackpot,
           gross,
-          netGross: cabinet.subtractJackpot ? (gross - (jackpot || 0)) : undefined,
+          netGross: includeJackpotInMo ? (gross - (jackpot || 0)) : undefined,
           gamesPlayed: Number(cabinet.gamesPlayed) || 0,
           gamesWon: Number(cabinet.gamesWon) || 0,
-          cancelledCredits: moneyOut, // Use converted moneyOut
+          cancelledCredits: moneyOut,
           sasMeters: (cabinet.sasMeters as Record<string, unknown>) || null,
           online: Boolean(cabinet.online),
-          subtractJackpot: cabinet.subtractJackpot,
-          // Add any missing fields that might be expected
-          metersData: null, // This was in the original structure
+          includeJackpot: Boolean(cabinet.includeJackpot),
+          metersData: null,
         };
+
+        // If reviewer, apply scaling and attach raw values
+        if (reviewerMult !== null) {
+          const scaledMI = moneyIn * reviewerMult;
+          const scaledMO = moneyOut * reviewerMult;
+          const scaledJP = jackpot * reviewerMult;
+          const scaledGross = scaledMI - scaledMO;
+
+          return {
+            ...transformedCabinet,
+            moneyIn: scaledMI,
+            moneyOut: scaledMO,
+            jackpot: scaledJP,
+            gross: scaledGross,
+            netGross: includeJackpotInMo ? (scaledGross - scaledJP) : undefined,
+            cancelledCredits: scaledMO,
+            _raw: {
+              moneyIn,
+              moneyOut,
+              jackpot,
+              gross,
+            },
+            _reviewerMultiplier: reviewerMult,
+          };
+        }
+
+        return transformedCabinet;
       }
     );
+
 
     const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
 

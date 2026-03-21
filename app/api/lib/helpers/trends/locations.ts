@@ -256,7 +256,7 @@ function buildLocationTrendsPipeline(
     {
       $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
     },
-    // Lookup licencee to get subtractJackpot setting
+    // Lookup licencee to get includeJackpot setting
     {
       $lookup: {
         from: 'licencees',
@@ -425,7 +425,7 @@ function buildLocationTrendsPipeline(
         gross: 1,
         netGross: {
           $cond: [
-            { $eq: [{ $ifNull: ['$licenceeDetails.subtractJackpot', false] }, true] },
+            { $eq: [{ $ifNull: ['$licenceeDetails.includeJackpot', false] }, true] },
             { 
               $subtract: [
                 {
@@ -510,40 +510,41 @@ async function getLocationCurrencies(
 function convertDailyTrendItems(
   dailyData: DailyTrendItem[],
   locationCurrencies: Map<string, string>,
-  displayCurrency: CurrencyCode
+  displayCurrency: CurrencyCode,
+  reviewerMultiplier: number | null = null
 ): DailyTrendItem[] {
   return dailyData.map(item => {
     const nativeCurrency = locationCurrencies.get(item.location) || 'USD';
+    
+    // Step 1: Currency Conversion
+    let handle = convertFromUSD(convertToUSD(item.handle, nativeCurrency), displayCurrency);
+    let winLoss = convertFromUSD(convertToUSD(item.winLoss, nativeCurrency), displayCurrency);
+    let jackpot = convertFromUSD(convertToUSD(item.jackpot, nativeCurrency), displayCurrency);
+    let drop = convertFromUSD(convertToUSD(item.drop, nativeCurrency), displayCurrency);
+    let totalCancelledCredits = convertFromUSD(convertToUSD(item.totalCancelledCredits, nativeCurrency), displayCurrency);
+    let gross = convertFromUSD(convertToUSD(item.gross, nativeCurrency), displayCurrency);
+    let netGross = item.netGross !== undefined ? convertFromUSD(convertToUSD(item.netGross, nativeCurrency), displayCurrency) : undefined;
+
+    // Step 2: Reviewer Multiplier (only if currency conversion is active, otherwise handled in main loop)
+    if (reviewerMultiplier !== null) {
+      handle *= reviewerMultiplier;
+      winLoss *= reviewerMultiplier;
+      jackpot *= reviewerMultiplier;
+      drop *= reviewerMultiplier;
+      totalCancelledCredits *= reviewerMultiplier;
+      gross *= reviewerMultiplier;
+      if (netGross !== undefined) netGross *= reviewerMultiplier;
+    }
+
     return {
       ...item,
-      handle: convertFromUSD(
-        convertToUSD(item.handle, nativeCurrency),
-        displayCurrency
-      ),
-      winLoss: convertFromUSD(
-        convertToUSD(item.winLoss, nativeCurrency),
-        displayCurrency
-      ),
-      jackpot: convertFromUSD(
-        convertToUSD(item.jackpot, nativeCurrency),
-        displayCurrency
-      ),
-      drop: convertFromUSD(
-        convertToUSD(item.drop, nativeCurrency),
-        displayCurrency
-      ),
-      totalCancelledCredits: convertFromUSD(
-        convertToUSD(item.totalCancelledCredits, nativeCurrency),
-        displayCurrency
-      ),
-      gross: convertFromUSD(
-        convertToUSD(item.gross, nativeCurrency),
-        displayCurrency
-      ),
-      netGross: item.netGross !== undefined ? convertFromUSD(
-        convertToUSD(item.netGross, nativeCurrency),
-        displayCurrency
-      ) : undefined,
+      handle,
+      winLoss,
+      jackpot,
+      drop,
+      totalCancelledCredits,
+      gross,
+      netGross,
     };
   });
 }
@@ -858,7 +859,8 @@ export async function getLocationTrends(
   displayCurrency: CurrencyCode,
   granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly',
   status?: 'Online' | 'Offline' | 'All' | null,
-  gameType?: string | null
+  gameType?: string | null,
+  reviewerMultiplier: number | null = null
 ): Promise<{
   locationIds: string[];
   timePeriod: TimePeriod;
@@ -1085,8 +1087,21 @@ export async function getLocationTrends(
     convertedData = convertDailyTrendItems(
       dailyData,
       locationCurrencies,
-      displayCurrency
+      displayCurrency,
+      reviewerMultiplier
     );
+  } else if (reviewerMultiplier !== null) {
+    // If no currency conversion but it's a reviewer, apply multiplier directly
+    convertedData = dailyData.map(item => ({
+      ...item,
+      handle: item.handle * reviewerMultiplier,
+      winLoss: item.winLoss * reviewerMultiplier,
+      jackpot: item.jackpot * reviewerMultiplier,
+      drop: item.drop * reviewerMultiplier,
+      totalCancelledCredits: item.totalCancelledCredits * reviewerMultiplier,
+      gross: item.gross * reviewerMultiplier,
+      netGross: item.netGross !== undefined ? item.netGross * reviewerMultiplier : undefined,
+    }));
   }
 
   // Format trends data based on granularity

@@ -19,6 +19,7 @@ import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { NextRequest, NextResponse } from 'next/server';
+import type { LocationDocument } from '@/lib/types/common';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const locations = await GamingLocations.find(locationQuery, { _id: 1, name: 1, gameDayOffset: 1 }).lean();
+    const locations = (await GamingLocations.find(locationQuery, { _id: 1, name: 1, gameDayOffset: 1 }).lean()) as unknown as Pick<LocationDocument, '_id' | 'name' | 'gameDayOffset'>[];
     const locationIds = locations.map(loc => String(loc._id));
     const locationNameMap = locations.reduce((acc, loc) => {
       acc[String(loc._id)] = loc.name;

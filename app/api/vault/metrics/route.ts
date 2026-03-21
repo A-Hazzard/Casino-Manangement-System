@@ -17,6 +17,7 @@ import { Meters } from '@/app/api/lib/models/meters';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRange, getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { NextRequest, NextResponse } from 'next/server';
+import type { LocationDocument } from '@/lib/types/common';
 
 /**
  * GET /api/vault/metrics
@@ -83,8 +84,8 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 4: Define time range (Gaming Day)
     // ============================================================================
-    const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
-    const gameDayOffset = (locationInfo as Record<string, unknown> | null)?.gameDayOffset as number ?? 8;
+    const locationInfo = (await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean()) as Pick<LocationDocument, 'gameDayOffset'> | null;
+    const gameDayOffset = locationInfo?.gameDayOffset ?? 8;
 
     // Timeframe: Use Today's Gaming Day if no date provided
     const { rangeStart, rangeEnd } = dateStr

@@ -16,8 +16,8 @@ import { generateAccessToken } from '@/lib/utils/auth';
 import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 
 export async function POST(request: NextRequest) {
-  // Only available outside production
-  if (process.env.NODE_ENV === 'production') {
+  // Only available outside production unless specifically enabled
+  if (process.env.NODE_ENV === 'production' && process.env.ENABLE_E2E_AUTH !== 'true') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 

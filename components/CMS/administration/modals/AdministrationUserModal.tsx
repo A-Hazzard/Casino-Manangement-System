@@ -69,6 +69,7 @@ const ROLE_OPTIONS = [
   { label: 'Cashier', value: 'cashier' },
   { label: 'Technician', value: 'technician' },
   { label: 'Collector', value: 'collector' },
+  { label: 'Reviewer', value: 'reviewer' },
 ];
 
 const arraysEqual = (a: string[], b: string[]) => {
@@ -131,6 +132,8 @@ export default function AdministrationUserModal({
   
   const [isEditMode, setIsEditMode] = useState(false);
   const [roles, setRoles] = useState<string[]>([]);
+  const [multiplier, setMultiplier] = useState<string>('');
+  const isReviewerSelected = roles.includes('reviewer');
 
   // Filter available roles based on editor's permissions
   const availableRoles = useMemo(() => {
@@ -145,6 +148,7 @@ export default function AdministrationUserModal({
           'technician',
           'collector',
           'vault-manager',
+          'reviewer',
         ].includes(role.value)
       );
     } else if (isLocationAdmin) {
@@ -291,6 +295,7 @@ export default function AdministrationUserModal({
     setAccountTouched({});
 
     setRoles(targetUser.roles || []);
+    setMultiplier(targetUser.multiplier != null ? String((targetUser.multiplier as number) * 100) : '');
     setIsEnabled(targetUser.isEnabled !== undefined ? targetUser.isEnabled : true);
 
     let rawLicenceeIds: string[] = [];
@@ -1642,6 +1647,13 @@ export default function AdministrationUserModal({
       updatedUser.isEnabled = isEnabled;
     }
 
+    // Handle reviewer multiplier
+    const newMultiplierValue = isReviewerSelected && multiplier ? parseFloat(multiplier) / 100 : null;
+    const oldMultiplierValue = (user as Record<string, unknown>).multiplier as number | null | undefined;
+    if (newMultiplierValue !== (oldMultiplierValue ?? null)) {
+      (updatedUser as Record<string, unknown>).multiplier = newMultiplierValue;
+    }
+
     if (updatedEmail && !/\S+@\S+\.\S+/.test(updatedEmail)) {
       toast.error('Please enter a valid email address');
       return;
@@ -2313,6 +2325,42 @@ export default function AdministrationUserModal({
                        )) : (
                           <span className="text-sm text-gray-500 italic">No roles assigned</span>
                        )}
+                    </div>
+                  )}
+
+                  {/* Reviewer Multiplier Input - only shown when reviewer role is selected */}
+                  {isReviewerSelected && (
+                    <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                      <Label htmlFor="edit-multiplier" className="text-sm font-semibold text-blue-800">
+                        Reviewer Multiplier (%)
+                      </Label>
+                      <p className="mb-2 text-xs text-blue-600">
+                        Financial values (Money In, Money Out, Jackpot) will be multiplied by this percentage for this reviewer.
+                      </p>
+                      {isEditMode ? (
+                        <>
+                          <Input
+                            id="edit-multiplier"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            placeholder="e.g. 50 for 50%"
+                            value={multiplier}
+                            onChange={e => setMultiplier(e.target.value)}
+                            className="w-48 bg-white"
+                          />
+                          {multiplier && (
+                            <p className="mt-1 text-xs text-gray-500">
+                              Stored as: {(parseFloat(multiplier) / 100).toFixed(4)} (multiply factor)
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-sm font-medium text-gray-900">
+                          {multiplier ? `${multiplier}%` : 'Not set'}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

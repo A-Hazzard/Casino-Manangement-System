@@ -38,13 +38,19 @@ function AdministrationPaymentStatusConfirmModal({
   currentExpiryDate,
 }: AdministrationPaymentStatusConfirmModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open && modalRef.current) {
+    if (open && modalRef.current && backdropRef.current) {
       gsap.fromTo(
         modalRef.current,
-        { opacity: 0, scale: 0.95 },
-        { opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' }
+        { y: 100, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
+      );
+      gsap.fromTo(
+        backdropRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3, ease: 'power2.out' }
       );
     }
   }, [open]);
@@ -56,99 +62,115 @@ function AdministrationPaymentStatusConfirmModal({
   const newExpiryDate = getNext30DaysDate();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+    <div className="fixed inset-0 z-[100000]">
       <div
-        ref={modalRef}
-        className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
-      >
-        <button
-          className="absolute right-4 top-4 rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-          onClick={onClose}
-          aria-label="Close"
+        ref={backdropRef}
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      <div className="fixed inset-0 flex items-center justify-center p-4">
+        <div
+          ref={modalRef}
+          className="w-full max-w-md rounded-md bg-container shadow-lg"
+          style={{ opacity: 0, transform: 'translateY(-20px)' }}
         >
-          <X className="h-5 w-5" />
-        </button>
-
-        <div className="text-center">
-          <div className="mb-4">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100">
-              <span className="text-2xl">⚠️</span>
+          <div className="border-b border-border p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-buttonActive text-center flex-1">
+                Confirm Payment Status Change
+              </h2>
+              <Button
+                variant="ghost"
+                onClick={onClose}
+                className="text-grayHighlight hover:bg-buttonInactive/10 h-8 w-8 p-0 shrink-0"
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </div>
-            <h3 className="mb-2 text-xl font-bold text-gray-900">
-              Confirm Payment Status Change
-            </h3>
-            <p className="mb-4 text-gray-600">
-              Are you sure you want to change the payment status for{' '}
-              <span className="font-semibold">&quot;{licenceeName}&quot;</span>{' '}
-              from{' '}
-              <span
-                className={`font-semibold ${
-                  currentStatus ? 'text-green-600' : 'text-red-600'
-                }`}
-              >
-                {currentStatus ? 'Paid' : 'Unpaid'}
-              </span>{' '}
-              to{' '}
-              <span
-                className={`font-semibold ${
-                  newStatus ? 'text-green-600' : 'text-red-600'
-                }`}
-              >
-                {newStatus ? 'Paid' : 'Unpaid'}
-              </span>
-              ?
-            </p>
-            {!currentStatus && newStatus && (
-              <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
-                <p className="mb-2 text-sm text-blue-800">
-                  <strong>Note:</strong> This licence will expire{' '}
-                  <strong>30 days from today</strong>.
-                </p>
-                <div className="flex flex-col gap-1 text-xs text-gray-700">
-                  <div>
-                    <span className="font-semibold">Current Date:</span>{' '}
-                    {formatDate(currentDate)}
-                  </div>
-                  <div>
-                    <span className="font-semibold">New Expiry Date:</span>{' '}
-                    {formatDate(newExpiryDate)}
-                  </div>
-                  {currentExpiryDate && (
-                    <div>
-                      <span className="font-semibold">
-                        Previous Expiry Date:
-                      </span>{' '}
-                      {formatDate(currentExpiryDate)}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
 
-          <div className="flex gap-3">
-            <Button
-              onClick={onClose}
-              className="flex-1 rounded-lg bg-gray-500 py-2 text-white transition-colors hover:bg-gray-600"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={onConfirm}
-              className={`flex-1 rounded-lg py-2 text-white transition-colors ${
-                newStatus
-                  ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-red-600 hover:bg-red-700'
-              }`}
-            >
-              Confirm Change
-            </Button>
+          <div className="p-6">
+            <div className="text-center">
+              <div className="mb-4 flex justify-center">
+                <div className="h-16 w-16 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex">
+                  <span className="text-2xl">⚠️</span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <p className="text-lg font-semibold text-grayHighlight">
+                  Are you sure you want to change the payment status for{' '}
+                  <span className="font-bold text-buttonActive">
+                    &quot;{licenceeName}&quot;
+                  </span>{' '}
+                  from{' '}
+                  <span
+                    className={`font-bold ${
+                      currentStatus ? 'text-green-600' : 'text-red-600'
+                    }`}
+                  >
+                    {currentStatus ? 'Paid' : 'Unpaid'}
+                  </span>{' '}
+                  to{' '}
+                  <span
+                    className={`font-bold ${
+                      newStatus ? 'text-green-600' : 'text-red-600'
+                    }`}
+                  >
+                    {newStatus ? 'Paid' : 'Unpaid'}
+                  </span>
+                  ?
+                </p>
+
+                {!currentStatus && newStatus && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 p-4 text-left">
+                    <p className="mb-2 text-sm text-blue-800 dark:text-blue-300 font-medium">
+                      Note: This licence will expire 30 days from today.
+                    </p>
+                    <div className="grid grid-cols-1 gap-2 text-xs text-grayHighlight">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Current Date:</span>
+                        <span>{formatDate(currentDate)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="font-medium">New Expiry Date:</span>
+                        <span>{formatDate(newExpiryDate)}</span>
+                      </div>
+                      {currentExpiryDate && (
+                        <div className="flex justify-between">
+                          <span className="font-medium">Previous Expiry:</span>
+                          <span>{formatDate(currentExpiryDate)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-border p-4">
+            <div className="flex justify-center space-x-4">
+              <Button
+                onClick={onConfirm}
+                className={newStatus ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}
+              >
+                Confirm Change
+              </Button>
+              <Button
+                onClick={onClose}
+                className="bg-buttonInactive text-primary-foreground hover:bg-buttonInactive/90"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 export default AdministrationPaymentStatusConfirmModal;
 

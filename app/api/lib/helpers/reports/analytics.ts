@@ -18,7 +18,6 @@ import type { MachineAnalytics } from '@/lib/types/reports';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { subDays } from 'date-fns';
 import type { PipelineStage } from 'mongoose';
-import mongoose from 'mongoose';
 
 /**
  * Builds aggregation pipeline for machine analytics
@@ -233,8 +232,8 @@ export async function getMachineStatsForAnalytics(
             moneyIn: { $ifNull: ['$sasMeters.drop', 0] },
             rawMoneyOut: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
             jackpot: { $ifNull: ['$sasMeters.jackpot', 0] },
-            subtractJackpot: {
-              $ifNull: [{ $arrayElemAt: ['$licenceeDetails.subtractJackpot', 0] }, false],
+            includeJackpot: {
+              $ifNull: [{ $arrayElemAt: ['$licenceeDetails.includeJackpot', 0] }, false],
             },
           },
         },
@@ -246,7 +245,7 @@ export async function getMachineStatsForAnalytics(
               $add: [
                 '$rawMoneyOut',
                 {
-                  $cond: [{ $eq: ['$subtractJackpot', true] }, '$jackpot', 0],
+                  $cond: [{ $eq: ['$includeJackpot', true] }, '$jackpot', 0],
                 },
               ],
             },
@@ -306,7 +305,7 @@ export type DashboardAnalyticsResult = {
  * @param licencee - Licencee ID to filter by
  * @returns Aggregation pipeline stages
  */
-function buildDashboardAnalyticsPipeline(licencee: string, subtractJackpot: boolean = false): PipelineStage[] {
+function buildDashboardAnalyticsPipeline(licencee: string, includeJackpot: boolean = false): PipelineStage[] {
   return [
     {
       $lookup: {
@@ -359,7 +358,7 @@ function buildDashboardAnalyticsPipeline(licencee: string, subtractJackpot: bool
           $add: [
             '$totalCancelledCredits',
             {
-              $cond: [{ $eq: [subtractJackpot, true] }, '$totalJackpot', 0],
+              $cond: [{ $eq: [includeJackpot, true] }, '$totalJackpot', 0],
             },
           ],
         },
@@ -383,9 +382,9 @@ export async function getDashboardAnalytics(
   licencee: string
 ): Promise<DashboardAnalyticsResult> {
   const licenceeDoc = (await Licencee.findOne({ _id: licencee }).lean()) as Record<string, unknown> | null;
-  const subtractJackpot = !!licenceeDoc?.subtractJackpot;
+  const includeJackpot = !!licenceeDoc?.includeJackpot;
 
-  const pipeline = buildDashboardAnalyticsPipeline(licencee, subtractJackpot);
+  const pipeline = buildDashboardAnalyticsPipeline(licencee, includeJackpot);
   const statsResult = await Machine.aggregate(pipeline);
 
   return (
@@ -409,10 +408,10 @@ export async function getDashboardAnalytics(
  * @returns MongoDB aggregation pipeline stages
  */
 function buildChartsPipeline(
-  licenceeId: mongoose.Types.ObjectId,
+  licenceeId: string,
   startDate: Date,
   endDate: Date,
-  subtractJackpot: boolean = false
+  includeJackpot: boolean = false
 ): PipelineStage[] {
   return [
     // Stage 1: Filter meter records by date range
@@ -479,7 +478,7 @@ function buildChartsPipeline(
           $add: [
             '$cancelledCredits',
             {
-              $cond: [{ $eq: [subtractJackpot, true] }, '$totalJackpot', 0],
+              $cond: [{ $eq: [includeJackpot, true] }, '$totalJackpot', 0],
             },
           ],
         },
@@ -549,12 +548,12 @@ export async function getChartsData(
   const endDate = new Date();
   const startDate =
     period === 'last7days' ? subDays(endDate, 7) : subDays(endDate, 30);
-  const licenceeId = new mongoose.Types.ObjectId(licencee);
+  const licenceeId = licencee;
 
   const licenceeDoc2 = (await Licencee.findOne({ _id: licencee }).lean()) as Record<string, unknown> | null;
-  const subtractJackpot = !!licenceeDoc2?.subtractJackpot;
+  const includeJackpot = !!licenceeDoc2?.includeJackpot;
 
-  const chartsPipeline = buildChartsPipeline(licenceeId, startDate, endDate, subtractJackpot);
+  const chartsPipeline = buildChartsPipeline(licenceeId, startDate, endDate, includeJackpot);
   // Use cursor for Meters aggregation
   const series: Array<Record<string, unknown>> = [];
   const seriesCursor = Meters.aggregate(chartsPipeline).cursor({
@@ -725,7 +724,7 @@ export async function getTopLocationsAnalytics(
     });
   });
 
-  // Fetch licencee settings (subtractJackpot) for all top locations
+  // Fetch licencee settings (includeJackpot) for all top locations
   const topLocationLicenceeIds = [
     ...new Set(
       topLocations
@@ -735,10 +734,10 @@ export async function getTopLocationsAnalytics(
   ];
   const licenceesForTopLocationsSettings = await Licencee.find(
     { _id: { $in: topLocationLicenceeIds } },
-    { _id: 1, subtractJackpot: 1 }
+    { _id: 1, includeJackpot: 1 }
   ).lean();
   const licenceeSettingsMap = new Map(
-    licenceesForTopLocationsSettings.map((l: Record<string, unknown>) => [String(l._id), !!l.subtractJackpot])
+    licenceesForTopLocationsSettings.map(l => [String(l._id), !!(l as { includeJackpot?: boolean }).includeJackpot])
   );
 
   // Combine location data with financial metrics
@@ -751,10 +750,10 @@ export async function getTopLocationsAnalytics(
     };
 
     const licenceeId = String(location.locationInfo?.rel?.licencee);
-    const subtractJackpot = licenceeSettingsMap.get(licenceeId) || false;
+    const includeJackpot = licenceeSettingsMap.get(licenceeId) || false;
 
     // financialMetrics.totalCancelledCredits is usually the NET payout (Excl. Jackpot)
-    const moneyOut = financialMetrics.totalCancelledCredits + (subtractJackpot ? (financialMetrics.totalJackpot || 0) : 0);
+    const moneyOut = financialMetrics.totalCancelledCredits + (includeJackpot ? (financialMetrics.totalJackpot || 0) : 0);
 
     const gross = financialMetrics.totalDrop - moneyOut;
 

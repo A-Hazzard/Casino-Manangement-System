@@ -35,7 +35,7 @@ Provides time-series meter data for the dashboard's **Performance Chart**.
 1. **Parse & validate params** — Reads `licencee`, `timePeriod`, `granularity` (`Hourly`/`Daily`/`Weekly`/`Monthly`), `startDate`, `endDate`.
 2. **Authenticate user** — Retrieves the user from the JWT cookie. Returns `401` if absent.
 3. **Determine accessible locations** — Calls `getUserAccessibleLicenceesFromToken()` and `getUserLocationFilter()` to build the RBAC-filtered list of location IDs the user can see.
-4. **Fetch location data & calculate gaming day ranges** — Fetches all location documents to get their individual `gameDayOffset` values. Then computes `queryStartDate` and `queryEndDate` aligned to each property's gaming day (e.g. `8 AM to 7:59 AM next day`). Also fetches `subtractJackpot` setting per Licencee.
+4. **Fetch location data & calculate gaming day ranges** — Fetches all location documents to get their individual `gameDayOffset` values. Then computes `queryStartDate` and `queryEndDate` aligned to each property's gaming day (e.g. `8 AM to 7:59 AM next day`). Also fetches `includeJackpot` setting per Licencee.
 5. **Fetch machines** — Queries the `Machines` collection filtered to the resolved location list.
 6. **Aggregate last meter per machine** — Calls `getLastMeterPerMachine()` which gets the most recent `Meters` document for each machine within the date range (uses `$sort` then `$group` by `machineId`).
 7. **Optionally aggregate hourly chart data** — If `granularity` is specified, calls `getHourlyChartData()` which runs a `$group` by time bucket to produce the chart series data.
@@ -64,7 +64,7 @@ Each property has a configurable `gameDayOffset` (typically `8`, meaning 8 AM). 
 ### 💹 Gross Calculation
 `Gross = totalDrop - totalCancelledCredits`.
 
-If the Licencee has `subtractJackpot: true`, jackpot payouts are also deducted:
+If the Licencee has `includeJackpot: true`, jackpot payouts are also deducted:
 `Gross = totalDrop - totalCancelledCredits - totalJackpots`.
 
 ---

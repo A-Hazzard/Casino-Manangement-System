@@ -34,11 +34,8 @@ export function shouldShowLicenceeFilter(
   if (!user) return false;
 
   const roles = user.roles || [];
-  const normalizedRoles = roles.map(role =>
-    typeof role === 'string' ? role.toLowerCase() : role
-  );
   const isAdmin =
-    normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+    roles.includes('admin') || roles.includes('developer');
 
   // Always show for admins
   if (isAdmin) return true;
@@ -72,14 +69,10 @@ export function shouldShowNoLicenceeMessage(
   if (!user) return true;
 
   const roles = user.roles || [];
-  const normalizedRoles = roles.map(role =>
-    typeof role === 'string' ? role.toLowerCase() : role
-  );
-
   // Never show for admins
   if (
-    normalizedRoles.includes('admin') ||
-    normalizedRoles.includes('developer')
+    roles.includes('admin') ||
+    roles.includes('developer')
   ) {
     return false;
   }

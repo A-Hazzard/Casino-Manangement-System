@@ -302,12 +302,13 @@ export default function ProfileCompletionModal({
   return (
     <Dialog open={open}>
       <DialogContent 
-        className="md:max-w-md p-0 overflow-hidden bg-slate-50 border-slate-200 shadow-xl [&>button]:hidden flex flex-col"
+        className="md:max-w-md p-0 overflow-hidden bg-slate-50 border-slate-200 shadow-xl [&>button]:hidden flex flex-col h-fit"
         onInteractOutside={handleInteractOutside}
         onEscapeKeyDown={handleInteractOutside}
+        isMobileFullScreen={false}
       >
         {/* Header */}
-        <div className="bg-white border-b px-6 py-4">
+        <div className="bg-white border-b px-6 py-3">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
               <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600">
@@ -322,7 +323,7 @@ export default function ProfileCompletionModal({
         </div>
 
         {/* Scrollable Form Area */}
-        <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6 flex-1 md:max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4 md:max-h-[60vh] overflow-y-auto custom-scrollbar">
           
           {serverError && (
             <div className="bg-red-50 text-red-600 px-4 py-3 rounded-md text-sm font-medium border border-red-100 flex items-start gap-2">
@@ -333,8 +334,8 @@ export default function ProfileCompletionModal({
 
           {/* Section: Personal Details */}
           {hasPersonalErrors && (
-            <fieldset className="space-y-4 bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
-                <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 px-1">
+            <fieldset className="space-y-3 bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                <legend className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 px-1">
                     Personal Details
                 </legend>
                 
@@ -371,8 +372,8 @@ export default function ProfileCompletionModal({
 
           {/* Section: Contact Details */}
           {showContactSection && (
-            <fieldset className="space-y-4 bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
-                <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 px-1">
+            <fieldset className="space-y-3 bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                <legend className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 px-1">
                     Contact Information
                 </legend>
                 {invalidFields.emailAddress && renderFieldInput('emailAddress', 'Email Address', 'name@example.com', 'email')}
@@ -382,8 +383,8 @@ export default function ProfileCompletionModal({
 
           {/* Section: Security */}
           {needsPassword && (
-            <fieldset className="space-y-4 bg-white p-4 rounded-lg border border-slate-100 shadow-sm">
-                 <legend className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 px-1">
+            <fieldset className="space-y-3 bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                 <legend className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 px-1">
                     Security Update
                 </legend>
                 
@@ -441,8 +442,8 @@ export default function ProfileCompletionModal({
       </form>
 
       {/* Footer */}
-      <div className="bg-slate-50 border-t p-4 flex flex-col gap-3">
-         <div className="bg-blue-50 border border-blue-100 rounded p-3 text-xs text-blue-800">
+      <div className="bg-slate-50 border-t p-3 flex flex-col gap-2">
+         <div className="bg-blue-50 border border-blue-100 rounded px-2.5 py-2 text-[10px] text-blue-800 leading-relaxed">
             <p>
               <strong>Note:</strong> Updating your profile may require you to log in again to refresh your secure session.
             </p>

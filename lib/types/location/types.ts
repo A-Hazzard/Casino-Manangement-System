@@ -98,7 +98,7 @@ export type LocationTableProps = {
   sortOption: LocationSortOption;
   sortOrder: 'asc' | 'desc';
   onLocationClick: (id: string) => void;
-  onAction: (action: 'edit' | 'delete', location: AggregatedLocation) => void;
+  onAction: (action: 'edit' | 'delete' | 'restore', location: AggregatedLocation) => void;
   formatCurrency: (amount: number) => string;
   selectedFilters?: LocationFilter[]; // Add selectedFilters prop
   showArchived?: boolean;

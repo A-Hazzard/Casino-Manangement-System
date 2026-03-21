@@ -20,7 +20,7 @@ const LicenceeSchema = new Schema(
       longitude: { type: Number },
       zoomRatio: { type: Number },
     },
-    subtractJackpot: {
+    includeJackpot: {
       type: Boolean,
       default: false,
     },

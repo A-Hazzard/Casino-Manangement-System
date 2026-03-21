@@ -411,6 +411,16 @@ export default function AppSidebar({
               // Render items based on pre-loaded permissions
               items
                 .filter(item => {
+                  // Normalised user roles (defensive — filter null/undefined entries)
+                  const userRolesNorm = (user?.roles || [])
+                    .filter((r): r is string => typeof r === 'string');
+                  const isDeveloper = userRolesNorm.includes('developer');
+
+                  // Under-maintenance items are only shown to developers
+                  if (item.underMaintenance && !isDeveloper) {
+                    return false;
+                  }
+
                   // Use custom permission check if provided
                   if (item.permissionCheck && user?.roles) {
                     return item.permissionCheck(user.roles as string[]);
@@ -422,11 +432,8 @@ export default function AppSidebar({
                     user.roles.length === 1 &&
                     user.roles.includes('collector');
 
-                  // Hide Locations and Cabinets for collector-only users
-                  if (
-                    isCollectorOnly &&
-                    (item.href === '/locations' || item.href === '/cabinets')
-                  ) {
+                  // Hide Locations for collector-only users
+                  if (isCollectorOnly && item.href === '/locations') {
                     return false;
                   }
 

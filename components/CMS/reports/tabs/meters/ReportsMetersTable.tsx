@@ -54,15 +54,15 @@ export default function ReportsMetersTable({
     return (
       <>
         {/* Search bar - Always visible, even when no data */}
-        <div className="mb-4 bg-buttonActive p-4 rounded-lg">
+        <div className="mb-4 bg-white p-4 rounded-lg border border-gray-200">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-black z-10" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400 z-10" />
             <Input
               type="text"
               placeholder="Search by Serial Number, Custom Name, or Location..."
               value={searchTerm}
               onChange={e => onSearchChange(e.target.value)}
-              className="pl-10"
+              className="pl-10 text-gray-900 placeholder:text-gray-500"
             />
           </div>
         </div>
@@ -80,15 +80,15 @@ export default function ReportsMetersTable({
   return (
     <div className="flex flex-col">
       {/* Search bar - Right above the table */}
-      <div className="mb-4 bg-buttonActive p-4 rounded-lg">
+      <div className="mb-4 bg-white p-4 rounded-lg border border-gray-200">
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-black z-10" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400 z-10" />
           <Input
             type="text"
             placeholder="Search by Serial Number, Custom Name, or Location..."
             value={searchTerm}
             onChange={e => onSearchChange(e.target.value)}
-            className="pl-10"
+            className="pl-10 text-gray-900 placeholder:text-gray-500"
           />
         </div>
       </div>

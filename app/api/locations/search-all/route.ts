@@ -45,7 +45,7 @@ type LocationAggregationResult = {
   moneyIn: number;
   moneyOut: number;
   jackpot: number;
-  subtractJackpot: boolean;
+  includeJackpot: boolean;
   gross: number;
   isLocalServer: boolean;
   hasSmib: boolean;
@@ -485,7 +485,7 @@ export async function GET(request: NextRequest) {
     // Fetch licencee settings for all locations
     const licenceeIds = Array.from(new Set(matchingLocations.map(loc => loc.rel?.licencee).filter(Boolean)));
     const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean();
-    const licenceeSubtractJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.subtractJackpot]));
+    const licenceeIncludeJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.includeJackpot]));
 
     // Step 8: Combine results and create the initial AggregatedLocation objects
     const locations: LocationAggregationResult[] = matchingLocations.map(location => {
@@ -501,13 +501,13 @@ export async function GET(request: NextRequest) {
         (location as { enableMembership?: boolean }).enableMembership
       );
 
-      const subtractJackpot = licenceeSubtractJackpotMap.get(String(location.rel?.licencee)) || false;
+      const includeJackpot = licenceeIncludeJackpotMap.get(String(location.rel?.licencee)) || false;
       const rawMoneyOut = financialData.totalMoneyOut || 0;
       const jackpot = financialData.totalJackpot || 0;
 
       // Logic: TRUE = Low Gross (Include jackpot in deduction), FALSE = High Gross (Exclude jackpot from deduction)
       // rawMoneyOut is totalCancelledCredits which is typically NET handpays.
-      const moneyOutValue = rawMoneyOut + (subtractJackpot ? jackpot : 0);
+      const moneyOutValue = rawMoneyOut + (includeJackpot ? jackpot : 0);
 
       return {
         _id: locationId,
@@ -522,7 +522,7 @@ export async function GET(request: NextRequest) {
         moneyIn: financialData.totalMoneyIn || 0,
         moneyOut: moneyOutValue,
         jackpot: jackpot,
-        subtractJackpot: subtractJackpot,
+        includeJackpot: includeJackpot,
         gross: (financialData.totalMoneyIn || 0) - moneyOutValue,
         isLocalServer: location.isLocalServer || false,
         hasSmib: location.hasSmib || false,
@@ -678,7 +678,7 @@ export async function GET(request: NextRequest) {
       moneyIn: loc.moneyIn,
       moneyOut: loc.moneyOut,
       jackpot: loc.jackpot,
-      subtractJackpot: (loc).subtractJackpot,
+      includeJackpot: (loc).includeJackpot,
       gross: loc.gross,
       isLocalServer: loc.isLocalServer,
       hasSmib: loc.hasSmib,

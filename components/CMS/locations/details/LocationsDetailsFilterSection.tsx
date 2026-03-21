@@ -96,24 +96,23 @@ export default function LocationsDetailsFilterSection({
           </div>
         </div>
 
-        {/* XL+ Checkboxes - Organized in logical groups */}
-        <div className="hidden flex-1 flex-wrap items-center gap-x-8 gap-y-2 xl:flex">
+        {/* XL+ Toolbar Checkboxes */}
+        <div className="hidden flex-1 items-center justify-end gap-x-6 xl:flex border-l border-white/20 pl-6 ml-2">
           {/* Connection Group */}
-          <div className="flex items-center gap-4 border-r border-white/30 pr-6">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-white/70">Connection</span>
+          <div className="flex items-center gap-4">
             {STATUS_OPTIONS.slice(0, 3).map(opt => (
-              <div key={opt.id} className="flex items-center space-x-2">
+              <div key={opt.id} className="flex items-center space-x-2.5">
                 <Checkbox
                   id={opt.id}
                   checked={selectedFilters.includes(opt.id as LocationFilter)}
                   onCheckedChange={checked =>
                     onFilterChange(opt.id as LocationFilter, checked === true)
                   }
-                  className="border-white data-[state=checked]:bg-white data-[state=checked]:text-purple-700"
+                  className="h-4 w-4 border-white/40 data-[state=checked]:bg-white data-[state=checked]:text-purple-700 data-[state=checked]:border-white"
                 />
                 <Label
                   htmlFor={opt.id}
-                  className="cursor-pointer whitespace-nowrap text-sm font-medium text-white"
+                  className="cursor-pointer whitespace-nowrap text-[13px] font-semibold text-white/90 hover:text-white transition-colors"
                 >
                   {opt.name}
                 </Label>
@@ -121,45 +120,47 @@ export default function LocationsDetailsFilterSection({
             ))}
           </div>
 
+          <div className="h-6 w-[1px] bg-white/20" />
+
           {/* Features Group */}
-          <div className="flex items-center gap-4 border-r border-white/30 pr-6">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-white/70">Features</span>
+          <div className="flex items-center gap-4">
             {STATUS_OPTIONS.slice(3, 4).map(opt => (
-              <div key={opt.id} className="flex items-center space-x-2">
+              <div key={opt.id} className="flex items-center space-x-2.5">
                 <Checkbox
                   id={opt.id}
                   checked={selectedFilters.includes(opt.id as LocationFilter)}
                   onCheckedChange={checked =>
                     onFilterChange(opt.id as LocationFilter, checked === true)
                   }
-                  className="border-white data-[state=checked]:bg-white data-[state=checked]:text-purple-700"
+                  className="h-4 w-4 border-white/40 data-[state=checked]:bg-white data-[state=checked]:text-purple-700 data-[state=checked]:border-white"
                 />
                 <Label
                   htmlFor={opt.id}
-                  className="cursor-pointer whitespace-nowrap text-sm font-medium text-white"
+                  className="cursor-pointer whitespace-nowrap text-[13px] font-semibold text-white/90 hover:text-white transition-colors"
                 >
                   {opt.name}
                 </Label>
               </div>
             ))}
           </div>
+
+          <div className="h-6 w-[1px] bg-white/20" />
 
           {/* Quality Group */}
           <div className="flex items-center gap-4">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-white/70">Quality</span>
             {STATUS_OPTIONS.slice(4).map(opt => (
-              <div key={opt.id} className="flex items-center space-x-2">
+              <div key={opt.id} className="flex items-center space-x-2.5">
                 <Checkbox
                   id={opt.id}
                   checked={selectedFilters.includes(opt.id as LocationFilter)}
                   onCheckedChange={checked =>
                     onFilterChange(opt.id as LocationFilter, checked === true)
                   }
-                  className="border-white data-[state=checked]:bg-white data-[state=checked]:text-purple-700"
+                  className="h-4 w-4 border-white/40 data-[state=checked]:bg-white data-[state=checked]:text-purple-700 data-[state=checked]:border-white"
                 />
                 <Label
                   htmlFor={opt.id}
-                  className="cursor-pointer whitespace-nowrap text-sm font-medium text-white"
+                  className="cursor-pointer whitespace-nowrap text-[13px] font-semibold text-white/90 hover:text-white transition-colors"
                 >
                   {opt.name}
                 </Label>
@@ -169,29 +170,6 @@ export default function LocationsDetailsFilterSection({
         </div>
       </div>
 
-      {/* Mobile Checkboxes (Visible only on small screens) */}
-      <div className="bg-buttonActive p-4 rounded-lg md:hidden">
-        <div className="flex flex-wrap justify-center gap-4">
-          {STATUS_OPTIONS.map(opt => (
-            <div key={`${opt.id}-mobile`} className="flex items-center space-x-2">
-              <Checkbox
-                id={`${opt.id}-mobile`}
-                checked={selectedFilters.includes(opt.id as LocationFilter)}
-                onCheckedChange={checked =>
-                  onFilterChange(opt.id as LocationFilter, checked === true)
-                }
-                className="border-white data-[state=checked]:bg-white data-[state=checked]:text-purple-700"
-              />
-              <Label
-                htmlFor={`${opt.id}-mobile`}
-                className="cursor-pointer text-sm font-medium text-white"
-              >
-                {opt.name}
-              </Label>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

@@ -1,8 +1,10 @@
+import { User } from '@/lib/types/administration';
 import { connectDB } from '../middleware/db';
 import { GamingLocations } from '../models/gaminglocations';
 import { Licencee } from '../models/licencee';
 import UserModel from '../models/user';
 import { getUserFromServer } from './users';
+import type { LocationDocument } from '@/lib/types/common';
 
 /**
  * Gets the licencees a user can access from JWT token
@@ -20,14 +22,7 @@ export async function getUserAccessibleLicenceesFromToken(userPayloadOverride?: 
       return [];
     }
 
-    const normalizeRoles = (roles: unknown): string[] =>
-      Array.isArray(roles)
-        ? roles
-          .filter((role): role is string => typeof role === 'string')
-          .map(role => role?.toLowerCase?.() ?? role)
-        : [];
-
-    let roles = normalizeRoles(userPayload.roles);
+    let roles = (userPayload.roles as string[]) || [];
 
     // Use only new field
     let userLicencees: string[] = [];
@@ -57,7 +52,7 @@ export async function getUserAccessibleLicenceesFromToken(userPayloadOverride?: 
 
         if (dbUser) {
           if (needsRoleHydration) {
-            roles = normalizeRoles(dbUser.roles);
+            roles = (dbUser.roles as string[]) || [];
             if (roles.length === 0) {
               console.warn(
                 '[getUserAccessibleLicenceesFromToken] User has no roles stored in DB - treating as non-admin'
@@ -169,7 +164,7 @@ async function getLicenceeLocationFilter(
     throw new Error('Database connection failed');
   }
 
-  const locations = await GamingLocations.find(
+  const locations = (await GamingLocations.find(
     {
       $and: [
         {
@@ -184,7 +179,7 @@ async function getLicenceeLocationFilter(
       ]
     },
     { _id: 1 }
-  ).lean();
+  ).lean()) as unknown as Pick<LocationDocument, '_id'>[];
 
   return locations.map(loc => String(loc._id));
 }
@@ -206,35 +201,29 @@ async function getLicenceeLocationFilter(
  * @returns Array of location IDs or 'all' for admins with no restrictions
  */
 export async function getUserLocationFilter(
-  userAccessibleLicencees: string[] | 'all',
+  userAccessibleLicencees: 'all' | string[],
   selectedLicenceeFilter: string | undefined,
   userLocationPermissions: string[],
-  userRoles: string[] = []
+  userRoles: User['roles'] = []
 ): Promise<string[] | 'all'> {
   // Check if user is admin, manager, or location admin
-  const normalizedRoles = userRoles.map(role => role?.toLowerCase?.() ?? role);
-  const isAdmin =
-    userAccessibleLicencees === 'all' ||
-    normalizedRoles.includes('admin') ||
-    normalizedRoles.includes('developer');
-  const isManager = normalizedRoles.includes('manager');
-  const isVaultManager = normalizedRoles.includes('vault-manager');
-  const isCashier = normalizedRoles.includes('cashier');
-  const isDeveloper = normalizedRoles.includes('developer');
-  const isLocationAdmin = normalizedRoles.includes('location admin');
+  const isAdmin = userAccessibleLicencees === 'all';
+  const isManager = userRoles.includes('manager');
+  const isVaultManager = userRoles.includes('vault-manager');
+  const isCashier = userRoles.includes('cashier');
+  const isLocationAdmin = userRoles.includes('location admin');
 
   if (isAdmin) {
     const hasSpecificLicencee =
       selectedLicenceeFilter &&
       selectedLicenceeFilter !== '' &&
       selectedLicenceeFilter !== 'all';
-    if (!hasSpecificLicencee) {
-      return 'all';
-    }
+    
+    if (!hasSpecificLicencee) return 'all';
   }
 
   // Get locations from selected licencee or all user's licencees
-  let licenceeLocations: string[] | 'all';
+  let licenceeLocations: 'all' | string[];
 
   if (
     selectedLicenceeFilter &&
@@ -307,9 +296,7 @@ export async function getUserLocationFilter(
 
   // CRITICAL: Developers and Admins skip all individual location permissions
   // they only respect the licencee filter (if one is active)
-  if (isAdmin || isDeveloper) {
-    return licenceeLocations;
-  }
+  if (isAdmin) return licenceeLocations;
 
   // If licenceeLocations is 'all', check if user has location restrictions
   if (licenceeLocations === 'all') {
@@ -371,35 +358,15 @@ export async function checkUserLocationAccess(
 ): Promise<boolean> {
   try {
     const user = await getUserFromServer();
-    if (!user) {
-      return false;
-    }
+    if (!user) return false;
+    
+    const userRoles = (user.roles as User['roles']) || [];
 
-    const userRoles = (user.roles as string[]) || [];
+    const userPayload = user as User;
+    const userAccessibleLicencees = userPayload.assignedLicencees || [];
+    const userLocationPermissions = userPayload.assignedLocations || [];
 
-    // Use assigned licences
-    let userAccessibleLicencees: string[] = [];
-    const userPayload = user as { assignedLicencees?: string[] };
-    const rawLicencees = userPayload.assignedLicencees;
-
-    if (Array.isArray(rawLicencees)) {
-      userAccessibleLicencees = rawLicencees.map(value => String(value));
-    }
-
-    // Use only new field
-    let userLocationPermissions: string[] = [];
-    if (
-      Array.isArray(
-        (user as { assignedLocations?: string[] }).assignedLocations
-      )
-    ) {
-      userLocationPermissions = (user as { assignedLocations: string[] })
-        .assignedLocations;
-    }
-
-    const normalizedRoles = userRoles.map(role => role?.toLowerCase?.() ?? role);
-    const isAdmin =
-      normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
 
     // Get user's accessible locations
     const allowedLocationIds = await getUserLocationFilter(

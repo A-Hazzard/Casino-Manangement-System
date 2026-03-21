@@ -17,6 +17,7 @@ import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
+import type { LocationDocument } from '@/lib/types/common';
 
 /**
  * POST /api/vault/add-cash
@@ -109,9 +110,22 @@ export async function POST(request: NextRequest) {
     if (allowedLocationIds !== 'all' && !allowedLocationIds.includes(String(activeVaultShift.locationId))) {
       // Get location names for all parts to explain WHY
       const { GamingLocations } = await import('@/app/api/lib/models/gaminglocations');
+      // Fetch names to provide detailed access error
+      const attemptedLocPromise = GamingLocations.findOne(
+        { _id: activeVaultShift.locationId },
+        { name: 1 }
+      ).lean() as unknown as Promise<Pick<LocationDocument, 'name'> | null>;
+
+      const allowedLocsPromise = Array.isArray(allowedLocationIds)
+        ? (GamingLocations.find(
+            { _id: { $in: allowedLocationIds } },
+            { name: 1 }
+          ).lean() as unknown as Promise<Pick<LocationDocument, 'name'>[]>)
+        : Promise.resolve([]);
+
       const [attemptedLocation, allowedLocations] = await Promise.all([
-        GamingLocations.findOne({ _id: activeVaultShift.locationId }, { name: 1 }).lean(),
-        Array.isArray(allowedLocationIds) ? GamingLocations.find({ _id: { $in: allowedLocationIds } }, { name: 1 }).lean() : Promise.resolve([])
+        attemptedLocPromise,
+        allowedLocsPromise,
       ]);
 
       const attemptedName = attemptedLocation ? (attemptedLocation as Record<string, unknown>).name as string : 'Unknown';

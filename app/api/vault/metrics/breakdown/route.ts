@@ -14,6 +14,7 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { NextRequest, NextResponse } from 'next/server';
+import type { LocationDocument } from '@/lib/types/common';
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,8 +44,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Timeframe: Default to Today's Gaming Day
-    const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
-    const gameDayOffset = (locationInfo as Record<string, unknown> | null)?.gameDayOffset as number ?? 8;
+    const locationInfo = (await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean()) as Pick<LocationDocument, 'gameDayOffset'> | null;
+    const gameDayOffset = locationInfo?.gameDayOffset ?? 8;
     const gamingDayRange = getGamingDayRangeForPeriod('Today', gameDayOffset);
 
     const query: Record<string, unknown> = {

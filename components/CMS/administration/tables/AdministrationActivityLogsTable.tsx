@@ -94,7 +94,7 @@ function AdministrationActivityLogsTable({
 
   // Delete states
   const { user: currentUser } = useUserStore();
-  const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
+  const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
   const isDeveloper = userRoles.includes('developer');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [logToDelete, setLogToDelete] = useState<ActivityLog | null>(null);

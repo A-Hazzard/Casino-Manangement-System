@@ -9,6 +9,7 @@
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
 import { Button } from '@/components/shared/ui/button';
+import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import {
     Card,
     CardContent,
@@ -357,6 +358,13 @@ export const ReportsMachinesOverview = ({
                       Handle
                     </SortableHeader>
                     <SortableHeader
+                      sortKey="totalCancelledCredits"
+                      currentSort={sortConfig}
+                      onSort={onSort}
+                    >
+                      Money Out
+                    </SortableHeader>
+                    <SortableHeader
                       sortKey="netWin"
                       currentSort={sortConfig}
                       onSort={onSort}
@@ -431,6 +439,15 @@ export const ReportsMachinesOverview = ({
                         >
                           {formatCurrency(machine.coinIn)}
                         </span>
+                      </td>
+                      <td className="p-3 text-left">
+                        <MoneyOutCell
+                          moneyOut={machine.totalCancelledCredits || 0}
+                          moneyIn={machine.drop || 0}
+                          jackpot={machine.jackpot || 0}
+                          displayValue={formatCurrency(machine.totalCancelledCredits)}
+                          includeJackpot={!!machine.includeJackpot}
+                        />
                       </td>
                       <td className="p-3 text-left">
                         <span

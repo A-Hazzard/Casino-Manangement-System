@@ -59,6 +59,14 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status') as 'Online' | 'Offline' | 'All' | null;
     const gameType = searchParams.get('gameType');
 
+    // === Reviewer Scaling ===
+    const { getUserFromServer } = await import('@/app/api/lib/helpers/users/users');
+    const userPayload = await getUserFromServer();
+    const userRoles = (userPayload?.roles as string[]) || [];
+    const userRolesLowerReviewer = userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase());
+    const userMultiplier = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+    const reviewerMultiplier = userRolesLowerReviewer.includes('reviewer') ? userMultiplier : null;
+
     if (!locationIds) {
       return NextResponse.json(
         { error: 'Location IDs are required' },
@@ -80,7 +88,8 @@ export async function GET(req: NextRequest) {
       displayCurrency,
       effectiveGranularity,
       status,
-      gameType
+      gameType,
+      reviewerMultiplier
     );
 
     // ============================================================================

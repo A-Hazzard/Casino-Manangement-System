@@ -11,7 +11,10 @@ import {
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { dateRange } from '@/lib/types/index';
 import { isAbortError } from '@/lib/utils/errors';
-import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
+import { 
+  calculateCabinetFinancialTotals,
+  type FinancialTotals 
+} from '@/lib/utils/financial/totals';
 import { useDebounce } from '@/lib/utils/hooks';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -31,10 +34,10 @@ type UseCabinetDataReturn = {
   // Data states
   allCabinets: Cabinet[];
   filteredCabinets: Cabinet[];
-  locations: { _id: string; name: string; subtractJackpot?: boolean }[];
+  locations: { _id: string; name: string; includeJackpot?: boolean }[];
   gameTypes: string[];
-  financialTotals: ReturnType<typeof calculateCabinetFinancialTotals>;
-  metricsTotals: { moneyIn: number; moneyOut: number; gross: number; jackpot: number; netGross: number } | null;
+  financialTotals: FinancialTotals;
+  metricsTotals: FinancialTotals | null;
   totalCount: number;
 
   // Loading states
@@ -110,20 +113,14 @@ export const useCabinetData = ({
   }, [allCabinets.length, initialLoading, loading]);
 
   // Removed filteredCabinets state - now using memoized value for better performance
-  const [locations, setLocations] = useState<{ _id: string; name: string; subtractJackpot?: boolean }[]>(
+  const [locations, setLocations] = useState<{ _id: string; name: string; includeJackpot?: boolean }[]>(
     []
   );
   const [gameTypes, setGameTypes] = useState<string[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
 
   // Separate state for metrics totals (from dedicated API call)
-  const [metricsTotals, setMetricsTotals] = useState<{
-    moneyIn: number;
-    moneyOut: number;
-    gross: number;
-    jackpot: number;
-    netGross: number;
-  } | null>(null);
+  const [metricsTotals, setMetricsTotals] = useState<FinancialTotals | null>(null);
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
 
   // AbortController for canceling previous requests
@@ -349,12 +346,15 @@ export const useCabinetData = ({
             };
           };
 
+          // NOTE: reviewer multiplier is applied server-side — no client-side scaling needed
+          const scaledCabinets = paginatedResponse.cabinets;
+
           if (page === 1 || !page) {
-            setAllCabinets(paginatedResponse.cabinets);
+            setAllCabinets(scaledCabinets);
           } else {
             setAllCabinets((prev: Cabinet[]) => {
               const existingIds = new Set(prev.map(c => c._id));
-              const uniqueNew = paginatedResponse.cabinets.filter(
+              const uniqueNew = scaledCabinets.filter(
                 (c: Cabinet) => !existingIds.has(c._id)
               );
               return [...prev, ...uniqueNew];
@@ -375,12 +375,14 @@ export const useCabinetData = ({
           setGameTypes(uniqueGameTypes);
         } else if (Array.isArray(result)) {
           // Backward compatibility: direct array response
-          setAllCabinets(result);
-          setTotalCount(result.length);
+          // NOTE: reviewer multiplier is applied server-side — no client-side scaling needed
+          const scaledResult = result;
+          setAllCabinets(scaledResult);
+          setTotalCount(scaledResult.length);
 
           const uniqueGameTypes = Array.from(
             new Set(
-              result
+              scaledResult
                 .map(cabinet => cabinet.game || cabinet.installedGame)
                 .filter(game => game && game.trim() !== '')
             )
@@ -557,6 +559,7 @@ export const useCabinetData = ({
           'totals'
         );
         if (totals) {
+          // NOTE: reviewer multiplier is applied server-side — no client-side scaling needed
           setMetricsTotals(totals);
         } else {
           setMetricsTotals(null);

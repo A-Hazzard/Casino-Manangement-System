@@ -25,7 +25,10 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { dateRange as DateRange } from '@/lib/types';
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { isAbortError } from '@/lib/utils/errors';
-import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
+import { 
+  calculateCabinetFinancialTotals,
+  type FinancialTotals 
+} from '@/lib/utils/financial/totals';
 import { useDebounce } from '@/lib/utils/hooks';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { filterAndSortCabinets } from '@/lib/utils/ui';
@@ -102,15 +105,9 @@ export function useLocationCabinetsData({
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
   const [currentPage, setCurrentPage] = useState(0);
   const [totalCount, setTotalCount] = useState<number>(0);
-  const [metricsTotals, setMetricsTotals] = useState<{
-    moneyIn: number;
-    moneyOut: number;
-    gross: number;
-    jackpot: number;
-    netGross: number;
-  } | null>(null);
+  const [metricsTotals, setMetricsTotals] = useState<FinancialTotals | null>(null);
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
-  const [subtractJackpot, setSubtractJackpot] = useState<boolean>(false);
+  const [includeJackpot, setIncludeJackpot] = useState<boolean>(false);
 
   // Effect to handle automatic sorting when status changes to Offline sorting variants
   useEffect(() => {
@@ -229,12 +226,12 @@ export function useLocationCabinetsData({
   const financialTotals = useMemo(() => {
     // If we have API totals, use those; otherwise fall back to local calculation
     // Note: Local calculation is only accurate if the whole dataset is loaded
-    if (metricsTotals) {
-      return metricsTotals;
-    }
-    return filteredCabinets.length > 0
-      ? calculateCabinetFinancialTotals(filteredCabinets)
-      : null;
+    const totals = metricsTotals
+      ? metricsTotals
+      : filteredCabinets.length > 0
+        ? calculateCabinetFinancialTotals(filteredCabinets)
+        : null;
+    return totals;
   }, [filteredCabinets, metricsTotals]);
 
   // ============================================================================
@@ -564,7 +561,7 @@ export function useLocationCabinetsData({
               locationData.enableMembership === true
             );
             setLocationData(locationData);
-            setSubtractJackpot(Boolean(locationData.subtractJackpot));
+            setIncludeJackpot(Boolean(locationData.includeJackpot));
           }
         } catch (locationError) {
           const errorWithStatus = locationError as Error & {
@@ -720,6 +717,7 @@ export function useLocationCabinetsData({
           if (!result) {
             return;
           }
+
           setAllCabinets(result.data);
 
           if (!debouncedSearchTerm?.trim()) {
@@ -861,7 +859,7 @@ export function useLocationCabinetsData({
     debouncedSearchTerm,
     financialTotals,
     totalCount,
-    subtractJackpot,
+    includeJackpot,
     // Setters
     setSearchTerm: useCallback((term: string) => {
       if (term !== searchTerm) {

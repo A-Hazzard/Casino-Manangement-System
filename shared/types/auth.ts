@@ -32,6 +32,7 @@ export type UserDocument = Document & {
   emailAddress: string;
   assignedLocations?: string[];
   assignedLicencees?: string[];
+  multiplier?: number | null;
   profile?: {
     firstName?: string;
     lastName?: string;
@@ -113,6 +114,7 @@ export type UserAuthPayload = {
   requiresProfileUpdate?: boolean;
   invalidProfileFields?: InvalidProfileFields;
   invalidProfileReasons?: ProfileValidationReasons;
+  multiplier?: number | null;
 };
 
 export type AuthResult = {
@@ -136,6 +138,7 @@ export type JwtPayload = {
   roles?: string[];
   assignedLocations?: string[];
   assignedLicencees?: string[];
+  multiplier?: number | null;
   // Enhanced security
   sessionId: string;
   sessionVersion?: number;

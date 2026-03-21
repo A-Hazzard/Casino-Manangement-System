@@ -77,8 +77,15 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         );
       }
-      startDate = new Date(customStart + 'T00:00:00-04:00');
-      endDate = new Date(customEnd + 'T23:59:59-04:00');
+      // Handle both ISO strings (2026-03-12T04:00:00.000Z) and date-only strings (2026-03-12)
+      startDate = customStart.includes('T') ? new Date(customStart) : new Date(customStart + 'T00:00:00-04:00');
+      endDate = customEnd.includes('T') ? new Date(customEnd) : new Date(customEnd + 'T23:59:59-04:00');
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return NextResponse.json(
+          { error: `Invalid date values: startDate=${startDate}, endDate=${endDate}` },
+          { status: 400 }
+        );
+      }
     } else {
       const dates = getDatesForTimePeriod(timePeriod);
       startDate = dates.startDate;

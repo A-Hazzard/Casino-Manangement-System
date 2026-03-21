@@ -62,7 +62,8 @@ export function CustomSelect({
   // Filter options based on search term
   const filteredOptions = searchable
     ? options.filter(option =>
-        option.label.toLowerCase().includes(searchTerm.toLowerCase())
+        (option.label || '').toLowerCase().includes((searchTerm || '').toLowerCase()) || 
+        (option.value || '').toLowerCase().includes((searchTerm || '').toLowerCase())
       )
     : options;
 

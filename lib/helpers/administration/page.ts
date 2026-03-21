@@ -153,6 +153,7 @@ const userManagement = {
       profilePicture: string | null;
       assignedLicencees?: string[];
       assignedLocations?: string[];
+      multiplier?: number | null;
     } = {
       username,
       emailAddress: email,
@@ -162,6 +163,11 @@ const userManagement = {
       isEnabled: true,
       profilePicture: profilePicture || null,
     };
+
+    // Include reviewer multiplier if applicable
+    if (addUserForm.multiplier != null) {
+      payload.multiplier = addUserForm.multiplier;
+    }
 
     // Include licencee assignments (required for all users)
     if (

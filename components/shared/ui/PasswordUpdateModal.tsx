@@ -328,9 +328,10 @@ export default function PasswordUpdateModal({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="md:max-w-md md:max-h-[90vh] p-0 overflow-hidden bg-slate-50 border-slate-200 shadow-xl [&>button]:hidden flex flex-col"
+        className="md:max-w-md md:max-h-[90vh] p-0 overflow-hidden bg-slate-50 border-slate-200 shadow-xl [&>button]:hidden flex flex-col h-fit"
         onInteractOutside={isForced ? (e) => e.preventDefault() : undefined}
         onEscapeKeyDown={isForced ? (e) => e.preventDefault() : undefined}
+        isMobileFullScreen={false}
       >
         {/* Header */}
         <div className="bg-white border-b px-6 py-4 shrink-0">

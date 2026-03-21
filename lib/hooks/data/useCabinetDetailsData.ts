@@ -128,11 +128,7 @@ export function useCabinetDetailsData({
         );
       });
 
-      // Check if request was aborted
-      if (!cabinetData) {
-        setMetricsLoading(false);
-        return;
-      }
+      // NOTE: reviewer multiplier is applied server-side — no client-side scaling needed
 
       setCabinet(cabinetData);
 

@@ -30,7 +30,7 @@ type AdministrationAddLicenceeModalProps = {
     country?: string;
     startDate?: Date | string;
     expiryDate?: Date | string;
-    subtractJackpot?: boolean;
+    includeJackpot?: boolean;
   };
   setFormState: (data: {
     name?: string;
@@ -38,7 +38,7 @@ type AdministrationAddLicenceeModalProps = {
     country?: string;
     startDate?: Date | string;
     expiryDate?: Date | string;
-    subtractJackpot?: boolean;
+    includeJackpot?: boolean;
   }) => void;
   countries: Country[];
   countriesLoading?: boolean;
@@ -215,18 +215,18 @@ function AdministrationAddLicenceeModal({
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
-              id="subtractJackpot"
-              checked={formState.subtractJackpot || false}
+              id="includeJackpot"
+              checked={formState.includeJackpot || false}
               onChange={e =>
-                setFormState({ subtractJackpot: e.target.checked })
+                setFormState({ includeJackpot: e.target.checked })
               }
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label
-              htmlFor="subtractJackpot"
+              htmlFor="includeJackpot"
               className="text-sm font-semibold text-gray-700"
             >
-              Subtract Jackpot
+              Include jackpot in money out
             </label>
           </div>
 

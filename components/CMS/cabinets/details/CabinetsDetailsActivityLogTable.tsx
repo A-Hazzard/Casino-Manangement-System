@@ -191,18 +191,19 @@ export const CabinetsDetailsActivityLogTable: React.FC<CabinetsDetailsActivityLo
         }
       }
 
-      // Event type filtering - case insensitive
+      // Event type filtering
       if (filters.eventType && filters.eventType !== 'all') {
-        const itemEventType = item.eventType || '';
-        if (itemEventType.toLowerCase() !== filters.eventType.toLowerCase()) {
+        const itemEventType = (item.eventType || '').toLowerCase();
+        const filterTypeTerm = (filters.eventType || '').toLowerCase();
+        if (itemEventType !== filterTypeTerm) {
           return false;
         }
       }
 
-      // Type filtering - robust matching
+      // Type filtering
       if (filters.type && filters.type !== 'all') {
         const itemType = (item.eventLogLevel || 'General').toLowerCase();
-        const filterType = filters.type.toLowerCase();
+        const filterType = (filters.type || '').toLowerCase();
         
         // Handle common mappings
         if (filterType === 'warning' || filterType === 'warn') {
@@ -427,10 +428,10 @@ export const CabinetsDetailsActivityLogTable: React.FC<CabinetsDetailsActivityLo
             </TableHeader>
             <TableBody>
                 {filteredAndPaginatedData.data.map((row, idx) => {
-                  const logLevel = (row.eventLogLevel || 'General').toLowerCase();
+                  const logLevel = row.eventLogLevel || 'General';
                   const rowBgClass = 
-                    logLevel === 'critical' ? 'bg-red-50 hover:bg-red-100' :
-                    logLevel === 'warning' || logLevel === 'warn' ? 'bg-orange-50 hover:bg-orange-100' :
+                    logLevel === 'Critical' ? 'bg-red-50 hover:bg-red-100' :
+                    logLevel === 'Warning' || logLevel === 'Warn' ? 'bg-orange-50 hover:bg-orange-100' :
                     'hover:bg-muted';
                   
                   return (

@@ -36,7 +36,8 @@ export default function CabinetsDetailsAccountingSection({
   onRefresh,
 }: CabinetsDetailsAccountingSectionProps) {
   const { user } = useUserStore();
-  const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
+  const userRoles = (user?.roles || [])
+    .filter((r): r is string => typeof r === 'string');
   const isTechnicianOnly = userRoles.includes('technician') && !userRoles.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
 
   return (

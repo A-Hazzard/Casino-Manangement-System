@@ -203,11 +203,11 @@ export const getLocationsWithMetrics = async (
       timePeriod === 'last7days' ||
       timePeriod === 'last30days';
 
-    // Fetch licencee subtractJackpot settings
-    const licencees = await Licencee.find({}, { _id: 1, subtractJackpot: 1 }).lean().exec();
+    // Fetch licencee includeJackpot settings
+    const licencees = await Licencee.find({}, { _id: 1, includeJackpot: 1 }).lean().exec();
     const licenceeSettingsMap = new Map<string, boolean>();
-    licencees.forEach((l: Record<string, unknown>) => {
-      licenceeSettingsMap.set(String(l._id), Boolean(l.subtractJackpot));
+    licencees.forEach((l) => {
+      licenceeSettingsMap.set(String(l._id), Boolean(l.includeJackpot));
     });
 
     const locationsWithMetrics: AggregatedLocation[] = [];
@@ -258,12 +258,14 @@ export const getLocationsWithMetrics = async (
           gamingLocation: 1,
           lastActivity: 1,
           isSasMachine: 1,
+          collectorDenomination: 1,
+          'gameConfig.accountingDenomination': 1,
         }
       )
         .lean()
         .exec();
       // Create machine-to-location map and location-to-machines map
-      const machineToLocation = new Map<string, string>();
+      const machineToConfig = new Map<string, { multiplier: number; location: string }>();
       const locationToMachines = new Map<string, typeof allMachinesData>();
       allMachinesData.forEach(machine => {
         const machineId = String(machine._id);
@@ -271,7 +273,10 @@ export const getLocationsWithMetrics = async (
           ? String(machine.gamingLocation)
           : undefined;
         if (locationId) {
-          machineToLocation.set(machineId, locationId);
+          const multiplier = 1;
+          
+          machineToConfig.set(machineId, { multiplier, location: locationId });
+          
           if (!locationToMachines.has(locationId)) {
             locationToMachines.set(locationId, []);
           }
@@ -301,6 +306,7 @@ export const getLocationsWithMetrics = async (
             $group: {
               _id: {
                 location: '$location',
+                machine: '$machine',
                 hour: { $dateTrunc: { date: '$readAt', unit: 'hour' } },
               },
               totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
@@ -318,7 +324,7 @@ export const getLocationsWithMetrics = async (
         ];
 
         const locationAggregations: Array<{
-          _id: { location: string; hour: Date };
+          _id: { location: string; machine: string; hour: Date };
           totalDrop: number;
           totalCancelledCredits: number;
           totalGamesPlayed: number;
@@ -363,6 +369,8 @@ export const getLocationsWithMetrics = async (
             bucketHour <= gamingDayRange.rangeEnd;
 
           if (isWithinRange) {
+            // Multiplier no longer used
+
             if (!locationMetricsMap.has(locationId)) {
               locationMetricsMap.set(locationId, {
                 moneyIn: 0,
@@ -374,13 +382,12 @@ export const getLocationsWithMetrics = async (
               });
             }
             const metrics = locationMetricsMap.get(locationId)!;
-            metrics.moneyIn += (bucketAgg.totalDrop as number) || 0;
-            metrics.moneyOut +=
-              (bucketAgg.totalCancelledCredits as number) || 0;
+            metrics.moneyIn += ((bucketAgg.totalDrop as number) || 0);
+            metrics.moneyOut += ((bucketAgg.totalCancelledCredits as number) || 0);
             metrics.gamesPlayed += (bucketAgg.totalGamesPlayed as number) || 0;
-            metrics.coinIn += (bucketAgg.totalCoinIn as number) || 0;
-            metrics.coinOut += (bucketAgg.totalCoinOut as number) || 0;
-            metrics.jackpot += (bucketAgg.totalJackpot as number) || 0;
+            metrics.coinIn += ((bucketAgg.totalCoinIn as number) || 0);
+            metrics.coinOut += ((bucketAgg.totalCoinOut as number) || 0);
+            metrics.jackpot += ((bucketAgg.totalJackpot as number) || 0);
           }
         }
 
@@ -423,11 +430,11 @@ export const getLocationsWithMetrics = async (
           const nonSasMachines = totalMachines - sasMachines;
 
           const licenceeId = location.rel?.licencee ? String(location.rel.licencee) : '';
-          const subtractJackpot = licenceeSettingsMap.get(licenceeId) || false;
+          const includeJackpot = licenceeSettingsMap.get(licenceeId) || false;
           
           // Logic: TRUE = Low Gross (Include jackpot in deduction), FALSE = High Gross (Exclude jackpot from deduction)
           // Metrics.moneyOut is totalCancelledCredits which is typically NET handpays.
-          const adjustedMoneyOut = (metrics.moneyOut || 0) + (subtractJackpot ? (metrics.jackpot || 0) : 0);
+          const adjustedMoneyOut = (metrics.moneyOut || 0) + (includeJackpot ? (metrics.jackpot || 0) : 0);
 
           locationsWithMetrics.push({
             location: locationId,
@@ -441,7 +448,7 @@ export const getLocationsWithMetrics = async (
             coinIn: metrics.coinIn,
             coinOut: metrics.coinOut,
             jackpot: metrics.jackpot,
-            subtractJackpot: subtractJackpot,
+            includeJackpot: includeJackpot,
             totalMachines,
             onlineMachines,
             sasMachines,
@@ -560,12 +567,15 @@ export const getLocationsWithMetrics = async (
             gamingLocation: 1,
             lastActivity: 1,
             isSasMachine: 1,
+            collectorDenomination: 1,
+            'gameConfig.accountingDenomination': 1,
           }
         )
           .lean()
           .exec();
 
-        // Step 5: Group machines by location
+        // Step 5: Group machines by location and compute denominations
+        const machineToConfigBatch = new Map<string, { multiplier: number; location: string }>();
         const batchMachinesByLocation = new Map<
           string,
           Array<{
@@ -582,6 +592,11 @@ export const getLocationsWithMetrics = async (
           if (locationId && batchLocationIds.includes(locationId)) {
             const machineId = String(machine._id);
             batchMachineIds.push(machineId);
+
+            const multiplier = 1;
+            
+            machineToConfigBatch.set(machineId, { multiplier, location: locationId });
+
             if (!batchMachinesByLocation.has(locationId)) {
               batchMachinesByLocation.set(locationId, []);
             }
@@ -610,7 +625,7 @@ export const getLocationsWithMetrics = async (
           // 🚀 PERFORMANCE OPTIMIZATION: Use location field directly from meters
           // Group by location AND hour to prevent data inflation from batch global date ranges
           const batchMetersAggregation: Array<{
-            _id: { location: string; hour: Date };
+            _id: { location: string; machine: string; hour: Date };
             totalDrop: number;
             totalMoneyOut: number;
             totalGamesPlayed: number;
@@ -632,6 +647,7 @@ export const getLocationsWithMetrics = async (
               $group: {
                 _id: {
                   location: '$location',
+                  machine: '$machine',
                   hour: { $dateTrunc: { date: '$readAt', unit: 'hour' } },
                 },
                 totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
@@ -653,12 +669,10 @@ export const getLocationsWithMetrics = async (
           ]).cursor({ batchSize: 1000 });
 
           for await (const doc of batchMetersCursor) {
-            batchMetersAggregation.push(
-              doc as (typeof batchMetersAggregation)[0]
-            );
+            batchMetersAggregation.push(doc as (typeof batchMetersAggregation)[0]);
           }
 
-          // Step 7: Filter by gaming day ranges in memory
+          // Step 7: Filter by gaming day ranges in memory and apply multipliers
           batchMetersAggregation.forEach(agg => {
             const locationId = String(agg._id.location);
             const bucketHour = new Date(agg._id.hour);
@@ -671,6 +685,8 @@ export const getLocationsWithMetrics = async (
               bucketHour <= gamingDayRange.rangeEnd;
 
             if (isWithinRange) {
+              // Multiplier no longer used
+
               if (!batchMetersByLocation.has(locationId)) {
                 batchMetersByLocation.set(locationId, {
                   totalDrop: 0,
@@ -682,12 +698,12 @@ export const getLocationsWithMetrics = async (
                 });
               }
               const current = batchMetersByLocation.get(locationId)!;
-              current.totalDrop += (agg.totalDrop as number) || 0;
-              current.totalMoneyOut += (agg.totalMoneyOut as number) || 0;
+              current.totalDrop += ((agg.totalDrop as number) || 0);
+              current.totalMoneyOut += ((agg.totalMoneyOut as number) || 0);
               current.totalGamesPlayed += (agg.totalGamesPlayed as number) || 0;
-              current.totalCoinIn += (agg.totalCoinIn as number) || 0;
-              current.totalCoinOut += (agg.totalCoinOut as number) || 0;
-              current.totalJackpot += (agg.totalJackpot as number) || 0;
+              current.totalCoinIn += ((agg.totalCoinIn as number) || 0);
+              current.totalCoinOut += ((agg.totalCoinOut as number) || 0);
+              current.totalJackpot += ((agg.totalJackpot as number) || 0);
             }
           });
         }
@@ -730,11 +746,11 @@ export const getLocationsWithMetrics = async (
           const nonSasMachines = totalMachines - sasMachines;
 
           const licenceeId = location.rel?.licencee ? String(location.rel.licencee) : '';
-          const subtractJackpot = licenceeSettingsMap.get(licenceeId) || false;
+          const includeJackpot = licenceeSettingsMap.get(licenceeId) || false;
           
           // Logic: TRUE = Low Gross (Include jackpot in deduction), FALSE = High Gross (Exclude jackpot from deduction)
           // meterMetrics.totalMoneyOut is totalCancelledCredits which is typically NET handpays.
-          const adjustedMoneyOut = (meterMetrics.totalMoneyOut || 0) + (subtractJackpot ? (meterMetrics.totalJackpot || 0) : 0);
+          const adjustedMoneyOut = (meterMetrics.totalMoneyOut || 0) + (includeJackpot ? (meterMetrics.totalJackpot || 0) : 0);
 
           return {
             location: locationId,
@@ -750,7 +766,7 @@ export const getLocationsWithMetrics = async (
             coinIn: meterMetrics.totalCoinIn,
             coinOut: meterMetrics.totalCoinOut,
             jackpot: meterMetrics.totalJackpot,
-            subtractJackpot: subtractJackpot,
+            includeJackpot: includeJackpot,
             totalMachines,
             onlineMachines,
             sasMachines,

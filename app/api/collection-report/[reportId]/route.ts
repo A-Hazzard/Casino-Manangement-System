@@ -299,13 +299,15 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
           details: `Updated collection report for ${existingReport.locationName} (${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''})`,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
             userRole: (currentUser.roles as string[])?.[0] || 'user',
             resource: 'collection',
             resourceId: reportId,
-            resourceName: `${existingReport.locationName} - ${existingReport.collectorName || existingReport.collector || 'Unknown'}`, // Use collectorName for display only (legacy), fallback to collector ID
+            resourceName: `${existingReport.locationName} - ${existingReport.collectorName || existingReport.collector || 'Unknown'}`,
             changes: updateChanges,
           },
         });
@@ -419,6 +421,8 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
           details: `Deleted collection report for ${existingReport.locationName} with ${associatedCollections.length} associated collections. Collection meters reverted to previous values for all affected machines.`,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,

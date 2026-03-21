@@ -23,7 +23,8 @@ export type UserRole =
   | 'vault-manager'
   | 'cashier'
   | 'technician'
-  | 'collector';
+  | 'collector'
+  | 'reviewer';
 
 /**
  * Role priority order (highest to lowest)
@@ -38,6 +39,7 @@ export const ROLE_PRIORITY: UserRole[] = [
   'cashier',
   'technician',
   'collector',
+  'reviewer',
 ];
 
 /**
@@ -49,6 +51,7 @@ export const HIGH_PRIORITY_ROLES: UserRole[] = [
   'developer',
   'manager',
   'location admin',
+  'reviewer',
 ];
 
 /**
@@ -60,4 +63,5 @@ export const CMS_ACCESS_ROLES: UserRole[] = [
   'admin',
   'manager',
   'location admin',
+  'reviewer',
 ];

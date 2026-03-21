@@ -63,7 +63,7 @@ type CabinetsCabinetTableProps = Omit<
    */
   showSortIcons?: boolean;
   showArchived?: boolean;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
 };
 
 export default function CabinetsCabinetTable({
@@ -79,7 +79,7 @@ export default function CabinetsCabinetTable({
   showSortIcons = true,
   hideFinancials = false,
   showArchived = false,
-  subtractJackpot: _subtractJackpot = true,
+  includeJackpot = false,
 }: CabinetsCabinetTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
   const router = useRouter();
@@ -335,7 +335,7 @@ export default function CabinetsCabinetTable({
                       moneyIn={cab.moneyIn || 0}
                       jackpot={cab.jackpot || 0}
                       displayValue={formatCurrency(cab.moneyOut)}
-                      subtractJackpot={!!(cab).subtractJackpot}
+                      includeJackpot={!!(cab.includeJackpot ?? includeJackpot)}
                     />
                   )}
                 </TableCell>

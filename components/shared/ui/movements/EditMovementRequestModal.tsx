@@ -43,7 +43,7 @@ export default function EditMovementRequestModal({ onSaved }: { onSaved: () => v
   const { isEditModalOpen, selectedMovementRequest, closeEditModal } =
     useMovementRequestActionsStore();
   const { user: currentUser } = useUserStore();
-  const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
+  const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
   const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role));
   const userEmail = currentUser?.emailAddress;
 
@@ -204,7 +204,7 @@ export default function EditMovementRequestModal({ onSaved }: { onSaved: () => v
     if (!user.emailAddress || user.emailAddress.trim() === '') return false;
     if (!destinationLocationId) return false;
     
-    const roleLower = user.roles?.map(r => r.toLowerCase()) || [];
+    const roleLower = user.roles?.map(r => r?.toLowerCase()) || [];
     const hasRole = roleLower.includes('technician') || roleLower.includes('location admin');
     
     // Admins/developers bypass location assignment validation for recipients

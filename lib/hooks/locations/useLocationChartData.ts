@@ -19,7 +19,7 @@ import { dateRange as DateRange } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { isAbortError } from '@/lib/utils/errors';
 
-import type { TimePeriod } from '@/shared/types/common';
+import { TimePeriod } from '@/shared/types/common';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -412,6 +412,7 @@ export function useLocationChartData({
           }
         );
 
+        // NOTE: reviewer multiplier is applied server-side — no client-side scaling needed
         setChartData(transformedData);
 
         // Extract data span from response if available

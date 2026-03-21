@@ -223,6 +223,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       assignedLocations,
       assignedLicencees,
       tempPassword,
+      multiplier,
     } = body;
 
     // ============================================================================
@@ -323,6 +324,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         assignedLocations,
         assignedLicencees,
         tempPassword,
+        multiplier,
       },
       request
     );

@@ -69,8 +69,11 @@ import {
     RotateCcw,
     Search,
     Trash2,
-    User
+    User,
+    X
 } from 'lucide-react';
+import Image from 'next/image';
+import deleteIcon from '@/public/deleteIcon.svg';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import VaultOverviewShiftReviewModal from '../overview/modals/VaultOverviewShiftReviewModal';
@@ -1432,46 +1435,69 @@ export default function CashierManagementPanel({
 
        {/* Delete Confirmation Modal */}
        <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent 
-          className="sm:max-w-[425px] !z-[200]"
-          backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
-        >
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <Trash2 className="h-5 w-5" />
-              Delete Cashier
-            </DialogTitle>
-            <DialogDescription>
-              This action cannot be undone. This will permanently delete the cashier{' '}
-              <span className="font-semibold text-foreground">
-                {actionCashier?.username}
-              </span>
-              .
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
-              <p className="font-semibold">Warning</p>
-              <p>
-                Deleting a cashier will remove all their access. Ensure all their
-                shifts are closed and reconciled before proceeding.
+        <DialogContent className="max-w-md bg-container p-0">
+          <div className="border-b border-border p-4">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl font-bold text-buttonActive">
+                Delete Cashier
+              </DialogTitle>
+              <Button
+                variant="ghost"
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="h-8 w-8 p-0 text-grayHighlight hover:bg-buttonInactive/10"
+              >
+                <span className="sr-only">Close</span>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <div className="text-center">
+              <div className="mb-4 flex justify-center">
+                <Image src={deleteIcon} alt="Delete" width={64} height={64} />
+              </div>
+              <p className="mb-4 text-lg font-semibold text-grayHighlight">
+                Are you sure you want to delete cashier
+                <span className="font-bold text-buttonActive">
+                  {' '}
+                  {actionCashier?.username}{' '}
+                </span>
+                ?
+              </p>
+              
+              <div className="mb-4 rounded-md bg-red-50 p-3 text-left text-sm text-red-600">
+                <p className="font-semibold">Warning</p>
+                <p>
+                  Deleting a cashier will remove all their access. Ensure all their
+                  shifts are closed and reconciled before proceeding.
+                </p>
+              </div>
+
+              <p className="text-sm text-grayHighlight">
+                This action cannot be undone. The cashier will be permanently
+                removed from the system.
               </p>
             </div>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteCashierSubmit}
-              disabled={loading}
-            >
-              {loading ? 'Deleting...' : 'Delete Cashier'}
-            </Button>
+
+          <DialogFooter className="border-t border-border p-4 sm:justify-center">
+            <div className="flex justify-center space-x-4">
+              <Button
+                onClick={handleDeleteCashierSubmit}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={loading}
+              >
+                {loading ? 'Deleting...' : 'Delete'}
+              </Button>
+              <Button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="bg-buttonInactive text-primary-foreground hover:bg-buttonInactive/90"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

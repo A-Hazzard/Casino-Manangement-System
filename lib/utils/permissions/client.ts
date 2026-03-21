@@ -49,14 +49,25 @@ export const hasPageAccess = (
 ): boolean => {
   const pagePermissions: Record<PageName, UserRole[]> = {
     dashboard: ['developer', 'admin', 'manager', 'location admin'], // ✅ Location admin can access dashboard
-    machines: ['developer', 'admin', 'manager', 'location admin', 'technician'],
-    locations: ['developer', 'admin', 'manager', 'location admin'],
+    machines: [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
+      'reviewer',
+      'collector',
+      'vault-manager',
+      'cashier',
+    ],
+    locations: ['developer', 'admin', 'manager', 'location admin', 'reviewer'],
     'location-details': [
       'developer',
       'admin',
       'manager',
       'location admin',
       'technician',
+      'reviewer',
     ],
     members: ['developer', 'admin'], // ✅ Restricted to developer and admin
     'member-details': ['developer', 'admin'], // ✅ Restricted to developer and admin
@@ -278,10 +289,10 @@ export function isVaultManagerOnly(userRoles: string[] | undefined): boolean {
  */
 export function hasCmsAccess(userRoles: string[] | undefined): boolean {
   if (!userRoles || userRoles.length === 0) return false;
-  // Normalize roles to lowercase for case-insensitive comparison
-  const normalizedUserRoles = userRoles.map(role => role.toLowerCase());
+  const normalizedUserRoles = userRoles
+    .filter((role): role is string => typeof role === 'string');
   return CMS_ACCESS_ROLES.some(role =>
-    normalizedUserRoles.includes(role.toLowerCase())
+    normalizedUserRoles.includes(role)
   );
 }
 

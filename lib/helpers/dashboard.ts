@@ -220,13 +220,14 @@ export const fetchDashboardTotals = async (
     const totals = locationData.data.reduce(
       (
         acc: DashboardTotals,
-        loc: { moneyIn?: number; moneyOut?: number; gross?: number }
+        loc: { moneyIn?: number; moneyOut?: number; gross?: number; jackpot?: number }
       ) => ({
         moneyIn: acc.moneyIn + (loc.moneyIn || 0),
         moneyOut: acc.moneyOut + (loc.moneyOut || 0),
         gross: acc.gross + (loc.gross || 0),
+        jackpot: (acc.jackpot || 0) + (loc.jackpot || 0),
       }),
-      { moneyIn: 0, moneyOut: 0, gross: 0 }
+      { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0 }
     );
 
     // Validate filters haven't changed before updating totals

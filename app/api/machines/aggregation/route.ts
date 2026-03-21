@@ -23,11 +23,12 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
-import { Licencee } from '@/app/api/lib/models/licencee';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
+import type { LocationDocument } from '@/lib/types/common';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { MachineAggregationMatchStage } from '@/shared/types/mongo';
@@ -264,7 +265,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get all locations with their gameDayOffset
-    const locations = await GamingLocations.find(matchStage).lean();
+    const locations = (await GamingLocations.find(matchStage).lean()) as unknown as LocationDocument[];
 
     if (locations.length === 0) {
       console.warn('[API] No locations found in database');
@@ -272,9 +273,9 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch licencee settings for all locations in the query
-    const licenceeIds = Array.from(new Set(locations.map(loc => (loc as Record<string, unknown>).rel as Record<string, unknown> | undefined).map(rel => rel?.licencee).filter(Boolean)));
+    const licenceeIds = Array.from(new Set(locations.map(loc => loc.rel?.licencee).filter(Boolean)));
     const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean();
-    const licenceeSubtractJackpotMap = new Map(licencees.map(l => [String((l as Record<string, unknown>)._id), !!(l as Record<string, unknown>).subtractJackpot]));
+    const licenceeIncludeJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.includeJackpot]));
 
     // ============================================================================
     // STEP 7: Calculate gaming day ranges per location
@@ -288,7 +289,7 @@ export async function GET(req: NextRequest) {
         return {
           _id: String(locRecord._id),
           gameDayOffset: (locRecord.gameDayOffset as number) ?? 8, // Default to 8 AM Trinidad time
-          subtractJackpot: licenceeSubtractJackpotMap.get(String(rel?.licencee)) || false,
+          includeJackpot: licenceeIncludeJackpotMap.get(String(rel?.licencee)) || false,
         };
       }),
       timePeriodForGamingDay,
@@ -318,6 +319,21 @@ export async function GET(req: NextRequest) {
           deletedFilter,
         ],
       };
+
+      // Apply search filter at database level if provided
+      if (searchTerm) {
+        const searchRegex = { $regex: searchTerm, $options: 'i' };
+        (machineMatchQuery.$and as Array<Record<string, unknown>>).push({
+          $or: [
+            { serialNumber: searchRegex },
+            { 'custom.name': searchRegex },
+            { 'Custom.name': searchRegex },
+            { relayId: searchRegex },
+            { smibBoard: searchRegex },
+            { _id: searchRegex }
+          ]
+        });
+      }
 
       // Apply game type filter if provided
       if (selectedGameTypes.length > 0) {
@@ -508,30 +524,23 @@ export async function GET(req: NextRequest) {
             gamesWon: 0,
             handPaidCancelledCredits: 0,
             meterCount: 0,
+            gross: 0, // Add gross to default metrics
           };
 
-          const subtractJackpot = licenceeSubtractJackpotMap.get(String(location.rel?.licencee)) || false;
-          const multiplier = Number(machine.collectorDenomination) || 1;
+          const includeJackpot = licenceeIncludeJackpotMap.get(String(location.rel?.licencee)) || false;
 
-          const rawMoneyIn = (metrics.moneyIn || 0);
+          const moneyIn = (metrics.moneyIn || 0);
           const rawMoneyOut = (metrics.moneyOut || 0);
-          const rawJackpot = (metrics.jackpot || 0);
+          const jackpot = (metrics.jackpot || 0);
 
-          // Apply new Money Out logic: if subtractJackpot is ENABLED (Low Gross), 
-          // moneyOut = Net Cancelled + Jackpot (Total payout)
-          // IF subtractJackpot is DISABLED (High Gross), we keep as Net Payout
-          const moneyOutValue = rawMoneyOut + (subtractJackpot ? rawJackpot : 0);
-
-          const moneyIn = rawMoneyIn * multiplier;
-          const moneyOut = moneyOutValue * multiplier;
-          const jackpot = rawJackpot * multiplier;
-          const gross = moneyIn - moneyOut;
+          // Apply includeJackpot logic for Money Out display (Low Gross)
+          const moneyOut = rawMoneyOut + (includeJackpot ? jackpot : 0);
+          const gross = moneyIn - rawMoneyOut - jackpot;
 
           // Get serialNumber with fallback to custom.name
-          const machineRecord = machine as Record<string, unknown>;
-          const serialNumber = (machineRecord.serialNumber as string)?.trim() || '';
-          const customData = (machineRecord.custom || machineRecord.Custom || {}) as Record<string, unknown>;
-          const customName = (customData.name as string)?.trim() || '';
+          const m = machine as { serialNumber?: string; custom?: { name?: string }; Custom?: { name?: string } };
+          const serialNumber = m.serialNumber?.trim() || '';
+          const customName = (m.custom?.name || m.Custom?.name)?.trim() || '';
           const finalSerialNumber = serialNumber || customName || '';
 
           allMachines.push({
@@ -540,7 +549,7 @@ export async function GET(req: NextRequest) {
             locationName: (location.name as string) || '(No Location)',
             assetNumber: finalSerialNumber,
             serialNumber: finalSerialNumber,
-            custom: customData,
+            custom: m.custom || m.Custom || {},
             game: String(machine.game || machine.gameType || ''),
             installedGame: String(machine.game || machine.gameType || ''),
             denomination: machine.denomination || '',
@@ -571,12 +580,12 @@ export async function GET(req: NextRequest) {
             moneyOut,
             gross,
             jackpot: jackpot || 0,
-            coinIn: (metrics.coinIn || 0) * multiplier,
-            coinOut: (metrics.coinOut || 0) * multiplier,
+            coinIn: metrics.coinIn || 0,
+            coinOut: metrics.coinOut || 0,
             gamesPlayed: metrics.gamesPlayed || 0,
             gamesWon: metrics.gamesWon || 0,
-            subtractJackpot,
-            handPaidCancelledCredits: (metrics.handPaidCancelledCredits || 0) * multiplier,
+            includeJackpot,
+            handPaidCancelledCredits: metrics.handPaidCancelledCredits || 0,
             meterCount: metrics.meterCount || 0,
             rel: location.rel,
             country: location.country,
@@ -605,6 +614,21 @@ export async function GET(req: NextRequest) {
             deletedFilter,
           ],
         };
+
+        // Apply search filter at database level if provided
+        if (searchTerm) {
+          const searchRegex = { $regex: searchTerm, $options: 'i' };
+          (batchMachineMatchQuery.$and as Array<Record<string, unknown>>).push({
+            $or: [
+              { serialNumber: searchRegex },
+              { 'custom.name': searchRegex },
+              { 'Custom.name': searchRegex },
+              { relayId: searchRegex },
+              { smibBoard: searchRegex },
+              { _id: searchRegex }
+            ]
+          });
+        }
 
         // Apply game type filter if provided
         if (selectedGameTypes.length > 0) {
@@ -654,7 +678,7 @@ export async function GET(req: NextRequest) {
         // Step 3: Group machines by location
         const batchMachinesByLocation = new Map<
           string,
-          Array<Record<string, unknown>>
+          typeof batchAllMachines
         >();
         batchAllMachines.forEach(machine => {
           const locationId = machine.gamingLocation
@@ -665,7 +689,7 @@ export async function GET(req: NextRequest) {
               batchMachinesByLocation.set(locationId, []);
             }
             batchMachinesByLocation.get(locationId)!.push(
-              machine as Record<string, unknown>
+              machine
             );
           }
         });
@@ -843,23 +867,19 @@ export async function GET(req: NextRequest) {
               meterCount: 0,
             };
 
-            const subtractJackpot = licenceeSubtractJackpotMap.get(String(location.rel?.licencee)) || false;
-            const multiplier = Number(machine.collectorDenomination) || 1;
+            const includeJackpot = licenceeIncludeJackpotMap.get(String(location.rel?.licencee)) || false;
 
-            const rawMoneyIn = (metrics.moneyIn || 0);
+            const moneyIn = (metrics.moneyIn || 0);
             const rawMoneyOut = (metrics.moneyOut || 0);
-            const rawJackpot = (metrics.jackpot || 0);
+            const jackpot = (metrics.jackpot || 0);
 
-            // Apply new Money Out logic: if subtractJackpot is ENABLED (Low Gross), 
+            // Apply new Money Out logic: if includeJackpot is ENABLED (Low Gross), 
             // moneyOut = Net Cancelled + Jackpot (Total payout)
-            // IF subtractJackpot is DISABLED (High Gross), we keep as Net Payout
-            const moneyOutValue = rawMoneyOut + (subtractJackpot ? rawJackpot : 0);
+            // IF includeJackpot is DISABLED (High Gross), we keep as Net Payout
+            const moneyOut = rawMoneyOut + (includeJackpot ? jackpot : 0);
 
-            const moneyIn = rawMoneyIn * multiplier;
-            const moneyOut = moneyOutValue * multiplier;
-            const jackpot = rawJackpot * multiplier;
-            const coinIn = (metrics.coinIn || 0) * multiplier;
-            const coinOut = (metrics.coinOut || 0) * multiplier;
+            const coinIn = (metrics.coinIn || 0);
+            const coinOut = (metrics.coinOut || 0);
             const gamesPlayed = metrics.gamesPlayed || 0;
             const gamesWon = metrics.gamesWon || 0;
             const gross = moneyIn - moneyOut;
@@ -867,7 +887,7 @@ export async function GET(req: NextRequest) {
             // Get serialNumber with fallback to custom.name
             const machineRecord = machine as Record<string, unknown>;
             const serialNumber = (machineRecord.serialNumber as string)?.trim() || '';
-            const customData = (machineRecord.custom || machineRecord.Custom || {}) as Record<string, unknown>;
+            const customData = machine.custom || {};
             const customName = (customData.name as string)?.trim() || '';
             const finalSerialNumber = serialNumber || customName || '';
 
@@ -912,7 +932,7 @@ export async function GET(req: NextRequest) {
               coinOut,
               gamesPlayed,
               gamesWon,
-              subtractJackpot,
+              includeJackpot,
             };
           });
           batchResults.push(...locationResults);
@@ -1004,49 +1024,10 @@ export async function GET(req: NextRequest) {
     allMachines = refinedMachines;
 
     // ============================================================================
-    // STEP 9: Apply search filter
+    // STEP 9: Search filter applied at DB level
     // ============================================================================
-    // Apply search filter if provided (search by serial number, custom.name, relay ID, smib ID, or machine _id)
+    // Search is now applied at the database level in Machine.find() for better performance
     let filteredMachines = allMachines;
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filteredMachines = allMachines.filter(machine => {
-        const machineRecord = machine as Record<string, unknown>;
-        // Search in serialNumber (which already includes custom.name fallback)
-        const matchesSerialNumber = (
-          machineRecord.serialNumber as string | undefined
-        )
-          ?.toLowerCase()
-          .includes(searchLower);
-        const matchesRelayId = (machineRecord.relayId as string | undefined)
-          ?.toLowerCase()
-          .includes(searchLower);
-        const matchesSmbId = (machineRecord.smbId as string | undefined)
-          ?.toLowerCase()
-          .includes(searchLower);
-        // Search by _id (case-insensitive)
-        const matchesId = (machineRecord._id as string | undefined)
-          ?.toLowerCase()
-          .includes(searchLower);
-        // Also check custom.name directly if available
-        const customName =
-          (
-            (machineRecord.custom as Record<string, unknown>)?.name ||
-            (machineRecord.Custom as Record<string, unknown>)?.name
-          )
-            ?.toString()
-            .toLowerCase() || '';
-        const matchesCustomName = customName.includes(searchLower);
-
-        return (
-          matchesSerialNumber ||
-          matchesRelayId ||
-          matchesSmbId ||
-          matchesId ||
-          matchesCustomName
-        );
-      });
-    }
 
     // ============================================================================
     // STEP 10: Apply currency conversion if needed
@@ -1078,18 +1059,18 @@ export async function GET(req: NextRequest) {
             { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
         },
-        { _id: 1, name: 1, subtractJackpot: 1 }
+        { _id: 1, name: 1, includeJackpot: 1 }
       )
         .lean()
         .exec();
 
-      // Create maps of licencee ID to name and subtractJackpot
+      // Create maps of licencee ID to name and includeJackpot
       const licenceeIdToName = new Map<string, string>();
-      const licenceeIdToSubtractJackpot = new Map<string, boolean>();
+      const licenceeIdToIncludeJackpot = new Map<string, boolean>();
       licenceesData.forEach(lic => {
         const licRecord = lic as Record<string, unknown>;
         licenceeIdToName.set(String(licRecord._id), licRecord.name as string);
-        licenceeIdToSubtractJackpot.set(String(licRecord._id), Boolean(licRecord.subtractJackpot));
+        licenceeIdToIncludeJackpot.set(String(licRecord._id), Boolean(licRecord.includeJackpot));
       });
 
       // Get country details for currency mapping
@@ -1157,10 +1138,6 @@ export async function GET(req: NextRequest) {
           (machineRecord.jackpot as number) || 0,
           nativeCurrency
         );
-        const grossUSD = convertToUSD(
-          (machineRecord.gross as number) || 0,
-          nativeCurrency
-        );
         const coinInUSD = convertToUSD(
           (machineRecord.coinIn as number) || 0,
           nativeCurrency
@@ -1170,27 +1147,89 @@ export async function GET(req: NextRequest) {
           nativeCurrency
         );
 
+        const moneyIn = convertFromUSD(moneyInUSD, displayCurrency);
+        const baseMoneyOut = convertFromUSD(moneyOutUSD, displayCurrency);
+        const jackpot = convertFromUSD(jackpotUSD, displayCurrency);
+        const includeJackpot = (machineLicenceeId && licenceeIdToIncludeJackpot.get(machineLicenceeId.toString())) || false;
+
+        // Display Money Out includes jackpot if flag is enabled
+        const moneyOut = baseMoneyOut + (includeJackpot ? jackpot : 0);
+        // Gross is defined here as what's shown on primary cards (Drop - Displayed Out)
+        const gross = moneyIn - moneyOut;
+        // netGross is always (Drop - Base Out - Jackpot), which is pure profit
+        const netGross = moneyIn - baseMoneyOut - jackpot;
+
         return {
           ...machine,
-          moneyIn: convertFromUSD(moneyInUSD, displayCurrency),
-          moneyOut: convertFromUSD(moneyOutUSD, displayCurrency),
+          moneyIn,
+          moneyOut,
           cancelledCredits: convertFromUSD(
             cancelledCreditsUSD,
             displayCurrency
           ),
-          jackpot: convertFromUSD(jackpotUSD, displayCurrency),
-          gross: convertFromUSD(grossUSD, displayCurrency),
-          netGross: (machineLicenceeId && licenceeIdToSubtractJackpot.get(machineLicenceeId.toString()))
-            ? (convertFromUSD(grossUSD, displayCurrency) - convertFromUSD(jackpotUSD, displayCurrency))
-            : undefined,
+          jackpot,
+          gross,
+          netGross,
           coinIn: convertFromUSD(coinInUSD, displayCurrency),
           coinOut: convertFromUSD(coinOutUSD, displayCurrency),
+          includeJackpot,
         };
       });
     }
 
     // ============================================================================
-    // STEP 10.5: Dynamic machine sorting
+    // STEP 10.5: Apply reviewer multiplier if user is a reviewer
+    // ============================================================================
+    const userRolesLowerReviewer = userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase());
+    const reviewerMult =
+      userRolesLowerReviewer.includes('reviewer') &&
+        (userPayload as { multiplier?: number | null })?.multiplier != null
+        ? (userPayload as { multiplier?: number | null }).multiplier!
+        : null;
+
+    if (reviewerMult !== null) {
+      filteredMachines = filteredMachines.map(machine => {
+        const m = machine as Record<string, unknown>;
+        const includeJackpot = m.includeJackpot === true;
+
+        const rawMoneyIn = (m.moneyIn as number) || 0;
+        const rawMoneyOut = (m.moneyOut as number) || 0;
+        const rawJackpot = (m.jackpot as number) || 0;
+
+        // Multiplier from the Reviewer record
+        const mi = rawMoneyIn * reviewerMult;
+        const baseMo = rawMoneyOut * reviewerMult;
+        const jp = rawJackpot * reviewerMult;
+
+        // Final display values
+        const mo = baseMo + (includeJackpot ? jp : 0);
+        const gross = mi - mo;
+        const netGross = mi - baseMo - jp;
+
+        return {
+          ...machine,
+          moneyIn: mi,
+          moneyOut: mo,
+          jackpot: jp,
+          gross,
+          netGross,
+          coinIn: ((m.coinIn as number) || 0) * reviewerMult,
+          coinOut: ((m.coinOut as number) || 0) * reviewerMult,
+          handPaidCancelledCredits: ((m.handPaidCancelledCredits as number) || 0) * reviewerMult,
+          // Attach raw values in _raw object for the ReviewerDebugPanel component
+          _raw: {
+            moneyIn: rawMoneyIn,
+            moneyOut: includeJackpot ? (rawMoneyOut + rawJackpot) : rawMoneyOut,
+            jackpot: rawJackpot,
+            gross: rawMoneyIn - (includeJackpot ? (rawMoneyOut + rawJackpot) : rawMoneyOut),
+          },
+          _reviewerMultiplier: reviewerMult,
+        };
+      });
+    }
+
+    // ============================================================================
+    // STEP 10.6: Dynamic machine sorting
     // ============================================================================
     const sortBy = searchParams.get('sortBy') || 'moneyIn';
     const sortOrderRaw = searchParams.get('sortOrder') || 'desc';

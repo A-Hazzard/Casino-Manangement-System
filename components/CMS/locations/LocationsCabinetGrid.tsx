@@ -60,7 +60,7 @@ function CabinetCardMobile({
   canEditMachines = true,
   canDeleteMachines = true,
   copyToClipboard,
-  subtractJackpot,
+  includeJackpot: _includeJackpot,
 }: {
   cabinet: ExtendedCabinetDetail;
   router: AppRouterInstance;
@@ -69,7 +69,7 @@ function CabinetCardMobile({
   canEditMachines?: boolean;
   canDeleteMachines?: boolean;
   copyToClipboard: (text: string, label: string) => void;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
 }) {
   const statusRef = useRef<HTMLSpanElement>(null);
   /**
@@ -201,7 +201,7 @@ function CabinetCardMobile({
               jackpot={cabinet.jackpot || 0}
               displayValue={formatCurrency(cabinet.moneyOut || 0)}
               className="text-xs"
-              subtractJackpot={!!(cabinet).subtractJackpot}
+              includeJackpot={!!(cabinet).includeJackpot}
               showInfoIcon={true}
             />
         </div>
@@ -221,16 +221,7 @@ function CabinetCardMobile({
             formatCurrencyFn={formatCurrency}
           />
         </div>
-        {subtractJackpot !== false && cabinet.netGross !== undefined && (
-          <div className="flex justify-between">
-            <span className="text-xs text-gray-500">Jackpot:</span>
-            <CurrencyValueWithOverflow
-              value={cabinet.netGross}
-              className={`text-xs font-medium ${getGrossColorClass(cabinet.netGross)}`}
-              formatCurrencyFn={formatCurrency}
-            />
-          </div>
-        )}
+        {/* Jackpot info is shown via the info icon on Money Out — no duplicate row needed */}
       </div>
 
       {/* Action Buttons */}
@@ -281,8 +272,8 @@ export default function LocationsCabinetGrid({
   sortOption: externalSortOption,
   sortOrder: externalSortOrder,
   onSortChange,
-  subtractJackpot = true,
-}: LocationsCabinetGridProps & { subtractJackpot?: boolean }) {
+  includeJackpot = true,
+}: LocationsCabinetGridProps & { includeJackpot?: boolean }) {
   // Use external sort state if provided, otherwise use local state
   const [internalSortOption, setInternalSortOption] =
     useState<CabinetSortOption>('moneyIn');
@@ -432,7 +423,7 @@ export default function LocationsCabinetGrid({
           onDelete={cabinet => handleDelete(cabinet as ExtendedCabinetDetail)}
           canEditMachines={canEditMachines}
           canDeleteMachines={canDeleteMachines}
-          subtractJackpot={subtractJackpot}
+          includeJackpot={includeJackpot}
         />
       </div>
 
@@ -451,7 +442,7 @@ export default function LocationsCabinetGrid({
                 canEditMachines={canEditMachines}
                 canDeleteMachines={canDeleteMachines}
                 copyToClipboard={copyToClipboard}
-                subtractJackpot={subtractJackpot}
+                includeJackpot={includeJackpot}
               />
             ))}
         </div>

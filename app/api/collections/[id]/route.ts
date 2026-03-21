@@ -66,6 +66,11 @@ export async function PATCH(
     await connectDB();
 
     // ============================================================================
+    // STEP 3.5: Fetch original collection BEFORE update for activity logging
+    // ============================================================================
+    const originalCollectionForLog = await Collections.findOne({ _id: collectionId }).lean();
+
+    // ============================================================================
     // STEP 4: Remove immutable _id field if present
     // ============================================================================
     // Safety check: Remove _id field if present (it's immutable)
@@ -734,11 +739,9 @@ export async function PATCH(
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-        // Fetch original collection for comparison (before update)
-        // Note: We need to get this BEFORE the update, but we already updated above
-        // So we'll compare updateData fields against what was in updatedCollection before changes
-        const originalCollection = updatedCollection;
-        
+        // Use the pre-update snapshot captured before any modifications
+        const preUpdateDoc = originalCollectionForLog as Record<string, unknown> | null;
+
         // Build changes array - ONLY for fields that were actually updated
         const updateChanges: Array<{
           field: string;
@@ -746,54 +749,62 @@ export async function PATCH(
           newValue: unknown;
         }> = [];
 
-        // Check each possible update field
-        if (updateData.metersIn !== undefined && originalCollection) {
+        // Check each possible update field against the ORIGINAL values
+        if (updateData.metersIn !== undefined && preUpdateDoc) {
           updateChanges.push({
             field: 'metersIn',
-            oldValue: originalCollection.metersIn,
+            oldValue: preUpdateDoc.metersIn,
             newValue: updateData.metersIn,
           });
         }
-        if (updateData.metersOut !== undefined && originalCollection) {
+        if (updateData.metersOut !== undefined && preUpdateDoc) {
           updateChanges.push({
             field: 'metersOut',
-            oldValue: originalCollection.metersOut,
+            oldValue: preUpdateDoc.metersOut,
             newValue: updateData.metersOut,
           });
         }
-        if (updateData.notes !== undefined && originalCollection) {
+        if (updateData.notes !== undefined && preUpdateDoc) {
           updateChanges.push({
             field: 'notes',
-            oldValue: originalCollection.notes,
+            oldValue: preUpdateDoc.notes,
             newValue: updateData.notes,
           });
         }
-        if (updateData.ramClear !== undefined && originalCollection) {
+        if (updateData.ramClear !== undefined && preUpdateDoc) {
           updateChanges.push({
             field: 'ramClear',
-            oldValue: originalCollection.ramClear,
+            oldValue: preUpdateDoc.ramClear,
             newValue: updateData.ramClear,
           });
         }
-
-        // Only log if there are actual changes
-        if (updateChanges.length > 0) {
-          await logActivity({
-            action: 'UPDATE',
-            details: `Updated collection meters for machine ${updatedCollection.serialNumber || updatedCollection.machineId} (${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''})`,
-            ipAddress: getClientIP(request) || undefined,
-            userAgent: request.headers.get('user-agent') || undefined,
-            metadata: {
-              userId: currentUser._id as string,
-              userEmail: currentUser.emailAddress as string,
-              userRole: (currentUser.roles as string[])?.[0] || 'user',
-              resource: 'collection',
-              resourceId: collectionId,
-              resourceName: updatedCollection.serialNumber || String(updatedCollection.machineId),
-              changes: updateChanges,
-            },
+        if (updateData.timestamp !== undefined && preUpdateDoc) {
+          updateChanges.push({
+            field: 'timestamp',
+            oldValue: preUpdateDoc.timestamp,
+            newValue: updateData.timestamp,
           });
         }
+
+        await logActivity({
+          action: 'UPDATE',
+          details: `Updated machine ${updatedCollection.serialNumber || updatedCollection.machineName || updatedCollection.machineId} in collection report${updatedCollection.locationReportId ? ` (report: ${updatedCollection.locationReportId})` : ''} — ${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''}`,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'collection',
+            resourceId: collectionId,
+            resourceName: updatedCollection.serialNumber || String(updatedCollection.machineId),
+            locationReportId: updatedCollection.locationReportId || '',
+            location: updatedCollection.location || '',
+            changes: updateChanges,
+          },
+        });
       } catch (logError) {
         console.error('Failed to log activity:', logError);
       }

@@ -87,7 +87,8 @@ export default function ProtectedRoute({
       }
 
       // Check if user is cashier-only (has ONLY cashier role, no other roles)
-      if (isCashierOnly(user.roles as UserRole[])) {
+      const roles = user.roles as UserRole[];
+      if (isCashierOnly(roles)) {
         // Allow access only to cashier routes
         const isCashierRoute =
           pathname === '/vault/cashier' ||
@@ -99,7 +100,7 @@ export default function ProtectedRoute({
       }
 
       // Check if user is vault-manager-only (has ONLY vault-manager role, no other roles)
-      if (isVaultManagerOnly(user.roles as UserRole[])) {
+      if (isVaultManagerOnly(roles)) {
         // Allow access only to vault management routes
         const isVaultRoute =
           pathname === '/vault/management' ||
@@ -136,6 +137,27 @@ export default function ProtectedRoute({
         }
       }
 
+      // Check if user is reviewer-only (has ONLY reviewer role, no other roles)
+      const isReviewerOnly = 
+        user.roles.length === 1 && user.roles.includes('reviewer');
+      
+      if (isReviewerOnly) {
+        // Allowed paths: /locations, /cabinets (and subpaths)
+        const isAllowedPath =
+           pathname === '/locations' ||
+           pathname?.startsWith('/locations/') ||
+           pathname === '/cabinets' ||
+           pathname?.startsWith('/cabinets/');
+
+        if (!isAllowedPath) {
+            router.push('/locations');
+            return;
+        }
+        // Reviewer is on an allowed path — skip requiredPage/hasPageAccess check
+        setIsChecking(false);
+        return;
+      }
+
       // Check local permissions first (faster)
       const userRoles = (user?.roles || []) as string[];
       const isAdminOrDeveloper =
@@ -144,13 +166,12 @@ export default function ProtectedRoute({
       // STEP 1: Authorization Bypass for Developers and Admins
       // Developers and Admins have unrestricted access to all pages and locations
       if (isAdminOrDeveloper) {
-        // console.log(`[ProtectedRoute] Developer/Admin bypass granted for roles: ${userRoles.join(', ')}`);
         setIsChecking(false);
         return;
       }
 
       // STEP 2: Standard Authorization Check
-      if (requireAdminAccess && user.roles) {
+      if (requireAdminAccess) {
         const hasAdminLocal =
           user.roles.includes('admin') || user.roles.includes('developer');
         if (!hasAdminLocal) {
@@ -159,7 +180,7 @@ export default function ProtectedRoute({
         }
       }
 
-      if (requiredPage && user.roles) {
+      if (requiredPage) {
         const hasPageLocal = hasPageAccess(user.roles as UserRole[], requiredPage);
         if (!hasPageLocal) {
           router.push('/unauthorized'); // Redirect to unauthorized page

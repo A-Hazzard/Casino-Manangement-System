@@ -154,16 +154,16 @@ function AdministrationLicenceeCard({
           </div>
           <div className="flex items-center justify-between text-sm text-gray-600">
             <span>
-              <span className="font-semibold">Subtract Jackpot:</span>
+              <span className="font-semibold">Include Jackpot:</span>
             </span>
             <span
               className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
-                licencee.subtractJackpot
+                licencee.includeJackpot
                   ? 'bg-blue-100 text-blue-800'
                   : 'bg-gray-100 text-gray-500'
               }`}
             >
-              {licencee.subtractJackpot ? 'Yes' : 'No'}
+              {licencee.includeJackpot ? 'Yes' : 'No'}
             </span>
           </div>
           {licencee.lastEdited && (

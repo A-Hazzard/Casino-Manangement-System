@@ -57,16 +57,27 @@ export const fetchCabinets = async (
     if (licencee) queryParams.push(`licencee=${encodeURIComponent(licencee)}`);
 
     if (sortBy) queryParams.push(`sortBy=${encodeURIComponent(sortBy)}`);
-    if (sortOrder) queryParams.push(`sortOrder=${encodeURIComponent(sortOrder)}`);
+    if (sortOrder)
+      queryParams.push(`sortOrder=${encodeURIComponent(sortOrder)}`);
 
     // Add locationId parameter if provided (filter at API level for better performance)
-    if (locationId && locationId !== 'all' && (Array.isArray(locationId) ? locationId.length > 0 : true)) {
-      const locIds = Array.isArray(locationId) ? locationId.join(',') : locationId;
+    if (
+      locationId &&
+      locationId !== 'all' &&
+      (Array.isArray(locationId) ? locationId.length > 0 : true)
+    ) {
+      const locIds = Array.isArray(locationId)
+        ? locationId.join(',')
+        : locationId;
       queryParams.push(`locationId=${encodeURIComponent(locIds)}`);
     }
 
     // Add gameType parameter if provided
-    if (gameType && gameType !== 'all' && (Array.isArray(gameType) ? gameType.length > 0 : true)) {
+    if (
+      gameType &&
+      gameType !== 'all' &&
+      (Array.isArray(gameType) ? gameType.length > 0 : true)
+    ) {
       const gTypes = Array.isArray(gameType) ? gameType.join(',') : gameType;
       queryParams.push(`gameType=${encodeURIComponent(gTypes)}`);
     }
@@ -92,9 +103,11 @@ export const fetchCabinets = async (
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       } else {
-        // Date-only: send ISO date format for gaming day offset to apply
-        const fromDate = customDateRange.from.toISOString().split('T')[0];
-        const toDate = customDateRange.to.toISOString().split('T')[0];
+        // Date-only: always include time component so backend doesn't need format detection
+        const fromDate =
+          customDateRange.from.toISOString().split('T')[0] + 'T00:00:00.000Z';
+        const toDate =
+          customDateRange.to.toISOString().split('T')[0] + 'T00:00:00.000Z';
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       }
@@ -246,9 +259,11 @@ export const fetchCabinetById = async (
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       } else {
-        // Date-only: send ISO date format for gaming day offset to apply
-        const fromDate = customDateRange.from.toISOString().split('T')[0];
-        const toDate = customDateRange.to.toISOString().split('T')[0];
+        // Date-only: always include time component so backend doesn't need format detection
+        const fromDate =
+          customDateRange.from.toISOString().split('T')[0] + 'T00:00:00.000Z';
+        const toDate =
+          customDateRange.to.toISOString().split('T')[0] + 'T00:00:00.000Z';
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       }
@@ -393,9 +408,11 @@ export const updateCabinet = async (
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       } else {
-        // Date-only: send ISO date format for gaming day offset to apply
-        const fromDate = customDateRange.from.toISOString().split('T')[0];
-        const toDate = customDateRange.to.toISOString().split('T')[0];
+        // Date-only: always include time component so backend doesn't need format detection
+        const fromDate =
+          customDateRange.from.toISOString().split('T')[0] + 'T00:00:00.000Z';
+        const toDate =
+          customDateRange.to.toISOString().split('T')[0] + 'T00:00:00.000Z';
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       }
@@ -583,9 +600,11 @@ export async function fetchCabinetsForLocation(
         params.startDate = formatLocalDateTimeString(customDateRange.from, -4);
         params.endDate = formatLocalDateTimeString(customDateRange.to, -4);
       } else {
-        // Date-only: send ISO date format for gaming day offset to apply
-        params.startDate = customDateRange.from.toISOString().split('T')[0];
-        params.endDate = customDateRange.to.toISOString().split('T')[0];
+        // Date-only: always include time component so backend doesn't need format detection
+        params.startDate =
+          customDateRange.from.toISOString().split('T')[0] + 'T00:00:00.000Z';
+        params.endDate =
+          customDateRange.to.toISOString().split('T')[0] + 'T00:00:00.000Z';
       }
       params.timePeriod = 'Custom';
     }
@@ -670,16 +689,23 @@ export async function fetchCabinetTotals(
   gameType?: string | string[],
   onlineStatus?: string,
   searchTerm?: string
-): Promise<{ moneyIn: number; moneyOut: number; gross: number; jackpot: number; netGross: number } | null> {
+): Promise<{
+  moneyIn: number;
+  moneyOut: number;
+  gross: number;
+  jackpot: number;
+  netGross: number;
+} | null> {
   try {
     let url = `/api/machines/aggregation?timePeriod=${activeMetricsFilter}`;
 
-    if (
-      activeMetricsFilter === 'Custom' &&
-      customDateRange
-    ) {
-      const fromDate = (customDateRange.startDate || customDateRange.from || customDateRange.start);
-      const toDate = (customDateRange.endDate || customDateRange.to || customDateRange.end);
+    if (activeMetricsFilter === 'Custom' && customDateRange) {
+      const fromDate =
+        customDateRange.startDate ||
+        customDateRange.from ||
+        customDateRange.start;
+      const toDate =
+        customDateRange.endDate || customDateRange.to || customDateRange.end;
 
       if (fromDate && toDate) {
         // Convert to Date objects if they are strings or numbers
@@ -701,9 +727,9 @@ export async function fetchCabinetTotals(
           const toStr = formatLocalDateTimeString(tDate, -4);
           url += `&startDate=${fromStr}&endDate=${toStr}`;
         } else {
-          // Date-only: send ISO date format for gaming day offset to apply
-          const fromStr = fDate.toISOString().split('T')[0];
-          const toStr = tDate.toISOString().split('T')[0];
+          // Date-only: always include time component so backend doesn't need format detection
+          const fromStr = fDate.toISOString().split('T')[0] + 'T00:00:00.000Z';
+          const toStr = tDate.toISOString().split('T')[0] + 'T00:00:00.000Z';
           url += `&startDate=${fromStr}&endDate=${toStr}`;
         }
       }
@@ -718,13 +744,23 @@ export async function fetchCabinetTotals(
     }
 
     // Add location filter if provided
-    if (locationId && locationId !== 'all' && (Array.isArray(locationId) ? locationId.length > 0 : true)) {
-      const locIds = Array.isArray(locationId) ? locationId.join(',') : locationId;
+    if (
+      locationId &&
+      locationId !== 'all' &&
+      (Array.isArray(locationId) ? locationId.length > 0 : true)
+    ) {
+      const locIds = Array.isArray(locationId)
+        ? locationId.join(',')
+        : locationId;
       url += `&locationId=${encodeURIComponent(locIds)}`;
     }
 
     // Add game type filter if provided
-    if (gameType && gameType !== 'all' && (Array.isArray(gameType) ? gameType.length > 0 : true)) {
+    if (
+      gameType &&
+      gameType !== 'all' &&
+      (Array.isArray(gameType) ? gameType.length > 0 : true)
+    ) {
       const gTypes = Array.isArray(gameType) ? gameType.join(',') : gameType;
       url += `&gameType=${encodeURIComponent(gTypes)}`;
     }
@@ -745,25 +781,91 @@ export async function fetchCabinetTotals(
     // Sum up totals from all machines
     const totals = machineData.reduce(
       (
-        acc: { moneyIn: number; moneyOut: number; gross: number; jackpot: number; netGross: number },
-        machine: { moneyIn?: number; moneyOut?: number; gross?: number; jackpot?: number; netGross?: number }
+        acc: {
+          moneyIn: number;
+          moneyOut: number;
+          gross: number;
+          jackpot: number;
+          netGross: number;
+          _raw?: {
+            moneyIn: number;
+            moneyOut: number;
+            jackpot: number;
+            gross: number;
+          };
+        },
+        machine: {
+          moneyIn?: number;
+          moneyOut?: number;
+          gross?: number;
+          jackpot?: number;
+          netGross?: number;
+          _rawMoneyIn?: number;
+          _rawMoneyOut?: number;
+          _rawJackpot?: number;
+          _rawGross?: number;
+          _raw?: {
+            moneyIn?: number;
+            moneyOut?: number;
+            jackpot?: number;
+            gross?: number;
+          };
+        }
       ) => {
         const moneyIn = Number(machine.moneyIn) || 0;
         const moneyOut = Number(machine.moneyOut) || 0;
-        const gross = machine.gross !== undefined ? Number(machine.gross) : (moneyIn - moneyOut);
+        const gross =
+          machine.gross !== undefined
+            ? Number(machine.gross)
+            : moneyIn - moneyOut;
         const jackpot = Number(machine.jackpot) || 0;
-        
-        // If netGross is missing from the API (due to jackpot=0 rule), 
-        // it should NOT be included in the netGross total.
-        const netGross = machine.netGross !== undefined ? Number(machine.netGross) : 0;
 
-        return {
+        const netGross =
+          machine.netGross !== undefined ? Number(machine.netGross) : 0;
+
+        // Sum raw values if they exist
+        // Handle both flat property naming AND nested _raw object from API
+        const machineRawObj = machine._raw;
+
+        const rawMoneyIn = Number(
+          machineRawObj?.moneyIn ?? machine._rawMoneyIn ?? 0
+        );
+        const rawMoneyOut = Number(
+          machineRawObj?.moneyOut ?? machine._rawMoneyOut ?? 0
+        );
+        const rawJackpot = Number(
+          machineRawObj?.jackpot ?? machine._rawJackpot ?? 0
+        );
+        const rawGross = Number(machineRawObj?.gross ?? machine._rawGross ?? 0);
+
+        const newAcc = {
           moneyIn: acc.moneyIn + moneyIn,
           moneyOut: acc.moneyOut + moneyOut,
           gross: acc.gross + gross,
           jackpot: acc.jackpot + jackpot,
           netGross: acc.netGross + netGross,
         };
+
+        // If any machine has raw values, build/update the raw accumulator
+        if (machineRawObj !== undefined || machine._rawMoneyIn !== undefined) {
+          const currentRaw = acc._raw || {
+            moneyIn: 0,
+            moneyOut: 0,
+            jackpot: 0,
+            gross: 0,
+          };
+          return {
+            ...newAcc,
+            _raw: {
+              moneyIn: (currentRaw.moneyIn || 0) + rawMoneyIn,
+              moneyOut: (currentRaw.moneyOut || 0) + rawMoneyOut,
+              jackpot: (currentRaw.jackpot || 0) + rawJackpot,
+              gross: (currentRaw.gross || 0) + rawGross,
+            },
+          };
+        }
+
+        return newAcc;
       },
       { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0, netGross: 0 }
     );
@@ -810,4 +912,3 @@ export const updateMachineCollectionHistory = async (
     throw error;
   }
 };
-

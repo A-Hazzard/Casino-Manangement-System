@@ -137,7 +137,7 @@ export default function MultiSelectDropdown({
   }, [isOpen, updatePosition]);
 
   const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(searchTerm.toLowerCase())
+    (option.label || '').toLowerCase().includes((searchTerm || '').toLowerCase())
   );
 
   const allSelected = options.length > 0 && selectedIds.length === options.length;

@@ -32,6 +32,7 @@ import type {
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
+import type { LocationDocument } from '@/lib/types/common';
 
 // Ensure this route is handled by Node.js runtime (not Edge)
 export const runtime = 'nodejs';
@@ -142,7 +143,7 @@ export async function GET(req: NextRequest) {
         _id: { $in: allowedLocationIds },
       })
         .select('name')
-        .lean()) as unknown as Array<{ name: string; _id: string }>;
+        .lean()) as unknown as Pick<LocationDocument, 'name'>[];
 
       allowedLocationNames = locations.map(loc => loc.name);
       
@@ -198,7 +199,7 @@ export async function GET(req: NextRequest) {
           _id: { $in: allowedLocationIds },
         })
           .select('name')
-          .lean()) as unknown as Array<{ name: string; _id: string }>;
+          .lean()) as unknown as Pick<LocationDocument, 'name'>[];
 
         const locationNames = locations.map(loc => loc.name);
 

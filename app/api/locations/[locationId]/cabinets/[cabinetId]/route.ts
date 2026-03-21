@@ -13,13 +13,16 @@
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import mongoose from 'mongoose';
+import type { LocationDocument, MachineDocument } from '@/lib/types/common';
+import type { TimePeriod } from '@/shared/types/common';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -70,15 +73,16 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 4: Verify location exists and get gameDayOffset
+    // STEP 4: Verify location exists and get settings
     // ============================================================================
-    const location = await GamingLocations.findOne({
+    const location = (await GamingLocations.findOne({
       _id: locationId,
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    }).lean<{ gameDayOffset?: number } | null>();
+    }).lean()) as unknown as LocationDocument | null;
+
     if (!location) {
       return NextResponse.json(
         { success: false, error: 'Location not found or has been deleted' },
@@ -87,35 +91,47 @@ export async function GET(
     }
     const gameDayOffset = location.gameDayOffset ?? 8;
 
+    // Fetch licencee's includeJackpot setting
+    let includeJackpot = false;
+    const licId = location.rel?.licencee;
+    const firstLicId = Array.isArray(licId) ? licId[0] : licId;
+    if (firstLicId) {
+      const licDoc = await Licencee.findOne(
+        { _id: firstLicId },
+        { includeJackpot: 1 }
+      ).lean() as { includeJackpot?: boolean } | null;
+      includeJackpot = Boolean(licDoc?.includeJackpot);
+    }
+
     // ============================================================================
     // STEP 5: Fetch cabinet from database
     // ============================================================================
-    const cabinet = await Machine.findOne({
+    const cabinet = (await Machine.findOne({
       _id: cabinetId,
       gamingLocation: locationId,
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    }).lean<Record<string, unknown>>();
+    }).lean()) as MachineDocument | null;
 
     if (!cabinet) {
       return NextResponse.json(
-        { success: false, error: 'Cabinet not found' },
+        { success: false, error: 'Cabinet not found in this location' },
         { status: 404 }
       );
     }
 
-    // ============================================================================
-    // STEP 6: Compute date-filtered metrics from Meters if a time period is given
-    // ============================================================================
-    const hasDateFilter =
-      timePeriod && timePeriod !== 'All Time';
+    // Attach includeJackpot to the cabinet document for consistent data across routes
+    (cabinet as Record<string, unknown>).includeJackpot = includeJackpot;
 
-    if (hasDateFilter) {
+    // ============================================================================
+    // STEP 6: Aggregate and calculate financial metrics if a time period is provided
+    // ============================================================================
+    if (timePeriod) {
       try {
-        let startDate: Date | undefined;
-        let endDate: Date | undefined;
+        let startDate: Date;
+        let endDate: Date;
 
         if (timePeriod === 'Custom' && startDateParam && endDateParam) {
           // Parse dates from parameters
@@ -133,22 +149,22 @@ export async function GET(
             );
             startDate = range.rangeStart;
             endDate = range.rangeEnd;
+          } else {
+            throw new Error('Invalid custom date parameters');
           }
-        } else if (timePeriod && timePeriod !== 'All Time') {
-          const range = getGamingDayRangeForPeriod(timePeriod, gameDayOffset);
+        } else {
+          const range = getGamingDayRangeForPeriod(timePeriod as TimePeriod, gameDayOffset);
           startDate = range.rangeStart;
           endDate = range.rangeEnd;
         }
 
-        if (startDate && endDate) {
+        if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
           const metricsResult = await Meters.aggregate([
             {
               $match: {
-                $or: [
+                $and: [
+                  { location: locationId },
                   { machine: cabinetId },
-                  ...(mongoose.Types.ObjectId.isValid(cabinetId)
-                    ? [{ machine: new mongoose.Types.ObjectId(cabinetId) }]
-                    : []),
                 ],
                 readAt: { $gte: startDate, $lte: endDate },
               },
@@ -171,12 +187,12 @@ export async function GET(
               totalCancelledCredits: number;
               jackpot: number;
             };
-            const multiplier =
-              Number((cabinet as Record<string, unknown>).collectionMultiplier) || 1;
+            const moneyIn = raw.drop;
+            const rawCancelled = raw.totalCancelledCredits;
+            const jackpot = raw.jackpot;
 
-            const moneyIn = raw.drop * multiplier;
-            const moneyOut = raw.totalCancelledCredits * multiplier;
-            const jackpot = raw.jackpot * multiplier;
+            // Apply includeJackpot logic: if true, Money Out = Cancelled + Jackpot
+            const moneyOut = rawCancelled + (includeJackpot ? jackpot : 0);
             const gross = moneyIn - moneyOut;
             const netGross = gross - jackpot;
 
@@ -205,8 +221,28 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 7: Return cabinet data
+    // STEP 7: Apply reviewer multiplier if applicable, then return cabinet data
     // ============================================================================
+    const currentUser = await getUserFromServer();
+    const currentUserRoles = (currentUser?.roles as string[]) || [];
+    const reviewerMult =
+      currentUserRoles.includes('reviewer') &&
+      (currentUser as { multiplier?: number | null })?.multiplier != null
+        ? (currentUser as { multiplier?: number | null }).multiplier!
+        : null;
+
+    if (reviewerMult !== null) {
+      const cab = cabinet as Record<string, unknown>;
+      const mi = ((cab.moneyIn as number) || 0) * reviewerMult;
+      const mo = ((cab.moneyOut as number) || 0) * reviewerMult;
+      const jp = ((cab.jackpot as number) || 0) * reviewerMult;
+      cab.moneyIn = mi;
+      cab.moneyOut = mo;
+      cab.jackpot = jp;
+      cab.gross = mi - mo;
+      cab.netGross = mi - mo - jp;
+    }
+
     return NextResponse.json({
       success: true,
       data: cabinet,
@@ -294,13 +330,13 @@ export async function PUT(
     }
 
     // Verify location exists and is not deleted
-    const location = await GamingLocations.findOne({
+    const location = (await GamingLocations.findOne({
       _id: locationId,
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    });
+    }).lean()) as unknown as LocationDocument | null;
     if (!location) {
       return NextResponse.json(
         { success: false, error: 'Location not found or has been deleted' },
@@ -542,13 +578,13 @@ export async function PATCH(
       );
     }
 
-    const location = await GamingLocations.findOne({
+    const location = (await GamingLocations.findOne({
       _id: locationId,
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    });
+    }).lean()) as unknown as LocationDocument | null;
     if (!location) {
       return NextResponse.json(
         { success: false, error: 'Location not found or has been deleted' },
@@ -695,13 +731,13 @@ export async function DELETE(
       );
     }
 
-    const location = await GamingLocations.findOne({
+    const location = (await GamingLocations.findOne({
       _id: locationId,
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    });
+    }).lean()) as unknown as LocationDocument | null;
     if (!location) {
       return NextResponse.json(
         { success: false, error: 'Location not found or has been deleted' },

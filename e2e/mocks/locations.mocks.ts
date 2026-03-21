@@ -24,7 +24,7 @@ export const MOCK_LOCATION_1 = {
   gameDayOffset: 8,
   geoCoords: { latitude: 10.6918, longitude: -61.2225 },
   membershipEnabled: true,
-  subtractJackpot: false,
+  includeJackpot: false,
   noSMIBLocation: false,
   createdAt: '2024-01-10T12:00:00.000Z',
   updatedAt: '2024-06-01T08:30:00.000Z',
@@ -42,7 +42,7 @@ export const MOCK_LOCATION_2 = {
   gameDayOffset: 8,
   geoCoords: { latitude: 10.2745, longitude: -61.4589 },
   membershipEnabled: false,
-  subtractJackpot: false,
+  includeJackpot: false,
   noSMIBLocation: false,
   createdAt: '2024-02-15T09:00:00.000Z',
   updatedAt: '2024-06-01T08:30:00.000Z',
@@ -234,20 +234,20 @@ export const MOCK_LICENCEE_1 = {
   name: 'Evolution1 Ltd',
   country: 'Trinidad and Tobago',
   countryName: 'Trinidad and Tobago',
-  subtractJackpot: false,
+  includeJackpot: false,
   gameDayOffset: 8,
   startDate: '2023-01-01T00:00:00.000Z',
   expiryDate: '2026-12-31T00:00:00.000Z',
   lastEdited: '2024-06-01T08:30:00.000Z',
 };
 
-/** A second licencee that has subtractJackpot enabled */
+/** A second licencee that has includeJackpot enabled */
 export const MOCK_LICENCEE_2 = {
   _id: 'lic_002',
   name: 'Caribbean Gaming Corp',
   country: 'Trinidad and Tobago',
   countryName: 'Trinidad and Tobago',
-  subtractJackpot: true,
+  includeJackpot: true,
   gameDayOffset: 8,
   startDate: '2023-06-01T00:00:00.000Z',
   expiryDate: '2026-12-31T00:00:00.000Z',
@@ -260,9 +260,9 @@ export const MOCK_LICENCEES_LIST = {
   timestamp: new Date().toISOString(),
 };
 
-/** Post-edit payload where lic_001 has subtractJackpot toggled on */
+/** Post-edit payload where lic_001 has includeJackpot toggled on */
 export const MOCK_LICENCEES_LIST_AFTER_EDIT = {
   success: true,
-  data: [{ ...MOCK_LICENCEE_1, subtractJackpot: true }, MOCK_LICENCEE_2],
+  data: [{ ...MOCK_LICENCEE_1, includeJackpot: true }, MOCK_LICENCEE_2],
   timestamp: new Date().toISOString(),
 };

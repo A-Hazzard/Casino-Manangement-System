@@ -167,6 +167,7 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
         loading={props.loadingTotals ?? props.loadingChartData}
         title="Total for all Locations and Machines"
         locationFiltered={false}
+        includeJackpot={props.gamingLocations?.some((loc: Record<string, unknown>) => loc.includeJackpot)}
       />
 
       {/* Chart Section */}

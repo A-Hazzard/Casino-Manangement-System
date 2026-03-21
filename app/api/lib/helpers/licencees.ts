@@ -59,11 +59,14 @@ export async function formatLicenceesForResponse(
           : '';
     const countryName = countryNameMap.get(country) || country || undefined;
 
+    const includeJackpot = Boolean(licencee.includeJackpot ?? false);
+
     return {
       ...licencee,
       isPaid,
       country,
       countryName,
+      includeJackpot,
       lastEdited: licencee.updatedAt,
     };
   });
@@ -93,7 +96,7 @@ export async function getAllLicencees() {
       isPaid: 1,
       prevStartDate: 1,
       prevExpiryDate: 1,
-      subtractJackpot: 1,
+      includeJackpot: 1,
       gameDayOffset: 1,
     }
   )
@@ -111,12 +114,12 @@ export async function createLicencee(
     country: string;
     startDate?: string;
     expiryDate?: string;
-    subtractJackpot?: boolean;
+    includeJackpot?: boolean;
     gameDayOffset?: number;
   },
   request: NextRequest
 ) {
-  const { name, description, country, startDate, expiryDate, subtractJackpot, gameDayOffset } =
+  const { name, description, country, startDate, expiryDate, includeJackpot, gameDayOffset } =
     data;
   const currentUser = await getUserFromServer();
   const newId = await generateMongoId();
@@ -140,7 +143,7 @@ export async function createLicencee(
     expiryDate: finalExpiryDate,
     licenceKey,
     lastEdited: new Date(),
-    subtractJackpot: subtractJackpot || false,
+    includeJackpot: includeJackpot || false,
     gameDayOffset: gameDayOffset ?? 8,
   });
 
@@ -201,7 +204,7 @@ export async function updateLicencee(
     isPaid?: boolean;
     prevStartDate?: string;
     prevExpiryDate?: string;
-    subtractJackpot?: boolean;
+    includeJackpot?: boolean;
     gameDayOffset?: number;
   },
   request: NextRequest
@@ -216,7 +219,7 @@ export async function updateLicencee(
     isPaid,
     prevStartDate,
     prevExpiryDate,
-    subtractJackpot,
+    includeJackpot,
     gameDayOffset,
   } = data;
 
@@ -272,8 +275,8 @@ export async function updateLicencee(
   if (isPaid !== undefined) {
     updateData.isPaid = isPaid;
   }
-  if (subtractJackpot !== undefined) {
-    updateData.subtractJackpot = Boolean(subtractJackpot);
+  if (includeJackpot !== undefined) {
+    updateData.includeJackpot = Boolean(includeJackpot);
   }
   if (gameDayOffset !== undefined) {
     updateData.gameDayOffset = Number(gameDayOffset);

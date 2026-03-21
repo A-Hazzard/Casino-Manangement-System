@@ -151,14 +151,14 @@ export default function CabinetsEditCabinetModal({
       return 'SMIB Board must be exactly 12 characters long';
     }
 
-    // Check if it's hexadecimal and lowercase
-    const hexPattern = /^[0-9a-f]+$/;
+    // Check if it's hexadecimal
+    const hexPattern = /^[0-9a-fA-F]+$/;
     if (!hexPattern.test(value)) {
-      return 'SMIB Board must contain only lowercase hexadecimal characters (0-9, a-f)';
+      return 'SMIB Board must contain only hexadecimal characters (0-9, a-f, A-F)';
     }
 
     // Check if it ends with 0, 4, 8, or c
-    const lastChar = value.charAt(11);
+    const lastChar = value.charAt(11).toLowerCase();
     if (!['0', '4', '8', 'c'].includes(lastChar)) {
       return 'SMIB Board must end with 0, 4, 8, or c';
     }
@@ -553,7 +553,7 @@ export default function CabinetsEditCabinetModal({
     } else if (name === 'smbId') {
       // Special handling for SMIB Board with validation
       // Convert to lowercase and remove any non-hex characters
-      const cleanValue = value.toLowerCase().replace(/[^0-9a-f]/g, '');
+      const cleanValue = value.replace(/[^0-9a-fA-F]/g, '');
 
       // Limit to 12 characters
       const limitedValue = cleanValue.slice(0, 12);
@@ -667,7 +667,7 @@ export default function CabinetsEditCabinetModal({
       const formDataComparison = {
         assetNumber: formData.assetNumber,
         installedGame: formData.installedGame,
-        gameType: (formData.gameType === 'other' ? formData.otherGameType : formData.gameType)?.toLowerCase().trim(),
+        gameType: ((formData.gameType === 'other' ? formData.otherGameType : formData.gameType) || '').toLowerCase().trim(),
         accountingDenomination: formData.accountingDenomination,
         collectionMultiplier: formData.collectionMultiplier,
         locationId: formData.locationId,
@@ -729,7 +729,7 @@ export default function CabinetsEditCabinetModal({
         } else {
           // Special handling for gameType to ensure it's lowercased and uses otherGameType if needed
           if (fieldPath === 'gameType') {
-            updatePayload.gameType = (formData.gameType === 'other' ? formData.otherGameType : formData.gameType)?.toLowerCase().trim();
+            updatePayload.gameType = ((formData.gameType === 'other' ? formData.otherGameType : formData.gameType) || '').toLowerCase().trim();
           } else {
             updatePayload[fieldPath] =
               formData[fieldPath as keyof typeof formData];

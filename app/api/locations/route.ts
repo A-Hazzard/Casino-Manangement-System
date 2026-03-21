@@ -25,6 +25,7 @@ import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { UpdateLocationData } from '@/lib/types/location';
+import type { LocationDocument } from '@/lib/types/common';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { revalidatePath } from 'next/cache';
@@ -229,9 +230,9 @@ export async function GET(request: Request) {
     const projection = minimal
       ? { _id: 1, name: 1, geoCoords: 1, 'rel.licencee': 1 }
       : undefined;
-    const locations = await GamingLocations.find(queryFilter, projection)
+    const locations = (await GamingLocations.find(queryFilter, projection)
       .sort({ name: 1 })
-      .lean();
+      .lean()) as unknown as LocationDocument[];
 
     // ============================================================================
     // STEP 6: Add licenceeId and settings for frontend
@@ -248,10 +249,10 @@ export async function GET(request: Request) {
     );
     const licenceeDocs = await Licencee.find(
       { _id: { $in: allLicenceeIds } },
-      { subtractJackpot: 1 }
+      { includeJackpot: 1 }
     ).lean();
-    const subtractJackpotMap = new Map(
-      licenceeDocs.map(l => [String((l as Record<string, unknown>)._id), !!(l as Record<string, unknown>).subtractJackpot])
+    const includeJackpotMap = new Map(
+      licenceeDocs.map(l => [String(l._id), !!l.includeJackpot])
     );
 
     const locationsWithSettings = locations.map(loc => {
@@ -270,8 +271,8 @@ export async function GET(request: Request) {
       return {
         ...loc,
         licenceeId,
-        subtractJackpot: licenceeId
-          ? subtractJackpotMap.get(licenceeId) || false
+        includeJackpot: licenceeId
+          ? includeJackpotMap.get(licenceeId) || false
           : false,
       };
     });
@@ -1148,6 +1149,131 @@ export async function DELETE(request: Request) {
       error instanceof Error ? error.message : 'An unknown error occurred.';
     console.error(
       `[Locations API DELETE] Error after ${duration}ms:`,
+      errorMessage
+    );
+    return NextResponse.json(
+      { success: false, message: errorMessage },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH handler for restoring an archived location
+ *
+ * Flow:
+ * 1. Connect to database
+ * 2. Parse location ID and action from request body
+ * 3. Restore location by clearing deletedAt
+ * 4. Log activity
+ * 5. Return result
+ */
+export async function PATCH(request: Request) {
+  const startTime = Date.now();
+
+  try {
+    // ============================================================================
+    // STEP 1: Connect to database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse request body
+    // ============================================================================
+    const body = await request.json();
+    const { id, action } = body as { id?: string; action?: string };
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, message: 'Location ID is required' },
+        { status: 400 }
+      );
+    }
+
+    if (action !== 'restore') {
+      return NextResponse.json(
+        { success: false, message: 'Invalid action. Use "restore".' },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 3: Find the archived location
+    // ============================================================================
+    const location = await GamingLocations.findOne({ _id: id });
+    if (!location) {
+      return NextResponse.json(
+        { success: false, message: 'Location not found' },
+        { status: 404 }
+      );
+    }
+
+    if (!location.deletedAt || location.deletedAt < new Date('2025-01-01')) {
+      return NextResponse.json(
+        { success: false, message: 'Location is not archived' },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 4: Restore by unsetting deletedAt
+    // ============================================================================
+    await GamingLocations.findOneAndUpdate(
+      { _id: id },
+      { $unset: { deletedAt: 1 } },
+      { new: true }
+    );
+
+    // ============================================================================
+    // STEP 5: Log activity
+    // ============================================================================
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        await logActivity({
+          action: 'RESTORE',
+          details: `Restored archived location "${location.name}"`,
+          ipAddress: getClientIP(request as NextRequest) || undefined,
+          userAgent:
+            (request as NextRequest).headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
+          metadata: {
+            userId: currentUser._id as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'location',
+            resourceId: id,
+            resourceName: location.name || 'Unknown Location',
+            changes: [
+              { field: 'deletedAt', oldValue: location.deletedAt, newValue: null },
+            ],
+          },
+        });
+      } catch (logError) {
+        console.error('[Locations API PATCH] Activity log failed:', logError);
+      }
+    }
+
+    // ============================================================================
+    // STEP 6: Return result
+    // ============================================================================
+    const duration = Date.now() - startTime;
+    if (duration > 1000) {
+      console.warn(`[Locations API PATCH] Completed in ${duration}ms`);
+    }
+    revalidatePath('/locations');
+
+    return NextResponse.json(
+      { success: true, message: 'Location restored successfully' },
+      { status: 200 }
+    );
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'An unknown error occurred.';
+    console.error(
+      `[Locations API PATCH] Error after ${duration}ms:`,
       errorMessage
     );
     return NextResponse.json(

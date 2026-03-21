@@ -91,41 +91,37 @@ export function useLocationsPageData() {
   // ============================================================================
   // Computed Values
   // ============================================================================
-  const filteredLocationData = useMemo(() => {
-    return locationData;
-  }, [locationData]);
-
   const financialTotals = useMemo(() => calculateLocationFinancialTotals(
-    filteredLocationData
-  ), [filteredLocationData]);
+    locationData
+  ), [locationData]);
 
   // Sliced data for the current page
   const paginatedLocationData = useMemo(() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
-    return filteredLocationData.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredLocationData, currentPage, ITEMS_PER_PAGE]);
+    return locationData.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [locationData, currentPage, ITEMS_PER_PAGE]);
 
   const isDataMissingForPage = useMemo(() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
-    return filteredLocationData.length <= startIndex && totalCount > filteredLocationData.length;
-  }, [filteredLocationData.length, currentPage, ITEMS_PER_PAGE, totalCount]);
+    return locationData.length <= startIndex && totalCount > locationData.length;
+  }, [locationData.length, currentPage, ITEMS_PER_PAGE, totalCount]);
 
   const isDataComplete = useMemo(() =>
-    filteredLocationData.length >= totalCount && totalCount > 0,
-    [filteredLocationData.length, totalCount]);
+    locationData.length >= totalCount && totalCount > 0,
+    [locationData.length, totalCount]);
 
   const effectiveTotalPages = useMemo(() => {
-    const displayedCount = filteredLocationData.length;
+    const displayedCount = locationData.length;
     const displayedPages = Math.ceil(displayedCount / ITEMS_PER_PAGE) || 1;
 
     // If server has more data not yet fetched, allow +1 page to trigger next batch
-    if (filteredLocationData.length < totalCount && totalCount > 0) {
+    if (locationData.length < totalCount && totalCount > 0) {
       const serverTotalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
       return Math.min(displayedPages + 1, serverTotalPages);
     }
 
     return displayedPages;
-  }, [filteredLocationData.length, totalCount, ITEMS_PER_PAGE]);
+  }, [locationData.length, totalCount, ITEMS_PER_PAGE]);
 
   // ============================================================================
   // Handlers
@@ -213,7 +209,9 @@ export function useLocationsPageData() {
           activeMetricsFilter,
           customDateRange || { startDate: new Date(), endDate: new Date() },
           selectedLicencee,
-          setMetricsTotals,
+          (data) => {
+            setMetricsTotals(data);
+          },
           displayCurrency,
           signal,
           machineTypeFilterString,
@@ -239,7 +237,7 @@ export function useLocationsPageData() {
     loading: loading || searchLoading || isDataMissingForPage || (searchTerm !== debouncedSearchTerm),
     refreshing,
     error,
-    filteredLocationData: paginatedLocationData,
+    locationData: paginatedLocationData,
     financialTotals,
     metricsTotals,
     metricsTotalsLoading,
@@ -264,8 +262,7 @@ export function useLocationsPageData() {
     setSelectedStatus,
     fetchData,
     totalCount,
-    locationDataLength: locationData.length,
-    filteredLocationDataLength: paginatedLocationData.length,
+    locationDataLength: paginatedLocationData.length,
     isDataComplete,
   };
 }

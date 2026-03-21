@@ -35,6 +35,7 @@ export type AddUserForm = {
   idType?: string;
   idNumber?: string;
   notes?: string;
+  multiplier?: number | null;
 };
 
 export type AddLicenceeForm = {
@@ -46,6 +47,6 @@ export type AddLicenceeForm = {
   expiryDate?: Date | string | undefined;
   prevStartDate?: Date | string | undefined;
   prevExpiryDate?: Date | string | undefined;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
 };
 

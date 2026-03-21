@@ -29,7 +29,7 @@ This is the **primary method** for all Dashboard and Real-time reporting.
 ## 3. Logic: Gross vs. Net Revenue
 
 ### 💎 Jackpot Interaction (High vs. Low Gross)
-The system supports two reporting "Visions" based on the Licencee's `subtractJackpot` flag.
+The system supports two reporting "Visions" based on the Licencee's `includeJackpot` flag.
 - **Vision A (High Gross)**: `Revenue = Drop - Cancelled Credits`. Jackpots are treated as separate operational expenses.
 - **Vision B (Low Gross)**: `Revenue = Drop - Cancelled Credits - Jackpots`. All payouts to players are deducted from the top line.
 - **Role Detection**: The engine detects this flag at the moment of API query to ensure the Dashboard and Collection Wizard always show identical numbers.

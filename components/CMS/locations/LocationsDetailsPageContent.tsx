@@ -36,6 +36,8 @@ import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import { hasMissingCoordinates } from '@/lib/utils/location';
 import LocationsEditLocationModal from './modals/LocationsEditLocationModal';
+import ReviewerDebugPanel from '@/components/shared/ui/ReviewerDebugPanel';
+import { SHOW_REVIEWER_DEBUG_PANEL } from '@/lib/constants/uiConstants';
 
 import MembersNavigation from '@/components/CMS/members/common/MembersNavigation';
 import {
@@ -609,6 +611,19 @@ export default function LocationsDetailsPageContent() {
           )}
         </div>
 
+        {/* Reviewer Debug Panel */}
+        {SHOW_REVIEWER_DEBUG_PANEL && 
+         user?.roles?.map(r => r?.toLowerCase()).includes('reviewer') && 
+         cabinetsData.financialTotals?._raw && (
+          <div className="mb-6">
+            <ReviewerDebugPanel
+              rawValues={cabinetsData.financialTotals._raw}
+              finalValues={cabinetsData.financialTotals}
+              multiplier={user?.multiplier || 0.05}
+            />
+          </div>
+        )}
+
         {activeView === 'members' ? (
           <MembersHandlersProvider>
             <LocationMembersContent
@@ -664,7 +679,7 @@ export default function LocationsDetailsPageContent() {
             setChartGranularity={chartDataHook.setChartGranularity}
             setSelectedLocationId={cabinetsData.setSelectedLocationId}
             handleRefresh={handleRefresh}
-            subtractJackpot={cabinetsData.subtractJackpot}
+            includeJackpot={cabinetsData.includeJackpot}
             handleFilterChange={handleFilterChange}
             handleLocationChangeInPlace={(newLocationId: string) => {
               if (newLocationId === 'all') {

@@ -56,6 +56,8 @@ export type MachineData = {
   sasMeters?: unknown;
   lastActivity?: Date;
   game?: string;
+  collectorDenomination?: number;
+  gameConfig?: { accountingDenomination?: number | string };
 };
 
 /**
@@ -87,7 +89,7 @@ export type TransformedMeterData = {
   attPaidCredits: number;
   gamesPlayed: number;
   netGross: number;
-  subtractJackpot: boolean;
+  includeJackpot: boolean;
   location: string;
   locationId: string;
   createdAt: Date | undefined;
@@ -352,6 +354,8 @@ export async function fetchMachinesData(
     sasMeters: 1,
     lastActivity: 1,
     game: 1, // Include game field for display
+    collectorDenomination: 1,
+    'gameConfig.accountingDenomination': 1,
   })
     .sort({ lastActivity: -1 })
     .lean()
@@ -386,6 +390,8 @@ export async function fetchMachinesData(
     gamingLocation: (machine.gamingLocation as string) || '',
     sasMeters: machine.sasMeters,
     lastActivity: (machine.lastActivity as Date) || undefined,
+    collectorDenomination: machine.collectorDenomination as number | undefined,
+    gameConfig: machine.gameConfig as { accountingDenomination?: number | string } | undefined,
   }));
 }
 
@@ -642,7 +648,7 @@ function validateMeterValue(value: unknown): number {
  * @param machinesData - Array of machine data
  * @param metersMap - Map of machine ID to meter aggregation result
  * @param locationMap - Map of location ID to location name
- * @param licenceeSettingsMap - Map of licencee ID to subtractJackpot setting
+ * @param licenceeSettingsMap - Map of licencee ID to includeJackpot setting
  * @param locationLicenceeMap - Map of location ID to licencee ID
  * @returns Array of transformed meter report data
  */
@@ -657,7 +663,7 @@ export function transformMeterData(
     const locationName =
       locationMap.get(machine.gamingLocation) || 'Unknown Location';
     const licenceeId = locationLicenceeMap.get(machine.gamingLocation) || '';
-    const subtractJackpot = licenceeSettingsMap.get(licenceeId) || false;
+    const includeJackpot = licenceeSettingsMap.get(licenceeId) || false;
     
     const machineId = formatMachineId(machine);
     const machineDocumentId = machine._id;
@@ -676,7 +682,7 @@ export function transformMeterData(
       lastReadAt: new Date(),
     };
 
-    // Extract and validate meter values
+    // Extract, validate, and SCALE meter values
     const metersIn = validateMeterValue(meterData.coinIn);
     const metersOut = validateMeterValue(meterData.totalWonCredits);
     const jackpot = validateMeterValue(meterData.jackpot);
@@ -687,15 +693,15 @@ export function transformMeterData(
     const handPaidCredits = validateMeterValue(
       meterData.totalHandPaidCancelledCredits
     );
-    const gamesPlayed = validateMeterValue(meterData.gamesPlayed);
+    const gamesPlayed = validateMeterValue(meterData.gamesPlayed); // gamesPlayed is not monetary
 
     // Calculate voucher out (net cancelled credits)
     const voucherOut = validateMeterValue(
       totalCancelledCredits - handPaidCredits
     );
 
-    // Logic: TRUE = Low Gross (subtract jackpot), FALSE = High Gross (do not subtract)
-    const netGross = subtractJackpot 
+    // Logic: TRUE = Low Gross (include jackpot in money out), FALSE = High Gross (do not include)
+    const netGross = includeJackpot 
       ? validateMeterValue(metersIn - metersOut - jackpot)
       : validateMeterValue(metersIn - metersOut);
 
@@ -709,7 +715,7 @@ export function transformMeterData(
       attPaidCredits: handPaidCredits,
       gamesPlayed,
       netGross,
-      subtractJackpot,
+      includeJackpot,
       location: locationName,
       locationId: machine.gamingLocation,
       createdAt: meterData.lastReadAt || machine.lastActivity,
@@ -745,20 +751,19 @@ export function filterMeterDataBySearch(
     return transformedData;
   }
 
-  const searchLower = search.toLowerCase();
-
   return transformedData.filter(item => {
     // Get the original machine data for additional search fields
     const machineData = machinesData.find(
       m => m._id === item.machineDocumentId
     );
 
-    const serialNumber = machineData?.serialNumber || '';
-    const customName = machineData?.custom?.name?.trim() || '';
+    const serialNumber = (machineData?.serialNumber || '').trim();
+    const customName = (machineData?.custom?.name || '').trim();
+    const searchLower = (search || '').toLowerCase();
 
     return (
-      item.machineId.toLowerCase().includes(searchLower) ||
-      item.location.toLowerCase().includes(searchLower) ||
+      (item.machineId || '').toLowerCase().includes(searchLower) ||
+      (item.location || '').toLowerCase().includes(searchLower) ||
       serialNumber.toLowerCase().includes(searchLower) ||
       customName.toLowerCase().includes(searchLower)
     );

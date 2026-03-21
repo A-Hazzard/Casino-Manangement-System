@@ -218,7 +218,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
               moneyIn={props.moneyIn || 0}
               jackpot={props.jackpot || 0}
               displayValue={formatCurrency(props.moneyOut || 0)}
-              subtractJackpot={!!props.subtractJackpot}
+              includeJackpot={!!props.includeJackpot}
               showInfoIcon={true}
             />
           )}
@@ -247,20 +247,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
             />
           )}
         </div>
-        {props.subtractJackpot && props.netGross !== undefined && (
-          <div className="mb-1 flex justify-between">
-            <span className="text-gray-500">Jackpot</span>
-            {props.hideFinancials ? (
-              <span className="font-medium text-gray-500">-</span>
-            ) : (
-              <CurrencyValueWithOverflow
-                value={props.netGross}
-                className={`font-medium ${getGrossColorClass(props.netGross)}`}
-                formatCurrencyFn={formatCurrency}
-              />
-            )}
-          </div>
-        )}
+        {/* Jackpot info is shown via the info icon on Money Out — no duplicate row needed */}
       </div>
 
       {/* Action Buttons - Fixed at bottom */}

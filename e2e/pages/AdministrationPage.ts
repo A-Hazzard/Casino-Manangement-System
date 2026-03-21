@@ -28,7 +28,7 @@ export class AdministrationPage {
 
   // ─── Edit Licencee modal ───────────────────────────────────────────────────
   readonly editLicenceeModal: Locator;
-  readonly subtractJackpotCheckbox: Locator;
+  readonly includeJackpotCheckbox: Locator;
   readonly submitEditLicenceeButton: Locator;
 
   // ─── Add User modal ────────────────────────────────────────────────────────
@@ -154,8 +154,8 @@ export class AdministrationPage {
     this.editLicenceeModal = page.locator('[role="dialog"]').filter({
       hasText: /edit.*licencee|update.*licencee/i,
     });
-    this.subtractJackpotCheckbox = this.editLicenceeModal.locator(
-      '#subtractJackpot, input[name="subtractJackpot"]'
+    this.includeJackpotCheckbox = this.editLicenceeModal.locator(
+      '#includeJackpot, input[name="includeJackpot"]'
     );
     this.submitEditLicenceeButton = this.editLicenceeModal.getByRole('button', {
       name: /save|update/i,
@@ -331,11 +331,11 @@ export class AdministrationPage {
   // ─── Licencee assertions ─────────────────────────────────────────────────────
 
   /**
-   * Asserts that a licencee row/card displays the expected subtractJackpot badge.
+   * Asserts that a licencee row/card displays the expected includeJackpot badge.
    * @param licenceeName - Name of the licencee to locate
    * @param expected - `true` expects "Yes", `false` expects "No"
    */
-  async expectSubtractJackpot(licenceeName: string, expected: boolean) {
+  async expectIncludeJackpot(licenceeName: string, expected: boolean) {
     // The licencee may be rendered as a table row or a mobile card — look for either
     const licenceeContainer = this.page
       .locator('tr, [class*="card"]')
@@ -355,12 +355,12 @@ export class AdministrationPage {
   }
 
   /**
-   * Checks or unchecks the Subtract Jackpot checkbox inside the edit licencee modal.
+   * Checks or unchecks the Include Jackpot checkbox inside the edit licencee modal.
    */
-  async setSubtractJackpot(checked: boolean) {
-    const isChecked = await this.subtractJackpotCheckbox.isChecked();
+  async setIncludeJackpot(checked: boolean) {
+    const isChecked = await this.includeJackpotCheckbox.isChecked();
     if (isChecked !== checked) {
-      await this.subtractJackpotCheckbox.click();
+      await this.includeJackpotCheckbox.click();
     }
   }
 
