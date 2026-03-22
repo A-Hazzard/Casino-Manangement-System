@@ -35,10 +35,11 @@ A comprehensive fly-out panel providing a 360-degree view of a single asset. Ope
 #### Accounting Metrics Tab
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
-| **Money In** | `movement.drop` | `GET /api/machines/[id]` |
-| **Money Out** | `movement.cancelledCredits` | `GET /api/machines/[id]` |
-| **Gross** | `movement.gross` | `GET /api/machines/[id]` |
-| **Jackpot** | `movement.jackpot` | `GET /api/machines/[id]` |
+| **Money In** | `moneyIn` (movement.drop) | `GET /api/machines/aggregation` |
+| **Money Out** | `moneyOut` (Base + Jackpot if applicable) | `GET /api/machines/aggregation` |
+| **Gross** | `gross` (Money In - Money Out) | `GET /api/machines/aggregation` |
+| **Net Gross** | `netGross` (True Profit) | `GET /api/machines/aggregation` |
+| **Jackpot** | `jackpot` (movement.jackpot) | `GET /api/machines/aggregation` |
 
 #### Live SAS Meters Tab
 | UI Term | Data Element | Source API |

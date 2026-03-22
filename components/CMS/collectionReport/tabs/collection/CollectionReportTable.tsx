@@ -22,12 +22,12 @@
  * @param editableReportIds - Set of report IDs that can be edited
  */
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import Image from 'next/image';
 import { useMemo } from 'react';
@@ -39,15 +39,14 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportTableProps } from '@/lib/types/components';
 import { getGrossColorClass } from '@/lib/utils/financial';
-import { getLicenceeName } from '@/lib/utils/licencee';
 import { hasAdminAccess, hasManagerAccess } from '@/lib/utils/permissions';
 import detailsIcon from '@/public/details.svg';
 import {
-    AlertTriangle,
-    ChevronDown,
-    ChevronUp,
-    Edit3,
-    Trash2,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -71,7 +70,9 @@ export default function CollectionReportTable({
   const user = useUserStore(state => state.user);
 
   // Check if user has admin access to see issue highlights
-  const isAdminUser = user?.roles ? hasAdminAccess(user.roles as UserRole[]) : false;
+  const isAdminUser = user?.roles
+    ? hasAdminAccess(user.roles as UserRole[])
+    : false;
 
   // Check if user can edit/delete reports
   const canEditDelete = useMemo(() => {
@@ -88,9 +89,9 @@ export default function CollectionReportTable({
   // Only show "No Data Available" when NOT loading and data is empty
   if (!loading && (!data || data.length === 0)) {
     const licenceeName =
-      getLicenceeName(selectedLicencee || undefined) ||
-      selectedLicencee ||
-      'the selected period';
+      selectedLicencee && selectedLicencee !== 'all'
+        ? selectedLicencee
+        : 'the selected period';
     const emptyMessage = `No collection reports found for ${licenceeName}.`;
 
     return (
@@ -395,4 +396,3 @@ export default function CollectionReportTable({
     </div>
   );
 }
-

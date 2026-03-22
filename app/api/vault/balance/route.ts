@@ -1,226 +1,220 @@
 /**
  * Get Vault Balance API
- *
- * GET /api/vault/balance
- *
- * Retrieves the current balance and status of the vault for a given location.
- *
- * @module app/api/vault/balance/route
  */
 
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import { Meters } from '@/app/api/lib/models/meters';
 import UserModel from '@/app/api/lib/models/user';
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
-import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import type {
-  VaultBalance,
-  VaultShift,
-  VaultTransaction,
-} from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 import { isShiftStaleBackend } from '../../lib/helpers/vault/gamingDay';
 import { GamingLocations } from '../../lib/models/gaminglocations';
 
+type VaultShiftReconciliation = {
+  timestamp?: Date;
+  previousBalance: number;
+  newBalance: number;
+  reason: string;
+  comment?: string;
+};
+
+type VaultShiftWithReconTimestamp = {
+  _id: string;
+  locationId: string;
+  vaultManagerId: string;
+  status: string;
+  openedAt?: Date;
+  closedAt?: Date;
+  openingBalance?: number;
+  openingDenominations?: Array<{ value: number; count: number }>;
+  currentDenominations?: Array<{ value: number; count: number }>;
+  closingBalance?: number;
+  closingDenominations?: Array<{ value: number; count: number }>;
+  reconciliations?: VaultShiftReconciliation[];
+  canClose?: boolean;
+  isReconciled?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export async function GET(request: NextRequest) {
-  try {
-    // ============================================================================
-    // STEP 1: Authentication & Authorization
-    // ============================================================================
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    const userRoles = (userPayload?.roles as string[]) || [];
-    const hasVaultAccess = userRoles.some(role =>
-      ['developer', 'admin', 'manager', 'vault-manager'].includes(
-        role.toLowerCase()
-      )
-    );
-    if (!hasVaultAccess) {
-      return NextResponse.json(
-        { success: false, error: 'Insufficient permissions' },
-        { status: 403 }
-      );
-    }
+  return withApiAuth(request, async ({ userRoles }) => {
+    try {
+      const hasVaultAccess = userRoles
+        .map(r => String(r).toLowerCase())
+        .some(role =>
+          ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
+        );
+      if (!hasVaultAccess)
+        return NextResponse.json(
+          { success: false, error: 'Insufficient permissions' },
+          { status: 403 }
+        );
 
-    // ============================================================================
-    // STEP 2: Parse query parameters
-    // ============================================================================
-    const { searchParams } = new URL(request.url);
-    const locationId = searchParams.get('locationId');
-    if (!locationId) {
-      return NextResponse.json(
-        { success: false, error: 'locationId is required' },
-        { status: 400 }
-      );
-    }
+      const { searchParams } = new URL(request.url);
+      const locationId = searchParams.get('locationId');
+      if (!locationId)
+        return NextResponse.json(
+          { success: false, error: 'locationId is required' },
+          { status: 400 }
+        );
 
-    // ============================================================================
-    // STEP 3: Fetch active vault shift and latest transaction
-    // ============================================================================
-    await connectDB();
-    const activeShift = await VaultShiftModel.findOne({
-      locationId,
-      status: 'active',
-    }).lean<VaultShift | null>();
-
-    if (!activeShift) {
-      // Find the most recently closed shift for this location to get the suggested opening balance
-      const lastClosedShift = await VaultShiftModel.findOne({
+      const activeShift = (await VaultShiftModel.findOne({
         locationId,
-        status: 'closed',
-      }).sort({ closedAt: -1 }).lean<VaultShift | null>();
+        status: 'active',
+      }).lean()) as unknown as VaultShiftWithReconTimestamp | null;
 
-      const lastReconTime = lastClosedShift?.reconciliations?.length
-        ? new Date(Math.max(...lastClosedShift.reconciliations.map(r => new Date(r.timestamp).getTime())))
-        : null;
+      if (!activeShift) {
+        const lastClosed = (await VaultShiftModel.findOne({
+          locationId,
+          status: 'closed',
+        })
+          .sort({ closedAt: -1 })
+          .lean()) as unknown as VaultShiftWithReconTimestamp | null;
+        const lastReconTime = lastClosed?.reconciliations?.length
+          ? new Date(
+              Math.max(
+                ...lastClosed.reconciliations.map(r =>
+                  new Date(
+                    (r as VaultShiftReconciliation).timestamp ?? 0
+                  ).getTime()
+                )
+              )
+            )
+          : null;
+        const lastAuditTime = lastClosed?.closedAt
+          ? lastReconTime && lastReconTime > lastClosed.closedAt
+            ? lastReconTime
+            : lastClosed.closedAt
+          : lastReconTime || null;
 
-      const lastAuditTime = lastClosedShift?.closedAt
-        ? (lastReconTime && lastReconTime > lastClosedShift.closedAt ? lastReconTime : lastClosedShift.closedAt)
-        : (lastReconTime || null);
+        return NextResponse.json({
+          success: true,
+          data: {
+            balance: lastClosed?.closingBalance ?? 0,
+            denominations: lastClosed?.closingDenominations ?? [],
+            activeShiftId: undefined,
+            lastReconciliation: lastReconTime || undefined,
+            lastAudit: lastAuditTime ? lastAuditTime.toISOString() : 'Never',
+            canClose: false,
+            isInitial: !lastClosed,
+            managerOnDuty: 'None',
+          },
+        });
+      }
 
-      const response: VaultBalance & { isInitial: boolean } = {
-        balance: lastClosedShift?.closingBalance ?? 0,
-        denominations: lastClosedShift?.closingDenominations ?? [],
-        activeShiftId: undefined,
-        lastReconciliation: lastReconTime || undefined,
-        lastAudit: lastAuditTime ? lastAuditTime.toISOString() : 'Never',
-        canClose: false,
-        isInitial: !lastClosedShift,
-        managerOnDuty: 'None'
-      };
-      return NextResponse.json({ success: true, data: response });
-    }
+      const lastReconTime =
+        activeShift.reconciliations && activeShift.reconciliations.length > 0
+          ? new Date(
+              Math.max(
+                ...activeShift.reconciliations.map(r =>
+                  new Date(r.timestamp ?? 0).getTime()
+                )
+              )
+            )
+          : null;
+      const lastAuditTime = activeShift.openedAt
+        ? lastReconTime && lastReconTime > activeShift.openedAt
+          ? lastReconTime
+          : activeShift.openedAt
+        : lastReconTime || null;
 
-    // Fetch last transaction if needed, or simply don't declare it if unused.
-    await VaultTransactionModel.findOne({
-      vaultShiftId: activeShift._id,
-    })
-      .sort({ timestamp: -1 })
-      .lean<VaultTransaction | null>();
+      const vaultManager = (await UserModel.findOne(
+        { _id: activeShift.vaultManagerId },
+        { profile: 1, username: 1 }
+      ).lean()) as unknown as {
+        profile?: { firstName?: string; lastName?: string };
+        username?: string;
+      } | null;
+      const managerName = vaultManager?.profile?.firstName
+        ? `${vaultManager.profile.firstName} ${vaultManager.profile.lastName}`
+        : vaultManager?.username || 'Unknown';
 
-    const lastReconTime =
-      activeShift.reconciliations?.length > 0
-        ? new Date(Math.max(...activeShift.reconciliations.map(r => new Date(r.timestamp).getTime())))
-        : null;
+      const activeCashierShifts = await CashierShiftModel.countDocuments({
+        vaultShiftId: activeShift._id,
+        status: { $in: ['active', 'pending_review', 'pending_start'] },
+      });
+      const activeCashiersData = (await CashierShiftModel.find(
+        { locationId, status: { $in: ['active', 'pending_review'] } },
+        { currentBalance: 1 }
+      ).lean()) as unknown as Array<{ currentBalance?: number }>;
+      const totalCashierFloats = activeCashiersData.reduce(
+        (sum, s) => sum + (s.currentBalance || 0),
+        0
+      );
 
-    const lastAuditTime = activeShift.openedAt
-      ? (lastReconTime && lastReconTime > activeShift.openedAt ? lastReconTime : activeShift.openedAt)
-      : (lastReconTime || null);
+      const locationInfo = (await GamingLocations.findOne(
+        { _id: locationId },
+        { gameDayOffset: 1 }
+      ).lean()) as unknown as { gameDayOffset?: number } | null;
+      const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod(
+        'Today',
+        locationInfo?.gameDayOffset ?? 8
+      );
 
-    // Fetch Manager on Duty name
-    const vaultManager = await UserModel.findOne({ _id: activeShift.vaultManagerId }, { profile: 1, username: 1 }).lean() as {
-      profile?: { firstName: string; lastName: string };
-      username: string
-    } | null;
-
-    const managerName = vaultManager?.profile?.firstName && vaultManager?.profile?.lastName
-      ? `${vaultManager.profile.firstName} ${vaultManager.profile.lastName}`
-      : vaultManager?.username || 'Unknown';
-
-    // ============================================================================
-    // STEP 4.5: Calculate Cash on Premises (Machines & Cashiers)
-    // ============================================================================
-    // A. Check if can close (BR-01) - needed for the button state
-    const activeCashierShifts = await CashierShiftModel.countDocuments({
-      vaultShiftId: activeShift._id,
-      status: { $in: ['active', 'pending_review', 'pending_start'] }
-    });
-
-    // B. All Active Cashier Floats sum
-    const activeCashiersData = await CashierShiftModel.find({
-      locationId,
-      status: { $in: ['active', 'pending_review'] }
-    }, { currentBalance: 1 }).lean();
-    const totalCashierFloats = activeCashiersData.reduce((sum: number, s: unknown) => sum + ((s as { currentBalance?: number }).currentBalance || 0), 0);
-
-    // 2. Machine Metrics (Drops & Soft Counts)
-    const locationInfo = await GamingLocations.findOne({ _id: locationId }, { gameDayOffset: 1 }).lean();
-    const gameDayOffset = (locationInfo as Record<string, unknown> | null)?.gameDayOffset as number ?? 8;
-
-    // Use the standard gaming day range for metrics
-    const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod('Today', gameDayOffset);
-
-    // B. Machine Meter Drops (Theoretic) - Use Location Field directly
-    const machineMeters = await Meters.aggregate([
-      {
-        $match: {
-          location: locationId,
-          readAt: {
-            $gte: rangeStart,
-            $lte: rangeEnd,
+      const machineMeters = await Meters.aggregate([
+        {
+          $match: {
+            location: locationId,
+            readAt: { $gte: rangeStart, $lte: rangeEnd },
           },
         },
-      },
-      {
-        $group: {
-          _id: null,
-          totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
+        {
+          $group: {
+            _id: null,
+            totalMoneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
+          },
         },
-      },
-    ]);
-    const totalMachineMoneyIn = machineMeters.length > 0 ? machineMeters[0].totalMoneyIn : 0;
+      ]);
+      const totalMachineMoneyIn =
+        machineMeters.length > 0 ? machineMeters[0].totalMoneyIn : 0;
 
-    const vaultBalanceVal = activeShift.closingBalance ?? activeShift.openingBalance;
+      const isCollectionDone = await VaultCollectionSession.exists({
+        vaultShiftId: activeShift._id,
+        status: 'completed',
+        isEndOfDay: true,
+      });
 
-    // Check if End-of-Day collection is done
-    const isCollectionDone = await VaultCollectionSession.exists({
-      vaultShiftId: activeShift._id,
-      status: 'completed',
-      isEndOfDay: true
-    });
+      const vaultBalanceVal =
+        activeShift.closingBalance ?? activeShift.openingBalance ?? 0;
 
-    // ============================================================================
-    // STEP 5: Construct and return response
-    // ============================================================================
-    const response: VaultBalance & {
-      totalCashOnPremises: number;
-      machineMoneyIn: number;
-      cashierFloats: number;
-      isCollectionDone: boolean;
-      isStale?: boolean;
-    } = {
-      balance: vaultBalanceVal,
-      // Prefer currentDenominations if set, otherwise fallback to opening
-      denominations:
-        activeShift.currentDenominations &&
-          activeShift.currentDenominations.length > 0
-          ? activeShift.currentDenominations
-          : activeShift.openingDenominations,
-      activeShiftId: activeShift._id,
-      lastReconciliation: lastReconTime || undefined,
-      lastAudit: lastAuditTime ? lastAuditTime.toISOString() : 'Never',
-      managerOnDuty: managerName,
-      canClose: activeCashierShifts === 0,
-      blockReason: activeCashierShifts > 0
-        ? `Cannot close vault while ${activeCashierShifts} cashier shift(s) are still Active or Pending Review.`
-        : undefined,
-      // Premise metrics
-      totalCashOnPremises: vaultBalanceVal + totalCashierFloats + totalMachineMoneyIn,
-      machineMoneyIn: totalMachineMoneyIn,
-      cashierFloats: totalCashierFloats,
-      openingBalance: activeShift.openingBalance,
-      isReconciled: activeShift.isReconciled || false,
-      isCollectionDone: !!isCollectionDone,
-      openedAt: activeShift.openedAt,
-      isStale: await isShiftStaleBackend(activeShift.openedAt, locationId)
-    };
-
-    return NextResponse.json({ success: true, data: response });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error('Error fetching vault balance:', errorMessage);
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
+      return NextResponse.json({
+        success: true,
+        data: {
+          balance: vaultBalanceVal,
+          denominations: activeShift.currentDenominations?.length
+            ? activeShift.currentDenominations
+            : activeShift.openingDenominations,
+          activeShiftId: activeShift._id,
+          lastReconciliation: lastReconTime || undefined,
+          lastAudit: lastAuditTime ? lastAuditTime.toISOString() : 'Never',
+          managerOnDuty: managerName,
+          canClose: activeCashierShifts === 0,
+          blockReason:
+            activeCashierShifts > 0
+              ? `Still active: ${activeCashierShifts} cashier shifts`
+              : undefined,
+          totalCashOnPremises:
+            vaultBalanceVal + totalCashierFloats + totalMachineMoneyIn,
+          machineMoneyIn: totalMachineMoneyIn,
+          cashierFloats: totalCashierFloats,
+          openingBalance: activeShift.openingBalance,
+          isReconciled: !!activeShift.isReconciled,
+          isCollectionDone: !!isCollectionDone,
+          openedAt: activeShift.openedAt,
+          isStale: await isShiftStaleBackend(activeShift.openedAt!, locationId),
+        },
+      });
+    } catch (error: unknown) {
+      console.error('[Vault Balance] Error:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return NextResponse.json(
+        { success: false, error: message },
+        { status: 500 }
+      );
+    }
+  });
 }

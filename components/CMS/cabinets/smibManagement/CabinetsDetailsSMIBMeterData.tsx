@@ -1,15 +1,20 @@
 /**
  * CabinetsDetailsSMIBMeterData Component
- * 
+ *
  * Handles meter data requests and display for SMIB devices.
- * 
+ *
  * @param props - Component props
  */
 
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import {
   Select,
   SelectContent,
@@ -58,9 +63,7 @@ export function CabinetsDetailsSMIBMeterData({
 
   const [isLoading, setIsLoading] = useState(false);
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
-  const [_lastMetersSignature, setLastMetersSignature] = useState<
-    string | null
-  >(null);
+  const lastMetersSignatureRef = useRef<string | null>(null);
   const [selectedNvsAction, setSelectedNvsAction] = useState<string>('');
   const [isProcessingAction, setIsProcessingAction] = useState(false);
   const [isSSEConnected, setIsSSEConnected] = useState(false);
@@ -245,14 +248,15 @@ export function CabinetsDetailsSMIBMeterData({
           } as typeof liveMeters;
 
           const signature = JSON.stringify({ ...next, lastAt: undefined });
-          setLastMetersSignature(prev => {
-            if (prev && signature === prev) {
-              setRequestMessage('No new SAS meters detected');
-            } else {
-              setRequestMessage(null);
-            }
-            return signature;
-          });
+          if (
+            lastMetersSignatureRef.current &&
+            signature === lastMetersSignatureRef.current
+          ) {
+            setRequestMessage('No new SAS meters detected');
+          } else {
+            setRequestMessage(null);
+          }
+          lastMetersSignatureRef.current = signature;
           setLiveMeters(next);
           setIsLoading(false);
           if (requestTimeoutRef.current) {
@@ -397,14 +401,14 @@ export function CabinetsDetailsSMIBMeterData({
 
   return (
     <>
-      <Card className="w-full max-w-full min-w-0 overflow-x-hidden">
+      <Card className="w-full min-w-0 max-w-full overflow-x-hidden">
         <CardHeader className="min-w-0">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-700">
             <BarChart3 className="h-5 w-5" />
             Meter Data
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 min-w-0 overflow-x-hidden">
+        <CardContent className="min-w-0 space-y-4 overflow-x-hidden">
           <p className="text-sm text-gray-600">
             Request current meter data from the SMIB to verify machine
             communication and retrieve accounting information.
@@ -567,4 +571,3 @@ export function CabinetsDetailsSMIBMeterData({
     </>
   );
 }
-

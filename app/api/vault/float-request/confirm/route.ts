@@ -1,100 +1,72 @@
 /**
  * Vault Float Request Confirmation API
- * 
- * POST /api/vault/float-request/confirm
- * 
- * Allows a Cashier to confirm receipt of cash after a Vault Manager has approved their float request.
- * This finalizes the transaction, updates the ledger, and activates/adjusts the shift.
- * 
- * @module app/api/vault/float-request/confirm/route
  */
 
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../../lib/middleware/db';
 
 export async function POST(request: NextRequest) {
-  try {
-    // STEP 1: Authentication
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
+  return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
+    try {
+      const { requestId, notes } = await request.json();
+      if (!requestId)
+        return NextResponse.json(
+          { success: false, error: 'Missing requestId' },
+          { status: 400 }
+        );
+
+      const floatRequest = await FloatRequestModel.findOne({ _id: requestId });
+      if (!floatRequest)
+        return NextResponse.json(
+          { success: false, error: 'Float request not found' },
+          { status: 404 }
+        );
+
+      const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
+      const isVM = normalizedRoles.some(r =>
+        ['admin', 'manager', 'vault-manager'].includes(r)
+      );
+      const isOwner = floatRequest.cashierId.toString() === userPayload._id;
+
+      const canConfirm =
+        (floatRequest.type === 'decrease' && isVM) ||
+        (floatRequest.type === 'increase' && isOwner) ||
+        (!floatRequest.type && isOwner) ||
+        normalizedRoles.includes('admin');
+
+      if (!canConfirm)
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized to confirm' },
+          { status: 403 }
+        );
+      if (floatRequest.status !== 'approved_vm')
+        return NextResponse.json(
+          { success: false, error: `Invalid status: ${floatRequest.status}` },
+          { status: 400 }
+        );
+
+      const { finalizeFloatRequest } =
+        await import('@/app/api/lib/helpers/vault/finalizeFloat');
+      const result = await finalizeFloatRequest(
+        requestId,
+        userPayload._id,
+        userPayload.username as string,
+        notes || ''
+      );
+
+      return NextResponse.json({
+        success: true,
+        floatRequest: result.floatRequest.toObject(),
+        cashierShift: result.cashierShift.toObject(),
+      });
+    } catch (error: unknown) {
+      console.error('[Float Confirm API] Error:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { success: false, error: message },
+        { status: 500 }
       );
     }
-    const userId = userPayload._id as string;
-    const username = userPayload.username as string;
-
-    // STEP 2: Parse request
-    const body = await request.json();
-    const { requestId, notes } = body;
-
-    if (!requestId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing requestId' },
-        { status: 400 }
-      );
-    }
-
-    // STEP 3: Connect to DB and find request
-    await connectDB();
-    const floatRequest = await FloatRequestModel.findOne({ _id: requestId });
-
-    if (!floatRequest) {
-      return NextResponse.json(
-        { success: false, error: 'Float request not found' },
-        { status: 404 }
-      );
-    }
-
-    // SECURITY: Ensure correct party is confirming
-    const isVM = ((userPayload.roles as string[]) || []).some(r => ['admin', 'manager', 'vault-manager'].includes(r.toLowerCase()));
-
-    const canConfirm = (
-      (floatRequest.type === 'decrease' && isVM) ||
-      (floatRequest.type === 'increase' && floatRequest.cashierId === userId) ||
-      (!floatRequest.type && floatRequest.cashierId === userId) || // initial float is increase
-      ((userPayload.roles as string[]) || []).includes('admin')
-    );
-
-    if (!canConfirm) {
-      return NextResponse.json(
-        { success: false, error: 'You are not authorized to confirm this request' },
-        { status: 403 }
-      );
-    }
-
-    if (floatRequest.status !== 'approved_vm') {
-      return NextResponse.json(
-        { success: false, error: `Request cannot be confirmed in current status: ${floatRequest.status}` },
-        { status: 400 }
-      );
-    }
-
-    // STEP 4/5/6/7: Finalize the transaction using the helper
-    const { finalizeFloatRequest } = await import('@/app/api/lib/helpers/vault/finalizeFloat');
-
-    const result = await finalizeFloatRequest(
-      requestId,
-      userId,
-      username,
-      notes || ''
-    );
-
-    return NextResponse.json({
-      success: true,
-      floatRequest: result.floatRequest.toObject(),
-      cashierShift: result.cashierShift.toObject(),
-    });
-
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Error confirming float request:', errorMessage);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error', details: errorMessage },
-      { status: 500 }
-    );
-  }
+  });
 }

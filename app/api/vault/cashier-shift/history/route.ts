@@ -1,122 +1,84 @@
 /**
  * Cashier Shift History API
- *
- * GET /api/vault/cashier-shift/history
- *
- * Retrieves shift history for a specific cashier.
- *
- * @module app/api/vault/cashier-shift/history/route
  */
 
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  try {
-    // ============================================================================
-    // STEP 1: Authentication & Authorization
-    // ============================================================================
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
+  return withApiAuth(request, async ({ user: payload, userRoles }) => {
+    try {
+      const { searchParams } = new URL(request.url);
+      const cashierId = searchParams.get('cashierId'),
+        locationId = searchParams.get('locationId');
+      const limit = parseInt(searchParams.get('limit') || '50'),
+        skip = parseInt(searchParams.get('skip') || '0');
+      const varianceOnly = searchParams.get('variance') === 'true';
+
+      if (!cashierId)
+        return NextResponse.json(
+          { success: false, error: 'Missing cashierId' },
+          { status: 400 }
+        );
+
+      const isCashier = userRoles
+        .map(r => String(r).toLowerCase())
+        .includes('cashier');
+      if (isCashier && cashierId !== payload._id)
+        return NextResponse.json(
+          { success: false, error: 'Access denied: self-only' },
+          { status: 403 }
+        );
+
+      const query: Record<string, unknown> = { cashierId };
+      if (locationId) query.locationId = locationId;
+      if (varianceOnly) query.discrepancy = { $ne: 0 };
+
+      const [shifts, total] = await Promise.all([
+        CashierShiftModel.find(query)
+          .sort({ openedAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .select({
+            _id: 1,
+            openedAt: 1,
+            closedAt: 1,
+            status: 1,
+            openingBalance: 1,
+            closingBalance: 1,
+            expectedClosingBalance: 1,
+            cashierEnteredBalance: 1,
+            discrepancy: 1,
+            payoutsTotal: 1,
+            payoutsCount: 1,
+            floatAdjustmentsTotal: 1,
+            vmReviewNotes: 1,
+            reviewedBy: 1,
+            reviewedAt: 1,
+          })
+          .lean(),
+        CashierShiftModel.countDocuments(query),
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        shifts,
+        total,
+        pagination: {
+          total,
+          limit,
+          skip,
+          hasMore: total > skip + shifts.length,
+        },
+      });
+    } catch (e: unknown) {
+      console.error('[Cashier Shift History] Error:', e);
+      const message = e instanceof Error ? e.message : 'Unknown error';
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { success: false, error: message },
+        { status: 500 }
       );
     }
-
-    const { searchParams } = new URL(request.url);
-    const cashierId = searchParams.get('cashierId');
-    const locationId = searchParams.get('locationId');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const skip = parseInt(searchParams.get('skip') || '0');
-
-    // ============================================================================
-    // STEP 2: Authorization Check
-    // ============================================================================
-    const userRoles = (userPayload.roles as string[]) || [];
-    const isCashier = userRoles.some(r => r.toLowerCase() === 'cashier');
-
-    // VMs can view any cashier's history at their location
-    // Cashiers can only view their own history
-    if (isCashier && cashierId !== userPayload._id) {
-      return NextResponse.json(
-        { success: false, error: 'Forbidden: Can only view your own history' },
-        { status: 403 }
-      );
-    }
-
-    if (!cashierId) {
-      return NextResponse.json(
-        { success: false, error: 'Missing cashierId' },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Build Query
-    // ============================================================================
-    const query: Record<string, unknown> = { cashierId };
-
-    const varianceOne = searchParams.get('variance');
-
-    if (locationId) {
-      query.locationId = locationId;
-    }
-
-    if (varianceOne === 'true') {
-      query.discrepancy = { $ne: 0 };
-    }
-
-    // ============================================================================
-    // STEP 4: Fetch Shift History
-    // ============================================================================
-    await connectDB();
-
-    const [shifts, totalCount] = await Promise.all([
-      CashierShiftModel.find(query)
-        .sort({ openedAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .select({
-          _id: 1,
-          openedAt: 1,
-          closedAt: 1,
-          status: 1,
-          openingBalance: 1,
-          closingBalance: 1,
-          expectedClosingBalance: 1,
-          cashierEnteredBalance: 1,
-          discrepancy: 1,
-          payoutsTotal: 1,
-          payoutsCount: 1,
-          floatAdjustmentsTotal: 1,
-          vmReviewNotes: 1,
-          reviewedBy: 1,
-          reviewedAt: 1,
-        })
-        .lean(),
-      CashierShiftModel.countDocuments(query),
-    ]);
-
-    return NextResponse.json({
-      success: true,
-      shifts,
-      total: totalCount,
-      pagination: {
-        total: totalCount,
-        limit,
-        skip,
-        hasMore: totalCount > skip + shifts.length,
-      },
-    });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error('Error fetching cashier shift history:', errorMessage);
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
+  });
 }

@@ -60,7 +60,6 @@ function CabinetCardMobile({
   canEditMachines = true,
   canDeleteMachines = true,
   copyToClipboard,
-  includeJackpot: _includeJackpot,
 }: {
   cabinet: ExtendedCabinetDetail;
   router: AppRouterInstance;
@@ -69,7 +68,6 @@ function CabinetCardMobile({
   canEditMachines?: boolean;
   canDeleteMachines?: boolean;
   copyToClipboard: (text: string, label: string) => void;
-  includeJackpot?: boolean;
 }) {
   const statusRef = useRef<HTMLSpanElement>(null);
   /**
@@ -114,28 +112,38 @@ function CabinetCardMobile({
           title={cabinet.isOnline ? 'Online' : 'Offline'}
         ></span>
       </div>
-      
+
       {/* Offline Status - Show when offline */}
       {!cabinet.isOnline && (
-        <div className="mb-3 flex flex-col gap-1 text-xs text-red-600 font-medium">
+        <div className="mb-3 flex flex-col gap-1 text-xs font-medium text-red-600">
           <div className="flex items-center gap-1.5">
             <Clock className="h-3 w-3" />
             <span>
-              {cabinet.offlineTimeLabel 
-                ? (cabinet.offlineTimeLabel === 'Never' ? 'Never Online' : `Offline ${cabinet.offlineTimeLabel}`)
-                : (cabinet.lastOnline ? `Offline ${formatDistanceToNow(new Date(cabinet.lastOnline), { addSuffix: true })}` : 'Never Online')}
+              {cabinet.offlineTimeLabel
+                ? cabinet.offlineTimeLabel === 'Never'
+                  ? 'Never Online'
+                  : `Offline ${cabinet.offlineTimeLabel}`
+                : cabinet.lastOnline
+                  ? `Offline ${formatDistanceToNow(new Date(cabinet.lastOnline), { addSuffix: true })}`
+                  : 'Never Online'}
             </span>
           </div>
-          {cabinet.actualOfflineTime && cabinet.actualOfflineTime !== (cabinet.offlineTimeLabel || (cabinet.lastOnline ? formatDistanceToNow(new Date(cabinet.lastOnline), { addSuffix: true }) : 'Never')) && (
-            <div className="ml-[18px] text-[10px] opacity-70 italic text-gray-500">
-              (Actual Offline Time: {cabinet.actualOfflineTime})
-            </div>
-          )}
+          {cabinet.actualOfflineTime &&
+            cabinet.actualOfflineTime !==
+              (cabinet.offlineTimeLabel ||
+                (cabinet.lastOnline
+                  ? formatDistanceToNow(new Date(cabinet.lastOnline), {
+                      addSuffix: true,
+                    })
+                  : 'Never')) && (
+              <div className="ml-[18px] text-[10px] italic text-gray-500 opacity-70">
+                (Actual Offline Time: {cabinet.actualOfflineTime})
+              </div>
+            )}
         </div>
       )}
       <p className="mb-1 text-sm text-gray-600">
-        Game:{' '}
-        {/* Show game name or placeholder if not provided */}
+        Game: {/* Show game name or placeholder if not provided */}
         {cabinet.game || cabinet.installedGame ? (
           cabinet.game || cabinet.installedGame
         ) : (
@@ -179,7 +187,7 @@ function CabinetCardMobile({
       {/* Network Badge */}
       {cabinet.network && (
         <div className="mb-1">
-          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 border border-gray-200">
+          <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
             {cabinet.network}
           </span>
         </div>
@@ -195,15 +203,15 @@ function CabinetCardMobile({
         </div>
         <div className="mb-1 flex justify-between">
           <span className="text-xs text-gray-500">Money Out:</span>
-            <MoneyOutCell
-              moneyOut={cabinet.moneyOut || 0}
-              moneyIn={cabinet.moneyIn || 0}
-              jackpot={cabinet.jackpot || 0}
-              displayValue={formatCurrency(cabinet.moneyOut || 0)}
-              className="text-xs"
-              includeJackpot={!!(cabinet).includeJackpot}
-              showInfoIcon={true}
-            />
+          <MoneyOutCell
+            moneyOut={cabinet.moneyOut || 0}
+            moneyIn={cabinet.moneyIn || 0}
+            jackpot={cabinet.jackpot || 0}
+            displayValue={formatCurrency(cabinet.moneyOut || 0)}
+            className="text-xs"
+            includeJackpot={!!cabinet.includeJackpot}
+            showInfoIcon={true}
+          />
         </div>
         <div className="mb-1 flex justify-between">
           <span className="text-xs text-gray-500">Jackpot:</span>
@@ -442,7 +450,6 @@ export default function LocationsCabinetGrid({
                 canEditMachines={canEditMachines}
                 canDeleteMachines={canDeleteMachines}
                 copyToClipboard={copyToClipboard}
-                includeJackpot={includeJackpot}
               />
             ))}
         </div>
@@ -471,4 +478,3 @@ export default function LocationsCabinetGrid({
     </div>
   );
 }
-

@@ -23,7 +23,6 @@ import { fetchLicencees } from '@/lib/helpers/client';
 import type { CabinetSortOption } from '@/lib/hooks/data';
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
-import { getLicenceeName } from '@/lib/utils/licencee';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { animateCards, animateTableRows } from '@/lib/utils/ui';
 import type { GamingMachine as Machine } from '@/shared/types/entities';
@@ -98,7 +97,9 @@ export const CabinetsCabinetContentDisplay = ({
   const { openEditModal, openDeleteModal } = useCabinetsActionsStore();
   const user = useUserStore(state => state.user);
   const licenceeName =
-    getLicenceeName(selectedLicencee) || selectedLicencee || 'any licencee';
+    selectedLicencee && selectedLicencee !== 'all'
+      ? selectedLicencee
+      : 'any licencee';
 
   /**
    * Determines if the user can edit machines.
@@ -134,9 +135,13 @@ export const CabinetsCabinetContentDisplay = ({
       return false;
     }
     // Admins, developers, managers, location admins, and technicians can delete
-    return ['developer', 'admin', 'manager', 'location admin', 'technician'].some(role =>
-      userRoles.includes(role)
-    );
+    return [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
+    ].some(role => userRoles.includes(role));
   }, [user]);
 
   const shouldHideFinancials = useMemo(() => {

@@ -14,8 +14,7 @@
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -26,13 +25,16 @@ import {
   getCountryCurrency,
   getLicenceeCurrency,
 } from '@/lib/helpers/rates';
-import type { LocationDocument, MachineDocument } from '@/lib/types/common';
+import type {
+  LicenceeDocument,
+  LocationDocument,
+  MachineDocument,
+} from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 import { TimePeriod } from '../../lib/types';
-import { User } from '@/lib/types/administration';
 
 /**
  * Main GET handler for fetching a single machine by ID
@@ -53,9 +55,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ machineId: string }> }
 ) {
-  const startTime = Date.now();
+  return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
+    const startTime = Date.now();
 
-  try {
     // ============================================================================
     // STEP 1: Parse route parameters and query parameters
     // ============================================================================
@@ -71,7 +73,6 @@ export async function GET(
     // ============================================================================
     // STEP 2: Validate timePeriod or date range parameters
     // ============================================================================
-    // Only proceed if timePeriod or custom date range is provided
     if (!timePeriod && (!startDateParam || !endDateParam)) {
       return NextResponse.json(
         {
@@ -82,13 +83,6 @@ export async function GET(
       );
     }
 
-    // ============================================================================
-    // STEP 3: Connect to database and authenticate user
-    // ============================================================================
-    await connectDB();
-
-    const userPayload = await getUserFromServer();
-    const userRoles = (userPayload?.roles as User['roles']) || [];
     const isCashier = userRoles.includes('cashier');
     const isVaultManager = userRoles.includes('vault-manager');
     const isStaff = isCashier || isVaultManager;
@@ -125,10 +119,10 @@ export async function GET(
         const location = (await GamingLocations.findOne({
           _id: machine.gamingLocation,
         })
-          .select('name locationName gameDayOffset rel')
+          .select('name gameDayOffset rel')
           .lean()) as Pick<
           LocationDocument,
-          'name' | 'locationName' | 'gameDayOffset' | 'rel'
+          'name' | 'gameDayOffset' | 'rel'
         > | null;
 
         if (location) {
@@ -151,15 +145,18 @@ export async function GET(
 
           // STEP 6: Fetch licensee-level includeJackpot setting to see if we should append jackpot to moneyIn
           let includeJackpot = false;
-          const licenceeId = location.rel?.licencee;
+          // rel?.licencee is string[] per the schema — use the first one.
+          const licenceeIdRel = location.rel?.licencee;
+          const licenceeId = Array.isArray(licenceeIdRel)
+            ? licenceeIdRel[0]
+            : licenceeIdRel;
 
           if (licenceeId) {
-            const licenceeDoc = (await Licencee.findOne({ _id: licenceeId })
-              .select('includeJackpot')
-              .lean()) as { includeJackpot?: boolean } | null;
-            includeJackpot = licenceeDoc?.includeJackpot ?? false;
+            const licencee = (await Licencee.findOne({
+              _id: licenceeId,
+            }).lean()) as Record<string, unknown> | null;
+            if (licencee) includeJackpot = !!licencee.includeJackpot;
           }
-
           includeJackpotSetting = includeJackpot;
         } else locationName = 'Location Not Found';
       } catch (error) {
@@ -177,7 +174,11 @@ export async function GET(
     if (timePeriod === 'Custom') {
       if (!startDateParam || !endDateParam) {
         return NextResponse.json(
-          { success: false, error: 'Custom time period requires startDate and endDate parameters' },
+          {
+            success: false,
+            error:
+              'Custom time period requires startDate and endDate parameters',
+          },
           { status: 400 }
         );
       }
@@ -258,46 +259,34 @@ export async function GET(
       meterCount: 0,
     };
 
-    const moneyIn = metrics.moneyIn;
-    const rawMoneyOut = metrics.moneyOut;
-    const jackpot = metrics.jackpot;
+    let moneyIn = metrics.moneyIn;
+    const rawMoneyOut = metrics.moneyOut; // movement.totalCancelledCredits — base cancelled credits (no jackpot)
+    let jackpot = metrics.jackpot;
 
-    // Apply new Money Out logic: if includeJackpot is ENABLED (Low Gross),
-    // moneyOut = Net Cancelled + Jackpot (Total payout)
-    const moneyOut =
-      rawMoneyOut + (includeJackpotSetting ? jackpot : 0);
+    // rawMoneyOut is the base cancelled credits without jackpot.
+    // Add jackpot only when includeJackpot=true for this licencee.
+    let moneyOut = rawMoneyOut + (includeJackpotSetting ? jackpot : 0);
 
-    const coinIn = metrics.coinIn;
-    const coinOut = metrics.coinOut;
+    let coinIn = metrics.coinIn;
+    let coinOut = metrics.coinOut;
     const gamesPlayed = metrics.gamesPlayed;
     const gamesWon = metrics.gamesWon;
     const handPaidCancelledCredits = metrics.handPaidCancelledCredits;
 
-    const gross = moneyIn - moneyOut;
+    let gross = moneyIn - moneyOut;
 
     // ============================================================================
     // STEP 9: Apply currency conversion if needed
     // ============================================================================
-    // Currency conversion logic (similar to aggregation endpoint)
-    let finalMoneyIn = moneyIn;
-    let finalMoneyOut = moneyOut;
-    let finalCancelledCredits = moneyOut;
-    let finalJackpot = jackpot;
-    let finalGross = gross;
-    let finalCoinIn = coinIn;
-    let finalCoinOut = coinOut;
-
     // For cabinet detail pages we ALWAYS convert from the machine's native currency
-    // into the selected display currency (including USD), regardless of licencee filter or role.
+    // into the selected display currency, regardless of licencee filter.
     // EXCEPT for cashiers and vault managers who should always see raw values.
     const shouldConvert = Boolean(displayCurrency) && !isStaff;
 
     if (shouldConvert) {
       // Get location details to determine native currency
-      let locationData: {
-        rel?: { licencee?: string };
-        country?: string;
-      } | null = null;
+      let locationData: Pick<LocationDocument, 'rel' | 'country'> | null = null;
+
       if (machine.gamingLocation) {
         try {
           locationData = (await GamingLocations.findOne({
@@ -315,22 +304,18 @@ export async function GET(
 
       // Determine native currency from licencee or country
       let nativeCurrency: CurrencyCode = 'USD';
-      const licenceeId =
-        locationData?.rel?.licencee ||
-        (locationData?.rel as { licencee?: string })?.licencee;
+      const licenceeId = locationData?.rel?.licencee;
+
       if (licenceeId) {
         try {
-          // Licencee _id is stored as a String in this project, not ObjectId
-          const licenceeDoc = await Licencee.findOne({
+          const licenceeDoc = (await Licencee.findOne({
             _id: licenceeId,
           })
             .select('name')
-            .lean();
+            .lean()) as Pick<LicenceeDocument, 'name'> | null;
 
-          if (licenceeDoc && !Array.isArray(licenceeDoc) && licenceeDoc.name) {
-            // Map licencee name/id to its native currency (TTD, GYD, BBD, etc.)
+          if (licenceeDoc && licenceeDoc.name)
             nativeCurrency = getLicenceeCurrency(licenceeDoc.name);
-          }
         } catch (licenceeError: unknown) {
           console.warn(
             'Failed to resolve licencee for currency conversion:',
@@ -341,7 +326,6 @@ export async function GET(
         }
       } else if (locationData?.country) {
         try {
-          // location.country already stores the country name in most cases
           nativeCurrency = getCountryCurrency(locationData.country);
         } catch (countryError: unknown) {
           console.warn(
@@ -358,13 +342,15 @@ export async function GET(
       const coinInUSD = convertToUSD(coinIn, nativeCurrency);
       const coinOutUSD = convertToUSD(coinOut, nativeCurrency);
 
-      finalMoneyIn = convertFromUSD(moneyInUSD, displayCurrency);
-      finalMoneyOut = convertFromUSD(moneyOutUSD, displayCurrency);
-      finalCancelledCredits = finalMoneyOut;
-      finalJackpot = convertFromUSD(jackpotUSD, displayCurrency);
-      finalGross = finalMoneyIn - finalMoneyOut;
-      finalCoinIn = convertFromUSD(coinInUSD, displayCurrency);
-      finalCoinOut = convertFromUSD(coinOutUSD, displayCurrency);
+      moneyIn = convertFromUSD(moneyInUSD, displayCurrency);
+      moneyOut = convertFromUSD(moneyOutUSD, displayCurrency);
+      jackpot = convertFromUSD(jackpotUSD, displayCurrency);
+      coinIn = convertFromUSD(coinInUSD, displayCurrency);
+      coinOut = convertFromUSD(coinOutUSD, displayCurrency);
+      gross = moneyIn - moneyOut;
+    } else {
+      // When not converting, recalculate moneyOut with raw values
+      moneyOut = rawMoneyOut + (includeJackpotSetting ? jackpot : 0);
     }
 
     // ============================================================================
@@ -379,19 +365,18 @@ export async function GET(
     const reviewerMult =
       isReviewer && userMultiplier !== null ? userMultiplier : null;
 
-    const rawMI = finalMoneyIn;
-    const rawMO = finalMoneyOut;
-    const rawJP = finalJackpot;
-    const rawGross = finalGross;
+    const rawMI = moneyIn;
+    const rawMO = moneyOut;
+    const rawJP = jackpot;
+    const rawGross = gross;
 
     if (reviewerMult !== null) {
-      finalMoneyIn = finalMoneyIn * reviewerMult;
-      finalMoneyOut = finalMoneyOut * reviewerMult;
-      finalJackpot = finalJackpot * reviewerMult;
-      finalGross = finalMoneyIn - finalMoneyOut;
-      finalCancelledCredits = finalMoneyOut;
-      finalCoinIn = finalCoinIn * reviewerMult;
-      finalCoinOut = finalCoinOut * reviewerMult;
+      moneyIn = moneyIn * reviewerMult;
+      moneyOut = moneyOut * reviewerMult;
+      jackpot = jackpot * reviewerMult;
+      coinIn = coinIn * reviewerMult;
+      coinOut = coinOut * reviewerMult;
+      gross = moneyIn - moneyOut;
     }
 
     // ============================================================================
@@ -427,15 +412,13 @@ export async function GET(
       updatedAt: machine.updatedAt,
       deletedAt: machine.deletedAt, // Include deletedAt field
       // Financial metrics from meters collection according to financial-metrics-guide.md
-      moneyIn: finalMoneyIn,
-      moneyOut: finalMoneyOut,
-      cancelledCredits: finalCancelledCredits, // Same as moneyOut (totalCancelledCredits)
-      jackpot: finalJackpot,
-      gross: finalGross,
+      moneyIn,
+      moneyOut,
+      cancelledCredits: moneyOut, // Same as moneyOut (totalCancelledCredits)
+      jackpot,
+      gross,
       includeJackpot: includeJackpotSetting,
-      netGross: includeJackpotSetting
-        ? finalGross
-        : finalGross - (finalJackpot || 0),
+      netGross: includeJackpotSetting ? gross : gross - (jackpot || 0),
       // Raw values for reviewer debug
       _raw:
         reviewerMult !== null
@@ -448,8 +431,8 @@ export async function GET(
           : undefined,
       _reviewerMultiplier: reviewerMult,
       // Additional metrics for comprehensive financial tracking
-      coinIn: finalCoinIn,
-      coinOut: finalCoinOut,
+      coinIn,
+      coinOut,
       gamesPlayed,
       gamesWon,
       handPaidCancelledCredits,
@@ -509,19 +492,7 @@ export async function GET(
       success: true,
       data: transformedMachine,
     });
-  } catch (error: unknown) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to fetch machine';
-    console.error(
-      `[Machines API GET] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
+  });
 }
 
 /**

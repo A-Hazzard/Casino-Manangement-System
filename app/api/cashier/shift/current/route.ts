@@ -1,11 +1,11 @@
 /**
  * Current Cashier Shift API
- * 
+ *
  * GET /api/cashier/shift/current
- * 
+ *
  * Retrieve the current active or pending shift for the logged-in cashier.
  * Used to populate the cashier dashboard.
- * 
+ *
  * @module app/api/cashier/shift/current/route
  */
 
@@ -16,9 +16,9 @@ import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import { calculateExpectedBalance } from '@/lib/helpers/vault/calculations';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     // STEP 1: Authorization
     const userPayload = await getUserFromServer();
@@ -32,7 +32,7 @@ export async function GET(_request: NextRequest) {
 
     // STEP 2: Find latest relevant shift
     await connectDB();
-    
+
     // We look for any shift that is NOT closed, or closed very recently?
     // Mainly active, pending_start, pending_review.
     const shift = await CashierShiftModel.findOne({
@@ -65,25 +65,27 @@ export async function GET(_request: NextRequest) {
     // STEP 4: Get current balance tracking
     let currentBalance = 0;
     if (shift.status === 'active') {
-      currentBalance = shift.currentBalance || calculateExpectedBalance(
-        shift.openingBalance,
-        shift.payoutsTotal,
-        shift.floatAdjustmentsTotal
-      );
+      currentBalance =
+        shift.currentBalance ||
+        calculateExpectedBalance(
+          shift.openingBalance,
+          shift.payoutsTotal,
+          shift.floatAdjustmentsTotal
+        );
     }
-    
+
     // STEP 5: Check for pending float movements (dual-approval flow)
     // Only check for requests related to the current shift
     const pendingVmApproval = await FloatRequestModel.findOne({
-        cashierId: userId,
-        cashierShiftId: shift._id,
-        status: 'approved_vm',
+      cashierId: userId,
+      cashierShiftId: shift._id,
+      status: 'approved_vm',
     }).sort({ updatedAt: -1 });
 
     const pendingRequest = await FloatRequestModel.findOne({
-        cashierId: userId,
-        cashierShiftId: shift._id,
-        status: 'pending',
+      cashierId: userId,
+      cashierShiftId: shift._id,
+      status: 'pending',
     }).sort({ createdAt: -1 });
 
     return NextResponse.json({
@@ -94,10 +96,11 @@ export async function GET(_request: NextRequest) {
       hasActiveVaultShift,
       isVaultReconciled,
       isStale: await isShiftStaleBackend(shift.openedAt, locationId),
-      pendingVmApproval: pendingVmApproval ? pendingVmApproval.toObject() : null,
+      pendingVmApproval: pendingVmApproval
+        ? pendingVmApproval.toObject()
+        : null,
       pendingRequest: pendingRequest ? pendingRequest.toObject() : null,
     });
-
   } catch (error) {
     console.error('Error fetching current shift:', error);
     return NextResponse.json(

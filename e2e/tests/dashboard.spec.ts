@@ -39,40 +39,45 @@ import { setRoleAuthCookie } from '../fixtures/auth.fixture';
 
 // ─── Shared route setup helper ────────────────────────────────────────────────
 
-async function mockDashboardAPIs(
-  page: Page,
-  _chartData = MOCK_METRICS_METERS,
-  mockCurrentUser = true
-) {
+async function mockDashboardAPIs(page: Page, mockCurrentUser = true) {
   if (mockCurrentUser) {
-    await page.route('**/api/auth/current-user**', (route) =>
+    await page.route('**/api/auth/current-user**', route =>
       route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
     );
   }
   const combinedChartData = [
     ...MOCK_METRICS_METERS,
-    ...MOCK_METRICS_METERS_YESTERDAY
+    ...MOCK_METRICS_METERS_YESTERDAY,
   ];
 
   // Dashboard charts use the meters endpoint
-  await page.route('**/api/metrics/meters**', (route) =>
+  await page.route('**/api/metrics/meters**', route =>
     route.fulfill({ status: 200, json: combinedChartData })
   );
   // Locations for the map
-  await page.route('**/api/locations**', (route) =>
-    route.fulfill({ status: 200, json: { locations: MOCK_LOCATIONS_ANALYTICS.data } })
+  await page.route('**/api/locations**', route =>
+    route.fulfill({
+      status: 200,
+      json: { locations: MOCK_LOCATIONS_ANALYTICS.data },
+    })
   );
   // Top-performing data - handle tab-specific results
-  await page.route('**/api/metrics/top-performing**', (route) => {
+  await page.route('**/api/metrics/top-performing**', route => {
     const url = route.request().url();
     if (url.includes('activeTab=locations')) {
-      return route.fulfill({ status: 200, json: MOCK_TOP_PERFORMING_LOCATIONS });
+      return route.fulfill({
+        status: 200,
+        json: MOCK_TOP_PERFORMING_LOCATIONS,
+      });
     }
     // Return empty cabinets by default or actual top machines
-    return route.fulfill({ status: 200, json: { ...MOCK_TOP_PERFORMING_LOCATIONS, data: [] } });
+    return route.fulfill({
+      status: 200,
+      json: { ...MOCK_TOP_PERFORMING_LOCATIONS, data: [] },
+    });
   });
   // Location aggregation provides moneyIn / moneyOut / gross for the metric cards
-  await page.route('**/api/locationAggregation**', (route) =>
+  await page.route('**/api/locationAggregation**', route =>
     route.fulfill({ status: 200, json: MOCK_LOCATION_AGGREGATION })
   );
 }
@@ -92,7 +97,9 @@ test.describe('Dashboard', () => {
       await dashboardPage.goto();
       // Throw a clear error if we were redirected to login
       if (page.url().includes('/login')) {
-         throw new Error(`[Auth Failure] Navigated to ${page.url()} instead of the dashboard. Ensure session storage and cookies are correctly initialized.`);
+        throw new Error(
+          `[Auth Failure] Navigated to ${page.url()} instead of the dashboard. Ensure session storage and cookies are correctly initialized.`
+        );
       }
     });
 
@@ -117,16 +124,19 @@ test.describe('Dashboard', () => {
     const dashboardRequests: string[] = [];
 
     await test.step('Set up API mocks and request capture', async () => {
-      await mockDashboardAPIs(page, MOCK_METRICS_METERS);
+      await mockDashboardAPIs(page);
       // Capture both points where timePeriod can be sent
-      page.on('request', (req) => {
+      page.on('request', req => {
         const url = req.url();
-        if (url.includes('/api/locationAggregation') || url.includes('/api/metrics/meters')) {
+        if (
+          url.includes('/api/locationAggregation') ||
+          url.includes('/api/metrics/meters')
+        ) {
           dashboardRequests.push(url);
         }
       });
       // Override with Yesterday-specific payload once the filter is applied
-      await page.route('**/api/metrics/meters?*timePeriod=Yesterday*', (route) =>
+      await page.route('**/api/metrics/meters?*timePeriod=Yesterday*', route =>
         route.fulfill({ status: 200, json: MOCK_METRICS_METERS_YESTERDAY })
       );
     });
@@ -156,10 +166,13 @@ test.describe('Dashboard', () => {
     const capturedUrls: string[] = [];
 
     await test.step('Set up mocks and request capture', async () => {
-      await mockDashboardAPIs(page, MOCK_METRICS_METERS);
-      page.on('request', (req) => {
+      await mockDashboardAPIs(page);
+      page.on('request', req => {
         const url = req.url();
-        if (url.includes('/api/locationAggregation') || url.includes('/api/metrics/meters')) {
+        if (
+          url.includes('/api/locationAggregation') ||
+          url.includes('/api/metrics/meters')
+        ) {
           capturedUrls.push(url);
         }
       });
@@ -186,10 +199,13 @@ test.describe('Dashboard', () => {
     const capturedUrls: string[] = [];
 
     await test.step('Set up mocks and request capture', async () => {
-      await mockDashboardAPIs(page, MOCK_METRICS_METERS);
-      page.on('request', (req) => {
+      await mockDashboardAPIs(page);
+      page.on('request', req => {
         const url = req.url();
-        if (url.includes('/api/locationAggregation') || url.includes('/api/metrics/meters')) {
+        if (
+          url.includes('/api/locationAggregation') ||
+          url.includes('/api/metrics/meters')
+        ) {
           capturedUrls.push(url);
         }
       });
@@ -214,14 +230,15 @@ test.describe('Dashboard', () => {
     dashboardPage,
   }) => {
     const capturedUrls: string[] = [];
-    const START = '2026-01-01';
-    const END = '2026-01-15';
 
     await test.step('Set up mocks', async () => {
-      await mockDashboardAPIs(page, MOCK_METRICS_METERS);
-      page.on('request', (req) => {
+      await mockDashboardAPIs(page);
+      page.on('request', req => {
         const url = req.url();
-        if (url.includes('/api/locationAggregation') || url.includes('/api/metrics/meters')) {
+        if (
+          url.includes('/api/locationAggregation') ||
+          url.includes('/api/metrics/meters')
+        ) {
           capturedUrls.push(url);
         }
       });
@@ -232,7 +249,7 @@ test.describe('Dashboard', () => {
     });
 
     await test.step('Open the Custom date range picker and enter dates', async () => {
-      await dashboardPage.selectCustomRange(START, END);
+      await dashboardPage.selectCustomRange();
     });
 
     await test.step('Assert request URL contains startDate and endDate', async () => {
@@ -247,7 +264,10 @@ test.describe('Dashboard', () => {
     });
   });
 
-  test('6. Charts section renders after data loads', async ({ page, dashboardPage }) => {
+  test('6. Charts section renders after data loads', async ({
+    page,
+    dashboardPage,
+  }) => {
     await test.step('Set up mocks', async () => {
       await mockDashboardAPIs(page);
     });
@@ -279,20 +299,26 @@ test.describe('Dashboard', () => {
 
     await test.step('Switch to Locations tab', async () => {
       const locationsResponsePromise = page.waitForResponse(
-        (resp) =>
+        resp =>
           resp.url().includes('/api/metrics/top-performing') &&
           resp.url().includes('activeTab=locations')
       );
       await page.getByRole('button', { name: 'Locations' }).click();
       await locationsResponsePromise;
       // Wait for it to become the active tab
-      await expect(page.getByRole('button', { name: 'Locations' })).toHaveClass(/bg-buttonActive/);
+      await expect(page.getByRole('button', { name: 'Locations' })).toHaveClass(
+        /bg-buttonActive/
+      );
     });
 
     await test.step('Assert known location names appear in the analytics section', async () => {
       // The formatting should now be plain names since tab="locations"
-      await expect(page.getByText('Grand Casino North').filter({ visible: true }).first()).toBeVisible();
-      await expect(page.getByText('South Bay Gaming').filter({ visible: true }).first()).toBeVisible();
+      await expect(
+        page.getByText('Grand Casino North').filter({ visible: true }).first()
+      ).toBeVisible();
+      await expect(
+        page.getByText('South Bay Gaming').filter({ visible: true }).first()
+      ).toBeVisible();
     });
   });
 
@@ -301,14 +327,14 @@ test.describe('Dashboard', () => {
     dashboardPage,
   }) => {
     await test.step('Mock the dashboard API to return a 500 error', async () => {
-      await page.route('**/api/auth/current-user**', (route) =>
+      await page.route('**/api/auth/current-user**', route =>
         route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
       );
-      await page.route('**/api/locationAggregation*', (route) =>
+      await page.route('**/api/locationAggregation*', route =>
         route.fulfill({ status: 500, json: MOCK_DASHBOARD_SERVER_ERROR })
       );
       // Other endpoints return valid data
-      await page.route('**/api/metrics/meters*', (route) =>
+      await page.route('**/api/metrics/meters*', route =>
         route.fulfill({ status: 200, json: MOCK_METRICS_METERS })
       );
     });
@@ -346,7 +372,7 @@ test.describe('Dashboard — Role-based access', () => {
       await test.step(`Inject ${label} auth cookie and mock APIs`, async () => {
         await setRoleAuthCookie(page, userPayload);
         // Do not override current-user mock!
-        await mockDashboardAPIs(page, undefined, false);
+        await mockDashboardAPIs(page, false);
       });
 
       await test.step('Navigate to /', async () => {
@@ -354,7 +380,9 @@ test.describe('Dashboard — Role-based access', () => {
         await page.waitForLoadState('networkidle');
         // Throw a clear error if redirected to login despite having a mock current-user
         if (page.url().includes('/login')) {
-           throw new Error(`[Role Failure] ${label} was redirected to ${page.url()}. Check setRoleAuthCookie and CurrentUser mock.`);
+          throw new Error(
+            `[Role Failure] ${label} was redirected to ${page.url()}. Check setRoleAuthCookie and CurrentUser mock.`
+          );
         }
       });
 

@@ -55,7 +55,7 @@ async function mockCabinetsListAPIs(
   await page.route('**/api/auth/current-user**', (route) =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
   );
-  await page.route('**/api/reports/machines**', (route) =>
+  await page.route('**/api/machines/aggregation**', (route) =>
     route.fulfill({ status: 200, json: listPayload })
   );
   await page.route('**/api/machines**', (route) =>
@@ -136,7 +136,7 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('After creation, return updated list including the new cabinet', async () => {
-      await page.route('**/api/reports/machines**', (route) =>
+      await page.route('**/api/machines/aggregation**', (route) =>
         route.fulfill({
           status: 200,
           json: {
@@ -265,7 +265,7 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('After edit, return updated list with renamed cabinet', async () => {
-      await page.route('**/api/reports/machines**', (route) =>
+      await page.route('**/api/machines/aggregation**', (route) =>
         route.fulfill({
           status: 200,
           json: {
@@ -339,7 +339,7 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('Swap list mock to post-delete payload then confirm', async () => {
-      await page.route('**/api/reports/machines**', (route) =>
+      await page.route('**/api/machines/aggregation**', (route) =>
         route.fulfill({ status: 200, json: MOCK_CABINETS_LIST_AFTER_DELETE })
       );
       await cabinetsPage.confirmDelete();

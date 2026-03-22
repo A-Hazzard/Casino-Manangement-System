@@ -40,7 +40,7 @@ export default function PageErrorBoundary({
   }, [error]);
 
   const handleErrorBoundary = useCallback(
-    (error: Error, _errorInfo: React.ErrorInfo) => {
+    (error: Error) => {
       // For ChunkLoadError, automatically reload the page
       if (error.name === 'ChunkLoadError' || error.message?.includes('chunk')) {
         // Small delay to show error message, then reload
@@ -109,5 +109,3 @@ function ErrorBoundaryWrapper({
     return null;
   }
 }
-
-

@@ -1,9 +1,16 @@
 'use client';
 
 import { fetchCabinetsForLocation } from '@/lib/helpers/cabinets/helpers';
-import { fetchVaultBalance, fetchVaultOverviewData } from '@/lib/helpers/vaultHelpers';
+import {
+  fetchVaultBalance,
+  fetchVaultOverviewData,
+} from '@/lib/helpers/vaultHelpers';
 import type { GamingMachine } from '@/shared/types/entities';
-import type { CashDesk, UnbalancedShiftInfo, VaultBalance } from '@/shared/types/vault';
+import type {
+  CashDesk,
+  UnbalancedShiftInfo,
+  VaultBalance,
+} from '@/shared/types/vault';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -27,7 +34,11 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
         setVaultBalance(balance);
       }
 
-      const machinesData = await fetchCabinetsForLocation(locationId, undefined, 'Today');
+      const machinesData = await fetchCabinetsForLocation(
+        locationId,
+        undefined,
+        'Today'
+      );
       if (machinesData && machinesData.data) {
         setMachines(machinesData.data);
       }
@@ -52,7 +63,11 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
       setPendingShifts(data.pendingShifts || []);
 
       // 2. Fetch machines for collection selector - ensures they are available
-      const machinesData = await fetchCabinetsForLocation(locationId, undefined, 'Today');
+      const machinesData = await fetchCabinetsForLocation(
+        locationId,
+        undefined,
+        'Today'
+      );
       if (machinesData && machinesData.data) {
         setMachines(machinesData.data);
       }
@@ -65,7 +80,8 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
 
       if (!balance.canClose) {
         toast.error('Cannot Close Vault', {
-          description: balance.blockReason || 'Please ensure all requirements are met.'
+          description:
+            balance.blockReason || 'Please ensure all requirements are met.',
         });
         return;
       }
@@ -74,7 +90,7 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
       if (!balance.isCollectionDone) {
         setActiveStep('softCount');
       } else {
-        // If collection is done, we still open the soft count modal 
+        // If collection is done, we still open the soft count modal
         // which will show the "Success" summary view and allow the user to click "Done" to close the shift.
         setActiveStep('softCount');
       }
@@ -94,43 +110,46 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
     setActiveStep(null);
   }, []);
 
-  const handleConfirm = useCallback(async (type: string, _data?: unknown) => {
-    if (type === 'softCount') {
-      // 1. Fetch latest balance to ensure we close with correct data
-      setLoading(true);
-      try {
-        const balanceRes = await fetchVaultBalance(locationId!);
+  const handleConfirm = useCallback(
+    async (type: string) => {
+      if (type === 'softCount') {
+        // 1. Fetch latest balance to ensure we close with correct data
+        setLoading(true);
+        try {
+          const balanceRes = await fetchVaultBalance(locationId!);
 
-        // 2. Perform actual close API call using calculated data
-        const res = await fetch('/api/vault/shift/close', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            locationId,
-            vaultShiftId: vaultBalance?.activeShiftId,
-            closingBalance: balanceRes?.balance || vaultBalance?.balance || 0,
-            denominations: balanceRes?.denominations || vaultBalance?.denominations || []
-          })
-        });
+          // 2. Perform actual close API call using calculated data
+          const res = await fetch('/api/vault/shift/close', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              locationId,
+              vaultShiftId: vaultBalance?.activeShiftId,
+              closingBalance: balanceRes?.balance || vaultBalance?.balance || 0,
+              denominations:
+                balanceRes?.denominations || vaultBalance?.denominations || [],
+            }),
+          });
 
-        const result = await res.json();
-        if (result.success) {
-          toast.success('Vault closed successfully');
-          setActiveStep(null);
-          // Refresh state
-          fetchStatus();
-        } else {
-          toast.error(result.error || 'Failed to close vault');
+          const result = await res.json();
+          if (result.success) {
+            toast.success('Vault closed successfully');
+            setActiveStep(null);
+            // Refresh state
+            fetchStatus();
+          } else {
+            toast.error(result.error || 'Failed to close vault');
+          }
+        } catch (err) {
+          console.error('Error closing vault after soft count:', err);
+          toast.error('Network error closing vault');
+        } finally {
+          setLoading(false);
         }
-      } catch (err) {
-        console.error('Error closing vault after soft count:', err);
-        toast.error('Network error closing vault');
-      } finally {
-        setLoading(false);
       }
-    }
-  }, [locationId, vaultBalance, fetchStatus]);
-
+    },
+    [locationId, vaultBalance, fetchStatus]
+  );
 
   return {
     activeStep,
@@ -146,6 +165,6 @@ export function useVaultCloseDay(locationId?: string, username?: string) {
     handleNextStep,
     handleClose,
     handleConfirm,
-    fetchStatus
+    fetchStatus,
   };
 }

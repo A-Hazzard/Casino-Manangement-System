@@ -2,7 +2,7 @@
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
 **Last Updated:** March 2026  
-**Version:** 3.0.0
+**Version:** 4.0.0
 
 ---
 
@@ -19,7 +19,8 @@ The VMS ledger system for physical cash inventory.
 
 The mathematical core of the CMS.
 - **Delta-Based Accounting**: Summing `movement` increments to ensure no data loss.
-- **Revenue (Gross)**: `Sum(Drop) - Sum(Cancelled Credits)`.
+- **Revenue (Gross)**: `Sum(Drop) - MoneyOut (Base + Optional Jackpot)`.
+- **Universal Net Gross**: `Sum(Drop) - Base Cancelled Credits - Jackpots`.
 - **Time Normalization**: Respecting `gameDayOffset` (Trinidad Midnight logic).
 - **RAM Clear Stitching**: Logic to maintain meter continuity across hardware resets.
 
@@ -48,7 +49,8 @@ The high-level "Pulse" of the system.
 
 | Metric | Source | Formula |
 | :--- | :--- | :--- |
-| **Gross Revenue** | Meters | `Bill In - Cancelled Credits` |
+| **Gross Revenue** | Meters | `Bill In - Money Out` |
+| **Net Gross** | Meters | `Bill In - Base Cancelled Credits - Jackpot` |
 | **House Edge** | Sessions | `Handle - Player Wins` |
 | **Hold %** | Reports | `(Gross Revenue / Drop) * 100` |
 | **Yield** | Analytics | `Revenue / Active Days` |

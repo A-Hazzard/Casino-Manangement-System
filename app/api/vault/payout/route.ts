@@ -1,248 +1,168 @@
 /**
  * Payout Creation API
- *
- * POST /api/vault/payout
- *
- * Allows a cashier to record a payout for either a ticket redemption or a hand pay.
- * This action creates a Payout record and a corresponding VaultTransaction.
- *
- * @module app/api/vault/payout/route */
+ */
 
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import PayoutModel from '@/app/api/lib/models/payout';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { generateMongoId } from '@/lib/utils/id';
-import type { CreatePayoutRequest } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * POST /api/vault/payout
- *
- * Handler flow:
- * 1. Performance tracking and authentication
- * 2. Parse and validate request body
- * 3. Database connection and find active cashier shift
- * 4. Licencee/location filtering via cashier shift
- * 5. Create Payout and Transaction records
- * 6. Update cashier shift totals
- * 7. Return response
- */
 export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-  try {
-    // ============================================================================
-    // STEP 1: Authentication & Authorization
-    // ============================================================================
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    const cashierId = userPayload._id as string;
-    const username = userPayload.username as string;
-    const userRoles = (userPayload?.roles as string[]) || [];
-    const hasCashierAccess = userRoles.some(role =>
-      ['developer', 'admin', 'manager', 'cashier'].includes(role.toLowerCase())
-    );
-    if (!hasCashierAccess) {
-      return NextResponse.json(
-        { success: false, error: 'Insufficient permissions' },
-        { status: 403 }
-      );
-    }
+  return withApiAuth(request, async ({ user: payload, userRoles }) => {
+    try {
+      const hasCashierAccess = userRoles
+        .map(r => String(r).toLowerCase())
+        .some(role =>
+          ['developer', 'admin', 'manager', 'cashier'].includes(role)
+        );
+      if (!hasCashierAccess)
+        return NextResponse.json(
+          { success: false, error: 'Insufficient permissions' },
+          { status: 403 }
+        );
 
-    // ============================================================================
-    // STEP 2: Parse and validate request body
-    // ============================================================================
-    const body: CreatePayoutRequest = await request.json();
-    const { cashierShiftId, type, amount, notes } = body;
-
-    if (!cashierShiftId || !type || amount === undefined) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-    if (amount <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Amount must be positive' },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Connect to DB and find active cashier shift
-    // ============================================================================
-    await connectDB();
-    const cashierShift = await CashierShiftModel.findOne({
-      _id: cashierShiftId,
-      status: 'active',
-    });
-
-    if (!cashierShift) {
-      return NextResponse.json(
-        { success: false, error: 'Active cashier shift not found' },
-        { status: 404 }
-      );
-    }
-    if (cashierShift.cashierId !== cashierId) {
-      return NextResponse.json(
-        { success: false, error: 'Cannot record payout for another cashier' },
-        { status: 403 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 4: Licencee/location filtering
-    // ============================================================================
-    const allowedLocationIds = await getUserLocationFilter(
-      (userPayload?.assignedLicencees as string[]) || [],
-      undefined,
-      (userPayload?.assignedLocations as string[]) || [],
-      (userPayload?.roles as string[]) || []
-    );
-
-    if (
-      allowedLocationIds !== 'all' &&
-      !allowedLocationIds.includes(cashierShift.locationId)
-    ) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied for this location' },
-        { status: 403 }
-      );
-    }
-
-    const currentBalance = cashierShift.currentBalance || 0;
-    if (currentBalance < amount) {
-      return NextResponse.json(
-        { success: false, error: 'Insufficient float for this payout' },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 4: Create Payout and Transaction records
-    // ============================================================================
-    const now = new Date();
-    const payoutId = await generateMongoId();
-    const transactionId = await generateMongoId();
-
-    interface PayoutData {
-      _id: string;
-      locationId: string;
-      cashierId: string;
-      cashierShiftId: string;
-      type: string;
-      amount: number;
-      validated: boolean;
-      timestamp: Date;
-      cashierFloatBefore: number;
-      cashierFloatAfter: number;
-      transactionId: string;
-      notes?: string;
-      createdAt: Date;
-      ticketNumber?: string;
-      printedAt?: Date;
-      machineId?: string;
-      reason?: string;
-    }
-
-    const payoutData: PayoutData = {
-      _id: payoutId,
-      locationId: cashierShift.locationId,
-      cashierId,
-      cashierShiftId,
-      type,
-      amount,
-      validated: true,
-      timestamp: now,
-      cashierFloatBefore: currentBalance,
-      cashierFloatAfter: currentBalance - amount,
-      transactionId,
-      notes,
-      createdAt: now,
-    };
-
-    if (type === 'ticket') {
-      payoutData.ticketNumber = body.ticketNumber as string;
-      if (body.printedAt) payoutData.printedAt = new Date(body.printedAt as string);
-    } else if (type === 'hand_pay') {
-      payoutData.machineId = body.machineId as string;
-      payoutData.reason = body.reason as string;
-    }
-
-    const payout = await PayoutModel.create(payoutData);
-
-    const transaction = await VaultTransactionModel.create({
-      _id: transactionId,
-      locationId: cashierShift.locationId,
-      timestamp: now,
-      type: 'payout',
-      from: { type: 'cashier', id: cashierId },
-      to: { type: 'external' },
-      amount,
-      denominations: [], // Payouts don't require denomination breakdown from cashier
-      vaultShiftId: cashierShift.vaultShiftId,
-      cashierShiftId,
-      payoutId,
-      performedBy: cashierId,
-      notes: `Payout: ${type}`,
-      isVoid: false,
-      createdAt: now,
-    });
-
-    // ============================================================================
-    // STEP 6: Update cashier shift totals
-    // ============================================================================
-    cashierShift.payoutsTotal += amount;
-    cashierShift.payoutsCount += 1;
-    cashierShift.currentBalance -= amount;
-    await cashierShift.save();
-
-    // STEP 7: Audit Activity
-    await logActivity({
-      userId: cashierId,
-      username,
-      action: 'create',
-      details: `Processed ${type} payout: $${amount}`,
-      metadata: {
-        resource: 'machine', // Payouts are often machine linked if handpay
-        resourceId: (body as Record<string, unknown>).machineId as string || cashierShift.locationId,
-        resourceName: type === 'ticket' ? 'Ticket Redemption' : 'Hand Pay',
-        payoutId,
-        transactionId,
+      const body = await request.json();
+      const {
         cashierShiftId,
-      },
-    });
+        type,
+        amount,
+        notes,
+        ticketNumber,
+        printedAt,
+        machineId,
+        reason,
+      } = body;
+      if (!cashierShiftId || !type || amount === undefined)
+        return NextResponse.json(
+          { success: false, error: 'Missing fields' },
+          { status: 400 }
+        );
+      if (amount <= 0)
+        return NextResponse.json(
+          { success: false, error: 'Amount must be positive' },
+          { status: 400 }
+        );
 
-    // ============================================================================
-    // STEP 8: Performance tracking and return response
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`Payout API took ${duration}ms`);
+      const cashierShift = await CashierShiftModel.findOne({
+        _id: cashierShiftId,
+        status: 'active',
+      });
+      if (!cashierShift)
+        return NextResponse.json(
+          { success: false, error: 'No active cashier shift' },
+          { status: 404 }
+        );
+      if (cashierShift.cashierId !== payload._id)
+        return NextResponse.json(
+          { success: false, error: 'Shift ownership mismatch' },
+          { status: 403 }
+        );
+
+      const allowedLocIds = await getUserLocationFilter(
+        payload.assignedLicencees || [],
+        undefined,
+        payload.assignedLocations || [],
+        userRoles
+      );
+      if (
+        allowedLocIds !== 'all' &&
+        !allowedLocIds.includes(cashierShift.locationId)
+      )
+        return NextResponse.json(
+          { success: false, error: 'Access denied for this location' },
+          { status: 403 }
+        );
+
+      const currentBal = cashierShift.currentBalance || 0;
+      if (currentBal < amount)
+        return NextResponse.json(
+          { success: false, error: 'Insufficient float' },
+          { status: 400 }
+        );
+
+      const now = new Date(),
+        pId = await generateMongoId(),
+        txId = await generateMongoId();
+      const payoutData: Record<string, unknown> = {
+        _id: pId,
+        locationId: cashierShift.locationId,
+        cashierId: payload._id,
+        cashierShiftId,
+        type,
+        amount,
+        validated: true,
+        timestamp: now,
+        cashierFloatBefore: currentBal,
+        cashierFloatAfter: currentBal - amount,
+        transactionId: txId,
+        notes,
+        createdAt: now,
+      };
+
+      if (type === 'ticket') {
+        payoutData.ticketNumber = ticketNumber;
+        if (printedAt) payoutData.printedAt = new Date(printedAt);
+      } else if (type === 'hand_pay') {
+        payoutData.machineId = machineId;
+        payoutData.reason = reason;
+      }
+
+      const payout = await PayoutModel.create(payoutData);
+      const transaction = await VaultTransactionModel.create({
+        _id: txId,
+        locationId: cashierShift.locationId,
+        timestamp: now,
+        type: 'payout',
+        from: { type: 'cashier', id: payload._id },
+        to: { type: 'external' },
+        amount,
+        denominations: [],
+        vaultShiftId: cashierShift.vaultShiftId,
+        cashierShiftId,
+        payoutId: pId,
+        performedBy: payload._id,
+        notes: `Payout: ${type}`,
+        isVoid: false,
+        createdAt: now,
+      });
+
+      cashierShift.payoutsTotal += amount;
+      cashierShift.payoutsCount += 1;
+      cashierShift.currentBalance -= amount;
+      await cashierShift.save();
+
+      await logActivity({
+        userId: payload._id,
+        username: payload.username,
+        action: 'create',
+        details: `Processed ${type} payout: $${amount}`,
+        metadata: {
+          resourceId: machineId || cashierShift.locationId,
+          payoutId: pId,
+          transactionId: txId,
+          cashierShiftId,
+        },
+      });
+
+      return NextResponse.json(
+        {
+          success: true,
+          payout: payout.toObject(),
+          transaction: transaction.toObject(),
+        },
+        { status: 201 }
+      );
+    } catch (e: unknown) {
+      console.error('[Payout Create] Error:', e);
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      return NextResponse.json(
+        { success: false, error: message },
+        { status: 500 }
+      );
     }
-
-    return NextResponse.json(
-      {
-        success: true,
-        payout: payout.toObject(),
-        transaction: transaction.toObject(),
-      },
-      { status: 201 }
-    );
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error('Error creating payout:', errorMessage);
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
+  });
 }

@@ -27,12 +27,11 @@ import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards'
 import MapPreview from '@/components/shared/ui/MapPreview';
 import { RefreshButtonSkeleton } from '@/components/shared/ui/skeletons/ButtonSkeletons';
 import {
-    DashboardChartSkeleton,
-    DashboardTopPerformingSkeleton,
+  DashboardChartSkeleton,
+  DashboardTopPerformingSkeleton,
 } from '@/components/shared/ui/skeletons/DashboardSkeletons';
 import type { TopPerformingItem } from '@/lib/types';
 import type { DashboardDesktopLayoutProps } from '@/lib/types/components';
-import { getLicenceeName } from '@/lib/utils/licencee';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -58,9 +57,9 @@ export default function DashboardDesktopLayout(
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const licenceeName =
-    getLicenceeName(props.selectedLicencee) ||
-    props.selectedLicencee ||
-    'any licencee';
+    props.selectedLicencee && props.selectedLicencee !== 'all'
+      ? props.selectedLicencee
+      : 'any licencee';
 
   const NoDataMessage = ({ message }: { message: string }) => (
     <div
@@ -85,7 +84,6 @@ export default function DashboardDesktopLayout(
 
         {/* Metrics Description Text with Refresh Button */}
         <div className="flex items-center justify-between gap-2">
-
           {/* Refresh Button with Loading State */}
           {props.loadingChartData ? (
             <RefreshButtonSkeleton />
@@ -119,7 +117,9 @@ export default function DashboardDesktopLayout(
           loading={props.loadingTotals ?? props.loadingChartData}
           title="Total for all Locations and Machines"
           locationFiltered={false}
-          includeJackpot={props.gamingLocations?.some((loc: Record<string, unknown>) => loc.includeJackpot)}
+          includeJackpot={props.gamingLocations?.some(
+            (loc: Record<string, unknown>) => loc.includeJackpot
+          )}
         />
 
         {/* Trend Chart Section */}
@@ -143,7 +143,8 @@ export default function DashboardDesktopLayout(
                 }
                 className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
               >
-                {(props.activeMetricsFilter === '30d' || props.activeMetricsFilter === 'last30days') ? (
+                {props.activeMetricsFilter === '30d' ||
+                props.activeMetricsFilter === 'last30days' ? (
                   <>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
@@ -166,7 +167,15 @@ export default function DashboardDesktopLayout(
               chartData={props.chartData}
               activeMetricsFilter={props.activeMetricsFilter}
               totals={props.totals}
-              granularity={props.chartGranularity as 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly' | undefined}
+              granularity={
+                props.chartGranularity as
+                  | 'hourly'
+                  | 'minute'
+                  | 'daily'
+                  | 'weekly'
+                  | 'monthly'
+                  | undefined
+              }
             />
           )}
         </div>
@@ -181,7 +190,7 @@ export default function DashboardDesktopLayout(
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">Location Map</h3>
           </div>
-          {props.loadingLocations ?? props.loadingChartData ? (
+          {(props.loadingLocations ?? props.loadingChartData) ? (
             <div className="relative h-56 w-full rounded-lg bg-container p-4">
               <div className="skeleton-bg mt-2 h-full w-full animate-pulse rounded-lg"></div>
             </div>
@@ -272,7 +281,7 @@ export default function DashboardDesktopLayout(
                   ) : (
                     <div className="flex flex-col items-center gap-6 xl:flex-row xl:justify-between">
                       {/* Items List */}
-                      <ul className="w-full flex-1 min-w-0 space-y-2">
+                      <ul className="w-full min-w-0 flex-1 space-y-2">
                         {props.topPerformingData.map(
                           (item: TopPerformingItem, index: number) => (
                             <li
@@ -289,7 +298,10 @@ export default function DashboardDesktopLayout(
                               {props.activeTab === 'Cabinets' &&
                               item.machineId ? (
                                 <>
-                                  <span className="flex-1 truncate text-gray-700" title={item.name}>
+                                  <span
+                                    className="flex-1 truncate text-gray-700"
+                                    title={item.name}
+                                  >
                                     {item.name}
                                   </span>
                                   <button
@@ -434,4 +446,3 @@ export default function DashboardDesktopLayout(
     </div>
   );
 }
-

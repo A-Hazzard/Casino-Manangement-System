@@ -20,7 +20,7 @@ type CabinetFormData = Partial<GamingMachine>;
 
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { isAbortError } from '@/lib/utils/errors';
-import { getLicenceeObjectId } from '@/lib/utils/licencee';
+import { resolveLicenceeId } from '@/lib/utils/licencee';
 import { formatLocalDateTimeString } from '@/shared/utils/dateFormat';
 import { DateRange } from 'react-day-picker';
 // Activity logging removed - handled via API calls
@@ -552,10 +552,9 @@ export async function fetchCabinetsForLocation(
     };
 
     if (licencee) {
-      // Convert licencee name to ObjectId for API compatibility
-      const licenceeObjectId = getLicenceeObjectId(licencee);
-      if (licenceeObjectId) {
-        params.licencee = licenceeObjectId;
+      const licenceeId = resolveLicenceeId(licencee);
+      if (licenceeId) {
+        params.licencee = licenceeId;
       }
     }
 
@@ -778,6 +777,25 @@ export async function fetchCabinetTotals(
     const response = await axios.get(url, { signal });
     const machineData = response.data.data || [];
 
+    // DEBUG: Log sample machine data to verify jackpot values
+    if (machineData.length > 0) {
+      const sample = machineData.slice(0, 3);
+      console.warn(
+        '[fetchCabinetTotals] Sample machine data:',
+        JSON.stringify(
+          sample.map((m: Record<string, unknown>) => ({
+            _id: m._id,
+            moneyOut: m.moneyOut,
+            jackpot: m.jackpot,
+            includeJackpot: m.includeJackpot,
+            gross: m.gross,
+          })),
+          null,
+          2
+        )
+      );
+    }
+
     // Sum up totals from all machines
     const totals = machineData.reduce(
       (
@@ -800,6 +818,7 @@ export async function fetchCabinetTotals(
           gross?: number;
           jackpot?: number;
           netGross?: number;
+          includeJackpot?: boolean;
           _rawMoneyIn?: number;
           _rawMoneyOut?: number;
           _rawJackpot?: number;
@@ -838,6 +857,8 @@ export async function fetchCabinetTotals(
         );
         const rawGross = Number(machineRawObj?.gross ?? machine._rawGross ?? 0);
 
+        // When includeJackpot=true, moneyOut already includes jackpot, so don't double-count jackpot in totals
+        // But we still need jackpot for display (Jackpot card, and for calculating base cancelled = moneyOut - jackpot)
         const newAcc = {
           moneyIn: acc.moneyIn + moneyIn,
           moneyOut: acc.moneyOut + moneyOut,
@@ -868,6 +889,22 @@ export async function fetchCabinetTotals(
         return newAcc;
       },
       { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0, netGross: 0 }
+    );
+
+    // DEBUG: Log final totals
+    console.warn(
+      '[fetchCabinetTotals] Final totals:',
+      JSON.stringify(
+        {
+          moneyIn: totals.moneyIn,
+          moneyOut: totals.moneyOut,
+          jackpot: totals.jackpot,
+          gross: totals.gross,
+          baseCancelledCredits: totals.moneyOut - totals.jackpot,
+        },
+        null,
+        2
+      )
     );
 
     return totals;

@@ -23,9 +23,9 @@ import 'react-day-picker/dist/style.css';
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from '@/components/shared/ui/popover';
 import { cn } from '@/lib/utils';
 
@@ -36,17 +36,21 @@ export type DatePickerProps = {
   disabledDates?: Matcher | Matcher[];
 };
 
-export function DatePicker({ date, setDate, disabled, disabledDates }: DatePickerProps) {
+export function DatePicker({
+  date,
+  setDate,
+  disabled,
+  disabledDates,
+}: DatePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const handleSelect: SelectSingleEventHandler = (
     day,
     selectedDate,
-    activeModifiers,
-    _e
+    activeModifiers
   ) => {
     if (activeModifiers.disabled) {
-       return; 
+      return;
     }
     setDate(day);
     if (day) {
@@ -83,4 +87,3 @@ export function DatePicker({ date, setDate, disabled, disabledDates }: DatePicke
     </Popover>
   );
 }
-

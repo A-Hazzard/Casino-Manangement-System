@@ -16,7 +16,7 @@ import {
   getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { getLicenceeObjectId } from '@/lib/utils/licencee';
+import { resolveLicenceeId } from '@/lib/utils/licencee';
 
 /**
  * Main GET handler for collection report locations
@@ -43,11 +43,10 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(req.url);
     // Support both 'licencee' and 'licencee' spelling
-    const rawLicenceeParam =
-      searchParams.get('licencee');
+    const rawLicenceeParam = searchParams.get('licencee');
     const licencee =
       rawLicenceeParam && rawLicenceeParam !== 'all'
-        ? getLicenceeObjectId(rawLicenceeParam) || rawLicenceeParam
+        ? resolveLicenceeId(rawLicenceeParam) || rawLicenceeParam
         : rawLicenceeParam;
 
     // ============================================================================
@@ -62,8 +61,13 @@ export async function GET(req: NextRequest) {
     const userRoles = (userPayload?.roles as string[]) || [];
     // Use only new field
     let userLocationPermissions: string[] = [];
-    if (Array.isArray((userPayload as { assignedLocations?: string[] })?.assignedLocations)) {
-      userLocationPermissions = (userPayload as { assignedLocations: string[] }).assignedLocations;
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
     }
 
     // ============================================================================
@@ -125,4 +129,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ locations: [] }, { status: 500 });
   }
 }
-

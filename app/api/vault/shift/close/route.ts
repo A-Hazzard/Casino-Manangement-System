@@ -1,17 +1,9 @@
 /**
  * Vault Shift Close API
- *
- * POST /api/vault/shift/close
- *
- * Close vault manager shift with BR-01 validation.
- * Cannot close if any cashier shifts are active or pending review.
- *
- * @module app/api/vault/shift/close/route
  */
 
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { getAttributionDate } from '@/app/api/lib/helpers/vault/gamingDay';
-import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
@@ -20,184 +12,129 @@ import {
   validateDenominations,
 } from '@/lib/helpers/vault/calculations';
 import { generateMongoId } from '@/lib/utils/id';
-import type { CloseVaultShiftRequest } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * POST /api/vault/shift/close
- *
- * Close vault shift
- */
 export async function POST(request: NextRequest) {
-  try {
-    // STEP 1: Authentication & Authorization
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+  return withApiAuth(request, async ({ user: payload, userRoles }) => {
+    try {
+      const hasVaultAccess = userRoles
+        .map(r => String(r).toLowerCase())
+        .some(role =>
+          ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
+        );
+      if (!hasVaultAccess)
+        return NextResponse.json(
+          { success: false, error: 'Insufficient permissions' },
+          { status: 403 }
+        );
+
+      const { vaultShiftId, closingBalance, denominations } =
+        await request.json();
+      if (!vaultShiftId || closingBalance === undefined || !denominations)
+        return NextResponse.json(
+          { success: false, error: 'Missing fields' },
+          { status: 400 }
+        );
+
+      const validation = validateDenominations(denominations);
+      if (!validation.valid)
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid denominations',
+            details: validation.errors,
+          },
+          { status: 400 }
+        );
+
+      const vaultShift = await VaultShiftModel.findById(vaultShiftId);
+      if (!vaultShift)
+        return NextResponse.json(
+          { success: false, error: 'Vault shift not found' },
+          { status: 404 }
+        );
+      if (vaultShift.status === 'closed')
+        return NextResponse.json(
+          { success: false, error: 'Shift already closed' },
+          { status: 400 }
+        );
+      if (!vaultShift.isReconciled)
+        return NextResponse.json(
+          { success: false, error: 'Must reconcile before closing' },
+          { status: 400 }
+        );
+
+      const cashierShifts = await CashierShiftModel.find({ vaultShiftId });
+      const closeVal = canCloseVaultShift(cashierShifts.map(s => s.toObject()));
+      if (!closeVal.canClose)
+        return NextResponse.json(
+          {
+            success: false,
+            error: closeVal.reason,
+            active: closeVal.activeCashiers,
+            pending: closeVal.pendingReviewCashiers,
+          },
+          { status: 400 }
+        );
+
+      const now = new Date(),
+        attrDate = await getAttributionDate(
+          vaultShift.openedAt,
+          vaultShift.locationId
+        );
+      const mappedDenoms = denominations.map(
+        (d: {
+          denomination: number | string;
+          count?: number;
+          quantity?: number;
+        }) => ({
+          denomination:
+            typeof d.denomination === 'string'
+              ? parseInt(d.denomination.replace('$', ''))
+              : d.denomination,
+          quantity: d.count ?? d.quantity ?? 0,
+        })
       );
-    }
 
-    const userId = userPayload._id as string;
-    const userRoles = (userPayload?.roles as string[]) || [];
+      vaultShift.status = 'closed';
+      vaultShift.closedAt = attrDate;
+      vaultShift.closingBalance = closingBalance;
+      vaultShift.closingDenominations = mappedDenoms;
+      vaultShift.updatedAt = now;
+      await vaultShift.save();
 
-    const hasVaultAccess = userRoles.some((role: string) =>
-      ['developer', 'admin', 'manager', 'vault-manager'].includes(
-        role.toLowerCase()
-      )
-    );
+      const txId = await generateMongoId();
+      const transaction = await VaultTransactionModel.create({
+        _id: txId,
+        locationId: vaultShift.locationId,
+        timestamp: attrDate,
+        type: 'vault_close',
+        from: { type: 'vault' },
+        to: { type: 'external' },
+        amount: closingBalance,
+        denominations: mappedDenoms,
+        vaultBalanceBefore: closingBalance,
+        vaultBalanceAfter: 0,
+        vaultShiftId,
+        performedBy: payload._id,
+        performedByName: payload.username,
+        notes: 'Vault shift closed',
+        isVoid: false,
+        createdAt: now,
+      });
 
-    if (!hasVaultAccess) {
-      return NextResponse.json(
-        { success: false, error: 'Insufficient permissions' },
-        { status: 403 }
-      );
-    }
-
-    // STEP 2: Parse and validate request
-    const body: CloseVaultShiftRequest = await request.json();
-    const { vaultShiftId, closingBalance, denominations } = body;
-
-    if (!vaultShiftId || closingBalance === undefined || !denominations) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'Missing required fields: vaultShiftId, closingBalance, denominations',
-        },
-        { status: 400 }
-      );
-    }
-
-    // STEP 3: Validate denominations
-    const denominationValidation = validateDenominations(denominations);
-    if (!denominationValidation.valid) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid denominations',
-          details: denominationValidation.errors,
-        },
-        { status: 400 }
-      );
-    }
-
-    // STEP 4: Connect to database
-    await connectDB();
-
-    // STEP 5: Get vault shift
-    const vaultShift = await VaultShiftModel.findOne({ _id: vaultShiftId });
-
-    if (!vaultShift) {
-      return NextResponse.json(
-        { success: false, error: 'Vault shift not found' },
-        { status: 404 }
-      );
-    }
-
-    if (vaultShift.status === 'closed') {
-      return NextResponse.json(
-        { success: false, error: 'Vault shift is already closed' },
-        { status: 400 }
-      );
-    }
-
-    // BR: Ensure vault is reconciled before closing
-    if (!vaultShift.isReconciled) {
-      return NextResponse.json(
-        { success: false, error: 'Vault must be reconciled before closing the shift' },
-        { status: 400 }
-      );
-    }
-
-    // STEP 6: Check BR-01 - Cannot close if cashiers active/pending
-    const cashierShifts = await CashierShiftModel.find({ vaultShiftId });
-    const closeValidation = canCloseVaultShift(
-      cashierShifts.map(s => s.toObject())
-    );
-
-    if (!closeValidation.canClose) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: closeValidation.reason,
-          activeCashiers: closeValidation.activeCashiers,
-          pendingReviewCashiers: closeValidation.pendingReviewCashiers,
-        },
-        { status: 400 }
-      );
-    }
-
-    // STEP 7: Update vault shift
-    const now = new Date();
-    const attributionDate = await getAttributionDate(
-      vaultShift.openedAt,
-      vaultShift.locationId
-    );
-
-    vaultShift.status = 'closed';
-    vaultShift.closedAt = attributionDate;
-    vaultShift.closingBalance = closingBalance;
-    interface VaultDenomination {
-      denomination: string | number;
-      count?: number;
-      quantity?: number;
-    }
-    vaultShift.closingDenominations = denominations.map((d: VaultDenomination) => ({
-      denomination: typeof d.denomination === 'string'
-        ? parseInt(d.denomination.replace('$', ''))
-        : d.denomination,
-      quantity: d.count ?? d.quantity ?? 0
-    }));
-    vaultShift.updatedAt = now;
-    await vaultShift.save();
-
-    // STEP 8: Create transaction record
-    const transactionId = await generateMongoId();
-    const transaction = await VaultTransactionModel.create({
-      _id: transactionId,
-      locationId: vaultShift.locationId,
-      timestamp: attributionDate,
-      type: 'vault_close',
-      from: { type: 'vault' },
-      to: { type: 'external' },
-      amount: closingBalance,
-      denominations: denominations.map((d: VaultDenomination) => ({
-        denomination: typeof d.denomination === 'string'
-          ? parseInt(d.denomination.replace('$', ''))
-          : d.denomination,
-        quantity: d.count ?? d.quantity ?? 0
-      })),
-      vaultBalanceBefore: closingBalance,
-      vaultBalanceAfter: 0,
-      vaultShiftId,
-      performedBy: userId,
-      performedByName: userPayload.username,
-      notes: 'Vault shift closed',
-      isVoid: false,
-      createdAt: now,
-    });
-
-    // STEP 9: Return success response
-    return NextResponse.json(
-      {
+      return NextResponse.json({
         success: true,
         vaultShift: vaultShift.toObject(),
         transaction: transaction.toObject(),
-      },
-      { status: 200 }
-    );
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error('Error closing vault shift:', errorMessage);
-    return NextResponse.json(
-      {
-        success: false,
-        error: errorMessage,
-        details: error instanceof Error ? error.stack : undefined,
-      },
-      { status: 500 }
-    );
-  }
+      });
+    } catch (e: unknown) {
+      console.error('[Vault Close] Error:', e);
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      return NextResponse.json(
+        { success: false, error: message },
+        { status: 500 }
+      );
+    }
+  });
 }

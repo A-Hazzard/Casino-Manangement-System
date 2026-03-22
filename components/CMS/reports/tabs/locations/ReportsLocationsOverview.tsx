@@ -87,7 +87,6 @@ export default function ReportsLocationsOverview({
   metricsTotals,
   metricsTotalsLoading,
   paginatedLocations,
-  topLocations: _topLocations, // Kept for interface compatibility but not used (map now uses gamingLocations)
   allLocationsForDropdown,
   gamingLocations,
   gamingLocationsLoading,
@@ -103,35 +102,43 @@ export default function ReportsLocationsOverview({
   onExportLocationOverview,
 }: ReportsLocationsOverviewProps) {
   const { displayCurrency } = useCurrencyFormat();
-  const formatCurrency = (val: number | null | undefined) => formatCurrencyWithCodeString(val, displayCurrency);
+  const formatCurrency = (val: number | null | undefined) =>
+    formatCurrencyWithCodeString(val, displayCurrency);
 
   // Check if any location has includeJackpot and compute total jackpot
   const { anyIncludeJackpot, totalJackpot } = useMemo(() => {
-    const dataSource = (locationAggregates as AggregatedLocation[]).length > 0
-      ? (locationAggregates as AggregatedLocation[])
-      : allLocationsForDropdown;
+    const dataSource =
+      (locationAggregates as AggregatedLocation[]).length > 0
+        ? (locationAggregates as AggregatedLocation[])
+        : allLocationsForDropdown;
     const any = dataSource.some(loc => loc.includeJackpot);
-    const jackpot = dataSource.reduce((sum, loc) => sum + (loc.jackpot || 0), 0);
+    const jackpot = dataSource.reduce(
+      (sum, loc) => sum + (loc.jackpot || 0),
+      0
+    );
     return { anyIncludeJackpot: any, totalJackpot: jackpot };
   }, [locationAggregates, allLocationsForDropdown]);
 
   // Calculate online machines totals - use locationAggregates if available, otherwise fallback to allLocationsForDropdown
   const onlineMachinesData = useMemo(() => {
-    const dataSource = (locationAggregates as AggregatedLocation[]).length > 0 
-      ? (locationAggregates as AggregatedLocation[])
-      : allLocationsForDropdown;
-    
+    const dataSource =
+      (locationAggregates as AggregatedLocation[]).length > 0
+        ? (locationAggregates as AggregatedLocation[])
+        : allLocationsForDropdown;
+
     const online = dataSource.reduce(
-      (sum: number, loc: AggregatedLocation) =>
-        sum + (loc.onlineMachines || 0),
+      (sum: number, loc: AggregatedLocation) => sum + (loc.onlineMachines || 0),
       0
     );
     const total = dataSource.reduce(
-      (sum: number, loc: AggregatedLocation) =>
-        sum + (loc.totalMachines || 0),
+      (sum: number, loc: AggregatedLocation) => sum + (loc.totalMachines || 0),
       0
     );
-    return { online, total, percentage: total > 0 ? (online / total) * 100 : 0 };
+    return {
+      online,
+      total,
+      percentage: total > 0 ? (online / total) * 100 : 0,
+    };
   }, [locationAggregates, allLocationsForDropdown]);
 
   return (
@@ -172,7 +179,9 @@ export default function ReportsLocationsOverview({
                 <CardTitle className="text-sm font-medium">Money In</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className={`truncate text-xl font-bold md:text-2xl ${getMoneyInColorClass()}`}>
+                <div
+                  className={`truncate text-xl font-bold md:text-2xl ${getMoneyInColorClass()}`}
+                >
                   {formatCurrency(metricsTotals.moneyIn || 0)}
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
@@ -223,7 +232,7 @@ export default function ReportsLocationsOverview({
       </div>
 
       {/* Interactive Map */}
-        <ReportsLocationsMap
+      <ReportsLocationsMap
         key={`map-overview-${gamingLocations.length}-${locationAggregates.length}`}
         locations={useMemo(() => {
           // Map all gaming locations to LocationData format
@@ -232,9 +241,14 @@ export default function ReportsLocationsOverview({
             .map((location: Record<string, unknown>) => {
               // Extract coordinates from geoCoords (API format: { latitude, longitude })
               const geoCoords = location.geoCoords as
-                | { latitude?: number; longitude?: number; lat?: number; lng?: number }
+                | {
+                    latitude?: number;
+                    longitude?: number;
+                    lat?: number;
+                    lng?: number;
+                  }
                 | undefined;
-              
+
               let coordinates: [number, number] | undefined;
               if (geoCoords) {
                 const lat = geoCoords.lat ?? geoCoords.latitude;
@@ -259,30 +273,35 @@ export default function ReportsLocationsOverview({
               // Get financial data from locationAggregation (same as dashboard map)
               // Match by location._id with locationAggregates.location field
               const locationId = String(location._id || '');
-              
+
               // Try multiple matching strategies to ensure we find the data
               let stats: Record<string, unknown> | undefined;
-              if (Array.isArray(locationAggregates) && locationAggregates.length > 0) {
+              if (
+                Array.isArray(locationAggregates) &&
+                locationAggregates.length > 0
+              ) {
                 // Primary match: exact string comparison (same as dashboard MapPreview)
                 stats = locationAggregates.find(
                   d => String(d.location) === locationId
                 );
-                
+
                 // Fallback: try matching without string conversion (in case types match)
                 if (!stats) {
-                  stats = locationAggregates.find(d => d.location === locationId);
+                  stats = locationAggregates.find(
+                    d => d.location === locationId
+                  );
                 }
-                
+
                 // Additional fallback: try matching _id field if location field doesn't match
                 if (!stats) {
                   stats = locationAggregates.find(
                     d => String(d._id) === locationId
                   );
                 }
-                
+
                 // Debug log for D'Fastlime to verify matching
                 if (location.name === "D'Fastlime") {
-                  console.log('🔍 [Map] D\'Fastlime matching:', {
+                  console.log("🔍 [Map] D'Fastlime matching:", {
                     locationId,
                     locationAggregatesCount: locationAggregates.length,
                     foundStats: stats,
@@ -290,27 +309,35 @@ export default function ReportsLocationsOverview({
                     statsGross: stats?.gross,
                     sampleAggregateLocation: locationAggregates[0]?.location,
                     sampleAggregateId: locationAggregates[0]?._id,
-                    allLocationIds: locationAggregates.slice(0, 5).map((d: Record<string, unknown>) => ({
-                      location: d.location,
-                      _id: d._id,
-                      name: d.locationName,
-                    })),
+                    allLocationIds: locationAggregates
+                      .slice(0, 5)
+                      .map((d: Record<string, unknown>) => ({
+                        location: d.location,
+                        _id: d._id,
+                        name: d.locationName,
+                      })),
                   });
                 }
               } else if (location.name === "D'Fastlime") {
-                console.warn('⚠️ [Map] D\'Fastlime: locationAggregates is empty or not an array', {
-                  locationAggregates,
-                  isArray: Array.isArray(locationAggregates),
-                  length: Array.isArray(locationAggregates) ? locationAggregates.length : 'N/A',
-                });
+                console.warn(
+                  "⚠️ [Map] D'Fastlime: locationAggregates is empty or not an array",
+                  {
+                    locationAggregates,
+                    isArray: Array.isArray(locationAggregates),
+                    length: Array.isArray(locationAggregates)
+                      ? locationAggregates.length
+                      : 'N/A',
+                  }
+                );
               }
-              
+
               // Calculate performance based on revenue percentage
               const gross = (stats?.gross as number) ?? 0;
               const moneyIn = (stats?.moneyIn as number) ?? 0;
               const revenuePercent = moneyIn > 0 ? (gross / moneyIn) * 100 : 0;
-              
-              let performance: 'excellent' | 'good' | 'average' | 'poor' = 'average';
+
+              let performance: 'excellent' | 'good' | 'average' | 'poor' =
+                'average';
               if (revenuePercent > 20) {
                 performance = 'excellent';
               } else if (revenuePercent >= 15) {
@@ -329,14 +356,29 @@ export default function ReportsLocationsOverview({
                 revenue: gross,
                 moneyIn,
                 moneyOut: (stats?.moneyOut as number) ?? 0,
-                totalMachines: (stats?.totalMachines as number) ?? (location.totalMachines as number) ?? 0,
-                onlineMachines: (stats?.onlineMachines as number) ?? (location.onlineMachines as number) ?? 0,
+                totalMachines:
+                  (stats?.totalMachines as number) ??
+                  (location.totalMachines as number) ??
+                  0,
+                onlineMachines:
+                  (stats?.onlineMachines as number) ??
+                  (location.onlineMachines as number) ??
+                  0,
               };
             })
             .filter((loc): loc is NonNullable<typeof loc> => loc !== null);
         }, [gamingLocations, locationAggregates])}
-        financialDataLoading={metricsLoading || locationsLoading || gamingLocationsLoading || locationAggregatesLoading}
-        loading={locationsLoading || gamingLocationsLoading || locationAggregatesLoading}
+        financialDataLoading={
+          metricsLoading ||
+          locationsLoading ||
+          gamingLocationsLoading ||
+          locationAggregatesLoading
+        }
+        loading={
+          locationsLoading ||
+          gamingLocationsLoading ||
+          locationAggregatesLoading
+        }
       />
 
       {/* Location Table */}
@@ -388,7 +430,10 @@ export default function ReportsLocationsOverview({
           </div>
         </CardHeader>
         <CardContent>
-          {paginationLoading || locationsLoading || gamingLocationsLoading || locationAggregatesLoading ? (
+          {paginationLoading ||
+          locationsLoading ||
+          gamingLocationsLoading ||
+          locationAggregatesLoading ? (
             <TopMachinesTableSkeleton />
           ) : paginatedLocations.length === 0 ? (
             <div className="py-8 text-center text-gray-500">
@@ -411,4 +456,3 @@ export default function ReportsLocationsOverview({
     </div>
   );
 }
-

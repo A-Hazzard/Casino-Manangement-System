@@ -44,36 +44,82 @@ export class DashboardPage {
     this.page = page;
 
     // Time-period buttons — desktop renders <button> elements; filtered for visibility
-    const periodContainer = page.locator('div.flex.gap-2, div.flex.flex-wrap.items-center.gap-2').filter({ visible: true });
-    this.filterToday = periodContainer.locator('button:has-text("Today")').first();
-    this.filterYesterday = periodContainer.locator('button:has-text("Yesterday")').first();
-    this.filterLast7Days = periodContainer.locator('button:has-text("Last 7 Days")').first();
-    this.filterLast30Days = periodContainer.locator('button:has-text("Last 30 Days")').first();
-    
+    const periodContainer = page
+      .locator('div.flex.gap-2, div.flex.flex-wrap.items-center.gap-2')
+      .filter({ visible: true });
+    this.filterToday = periodContainer
+      .locator('button:has-text("Today")')
+      .first();
+    this.filterYesterday = periodContainer
+      .locator('button:has-text("Yesterday")')
+      .first();
+    this.filterLast7Days = periodContainer
+      .locator('button:has-text("Last 7 Days")')
+      .first();
+    this.filterLast30Days = periodContainer
+      .locator('button:has-text("Last 30 Days")')
+      .first();
+
     // The "Custom" filter is the ModernCalendar trigger button on desktop (#date).
-    this.filterCustom = page.locator('button#date').filter({ visible: true }).first();
+    this.filterCustom = page
+      .locator('button#date')
+      .filter({ visible: true })
+      .first();
 
     // Date range picker inputs (visible in the ModernCalendar popover after click)
     // Refined to be more robust for the specific calendar components used
-    this.dateRangeStartInput = page.locator('.react-datepicker__input-container input').first();
-    this.dateRangeEndInput = page.locator('.react-datepicker__input-container input').last();
+    this.dateRangeStartInput = page
+      .locator('.react-datepicker__input-container input')
+      .first();
+    this.dateRangeEndInput = page
+      .locator('.react-datepicker__input-container input')
+      .last();
     // The "Apply" button inside the calendar popover
-    this.applyCustomRangeBtn = page.getByRole('button', { name: 'Apply', exact: true }).first();
+    this.applyCustomRangeBtn = page
+      .getByRole('button', { name: 'Apply', exact: true })
+      .first();
 
     // Metric card containers — use flexible locators based on labels, filtered for visibility
-    this.moneyInCard = page.locator('div:has-text("Money In")').filter({ visible: true }).locator('..').first();
-    this.moneyOutCard = page.locator('div:has-text("Money Out")').filter({ visible: true }).locator('..').first();
-    this.jackpotCard = page.locator('div:has-text("Jackpot")').filter({ visible: true }).locator('..').first();
-    this.grossCard = page.locator('div:has-text("Gross")').filter({ visible: true }).locator('..').first();
+    this.moneyInCard = page
+      .locator('div:has-text("Money In")')
+      .filter({ visible: true })
+      .locator('..')
+      .first();
+    this.moneyOutCard = page
+      .locator('div:has-text("Money Out")')
+      .filter({ visible: true })
+      .locator('..')
+      .first();
+    this.jackpotCard = page
+      .locator('div:has-text("Jackpot")')
+      .filter({ visible: true })
+      .locator('..')
+      .first();
+    this.grossCard = page
+      .locator('div:has-text("Gross")')
+      .filter({ visible: true })
+      .locator('..')
+      .first();
 
     // Chart — recharts ResponsiveContainer renders a div.recharts-responsive-container
-    this.chartContainer = page.locator('.recharts-responsive-container').filter({ visible: true }).first();
+    this.chartContainer = page
+      .locator('.recharts-responsive-container')
+      .filter({ visible: true })
+      .first();
 
     // Location section — DashboardDesktopLayout has <h3>Location Map</h3>
-    this.locationAnalyticsSection = page.locator('h3:has-text("Location Map"), h2:has-text("Top Performing"), button:has-text("Locations")').filter({ visible: true }).first();
+    this.locationAnalyticsSection = page
+      .locator(
+        'h3:has-text("Location Map"), h2:has-text("Top Performing"), button:has-text("Locations")'
+      )
+      .filter({ visible: true })
+      .first();
 
     // Error state — Alert component renders with role="alert"
-    this.errorMessage = page.locator('[role="alert"]').filter({ visible: true }).first();
+    this.errorMessage = page
+      .locator('[role="alert"]')
+      .filter({ visible: true })
+      .first();
   }
 
   // ─── Navigation ────────────────────────────────────────────────────────────
@@ -86,7 +132,9 @@ export class DashboardPage {
 
   // ─── Actions ───────────────────────────────────────────────────────────────
 
-  async selectTimePeriod(period: 'Today' | 'Yesterday' | 'Last 7 Days' | 'Last 30 Days' | 'Custom') {
+  async selectTimePeriod(
+    period: 'Today' | 'Yesterday' | 'Last 7 Days' | 'Last 30 Days' | 'Custom'
+  ) {
     const filterMap: Record<string, Locator> = {
       Today: this.filterToday,
       Yesterday: this.filterYesterday,
@@ -106,17 +154,21 @@ export class DashboardPage {
    * @param startDate - ISO date string (YYYY-MM-DD)
    * @param endDate   - ISO date string (YYYY-MM-DD)
    */
-  async selectCustomRange(_startDate: string, _endDate: string) {
+  async selectCustomRange() {
     // Open the ModernCalendar popover
     await this.filterCustom.waitFor({ state: 'visible' });
     await this.filterCustom.click();
-    
+
     // Choose the 'Yesterday' preset inside the popover to trigger a change
     // We use a locator that specifically targets the popover overlay content
-    const popoverYesterdayBtn = this.page.locator('[data-radix-popper-content-wrapper] button:has-text("Yesterday")').first();
+    const popoverYesterdayBtn = this.page
+      .locator(
+        '[data-radix-popper-content-wrapper] button:has-text("Yesterday")'
+      )
+      .first();
     await popoverYesterdayBtn.waitFor({ state: 'visible' });
     await popoverYesterdayBtn.click();
-    
+
     // Click Apply to confirm the selection
     await this.applyCustomRangeBtn.waitFor({ state: 'visible' });
     await this.applyCustomRangeBtn.click();
@@ -130,10 +182,10 @@ export class DashboardPage {
   async expectMetricCardsVisible() {
     // First wait for any skeleton loaders to finish
     const skeleton = this.page.locator('.animate-pulse');
-    if (await skeleton.count() > 0) {
+    if ((await skeleton.count()) > 0) {
       await expect(skeleton).toHaveCount(0, { timeout: 15_000 });
     }
-    
+
     // Ensure the main cards are visible with sufficient timeout
     await expect(this.moneyInCard).toBeVisible({ timeout: 10_000 });
     await expect(this.moneyOutCard).toBeVisible();
@@ -149,7 +201,10 @@ export class DashboardPage {
 
   async expectLocationAnalyticsVisible() {
     // Map/Analytics may take longer to load
-    await this.locationAnalyticsSection.waitFor({ state: 'visible', timeout: 10_000 });
+    await this.locationAnalyticsSection.waitFor({
+      state: 'visible',
+      timeout: 10_000,
+    });
     await expect(this.locationAnalyticsSection).toBeVisible();
   }
 

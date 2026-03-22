@@ -19,7 +19,6 @@ type VaultOverviewCashDesksSectionProps = {
 
 export default function VaultOverviewCashDesksSection({
   cashDesks,
-  refreshing: _refreshing,
   onViewDenominations,
 }: VaultOverviewCashDesksSectionProps) {
   return (
@@ -36,9 +35,9 @@ export default function VaultOverviewCashDesksSection({
             .sort((a, b) => b.balance - a.balance)
             .slice(0, 4)
             .map(cashDesk => (
-              <VaultOverviewCashDeskCard 
-                key={cashDesk._id} 
-                cashDesk={cashDesk} 
+              <VaultOverviewCashDeskCard
+                key={cashDesk._id}
+                cashDesk={cashDesk}
                 onViewDenominations={() => onViewDenominations(cashDesk)}
               />
             ))

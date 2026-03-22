@@ -5,11 +5,11 @@ import { getClientIP } from '@/lib/utils/ipAddress';
 import { isValidDateInput, validateAlphabeticField, validateNameField, validateOptionalGender } from '@/lib/utils/validation';
 import { JWTPayload, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { LeanUserDocument } from '../../../../../shared/types/auth';
 import { CurrentUser, OriginalUserType } from '../../../../../shared/types/users';
 import { connectDB } from '../../middleware/db';
-import { apiLogger } from '../../services/loggerService';
+import { apiLogger, LogContext } from '../../services/loggerService';
 import { comparePassword, hashPassword } from '../../utils/validation';
 import { logActivity } from '../activityLogger';
 
@@ -1591,8 +1591,8 @@ export async function handleDeletedUsersRequest(
   currentUserLocationPermissions: string[],
   searchParams: URLSearchParams,
   startTime: number,
-  context: import('../../services/loggerService').LogContext
-): Promise<Response> {
+  context: LogContext
+): Promise<NextResponse> {
   const search = searchParams.get('search');
   const searchMode = searchParams.get('searchMode') || 'username';
   const licencee = searchParams.get('licencee');
@@ -1660,8 +1660,8 @@ export async function handleCashiersRequest(
   currentUserLocationPermissions: string[],
   searchParams: URLSearchParams,
   startTime: number,
-  context: import('../../services/loggerService').LogContext
-): Promise<Response> {
+  context: LogContext
+): Promise<NextResponse> {
   const search = searchParams.get('search');
   const searchMode = searchParams.get('searchMode') || 'username';
   const licencee = searchParams.get('licencee');
@@ -1771,8 +1771,8 @@ export async function handleAllUsersRequest(
   currentUserLocationPermissions: string[],
   searchParams: URLSearchParams,
   startTime: number,
-  context: import('../../services/loggerService').LogContext
-): Promise<Response> {
+  context: LogContext
+): Promise<NextResponse> {
   const search = searchParams.get('search');
   const searchMode = searchParams.get('searchMode') || 'username';
   const status = searchParams.get('status') || 'all';
@@ -2015,8 +2015,9 @@ function paginateAndRespond(
   users: UserItem[],
   searchParams: URLSearchParams,
   startTime: number,
-  context: import('../../services/loggerService').LogContext
-): Response {
+  context: LogContext
+): NextResponse {
+
   const page = parseInt(searchParams.get('page') || '1');
   const requestedLimit = parseInt(searchParams.get('limit') || '50');
   const limit = Math.min(requestedLimit, 1000);
@@ -2035,8 +2036,8 @@ function paginateAndRespond(
     `Successfully fetched ${totalCount} users (returning ${paginatedUsers.length} on page ${page})`
   );
 
-  return new Response(
-    JSON.stringify({
+  return NextResponse.json(
+    {
       success: true,
       users: paginatedUsers,
       pagination: {
@@ -2045,12 +2046,10 @@ function paginateAndRespond(
         total: totalCount,
         totalPages: Math.ceil(totalCount / limit),
       },
-    }),
+    },
     {
       status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-      },
     }
   );
 }
+

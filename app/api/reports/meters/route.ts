@@ -34,8 +34,7 @@ import {
   buildCurrencyMaps,
 } from '@/app/api/lib/helpers/reports/metersCurrency';
 import { Licencee } from '@/app/api/lib/models/licencee';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -94,47 +93,14 @@ function createEmptyResponse(
  * 10. Paginate and return results
  */
 export async function GET(req: NextRequest) {
-  const startTime = Date.now();
+  return withApiAuth(req, async ({ user: userPayload, userRoles, isAdminOrDev }) => {
+    const startTime = Date.now();
 
-  try {
     // ============================================================================
     // STEP 1: Parse and validate request parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const params = parseMetersReportParams(searchParams);
-
-    // ============================================================================
-    // STEP 2: Connect to database and authenticate user
-    // ============================================================================
-    const db = await connectDB();
-    if (!db) {
-      return NextResponse.json(
-        { error: 'DB connection failed' },
-        {
-          status: 500,
-          headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate',
-          },
-        }
-      );
-    }
-
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        {
-          status: 401,
-          headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate',
-          },
-        }
-      );
-    }
-
-    const userRoles = (userPayload?.roles as string[]) || [];
-    const isAdminOrDev =
-      userRoles.includes('admin') || userRoles.includes('developer');
 
     // ============================================================================
     // STEP 3: Get user permissions and determine accessible locations
@@ -398,34 +364,6 @@ export async function GET(req: NextRequest) {
         'X-Content-Type-Options': 'nosniff',
       },
     });
-  } catch (err) {
-    const duration = Date.now() - startTime;
-    const errorMessage = err instanceof Error ? err.message : 'Server Error';
-
-    console.error(`Meters report failed after ${duration}ms:`, errorMessage);
-
-    // Handle validation errors with 400 status
-    if (err instanceof Error && err.message.includes('required')) {
-      return NextResponse.json(
-        { error: errorMessage },
-        {
-          status: 400,
-          headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate',
-          },
-        }
-      );
-    }
-
-    return NextResponse.json(
-      { error: errorMessage },
-      {
-        status: 500,
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-        },
-      }
-    );
-  }
+  });
 }
 

@@ -29,7 +29,7 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
-import { getLicenceeObjectId } from '@/lib/utils/licencee';
+import { resolveLicenceeId } from '@/lib/utils/licencee';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../lib/helpers/users';
 
@@ -65,9 +65,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     if (searchParams.get('locationsWithMachines')) {
       try {
-        const rawLicenceeParam =
-          searchParams.get('licencee') ||
-          undefined;
+        const rawLicenceeParam = searchParams.get('licencee') || undefined;
 
         const result = await fetchLocationsWithMachines(rawLicenceeParam);
         return NextResponse.json(result);
@@ -101,26 +99,25 @@ export async function GET(req: NextRequest) {
     const endDateStr = searchParams.get('endDate');
     const locationName = searchParams.get('locationName') || undefined;
     const locationId = searchParams.get('locationId') || undefined;
-    const locationIds = searchParams.get('locationIds')?.split(',') || undefined;
-
-    const rawLicenceeParam =
-      searchParams.get('licencee') || undefined;
+    const locationIds =
+      searchParams.get('locationIds')?.split(',') || undefined;
+    const rawLicenceeParam = searchParams.get('licencee') || undefined;
     const licencee =
       rawLicenceeParam && rawLicenceeParam !== 'all'
-        ? getLicenceeObjectId(rawLicenceeParam) || rawLicenceeParam
+        ? resolveLicenceeId(rawLicenceeParam) || rawLicenceeParam
         : rawLicenceeParam;
 
     if (startDateStr && endDateStr && !timePeriod) {
       const summary = await getMonthlyCollectionReportSummary(
         new Date(startDateStr),
         new Date(endDateStr),
-        locationName || (locationIds || (locationId ? [locationId] : undefined)),
+        locationName || locationIds || (locationId ? [locationId] : undefined),
         licencee
       );
       const details = await getMonthlyCollectionReportByLocation(
         new Date(startDateStr),
         new Date(endDateStr),
-        locationName || (locationIds || (locationId ? [locationId] : undefined)),
+        locationName || locationIds || (locationId ? [locationId] : undefined),
         licencee
       );
       return NextResponse.json({ summary, details });
@@ -352,9 +349,11 @@ export async function POST(req: NextRequest) {
 
         await logActivity({
           action: 'CREATE',
-          details: `Created collection report for ${body.locationName} by ${body.collector || 'Unknown'
-            } (${body.machines?.length || 0} machines, $${body.amountCollected
-            } collected)`,
+          details: `Created collection report for ${body.locationName} by ${
+            body.collector || 'Unknown'
+          } (${body.machines?.length || 0} machines, $${
+            body.amountCollected
+          } collected)`,
           ipAddress: getClientIP(req) || undefined,
           userAgent: req.headers.get('user-agent') || undefined,
           userId,
@@ -400,4 +399,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

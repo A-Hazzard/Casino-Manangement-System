@@ -9,7 +9,6 @@
  */
 
 import type { TimePeriod } from '@/app/api/lib/types';
-import { getLicenceeCurrency } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
@@ -127,7 +126,7 @@ export function parseMetersReportParams(
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const search = searchParams.get('search') || '';
-  const licencee = (searchParams.get('licencee'));
+  const licencee = searchParams.get('licencee');
   const includeHourlyData = searchParams.get('includeHourlyData') === 'true';
 
   // Validate required parameters
@@ -144,16 +143,11 @@ export function parseMetersReportParams(
 
   // Determine display currency
   // - If currency param is provided, use it (for "All Licencees" mode)
-  // - If viewing a specific licencee, use that licencee's native currency
   // - Otherwise default to USD
-  let displayCurrency =
-    (searchParams.get('currency') as CurrencyCode) || undefined;
-
-  if (!displayCurrency && licencee && licencee !== 'all') {
-    displayCurrency = getLicenceeCurrency(licencee);
-  }
-
-  displayCurrency = displayCurrency || 'USD';
+  // NOTE: Currency resolution for specific licencee must be done in the API route
+  // after DB connection, since we need to resolve licencee ID to name
+  const displayCurrency =
+    (searchParams.get('currency') as CurrencyCode) || 'USD';
 
   // Parse custom dates if provided
   let parsedCustomStart: Date | undefined;
@@ -173,9 +167,9 @@ export function parseMetersReportParams(
   const hourlyDataMachineIdsParam = searchParams.get('hourlyDataMachineIds');
   const hourlyDataMachineIds = hourlyDataMachineIdsParam
     ? hourlyDataMachineIdsParam
-      .split(',')
-      .map(id => id.trim())
-      .filter(id => id !== '')
+        .split(',')
+        .map(id => id.trim())
+        .filter(id => id !== '')
     : undefined;
 
   // Parse granularity parameter
@@ -365,9 +359,7 @@ export async function fetchMachinesData(
   if (licencee && licencee !== 'all') {
     const licenceeLocations = await GamingLocations.find(
       {
-        $or: [
-          { 'rel.licencee': licencee  }
-        ]
+        $or: [{ 'rel.licencee': licencee }],
       },
       { _id: 1 }
     )
@@ -391,7 +383,9 @@ export async function fetchMachinesData(
     sasMeters: machine.sasMeters,
     lastActivity: (machine.lastActivity as Date) || undefined,
     collectorDenomination: machine.collectorDenomination as number | undefined,
-    gameConfig: machine.gameConfig as { accountingDenomination?: number | string } | undefined,
+    gameConfig: machine.gameConfig as
+      | { accountingDenomination?: number | string }
+      | undefined,
   }));
 }
 
@@ -664,7 +658,7 @@ export function transformMeterData(
       locationMap.get(machine.gamingLocation) || 'Unknown Location';
     const licenceeId = locationLicenceeMap.get(machine.gamingLocation) || '';
     const includeJackpot = licenceeSettingsMap.get(licenceeId) || false;
-    
+
     const machineId = formatMachineId(machine);
     const machineDocumentId = machine._id;
 
@@ -701,7 +695,7 @@ export function transformMeterData(
     );
 
     // Logic: TRUE = Low Gross (include jackpot in money out), FALSE = High Gross (do not include)
-    const netGross = includeJackpot 
+    const netGross = includeJackpot
       ? validateMeterValue(metersIn - metersOut - jackpot)
       : validateMeterValue(metersIn - metersOut);
 

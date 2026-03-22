@@ -28,11 +28,21 @@ This is the **primary method** for all Dashboard and Real-time reporting.
 
 ## 3. Logic: Gross vs. Net Revenue
 
-### 💎 Jackpot Interaction (High vs. Low Gross)
+### 💎 Jackpot Interaction (Gross vs. Net Revenue)
 The system supports two reporting "Visions" based on the Licencee's `includeJackpot` flag.
-- **Vision A (High Gross)**: `Revenue = Drop - Cancelled Credits`. Jackpots are treated as separate operational expenses.
-- **Vision B (Low Gross)**: `Revenue = Drop - Cancelled Credits - Jackpots`. All payouts to players are deducted from the top line.
-- **Role Detection**: The engine detects this flag at the moment of API query to ensure the Dashboard and Collection Wizard always show identical numbers.
+
+- **Vision A (Default Gross)**: `Money Out = Base Cancelled Credits`. Jackpots are treated as separate operational expenses.
+- **Vision B (Additive Gross)**: `Money Out = Base Cancelled Credits + Jackpots`. All payouts to players are consolidated into a single "Money Out" figure.
+- **Universal Net Gross**: Regardless of the `includeJackpot` flag, the system always calculates `Net Gross = Money In - Base Cancelled Credits - Jackpots`. This provides the true "bottom line" profit for internal review.
+
+#### The Formula (Implementation)
+The aggregation engine applies the logic as follows:
+```typescript
+const moneyOut = rawMoneyOut + (includeJackpot ? jackpot : 0);
+const gross = moneyIn - moneyOut;
+const netGross = moneyIn - rawMoneyOut - jackpot;
+```
+- **Role Detection**: The engine detects the `includeJackpot` flag from the Licencee model at the moment of API query to ensure the Dashboard, Cabinets Table, and Collection Report always show identical numbers.
 
 ---
 

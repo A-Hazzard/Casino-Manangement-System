@@ -1,128 +1,112 @@
 /**
  * Force Close Cashier Shift API
- * 
- * POST /api/vault/cashier-shift/force-close
- * 
- * Allows a Vault Manager to end an active cashier shift.
- * This moves the shift to "pending_review" for resolution.
  */
 
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import { calculateExpectedBalance } from '@/lib/helpers/vault/calculations';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
-  try {
-    // Authentication & Authorization
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-    const userId = userPayload._id as string;
-    const username = userPayload.username as string;
-    const userRoles = (userPayload?.roles as string[]) || [];
+  return withApiAuth(request, async ({ user: payload, userRoles }) => {
+    try {
+      const hasVMAccess = userRoles
+        .map(r => String(r).toLowerCase())
+        .some(role =>
+          ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
+        );
+      if (!hasVMAccess)
+        return NextResponse.json(
+          { success: false, error: 'Insufficient permissions' },
+          { status: 403 }
+        );
 
-    const hasVMAccess = userRoles.some(role =>
-      ['developer', 'admin', 'manager', 'vault-manager'].includes(role.toLowerCase())
-    );
-
-    if (!hasVMAccess) {
-      return NextResponse.json({ success: false, error: 'Insufficient permissions' }, { status: 403 });
-    }
-
-    const { cashierId, shiftId, locationId, denominations, physicalCount, notes } = await request.json();
-
-    console.log('[force-close] Received:', { shiftId, cashierId, locationId });
-
-    if (!locationId || physicalCount === undefined) {
-      return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
-    }
-
-    if (!cashierId && !shiftId) {
-      return NextResponse.json({ success: false, error: 'cashierId or shiftId is required' }, { status: 400 });
-    }
-
-    await connectDB();
-
-    // STEP 1: Find the shift — accept active OR pending_start status
-    // (the active shifts list in the UI shows both statuses)
-    const activeStatuses = ['active', 'pending_start'];
-    let cashierShift = null;
-
-    if (shiftId) {
-      cashierShift = await CashierShiftModel.findOne({ _id: shiftId, status: { $in: activeStatuses } });
-      console.log('[force-close] Lookup by shiftId:', shiftId, '→ found:', !!cashierShift);
-    }
-
-    if (!cashierShift && cashierId) {
-      cashierShift = await CashierShiftModel.findOne({ cashierId, locationId, status: { $in: activeStatuses } });
-      console.log('[force-close] Lookup by cashierId:', cashierId, '→ found:', !!cashierShift);
-    }
-
-    // Diagnostic: check if it exists with any status
-    if (!cashierShift) {
-      const anyShift = await CashierShiftModel.findOne({ _id: shiftId });
-      console.log('[force-close] Any shift by _id:', shiftId, '→', anyShift ? `status=${anyShift.status}` : 'not found in DB at all');
-      const anyByCashier = shiftId ? null : await CashierShiftModel.findOne({ cashierId, locationId });
-      if (anyByCashier) console.log('[force-close] Any shift by cashierId:', `status=${anyByCashier.status}`);
-    }
-
-    if (!cashierShift) {
-      return NextResponse.json({ success: false, error: 'No active shift found for this cashier' }, { status: 404 });
-    }
-
-    const expectedBalance = calculateExpectedBalance(
-      cashierShift.openingBalance,
-      cashierShift.payoutsTotal,
-      cashierShift.floatAdjustmentsTotal
-    );
-
-    const now = new Date();
-    const discrepancy = physicalCount - expectedBalance;
-
-    // Move to pending_review so VM can resolve it from dashboard
-    cashierShift.status = 'pending_review';
-    cashierShift.closedAt = now;
-    cashierShift.cashierEnteredBalance = physicalCount;
-    cashierShift.cashierEnteredDenominations = denominations;
-    cashierShift.expectedClosingBalance = expectedBalance;
-    cashierShift.discrepancy = discrepancy;
-    cashierShift.discrepancyResolved = false;
-    cashierShift.vmReviewNotes = `Force closed by VM (${username}). Notes: ${notes || 'No notes'}`;
-    cashierShift.updatedAt = now;
-
-    await cashierShift.save();
-
-    // Update vault shift canClose status
-    const allShifts = await CashierShiftModel.find({ vaultShiftId: cashierShift.vaultShiftId });
-    const hasActiveOrPending = allShifts.some(s => s.status === 'active' || s.status === 'pending_review');
-    await VaultShiftModel.updateOne(
-      { _id: cashierShift.vaultShiftId },
-      { canClose: !hasActiveOrPending }
-    );
-
-    // Audit
-    await logActivity({
-      userId,
-      username,
-      action: 'update',
-      details: `Force closed shift for cashier ${cashierId}. Physical: ${physicalCount}, Expected: ${expectedBalance}`,
-      metadata: {
-        resource: 'cashier_shift',
-        resourceId: cashierShift._id,
+      const {
         cashierId,
-        forceClosedBy: userId,
-        notes
-      }
-    });
+        shiftId,
+        locationId,
+        denominations,
+        physicalCount,
+        notes,
+      } = await request.json();
+      if (
+        !locationId ||
+        physicalCount === undefined ||
+        (!cashierId && !shiftId)
+      )
+        return NextResponse.json(
+          { success: false, error: 'Missing fields' },
+          { status: 400 }
+        );
 
-    return NextResponse.json({ success: true, message: 'Shift force closed successfully' });
-  } catch (error) {
-    console.error('Error force closing cashier shift:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
-  }
+      const activeStatuses = ['active', 'pending_start'];
+      const cashierShift = shiftId
+        ? await CashierShiftModel.findOne({
+            _id: shiftId,
+            status: { $in: activeStatuses },
+          })
+        : await CashierShiftModel.findOne({
+            cashierId,
+            locationId,
+            status: { $in: activeStatuses },
+          });
+      if (!cashierShift)
+        return NextResponse.json(
+          { success: false, error: 'No active shift found' },
+          { status: 404 }
+        );
+
+      const expected = calculateExpectedBalance(
+        cashierShift.openingBalance,
+        cashierShift.payoutsTotal,
+        cashierShift.floatAdjustmentsTotal
+      );
+      const now = new Date(),
+        discrepancy = physicalCount - expected;
+
+      cashierShift.status = 'pending_review';
+      cashierShift.closedAt = now;
+      cashierShift.cashierEnteredBalance = physicalCount;
+      cashierShift.cashierEnteredDenominations = denominations;
+      cashierShift.expectedClosingBalance = expected;
+      cashierShift.discrepancy = discrepancy;
+      cashierShift.discrepancyResolved = false;
+      cashierShift.vmReviewNotes = `Force closed by VM (${payload.username}). Notes: ${notes || 'No notes'}`;
+      cashierShift.updatedAt = now;
+      await cashierShift.save();
+
+      const allShifts = await CashierShiftModel.find({
+        vaultShiftId: cashierShift.vaultShiftId,
+      });
+      const hasBlocking = allShifts.some(
+        s => s.status === 'active' || s.status === 'pending_review'
+      );
+      await VaultShiftModel.updateOne(
+        { _id: cashierShift.vaultShiftId },
+        { canClose: !hasBlocking }
+      );
+
+      await logActivity({
+        userId: payload._id,
+        username: payload.username as string,
+        action: 'update',
+        details: `Force closed shift for ${cashierId}. Phys: ${physicalCount}, Exp: ${expected}`,
+        metadata: { resourceId: cashierShift._id, cashierId, notes },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: 'Shift force closed',
+      });
+    } catch (e: unknown) {
+      console.error('[Cashier Force Close] Error:', e);
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      return NextResponse.json(
+        { success: false, error: message },
+        { status: 500 }
+      );
+    }
+  });
 }

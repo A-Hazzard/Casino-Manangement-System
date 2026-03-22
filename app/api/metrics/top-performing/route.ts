@@ -17,7 +17,7 @@ import { convertTopPerformingCurrency } from '@/app/api/lib/helpers/currency/top
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
-import { getLicenceeObjectId } from '@/lib/utils/licencee';
+import { resolveLicenceeId } from '@/lib/utils/licencee';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -47,15 +47,14 @@ export async function GET(req: NextRequest) {
       (searchParams.get('timePeriod') as TimePeriod) || '7d';
 
     // Raw licencee from query (name, id, or "all")
-    const rawLicencee =
-      searchParams.get('licencee') || null;
+    const rawLicencee = searchParams.get('licencee') || null;
 
     // Normalize licencee for DB filtering:
-    // - Map known names (TTG, Cabana, etc.) → ObjectId
+    // - Resolve known names (TTG, Cabana, etc.) → ID
     // - Treat "all" / empty as undefined (no filter)
     let licenceeForFilter: string | undefined;
     if (rawLicencee && rawLicencee !== 'all') {
-      licenceeForFilter = getLicenceeObjectId(rawLicencee) || rawLicencee;
+      licenceeForFilter = resolveLicenceeId(rawLicencee) || rawLicencee;
     }
 
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;

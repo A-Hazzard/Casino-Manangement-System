@@ -1,95 +1,58 @@
 /**
  * MongoDB Types
- * MongoDB and Mongoose-specific types for database operations.
- *
- * Includes types for:
- * - Database query filters (date range, regex, arrays, expressions)
- * - Machine/cabinet documents and queries
- * - Cabinet details and query results
- * - Transformed cabinet data for API responses
- * - SAS meters and collection history
- * Re-exports shared database types from shared/types.
+ * Re-exports model document types from backend for frontend usage.
  */
 import type {
+  SasMeters,
   DateRangeFilter,
   MongoDBQueryValue,
   QueryFilter,
-  SasMeters,
-} from '@/shared/types';
+} from '@/shared/types/common';
 
-// Re-export shared database types for convenience
+// Re-export shared database types
 export type { DateRangeFilter, MongoDBQueryValue, QueryFilter };
 
-// Type for machine documents from MongoDB
-export type MachineDocument = {
-  _id: string;
-  machineId?: string;
-  gamingLocation?: string;
-  serialNumber?: string;
-  relayId?: string;
-  smibBoard?: string;
-  game?: string;
-  cabinetType?: string;
-  assetStatus?: string;
-  lastActivity?: Date;
-  sasMeters?: SasMeters;
-  gameConfig?: {
-    accountingDenomination?: number;
-    theoreticalRtp?: number;
-    maxBet?: string;
-    payTableId?: string;
-  };
-  smibVersion?: {
-    firmware?: string;
-    version?: string;
-  };
-  collectionMeters?: {
-    metersIn?: number;
-    metersOut?: number;
-  };
-  collectionMetersHistory?: unknown[];
-  deletedAt?: Date | null;
-  [key: string]: unknown; // Use unknown instead of any
-};
+// Re-export model document types from backend
+export type {
+  MachineDocument,
+  GamingLocationDocument,
+  LicenceeDocument,
+  MeterDocument,
+  MemberDocument,
+  UserDocument,
+  CollectionDocument,
+  CollectionReportDocument,
+  MachineSessionDocument,
+  MachineEventDocument,
+  ActivityLogDocument,
+  VaultShiftDocument,
+  VaultTransactionDocument,
+  VaultCollectionSessionDocument,
+  VaultNotificationDocument,
+  CashierShiftDocument,
+  CashDeskPayoutDocument,
+  PayoutDocument,
+  FloatRequestDocument,
+  FloatRequestsDocument,
+  ShiftDocument,
+  SoftCountDocument,
+  DenominationDocument,
+  InterLocationTransferDocument,
+  MovementRequestDocument,
+  SchedulerDocument,
+  FeedbackDocument,
+  FirmwareDocument,
+  CountryDocument,
+  AcceptedBillDocument,
+} from '@/app/api/lib/types/models';
 
-// Type for location documents from MongoDB
-export type LocationDocument = {
-  _id: string;
-  name: string;
-  country?: string;
-  address?: {
-    street?: string;
-    city?: string;
-    state?: string;
-    postalCode?: string;
-    country?: string;
-  };
-  rel?: {
-    licencee?: string;
-    [key: string]: unknown;
-  };
-  profitShare?: number;
-  collectionBalance?: number;
-  previousCollectionTime?: Date;
-  gameDayOffset?: number;
-  isLocalServer?: boolean;
-  geoCoords?: {
-    latitude?: number;
-    longitude?: number;
-    longtitude?: number;
-  };
-  membershipEnabled?: boolean;
-  enableMembership?: boolean;
-  locationMembershipSettings?: Record<string, unknown>;
-  status?: string;
-  noSMIBLocation?: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-  deletedAt?: Date | null;
-  [key: string]: unknown;
-};
+// Alias for backward compatibility
+export type { GamingLocationDocument as LocationDocument } from '@/app/api/lib/types/models';
 
-// Type for the transformed cabinet data returned by API
+// Re-export SasMeters for convenience
+export type { SasMeters };
+
+// Transformed cabinet data returned by API
 export type TransformedCabinet = {
   _id: string;
   locationId: string;
@@ -133,4 +96,3 @@ export type TransformedCabinet = {
   };
   _reviewerMultiplier?: number | null;
 };
-

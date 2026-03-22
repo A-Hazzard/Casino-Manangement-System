@@ -20,7 +20,7 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import type { TimePeriod } from '@/app/api/lib/types';
-import { getLicenceeObjectId } from '@/lib/utils/licencee';
+import { resolveLicenceeId } from '@/lib/utils/licencee';
 import { PipelineStage } from 'mongoose';
 
 /**
@@ -34,7 +34,7 @@ export async function fetchLocationsWithMachines(
 ): Promise<{ locations: unknown[] }> {
   const normalizedLicencee =
     rawLicenceeParam && rawLicenceeParam !== 'all'
-      ? getLicenceeObjectId(rawLicenceeParam) || rawLicenceeParam
+      ? resolveLicenceeId(rawLicenceeParam) || rawLicenceeParam
       : rawLicenceeParam;
 
   // Get current user and their permissions
@@ -298,7 +298,8 @@ export async function determineAllowedLocationIds(
       throw new Error('Database connection failed');
     }
 
-    const { GamingLocations } = await import('@/app/api/lib/models/gaminglocations');
+    const { GamingLocations } =
+      await import('@/app/api/lib/models/gaminglocations');
     const managerLocations = await GamingLocations.find(
       {
         $or: [
@@ -310,7 +311,7 @@ export async function determineAllowedLocationIds(
             $or: [
               { deletedAt: null },
               { deletedAt: { $lt: new Date('2025-01-01') } },
-            ]
+            ],
           },
         ],
       },
@@ -344,7 +345,8 @@ export async function getLocationNamesFromIds(
     throw new Error('Database connection failed');
   }
 
-  const { GamingLocations } = await import('@/app/api/lib/models/gaminglocations');
+  const { GamingLocations } =
+    await import('@/app/api/lib/models/gaminglocations');
   const locations = await GamingLocations.find(
     {
       _id: { $in: locationIds },
@@ -354,7 +356,7 @@ export async function getLocationNamesFromIds(
     .lean()
     .exec();
 
-  return locations.map((loc) => String(loc.name));
+  return locations.map(loc => String(loc.name));
 }
 
 /**
@@ -383,7 +385,7 @@ export async function getMonthlyCollectionReportSummary(
     if (Array.isArray(locationFilter)) {
       match.$or = [
         { location: { $in: locationFilter } },
-        { locationName: { $in: locationFilter } }
+        { locationName: { $in: locationFilter } },
       ];
     } else {
       match.$or = [
@@ -393,9 +395,9 @@ export async function getMonthlyCollectionReportSummary(
             $regex: new RegExp(
               `^${locationFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
               'i'
-            )
-          }
-        }
+            ),
+          },
+        },
       ];
     }
   }
@@ -414,7 +416,15 @@ export async function getMonthlyCollectionReportSummary(
         },
       },
       { $unwind: '$locationDetails' },
-      { $match: { $or: [{ 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  }], ...match } },
+      {
+        $match: {
+          $or: [
+            { 'locationDetails.rel.licencee': licencee },
+            { 'locationDetails.rel.licencee': licencee },
+          ],
+          ...match,
+        },
+      },
       {
         $group: {
           _id: null,
@@ -488,7 +498,7 @@ export async function getMonthlyCollectionReportByLocation(
     if (Array.isArray(locationFilter)) {
       match.$or = [
         { location: { $in: locationFilter } },
-        { locationName: { $in: locationFilter } }
+        { locationName: { $in: locationFilter } },
       ];
     } else {
       match.$or = [
@@ -498,9 +508,9 @@ export async function getMonthlyCollectionReportByLocation(
             $regex: new RegExp(
               `^${locationFilter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
               'i'
-            )
-          }
-        }
+            ),
+          },
+        },
       ];
     }
   }
@@ -519,7 +529,15 @@ export async function getMonthlyCollectionReportByLocation(
         },
       },
       { $unwind: '$locationDetails' },
-      { $match: { $or: [{ 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  }], ...match } },
+      {
+        $match: {
+          $or: [
+            { 'locationDetails.rel.licencee': licencee },
+            { 'locationDetails.rel.licencee': licencee },
+          ],
+          ...match,
+        },
+      },
       {
         $group: {
           _id: '$locationName',
@@ -553,15 +571,17 @@ export async function getMonthlyCollectionReportByLocation(
 
   // If we have a specific location filter, ensure all filtered locations appear in the results
   if (locationFilter && locationFilter !== 'all') {
-    const filterArray = Array.isArray(locationFilter) ? locationFilter : [locationFilter];
+    const filterArray = Array.isArray(locationFilter)
+      ? locationFilter
+      : [locationFilter];
 
     // Fetch the names of the locations in the filter to ensure we show them accurately
-    const filteredLocations = await GamingLocations.find({
-      $or: [
-        { _id: { $in: filterArray } },
-        { name: { $in: filterArray } }
-      ]
-    }, { name: 1 }).lean();
+    const filteredLocations = await GamingLocations.find(
+      {
+        $or: [{ _id: { $in: filterArray } }, { name: { $in: filterArray } }],
+      },
+      { name: 1 }
+    ).lean();
 
     const existingNames = new Set(result.map(r => r._id));
 
@@ -572,7 +592,7 @@ export async function getMonthlyCollectionReportByLocation(
           drop: undefined,
           win: undefined,
           gross: undefined,
-          sasGross: undefined
+          sasGross: undefined,
         });
       }
     }
@@ -597,4 +617,3 @@ export async function getMonthlyCollectionReportByLocation(
     sasGross: formatSmartDecimal(row.sasGross),
   }));
 }
-

@@ -61,10 +61,7 @@ export default function CabinetsPageContent() {
   // ============================================================================
   const cabinetsPageData = useCabinetsPageData();
   const { user } = useUserStore();
-  const {
-    setSelectedLicencee,
-    activeMetricsFilter,
-  } = useDashBoardStore();
+  const { setSelectedLicencee, activeMetricsFilter } = useDashBoardStore();
 
   const {
     activeSection,
@@ -109,14 +106,16 @@ export default function CabinetsPageContent() {
     transformCabinet,
   } = cabinetsPageData;
 
-  const userRoles = (user?.roles || [])
-    .filter((r): r is string => typeof r === 'string');
-  const isTechnicianOnly = userRoles.includes('technician') && !userRoles.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
-  const isReviewerOnly = userRoles.length === 1 && userRoles.includes('reviewer');
-
-  const shouldHideFinancials = (_u: { roles?: string[] } | null | undefined) => {
-    return false;
-  };
+  const userRoles = (user?.roles || []).filter(
+    (r): r is string => typeof r === 'string'
+  );
+  const isTechnicianOnly =
+    userRoles.includes('technician') &&
+    !userRoles.some(r =>
+      ['admin', 'developer', 'manager', 'location admin'].includes(r)
+    );
+  const isReviewerOnly =
+    userRoles.length === 1 && userRoles.includes('reviewer');
 
   // ============================================================================
   // Permission Checks
@@ -142,7 +141,10 @@ export default function CabinetsPageContent() {
       {/* Modal Components */}
       <CabinetsEditCabinetModal onCabinetUpdated={handleRefresh} />
       <CabinetsDeleteCabinetModal onCabinetDeleted={handleRefresh} />
-      <CabinetsNewCabinetModal locations={locations} onCreated={handleRefresh} />
+      <CabinetsNewCabinetModal
+        locations={locations}
+        onCreated={handleRefresh}
+      />
       <NewMovementRequestModal
         isOpen={isNewMovementOpen}
         onClose={() => setIsNewMovementOpen(false)}
@@ -199,9 +201,12 @@ export default function CabinetsPageContent() {
           <CabinetsNavigation
             tabs={CABINET_TABS_CONFIG.filter(tab => {
               if (tab.id === 'movement') {
-                const userRoles = (user?.roles || [])
-                  .filter((r): r is string => typeof r === 'string');
-                return !userRoles.some((role: string) => EXCLUDED_MOVEMENT_ROLES.includes(role));
+                const userRoles = (user?.roles || []).filter(
+                  (r): r is string => typeof r === 'string'
+                );
+                return !userRoles.some((role: string) =>
+                  EXCLUDED_MOVEMENT_ROLES.includes(role)
+                );
               }
               return true;
             })}
@@ -230,9 +235,7 @@ export default function CabinetsPageContent() {
               <div className="mb-6">
                 <ReviewerDebugPanel
                   rawValues={
-                    metricsTotals?._raw || 
-                    financialTotals?._raw || 
-                    null
+                    metricsTotals?._raw || financialTotals?._raw || null
                   }
                   finalValues={metricsTotals || financialTotals}
                   multiplier={user?.multiplier || 0.05}
@@ -241,7 +244,7 @@ export default function CabinetsPageContent() {
             )}
 
             {/* Financial Metrics Summary Cards */}
-            {!shouldHideFinancials(user) && (
+            {false && (
               <div className="mb-6 w-full max-w-full">
                 <FinancialMetricsCards
                   totals={metricsTotals || financialTotals}
@@ -253,41 +256,44 @@ export default function CabinetsPageContent() {
             )}
 
             {/* Performance Visualization Chart */}
-            {!shouldHideFinancials(user) && (
+            {false && (
               <div className="mb-6 w-full max-w-full">
                 {/* Granularity Selector for Last 30 Days and Quarterly */}
-                {((activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days' || activeMetricsFilter === 'Quarterly') && !loadingChart) && (
-                  <div className="mb-3 flex items-center justify-end gap-2">
-                    <label
-                      htmlFor="chart-granularity-cabinets"
-                      className="text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      Granularity:
-                    </label>
-                    <select
-                      id="chart-granularity-cabinets"
-                      value={cabinetsPageData.chartGranularity}
-                      onChange={e =>
-                        cabinetsPageData.setChartGranularity(
-                          e.target.value as 'daily' | 'weekly' | 'monthly'
-                        )
-                      }
-                      className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
-                    >
-                      {activeMetricsFilter === 'Quarterly' ? (
-                        <>
-                          <option value="monthly">Monthly</option>
-                          <option value="weekly">Weekly</option>
-                        </>
-                      ) : (
-                        <>
-                          <option value="daily">Daily</option>
-                          <option value="weekly">Weekly</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
-                )}
+                {(activeMetricsFilter === '30d' ||
+                  activeMetricsFilter === 'last30days' ||
+                  activeMetricsFilter === 'Quarterly') &&
+                  !loadingChart && (
+                    <div className="mb-3 flex items-center justify-end gap-2">
+                      <label
+                        htmlFor="chart-granularity-cabinets"
+                        className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        Granularity:
+                      </label>
+                      <select
+                        id="chart-granularity-cabinets"
+                        value={cabinetsPageData.chartGranularity}
+                        onChange={e =>
+                          cabinetsPageData.setChartGranularity(
+                            e.target.value as 'daily' | 'weekly' | 'monthly'
+                          )
+                        }
+                        className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                      >
+                        {activeMetricsFilter === 'Quarterly' ? (
+                          <>
+                            <option value="monthly">Monthly</option>
+                            <option value="weekly">Weekly</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+                  )}
                 <DashboardChart
                   loadingChartData={loadingChart}
                   chartData={chartData}
@@ -302,7 +308,9 @@ export default function CabinetsPageContent() {
               <div className="order-1">
                 {isTechnicianOnly ? (
                   <div className="flex h-10 items-center rounded-lg bg-blue-50 px-4 text-sm font-medium text-blue-700">
-                    <span className="mr-2 italic">Showing data within the last hour</span>
+                    <span className="mr-2 italic">
+                      Showing data within the last hour
+                    </span>
                   </div>
                 ) : (
                   <DateFilters
@@ -375,46 +383,47 @@ export default function CabinetsPageContent() {
         {/* ============================================================================
            Tab Content: SMIB Management
            ============================================================================ */}
-        {activeSection === 'smib' && (
-          isReviewerOnly ? (
+        {activeSection === 'smib' &&
+          (isReviewerOnly ? (
             <AccessRestricted sectionName="SMIB Management" />
           ) : (
             <CabinetsSMIBManagementTab refreshTrigger={refreshTrigger} />
-          )
-        )}
+          ))}
 
         {/* ============================================================================
            Tab Content: Movement Requests
            ============================================================================ */}
-        {activeSection === 'movement' && (
+        {activeSection === 'movement' &&
           (() => {
-            const userRoles = (user?.roles || [])
-              .filter((r): r is string => typeof r === 'string');
-            const isAuthorized = !userRoles.some((role: string) => EXCLUDED_MOVEMENT_ROLES.includes(role)) && !isReviewerOnly;
-            
+            const userRoles = (user?.roles || []).filter(
+              (r): r is string => typeof r === 'string'
+            );
+            const isAuthorized =
+              !userRoles.some((role: string) =>
+                EXCLUDED_MOVEMENT_ROLES.includes(role)
+              ) && !isReviewerOnly;
+
             if (!isAuthorized) {
               return <AccessRestricted sectionName="Movement Requests" />;
             }
-            
+
             return (
               <CabinetsMovementRequests
                 locations={locations}
                 refreshTrigger={refreshTrigger}
               />
             );
-          })()
-        )}
+          })()}
 
         {/* ============================================================================
            Tab Content: Firmware Management
            ============================================================================ */}
-        {activeSection === 'firmware' && (
-          isReviewerOnly ? (
+        {activeSection === 'firmware' &&
+          (isReviewerOnly ? (
             <AccessRestricted sectionName="Firmware Management" />
           ) : (
             <SMIBFirmwareSection refreshTrigger={refreshTrigger} />
-          )
-        )}
+          ))}
       </PageLayout>
     </>
   );

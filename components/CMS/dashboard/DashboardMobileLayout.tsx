@@ -26,20 +26,17 @@ import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards'
 import MachineStatusWidget from '@/components/shared/ui/MachineStatusWidget';
 import MapPreview from '@/components/shared/ui/MapPreview';
 import { RefreshButtonSkeleton } from '@/components/shared/ui/skeletons/ButtonSkeletons';
-import {
-    DashboardChartSkeleton,
-} from '@/components/shared/ui/skeletons/DashboardSkeletons';
-import type {
-    DashboardMobileLayoutProps,
-} from '@/lib/types/components';
-import { getLicenceeName } from '@/lib/utils/licencee';
+import { DashboardChartSkeleton } from '@/components/shared/ui/skeletons/DashboardSkeletons';
+import type { DashboardMobileLayoutProps } from '@/lib/types/components';
 import axios from 'axios';
 import { RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DashboardTopPerformingSection } from './sections/DashboardTopPerformingSection';
 
-export default function DashboardMobileLayout(props: DashboardMobileLayoutProps) {
+export default function DashboardMobileLayout(
+  props: DashboardMobileLayoutProps
+) {
   const router = useRouter();
   const [selectedMachine, setSelectedMachine] = useState<{
     machineId?: string;
@@ -57,10 +54,9 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const licenceeName =
-    getLicenceeName(props.selectedLicencee) ||
-    props.selectedLicencee ||
-    'any licencee';
-
+    props.selectedLicencee && props.selectedLicencee !== 'all'
+      ? props.selectedLicencee
+      : 'any licencee';
 
   const [machineStats, setMachineStats] = useState<{
     totalMachines: number;
@@ -167,7 +163,9 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
         loading={props.loadingTotals ?? props.loadingChartData}
         title="Total for all Locations and Machines"
         locationFiltered={false}
-        includeJackpot={props.gamingLocations?.some((loc: Record<string, unknown>) => loc.includeJackpot)}
+        includeJackpot={props.gamingLocations?.some(
+          (loc: Record<string, unknown>) => loc.includeJackpot
+        )}
       />
 
       {/* Chart Section */}
@@ -195,7 +193,8 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
                 }
                 className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
               >
-                {(props.activeMetricsFilter === '30d' || props.activeMetricsFilter === 'last30days') ? (
+                {props.activeMetricsFilter === '30d' ||
+                props.activeMetricsFilter === 'last30days' ? (
                   <>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
@@ -214,14 +213,22 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
             chartData={props.chartData}
             activeMetricsFilter={props.activeMetricsFilter}
             totals={props.totals}
-            granularity={props.chartGranularity as 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly' | undefined}
+            granularity={
+              props.chartGranularity as
+                | 'hourly'
+                | 'minute'
+                | 'daily'
+                | 'weekly'
+                | 'monthly'
+                | undefined
+            }
           />
         </>
       )}
 
       {/* Map Preview Section */}
       {/* Show skeleton while loading, otherwise show map preview */}
-      {props.loadingLocations ?? props.loadingChartData ? (
+      {(props.loadingLocations ?? props.loadingChartData) ? (
         <div className="relative w-full rounded-lg bg-container p-4 shadow-md">
           <div className="skeleton-bg mt-2 h-48 w-full animate-pulse rounded-lg"></div>
         </div>
@@ -306,4 +313,3 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
     </div>
   );
 }
-

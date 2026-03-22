@@ -31,13 +31,15 @@ const eslintConfig = [
       '@typescript-eslint': tseslint,
     },
     rules: {
-      // Basic rules to prevent major issues
-      'no-unused-vars': 'off', // Let TypeScript handle this
+      // No unused variables - strict enforcement
+      'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
+          argsIgnorePattern: '^_id$',
+          varsIgnorePattern: '^_id$',
+          caughtErrorsIgnorePattern: '^_id$',
+          destructuredArrayIgnorePattern: '^_id$',
         },
       ],
       'prefer-const': 'error',

@@ -15,12 +15,9 @@
  * @module app/api/machines/aggregation/route
  */
 
-import {
-  getUserAccessibleLicenceesFromToken,
-  getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenceeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { getUserAccessibleLicenceesFromToken, getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
@@ -54,13 +51,8 @@ import { NextRequest, NextResponse } from 'next/server';
  * 12. Return aggregated machine data
  */
 export async function GET(req: NextRequest) {
-  const startTime = Date.now();
-
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
+  return withApiAuth(req, async ({ user: userPayload, userRoles, isAdminOrDev }) => {
+    const startTime = Date.now();
 
     // ============================================================================
     // STEP 2: Parse query parameters
@@ -73,7 +65,6 @@ export async function GET(req: NextRequest) {
       ? locationIdsParam.split(',').filter(id => id && id !== 'all' && id !== 'null')
       : [];
 
-
     // Support multiple game types
     const gameTypesParam = searchParams.get('gameType') || searchParams.get('gameTypes');
     const selectedGameTypes = gameTypesParam
@@ -81,12 +72,9 @@ export async function GET(req: NextRequest) {
       : [];
 
     const searchTerm = searchParams.get('search')?.trim() || '';
-    // Support both 'licencee' and 'licencee' spelling for backwards compatibility
-    const licencee =
-      searchParams.get('licencee');
+    const licencee = searchParams.get('licencee');
     let timePeriod = searchParams.get('timePeriod');
-    const displayCurrency =
-      (searchParams.get('currency') as CurrencyCode) || 'USD';
+    const displayCurrency = (searchParams.get('currency') as CurrencyCode) || 'USD';
     const rawOnlineStatus = searchParams.get('onlineStatus') || 'all';
     const onlineStatus = rawOnlineStatus.toLowerCase();
 
@@ -94,14 +82,11 @@ export async function GET(req: NextRequest) {
     const pageParam = searchParams.get('page');
     const limitParam = searchParams.get('limit');
     const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1;
-    const limit = limitParam
-      ? Math.max(1, parseInt(limitParam, 10))
-      : undefined;
+    const limit = limitParam ? Math.max(1, parseInt(limitParam, 10)) : undefined;
 
     // ============================================================================
     // STEP 3: Validate timePeriod parameter
     // ============================================================================
-    // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
       return NextResponse.json(
         { error: 'timePeriod parameter is required' },
@@ -115,16 +100,9 @@ export async function GET(req: NextRequest) {
     // STEP 4: Get user's accessible licencees and permissions
     // ============================================================================
     const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
-    const userPayload = await getUserFromServer();
-    const userRoles = (userPayload?.roles as string[]) || [];
     let userLocationPermissions: string[] = [];
-    if (
-      Array.isArray(
-        (userPayload as { assignedLocations?: string[] })?.assignedLocations
-      )
-    ) {
-      userLocationPermissions = (userPayload as { assignedLocations: string[] })
-        .assignedLocations;
+    if (Array.isArray((userPayload as { assignedLocations?: string[] })?.assignedLocations)) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] }).assignedLocations;
     }
 
     // Get allowed location IDs (intersection of licencee + location permissions, respecting roles)
@@ -272,8 +250,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, data: [] });
     }
 
-    // Fetch licencee settings for all locations in the query
-    const licenceeIds = Array.from(new Set(locations.map(loc => loc.rel?.licencee).filter(Boolean)));
+    // Fetch licencee settings for all locations in the query.
+    // rel?.licencee is string[] per the schema — flatten to individual IDs.
+    const rawLicenceeRels = locations.map(loc => loc.rel?.licencee).filter(Boolean);
+    const licenceeIds = Array.from(new Set(
+      rawLicenceeRels.flatMap(rel => Array.isArray(rel) ? rel : [rel as string])
+    ));
     const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean();
     const licenceeIncludeJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.includeJackpot]));
 
@@ -289,7 +271,10 @@ export async function GET(req: NextRequest) {
         return {
           _id: String(locRecord._id),
           gameDayOffset: (locRecord.gameDayOffset as number) ?? 8, // Default to 8 AM Trinidad time
-          includeJackpot: licenceeIncludeJackpotMap.get(String(rel?.licencee)) || false,
+          includeJackpot: (() => {
+            const licId = Array.isArray(rel?.licencee) ? rel?.licencee[0] : rel?.licencee;
+            return licId ? (licenceeIncludeJackpotMap.get(String(licId)) || false) : false;
+          })(),
         };
       }),
       timePeriodForGamingDay,
@@ -527,22 +512,26 @@ export async function GET(req: NextRequest) {
             gross: 0, // Add gross to default metrics
           };
 
-          const includeJackpot = licenceeIncludeJackpotMap.get(String(location.rel?.licencee)) || false;
+          const licenceeId7d = Array.isArray(location.rel?.licencee) ? location.rel.licencee[0] : location.rel?.licencee;
+          const includeJackpot = licenceeId7d ? (licenceeIncludeJackpotMap.get(String(licenceeId7d)) || false) : false;
 
           const moneyIn = (metrics.moneyIn || 0);
           const rawMoneyOut = (metrics.moneyOut || 0);
           const jackpot = (metrics.jackpot || 0);
 
-          // Apply includeJackpot logic for Money Out display (Low Gross)
+          // rawMoneyOut (movement.totalCancelledCredits) is the base cancelled credits without jackpot.
+          // Add jackpot only when includeJackpot=true for this licencee.
           const moneyOut = rawMoneyOut + (includeJackpot ? jackpot : 0);
-          const gross = moneyIn - rawMoneyOut - jackpot;
+          const gross = moneyIn - moneyOut;
+          const netGross = moneyIn - rawMoneyOut - jackpot;
 
+         
           // Get serialNumber with fallback to custom.name
           const m = machine as { serialNumber?: string; custom?: { name?: string }; Custom?: { name?: string } };
           const serialNumber = m.serialNumber?.trim() || '';
           const customName = (m.custom?.name || m.Custom?.name)?.trim() || '';
           const finalSerialNumber = serialNumber || customName || '';
-
+      
           allMachines.push({
             _id: machineId,
             locationId: locationId,
@@ -578,7 +567,9 @@ export async function GET(req: NextRequest) {
               : false,
             moneyIn,
             moneyOut,
+            cancelledCredits: rawMoneyOut, // raw base (no jackpot) — used by currency converter
             gross,
+            netGross,
             jackpot: jackpot || 0,
             coinIn: metrics.coinIn || 0,
             coinOut: metrics.coinOut || 0,
@@ -867,15 +858,15 @@ export async function GET(req: NextRequest) {
               meterCount: 0,
             };
 
-            const includeJackpot = licenceeIncludeJackpotMap.get(String(location.rel?.licencee)) || false;
+            const licenceeIdBatch = Array.isArray(location.rel?.licencee) ? location.rel.licencee[0] : location.rel?.licencee;
+            const includeJackpot = licenceeIdBatch ? (licenceeIncludeJackpotMap.get(String(licenceeIdBatch)) || false) : false;
 
             const moneyIn = (metrics.moneyIn || 0);
             const rawMoneyOut = (metrics.moneyOut || 0);
             const jackpot = (metrics.jackpot || 0);
 
-            // Apply new Money Out logic: if includeJackpot is ENABLED (Low Gross), 
-            // moneyOut = Net Cancelled + Jackpot (Total payout)
-            // IF includeJackpot is DISABLED (High Gross), we keep as Net Payout
+            // rawMoneyOut (movement.totalCancelledCredits) is the base cancelled credits without jackpot.
+            // Add jackpot only when includeJackpot=true for this licencee.
             const moneyOut = rawMoneyOut + (includeJackpot ? jackpot : 0);
 
             const coinIn = (metrics.coinIn || 0);
@@ -883,6 +874,7 @@ export async function GET(req: NextRequest) {
             const gamesPlayed = metrics.gamesPlayed || 0;
             const gamesWon = metrics.gamesWon || 0;
             const gross = moneyIn - moneyOut;
+            const netGross = moneyIn - rawMoneyOut - jackpot; // True profit (always subtracts jackpot)
 
             // Get serialNumber with fallback to custom.name
             const machineRecord = machine as Record<string, unknown>;
@@ -925,8 +917,9 @@ export async function GET(req: NextRequest) {
               timePeriod: timePeriod,
               moneyIn,
               moneyOut,
-              cancelledCredits: moneyOut,
+              cancelledCredits: rawMoneyOut, // raw base (no jackpot) — used by currency converter
               gross,
+              netGross,
               jackpot,
               coinIn,
               coinOut,
@@ -1032,13 +1025,6 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 10: Apply currency conversion if needed
     // ============================================================================
-    // Get current user's role to determine if currency conversion should apply
-    const currentUser = await getUserFromServer();
-    const currentUserRoles = (currentUser?.roles as string[]) || [];
-    const isAdminOrDev =
-      currentUserRoles.includes('admin') ||
-      currentUserRoles.includes('developer');
-
     // Currency conversion ONLY for Admin/Developer when viewing "All Licencees"
     // Managers and other users ALWAYS see native currency (TTD for TTG, GYD for Cabana, etc.)
     if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
@@ -1126,10 +1112,8 @@ export async function GET(req: NextRequest) {
           (machineRecord.moneyIn as number) || 0,
           nativeCurrency
         );
-        const moneyOutUSD = convertToUSD(
-          (machineRecord.moneyOut as number) || 0,
-          nativeCurrency
-        );
+        // Use cancelledCredits (rawMoneyOut = base only, no jackpot) as the conversion base.
+        // moneyOut is re-derived below by conditionally adding jackpot.
         const cancelledCreditsUSD = convertToUSD(
           (machineRecord.cancelledCredits as number) || 0,
           nativeCurrency
@@ -1148,15 +1132,16 @@ export async function GET(req: NextRequest) {
         );
 
         const moneyIn = convertFromUSD(moneyInUSD, displayCurrency);
-        const baseMoneyOut = convertFromUSD(moneyOutUSD, displayCurrency);
+        // machine.moneyOut coming in already conditionally includes jackpot (set in batch/sequential step).
+        // machine.cancelledCredits = rawMoneyOut (base only, no jackpot).
+        // Re-derive moneyOut from the base so we don't double-add jackpot.
+        const baseMoneyOut = convertFromUSD(cancelledCreditsUSD, displayCurrency); // raw base, no jackpot
         const jackpot = convertFromUSD(jackpotUSD, displayCurrency);
         const includeJackpot = (machineLicenceeId && licenceeIdToIncludeJackpot.get(machineLicenceeId.toString())) || false;
 
-        // Display Money Out includes jackpot if flag is enabled
+        // moneyOut = base + jackpot (if includeJackpot) — same pattern as batch/sequential
         const moneyOut = baseMoneyOut + (includeJackpot ? jackpot : 0);
-        // Gross is defined here as what's shown on primary cards (Drop - Displayed Out)
         const gross = moneyIn - moneyOut;
-        // netGross is always (Drop - Base Out - Jackpot), which is pure profit
         const netGross = moneyIn - baseMoneyOut - jackpot;
 
         return {
@@ -1361,18 +1346,6 @@ export async function GET(req: NextRequest) {
       console.warn(`[Machines Aggregation API] Completed in ${duration}ms`);
     }
     return NextResponse.json(response);
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Aggregation failed';
-    console.error(
-      `[Machines Aggregation API] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      { success: false, error: errorMessage, details: String(error) },
-      { status: 500 }
-    );
-  }
+  });
 }
 

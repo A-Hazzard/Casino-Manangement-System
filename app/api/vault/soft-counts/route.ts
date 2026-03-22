@@ -1,182 +1,130 @@
 /**
  * Soft Count API
- *
- * POST /api/vault/soft-counts
- *
- * Records a soft count (mid-day cash removal), creating a SoftCount record
- * and corresponding VaultTransaction.
- *
- * @module app/api/vault/soft-counts/route
  */
 
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { getAttributionDate } from '@/app/api/lib/helpers/vault/gamingDay';
-import { updateVaultShiftInventory, validateDenominationTotal } from '@/app/api/lib/helpers/vault/inventory';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import {
+  updateVaultShiftInventory,
+  validateDenominationTotal,
+} from '@/app/api/lib/helpers/vault/inventory';
 import { SoftCountModel } from '@/app/api/lib/models/softCount';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { generateMongoId } from '@/lib/utils/id';
-import type { CreateSoftCountRequest } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
-  try {
-    // ============================================================================
-    // STEP 1: Authentication & Authorization
-    // ============================================================================
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
+  return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
+    try {
+      const hasVMAccess = userRoles
+        .map(r => String(r).toLowerCase())
+        .some(role =>
+          ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
+        );
+      if (!hasVMAccess)
+        return NextResponse.json(
+          { success: false, error: 'Insufficient permissions' },
+          { status: 403 }
+        );
+
+      const { amount, denominations, notes, isEndOfDay } = await request.json();
+      if (!amount || !denominations)
+        return NextResponse.json(
+          { success: false, error: 'Missing required fields' },
+          { status: 400 }
+        );
+
+      const activeVaultShift = await VaultShiftModel.findOne({
+        vaultManagerId: userPayload._id,
+        status: 'active',
+      });
+
+      if (!activeVaultShift)
+        return NextResponse.json(
+          { success: false, error: 'No active vault shift' },
+          { status: 400 }
+        );
+
+      if (!validateDenominationTotal(amount, denominations))
+        return NextResponse.json(
+          { success: false, error: 'Denomination mismatch' },
+          { status: 400 }
+        );
+
+      const scId = await generateMongoId(),
+        txId = await generateMongoId();
+      const attrDate = await getAttributionDate(
+        activeVaultShift.openedAt,
+        activeVaultShift.locationId
       );
-    }
-    const vaultManagerId = userPayload._id as string;
-    const username = (userPayload.username || userPayload.emailAddress) as string;
-    const userRoles = (userPayload?.roles as string[]) || [];
-    const hasVMAccess = userRoles.some(role =>
-      ['developer', 'admin', 'manager', 'vault-manager'].includes(role.toLowerCase())
-    );
-    if (!hasVMAccess) {
-      return NextResponse.json(
-        { success: false, error: 'Insufficient permissions' },
-        { status: 403 }
-      );
-    }
 
-    // ============================================================================
-    // STEP 2: Parse and validate request body
-    // ============================================================================
-    const body: CreateSoftCountRequest = await request.json();
-    const { amount, denominations, notes, isEndOfDay } = body;
-
-    if (!amount || !denominations) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Database connection
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 4: Get active vault shift for location
-    // ============================================================================
-    const activeVaultShift = await VaultShiftModel.findOne({
-      vaultManagerId,
-      status: 'active',
-    });
-
-    if (!activeVaultShift) {
-      return NextResponse.json(
-        { success: false, error: 'No active vault shift found' },
-        { status: 400 }
-      );
-    }
-
-    const locationId = activeVaultShift.locationId;
-
-    // ============================================================================
-    // STEP 5: Create soft count record
-    // ============================================================================
-    const softCountId = await generateMongoId();
-    const attributionDate = await getAttributionDate(
-      activeVaultShift.openedAt,
-      activeVaultShift.locationId
-    );
-
-    const softCount = new SoftCountModel({
-      _id: softCountId,
-      locationId: activeVaultShift.locationId,
-      countedAt: attributionDate,
-      amount,
-      denominations,
-      countedBy: vaultManagerId,
-      transactionId: '', // Will be set after transaction creation
-      notes,
-      isEndOfDay: !!isEndOfDay,
-    });
-
-    // ============================================================================
-    // STEP 6.5: Validate Denomination Total
-    // ============================================================================
-    if (!validateDenominationTotal(amount, denominations)) {
-      return NextResponse.json(
-        { success: false, error: 'Denomination total does not match soft count amount' },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 6: Create vault transaction
-    // ============================================================================
-    const transactionId = await generateMongoId();
-    softCount.transactionId = transactionId;
-
-    const vaultTransaction = new VaultTransactionModel({
-      _id: transactionId,
-      locationId: activeVaultShift.locationId,
-      timestamp: attributionDate,
-      type: 'soft_count',
-      from: { type: 'vault' },
-      to: { type: 'external' }, // Removed from vault
-      amount,
-      denominations,
-      vaultBalanceBefore:
-        activeVaultShift.closingBalance || activeVaultShift.openingBalance,
-      vaultBalanceAfter:
-        (activeVaultShift.closingBalance || activeVaultShift.openingBalance) -
+      const softCount = new SoftCountModel({
+        _id: scId,
+        locationId: activeVaultShift.locationId,
+        countedAt: attrDate,
         amount,
-      vaultShiftId: activeVaultShift._id,
-      performedBy: vaultManagerId,
-      notes: `Soft count removal${notes ? `: ${notes}` : ''}`,
-    });
-
-    // ============================================================================
-    // STEP 7: Save records
-    // ============================================================================
-    await softCount.save();
-    await vaultTransaction.save();
-
-    // ============================================================================
-    // STEP 8: Update vault shift balance & inventory
-    // ============================================================================
-    await updateVaultShiftInventory(activeVaultShift, amount, denominations, false);
-
-    // ============================================================================
-    // STEP 9: Audit Activity
-    // ============================================================================
-    await logActivity({
-      userId: vaultManagerId,
-      username,
-      action: 'create',
-      details: `Recorded soft count removal: $${amount}`,
-      metadata: {
-        resource: 'vault',
-        resourceId: locationId,
-        transactionId,
+        denominations,
+        countedBy: userPayload._id,
+        transactionId: txId,
         notes,
-      },
-    });
+        isEndOfDay: !!isEndOfDay,
+      });
 
-    // ============================================================================
-    // STEP 10: Return success response
-    // ============================================================================
-    return NextResponse.json({
-      success: true,
-      softCount,
-      transaction: vaultTransaction,
-    });
-  } catch (error) {
-    console.error('Error creating soft count:', error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+      const vaultTransaction = new VaultTransactionModel({
+        _id: txId,
+        locationId: activeVaultShift.locationId,
+        timestamp: attrDate,
+        type: 'soft_count',
+        from: { type: 'vault' },
+        to: { type: 'external' },
+        amount,
+        denominations,
+        vaultBalanceBefore:
+          activeVaultShift.closingBalance || activeVaultShift.openingBalance,
+        vaultBalanceAfter:
+          (activeVaultShift.closingBalance || activeVaultShift.openingBalance) -
+          amount,
+        vaultShiftId: activeVaultShift._id,
+        performedBy: userPayload._id,
+        notes: `Soft count removal${notes ? `: ${notes}` : ''}`,
+      });
+
+      await softCount.save();
+      await vaultTransaction.save();
+      await updateVaultShiftInventory(
+        activeVaultShift,
+        amount,
+        denominations,
+        false
+      );
+
+      await logActivity({
+        userId: userPayload._id,
+        username: userPayload.username || userPayload.emailAddress,
+        action: 'create',
+        details: `Recorded soft count removal: $${amount}`,
+        metadata: {
+          resource: 'vault',
+          resourceId: activeVaultShift.locationId,
+          transactionId: txId,
+          notes,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        softCount,
+        transaction: vaultTransaction,
+      });
+    } catch (e: unknown) {
+      console.error('[SoftCount POST] Error:', e);
+      const message = e instanceof Error ? e.message : 'Unknown error';
+      return NextResponse.json(
+        { success: false, error: message },
+        { status: 500 }
+      );
+    }
+  });
 }

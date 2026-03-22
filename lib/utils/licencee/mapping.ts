@@ -1,12 +1,11 @@
 /**
  * Licencee Mapping Utilities
  *
- * Utility functions for converting between licencee names and ObjectIds.
+ * Utility functions for resolving licencee names to IDs.
  *
  * Features:
- * - Licencee name to ObjectId conversion
- * - ObjectId to licencee name conversion (reverse lookup)
- * - Handles special cases (ObjectId format, "all" keyword)
+ * - Licencee name to ID resolution
+ * - Handles special cases ("all" keyword)
  * - Static mapping for known licencees
  */
 
@@ -14,8 +13,8 @@
 // Licencee Mapping Constants
 // ============================================================================
 /**
- * Licencee name to ObjectId mapping.
- * This mapping is used to convert licencee names to ObjectIds for API calls.
+ * Licencee name to ID mapping.
+ * This mapping is used to resolve licencee names to IDs for API calls.
  */
 const LICENCEE_MAPPING: Record<string, string> = {
   TTG: '9a5db2cb29ffd2d962fd1d91',
@@ -29,48 +28,15 @@ const LICENCEE_MAPPING: Record<string, string> = {
 // Licencee Conversion Functions
 // ============================================================================
 /**
- * Converts a licencee name to its corresponding ObjectId.
+ * Resolves a licencee name to its corresponding ID.
  *
  * @param licenceeName - The licencee name (e.g., "Cabana").
- * @returns The corresponding ObjectId or the original string if no mapping found.
+ * @returns The corresponding ID or the original string if no mapping found.
  */
-export function getLicenceeObjectId(
+export function resolveLicenceeId(
   licenceeName: string | undefined
 ): string | undefined {
   if (!licenceeName) return undefined;
-
-  // If it's already an ObjectId (24 character hex string), return as is
-  if (/^[0-9a-fA-F]{24}$/.test(licenceeName)) {
-    return licenceeName;
-  }
-
-  // If it's "all", return as is (special case)
-  if (licenceeName === 'all') {
-    return licenceeName;
-  }
-
-  // Look up the mapping
+  if (licenceeName === 'all') return licenceeName;
   return LICENCEE_MAPPING[licenceeName] || licenceeName;
-}
-
-/**
- * Converts a licencee ObjectId to its corresponding name
- * @param licenceeObjectId - The licencee ObjectId
- * @returns The corresponding name or the original string if no mapping found
- */
-export function getLicenceeName(
-  licenceeObjectId: string | undefined
-): string | undefined {
-  if (!licenceeObjectId) return undefined;
-
-  // If it's already a name (not an ObjectId), return as is
-  if (!/^[0-9a-fA-F]{24}$/.test(licenceeObjectId)) {
-    return licenceeObjectId;
-  }
-
-  // Reverse lookup in the mapping
-  const entries = Object.entries(LICENCEE_MAPPING);
-  const found = entries.find(([_, id]) => id === licenceeObjectId);
-
-  return found ? found[0] : licenceeObjectId;
 }
