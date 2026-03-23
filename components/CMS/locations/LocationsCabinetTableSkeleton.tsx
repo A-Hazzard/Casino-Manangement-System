@@ -1,4 +1,5 @@
-import React from 'react';
+
+import { FC } from 'react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 interface LocationsCabinetTableSkeletonProps {
@@ -9,7 +10,7 @@ interface LocationsCabinetTableSkeletonProps {
  * Locations Cabinet Table Skeleton Loader
  * Matches the exact structure of CabinetTable component
  */
-const LocationsCabinetTableSkeleton: React.FC<LocationsCabinetTableSkeletonProps> = ({
+const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
   includeJackpot = false,
 }) => (
   <div className="w-full overflow-x-auto bg-white shadow">

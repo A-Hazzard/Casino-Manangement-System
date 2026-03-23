@@ -15,6 +15,7 @@
  */
 'use client';
 
+import { ReactNode } from 'react';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
@@ -32,7 +33,7 @@ import { useState } from 'react';
 
 type VaultTransactionsMobileCardsProps = {
   transactions: ExtendedVaultTransaction[];
-  getTransactionTypeBadge: (type: VaultTransactionType) => React.ReactNode;
+  getTransactionTypeBadge: (type: VaultTransactionType) => ReactNode;
 };
 
 /**

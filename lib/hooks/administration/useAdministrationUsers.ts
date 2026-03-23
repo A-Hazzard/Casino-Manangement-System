@@ -7,6 +7,7 @@
 
 'use client';
 
+import { Dispatch, SetStateAction } from 'react';
 import { administrationUtils, fetchUsers } from '@/lib/helpers/administration';
 import { saveUserHelper } from '@/lib/helpers/administration/saveUserHelper';
 import { useUserStore } from '@/lib/store/userStore';
@@ -19,7 +20,7 @@ type UseAdministrationUsersProps = {
   selectedLicencee: string | null;
   activeSection: string;
   loadedSections: Set<string>;
-  setLoadedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
+  setLoadedSections: Dispatch<SetStateAction<Set<string>>>;
   mounted: boolean;
 };
 

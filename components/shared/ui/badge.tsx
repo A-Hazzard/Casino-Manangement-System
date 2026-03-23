@@ -7,9 +7,9 @@
  * - Rounded pill design
  * - Accessible focus states
  */
+import { HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
-import * as React from 'react';
 
 // ============================================================================
 // Badge Variants
@@ -37,7 +37,7 @@ const badgeVariants = cva(
   }
 );
 
-type BadgeProps = React.HTMLAttributes<HTMLDivElement> &
+type BadgeProps = HTMLAttributes<HTMLDivElement> &
   VariantProps<typeof badgeVariants>;
 
 function Badge({ className, variant, ...props }: BadgeProps) {

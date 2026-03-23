@@ -15,6 +15,7 @@
  */
 'use client';
 
+import { ReactNode } from 'react';
 import GlobalSidebarWrapper from '@/components/shared/layout/GlobalSidebarWrapper';
 import ProfileValidationGate from '@/components/shared/providers/ProfileValidationGate';
 import TempPasswordGate from '@/components/shared/providers/TempPasswordGate';
@@ -27,7 +28,7 @@ import { useMemo } from 'react';
 import { Toaster } from 'sonner';
 
 type LayoutWrapperProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export default function LayoutWrapper({

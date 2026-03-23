@@ -42,7 +42,40 @@ All contributors should adhere to the following rules, which are enforced throug
 
 ---
 
-## 2. TypeScript Discipline & Types Organization
+## 2. React Imports & Hook Usage
+
+**CRITICAL**: Never import the React namespace itself.
+
+**Rules:**
+- ❌ **NEVER** use `import React from 'react'` or `import * as React from 'react'`
+- ❌ **NEVER** use `React.useState`, `React.useEffect`, `React.FC`, etc.
+- ✅ **ALWAYS** import hooks and types directly: `import { useState, useEffect } from 'react'`
+- ✅ **ALWAYS** import types directly: `import { FC, ChangeEvent, ReactNode } from 'react'`
+
+**Correct patterns:**
+```typescript
+// ✅ CORRECT - Direct named imports
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { FC, ChangeEvent, ReactNode, ElementRef, ComponentPropsWithoutRef } from 'react';
+
+// ❌ INCORRECT - React namespace
+import React from 'react';
+import * as React from 'react';
+const [state, setState] = React.useState(); // Never do this
+```
+
+**Common hooks to import directly:**
+- Hooks: `useState`, `useEffect`, `useCallback`, `useMemo`, `useRef`, `useContext`, `useReducer`, `useLayoutEffect`, `useImperativeHandle`, `forwardRef`, `memo`, `Children`, `createContext`, `createElement`, `Fragment`
+- Types: `FC`, `FunctionComponent`, `Dispatch`, `SetStateAction`, `ChangeEvent`, `MouseEvent`, `KeyboardEvent`, `FormEvent`, `FocusEvent`, `RefObject`, `MutableRefObject`, `ReactElement`, `ReactNode`, `PropsWithChildren`, `DetailedHTMLProps`, `HTMLAttributes`, `InputHTMLAttributes`, `ButtonHTMLAttributes`, `ElementRef`, `ComponentPropsWithoutRef`, `ComponentProps`, `CSSProperties`, `ErrorInfo`, `DragEvent`, `SyntheticEvent`, `JSX`
+
+**Legacy cleanup scripts** (if needed):
+- `scripts/fix-all-react-usage.ts` - Replaces all `React.` usages with direct imports
+- `scripts/find-all-react-usage.ts` - Finds all remaining `React.` patterns
+- `scripts/remove-all-unused-react.ts` - Removes unused `import * as React`
+
+---
+
+## 3. TypeScript Discipline & Types Organization
 
 - **All type definitions must reside in the appropriate types directories:**
   - **Shared types** (used across frontend and backend) should be in [`shared/types/`](mdc:shared/types)

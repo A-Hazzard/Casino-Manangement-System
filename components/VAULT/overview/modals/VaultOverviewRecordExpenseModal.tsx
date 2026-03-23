@@ -15,6 +15,7 @@
  */
 'use client';
 
+import { ReactNode } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import MultiSelectDropdown from '@/components/shared/ui/common/MultiSelectDropdown';
 import SearchableSelect from '@/components/shared/ui/common/SearchableSelect';
@@ -127,7 +128,7 @@ export default function VaultOverviewRecordExpenseModal({
     workerName: '',
   });
 
-  const [machines, setMachines] = useState<{id: string, label: string, displayNode?: React.ReactNode}[]>([]);
+  const [machines, setMachines] = useState<{id: string, label: string, displayNode?: ReactNode}[]>([]);
   const [loadingMachines, setLoadingMachines] = useState(false);
 
   useEffect(() => {

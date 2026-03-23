@@ -6,6 +6,7 @@
 
 'use client';
 
+import { ChangeEvent, Dispatch, RefObject, SetStateAction } from 'react';
 import {
     Card,
     CardContent,
@@ -29,11 +30,11 @@ type ProfileBasicInfoProps = {
   onInputChange: (field: string, value: string) => void;
   onEditProfilePicture: () => void;
   onRemoveProfilePicture: () => void;
-  fileInputRef: React.RefObject<HTMLInputElement | null>;
-  onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  fileInputRef: RefObject<HTMLInputElement | null>;
+  onFileSelect: (event: ChangeEvent<HTMLInputElement>) => void;
   validationErrors: Record<string, string>;
-  setValidationErrors: React.Dispatch<
-    React.SetStateAction<Record<string, string>>
+  setValidationErrors: Dispatch<
+    SetStateAction<Record<string, string>>
   >;
 };
 

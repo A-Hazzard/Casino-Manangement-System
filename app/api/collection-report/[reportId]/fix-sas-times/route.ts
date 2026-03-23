@@ -10,34 +10,33 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../../lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { fixSasTimesForReport } from '@/app/api/lib/helpers/collectionReport/fixes/sasTimes';
 
 /**
  * Main POST handler for fixing SAS times
  *
  * Flow:
- * 1. Connect to database
- * 2. Extract and validate reportId from URL params
- * 3. Fix SAS times for report and future reports using helper
- * 4. Return detailed summary of fixes applied
+ * 1. Parse route parameters
+ * 2. Connect to database and authenticate user
+ * 3. Extract and validate reportId from URL path
+ * 4. Fix SAS times for report and future reports using helper
+ * 5. Return detailed summary of fixes applied
  */
 export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ reportId: string }> }
+  request: NextRequest
 ) {
-  const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const parts = pathname.split('/');
+  const reportId = parts[parts.length - 2];
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to the database
-    // ============================================================================
-    await connectDB();
+  return withApiAuth(request, async () => {
+    const startTime = Date.now();
 
-    // ============================================================================
-    // STEP 2: Extract and validate reportId from URL params
-    // ============================================================================
-    const { reportId } = await params;
+    try {
+      // ============================================================================
+      // STEP 3: Validate reportId
+      // ============================================================================
 
     if (!reportId) {
       const duration = Date.now() - startTime;
@@ -102,4 +101,5 @@ export async function POST(
       { status: 500 }
     );
   }
+  });
 }

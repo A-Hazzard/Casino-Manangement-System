@@ -49,12 +49,11 @@ import type { CurrencyCode } from '@/shared/types/currency';
 import { ExitIcon } from '@radix-ui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PanelLeft } from 'lucide-react';
-import { useParams, usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export default function Header({
   selectedLicencee,
-  pageTitle,
   setSelectedLicencee,
   hideLicenceeFilter,
   containerPaddingMobile,
@@ -65,7 +64,6 @@ export default function Header({
   // Hooks & State
   // ============================================================================
   const pathname = usePathname();
-  const params = useParams();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isOpen } = useSidebar();
@@ -345,13 +343,6 @@ export default function Header({
   // Check if the current path is related to reports
   const isReportsPath =
     pathname === '/reports' || pathname.startsWith('/reports/');
-
-
-  // Check if the current path is the specific location details page
-  const isSpecificLocationPath =
-    pathname.startsWith('/locations/') &&
-    params.slug &&
-    !pathname.includes('/details');
 
   return (
     <ClientOnly fallback={<div className="h-16 animate-pulse bg-gray-100" />}>
@@ -677,21 +668,7 @@ export default function Header({
             )}
           </AnimatePresence>
 
-          {/* Page Title Section: Dynamic page title and location information */}
-          {pageTitle && (
-            <div className="flex flex-col space-y-6 xl:flex-row">
-              <div className="flex flex-col space-y-2">
-                <h1 className="mb-2 text-2xl font-bold text-gray-800 sm:text-3xl">
-                  {pageTitle}
-                </h1>
-                {isSpecificLocationPath && (
-                  <p className="text-sm text-gray-600">
-                    Location ID: {params.slug}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+        
         </header>
       </div>
     </ClientOnly>

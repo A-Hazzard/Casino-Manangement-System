@@ -17,7 +17,6 @@
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Machine } from '@/app/api/lib/models/machines';
-import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
 import { generateMongoId } from '@/lib/utils/id';
 import type { GamingMachine } from '@/shared/types/entities';
 import { revalidatePath } from 'next/cache';
@@ -150,7 +149,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: convertResponseToTrinidadTime(result),
+      data: result,
     });
   });
 }
@@ -200,7 +199,7 @@ export async function POST(request: NextRequest) {
     revalidatePath('/machines');
 
     return NextResponse.json(
-      { success: true, data: convertResponseToTrinidadTime(newMachine) },
+      { success: true, data: newMachine },
       { status: 201 }
     );
   });
@@ -237,7 +236,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: convertResponseToTrinidadTime(updatedMachine),
+      data: updatedMachine,
     });
   });
 }

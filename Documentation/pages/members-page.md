@@ -15,6 +15,7 @@ CRM hub for player identity, loyalty management, and win/loss analytics. Provide
 ## 2. Data & API Architecture (By Section)
 
 ### 👥 Members List Tab
+
 The primary directory of all enrolled players.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -30,6 +31,7 @@ The primary directory of all enrolled players.
 - **Implementation**: `MembersListTab` using batch loading (50 per page).
 
 ### 📊 Members Summary Report Tab
+
 High-level registration and activity metrics for management reporting.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -42,6 +44,7 @@ High-level registration and activity metrics for management reporting.
 - **Implementation**: `MembersSummaryTab` component.
 
 ### 🗃️ Member 360 Profile (Details Panel)
+
 A full-screen profile view accessed by clicking any row in the Members List.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -88,7 +91,8 @@ A full-screen profile view accessed by clicking any row in the Members List.
 - **Skeleton UX**: `MembersListSkeleton` and `ProfileSkeleton` are used during data fetch.
 - **Debounced Search**: 350ms debounce on the search input.
 - **Lazy Loaded Tabs**: Session history and Win/Loss data are only fetched when the user navigates to that specific tab within the 360 Profile view.
-- **Performance**: Member cards use `React.memo` to prevent re-renders when the global licencee filter changes.
+- **Performance**: Member cards use `memo` to prevent re-renders when the global licencee filter changes.
 
 ---
+
 **Internal Document** - Engineering Team

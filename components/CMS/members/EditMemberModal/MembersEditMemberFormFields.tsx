@@ -14,6 +14,7 @@
 
 'use client';
 
+import { ChangeEvent } from 'react';
 import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -37,7 +38,7 @@ type MembersEditMemberFormFieldsProps = {
     username: boolean;
     email: boolean;
   };
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onInputChange: (e: ChangeEvent<HTMLInputElement>) => void;
   onLocationChange: (locationId: string) => void;
   onFieldTouch: (fieldName: string) => void;
 };

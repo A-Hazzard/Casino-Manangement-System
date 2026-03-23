@@ -69,6 +69,7 @@ globs: **/*
 - **No `any` allowed.** Use proper types from `shared/types`.
 - **Single Source of Truth:** Prefer types in `shared/types/` to eliminate frontend/backend duplication.
 - **Cast through unknown:** When casting Mongoose `.lean()` results to strict types, cast through `unknown` first to satisfy strict overlap checks.
+- **Never import React namespace:** Always use direct named imports: `import { useState, FC } from 'react'`
 
 ## 🚀 Key Modules Status (February 2026)
 

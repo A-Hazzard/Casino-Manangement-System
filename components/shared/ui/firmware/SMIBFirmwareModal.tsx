@@ -1,6 +1,9 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import {  useState, useRef  } from 'react';
+
+import { ChangeEvent } from 'react';
+import { DragEvent } from 'react';
 import axios from 'axios';
 import {
   Dialog,
@@ -31,7 +34,7 @@ export default function SMIBFirmwareModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && file.name.endsWith('.bin')) {
       setSelectedFile(file);
@@ -43,7 +46,7 @@ export default function SMIBFirmwareModal({
     }
   };
 
-  const handleDrag = (e: React.DragEvent) => {
+  const handleDrag = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (e.type === 'dragenter' || e.type === 'dragover') {
@@ -53,7 +56,7 @@ export default function SMIBFirmwareModal({
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);

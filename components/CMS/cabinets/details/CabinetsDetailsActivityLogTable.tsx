@@ -12,6 +12,7 @@
  * - Success/failure indicators
  */
 
+import { FC } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
   Select,
@@ -88,7 +89,7 @@ type CabinetsDetailsActivityLogTableProps = {
  * @param data - Array of MachineEvent objects.
  * @returns Activity log table component.
  */
-export const CabinetsDetailsActivityLogTable: React.FC<CabinetsDetailsActivityLogTableProps> = ({
+export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTableProps> = ({
   data,
   onFilterChange,
 }) => {

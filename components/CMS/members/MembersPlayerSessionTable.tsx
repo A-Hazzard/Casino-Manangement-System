@@ -16,6 +16,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { ReactNode } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { MemberSession } from '@/shared/types/entities';
 import { formatCurrency } from '@/lib/utils/formatting';
@@ -107,7 +108,7 @@ const SortableHeader = ({
   currentSort,
   onSort,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   sortKey: SortOption;
   currentSort: { key: SortOption; direction: 'asc' | 'desc' };
   onSort: (key: SortOption) => void;

@@ -1,3 +1,4 @@
+import { FormEvent } from 'react';
 import { Document } from 'mongoose';
 
 export type InvalidProfileFields = {
@@ -173,5 +174,5 @@ export type LoginFormProps = {
   messageType?: 'success' | 'error' | 'info';
   loading: boolean;
   redirecting: boolean;
-  handleLogin: (e: React.FormEvent) => void;
+  handleLogin: (e: FormEvent) => void;
 };

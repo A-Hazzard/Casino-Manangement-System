@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import {
@@ -9,7 +10,6 @@ import {
 } from '@/components/shared/ui/popover';
 import { cn } from '@/lib/utils';
 import { Clock } from 'lucide-react';
-import * as React from 'react';
 
 export type TimePickerProps = {
   /**
@@ -56,10 +56,10 @@ export function TimePicker({
     };
   };
 
-  const [timeState, setTimeState] = React.useState(() => parseTime(time));
+  const [timeState, setTimeState] = useState(() => parseTime(time));
 
   // Update display when prop changes
-  React.useEffect(() => {
+  useEffect(() => {
     setTimeState(parseTime(time));
   }, [time]);
 
@@ -76,7 +76,7 @@ export function TimePicker({
   };
 
   // Format display string
-  const formattedTime = React.useMemo(() => {
+  const formattedTime = useMemo(() => {
     if (!time) return placeholder;
     const { hours, minutes, period } = timeState;
     return `${hours}:${minutes} ${period}`;

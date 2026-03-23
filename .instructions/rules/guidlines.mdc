@@ -140,15 +140,34 @@ remedy: "Extract to more helper files or split by domain when exceeding limit."
 }
 
 rule("All backend code must use strict TypeScript standards.") {
-appliesTo: "app/api/\*_/_"
-checklist: [
-"Prefer type over interface unless extending interfaces",
-"No any types",
-"No underscore-prefixed variables, except _id for MongoDB",
-"Types organized: shared/types (cross-domain), app/api/lib/types (backend only)",
-"Database types modelled using InferSchemaType<typeof schema> & Document for Mongoose"
-]
-rationale: "Type safety, maintainability, and clarity for all contributors."
+  appliesTo: "app/api/\*_/_"
+  checklist: [
+  "Prefer type over interface unless extending interfaces",
+  "No any types",
+  "No underscore-prefixed variables, except _id for MongoDB",
+  "Types organized: shared/types (cross-domain), app/api/lib/types (backend only)",
+  "Database types modelled using InferSchemaType<typeof schema> & Document for Mongoose"
+  ]
+  rationale: "Type safety, maintainability, and clarity for all contributors."
+}
+
+rule("Frontend code must never import React namespace.") {
+  appliesTo: "components/**/\*.tsx", "lib/**/\*.ts", "lib/**/\*.tsx", "app/**/\*.tsx"
+  must: [
+  "Use direct named imports: import { useState, useEffect, FC } from 'react'",
+  "NEVER use: import React from 'react' or import * as React from 'react'",
+  "NEVER use: React.useState, React.useEffect, React.FC, etc."
+  ]
+  rationale: "Modern React with JSX transform doesn't require React import; direct imports are cleaner and more explicit."
+  hooks: [
+  "useState", "useEffect", "useCallback", "useMemo", "useRef", "useContext",
+  "forwardRef", "memo", "Children", "createContext", "Fragment"
+  ]
+  types: [
+  "FC", "FunctionComponent", "ChangeEvent", "MouseEvent", "KeyboardEvent",
+  "FormEvent", "RefObject", "MutableRefObject", "ReactNode", "ReactElement",
+  "ElementRef", "ComponentPropsWithoutRef", "CSSProperties"
+  ]
 }
 
 rule("All backend database access must use Mongoose models, not direct collection calls.") {

@@ -52,16 +52,15 @@ import { TimePeriod } from '../../lib/types';
  * 10. Transform and return machine data
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ machineId: string }> }
+  request: NextRequest
 ) {
+  const { pathname } = request.nextUrl;
+  const machineId = pathname.split('/')[3];
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     const startTime = Date.now();
 
-    // ============================================================================
-    // STEP 1: Parse route parameters and query parameters
-    // ============================================================================
-    const { machineId } = await params;
+    try {
     const { searchParams } = new URL(request.url);
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
@@ -492,6 +491,17 @@ export async function GET(
       success: true,
       data: transformedMachine,
     });
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`[Machines API GET] Error after ${duration}ms:`, error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal Server Error',
+      },
+      { status: 500 }
+    );
+  }
   });
 }
 

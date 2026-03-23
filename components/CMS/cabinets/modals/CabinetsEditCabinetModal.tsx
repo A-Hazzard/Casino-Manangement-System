@@ -7,6 +7,7 @@
  */
 'use client';
 
+import { ChangeEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { fetchCabinetById, updateCabinet } from '@/lib/helpers/cabinets';
 import { fetchManufacturers } from '@/lib/helpers/machines';
@@ -27,7 +28,7 @@ import type { GamingMachine } from '@/shared/types/entities';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import axios from 'axios';
 import { gsap } from 'gsap';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {  useCallback, useEffect, useRef, useState  } from 'react';
 import { toast } from 'sonner';
 import EditCabinetBasicInfo from '../EditCabinetModal/EditCabinetBasicInfo';
 import EditCabinetCollectionSettings from '../EditCabinetModal/EditCabinetCollectionSettings';
@@ -538,7 +539,7 @@ export default function CabinetsEditCabinetModal({
     });
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
     // Auto-capitalize serial number letters
@@ -908,21 +909,21 @@ export default function CabinetsEditCabinetModal({
                           name: 'assetNumber',
                           value: updates.assetNumber,
                         },
-                      } as React.ChangeEvent<HTMLInputElement>);
+                      } as ChangeEvent<HTMLInputElement>);
                     } else if ('installedGame' in updates) {
                       handleChange({
                         target: {
                           name: 'installedGame',
                           value: updates.installedGame,
                         },
-                      } as React.ChangeEvent<HTMLInputElement>);
+                      } as ChangeEvent<HTMLInputElement>);
                     } else if ('accountingDenomination' in updates) {
                       handleChange({
                         target: {
                           name: 'accountingDenomination',
                           value: updates.accountingDenomination,
                         },
-                      } as React.ChangeEvent<HTMLInputElement>);
+                      } as ChangeEvent<HTMLInputElement>);
                     } else {
                       setFormData(prev => ({ ...prev, ...updates }));
                     }
@@ -956,11 +957,11 @@ export default function CabinetsEditCabinetModal({
                           name: 'accountingDenomination',
                           value: updates.accountingDenomination,
                         },
-                      } as React.ChangeEvent<HTMLInputElement>);
+                      } as ChangeEvent<HTMLInputElement>);
                     } else if ('smbId' in updates) {
                       handleChange({
                         target: { name: 'smbId', value: updates.smbId },
-                      } as React.ChangeEvent<HTMLInputElement>);
+                      } as ChangeEvent<HTMLInputElement>);
                     } else {
                       setFormData(prev => {
                         const updated: ExtendedCabinetFormData = { ...prev };

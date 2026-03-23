@@ -1,3 +1,4 @@
+import { FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { DatePicker } from '@/components/shared/ui/date-picker';
 import { Input } from '@/components/shared/ui/input';
@@ -36,7 +37,7 @@ export default function TicketRedemptionForm({
   const [showAuthenticator, setShowAuthenticator] = useState(false);
   const [pendingData, setPendingData] = useState<{ ticketNumber: string; amount: number; printedAt: Date } | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
     // Cache data and trigger TOTP

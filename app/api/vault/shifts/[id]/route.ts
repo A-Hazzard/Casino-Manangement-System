@@ -9,13 +9,12 @@ import {
 } from '@/app/api/lib/helpers/vault/shifts';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  const shiftId = pathname.split('/').pop();
+
   return withApiAuth(req, async () => {
     try {
-      const { id: shiftId } = await params;
       if (!shiftId)
         return NextResponse.json(
           { success: false, error: 'Shift ID is required' },

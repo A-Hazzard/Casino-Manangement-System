@@ -11,13 +11,12 @@ import {
 import { canEditFloatRequest } from '@/app/api/lib/helpers/vault/authorization';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  const requestId = pathname.split('/').pop();
+
   return withApiAuth(req, async () => {
     try {
-      const requestId = params.id;
       if (!requestId)
         return NextResponse.json(
           { error: 'Float request ID is required' },
@@ -43,13 +42,12 @@ export async function GET(
   });
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  const requestId = pathname.split('/').pop();
+
   return withApiAuth(req, async ({ user: userPayload }) => {
     try {
-      const requestId = params.id;
       if (!requestId)
         return NextResponse.json(
           { error: 'Float request ID is required' },

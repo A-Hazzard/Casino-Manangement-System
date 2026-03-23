@@ -8,6 +8,7 @@
  */
 'use client';
 
+import { ReactNode } from 'react';
 import VaultOverviewCloseDayModals from '@/components/VAULT/overview/sections/VaultOverviewCloseDayModals';
 import DebugSection from '@/components/shared/debug/DebugSection';
 import NotificationBell from '@/components/shared/ui/NotificationBell';
@@ -25,10 +26,10 @@ import { toast } from 'sonner';
 
 type VaultManagerHeaderProps = {
   title?: string;
-  description?: React.ReactNode;
+  description?: ReactNode;
   backHref?: string;
   showBack?: boolean;
-  children?: React.ReactNode;
+  children?: ReactNode;
   onFloatActionComplete?: () => void; // Callback after float approve/deny
   showNotificationBell?: boolean;
   vaultInventory?: Denomination[];

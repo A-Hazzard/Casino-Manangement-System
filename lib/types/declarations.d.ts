@@ -10,6 +10,7 @@
 
 // Allow TypeScript to recognize our hook
 declare module '@/lib/hooks/useCabinetDetails' {
+  import { MutableRefObject } from 'react';
   import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 
   export type UseCabinetDetailsReturn = {
@@ -22,7 +23,7 @@ declare module '@/lib/hooks/useCabinetDetails' {
     setIsFilterChangeInProgress: (state: boolean) => void;
     fetchCabinetDetails: () => Promise<void>;
     updateMetricsData: () => Promise<void | (() => void)>;
-    lastFilterChangeTimeRef: React.MutableRefObject<number>;
+    lastFilterChangeTimeRef: MutableRefObject<number>;
   };
 
   export function useCabinetDetails(
@@ -36,6 +37,7 @@ declare module '@/lib/hooks/useCabinetDetails' {
 
 // Allow TypeScript to recognize our component
 declare module '@/components/cabinetDetails/AccountingDetails' {
+  import { FC } from 'react';
   import {
     GamingMachine as CabinetDetail,
     TimePeriod,
@@ -51,7 +53,6 @@ declare module '@/components/cabinetDetails/AccountingDetails' {
     onDataRefresh?: () => Promise<void>; // Optional callback to refresh parent data after auto-fix
   };
 
-  export const AccountingDetails: React.FC<AccountingDetailsProps>;
+  export const AccountingDetails: FC<AccountingDetailsProps>;
   export default AccountingDetails;
 }
-

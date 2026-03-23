@@ -32,8 +32,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 8. Return updated machine data
  */
 export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
@@ -41,7 +40,8 @@ export async function POST(
     // ============================================================================
     // STEP 1: Parse route parameters and request body
     // ============================================================================
-    const { cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const cabinetId = pathname.split('/')[3];
     const data = await request.json();
 
     // ============================================================================
@@ -187,16 +187,13 @@ export async function POST(
  * 4. Return SMIB configuration and version
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const cabinetId = pathname.split('/')[3];
 
   try {
-    // ============================================================================
-    // STEP 1: Parse route parameters
-    // ============================================================================
-    const { cabinetId } = await params;
 
     // ============================================================================
     // STEP 2: Connect to database

@@ -14,6 +14,7 @@ import {
   downloadFirmwareFromGridFS,
   findFirmwareByVersion,
 } from '@/app/api/lib/helpers/firmware';
+import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -26,16 +27,17 @@ import { NextRequest, NextResponse } from 'next/server';
  * 4. Return file with appropriate headers for SMIB OTA
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ version: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const version = pathname.split('/').pop();
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse and validate request parameters
-    // ============================================================================
-    const { version } = await params;
+  if (!version) {
+    return NextResponse.json({ error: 'Firmware version is required' }, { status: 400 });
+  }
+
+  try { await connectDB();
 
     // ============================================================================
     // STEP 2: Find firmware document by version

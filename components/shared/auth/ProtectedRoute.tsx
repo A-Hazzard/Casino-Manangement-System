@@ -31,14 +31,13 @@ import {
     isVaultManagerOnly,
 } from '@/lib/utils/permissions/client';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 
 import { UserRole } from '@/lib/constants';
-import type React from 'react';
 import { UserAuthPayload } from '../../../shared/types';
 
 type ProtectedRouteProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   requireAdminAccess?: boolean;
   requiredPage?: PageName;
 };
@@ -138,20 +137,20 @@ export default function ProtectedRoute({
       }
 
       // Check if user is reviewer-only (has ONLY reviewer role, no other roles)
-      const isReviewerOnly = 
+      const isReviewerOnly =
         user.roles.length === 1 && user.roles.includes('reviewer');
-      
+
       if (isReviewerOnly) {
         // Allowed paths: /locations, /cabinets (and subpaths)
         const isAllowedPath =
-           pathname === '/locations' ||
-           pathname?.startsWith('/locations/') ||
-           pathname === '/cabinets' ||
-           pathname?.startsWith('/cabinets/');
+          pathname === '/locations' ||
+          pathname?.startsWith('/locations/') ||
+          pathname === '/cabinets' ||
+          pathname?.startsWith('/cabinets/');
 
         if (!isAllowedPath) {
-            router.push('/locations');
-            return;
+          router.push('/locations');
+          return;
         }
         // Reviewer is on an allowed path — skip requiredPage/hasPageAccess check
         setIsChecking(false);
@@ -181,7 +180,10 @@ export default function ProtectedRoute({
       }
 
       if (requiredPage) {
-        const hasPageLocal = hasPageAccess(user.roles as UserRole[], requiredPage);
+        const hasPageLocal = hasPageAccess(
+          user.roles as UserRole[],
+          requiredPage
+        );
         if (!hasPageLocal) {
           router.push('/unauthorized'); // Redirect to unauthorized page
           return;
@@ -207,7 +209,8 @@ export default function ProtectedRoute({
         // Check page access if required (only if local check didn't pass)
         if (
           requiredPage &&
-          (!user.roles || !hasPageAccess(user.roles as UserRole[], requiredPage))
+          (!user.roles ||
+            !hasPageAccess(user.roles as UserRole[], requiredPage))
         ) {
           const hasPage = await hasPageAccessDb(requiredPage);
           if (!hasPage) {
@@ -265,7 +268,7 @@ export default function ProtectedRoute({
           setSelectedLicencee: () => {},
           disabled: false,
         }}
-        pageTitle=""
+        
         hideOptions={true}
         hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"

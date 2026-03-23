@@ -7,6 +7,7 @@
 
 'use client';
 
+import { ReactNode } from 'react';
 import { DashboardTopPerformingSkeleton } from '@/components/shared/ui/skeletons/DashboardSkeletons';
 import type { ActiveTab, TopPerformingItem } from '@/lib/types';
 import type { CustomizedLabelProps } from '@/lib/types/components/props';
@@ -21,7 +22,7 @@ export type DashboardTopPerformingSectionProps = {
   setActiveTab: (tab: 'locations' | 'Cabinets') => void;
   selectedLicencee?: string;
   licenceeName: string;
-  renderCustomizedLabel: (props: CustomizedLabelProps) => React.ReactNode;
+  renderCustomizedLabel: (props: CustomizedLabelProps) => ReactNode;
   onViewMachine?: (item: TopPerformingItem) => void;
   onViewLocation?: (item: TopPerformingItem) => void;
 };

@@ -20,8 +20,7 @@ import CollectionReportDetailsLocationMetricsTab from '@/components/CMS/collecti
 import CollectionReportDetailsSasCompareTab from '@/components/CMS/collectionReport/details/CollectionReportDetailsSasCompareTab';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
-import {
-} from '@/components/shared/ui/dialog';
+import { } from '@/components/shared/ui/dialog';
 import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
 import UnauthorizedError from '@/components/shared/ui/errors/UnauthorizedError';
 import { CollectionReportSkeleton } from '@/components/shared/ui/skeletons/CollectionReportDetailSkeletons';
@@ -135,7 +134,7 @@ export default function CollectionReportDetailsPageContent() {
         containerPaddingMobile: 'px-4 py-8 lg:px-0 lg:py-0',
         disabled: loading,
       }}
-      pageTitle=""
+      
       hideOptions={true}
       hideLicenceeFilter={true}
       mainClassName="flex flex-col flex-1 w-full max-w-full"

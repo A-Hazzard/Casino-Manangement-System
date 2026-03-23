@@ -86,47 +86,29 @@ export function useCabinetDetailsData({
         return;
       }
 
+      // Resolve effective custom ranges into a standard { from, to } Date format
+      const from = customDateRange?.startDate || customDateRange?.from || customDateRange?.start;
+      const to = customDateRange?.endDate || customDateRange?.to || customDateRange?.end;
+      
+      const effectiveRange = activeMetricsFilter === 'Custom' && from && to 
+        ? { 
+            from: from instanceof Date ? from : new Date(from as any), 
+            to: to instanceof Date ? to : new Date(to as any) 
+          } 
+        : undefined;
+
       // Always pass current display currency so cabinet detail values
       // are returned in the header-selected currency.
-      const currency = displayCurrency;
-
-      const cabinetData = await makeRequest(async signal => {
-        return await fetchCabinetById(
+      const cabinetData = await makeRequest(signal =>
+        fetchCabinetById(
           slug,
           activeMetricsFilter,
-          activeMetricsFilter === 'Custom' && customDateRange
-            ? {
-                from:
-                  customDateRange.startDate instanceof Date
-                    ? customDateRange.startDate
-                    : customDateRange.startDate
-                    ? new Date(customDateRange.startDate as unknown as string)
-                    : customDateRange.from instanceof Date
-                    ? (customDateRange.from as Date)
-                    : customDateRange.from
-                    ? new Date(customDateRange.from as unknown as string)
-                    : customDateRange.start
-                    ? new Date(customDateRange.start as unknown as string)
-                    : undefined,
-                to:
-                  customDateRange.endDate instanceof Date
-                    ? customDateRange.endDate
-                    : customDateRange.endDate
-                    ? new Date(customDateRange.endDate as unknown as string)
-                    : customDateRange.to instanceof Date
-                    ? (customDateRange.to as Date)
-                    : customDateRange.to
-                    ? new Date(customDateRange.to as unknown as string)
-                    : customDateRange.end
-                    ? new Date(customDateRange.end as unknown as string)
-                    : undefined,
-              }
-            : undefined,
-          currency,
+          effectiveRange,
+          displayCurrency,
           selectedLicencee || null,
           signal
-        );
-      });
+        )
+      );
 
       // NOTE: reviewer multiplier is applied server-side — no client-side scaling needed
 
@@ -221,6 +203,11 @@ export function useCabinetDetailsData({
     selectedLicencee,
     displayCurrency,
     makeRequest,
+    // Include specific date values to ensure reference changes are caught
+    customDateRange?.startDate?.getTime(),
+    customDateRange?.endDate?.getTime(),
+    customDateRange?.from?.getTime(),
+    customDateRange?.to?.getTime(),
   ]);
 
   // Callback function to refresh cabinet data after updates
@@ -239,7 +226,13 @@ export function useCabinetDetailsData({
     dateFilterInitialized,
     customDateRange,
     displayCurrency,
+    selectedLicencee,
     fetchCabinetDetailsData,
+    // Force trigger on date value changes
+    customDateRange?.startDate?.getTime(),
+    customDateRange?.endDate?.getTime(),
+    customDateRange?.from?.getTime(),
+    customDateRange?.to?.getTime(),
   ]);
 
   return {

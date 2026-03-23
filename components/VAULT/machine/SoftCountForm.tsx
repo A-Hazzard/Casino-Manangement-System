@@ -14,6 +14,7 @@
 
 'use client';
 
+import { FormEvent } from 'react';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
@@ -146,7 +147,7 @@ export default function SoftCountForm({
   const isAllTouched = denomsList.every(d => touchedDenominations.has(Number(d)));
   const isValid = totalPhysical > 0 || isAllTouched;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!machine || !isValid) return;
     

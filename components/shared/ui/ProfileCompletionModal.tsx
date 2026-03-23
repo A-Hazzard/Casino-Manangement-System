@@ -1,5 +1,6 @@
 'use client';
 
+import { FormEvent, useMemo } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
     Dialog,
@@ -30,7 +31,6 @@ import type {
     ProfileValidationReasons,
 } from '@/shared/types/auth';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import * as React from 'react';
 import { useEffect, useState } from 'react';
 
 // ============================================================================
@@ -131,7 +131,7 @@ export default function ProfileCompletionModal({
   const needsPassword = !!invalidFields.password;
   
   // Calculate password strength for visual feedback
-  const passwordStrength = React.useMemo(() => {
+  const passwordStrength = useMemo(() => {
     if (!formData.newPassword) return null;
     return validatePasswordStrength(formData.newPassword);
   }, [formData.newPassword]);
@@ -163,7 +163,7 @@ export default function ProfileCompletionModal({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setValidationErrors({});
     setServerError(null);

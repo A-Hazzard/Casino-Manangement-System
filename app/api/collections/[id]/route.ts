@@ -40,15 +40,13 @@ import { NextRequest, NextResponse } from 'next/server';
  * 9. Cascade recalculation to related collections if needed
  * 10. Return updated collection
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+export async function PUT(
+  request: NextRequest
 ) {
+  const { pathname } = request.nextUrl;
+  const collectionId = pathname.split('/').pop();
+
   try {
-    // ============================================================================
-    // STEP 1: Parse route parameters and request body
-    // ============================================================================
-    const { id: collectionId } = await params;
     const updateData = await request.json();
     // ============================================================================
     // STEP 2: Validate collection ID

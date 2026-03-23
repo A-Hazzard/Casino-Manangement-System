@@ -28,27 +28,22 @@ import { NextRequest, NextResponse } from 'next/server';
  * 7. Return paginated events with filter options
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; machineId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
   try {
-    // ============================================================================
-    // STEP 1: Parse route parameters and query parameters
-    // ============================================================================
-    const { machineId } = await params;
+    const { pathname, searchParams } = request.nextUrl;
+    const parts = pathname.split('/');
+    const machineId = parts[parts.length - 2];
+    // id is not used in this route, so we don't need to extract it
 
-    const { searchParams } = new URL(request.url);
     const eventType = searchParams.get('eventType');
     const event = searchParams.get('event');
     const game = searchParams.get('game');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
 
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
     await connectDB();
 
     // ============================================================================

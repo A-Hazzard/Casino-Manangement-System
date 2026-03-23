@@ -29,16 +29,14 @@ import { connectDB } from '@/app/api/lib/middleware/db';
  * 4. Return results summary
  */
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ reportId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const parts = pathname.split('/');
+  const reportId = parts[parts.length - 2];
 
   try {
-    // ============================================================================
-    // STEP 1: Parse and validate request parameters
-    // ============================================================================
-    const { reportId } = await params;
     const body = (await request.json()) as UpdateHistoryPayload;
 
     if (!reportId) {

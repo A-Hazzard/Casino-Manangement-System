@@ -1,9 +1,9 @@
 'use client';
 
+import { ReactElement } from 'react';
 import CollectionReportFormMachineDataEntry from '@/components/CMS/collectionReport/forms/CollectionReportFormMachineDataEntry';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import { ArrowLeft } from 'lucide-react';
-import React from 'react';
 
 type MobileFormPanelProps = {
   isVisible: boolean;
@@ -50,7 +50,7 @@ type MobileFormPanelProps = {
   // Callbacks
   formatMachineDisplay: (
     machine: CollectionReportMachineSummary
-  ) => string | React.ReactElement;
+  ) => string | ReactElement;
   onViewMachine: () => void;
   onFormDataChange: (
     field: string,

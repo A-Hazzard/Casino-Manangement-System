@@ -7,6 +7,7 @@
  */
 'use client';
 
+import { ChangeEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Input } from '@/components/shared/ui/input';
@@ -599,7 +600,7 @@ export default function LocationsEditLocationModal({
     });
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
     // Special handling for profit share to only allow numbers

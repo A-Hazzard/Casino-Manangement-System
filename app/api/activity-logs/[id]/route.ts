@@ -15,11 +15,11 @@ import { NextRequest, NextResponse } from 'next/server';
  * DELETE handler for an activity log entry
  */
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ): Promise<Response> {
   return withApiAuth(request, async ({ isAdminOrDev, userRoles }) => {
-    const { id } = await params;
+    const { pathname } = request.nextUrl;
+    const id = pathname.split('/').pop();
     if (!id)
       return NextResponse.json(
         { success: false, message: 'Activity log ID is required' },

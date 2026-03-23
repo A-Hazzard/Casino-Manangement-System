@@ -238,7 +238,24 @@ Before grouping or merging files:
 4. ✅ **Consider discoverability** - Does grouping/merging improve code navigation?
 5. ✅ **Verify imports** - Update all imports after changes
 
-## 6. Summary of Best Practices
+## 6. React Imports (CRITICAL)
+
+**Never import the React namespace itself.**
+
+```typescript
+// ✅ CORRECT - Direct named imports
+import { useState, useEffect, useMemo } from 'react';
+import { FC, ChangeEvent, ReactNode } from 'react';
+
+// ❌ WRONG - React namespace
+import React from 'react';
+import * as React from 'react';
+React.useState(); // Never do this
+```
+
+---
+
+## 7. Summary of Best Practices
 
 - **Lean Wrappers**: Keep `page.tsx` files minimal, delegating logic to a `PageContent` component.
 - **Specific Loading States**: Create content-specific skeletons in `components/ui/skeletons/`.

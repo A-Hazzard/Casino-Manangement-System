@@ -25,8 +25,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 4. Return member data
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
@@ -34,7 +33,8 @@ export async function GET(
     // ============================================================================
     // STEP 1: Parse route parameters
     // ============================================================================
-    const { id } = await params;
+    const { pathname } = request.nextUrl;
+    const id = pathname.split('/').pop();
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -121,8 +121,7 @@ export async function GET(
  * 7. Return updated member
  */
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
@@ -130,7 +129,8 @@ export async function PUT(
     // ============================================================================
     // STEP 1: Parse route parameters and request body
     // ============================================================================
-    const { id: memberId } = await params;
+    const { pathname } = request.nextUrl;
+    const memberId = pathname.split('/').pop();
     const body = await request.json();
 
     // ============================================================================
@@ -378,8 +378,7 @@ export async function PUT(
  * 7. Return success response
  */
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
@@ -387,7 +386,8 @@ export async function DELETE(
     // ============================================================================
     // STEP 1: Parse route parameters
     // ============================================================================
-    const { id: memberId } = await params;
+    const { pathname } = request.nextUrl;
+    const memberId = pathname.split('/').pop();
 
     // ============================================================================
     // STEP 2: Validate member ID

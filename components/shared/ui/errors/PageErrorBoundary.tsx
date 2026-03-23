@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import {  useState, useCallback  } from 'react';
+import { ReactNode } from 'react';
+import { ErrorInfo } from 'react';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
 import ConnectionError from './ConnectionError';
 
 type PageErrorBoundaryProps = {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
+  children: ReactNode;
+  fallback?: ReactNode;
   onError?: (error: unknown) => void;
 };
 
@@ -88,8 +90,8 @@ function ErrorBoundaryWrapper({
   children,
   onError,
 }: {
-  children: React.ReactNode;
-  onError: (error: Error, errorInfo: React.ErrorInfo) => void;
+  children: ReactNode;
+  onError: (error: Error, errorInfo: ErrorInfo) => void;
 }) {
   const [hasError, setHasError] = useState(false);
   const [error, setError] = useState<Error | null>(null);

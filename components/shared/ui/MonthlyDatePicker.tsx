@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import {  useState  } from 'react';
+
+import { FC, useMemo } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Calendar } from '@/components/shared/ui/calendar';
 import {
@@ -40,7 +42,7 @@ type MonthlyDatePickerProps = {
  * @param onSetLastMonth - Callback when "Set Last Month" is clicked
  * @param disabled - Whether the picker is disabled
  */
-export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
+export const MonthlyDatePicker: FC<MonthlyDatePickerProps> = ({
   value,
   onChange,
   onGo,
@@ -51,7 +53,7 @@ export const MonthlyDatePicker: React.FC<MonthlyDatePickerProps> = ({
   const [isOpen, setIsOpen] = useState(false);
 
   // Format display value to show month and year
-  const displayValue = React.useMemo(() => {
+  const displayValue = useMemo(() => {
     if (value?.from && value?.to) {
       const fromMonth = format(value.from, 'MMMM yyyy');
       const toMonth = format(value.to, 'MMMM yyyy');

@@ -111,7 +111,7 @@ export function formatISODate(date: DateInput): string {
  */
 export function formatLocalDateTimeString(
   date: DateInput,
-  timezoneOffset: number = -4
+  timezoneOffset: number = -new Date().getTimezoneOffset() / 60
 ): string {
   const dateObj =
     typeof date === 'string' || typeof date === 'number'

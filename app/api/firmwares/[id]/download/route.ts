@@ -25,16 +25,17 @@ import { NextRequest, NextResponse } from 'next/server';
  * 4. Return file with appropriate headers
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const id = pathname.split('/').at(-2); // Extract [id] from /api/firmwares/[id]/download
+
+  if (!id) {
+    return NextResponse.json({ error: 'Firmware ID is required' }, { status: 400 });
+  }
 
   try {
-    // ============================================================================
-    // STEP 1: Parse and validate request parameters
-    // ============================================================================
-    const { id } = await params;
 
     // ============================================================================
     // STEP 2: Find firmware document by ID

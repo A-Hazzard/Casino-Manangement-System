@@ -42,7 +42,6 @@ export default function CabinetsDetailsPageContent() {
   const { user } = useUserStore();
   const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
   const { openEditModal } = useCabinetsActionsStore();
-
   const {
     cabinet,
     locationName,
@@ -67,7 +66,7 @@ export default function CabinetsDetailsPageContent() {
     onBack,
     onLocationClick,
   } = hook;
-
+  // TODO Review this component
   // ============================================================================
   // Early Returns
   // ============================================================================
@@ -75,7 +74,7 @@ export default function CabinetsDetailsPageContent() {
     return (
       <PageLayout
         headerProps={{ selectedLicencee, setSelectedLicencee }}
-        pageTitle=""
+        
         hideOptions
         hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
@@ -96,11 +95,8 @@ export default function CabinetsDetailsPageContent() {
       />
     );
   }
-
-  if (error || !cabinet) {
-    return null; // Error handling handled by hook/page skeleton
-  }
-
+  if (error || !cabinet) return null; // Error handling handled by hook/page skeleton
+  
   return (
     <>
       <CabinetsEditCabinetModal onCabinetUpdated={handleCabinetUpdated} />
@@ -108,7 +104,7 @@ export default function CabinetsDetailsPageContent() {
 
       <PageLayout
         headerProps={{ selectedLicencee, setSelectedLicencee }}
-        pageTitle=""
+        
         hideOptions
         hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
@@ -236,7 +232,7 @@ export default function CabinetsDetailsPageContent() {
 
           {/* Reviewer Debug Panel */}
           {SHOW_REVIEWER_DEBUG_PANEL && 
-           (user?.roles || []).filter((r): r is string => typeof r === 'string').includes('reviewer') && 
+           (user?.roles || []).some(r => ['reviewer', 'developer'].includes(r.toLowerCase())) && 
            cabinet && (
             <div className="">
               <ReviewerDebugPanel

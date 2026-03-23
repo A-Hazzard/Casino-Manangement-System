@@ -1,7 +1,7 @@
 # Financial Calculation Engine (The Core)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** March 2026  
+**Last Updated:** March 23, 2026  
 **Version:** 4.0.0
 
 ---
@@ -55,7 +55,8 @@ Casino operations do not end at midnight. The engine uses a "Gaming Day" logic:
 
 ### 🌐 UTC Baseline
 - **Storage**: All timestamps are stored as **UTC** in MongoDB.
-- **Display**: The engine applies a `(UTC-4)` transformation (`convertResponseToTrinidadTime`) at the API exit point to ensure managers see local business time.
+- **Data Transfer**: The API transmits pure UTC ISO strings to the client, maintaining a single source of truth and avoiding manual server-side offsets.
+- **Display**: The application utilizes the **user's browser local timezone** for all UI formatting. This ensures managers in any part of the world (e.g., Japan, London, or Trinidad) see data correctly relative to their own local time without hardcoded system shifts.
 
 ---
 

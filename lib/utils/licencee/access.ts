@@ -78,15 +78,9 @@ export function shouldShowNoLicenceeMessage(
   }
 
   // Show if user has no assigned licencees
-  const userLicencees = Array.isArray(
-    (user as { assignedLicencees?: string[] })?.assignedLicencees
-  )
-    ? (user as { assignedLicencees: string[] }).assignedLicencees
-    : Array.isArray((user as Record<string, unknown>)?.licencees)
-    ? ((user as Record<string, unknown>).licencees as string[])
-    : [];
+  const userLicencees = user?.assignedLicencees
 
-  return userLicencees.length === 0;
+  return userLicencees?.length === 0;
 }
 
 /**

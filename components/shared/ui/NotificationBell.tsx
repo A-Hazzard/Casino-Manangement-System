@@ -9,6 +9,7 @@
 
 'use client';
 
+import { ReactNode } from 'react';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Checkbox } from '@/components/shared/ui/checkbox';
@@ -92,7 +93,7 @@ type NotificationBellProps = {
   onConfirm?: (id: string) => Promise<void>;
   onRefreshInventory?: () => Promise<void>;
   readOnly?: boolean;
-  trigger?: React.ReactNode;
+  trigger?: ReactNode;
 };
 
 export default function NotificationBell({

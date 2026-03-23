@@ -7,12 +7,13 @@
  * - Customizable styling
  * - Used for loading states
  */
+import { HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
 function Skeleton({
   className,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn('animate-pulse rounded-md bg-muted', className)}

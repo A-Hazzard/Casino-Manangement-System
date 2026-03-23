@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import { ReactElement } from 'react';
 import CollectionReportFormMachineInfoDisplay from '@/components/CMS/collectionReport/forms/CollectionReportFormMachineInfoDisplay';
 import CollectionReportFormTimeInput from '@/components/CMS/collectionReport/forms/CollectionReportFormTimeInput';
 import CollectionReportFormMachineMeters from '@/components/CMS/collectionReport/forms/CollectionReportFormMachineMeters';
@@ -9,7 +9,7 @@ import CollectionReportFormSharedFinancials from '@/components/CMS/collectionRep
 
 type MachineDataEntryFormProps = {
   // Machine display data
-  machineName?: string | React.ReactElement;
+  machineName?: string | ReactElement;
   smibId?: string;
   currentMetersIn?: number | null;
   currentMetersOut?: number | null;

@@ -1,3 +1,4 @@
+import { FC } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import Chip from '@/components/shared/ui/common/Chip';
@@ -30,7 +31,8 @@ import { generateMongoId } from '@/lib/utils/id';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import axios from 'axios';
 import { Loader2, Search } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import {  useEffect, useState  } from 'react';
+
 
 // === Disabled field hint banner ===
 function DisabledHint({ message }: { message: string }) {
@@ -41,7 +43,7 @@ function DisabledHint({ message }: { message: string }) {
   );
 }
 
-const NewMovementRequestModal: React.FC<NewMovementModalProps> = ({
+const NewMovementRequestModal: FC<NewMovementModalProps> = ({
   isOpen,
   onClose,
   onSubmit,

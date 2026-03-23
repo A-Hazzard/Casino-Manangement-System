@@ -1,4 +1,6 @@
-import React, { useState, useRef } from 'react';
+import {  useState, useRef  } from 'react';
+
+import { ChangeEvent, FC } from 'react';
 import axios from 'axios';
 import {
   Dialog,
@@ -14,7 +16,7 @@ import { UploadIcon } from '@radix-ui/react-icons'; // Using UploadIcon for the 
 import type { UploadSmibDataModalProps } from '@/lib/types/components';
 import { useUserStore } from '@/lib/store/userStore';
 
-const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
+const UploadSmibDataModal: FC<UploadSmibDataModalProps> = ({
   isOpen,
   onClose,
   onRefresh,
@@ -96,7 +98,7 @@ const UploadSmibDataModal: React.FC<UploadSmibDataModalProps> = ({
     }
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       setSelectedFile(event.target.files[0]);
     }

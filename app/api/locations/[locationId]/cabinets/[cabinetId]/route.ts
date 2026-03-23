@@ -37,8 +37,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 6. Return cabinet data
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ locationId: string; cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
@@ -46,7 +45,10 @@ export async function GET(
     // ============================================================================
     // STEP 1: Parse route parameters and query params
     // ============================================================================
-    const { locationId, cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const parts = pathname.split('/');
+    const cabinetId = parts[parts.length - 1];
+    const locationId = parts[parts.length - 3];
     const { searchParams } = new URL(request.url);
     const timePeriod = searchParams.get('timePeriod');
     const startDateParam = searchParams.get('startDate');
@@ -277,13 +279,15 @@ export async function GET(
  * 9. Return updated cabinet
  */
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ locationId: string; cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
   try {
-    const { locationId, cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const parts = pathname.split('/');
+    const cabinetId = parts[parts.length - 1];
+    const locationId = parts[parts.length - 3];
 
     await connectDB();
 
@@ -557,13 +561,15 @@ export async function PUT(
  * 8. Return updated cabinet
  */
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ locationId: string; cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
   try {
-    const { locationId, cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const parts = pathname.split('/');
+    const cabinetId = parts[parts.length - 1];
+    const locationId = parts[parts.length - 3];
 
     await connectDB();
 
@@ -680,13 +686,15 @@ export async function PATCH(
  * 7. Return success response
  */
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ locationId: string; cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
   try {
-    const { locationId, cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const parts = pathname.split('/');
+    const cabinetId = parts[parts.length - 1];
+    const locationId = parts[parts.length - 3];
 
     await connectDB();
 

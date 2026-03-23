@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 **Evolution1 CMS** is a casino management system for real-time casino operations, financial tracking, and compliance monitoring. It operates in two modes controlled by `NEXT_PUBLIC_APPLICATION`:
+
 - **CMS** — Dashboard, analytics, slot machine management, reporting
 - **VAULT** — Cash management, cashier shifts, float requests, payouts
 
@@ -16,7 +17,7 @@ pnpm run dev              # Start dev server at localhost:3000
 pnpm run dev:turbo        # Dev with Turbopack
 
 # Production
-pnpm run build            # Build Next.js application 
+pnpm run build            # Build Next.js application
 pnpm run start            # Start production server
 
 # Code Quality
@@ -37,6 +38,7 @@ Use **pnpm exclusively** — the project has pnpm-specific overrides in package.
 ## Architecture
 
 ### Stack
+
 - **Next.js 16** (App Router), **TypeScript**, **Tailwind CSS**, **MongoDB/Mongoose**
 - **Zustand** for global state, **React Query (TanStack)** for server state
 - **Shadcn/UI** + Radix UI + MUI for components
@@ -115,6 +117,7 @@ All API routes return a consistent format (see `app/api/lib/utils/apiResponse.ts
 ### Database Connection
 
 `app/api/lib/middleware/db.ts` provides a singleton Mongoose connection with:
+
 - Connection caching across hot reloads
 - Automatic reconnection on URI changes
 - Pool: minPoolSize=2, maxPoolSize=10
@@ -169,10 +172,14 @@ const options = getAuthCookieOptions(request, { maxAge: 60 * 60 * 24 * 7 });
 response.cookies.set('token', jwtToken, options);
 
 // Clearing cookies (logout/middleware)
-response.cookies.set('token', '', { ...getAuthCookieOptions(request), expires: new Date(0) });
+response.cookies.set('token', '', {
+  ...getAuthCookieOptions(request),
+  expires: new Date(0),
+});
 ```
 
 The helper detects HTTPS via:
+
 1. `COOKIE_SECURE` env var (explicit override, useful for edge cases)
 2. `x-forwarded-proto` header (set by reverse proxies like nginx/Caddy)
 3. Request URL protocol as fallback
@@ -191,6 +198,7 @@ COOKIE_SECURE=false
 ### Files That Must Use This Pattern
 
 Every file calling `response.cookies.set()`:
+
 - `app/api/auth/login/route.ts`
 - `app/api/auth/logout/route.ts`
 - `app/api/auth/refresh/route.ts`
@@ -210,6 +218,23 @@ Always use `sameSite: 'lax'`. Never use `sameSite: 'none'` (requires `secure: tr
 - Strict mode is enabled with `noUnusedLocals`, `noImplicitReturns`, `noFallthroughCases`
 - Path alias `@/*` maps to root; `@shared/*` maps to `shared/`
 
+## React Imports (CRITICAL)
+
+**Never import the React namespace itself.**
+
+- ❌ `import React from 'react'` or `import * as React from 'react'`
+- ❌ `React.useState`, `React.useEffect`, `React.FC`, etc.
+- ✅ Always import directly: `import { useState, FC } from 'react'`
+
+```typescript
+// ✅ CORRECT
+import { useState, useEffect, useMemo, FC, ChangeEvent } from 'react';
+
+// ❌ WRONG
+import React from 'react';
+React.useState();
+```
+
 ## Key Environment Variables
 
 ```
@@ -228,6 +253,7 @@ MQTT_URI / MQTT_PUB_TOPIC / MQTT_SUB_TOPIC  # Real-time device comms
 ## Documentation
 
 Comprehensive docs live in `Documentation/` and `.cursor/`:
+
 - `Documentation/TECHNICAL_HANDBOOK.md` — system standards, RBAC, UI patterns
 - `Documentation/timezone.md` — Trinidad time handling
 - `Documentation/financial-metrics-guide.md` — calculation methods

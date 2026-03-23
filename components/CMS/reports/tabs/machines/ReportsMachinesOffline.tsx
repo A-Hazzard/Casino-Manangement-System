@@ -6,6 +6,7 @@
  * @module components/reports/tabs/machines/ReportsMachinesOffline
  */
 
+import { ReactNode } from 'react';
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
 import { Badge } from '@/components/shared/ui/badge';
@@ -52,7 +53,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import React, { useMemo } from 'react';
+import {  useMemo  } from 'react';
 
 // ============================================================================
 // Internal Components
@@ -67,7 +68,7 @@ const SortableHeader = ({
   currentSort,
   onSort,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   sortKey: keyof MachineData | 'offlineDurationHours';
   currentSort: {
     key: keyof MachineData | 'offlineDurationHours';

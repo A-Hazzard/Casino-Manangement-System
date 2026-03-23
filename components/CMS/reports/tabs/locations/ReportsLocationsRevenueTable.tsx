@@ -15,6 +15,7 @@
 
 'use client';
 
+import { ReactNode } from 'react';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
@@ -42,7 +43,7 @@ import {
   Monitor,
   Search,
 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import {  useMemo, useState  } from 'react';
 
 /**
  * Main ReportsLocationsRevenueTable Component
@@ -144,7 +145,7 @@ export default function ReportsLocationsRevenueTable({
     children,
   }: {
     field: keyof AggregatedLocation | 'name';
-    children: React.ReactNode;
+    children: ReactNode;
   }) => (
     <Button
       variant="ghost"

@@ -1,10 +1,10 @@
 'use client';
 
+import { ReactElement } from 'react';
 import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { ArrowLeft, Edit3, Trash2, Info, SendHorizontal } from 'lucide-react';
-import React from 'react';
 
 type MobileCollectedListPanelProps = {
   isVisible: boolean;
@@ -46,7 +46,7 @@ type MobileCollectedListPanelProps = {
     serialNumber?: string;
     custom: { name?: string };
     game?: string;
-  }) => React.ReactElement;
+  }) => ReactElement;
   formatDate: (date: Date) => string;
   sortMachines: (machines: CollectionDocument[]) => CollectionDocument[];
   onEditMachine: (machine: CollectionDocument) => void;

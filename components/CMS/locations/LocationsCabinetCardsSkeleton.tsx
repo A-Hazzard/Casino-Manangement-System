@@ -1,4 +1,5 @@
-import React from 'react';
+
+import { FC } from 'react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 interface LocationsCabinetCardsSkeletonProps {
@@ -9,7 +10,7 @@ interface LocationsCabinetCardsSkeletonProps {
  * Locations Cabinet Cards Skeleton Loader
  * Matches the exact structure of CabinetCardMobile component
  */
-const LocationsCabinetCardsSkeleton: React.FC<LocationsCabinetCardsSkeletonProps> = ({
+const LocationsCabinetCardsSkeleton: FC<LocationsCabinetCardsSkeletonProps> = ({
   includeJackpot = false,
 }) => (
   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">

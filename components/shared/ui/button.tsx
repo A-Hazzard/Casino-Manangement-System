@@ -8,9 +8,9 @@
  * - Radix UI Slot support for composition
  * - Accessible and keyboard-friendly
  */
+import { ButtonHTMLAttributes, ElementType, forwardRef } from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
-import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -48,14 +48,14 @@ const buttonVariants = cva(
   }
 );
 
-export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
+export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
   };
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp: React.ElementType = asChild ? Slot : 'button';
+    const Comp: ElementType = asChild ? Slot : 'button';
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}

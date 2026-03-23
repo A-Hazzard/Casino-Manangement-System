@@ -8,6 +8,7 @@
  * @param totalPages - Total number of pages
  * @param setCurrentPage - Callback to change current page
  */
+import { ChangeEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import type { PaginationControlsProps } from '@/lib/types/components';
 import {
@@ -32,7 +33,7 @@ export default function PaginationControls({
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     let val = Number(e.target.value);
     if (isNaN(val)) val = 1;
     if (val < 1) val = 1;

@@ -12,6 +12,7 @@
 
 'use client';
 
+import { FC, FormEvent, useEffect } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import { ModernDateRangePicker } from '@/components/shared/ui/ModernDateRangePicker';
@@ -56,7 +57,8 @@ import {
     Trash2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import React, { useMemo, useState } from 'react';
+import {  useMemo, useState  } from 'react';
+
 import type { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
 
@@ -72,7 +74,7 @@ const formatLargeNumber = (num: number): string => {
   return `${(num / 1000000000000).toFixed(1)}T`;
 };
 
-const SmartNumberDisplay: React.FC<{ value: number }> = ({ value }) => {
+const SmartNumberDisplay: FC<{ value: number }> = ({ value }) => {
   const formattedFull = value.toLocaleString();
   const formattedCompact = formatLargeNumber(value);
   const shouldAbbreviate = value >= 1000000;
@@ -179,7 +181,7 @@ export function CabinetsDetailsCollectionHistoryTable({
   };
 
   // Handle edit action
-  const handleEditSubmit = async (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!entryToEdit || !entryToEdit.machineId) return;
 
@@ -212,7 +214,7 @@ export function CabinetsDetailsCollectionHistoryTable({
   };
 
   // Pre-fill edit form when entryToEdit changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (entryToEdit) {
       setEditFormData({
         metersIn: entryToEdit.metersIn,
@@ -230,14 +232,14 @@ export function CabinetsDetailsCollectionHistoryTable({
   });
 
   // Sync with defaultTimeFilter when it changes globally
-  React.useEffect(() => {
+  useEffect(() => {
     if (defaultTimeFilter) {
       setTimeFilter(defaultTimeFilter);
     }
   }, [defaultTimeFilter]);
 
   // Sync local dates with global range if provided
-  React.useEffect(() => {
+  useEffect(() => {
     if (customRange) {
       setLocalDateDateRange({
         from: customRange.from,
@@ -387,7 +389,7 @@ export function CabinetsDetailsCollectionHistoryTable({
     return <ChevronsUpDown className="h-4 w-4 opacity-50" />;
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     setPage(1);
   }, [timeFilter]);
 

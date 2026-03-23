@@ -6,9 +6,11 @@
 
 'use client';
 
+import { RefObject } from 'react';
+import { CSSProperties } from 'react';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
-import React, { useLayoutEffect, useState } from 'react';
+import {  useLayoutEffect, useState  } from 'react';
 import { createPortal } from 'react-dom';
 import type { GamesPerformanceData } from './ReportsGamesPerformanceRevenueChart';
 
@@ -28,7 +30,7 @@ type ReportsGamesRevenueTooltipProps = {
   }>;
   label?: string;
   coordinate?: { x?: number; y?: number };
-  chartContainerRef?: React.RefObject<HTMLDivElement | null>;
+  chartContainerRef?: RefObject<HTMLDivElement | null>;
 };
 
 /**
@@ -97,7 +99,7 @@ export function ReportsGamesRevenueTooltip({
   };
 
   // Render via Portal to escape overflow:hidden containers
-  const tooltipStyle: React.CSSProperties = {
+  const tooltipStyle: CSSProperties = {
     position: 'fixed',
     left: position ? `${position.left}px` : '-9999px',
     top: position ? `${position.top}px` : '-9999px',

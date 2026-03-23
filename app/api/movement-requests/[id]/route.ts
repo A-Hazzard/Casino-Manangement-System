@@ -27,8 +27,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 5. Return success response
  */
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ): Promise<Response> {
   const startTime = Date.now();
 
@@ -45,7 +44,8 @@ export async function DELETE(
     // ============================================================================
     // STEP 2: Parse and validate request parameters
     // ============================================================================
-    const { id } = await params;
+    const { pathname } = request.nextUrl;
+    const id = pathname.split('/').pop();
     if (!id) {
       return NextResponse.json(
         {
@@ -197,8 +197,7 @@ export async function DELETE(
  * 5. Return updated request
  */
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ): Promise<Response> {
   const startTime = Date.now();
 
@@ -215,7 +214,8 @@ export async function PATCH(
     // ============================================================================
     // STEP 2: Parse and validate request parameters and body
     // ============================================================================
-    const { id } = await params;
+    const { pathname } = request.nextUrl;
+    const id = pathname.split('/').pop();
     if (!id) {
       return NextResponse.json(
         {

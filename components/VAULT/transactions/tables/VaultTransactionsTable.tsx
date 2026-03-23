@@ -7,6 +7,7 @@
  */
 'use client';
 
+import { ReactNode } from 'react';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
@@ -46,7 +47,7 @@ type VaultTransactionsTableProps = {
   sortOption?: TransactionSortOption;
   sortOrder?: 'asc' | 'desc';
   onSort?: (column: TransactionSortOption) => void;
-  getTransactionTypeBadge: (type: VaultTransactionType) => React.ReactNode;
+  getTransactionTypeBadge: (type: VaultTransactionType) => ReactNode;
   itemsPerPage?: number;
   disablePagination?: boolean;
 };

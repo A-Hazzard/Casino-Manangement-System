@@ -12,7 +12,8 @@
  */
 "use client";
 
-import React, { useState, useEffect, useCallback, ErrorInfo } from "react";
+import {  useState, useEffect, useCallback, ErrorInfo  } from 'react';
+import { ReactNode } from 'react';
 import ErrorBoundary from "@/components/shared/ui/errors/ErrorBoundary";
 import { useUserStore } from "@/lib/store/userStore";
 import { AlertTriangle, Copy, Check, RefreshCw, Wrench } from "lucide-react";
@@ -172,7 +173,7 @@ function MaintenanceScreen({ onRetry }: { onRetry: () => void }) {
 export default function GlobalErrorBoundary({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const [errorDetails, setErrorDetails] = useState<ErrorDetails | null>(null);
   const { user } = useUserStore();

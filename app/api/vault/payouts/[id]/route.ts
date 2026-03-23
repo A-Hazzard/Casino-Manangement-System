@@ -11,13 +11,12 @@ import {
 import type { UpdatePayoutRequest } from '@/app/api/lib/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  const payoutId = pathname.split('/').pop();
+
   return withApiAuth(req, async () => {
     try {
-      const { id: payoutId } = await params;
       if (!payoutId)
         return NextResponse.json(
           { success: false, error: 'Payout ID is required' },
@@ -46,13 +45,12 @@ export async function GET(
   });
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  const payoutId = pathname.split('/').pop();
+
   return withApiAuth(req, async () => {
     try {
-      const { id: payoutId } = await params;
       if (!payoutId)
         return NextResponse.json(
           { success: false, error: 'Payout ID is required' },

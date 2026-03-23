@@ -7,6 +7,7 @@
  */
 'use client';
 
+import { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
@@ -81,7 +82,7 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     return { hasProfanity: false };
   };
 
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleDescriptionChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const currentLength = description.length;
     const newLength = newValue.length;
@@ -117,7 +118,7 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     }
   };
 
-  const handleDescriptionKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleDescriptionKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     const allowedKeys = ['Backspace','Delete','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','Tab','Enter'];
     if (hasProfanity && !allowedKeys.includes(e.key) && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
@@ -125,7 +126,7 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     if ((!isLoggedIn && !email.trim()) || !category || !description.trim()) {

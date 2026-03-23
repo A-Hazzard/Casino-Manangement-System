@@ -95,7 +95,7 @@ export function useCabinetPageData() {
     if (section === 'collection-history') return 'Collection History';
     if (section === 'collection-settings') return 'Collection Settings';
     if (section === 'configurations') return 'Configurations';
-    return 'Range Metrics';
+    return 'Movement Metrics';
   });
 
   const [refreshing, setRefreshing] = useState(false);
@@ -144,7 +144,7 @@ export function useCabinetPageData() {
       // Show minute/hourly selector only for same-day custom ranges
       const customStart = customDateRange?.startDate || customDateRange?.from || (customDateRange as Record<string, unknown>)?.start;
       const customEnd = customDateRange?.endDate || customDateRange?.to || (customDateRange as Record<string, unknown>)?.end;
-      
+
       const sd = customStart instanceof Date ? customStart : new Date(customStart as unknown as string);
       const ed = customEnd instanceof Date ? customEnd : new Date(customEnd as unknown as string);
       // Compare calendar dates (same year, month, day)
@@ -174,7 +174,7 @@ export function useCabinetPageData() {
     (tab: string) => {
       setActiveTab(tab);
       const sectionMap: Record<string, string> = {
-        'Range Metrics': '',
+        'Movement Metrics': '',
         'Live Metrics': 'live-metrics',
         'Bill Validator': 'bill-validator',
         'Activity Log': 'activity-log',
@@ -353,10 +353,10 @@ export function useCabinetPageData() {
     const customEnd = customDateRange?.endDate || customDateRange?.to || (customDateRange as Record<string, unknown>)?.end;
 
     if (activeMetricsFilter !== 'Custom' || !customStart || !customEnd) return false;
-    
+
     const sd = customStart instanceof Date ? customStart : new Date(customStart as unknown as string);
     const ed = customEnd instanceof Date ? customEnd : new Date(customEnd as unknown as string);
-    
+
     return sd.getFullYear() === ed.getFullYear() &&
       sd.getMonth() === ed.getMonth() &&
       sd.getDate() === ed.getDate();
@@ -392,14 +392,14 @@ export function useCabinetPageData() {
         const customStart = customDateRange?.startDate || customDateRange?.from || (customDateRange as Record<string, unknown>)?.start;
         const customEnd = customDateRange?.endDate || customDateRange?.to || (customDateRange as Record<string, unknown>)?.end;
 
-        const effectiveStartDate = customStart instanceof Date 
-            ? customStart 
-            : customStart ? new Date(customStart as unknown as string) 
+        const effectiveStartDate = customStart instanceof Date
+          ? customStart
+          : customStart ? new Date(customStart as unknown as string)
             : undefined;
 
-        const effectiveEndDate = customEnd instanceof Date 
-            ? customEnd 
-            : customEnd ? new Date(customEnd as unknown as string) 
+        const effectiveEndDate = customEnd instanceof Date
+          ? customEnd
+          : customEnd ? new Date(customEnd as unknown as string)
             : undefined;
 
         const result = await getMachineChartData(

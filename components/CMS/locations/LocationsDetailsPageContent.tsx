@@ -32,12 +32,12 @@ import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
 import { MapPinOff, PlusCircle, RefreshCw, Server, Settings, Users } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
+import ReviewerDebugPanel from '@/components/shared/ui/ReviewerDebugPanel';
+import { SHOW_REVIEWER_DEBUG_PANEL } from '@/lib/constants/uiConstants';
 import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import { hasMissingCoordinates } from '@/lib/utils/location';
 import LocationsEditLocationModal from './modals/LocationsEditLocationModal';
-import ReviewerDebugPanel from '@/components/shared/ui/ReviewerDebugPanel';
-import { SHOW_REVIEWER_DEBUG_PANEL } from '@/lib/constants/uiConstants';
 
 import MembersNavigation from '@/components/CMS/members/common/MembersNavigation';
 import {
@@ -367,7 +367,7 @@ export default function LocationsDetailsPageContent() {
           setSelectedLicencee,
           disabled: false,
         }}
-        pageTitle=""
+        
         hideOptions={true}
         hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
@@ -399,7 +399,7 @@ export default function LocationsDetailsPageContent() {
             cabinetsData.cabinetsLoading ||
             cabinetsData.refreshing,
         }}
-        pageTitle=""
+        
         hideOptions={true}
         hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"

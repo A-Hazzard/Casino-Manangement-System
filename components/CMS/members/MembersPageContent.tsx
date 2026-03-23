@@ -1,7 +1,9 @@
 'use client';
 
+import { ReactElement } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import React, { Suspense } from 'react';
+import {  Suspense  } from 'react';
+
 import { Toaster } from 'sonner';
 
 // Layout components
@@ -64,7 +66,7 @@ function MembersPageContentInner() {
     useMembersNavigation(MEMBERS_TABS_CONFIG);
 
   // Tab content rendering
-  const tabComponents: Record<MembersView, React.ReactElement> = {
+  const tabComponents: Record<MembersView, ReactElement> = {
     members: <MembersListTab />,
     'summary-report': <MembersSummaryTab selectedLicencee={selectedLicencee} />,
   };

@@ -9,11 +9,13 @@ import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ sessionId: string; machineId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
-  const { sessionId, machineId } = await params;
+  const { pathname } = request.nextUrl;
+  const parts = pathname.split('/');
+  const machineId = parts[parts.length - 2];
+  const sessionId = parts[parts.length - 3];
 
   try {
     await connectDB();

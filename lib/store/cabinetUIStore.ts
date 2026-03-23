@@ -49,7 +49,7 @@ type CabinetUIState = {
 // ============================================================================
 
 const defaultBillValidatorState: BillValidatorState = {
-  timePeriod: '7d',
+  timePeriod: 'Today',
   customDateRange: undefined,
 };
 

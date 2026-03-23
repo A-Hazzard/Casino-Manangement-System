@@ -11,6 +11,7 @@
  */
 'use client';
 
+import { FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
   Dialog,
@@ -268,7 +269,7 @@ export default function PasswordUpdateModal({
     onClose?.();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrors({});
     setServerError(null);

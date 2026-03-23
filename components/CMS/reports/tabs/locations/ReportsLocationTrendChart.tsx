@@ -21,6 +21,7 @@
  * @param formatter - Value formatter function
  * @param isHourly - Whether data is hourly
  */
+import { ReactNode, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import { formatTrinidadTime } from '@/lib/utils/timezone';
 import { TimePeriod, type ChartGranularity } from '@/shared/types/common';
@@ -29,7 +30,7 @@ import {
     formatDisplayDate,
     formatTime12Hour,
 } from '@/shared/utils/dateFormat';
-import React, { useMemo } from 'react';
+import {  useMemo  } from 'react';
 import {
     CartesianGrid,
     Line,
@@ -42,7 +43,7 @@ import {
 
 type ReportsLocationTrendChartProps = {
   title: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   data: Array<{
     day: string;
     time?: string;
@@ -82,9 +83,8 @@ export function ReportsLocationTrendChart({
   granularity,
 }: ReportsLocationTrendChartProps) {
 
-
   // Debug: Log raw data for jackpot to investigate missing data points
-  React.useEffect(() => {
+  useEffect(() => {
     if (dataKey === 'jackpot' && data.length > 0) {
       const jackpotDataPoints = data.filter(item =>
         locations.some(locId => {
@@ -378,8 +378,6 @@ export function ReportsLocationTrendChart({
   // Calculate width based on data length to ensure points have enough space
   // 60px per data point gives enough room for labels
   const minWidth = Math.max(700, filteredData.length * 60);
-
-
 
   return (
     <div className="w-full">

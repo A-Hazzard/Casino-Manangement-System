@@ -6,6 +6,7 @@
  * @module components/reports/tabs/machines/ReportsMachinesOverview
  */
 
+import { ReactNode } from 'react';
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
 import { Button } from '@/components/shared/ui/button';
@@ -59,7 +60,6 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import React from 'react';
 
 // ============================================================================
 // Internal Components
@@ -74,7 +74,7 @@ const SortableHeader = ({
   currentSort,
   onSort,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   sortKey: keyof MachineData;
   currentSort: {
     key: keyof MachineData;

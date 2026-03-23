@@ -7,16 +7,18 @@
  */
 'use client';
 
+import { ChangeEvent, FC } from 'react';
 import { LocationPickerMapProps, PlaceSuggestion } from '@/lib/types/location';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import { Globe, MapPin, Search, X } from 'lucide-react';
-import React, {
+import { 
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-} from 'react';
+ } from 'react';
+
 
 const libraries: 'places'[] = ['places'];
 
@@ -26,7 +28,7 @@ const containerStyle = {
   borderRadius: '0.5rem',
 };
 
-const LocationsLocationPickerMap: React.FC<LocationPickerMapProps> = ({
+const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
   initialLat,
   initialLng,
   mapType,
@@ -266,7 +268,7 @@ const LocationsLocationPickerMap: React.FC<LocationPickerMapProps> = ({
 
   // Handle search input change with debouncing
   const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: ChangeEvent<HTMLInputElement>) => {
       const query = e.target.value;
       setSearchQuery(query);
 

@@ -9,6 +9,7 @@
 
 'use client';
 
+import { FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
     Card,
@@ -82,7 +83,7 @@ export default function InterLocationTransferForm({
   const isAllTouched = DEFAULT_DENOMINATIONS.every(d => touchedDenominations.has(Number(d)));
   const isValid = (totalAmount > 0 || isAllTouched);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!fromLocation.trim()) {
       alert('Please select a source location');

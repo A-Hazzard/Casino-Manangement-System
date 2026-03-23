@@ -1,4 +1,4 @@
-import React from 'react';
+import { FC, MutableRefObject } from 'react';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 
 declare module '*.svg' {
@@ -58,7 +58,7 @@ declare module '@/lib/hooks/useCabinetDetails' {
     setIsFilterChangeInProgress: (state: boolean) => void;
     fetchCabinetDetails: () => Promise<void>;
     updateMetricsData: () => Promise<void | (() => void)>;
-    lastFilterChangeTimeRef: React.MutableRefObject<number>;
+    lastFilterChangeTimeRef: MutableRefObject<number>;
   };
 
   export function useCabinetDetails(
@@ -84,8 +84,7 @@ declare module '@/components/cabinetDetails/AccountingDetails' {
     onDataRefresh?: () => Promise<void>; // Optional callback to refresh parent data after auto-fix
   };
 
-  export const AccountingDetails: React.FC<AccountingDetailsProps>;
+  export const AccountingDetails: FC<AccountingDetailsProps>;
   const component: typeof AccountingDetails;
   export default component;
 }
-

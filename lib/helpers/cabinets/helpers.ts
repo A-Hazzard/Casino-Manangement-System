@@ -253,9 +253,9 @@ export const fetchCabinetById = async (
 
       if (hasTime) {
         // Send local time with timezone offset to preserve user's time selection
-        // This ensures 11:45 AM AST stays as 11:45 AM, not converted to 15:45 UTC
-        const fromDate = formatLocalDateTimeString(customDateRange.from, -4);
-        const toDate = formatLocalDateTimeString(customDateRange.to, -4);
+        // This ensures 11:45 AM local stays as 11:45 AM in the request
+        const fromDate = formatLocalDateTimeString(customDateRange.from);
+        const toDate = formatLocalDateTimeString(customDateRange.to);
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       } else {

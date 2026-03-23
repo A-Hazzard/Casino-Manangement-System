@@ -24,20 +24,13 @@ import { NextRequest, NextResponse } from 'next/server';
  * 5. Redirect to location-specific endpoint
  */
 export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const cabinetId = pathname.split('/')[3];
 
   try {
-    // ============================================================================
-    // STEP 1: Parse route parameters
-    // ============================================================================
-    const { cabinetId } = await params;
-
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
     await connectDB();
 
     // ============================================================================

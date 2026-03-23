@@ -28,8 +28,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 5. Redirect to location-specific cabinet endpoint
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
@@ -37,7 +36,8 @@ export async function GET(
     // ============================================================================
     // STEP 1: Parse cabinetId from route parameters
     // ============================================================================
-    const { cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const cabinetId = pathname.split('/')[3];
 
     // ============================================================================
     // STEP 2: Connect to database and check permissions
@@ -129,13 +129,13 @@ export async function GET(
  * 4. Redirect to location-specific cabinet endpoint
  */
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
   try {
-    const { cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const cabinetId = pathname.split('/')[3];
     await connectDB();
 
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
@@ -184,13 +184,13 @@ export async function PUT(
  * 4. Redirect to location-specific cabinet endpoint
  */
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
   try {
-    const { cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const cabinetId = pathname.split('/')[3];
     await connectDB();
 
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
@@ -242,13 +242,13 @@ export async function PATCH(
  * 4. Redirect to location-specific cabinet endpoint
  */
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
   try {
-    const { cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const cabinetId = pathname.split('/')[3];
     await connectDB();
 
     // CRITICAL: Use findOne with _id instead of findById (repo rule)

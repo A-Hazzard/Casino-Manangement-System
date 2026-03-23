@@ -46,16 +46,13 @@ import { NextRequest, NextResponse } from 'next/server';
  * 10. Transform and return chart data
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ machineId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const machineId = pathname.split('/')[3];
 
   try {
-    // ============================================================================
-    // STEP 1: Parse route parameters and query parameters
-    // ============================================================================
-    const { machineId } = await params;
     const { searchParams } = new URL(request.url);
     const timePeriod = searchParams.get('timePeriod');
     const startDateParam = searchParams.get('startDate');

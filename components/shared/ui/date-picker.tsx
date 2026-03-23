@@ -15,9 +15,9 @@
  */
 'use client';
 
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
-import * as React from 'react';
 import { DayPicker, Matcher, SelectSingleEventHandler } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
 
@@ -42,7 +42,7 @@ export function DatePicker({
   disabled,
   disabledDates,
 }: DatePickerProps) {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleSelect: SelectSingleEventHandler = (
     day,

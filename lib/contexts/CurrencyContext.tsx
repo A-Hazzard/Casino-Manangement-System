@@ -1,5 +1,6 @@
 'use client';
 
+import { ReactNode } from 'react';
 import { fetchLicenceeById } from '@/lib/helpers/client';
 import {
   convertCurrency,
@@ -12,17 +13,18 @@ import type {
   CurrencyCode,
   CurrencyContextType,
 } from '@/shared/types/currency';
-import React, {
+import { 
   createContext,
   useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
-} from 'react';
+ } from 'react';
+
 
 type CurrencyProviderProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   initialCurrency?: CurrencyCode;
 };
 

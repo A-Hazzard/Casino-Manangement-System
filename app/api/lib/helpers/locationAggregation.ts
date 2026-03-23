@@ -2,7 +2,6 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
-import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { AggregatedLocation } from '@/shared/types';
 import type { PipelineStage } from 'mongoose';
@@ -918,7 +917,7 @@ export const getLocationsWithMetrics = async (
     const outputRows = allResults; // Return all rows for financial data
 
     return {
-      rows: convertResponseToTrinidadTime(outputRows),
+      rows: outputRows,
       totalCount,
     };
   } else {
@@ -1178,7 +1177,7 @@ export const getLocationsWithMetrics = async (
     const outputRows = allResults.slice(startIndex, endIndex);
 
     return {
-      rows: convertResponseToTrinidadTime(outputRows),
+      rows: outputRows,
       totalCount,
     };
   }

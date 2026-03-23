@@ -9,75 +9,33 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '../../../lib/middleware/db';
-import { getUserIdFromServer, getUserById } from '../../../lib/helpers/users';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { fixCollectionHistoryForReport } from '@/app/api/lib/helpers/collectionReport/fixes/sasTimes';
 
 /**
  * Main POST handler for fixing collection history
  *
  * Flow:
- * 1. Connect to database
- * 2. Authenticate and authorize user (admin/developer only)
- * 3. Extract and validate reportId from URL params
+ * 1. Parse route parameters
+ * 2. Connect to database and authenticate user
+ * 3. Extract and validate reportId from URL path
  * 4. Fix collection history for report using helper
  * 5. Return summary of fixes applied
  */
 export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ reportId: string }> }
+  request: NextRequest
 ) {
-  const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const parts = pathname.split('/');
+  const reportId = parts[parts.length - 2];
 
-  try {
-    // ============================================================================
-    // STEP 1: Connect to the database
-    // ============================================================================
-    await connectDB();
+  return withApiAuth(request, async ({ user }) => {
+    const startTime = Date.now();
 
-    // ============================================================================
-    // STEP 2: Authenticate and authorize user (admin/developer only)
-    // ============================================================================
-    let user: Awaited<ReturnType<typeof getUserById>> | null = null;
-
-    if (process.env.NODE_ENV !== 'development') {
-      const userId = await getUserIdFromServer();
-      if (!userId) {
-        const duration = Date.now() - startTime;
-        console.error(
-          `[Fix Collection History POST API] Unauthorized access after ${duration}ms.`
-        );
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-
-      user = await getUserById(userId);
-      if (!user || Array.isArray(user)) {
-        const duration = Date.now() - startTime;
-        console.error(
-          `[Fix Collection History POST API] User not found after ${duration}ms.`
-        );
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
-      }
-
-      if (
-        !user.roles?.includes('admin') &&
-        !user.roles?.includes('developer')
-      ) {
-        const duration = Date.now() - startTime;
-        console.error(
-          `[Fix Collection History POST API] Insufficient permissions after ${duration}ms.`
-        );
-        return NextResponse.json(
-          { error: 'Insufficient permissions' },
-          { status: 403 }
-        );
-      }
-    }
-
-    // ============================================================================
-    // STEP 3: Extract and validate reportId from URL params
-    // ============================================================================
-    const { reportId } = await params;
+    try {
+      // ============================================================================
+      // STEP 3: Validate reportId
+      // ============================================================================
 
     if (!reportId) {
       const duration = Date.now() - startTime;
@@ -150,4 +108,5 @@ export async function POST(
       { status: 500 }
     );
   }
+  });
 }

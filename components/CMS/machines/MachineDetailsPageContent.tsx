@@ -76,7 +76,7 @@ export default function MachineDetailsPageContent() {
 
       <PageLayout
         headerProps={{ selectedLicencee, setSelectedLicencee }}
-        pageTitle=""
+        
         hideOptions hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
         showToaster={false}

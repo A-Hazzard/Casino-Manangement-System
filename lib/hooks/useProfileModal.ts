@@ -7,6 +7,7 @@
 
 'use client';
 
+import { ChangeEvent } from 'react';
 import type { MultiSelectOption } from '@/components/shared/ui/common/MultiSelectDropdown';
 import { fetchLicencees } from '@/lib/helpers/client';
 import { fetchCountries } from '@/lib/helpers/countries';
@@ -301,7 +302,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   );
 
   // Handle image upload
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();

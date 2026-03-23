@@ -1,5 +1,6 @@
 'use client';
 
+import { SyntheticEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
     Dialog,
@@ -60,7 +61,7 @@ export default function CircleCropModal({
 
   const aspect = 1; // Square aspect ratio for circular crop
 
-  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  const handleImageLoad = (e: SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight, width, height } = e.currentTarget;
     if (aspect) {
       const initialCropPercent = centerAspectCrop(naturalWidth, naturalHeight, aspect);

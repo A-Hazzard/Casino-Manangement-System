@@ -14,6 +14,7 @@
 
 'use client';
 
+import { MutableRefObject } from 'react';
 import { filterMetersData } from '@/lib/helpers/reports/metersTabHelpers';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -47,7 +48,7 @@ type UseMetersTabDataProps = {
   selectedLocations: string[];
   searchTerm: string;
   debouncedSearchTerm: string;
-  hasManuallySetGranularityRef: React.MutableRefObject<boolean>;
+  hasManuallySetGranularityRef: MutableRefObject<boolean>;
 };
 
 export function useMetersTabData({

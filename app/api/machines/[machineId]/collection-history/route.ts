@@ -30,42 +30,14 @@ import { v4 as uuidv4 } from 'uuid';
  * 8. Return success response
  */
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ machineId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const machineId = pathname.split('/')[3];
 
   try {
-    // ============================================================================
-    // STEP 1: Parse route parameters and request body
-    // ============================================================================
-    const { machineId } = await params;
-    const body = await request.json();
-    const { operation, entry, entryId } = body;
-
-    // ============================================================================
-    // STEP 2: Validate machine ID and operation
-    // ============================================================================
-    if (!machineId) {
-      return NextResponse.json(
-        { success: false, error: 'Machine ID is required' },
-        { status: 400 }
-      );
-    }
-
-    if (!operation || !['add', 'update', 'delete'].includes(operation)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid operation. Must be 'add', 'update', or 'delete'",
-        },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 3: Connect to database
-    // ============================================================================
+    const { operation, entry, entryId } = await request.json();
     await connectDB();
 
     // ============================================================================

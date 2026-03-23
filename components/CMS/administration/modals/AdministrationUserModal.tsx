@@ -7,6 +7,7 @@
 
 'use client';
 
+import { ChangeEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
     Card,
@@ -907,7 +908,7 @@ export default function AdministrationUserModal({
     }
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();

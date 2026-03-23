@@ -30,8 +30,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 6. Return results
  */
 export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ locationId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
@@ -39,7 +38,8 @@ export async function POST(
     // ============================================================================
     // STEP 1: Parse route parameters
     // ============================================================================
-    const { locationId } = await params;
+    const { pathname } = request.nextUrl;
+    const locationId = pathname.split('/').at(-2);
 
     // ============================================================================
     // STEP 2: Connect to database

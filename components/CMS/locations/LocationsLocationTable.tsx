@@ -13,6 +13,7 @@
  */
 'use client';
 
+import { FC } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import {
@@ -46,9 +47,9 @@ import { useRef } from 'react';
 import deleteIcon from '@/public/deleteIcon.svg';
 import editIcon from '@/public/editIcon.svg';
 import { format, formatDistanceToNow } from 'date-fns';
-import React from 'react';
 
-const LocationsLocationTable: React.FC<LocationTableProps> = ({
+
+const LocationsLocationTable: FC<LocationTableProps> = ({
   locations,
   sortOption,
   sortOrder,

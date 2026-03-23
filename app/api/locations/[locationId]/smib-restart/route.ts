@@ -31,16 +31,13 @@ import { NextRequest, NextResponse } from 'next/server';
  * 7. Return results
  */
 export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ locationId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const locationId = pathname.split('/').at(-2);
 
   try {
-    // ============================================================================
-    // STEP 1: Parse route parameters and request body
-    // ============================================================================
-    const { locationId } = await params;
     const body = await request.json();
     const relayIds = body.relayIds as string[];
 

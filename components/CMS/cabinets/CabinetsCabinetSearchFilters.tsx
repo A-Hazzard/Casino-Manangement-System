@@ -13,6 +13,7 @@
  * - Responsive design (mobile vs desktop layouts)
  */
 
+import { ChangeEvent } from 'react';
 import MultiSelectDropdown from '@/components/shared/ui/common/MultiSelectDropdown';
 import { CustomSelect } from '@/components/shared/ui/custom-select';
 import { Input } from '@/components/shared/ui/input';
@@ -85,7 +86,7 @@ export const CabinetsCabinetSearchFilters = ({
     onGameTypeChange(values);
   };
 
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     onSearchChange(event.target.value);
   };
 

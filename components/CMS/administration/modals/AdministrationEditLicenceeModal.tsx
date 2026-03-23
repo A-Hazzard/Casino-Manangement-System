@@ -16,6 +16,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { ChangeEvent, FormEvent } from 'react';
 import { gsap } from 'gsap';
 import { DateTimePicker } from '@/components/shared/ui/date-time-picker';
 import { Info } from 'lucide-react';
@@ -74,7 +75,7 @@ function AdministrationEditLicenceeModal({
   }, [open]);
 
   const handleChange = (
-    e: React.ChangeEvent<
+    e: ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
@@ -89,7 +90,7 @@ function AdministrationEditLicenceeModal({
     setFormState({ expiryDate: date });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!formState.name || !formState.country) {
       alert('Name and country are required');

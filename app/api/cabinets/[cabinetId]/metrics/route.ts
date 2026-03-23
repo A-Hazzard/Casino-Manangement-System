@@ -26,16 +26,13 @@ import { NextRequest, NextResponse } from 'next/server';
  * 6. Redirect to location-specific endpoint
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const cabinetId = pathname.split('/')[3];
 
   try {
-    // ============================================================================
-    // STEP 1: Parse route parameters and query parameters
-    // ============================================================================
-    const { cabinetId } = await params;
     const { searchParams } = new URL(request.url);
     const timePeriod = searchParams.get('timePeriod');
 

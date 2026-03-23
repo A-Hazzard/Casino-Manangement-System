@@ -56,7 +56,6 @@ type PageLayoutProps = {
 
 export default function PageLayout({
   children,
-  pageTitle = '',
   hideOptions = false,
   hideLicenceeFilter = false,
   hideCurrencyFilter = false,
@@ -116,7 +115,6 @@ export default function PageLayout({
             <Header
               selectedLicencee={headerSelectedLicencee}
               setSelectedLicencee={headerSetSelectedLicencee}
-              pageTitle={pageTitle}
               hideOptions={hideOptions}
               hideLicenceeFilter={hideLicenceeFilter}
               disabled={headerDisabled}

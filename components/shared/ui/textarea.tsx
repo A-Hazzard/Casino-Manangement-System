@@ -9,13 +9,15 @@
  * - Responsive text sizing
  * - Minimum height for better UX
  */
-import * as React from 'react';
 
+
+import { forwardRef } from 'react';
+import { ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
 
-const Textarea = React.forwardRef<
+const Textarea = forwardRef<
   HTMLTextAreaElement,
-  React.ComponentProps<'textarea'>
+  ComponentProps<'textarea'>
 >(({ className, ...props }, ref) => {
   return (
     <textarea

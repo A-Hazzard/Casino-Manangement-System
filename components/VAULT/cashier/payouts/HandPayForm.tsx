@@ -1,3 +1,4 @@
+import { FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -37,7 +38,7 @@ export default function HandPayForm({
   const [showAuthenticator, setShowAuthenticator] = useState(false);
   const [pendingData, setPendingData] = useState<{ amount: number; machineId: string } | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
     // Cache data and trigger TOTP

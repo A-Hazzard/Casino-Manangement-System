@@ -12,11 +12,12 @@
  */
 'use client';
 
+import { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 
 type ClientOnlyProps = {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
+  children: ReactNode;
+  fallback?: ReactNode;
 };
 
 export default function ClientOnly({

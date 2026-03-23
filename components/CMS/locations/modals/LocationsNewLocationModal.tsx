@@ -7,6 +7,7 @@
  */
 'use client';
 
+import { ChangeEvent, FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import {
@@ -236,7 +237,7 @@ export default function LocationsNewLocationModal({
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
     // Special handling for profit share to only allow numbers
@@ -362,7 +363,7 @@ export default function LocationsNewLocationModal({
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 

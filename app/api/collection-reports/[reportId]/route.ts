@@ -12,12 +12,13 @@ import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ reportId: string }> }
+  request: NextRequest
 ) {
+  const { pathname } = request.nextUrl;
+  const reportId = pathname.split('/').pop();
+
   try {
     await connectDB();
-    const { reportId } = await params;
     const report = await CollectionReport.findOne({ _id: reportId });
 
     if (!report) {
@@ -38,12 +39,12 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ reportId: string }> }
+  request: NextRequest
 ) {
   try {
     await connectDB();
-    const { reportId } = await params;
+    const { pathname } = request.nextUrl;
+    const reportId = pathname.split('/').pop();
     const body = await request.json();
     
     // CRITICAL: Do not update the collector field during edit

@@ -16,12 +16,15 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main GET handler
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { locationId: string } }
-) {
+export async function GET(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const locationId = pathname.split('/').pop();
+
+  if (!locationId) {
+    return NextResponse.json({ success: false, message: 'Location ID required' }, { status: 400 });
+  }
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
-    const { locationId } = params;
 
     try {
       const { searchParams } = new URL(request.url);

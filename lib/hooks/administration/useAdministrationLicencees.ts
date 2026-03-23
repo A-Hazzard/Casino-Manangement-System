@@ -7,6 +7,7 @@
 
 'use client';
 
+import { Dispatch, SetStateAction } from 'react';
 import { fetchLicencees } from '@/lib/helpers/client';
 import { fetchCountries } from '@/lib/helpers/countries';
 import { useUserStore } from '@/lib/store/userStore';
@@ -25,7 +26,7 @@ import { toast } from 'sonner';
 type UseAdministrationLicenceesProps = {
   activeSection: string;
   loadedSections: Set<string>;
-  setLoadedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
+  setLoadedSections: Dispatch<SetStateAction<Set<string>>>;
 };
 
 const licenceesItemsPerPage = 10;

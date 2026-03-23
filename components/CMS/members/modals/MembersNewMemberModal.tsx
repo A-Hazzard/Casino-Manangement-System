@@ -12,6 +12,7 @@
  */
 'use client';
 
+import { ChangeEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
   Card,
@@ -438,7 +439,7 @@ export default function MembersNewMemberModal({
     });
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,

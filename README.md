@@ -237,6 +237,7 @@ go run main.go
 
 ### Code Quality
 
+- **Never import React namespace** - Use direct named imports: `import { useState, FC } from 'react'`
 - Address all ESLint warnings immediately
 - Run `pnpm lint` regularly
 - Document complex business logic
