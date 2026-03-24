@@ -84,9 +84,9 @@ export default function CabinetsDetailsPageContent() {
     );
   }
 
-  // Show loading skeleton for initial load OR when moving between data states
-  // This provides visual feedback during filter changes
-  if ((!cabinet || hook.loading) && !error) {
+  // Show loading skeleton only for initial load (no cabinet data yet)
+  // During filter changes, keep showing the existing data with section-level loading indicators
+  if (!cabinet && !error) {
     return (
       <CabinetDetailsLoadingState
         selectedLicencee={selectedLicencee}

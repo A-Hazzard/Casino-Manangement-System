@@ -6,6 +6,7 @@
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import { fetchCabinetById } from '@/lib/helpers/cabinets';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
 import { isAbortError } from '@/lib/utils/errors';
 import { differenceInMinutes } from 'date-fns';
@@ -66,35 +67,43 @@ export function useCabinetDetailsData({
     setErrorType('unknown');
     setMetricsLoading(true);
 
+    let wasAborted = false;
+
     try {
+      // Read latest values from store at call time to avoid stale closures
+      // (e.g. when called via onCustomRangeGo setTimeout callback)
+      const storeState = useDashBoardStore.getState();
+      const currentActiveMetricsFilter = storeState.activeMetricsFilter || activeMetricsFilter;
+      const currentCustomDateRange = storeState.customDateRange || customDateRange;
+
       // Fetch cabinet data with current date filter - no default fallback
-      if (!activeMetricsFilter) {
+      if (!currentActiveMetricsFilter) {
         setMetricsLoading(false);
         return;
       }
 
       // Robustly check for custom dates - support both {from, to} and {startDate, endDate}
-      const hasCustomDates = 
-        activeMetricsFilter === 'Custom' && (
-          (customDateRange?.startDate && customDateRange?.endDate) ||
-          (customDateRange?.from && customDateRange?.to) ||
-          (customDateRange?.start && customDateRange?.end)
+      const hasCustomDates =
+        currentActiveMetricsFilter === 'Custom' && (
+          (currentCustomDateRange?.startDate && currentCustomDateRange?.endDate) ||
+          (currentCustomDateRange?.from && currentCustomDateRange?.to) ||
+          (currentCustomDateRange?.start && currentCustomDateRange?.end)
         );
 
-      if (activeMetricsFilter === 'Custom' && !hasCustomDates) {
+      if (currentActiveMetricsFilter === 'Custom' && !hasCustomDates) {
         setMetricsLoading(false);
         return;
       }
 
       // Resolve effective custom ranges into a standard { from, to } Date format
-      const from = customDateRange?.startDate || customDateRange?.from || customDateRange?.start;
-      const to = customDateRange?.endDate || customDateRange?.to || customDateRange?.end;
+      const from = currentCustomDateRange?.startDate || currentCustomDateRange?.from || currentCustomDateRange?.start;
+      const to = currentCustomDateRange?.endDate || currentCustomDateRange?.to || currentCustomDateRange?.end;
       
-      const effectiveRange = activeMetricsFilter === 'Custom' && from && to 
-        ? { 
-            from: from instanceof Date ? from : new Date(from as any), 
-            to: to instanceof Date ? to : new Date(to as any) 
-          } 
+      const effectiveRange = currentActiveMetricsFilter === 'Custom' && from && to
+        ? {
+            from: from instanceof Date ? from : new Date(String(from)),
+            to: to instanceof Date ? to : new Date(String(to))
+          }
         : undefined;
 
       // Always pass current display currency so cabinet detail values
@@ -102,7 +111,7 @@ export function useCabinetDetailsData({
       const cabinetData = await makeRequest(signal =>
         fetchCabinetById(
           slug,
-          activeMetricsFilter,
+          currentActiveMetricsFilter,
           effectiveRange,
           displayCurrency,
           selectedLicencee || null,
@@ -111,6 +120,12 @@ export function useCabinetDetailsData({
       );
 
       // NOTE: reviewer multiplier is applied server-side — no client-side scaling needed
+
+      // If request was aborted (returned null), keep existing cabinet data
+      if (cabinetData === null || cabinetData === undefined) {
+        wasAborted = true;
+        return;
+      }
 
       setCabinet(cabinetData);
 
@@ -128,6 +143,12 @@ export function useCabinetDetailsData({
         setIsOnline(differenceInMinutes(new Date(), lastActive) <= 3);
       }
     } catch (err) {
+      // Silently handle aborted requests - keep existing data, don't set error
+      if (isAbortError(err)) {
+        wasAborted = true;
+        return;
+      }
+
       setCabinet(null);
 
       // Determine error type based on the error
@@ -168,11 +189,6 @@ export function useCabinetDetailsData({
         setErrorType('unknown');
       }
 
-      // Silently handle aborted requests - this is expected behavior when switching filters
-      if (isAbortError(err)) {
-        return;
-      }
-
       // Only show toast for non-unauthorized errors
       const errorWithStatus =
         err instanceof Error
@@ -194,7 +210,10 @@ export function useCabinetDetailsData({
         toast.error('Failed to fetch cabinet details');
       }
     } finally {
-      setMetricsLoading(false);
+      // Don't clear loading on abort — a new request is in-flight and will clear it
+      if (!wasAborted) {
+        setMetricsLoading(false);
+      }
     }
   }, [
     slug,

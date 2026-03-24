@@ -17,6 +17,7 @@ import {
 } from '@/lib/utils/financial/totals';
 import { useDebounce } from '@/lib/utils/hooks';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseCabinetDataProps = {
@@ -230,15 +231,21 @@ export const useCabinetData = ({
       }
 
       const result = await makeRequest(async signal => {
+        // Read latest values from store at call time to avoid stale closures
+        // (e.g. when called via onCustomRangeGo setTimeout callback)
+        const storeState = useDashBoardStore.getState();
+        const currentCustomDateRange = storeState.customDateRange;
+        const currentActiveMetricsFilter = storeState.activeMetricsFilter || activeMetricsFilter;
+
         console.warn('[useCabinetData] Loading cabinets with filters:', {
           selectedLicencee,
-          activeMetricsFilter,
+          activeMetricsFilter: currentActiveMetricsFilter,
           page,
           limit,
-          customDateRange: customDateRange
+          customDateRange: currentCustomDateRange
             ? {
-              startDate: customDateRange.startDate?.toISOString(),
-              endDate: customDateRange.endDate?.toISOString(),
+              startDate: currentCustomDateRange.startDate?.toISOString(),
+              endDate: currentCustomDateRange.endDate?.toISOString(),
             }
             : undefined,
           selectedLocation,
@@ -247,12 +254,12 @@ export const useCabinetData = ({
         });
 
         const dateRangeForFetch =
-          activeMetricsFilter === 'Custom' &&
-            customDateRange?.startDate &&
-            customDateRange?.endDate
+          currentActiveMetricsFilter === 'Custom' &&
+            currentCustomDateRange?.startDate &&
+            currentCustomDateRange?.endDate
             ? {
-              from: customDateRange.startDate,
-              to: customDateRange.endDate,
+              from: currentCustomDateRange.startDate,
+              to: currentCustomDateRange.endDate,
             }
             : undefined;
 
@@ -278,7 +285,7 @@ export const useCabinetData = ({
 
         const result = await fetchCabinets(
           selectedLicencee,
-          activeMetricsFilter,
+          currentActiveMetricsFilter,
           dateRangeForFetch,
           displayCurrency,
           effectivePage,

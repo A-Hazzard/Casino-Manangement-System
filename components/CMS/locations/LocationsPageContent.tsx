@@ -7,8 +7,9 @@
  */
 'use client';
 
-import LocationsDetailsFilterSection from '@/components/CMS/locations/details/LocationsDetailsFilterSection';
-import LocationsDetailsHeaderSection from '@/components/CMS/locations/details/LocationsDetailsHeaderSection';
+import LocationsPageFilterSection from '@/components/CMS/locations/LocationsPageFilterSection';
+import LocationsPageHeaderSection from '@/components/CMS/locations/LocationsPageHeaderSection';
+import LocationsReviewerDebugTable from '@/components/CMS/locations/LocationsReviewerDebugTable';
 import LocationsCabinetTableSkeleton from '@/components/CMS/locations/LocationsCabinetTableSkeleton';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import ClientOnly from '@/components/shared/ui/common/ClientOnly';
@@ -159,7 +160,7 @@ export default function LocationsPageContent() {
         refreshing={refreshing}
       >
         {/* Page Header: Title and primary actions */}
-        <LocationsDetailsHeaderSection
+        <LocationsPageHeaderSection
           loading={loading}
           refreshing={refreshing}
           canManage={canManageLocations}
@@ -182,74 +183,7 @@ export default function LocationsPageContent() {
 
         {/* ── REVIEWER DEBUG PANEL ─────────────────────────────────────────── */}
         {SHOW_REVIEWER_DEBUG_PANEL && isReviewer && !loading && locationData.length > 0 && (
-          <div className="mt-4 rounded-lg border-2 border-yellow-400 bg-yellow-50 p-4">
-            <p className="mb-2 text-base font-bold text-yellow-800">
-              🔍 REVIEWER DEBUG — RAW values (accounting denomination applied, reviewer multiplier NOT yet applied)
-            </p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm font-mono">
-                <thead>
-                  <tr className="border-b border-yellow-300 text-yellow-900">
-                    <th className="pr-4 pb-1">Location</th>
-                    <th className="pr-4 pb-1">Raw Money In</th>
-                    <th className="pr-4 pb-1">Final Money In</th>
-                    <th className="pr-4 pb-1">Raw Money Out</th>
-                    <th className="pr-4 pb-1">Final Money Out</th>
-                    <th className="pr-4 pb-1">Raw Jackpot</th>
-                    <th className="pr-4 pb-1">Final Jackpot</th>
-                    <th className="pr-4 pb-1">Raw Gross</th>
-                    <th className="pr-4 pb-1">Final Gross</th>
-                    <th className="pb-1">Multiplier</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {locationData.map(loc => {
-                    const raw = loc as unknown as Record<string, unknown>;
-                    const mult = raw._reviewerMultiplier as number | undefined;
-                    const rawMI = raw._rawMoneyIn as number | undefined;
-                    const rawMO = raw._rawMoneyOut as number | undefined;
-                    const rawJP = raw._rawJackpot as number | undefined;
-                    const rawGR = raw._rawGross as number | undefined;
-                    return (
-                      <tr key={String(loc._id || loc.location)} className="border-b border-yellow-200 text-yellow-900">
-                        <td className="pr-4 py-1 font-semibold">{loc.name || '—'}</td>
-                        <td className="pr-4 py-1 text-orange-700 font-bold">
-                          {rawMI != null ? rawMI.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
-                        </td>
-                        <td className="pr-4 py-1">
-                          {loc.moneyIn != null ? loc.moneyIn.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
-                        </td>
-                        <td className="pr-4 py-1 text-orange-700 font-bold">
-                          {rawMO != null ? rawMO.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
-                        </td>
-                        <td className="pr-4 py-1">
-                          {loc.moneyOut != null ? loc.moneyOut.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
-                        </td>
-                        <td className="pr-4 py-1 text-orange-700 font-bold">
-                          {rawJP != null ? rawJP.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
-                        </td>
-                        <td className="pr-4 py-1">
-                          {loc.jackpot != null ? loc.jackpot.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
-                        </td>
-                        <td className="pr-4 py-1 text-orange-700 font-bold">
-                          {rawGR != null ? rawGR.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
-                        </td>
-                        <td className="pr-4 py-1">
-                          {loc.gross != null ? loc.gross.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
-                        </td>
-                        <td className="py-1 text-purple-700 font-bold">
-                          {mult != null ? `×${mult}` : '—'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-2 text-xs text-yellow-700">
-              Orange = pre-multiplier (denominated). Black = post-multiplier (what you see in the UI). Expected: Final = Raw × Multiplier.
-            </p>
-          </div>
+          <LocationsReviewerDebugTable locationData={locationData} />
         )}
         {/* ── END REVIEWER DEBUG PANEL ─────────────────────────────────────── */}
 
@@ -260,7 +194,7 @@ export default function LocationsPageContent() {
             <div className="order-1 w-auto flex-shrink-0">
               <DateFilters hideAllTime />
             </div>
-            <div className="order-2 w-auto flex-shrink-0">
+            <div className="order-2 w-auto">
               <MachineStatusWidget
                 isLoading={
                   machineStatsLoading ||
@@ -281,7 +215,7 @@ export default function LocationsPageContent() {
           </div>
 
           {/* Search bar and multi-filter dropdowns */}
-          <LocationsDetailsFilterSection
+          <LocationsPageFilterSection
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             selectedFilters={selectedFilters}

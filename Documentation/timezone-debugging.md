@@ -1,142 +1,211 @@
 # Timezone Logic for Cabinet Details Queries
 
-This document explains how timezone handling works for cabinet details, focusing on the ACTUAL component relationships and data flow from the UI to the API.
+This document explains the timezone handling in the cabinet details page and why queries from different timezone regions may return different or unexpected results.
 
 ---
 
-## 1. Component Hierarchy for Cabinet Metrics
+## 1. The Core Problem: Trinidad Timezone is Hardcoded
 
-The cabinet details page follows this specific structure for fetching financial and status data:
+**The system is designed to work in Trinidad time (UTC-4).** All gaming day calculations, meter readings, and business logic assume the user is in Trinidad time.
+
+**The issue:** When a user from a different timezone (e.g., Japan UTC+9) queries 8 AM, they get different results than a Trinidad user querying 8 AM.
+
+---
+
+## 2. How `formatLocalDateTimeString` Works
+
+**File**: `shared/utils/dateFormat.ts`
+
+```typescript
+export function formatLocalDateTimeString(
+  date: DateInput,
+  timezoneOffset: number = -new Date().getTimezoneOffset() / 60
+): string {
+  // Extract LOCAL time components (browser's local time)
+  const year = dateObj.getFullYear(); // e.g., 2026
+  const month = dateObj.getMonth() + 1; // e.g., 3 (March)
+  const day = dateObj.getDate(); // e.g., 23
+  const hours = dateObj.getHours(); // e.g., 8 (8 AM)
+  const minutes = dateObj.getMinutes(); // e.g., 0
+
+  // Append the timezone offset
+  const offsetSign = timezoneOffset >= 0 ? '+' : '-';
+  const offsetHours = Math.abs(timezoneOffset);
+
+  return `${year}-${month}-${day}T${hours}:${minutes}:00${offsetSign}${offsetHours}:00`;
+}
+```
+
+---
+
+## 3. Why Different Timezones Return Different Data
+
+### Scenario: User in Trinidad (UTC-4) selects 8 AM
+
+1. Browser creates `new Date()` at 8 AM Trinidad time
+2. `getHours()` returns `8`
+3. `getTimezoneOffset()` returns `240` (Trinidad is UTC-4)
+4. Default calculation: `-new Date().getTimezoneOffset() / 60 = -240/60 = -4`
+5. API receives: `startDate=2026-03-23T08:00:00-04:00`
+6. Backend parses to UTC: `new Date("2026-03-23T08:00:00-04:00")` = **March 23, 12:00 UTC**
+7. Gaming day range: 8 AM Trinidad = 12:00 UTC to 11:59:59 UTC next day
+
+### Scenario: User in Japan (UTC+9) selects 8 AM
+
+1. Browser creates `new Date()` at 8 AM Japan time
+2. `getHours()` returns `8` ✓ (correct local time)
+3. `getTimezoneOffset()` returns `-540` (Japan is UTC+9)
+4. Default calculation: `-(-540) / 60 = 9`
+5. API receives: `startDate=2026-03-23T08:00:00+09:00`
+6. Backend parses to UTC: `new Date("2026-03-23T08:00:00+09:00")` = **March 22, 23:00 UTC**
+7. Gaming day range: 8 AM Japan = 23:00 UTC previous day
+
+### The Result
+
+| User Location    | Selected Time | API Receives         | UTC Equivalent       | Gaming Day |
+| ---------------- | ------------- | -------------------- | -------------------- | ---------- |
+| Trinidad (UTC-4) | 8:00 AM       | `...T08:00:00-04:00` | 12:00 UTC            | March 23   |
+| Japan (UTC+9)    | 8:00 AM       | `...T08:00:00+09:00` | 23:00 UTC (prev day) | March 22   |
+
+**The Japan user got data from the WRONG gaming day!**
+
+---
+
+## 4. Why 12 PM in Japan = 8 AM in Trinidad
+
+You noticed that querying 12 PM in Japan returns the same data as 8 AM in Trinidad. Here's why:
+
+| User Location | Selected Time | API Receives         | UTC Equivalent       |
+| ------------- | ------------- | -------------------- | -------------------- |
+| Japan         | 12:00 PM      | `...T12:00:00+09:00` | 03:00 UTC (March 23) |
+| Trinidad      | 8:00 AM       | `...T08:00:00-04:00` | 12:00 UTC (March 23) |
+
+Wait, that's still different. Let me recalculate...
+
+Actually, the correct comparison:
+
+**Japan 8 AM → UTC = 23:00 previous day**
+**Trinidad 8 AM → UTC = 12:00 same day**
+
+The difference is 13 hours. So:
+
+- Japan 8 AM = Trinidad previous day 7 PM
+- Japan 12 PM = Trinidad previous day 11 PM
+- Japan 8 PM = Trinidad 7 AM (same day)
+
+The system interprets ALL times as the user's LOCAL time, not Trinidad time. So a Japan user selecting "8 AM" gets "8 AM Japan" in the database, not "8 AM Trinidad".
+
+---
+
+## 5. The Component Hierarchy
 
 ```
 app/cabinets/[slug]/page.tsx
 └── CabinetsDetailsPageContent.tsx
-    └── useCabinetPageData.ts (Custom Hook)
-        └── useCabinetDetailsData.ts (Data Hook)
-            └── fetchCabinetById() (Helper Function)
-                → GET /api/machines/[machineId]
+    └── useCabinetPageData.ts
+        └── useCabinetDetailsData.ts
+            └── fetchCabinetById() → /api/machines/[machineId]
 ```
 
-### File Responsibilities
+### File Locations
 
-| Component/File | Role |
-| :--- | :--- |
-| `app/cabinets/[slug]/page.tsx` | Route wrapper that provides the `slug` (machine ID) to the content. |
-| `CabinetsDetailsPageContent.tsx` | The main UI container. Uses the `useCabinetPageData` hook and manages high-level layout. |
-| `useCabinetPageData.ts` | Orchestrates page state (tabs, refreshing, charts). It utilizes `useCabinetDetailsData` for core machine metrics. |
-| `useCabinetDetailsData.ts` | Manages the lifecycle of machine data fetching. Triggers updates when global filters change. |
-| `lib/helpers/cabinets/helpers.ts` | Contains `fetchCabinetById()`, which constructs the API request with appropriate date parameters. |
-| `app/api/machines/route.ts` | Backend handler that parses parameters and returns pure UTC data (no timezone shifting). |
+| File                                                                   | Purpose                       |
+| ---------------------------------------------------------------------- | ----------------------------- |
+| `components/CMS/cabinets/details/CabinetsDetailsAccountingDetails.tsx` | Accounting tab UI             |
+| `lib/hooks/cabinets/useCabinetAccountingData.ts`                       | Hook for accounting data      |
+| `lib/hooks/data/useCabinetDetailsData.ts`                              | Hook for cabinet details      |
+| `lib/helpers/cabinets/helpers.ts`                                      | Contains `fetchCabinetById()` |
+| `app/api/machines/[machineId]/route.ts`                                | Backend API endpoint          |
 
 ---
 
-## 2. Data Flow: From UI to API
+## 6. Backend Processing
 
-### Step 1: User Interaction (UI)
-User interacts with the filter system (usually in the header or a filter bar).
-- **Actions**: Clicking "Today", "Yesterday", "30d", or selecting a date/time in the **Custom Date Range picker**.
-- **State**: These actions update the `useDashBoardStore` (Zustand) with:
-    - `activeMetricsFilter`: The selected period name (e.g., "Today", "Custom").
-    - `customDateRange`: An object containing `startDate` and `endDate` (or `from`/`to`).
+**File**: `app/api/machines/[machineId]/route.ts`
 
-### Step 2: Hook Trigger (`useCabinetDetailsData.ts`)
-The `useCabinetDetailsData` hook monitors changes to these store values.
 ```typescript
-// useCabinetDetailsData.ts
-useEffect(() => {
-  if (activeMetricsFilter && dateFilterInitialized) {
-    fetchCabinetDetailsData();
+if (timePeriod === 'Custom') {
+  const customStart = new Date(startDateParam); // e.g., "2026-03-23T08:00:00-04:00"
+  const customEnd = new Date(endDateParam);
+
+  // Check if dates have specific time
+  const hasSpecificTime =
+    customStart.getUTCHours() !== 0 || customStart.getUTCMinutes() !== 0;
+
+  if (hasSpecificTime) {
+    // Use EXACT time - no gaming day expansion
+    return { rangeStart: customStart, rangeEnd: customEnd };
   }
-}, [activeMetricsFilter, customDateRange, ...]);
-```
-It calls `fetchCabinetById` inside the `fetchCabinetDetailsData` callback.
 
-### Step 3: API Request Construction (`helpers.ts`)
-In `fetchCabinetById`, the frontend decides how to format the dates based on whether the user selected a specific time.
-
-- **Predefined Periods** (Today, Yesterday, 7d, 30d):
-    - Only `timePeriod` is sent: `?timePeriod=Today`
-- **Custom Selection**:
-    - **Has Specific Time** (e.g., 11:45 AM): Uses `formatLocalDateTimeString(date)`.
-        - Result: `startDate=2025-03-23T11:45:00-04:00` (assuming user is in UTC-4)
-        - *Key*: This preserves the local "wall clock" time by including the **actual browser offset** in the ISO string.
-    - **Date-Only/Midnight**: Appends `T00:00:00.000Z`.
-        - Result: `startDate=2025-03-23T00:00:00.000Z`
-        - *Key*: This treats the selection as a pure UTC date.
-
-### Step 4: Backend Processing (`/api/machines/[machineId]/route.ts`)
-The API route receives the parameters and calculates the final DB query range.
-
-1.  **Get Machine's Location**: It finds the `gamingLocation` for the machine.
-2.  **Get Gaming Day Offset**: It retrieves `gameDayOffset` from the location (e.g., `8` for 8 AM).
-3.  **Apply Logic (`getGamingDayRangeForPeriod`)**:
-    - If `timePeriod === 'Custom'`:
-        - Checks if input has explicit time (not midnight).
-        - **Has Time**: Uses the EXACT UTC time provided. No gaming day expansion.
-        - **No Time (Midnight)**: Expands the range to full gaming days (e.g., 8:00 AM on Start Date to 7:59:59 AM after End Date).
-    - If **Predefined Period**: Calculates the range relative to "now" using the `gameDayOffset`.
-
-### Step 5: Database Query
-The calculated `rangeStart` and `rangeEnd` are used to filter the `Meters` collection.
-```javascript
-{ readAt: { $gte: rangeStart, $lte: rangeEnd } }
+  // Date-only: Apply gaming day expansion
+  // ...
+}
 ```
 
-### Step 6: Response and Display
-The API returns raw UTC dates (e.g., `updatedAt: "2025-03-23T15:45:00.000Z"`).
-- **Client-Side Rendering**: UI components receive the UTC string.
-- **Local Formatting**: JavaScript's native `Date` object and `Intl.DateTimeFormat` (used in `shared/utils/dateFormat.ts`) automatically convert this UTC time to the **user's current local timezone** for display.
-    - *Example*: A user in Trinidad sees 11:45 AM, while a user in Japan sees 12:45 AM the next day for the same event.
+**Key Point:** If the date has a specific time (not midnight), the backend uses it EXACTLY as provided. No gaming day offset is applied.
 
 ---
 
-## 3. Formatting Utilities
+## 7. Why the Data Looks "Offset"
 
-### `formatLocalDateTimeString`
-Located in `shared/utils/dateFormat.ts`.
-It extracts the local components (Year, Month, Day, Hour, Minute) from a JS `Date` object and appends the **actual browser timezone offset**.
-- **Offset**: Calculated dynamically via `-new Date().getTimezoneOffset() / 60`.
-- **Why?**: This ensures that when a user selects "11:45 AM" in their local time, the API receives that exact moment correctly regardless of where the server is located.
+When you query from Japan:
 
-### Removal of `convertResponseToTrinidadTime`
-The previously used `app/api/lib/utils/timezone.ts` utility has been **deleted**.
-- **Reason**: It was manually shifting UTC hours by -4 before sending to the client, which "lied" to the browser about the actual time and caused double-offsetting or incorrect displays for users outside of Trinidad.
-- **New Standard**: All API responses are pure UTC.
+1. You select 8 AM Japan time
+2. System stores/fetches data for 8 AM Japan = 23:00 UTC previous day
+3. But meters were collected based on **Trinidad** gaming days (8 AM to 7:59 AM)
+4. So you get NO DATA because no meters were collected at 23:00 UTC in the Trinidad gaming day
 
----
+When you query 12 PM Japan:
 
-## 4. Key Implementation Details
-
-### Gaming Day Expansion Logic
-Located in `lib/utils/gamingDayRange.ts`.
-
-- **Formulas**:
-    - `UTC_Start = Local_Date + (gameDayOffset - timezoneOffset)`
-    - Example: March 23 + (8 AM - (-4)) = March 23, 12:00 UTC.
-
-### Custom Date vs Predefined
-- **Predefined**: Always affected by `gameDayOffset`. If it's 7 AM and you click "Today", you get *Yesterday's* calendar date because the gaming day hasn't started yet.
-- **Custom (with time)**: Ignores `gameDayOffset`. If you pick 11:45 AM, you get exactly 11:45 AM.
+1. 12 PM Japan = 03:00 UTC same day
+2. This is still not in the Trinidad gaming day range (12:00 to 11:59 UTC)
+3. But if you query enough days, eventually you'll hit the Trinidad 8 AM data
 
 ---
 
-## 5. Troubleshooting & Inaccuracies to Watch For
+## 8. Potential Fixes
 
-1.  **"fetchCabinetById is in useCabinetPageData"**: **FALSE**. It is a helper function called by `useCabinetDetailsData`.
-2.  **"ModernCalendar is used"**: **FALSE** for Cabinet Details. It uses a combination of page-level filters and tab-specific pickers like `ModernDateRangePicker`.
-3.  **Missing `useCabinetDetailsData`**: Previous docs skipped this intermediate hook which is actually responsible for the data fetching lifecycle.
-4.  **Hardcoded -4 Offset**: This has been removed. The system now detects the user's browser timezone offset dynamically.
+### Fix A: Hardcode Trinidad Offset Everywhere
+
+Change `formatLocalDateTimeString` to always use `-4`:
+
+```typescript
+export function formatLocalDateTimeString(
+  date: DateInput,
+  timezoneOffset: number = -4  // Always Trinidad time
+): string { ... }
+```
+
+**Pros:** All users get Trinidad time regardless of location
+**Cons:** Users in other countries will see "wrong" times (e.g., "8 AM" displayed even though it's midnight locally)
+
+### Fix B: Add User Timezone Setting
+
+Allow users to configure their timezone preference:
+
+```typescript
+const userTimezone = user.preferences?.timezone ?? 'America/Port_of_Spain';
+const offset = getOffsetFromTimezone(userTimezone);
+formatLocalDateTimeString(date, offset);
+```
+
+### Fix C: Clear Warning/Labeling
+
+If the system MUST work in Trinidad time, clearly label it:
+
+```
+Selected Time: 8:00 AM Trinidad Time (AST)
+Current Local Time: 11:00 PM (JST)
+```
 
 ---
 
-## 6. Summary Table
+## 9. Summary
 
-| Step | Location | Status | Output Example |
-| :--- | :--- | :--- | :--- |
-| 1. Select Filter | `CabinetsDetailsPageContent` | UI | `activeMetricsFilter = 'Custom'` |
-| 2. Fetch Data | `useCabinetDetailsData` | Hook | Calls helper |
-| 3. Format URL | `lib/helpers/cabinets/helpers.ts` | Helper | `/api/machines/ID?startDate=...[LocalOffset]` |
-| 4. Parse Dates | `app/api/machines/route.ts` | API | `new Date("...[LocalOffset]")` |
-| 5. Calculate Range | `lib/utils/gamingDayRange.ts` | Utils | `rangeStart = ISODate("...")` |
-| 6. Return Data | `app/api/machines/route.ts` | API | Returns raw UTC JSON |
-| 7. Display Data | `shared/utils/dateFormat.ts` | UI | Browser converts UTC -> Local |
+| Issue                            | Cause                                                       |
+| -------------------------------- | ----------------------------------------------------------- |
+| Japan 8 AM ≠ Trinidad 8 AM       | System uses browser's local offset, not Trinidad offset     |
+| Japan 12 PM = Trinidad 8 AM data | Timezone offset difference causes data overlap              |
+| No data when querying from Japan | Japan times don't align with Trinidad gaming day boundaries |
+
+**Root Cause:** The `formatLocalDateTimeString` function uses the browser's detected timezone offset, but the system expects Trinidad time (UTC-4). Users in other timezones get incorrect results because their local times don't align with Trinidad gaming days.

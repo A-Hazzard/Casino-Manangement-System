@@ -1,5 +1,5 @@
 /**
- * LocationsDetailsFilterSection Component
+ * LocationsPageFilterSection Component
  *
  * Handles search input and status filters for the locations dashboard.
  * 
@@ -16,7 +16,7 @@ import { Label } from '@/components/shared/ui/label';
 import type { LocationFilter } from '@/lib/types/location';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 
-type LocationsDetailsFilterSectionProps = {
+type LocationsPageFilterSectionProps = {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   selectedFilters: LocationFilter[];
@@ -35,7 +35,7 @@ const STATUS_OPTIONS = [
   { id: 'HasCoordinates', name: 'Has Coordinates' },
 ];
 
-export default function LocationsDetailsFilterSection({
+export default function LocationsPageFilterSection({
   searchTerm,
   onSearchChange,
   selectedFilters,
@@ -43,7 +43,7 @@ export default function LocationsDetailsFilterSection({
   onMultiFilterChange,
   selectedStatus,
   onStatusChange,
-}: LocationsDetailsFilterSectionProps) {
+}: LocationsPageFilterSectionProps) {
   return (
     <div className="space-y-4">
       {/* Search and Desktop Filter Bar */}
@@ -81,8 +81,8 @@ export default function LocationsDetailsFilterSection({
             />
           </div>
 
-          {/* Location Type Dropdown (hidden on XL, visible on other breakpoints) */}
-          <div className="w-full sm:w-[180px] xl:hidden">
+          {/* Location Type Dropdown (hidden on 2XL, visible on other breakpoints) */}
+          <div className="w-full sm:w-[180px] 2xl:hidden">
             <LocationMultiSelect
               locations={STATUS_OPTIONS}
               selectedLocations={selectedFilters as string[]}
@@ -97,7 +97,7 @@ export default function LocationsDetailsFilterSection({
         </div>
 
         {/* XL+ Toolbar Checkboxes */}
-        <div className="hidden flex-1 items-center justify-end gap-x-6 xl:flex border-l border-white/20 pl-6 ml-2">
+        <div className="hidden flex-1 items-center justify-end gap-x-6 2xl:flex border-l border-white/20 pl-6 ml-2">
           {/* Connection Group */}
           <div className="flex items-center gap-4">
             {STATUS_OPTIONS.slice(0, 3).map(opt => (

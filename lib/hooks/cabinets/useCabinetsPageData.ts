@@ -25,7 +25,7 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { TimePeriod } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { useDebounce } from '@/lib/utils/hooks';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const ITEMS_PER_PAGE = 10;
 const ITEMS_PER_BATCH = 50;
@@ -64,7 +64,11 @@ export function useCabinetsPageData() {
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(0);
-  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
+  // Use ref instead of state for synchronous clearing when filters change
+  // This prevents the race condition where the data fetch effect sees stale loadedBatches
+  const loadedBatchesRef = useRef<Set<number>>(new Set());
+  // Counter to force effect re-evaluation when batches are cleared
+  const [batchResetCounter, setBatchResetCounter] = useState(0);
 
   // Helper to calculate which batch a page belongs to
   const calculateBatchNumber = useCallback(
@@ -344,7 +348,10 @@ export function useCabinetsPageData() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(0);
-    setLoadedBatches(new Set());
+    // Clear synchronously via ref so the data fetch effect in the same render sees the empty set
+    loadedBatchesRef.current = new Set();
+    // Bump counter to trigger the data fetch effect
+    setBatchResetCounter(c => c + 1);
   }, [selectedLocation, selectedGameType, searchTerm, debouncedSearchTerm, selectedLicencee, activeMetricsFilter, customDateRange, sortOption, sortOrder, displayCurrency]);
 
   // Wrapped setters
@@ -391,10 +398,10 @@ export function useCabinetsPageData() {
 
       const currentBatch = calculateBatchNumber(currentPage);
 
-      // Fetch next batch if needed
-      if (!loadedBatches.has(currentBatch)) {
+      // Fetch next batch if needed (using ref for synchronous check)
+      if (!loadedBatchesRef.current.has(currentBatch)) {
         console.warn(`[useCabinetsPageData] Fetching batch ${currentBatch} for page ${currentPage + 1}`);
-        setLoadedBatches(prev => new Set([...prev, currentBatch]));
+        loadedBatchesRef.current.add(currentBatch);
         void loadCabinets(currentBatch, ITEMS_PER_BATCH, sortOption, sortOrder);
       }
 
@@ -414,7 +421,7 @@ export function useCabinetsPageData() {
     loadCabinets,
     fetchChartData,
     debouncedSearchTerm,
-    loadedBatches,
+    batchResetCounter,
     calculateBatchNumber,
   ]);
 

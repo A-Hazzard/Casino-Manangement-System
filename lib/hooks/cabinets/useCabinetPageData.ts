@@ -378,8 +378,12 @@ export function useCabinetPageData() {
       return;
     }
 
+    // Set loading before making request so skeleton shows immediately
+    setLoadingChart(true);
+    // Set chartData to null so DashboardChart shows skeleton (not "No Metrics Data")
+    setChartData(null);
+
     makeChartRequest(async signal => {
-      setLoadingChart(true);
       try {
         // Pass granularity to API for all periods that support granularity selection
         const isShortPeriod =
@@ -418,7 +422,11 @@ export function useCabinetPageData() {
           // Store data span for granularity calculation
           setDataSpan(result.dataSpan || null);
         }
-      } catch {
+      } catch (err) {
+        // Don't clear chart data on abort — keep skeleton showing for the next request
+        if (err instanceof Error && (err.name === 'AbortError' || err.message === 'canceled')) {
+          return;
+        }
         setChartData([]);
       } finally {
         setLoadingChart(false);

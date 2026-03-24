@@ -382,3 +382,60 @@ export function shouldShowCashierSidebar(
 
   return false;
 }
+
+/**
+ * Check if user can edit machines/cabinets
+ * @param userRoles - Array of user's roles 
+ * @returns boolean indicating if user can edit
+ */
+export const canEditMachines = (userRoles: UserRole[] | undefined): boolean => {
+  if (!userRoles || userRoles.length === 0) return false;
+
+  // Collectors cannot edit machines
+  if (userRoles.includes('collector')) {
+    return false;
+  }
+
+  // Check if user has a role that allows editing
+  return [
+    'developer',
+    'admin',
+    'manager',
+    'location admin',
+    'technician',
+  ].some(role => userRoles.includes(role as UserRole));
+};
+
+/**
+ * Check if user can delete machines/cabinets
+ * @param userRoles - Array of user's roles
+ * @returns boolean indicating if user can delete
+ */
+export const canDeleteMachines = (userRoles: UserRole[] | undefined): boolean => {
+  if (!userRoles || userRoles.length === 0) return false;
+
+  // Collectors and technicians cannot delete machines
+  if (userRoles.includes('collector') || userRoles.includes('technician')) {
+    return false;
+  }
+
+  // Check if user has a role that allows deletion
+  return ['developer', 'admin', 'manager', 'location admin'].some(role =>
+    userRoles.includes(role as UserRole)
+  );
+};
+
+/**
+ * Check if user can manage (create/edit/delete) locations
+ * @param userRoles - Array of user's roles
+ * @returns boolean indicating if user can manage locations
+ */
+export const canManageLocations = (
+  userRoles: UserRole[] | undefined
+): boolean => {
+  if (!userRoles || userRoles.length === 0) return false;
+
+  return ['developer', 'admin', 'manager', 'location admin'].some(role =>
+    userRoles.includes(role as UserRole)
+  );
+};

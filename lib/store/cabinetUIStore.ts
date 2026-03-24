@@ -12,12 +12,7 @@
  */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-
-// ============================================================================
-// Types
-// ============================================================================
-
-type TimePeriod = 'Today' | 'Yesterday' | '7d' | '30d' | 'All Time' | 'Custom';
+import { TimePeriod } from '@/shared/types/common';
 
 type BillValidatorState = {
   timePeriod: TimePeriod;

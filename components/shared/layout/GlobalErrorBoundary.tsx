@@ -10,13 +10,14 @@
  *
  * @param children - Child components to wrap with error boundary
  */
-"use client";
+'use client';
 
-import {  useState, useEffect, useCallback, ErrorInfo  } from 'react';
+import { useState, useEffect, useCallback, ErrorInfo } from 'react';
+import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
-import ErrorBoundary from "@/components/shared/ui/errors/ErrorBoundary";
-import { useUserStore } from "@/lib/store/userStore";
-import { AlertTriangle, Copy, Check, RefreshCw, Wrench } from "lucide-react";
+import ErrorBoundary from '@/components/shared/ui/errors/ErrorBoundary';
+import { useUserStore } from '@/lib/store/userStore';
+import { AlertTriangle, Copy, Check, RefreshCw, Wrench } from 'lucide-react';
 
 // ============================================================================
 // Error report sender
@@ -24,16 +25,16 @@ import { AlertTriangle, Copy, Check, RefreshCw, Wrench } from "lucide-react";
 async function sendErrorToServer(
   error: Error,
   componentStack: string | undefined,
-  context: "window" | "react" | "promise"
+  context: 'window' | 'react' | 'promise'
 ) {
   try {
-    await fetch("/api/client-errors", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    await fetch('/api/client-errors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: error.message,
         stack: error.stack,
-        componentStack: componentStack ?? "(none)",
+        componentStack: componentStack ?? '(none)',
         context,
         url: window.location.href,
         userAgent: navigator.userAgent,
@@ -56,14 +57,24 @@ function CopyButton({ text }: { text: string }) {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
   return (
     <button
       onClick={handleCopy}
-      className="inline-flex items-center gap-1.5 rounded border border-red-300 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 transition-colors"
+      className="inline-flex items-center gap-1.5 rounded border border-red-300 px-3 py-1.5 text-xs text-red-700 transition-colors hover:bg-red-50"
     >
-      {copied ? <><Check className="h-3 w-3" /> Copied!</> : <><Copy className="h-3 w-3" /> Copy Report</>}
+      {copied ? (
+        <>
+          <Check className="h-3 w-3" /> Copied!
+        </>
+      ) : (
+        <>
+          <Copy className="h-3 w-3" /> Copy Report
+        </>
+      )}
     </button>
   );
 }
@@ -73,42 +84,58 @@ function CopyButton({ text }: { text: string }) {
 // ============================================================================
 type ErrorDetails = { error: Error; componentStack?: string };
 
-function DeveloperErrorView({ details, onRetry }: { details: ErrorDetails; onRetry: () => void }) {
+function DeveloperErrorView({
+  details,
+  onRetry,
+}: {
+  details: ErrorDetails;
+  onRetry: () => void;
+}) {
   const { error, componentStack } = details;
 
   const report = [
     `=== Error Report ===`,
     `Time: ${new Date().toISOString()}`,
-    `URL: ${typeof window !== "undefined" ? window.location.href : ""}`,
+    `URL: ${typeof window !== 'undefined' ? window.location.href : ''}`,
     ``,
     `Message: ${error.message}`,
     ``,
     `JS Stack:`,
-    error.stack ?? "(none)",
+    error.stack ?? '(none)',
     ``,
     `React Component Stack:`,
-    componentStack ?? "(none)",
-  ].join("\n");
+    componentStack ?? '(none)',
+  ].join('\n');
 
   return (
-    <div className="min-h-screen bg-red-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-3xl rounded-xl border border-red-200 bg-white shadow-xl overflow-hidden">
-        <div className="border-b border-red-100 bg-red-50 px-6 py-4 flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
+    <div className="flex min-h-screen items-center justify-center bg-red-50 p-4">
+      <div className="w-full max-w-3xl overflow-hidden rounded-xl border border-red-200 bg-white shadow-xl">
+        <div className="flex items-center gap-3 border-b border-red-100 bg-red-50 px-6 py-4">
+          <AlertTriangle className="h-5 w-5 flex-shrink-0 text-red-500" />
           <div>
-            <p className="font-semibold text-red-800">Runtime Error <span className="font-normal text-red-600 text-sm">(developer view)</span></p>
-            <p className="text-xs text-red-600 font-mono mt-0.5">{error.message}</p>
+            <p className="font-semibold text-red-800">
+              Runtime Error{' '}
+              <span className="text-sm font-normal text-red-600">
+                (developer view)
+              </span>
+            </p>
+            <p className="mt-0.5 font-mono text-xs text-red-600">
+              {error.message}
+            </p>
           </div>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="space-y-4 p-6">
           {/* Component stack — most useful in production */}
           {componentStack && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-red-700 mb-1.5">
-                React Component Stack <span className="font-normal text-red-500">(read top-down)</span>
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-red-700">
+                React Component Stack{' '}
+                <span className="font-normal text-red-500">
+                  (read top-down)
+                </span>
               </p>
-              <pre className="max-h-56 overflow-auto rounded border border-red-200 bg-gray-950 text-green-300 p-3 text-[10px] leading-relaxed whitespace-pre-wrap font-mono">
+              <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded border border-red-200 bg-gray-950 p-3 font-mono text-[10px] leading-relaxed text-green-300">
                 {componentStack}
               </pre>
             </div>
@@ -116,18 +143,18 @@ function DeveloperErrorView({ details, onRetry }: { details: ErrorDetails; onRet
 
           {/* JS stack */}
           <details>
-            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-red-700 select-none mb-1.5">
+            <summary className="mb-1.5 cursor-pointer select-none text-xs font-semibold uppercase tracking-wide text-red-700">
               JS Stack Trace
             </summary>
-            <pre className="mt-1 max-h-48 overflow-auto rounded border border-red-200 bg-gray-950 text-gray-200 p-3 text-[10px] leading-relaxed whitespace-pre-wrap font-mono">
-              {error.stack ?? "(none)"}
+            <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded border border-red-200 bg-gray-950 p-3 font-mono text-[10px] leading-relaxed text-gray-200">
+              {error.stack ?? '(none)'}
             </pre>
           </details>
 
-          <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-red-100">
+          <div className="flex flex-wrap items-center gap-3 border-t border-red-100 pt-2">
             <button
               onClick={onRetry}
-              className="inline-flex items-center gap-1.5 rounded border border-red-300 px-3 py-1.5 text-xs text-red-700 hover:bg-red-50 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded border border-red-300 px-3 py-1.5 text-xs text-red-700 transition-colors hover:bg-red-50"
             >
               <RefreshCw className="h-3 w-3" /> Reload
             </button>
@@ -144,22 +171,22 @@ function DeveloperErrorView({ details, onRetry }: { details: ErrorDetails; onRet
 // ============================================================================
 function MaintenanceScreen({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-gray-50 p-8 text-center">
-      <div className="flex items-center justify-center w-16 h-16 rounded-full bg-blue-100">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-gray-50 p-8 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
         <Wrench className="h-8 w-8 text-blue-600" />
       </div>
-      <div className="space-y-2 max-w-md">
+      <div className="max-w-md space-y-2">
         <h1 className="text-2xl font-semibold text-gray-800">
           This page is currently under maintenance
         </h1>
-        <p className="text-gray-500 text-sm">
+        <p className="text-sm text-gray-500">
           We&apos;re working to resolve this as quickly as possible. Please try
           again in a few moments or contact support if the issue persists.
         </p>
       </div>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
+        className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
       >
         Try again
       </button>
@@ -188,57 +215,85 @@ export default function GlobalErrorBoundary({
     if (!error) return;
 
     if (
-      error.name === "ChunkLoadError" ||
-      error.message?.includes("chunk") ||
-      error.message?.includes("Loading chunk")
+      error.name === 'ChunkLoadError' ||
+      error.message?.includes('chunk') ||
+      error.message?.includes('Loading chunk')
     ) {
-      console.warn("[GlobalErrorBoundary] ChunkLoadError — reloading...");
+      console.warn('[GlobalErrorBoundary] ChunkLoadError — reloading...');
       setTimeout(() => window.location.reload(), 1000);
       return;
     }
 
-    console.error("[GlobalErrorBoundary] Uncaught error:", error.message, "\nStack:", error.stack);
-    sendErrorToServer(error, undefined, "window");
+    console.error(
+      '[GlobalErrorBoundary] Uncaught error:',
+      error.message,
+      '\nStack:',
+      error.stack
+    );
+    sendErrorToServer(error, undefined, 'window');
     setErrorDetails({ error });
   }, []);
 
-  const handleUnhandledRejection = useCallback((event: PromiseRejectionEvent) => {
-    const reason = event.reason;
-    if (reason && typeof reason === "object") {
-      const name = (reason as Error).name;
-      const message = (reason as Error).message;
-      if (name === "AbortError" || name === "CanceledError" || message === "canceled") {
-        event.preventDefault();
-        return;
+  const handleUnhandledRejection = useCallback(
+    (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      if (reason && typeof reason === 'object') {
+        const name = (reason as Error).name;
+        const message = (reason as Error).message;
+        if (
+          name === 'AbortError' ||
+          name === 'CanceledError' ||
+          message === 'canceled'
+        ) {
+          event.preventDefault();
+          return;
+        }
       }
-    }
-    const error =
-      reason instanceof Error
-        ? reason
-        : new Error(String((reason as Error)?.message ?? reason));
+      const error =
+        reason instanceof Error
+          ? reason
+          : new Error(String((reason as Error)?.message ?? reason));
 
-    console.error("[GlobalErrorBoundary] Unhandled rejection:", error.message);
-    sendErrorToServer(error, undefined, "promise");
-    setErrorDetails({ error });
-  }, []);
+      console.error(
+        '[GlobalErrorBoundary] Unhandled rejection:',
+        error.message
+      );
+      sendErrorToServer(error, undefined, 'promise');
+      setErrorDetails({ error });
+    },
+    []
+  );
 
   useEffect(() => {
-    window.addEventListener("error", handleWindowError);
-    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+    window.addEventListener('error', handleWindowError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
     return () => {
-      window.removeEventListener("error", handleWindowError);
-      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+      window.removeEventListener('error', handleWindowError);
+      window.removeEventListener(
+        'unhandledrejection',
+        handleUnhandledRejection
+      );
     };
   }, [handleWindowError, handleUnhandledRejection]);
+
+  // Reset error state when URL changes (e.g., after logout redirects)
+  const pathname = usePathname();
+  useEffect(() => {
+    // Clear error state when URL changes to prevent stale error displays
+    setErrorDetails(null);
+  }, [pathname]);
 
   const handleReactError = useCallback((error: Error, info: ErrorInfo) => {
     const componentStack = info.componentStack ?? undefined;
     console.error(
-      "[GlobalErrorBoundary] React component error:", error.message,
-      "\nComponent stack:", componentStack,
-      "\nJS stack:", error.stack
+      '[GlobalErrorBoundary] React component error:',
+      error.message,
+      '\nComponent stack:',
+      componentStack,
+      '\nJS stack:',
+      error.stack
     );
-    sendErrorToServer(error, componentStack, "react");
+    sendErrorToServer(error, componentStack, 'react');
     setErrorDetails({ error, componentStack });
   }, []);
 
@@ -248,14 +303,19 @@ export default function GlobalErrorBoundary({
   }, []);
 
   if (errorDetails) {
-    return isDeveloper
-      ? <DeveloperErrorView details={errorDetails} onRetry={retry} />
-      : <MaintenanceScreen onRetry={retry} />;
+    return isDeveloper ? (
+      <DeveloperErrorView details={errorDetails} onRetry={retry} />
+    ) : (
+      <MaintenanceScreen onRetry={retry} />
+    );
   }
 
-  const fallback = isDeveloper && errorDetails
-    ? <DeveloperErrorView details={errorDetails} onRetry={retry} />
-    : <MaintenanceScreen onRetry={retry} />;
+  const fallback =
+    isDeveloper && errorDetails ? (
+      <DeveloperErrorView details={errorDetails} onRetry={retry} />
+    ) : (
+      <MaintenanceScreen onRetry={retry} />
+    );
 
   return (
     <ErrorBoundary onError={handleReactError} fallback={fallback}>

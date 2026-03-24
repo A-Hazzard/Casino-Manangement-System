@@ -47,7 +47,7 @@ export default function MachineStatusWidget({
   const total = totalCount ?? (onlineCount + offlineCount);
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-gray-100 bg-white px-3 py-2.5 sm:gap-3 sm:px-4">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 bg-white px-3 py-2.5 sm:gap-3 sm:px-4">
         <Skeleton className="h-4 w-4 flex-shrink-0 rounded sm:h-5 sm:w-5" />
         <Skeleton className="h-3 w-12 flex-shrink-0 sm:w-20" />
         <div className="flex gap-1 sm:gap-2">
@@ -60,7 +60,7 @@ export default function MachineStatusWidget({
   }
 
   return (
-    <div className="flex min-w-fit flex-wrap items-center gap-2 rounded-lg border border-gray-100 bg-white px-3 py-2.5 sm:gap-3 sm:px-4">
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 bg-white px-3 py-2.5 sm:gap-3 sm:px-4">
       <Image
         src={cabinetsIcon}
         alt="Cabinets"

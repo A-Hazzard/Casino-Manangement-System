@@ -21,6 +21,9 @@ export {
   hasManagerAccess,
   shouldShowNavigationLink,
   getRoleDisplayName,
+  canEditMachines,
+  canDeleteMachines,
+  canManageLocations,
 } from './client';
 
 // Server-side permission utilities

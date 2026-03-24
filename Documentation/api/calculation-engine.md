@@ -53,10 +53,11 @@ Casino operations do not end at midnight. The engine uses a "Gaming Day" logic:
 - **How it works**: A session occurring at 3 AM on Tuesday is attributed to the "Monday Gaming Day."
 - **Logic**: Implementation resides in `getGamingDayRangeForPeriod.ts`. It shifts the audit window by `-8 hours` before querying the database.
 
-### 🌐 UTC Baseline
-- **Storage**: All timestamps are stored as **UTC** in MongoDB.
-- **Data Transfer**: The API transmits pure UTC ISO strings to the client, maintaining a single source of truth and avoiding manual server-side offsets.
-- **Display**: The application utilizes the **user's browser local timezone** for all UI formatting. This ensures managers in any part of the world (e.g., Japan, London, or Trinidad) see data correctly relative to their own local time without hardcoded system shifts.
+### 🌐 Single Source of Truth Logic
+- **Storage & Retrieval**: All timestamps are stored as **UTC** in MongoDB. The API transmits pure UTC strings to the client.
+- **Client Date Selection**: When picking a "Custom Range," the client detects its local browser offset (e.g., `-04:00`) and transmits that offset to the server via standard `ISO 8601` formatting.
+- **Robustness**: Requests are encoded via `URLSearchParams` to ensure exact timezone data (including the `+` sign for positive offsets) is carried from the browser to the API without corruption.
+- **Display Conversion**: Browser-side rendering handles the final UTC-to-Local conversion. Regardless of geography or specific hardware location, managers always see data based on their local wall-clock time.
 
 ---
 

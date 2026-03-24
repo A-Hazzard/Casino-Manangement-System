@@ -86,6 +86,7 @@ export type AggregatedLocation = {
   hasNoRecentCollectionReport?: boolean; // Flag indicating no collection report in past 3 months (for NON-SMIB locations)
   geoCoords?: GeoCoordinates; // Geographic coordinates for mapping
   includeJackpot?: boolean; // Setting from associated Licencee
+  latestActivity?: number; // Timestamp of latest machine activity
   machines?: Array<{
     _id: string;
     assetNumber?: string;

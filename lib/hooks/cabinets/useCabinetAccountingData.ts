@@ -148,7 +148,7 @@ export function useCabinetAccountingData({
     customDateRange,
     setActivityLogDateRange,
     setActivityLogTimePeriod,
-    setBillValidatorTimePeriod: (period: any) => setBillValidatorTimePeriod(cabinet._id, period),
+    setBillValidatorTimePeriod: (period: ApiTimePeriod) => setBillValidatorTimePeriod(cabinet._id, period),
     setMachine,
   };
 }

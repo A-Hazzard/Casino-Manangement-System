@@ -1,5 +1,5 @@
 /**
- * LocationsDetailsHeaderSection Component
+ * LocationsPageHeaderSection Component
  *
  * Displays the page title, refresh controls, and location creation actions.
  * 
@@ -14,7 +14,7 @@ import { IMAGES } from '@/lib/constants';
 import { Plus, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 
-type LocationsDetailsHeaderSectionProps = {
+type LocationsPageHeaderSectionProps = {
   loading: boolean;
   refreshing: boolean;
   canManage: boolean;
@@ -22,13 +22,13 @@ type LocationsDetailsHeaderSectionProps = {
   onNew: () => void;
 };
 
-export default function LocationsDetailsHeaderSection({
+export default function LocationsPageHeaderSection({
   loading,
   refreshing,
   canManage,
   onRefresh,
   onNew,
-}: LocationsDetailsHeaderSectionProps) {
+}: LocationsPageHeaderSectionProps) {
   return (
     <div className="mt-4 flex w-full max-w-full items-center justify-between">
       {/* Title */}

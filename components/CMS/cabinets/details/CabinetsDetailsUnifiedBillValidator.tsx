@@ -23,6 +23,7 @@ import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Banknote, RefreshCw } from 'lucide-react';
 import {  useCallback, useEffect, useRef, useState  } from 'react';
+import { TimePeriod } from '@/shared/types/common';
 
 import { toast } from 'sonner';
 
@@ -45,8 +46,6 @@ type BillValidatorData = {
   totalKnownAmount?: number;
   totalUnknownAmount?: number;
 };
-
-type TimePeriod = 'Today' | 'Yesterday' | '7d' | '30d' | 'All Time' | 'Custom';
 
 type CabinetsDetailsUnifiedBillValidatorProps = {
   machineId: string;

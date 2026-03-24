@@ -43,7 +43,7 @@ import type { UserAuthPayload } from '@/shared/types/auth';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-type UserStore = {
+export type UserStore = {
   user: UserAuthPayload | null;
   setUser: (user: UserAuthPayload | null) => void;
   clearUser: () => void;

@@ -1,8 +1,8 @@
 /**
  * Date Filters Component
- * 
+ *
  * Reusable date filter component used across the application.
- * 
+ *
  * Features:
  * - Predefined time periods (Today, Yesterday, 7d, 30d, etc.)
  * - Custom date range selection with ModernCalendar
@@ -20,6 +20,10 @@ import { Button } from '@/components/shared/ui/button';
 import { CustomSelect } from '@/components/shared/ui/custom-select';
 import DateRangeIndicator from '@/components/shared/ui/DateRangeIndicator';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
+import {
+  createDateInTrinidadTime,
+  getGamingDayEndInTrinidad,
+} from '@/shared/utils/dateFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { DateFiltersProps } from '@/lib/types/components';
 import { useEffect, useMemo, useState } from 'react';
@@ -46,18 +50,86 @@ export default function DateFilters({
   } = useDashBoardStore();
 
   const [shouldTriggerCallback, setShouldTriggerCallback] = useState(false);
+
   useEffect(() => {
     if (hideAllTime && activeMetricsFilter === 'All Time') {
       setActiveMetricsFilter('30d');
     }
   }, [activeMetricsFilter, hideAllTime, setActiveMetricsFilter]);
 
-  // Reset to "Today" if navigating to a page that doesn't support the Quarterly filter
   useEffect(() => {
     if (!showQuarterly && activeMetricsFilter === 'Quarterly') {
       setActiveMetricsFilter('Today');
     }
   }, [activeMetricsFilter, showQuarterly, setActiveMetricsFilter]);
+
+  useEffect(() => {
+    if (!activeMetricsFilter || activeMetricsFilter === 'Custom') return;
+
+    const today = new Date();
+    const gamingStartHour = gameDayOffset;
+
+    switch (activeMetricsFilter) {
+      case 'Today': {
+        const startDate = createDateInTrinidadTime(
+          today.getFullYear(),
+          today.getMonth() + 1,
+          today.getDate(),
+          gamingStartHour,
+          0,
+          0
+        );
+        const endDate = getGamingDayEndInTrinidad(today, gameDayOffset);
+        setCustomDateRange({ startDate, endDate });
+        break;
+      }
+      case 'Yesterday': {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const startDate = createDateInTrinidadTime(
+          yesterday.getFullYear(),
+          yesterday.getMonth() + 1,
+          yesterday.getDate(),
+          gamingStartHour,
+          0,
+          0
+        );
+        const endDate = getGamingDayEndInTrinidad(yesterday, gameDayOffset);
+        setCustomDateRange({ startDate, endDate });
+        break;
+      }
+      case '7d': {
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+        const startDate = createDateInTrinidadTime(
+          sevenDaysAgo.getFullYear(),
+          sevenDaysAgo.getMonth() + 1,
+          sevenDaysAgo.getDate(),
+          gamingStartHour,
+          0,
+          0
+        );
+        const endDate = getGamingDayEndInTrinidad(today, gameDayOffset);
+        setCustomDateRange({ startDate, endDate });
+        break;
+      }
+      case '30d': {
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+        const startDate = createDateInTrinidadTime(
+          thirtyDaysAgo.getFullYear(),
+          thirtyDaysAgo.getMonth() + 1,
+          thirtyDaysAgo.getDate(),
+          gamingStartHour,
+          0,
+          0
+        );
+        const endDate = getGamingDayEndInTrinidad(today, gameDayOffset);
+        setCustomDateRange({ startDate, endDate });
+        break;
+      }
+    }
+  }, [activeMetricsFilter, gameDayOffset, setCustomDateRange]);
 
   const timeFilterButtons: { label: string; value: TimePeriod }[] =
     useMemo(() => {
@@ -240,4 +312,3 @@ export default function DateFilters({
     </div>
   );
 }
-

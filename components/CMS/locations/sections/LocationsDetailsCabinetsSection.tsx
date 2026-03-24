@@ -276,7 +276,7 @@ export default function LocationsDetailsCabinetsSection({
   return (
     <>
       {/* Financial Metrics Section: Location-specific financial overview */}
-      <div className="">
+      <div>
         {/* Jackpot badge — above heading on mobile/md, inline on lg+ */}
         {includeJackpot && (
           <div className="mb-2 lg:hidden">
