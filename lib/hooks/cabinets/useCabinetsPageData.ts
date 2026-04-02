@@ -27,9 +27,9 @@ import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { useDebounce } from '@/lib/utils/hooks';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-const ITEMS_PER_PAGE = 10;
-const ITEMS_PER_BATCH = 50;
-const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
+const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_BATCH = 40;
+const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 2
 
 export function useCabinetsPageData() {
   const activeMetricsFilter = useDashBoardStore(state => state.activeMetricsFilter);
@@ -114,6 +114,7 @@ export function useCabinetsPageData() {
     useBatchPagination: false, // Using simple slicing on accumulated data
     totalCount: totalCount,
     searchTerm: debouncedSearchTerm,
+    currentPage: currentPage,
   });
 
   const isDataMissingForPage = useMemo(() => {
@@ -126,10 +127,10 @@ export function useCabinetsPageData() {
     return !debouncedSearchTerm?.trim() && startIndex >= allCabinets.length && allCabinets.length < totalCount;
   }, [allCabinets.length, currentPage, totalCount, debouncedSearchTerm]);
 
-  // effectiveTotalPages is based on the actual loaded count from API.
-  // Adds +1 trigger page only if server has more data not yet fetched.
+  // effectiveTotalPages is based on the client-visible filtered count.
+  // Adds +1 trigger page only if server has more raw data not yet fetched.
   const effectiveTotalPages = useMemo(() => {
-    const displayedPages = Math.ceil(allCabinets.length / ITEMS_PER_PAGE) || 1;
+    const displayedPages = Math.ceil(filteredCabinets.length / ITEMS_PER_PAGE) || 1;
 
     if (allCabinets.length < totalCount && totalCount > 0) {
       const serverTotalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
@@ -137,7 +138,7 @@ export function useCabinetsPageData() {
     }
 
     return displayedPages;
-  }, [allCabinets.length, totalCount]);
+  }, [filteredCabinets.length, allCabinets.length, totalCount]);
 
   // Custom column sort handler that triggers fresh fetch
   const handleColumnSort = useCallback((column: CabinetSortOption) => {
@@ -179,10 +180,11 @@ export function useCabinetsPageData() {
       let offlineCount = 0;
 
       filteredCabinets.forEach(cab => {
+        const aceEnabled = (cab as Record<string, unknown>).aceEnabled === true;
         const lastActivity = cab.lastActivity
           ? new Date(cab.lastActivity as string | number | Date)
           : null;
-        if (lastActivity && lastActivity >= threeMinutesAgo) {
+        if (aceEnabled || (lastActivity && lastActivity >= threeMinutesAgo)) {
           onlineCount++;
         } else {
           offlineCount++;

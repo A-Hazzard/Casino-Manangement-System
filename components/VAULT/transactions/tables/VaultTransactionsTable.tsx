@@ -21,6 +21,7 @@ import {
 } from '@/components/shared/ui/table';
 import VaultTransactionDetailsModal from '@/components/VAULT/transactions/modals/VaultTransactionDetailsModal';
 import ViewDenominationsModal from '@/components/VAULT/transactions/modals/ViewDenominationsModal';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import { safeFormatDate } from '@/lib/utils/date/formatting';
@@ -30,7 +31,7 @@ import type {
   VaultTransactionType,
 } from '@/shared/types/vault';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, ChevronLeft, ChevronRight, Clock, Eye, FileText } from 'lucide-react';
+import { ArrowRight, Clock, Eye, FileText } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 export type TransactionSortOption =
@@ -68,7 +69,7 @@ export default function VaultTransactionsTable({
   const [selectedTransactionDetails, setSelectedTransactionDetails] = useState<ExtendedVaultTransaction | null>(null);
   
   // Pagination State
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
 
   const formatDate = (date: string | Date) => safeFormatDate(date);
 
@@ -76,7 +77,7 @@ export default function VaultTransactionsTable({
   
   const pagedTransactions = useMemo(() => {
     if (disablePagination) return transactions;
-    const start = (currentPage - 1) * itemsPerPage;
+    const start = currentPage * itemsPerPage;
     return transactions.slice(start, start + itemsPerPage);
   }, [transactions, currentPage, itemsPerPage, disablePagination]);
 
@@ -260,70 +261,14 @@ export default function VaultTransactionsTable({
       </div>
 
       {/* Pagination Controls */}
-      {totalPages > 1 && !disablePagination && (
-        <div className="flex items-center justify-between px-2 py-4">
-          <p className="text-xs text-gray-500">
-            Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-            <span className="font-medium">
-              {Math.min(currentPage * itemsPerPage, transactions.length)}
-            </span> of{' '}
-            <span className="font-medium">{transactions.length}</span> results
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center gap-1">
-              {[...Array(totalPages)].map((_, i) => {
-                const pageNum = i + 1;
-                // Only show current page, first, last, and neighbors if many pages
-                if (
-                  pageNum === 1 ||
-                  pageNum === totalPages ||
-                  (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
-                ) {
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={currentPage === pageNum ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={cn(
-                        "h-8 w-8 p-0 text-xs",
-                        currentPage === pageNum ? "bg-button text-white" : ""
-                       )}
-                    >
-                      {pageNum}
-                    </Button>
-                  );
-                }
-                // Show ellipsis
-                if (
-                  (pageNum === 2 && currentPage > 3) ||
-                  (pageNum === totalPages - 1 && currentPage < totalPages - 2)
-                ) {
-                  return <span key={pageNum} className="px-1 text-gray-400 text-xs text-center">...</span>;
-                }
-                return null;
-              })}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+      {!disablePagination && (
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={transactions.length}
+          setCurrentPage={setCurrentPage}
+          showTotalCount
+        />
       )}
 
       <ViewDenominationsModal

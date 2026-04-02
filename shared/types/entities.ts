@@ -82,6 +82,7 @@ export type AggregatedLocation = {
   totalDrop?: number; // Alias for moneyIn in some contexts
   enableMembership?: boolean; // Membership enabled flag
   membershipEnabled?: boolean; // Alias for enableMembership
+  aceEnabled?: boolean; // Ace Enabled implies location is fully online
   memberCount?: number; // Number of members at this location
   hasNoRecentCollectionReport?: boolean; // Flag indicating no collection report in past 3 months (for NON-SMIB locations)
   geoCoords?: GeoCoordinates; // Geographic coordinates for mapping

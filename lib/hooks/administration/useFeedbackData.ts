@@ -27,6 +27,8 @@ export function useFeedbackData({
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0); // 0-indexed
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [serverTotalCount, setServerTotalCount] = useState(0);
+  const [serverTotalPages, setServerTotalPages] = useState(1);
 
   // Calculate which batch corresponds to the current page
   const calculateBatchNumber = useCallback((page: number) => {
@@ -59,6 +61,11 @@ export function useFeedbackData({
 
       setAllFeedback(data.data || []);
       setLoadedBatches(new Set([1]));
+
+      if (data.pagination) {
+        setServerTotalCount(data.pagination.totalCount || 0);
+        setServerTotalPages(data.pagination.totalPages || 1);
+      }
     } catch (error) {
       console.error('Error fetching feedback:', error);
       toast.error(
@@ -156,12 +163,10 @@ export function useFeedbackData({
     return allFeedback.slice(startIndex, endIndex);
   }, [allFeedback, currentPage, itemsPerPage, pagesPerBatch]);
 
-  // Memoized total pages
+  // Calculate total pages based on server data
   const totalPages = useMemo(() => {
-    const totalItems = allFeedback.length;
-    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
-    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [allFeedback.length, itemsPerPage]);
+    return serverTotalPages > 0 ? serverTotalPages : 1;
+  }, [serverTotalPages]);
 
   return {
     feedback,
@@ -172,6 +177,7 @@ export function useFeedbackData({
     currentPage,
     setCurrentPage,
     totalPages,
+    serverTotalCount,
     fetchInitialBatch,
   };
 }

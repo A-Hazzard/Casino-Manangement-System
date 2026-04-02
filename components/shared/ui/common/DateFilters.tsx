@@ -19,7 +19,12 @@ import { TimePeriod } from '@/app/api/lib/types';
 import { Button } from '@/components/shared/ui/button';
 import { CustomSelect } from '@/components/shared/ui/custom-select';
 import DateRangeIndicator from '@/components/shared/ui/DateRangeIndicator';
-import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
+import { MuiDateCalendar } from '@/components/shared/ui/MuiDateCalendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/shared/ui/popover';
 import {
   createDateInTrinidadTime,
   getGamingDayEndInTrinidad,
@@ -34,7 +39,6 @@ export default function DateFilters({
   hideAllTime,
   showQuarterly = false,
   mode = 'auto',
-  enableTimeInputs = false,
   hideIndicator = false,
   showIndicatorOnly = false,
 }: DateFiltersProps & {
@@ -218,35 +222,28 @@ export default function DateFilters({
             contentClassName="text-gray-700"
           />
 
-          {/* ModernCalendar for mobile - shown only when Custom is selected */}
+          {/* MuiDateCalendar for mobile - shown only when Custom is selected */}
           {activeMetricsFilter === 'Custom' && (
-            <ModernCalendar
-              date={
-                useDashBoardStore.getState().customDateRange
-                  ? {
-                      from: useDashBoardStore.getState().customDateRange
-                        ?.startDate,
-                      to: useDashBoardStore.getState().customDateRange?.endDate,
+            <div className="w-full">
+              <MuiDateCalendar
+                date={useDashBoardStore.getState().customDateRange?.startDate}
+                gameDayOffset={gameDayOffset}
+                onSelect={range => {
+                  if (range) {
+                    setCustomDateRange({
+                      startDate: range.from,
+                      endDate: range.to,
+                    });
+                    setActiveMetricsFilter('Custom');
+                    setActivePieChartFilter('Custom');
+                    if (onCustomRangeGo) {
+                      setTimeout(() => onCustomRangeGo(), 0);
                     }
-                  : undefined
-              }
-              onSelect={date => {
-                if (date?.from && date?.to) {
-                  setCustomDateRange({
-                    startDate: date.from,
-                    endDate: date.to,
-                  });
-                  setActiveMetricsFilter('Custom');
-                  setActivePieChartFilter('Custom'); // Sync pie chart filter
-                  if (onCustomRangeGo) {
-                    setTimeout(() => onCustomRangeGo(), 0);
                   }
-                }
-              }}
-              enableTimeInputs={enableTimeInputs}
-              gameDayOffset={gameDayOffset}
-              className="w-full"
-            />
+                }}
+                className="w-full"
+              />
+            </div>
           )}
         </div>
 
@@ -276,36 +273,39 @@ export default function DateFilters({
                 </Button>
               ))}
 
-            <ModernCalendar
-              date={
-                activeMetricsFilter === 'Custom' &&
-                useDashBoardStore.getState().customDateRange
-                  ? {
-                      from: useDashBoardStore.getState().customDateRange
-                        ?.startDate,
-                      to: useDashBoardStore.getState().customDateRange?.endDate,
+            {/* MUI Custom Date Picker for Desktop */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  onClick={() => setActiveMetricsFilter('Custom')}
+                  className={`rounded-md px-3 py-1 text-sm transition-colors ${
+                    activeMetricsFilter === 'Custom'
+                      ? 'bg-buttonActive text-white'
+                      : 'bg-button text-white hover:bg-button/90'
+                  }`}
+                  disabled={disabled}
+                >
+                  Custom
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start" side="bottom">
+                <MuiDateCalendar
+                  date={useDashBoardStore.getState().customDateRange?.startDate}
+                  gameDayOffset={gameDayOffset}
+                  onSelect={range => {
+                    if (range) {
+                      setCustomDateRange({
+                        startDate: range.from,
+                        endDate: range.to,
+                      });
+                      if (onCustomRangeGo) {
+                        setTimeout(() => onCustomRangeGo(), 0);
+                      }
                     }
-                  : undefined
-              }
-              onSelect={date => {
-                if (date?.from && date?.to) {
-                  setCustomDateRange({
-                    startDate: date.from,
-                    endDate: date.to,
-                  });
-                  setActiveMetricsFilter('Custom');
-                  setActivePieChartFilter('Custom'); // Sync pie chart filter
-                  // Trigger callback
-                  if (onCustomRangeGo) {
-                    // Short timeout to ensure state updates propagate
-                    setTimeout(() => onCustomRangeGo(), 0);
-                  }
-                }
-              }}
-              enableTimeInputs={enableTimeInputs}
-              gameDayOffset={gameDayOffset}
-              className="w-auto"
-            />
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         )}
       </div>

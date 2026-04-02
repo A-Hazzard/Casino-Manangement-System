@@ -77,8 +77,9 @@ export default function ReportsLocationsTable({
   className = '',
   loading = false,
   error = null,
-  currentPage = 1,
+  currentPage = 0,
   totalPages = 1,
+  totalCount = 0,
   onPageChange,
 }: ReportsLocationsTableProps) {
   const [sortField, setSortField] = useState<SortField>('moneyIn');
@@ -756,14 +757,14 @@ export default function ReportsLocationsTable({
       )}
 
       {/* Pagination - Use standard PaginationControls if onPageChange provided */}
-      {onPageChange && totalPages > 1 && (
-        <div className="border-t border-gray-200 bg-white px-4 py-3 sm:px-6">
-          <PaginationControls
-            currentPage={currentPage - 1}
-            totalPages={totalPages}
-            setCurrentPage={page => onPageChange(page + 1)}
-          />
-        </div>
+      {onPageChange && (
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          setCurrentPage={onPageChange}
+          showTotalCount
+        />
       )}
     </div>
   );

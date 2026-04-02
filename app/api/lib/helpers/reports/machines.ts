@@ -89,10 +89,17 @@ export async function getMachineStats(
   ]).exec();
   const totalCount = totalCountResult[0]?.total || 0;
 
-  // Get online machines count (machines with lastActivity >= 3 minutes ago)
+  // Get online machines count (machines with lastActivity >= 3 minutes ago OR location has aceEnabled)
   const onlineCountResult = await Machine.aggregate([
     ...aggregationPipeline,
-    { $match: { lastActivity: { $exists: true, $gte: threeMinutesAgo } } },
+    {
+      $match: {
+        $or: [
+          { lastActivity: { $exists: true, $gte: threeMinutesAgo } },
+          { 'locationDetails.aceEnabled': true }
+        ]
+      }
+    },
     { $count: 'total' },
   ]).exec();
   const onlineCount = onlineCountResult[0]?.total || 0;
@@ -506,6 +513,7 @@ export async function getOverviewMachines(
         gameConfig: 1,
         collectorDenomination: 1,
         locationName: '$locationDetails.name',
+        aceEnabled: '$locationDetails.aceEnabled',
         licenceeId: { $ifNull: ['$locationDetails.rel.licencee', null] },
         // Denomination scaling fields
         rawDrop: { $ifNull: ['$meterData.drop', 0] },
@@ -541,7 +549,7 @@ export async function getOverviewMachines(
 
     // Calculate offline labels
     const lastActivity = machine.lastActivity ? new Date(machine.lastActivity as string) : null;
-    const isOnline = !!(lastActivity && lastActivity > threeMinutesAgo);
+    const isOnline = !!(machine.aceEnabled || (lastActivity && lastActivity > threeMinutesAgo));
 
     let offlineTimeLabel: string | undefined = undefined;
     let actualOfflineTime: string | undefined = undefined;
@@ -896,9 +904,14 @@ export async function getOfflineMachines(
   searchTerm?: string
 ) {
   const searchLower = searchTerm?.toLowerCase().trim();
-  // Fetch locations to get gaming day ranges
-  const locationsWithOffset = await GamingLocations.find(locationMatchStage).select('gameDayOffset _id').lean();
+  // Fetch locations to get gaming day ranges (also used to build aceEnabled exclusion set)
+  const locationsWithOffset = await GamingLocations.find(locationMatchStage).select('gameDayOffset _id aceEnabled').lean();
   const gamingDayRanges = getGamingDayRangesForLocations(locationsWithOffset as unknown as { _id: string; gameDayOffset?: number }[], timePeriod, startDate, endDate);
+
+  // Build list of aceEnabled location IDs so they are excluded from the offline results
+  const aceEnabledLocIds = (locationsWithOffset as unknown as { _id: unknown; aceEnabled?: boolean }[])
+    .filter(loc => loc.aceEnabled === true)
+    .map(loc => String(loc._id));
 
   const locationId = searchParams.get('locationId');
   const durationFilter =
@@ -913,6 +926,8 @@ export async function getOfflineMachines(
           { deletedAt: { $lt: new Date('2025-01-01') } },
         ],
       },
+      // Machines at aceEnabled locations are always online — exclude from offline results
+      ...(aceEnabledLocIds.length > 0 ? [{ gamingLocation: { $nin: aceEnabledLocIds } }] : []),
     ],
   };
 
@@ -1065,6 +1080,7 @@ export async function getOfflineMachines(
         gameConfig: 1,
         collectorDenomination: 1,
         locationName: '$locationDetails.name',
+        aceEnabled: { $ifNull: ['$locationDetails.aceEnabled', false] },
         licenceeId: { $ifNull: ['$locationDetails.rel.licencee', null] },
         // Denomination scaling fields
         rawDrop: { $ifNull: ['$meterData.drop', 0] },
@@ -1097,7 +1113,7 @@ export async function getOfflineMachines(
     batchSize: 1000,
   });
   for await (const doc of cursor) {
-    machines.push(doc);
+    machines.push(doc as Record<string, unknown>);
   }
 
   // Build licencee jackpot settings map
@@ -1110,7 +1126,7 @@ export async function getOfflineMachines(
 
     // Calculate offline labels
     const lastActivity = machine.lastActivity ? new Date(machine.lastActivity as string) : null;
-    const isOnline = !!(lastActivity && lastActivity > threeMinutesAgo);
+    const isOnline = !!(machine.aceEnabled || (lastActivity && lastActivity > threeMinutesAgo));
 
     let offlineTimeLabel: string | undefined = undefined;
     let actualOfflineTime: string | undefined = undefined;

@@ -236,6 +236,16 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
+    // STEP 7.5: Calculate reviewer multiplier if applicable
+    // ============================================================================
+    const reviewerMultRaw =
+      userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase()).includes('reviewer') &&
+      (userPayload as { multiplier?: number | null })?.multiplier != null
+        ? (userPayload as { multiplier?: number | null }).multiplier!
+        : null;
+    const reviewerMultiplier = reviewerMultRaw !== null ? (1 - reviewerMultRaw) : null;
+
+    // ============================================================================
     // STEP 8: Transform machine and meter data into report format
     // ============================================================================
     let transformedData = transformMeterData(
@@ -243,7 +253,8 @@ export async function GET(req: NextRequest) {
       metersMap,
       locationMap,
       licenceeSettingsMap,
-      locationLicenceeMap
+      locationLicenceeMap,
+      reviewerMultiplier
     );
 
     // ============================================================================

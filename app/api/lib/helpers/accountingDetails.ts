@@ -433,7 +433,7 @@ export async function getCollectionReportById(
         totalSasGross += meterData.drop - meterData.cancelled;
         totalJackpots += meterData.jackpot;
       } else {
-        // fallback to snapshot value if no raw meter data found
+        // fallback to snapshot values if no raw meter data found
         totalJackpots += collection.sasMeters?.jackpot || 0;
       }
     } else {

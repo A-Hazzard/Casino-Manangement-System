@@ -651,7 +651,8 @@ export function transformMeterData(
   metersMap: Map<string, MeterAggregationResult>,
   locationMap: Map<string, string>,
   licenceeSettingsMap: Map<string, boolean>,
-  locationLicenceeMap: Map<string, string>
+  locationLicenceeMap: Map<string, string>,
+  reviewerMultiplier: number | null = null
 ): TransformedMeterData[] {
   return machinesData.map(machine => {
     const locationName =
@@ -699,16 +700,35 @@ export function transformMeterData(
       ? validateMeterValue(metersIn - metersOut - jackpot)
       : validateMeterValue(metersIn - metersOut);
 
+    // Apply Reviewer Scaling
+    let finalMetersIn = metersIn;
+    let finalMetersOut = metersOut;
+    let finalJackpot = jackpot;
+    let finalBillIn = billIn;
+    let finalVoucherOut = voucherOut;
+    let finalHandPaidCredits = handPaidCredits;
+    let finalNetGross = netGross;
+
+    if (reviewerMultiplier !== null) {
+      finalMetersIn *= reviewerMultiplier;
+      finalMetersOut *= reviewerMultiplier;
+      finalJackpot *= reviewerMultiplier;
+      finalBillIn *= reviewerMultiplier;
+      finalVoucherOut *= reviewerMultiplier;
+      finalHandPaidCredits *= reviewerMultiplier;
+      finalNetGross *= reviewerMultiplier;
+    }
+
     return {
       machineId,
-      metersIn,
-      metersOut,
-      jackpot,
-      billIn,
-      voucherOut,
-      attPaidCredits: handPaidCredits,
+      metersIn: finalMetersIn,
+      metersOut: finalMetersOut,
+      jackpot: finalJackpot,
+      billIn: finalBillIn,
+      voucherOut: finalVoucherOut,
+      attPaidCredits: finalHandPaidCredits,
       gamesPlayed,
-      netGross,
+      netGross: finalNetGross,
       includeJackpot,
       location: locationName,
       locationId: machine.gamingLocation,

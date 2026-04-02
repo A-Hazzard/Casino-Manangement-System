@@ -299,7 +299,7 @@ export async function GET(request: NextRequest) {
                 },
                 $or: [
                   { deletedAt: null },
-                  { deletedAt: { $lt: new Date('2025-01-01') } },
+                  { deletedAt: { $lte: new Date('1971-01-01') } },
                 ],
               },
             },
@@ -392,7 +392,7 @@ export async function GET(request: NextRequest) {
           {
             $or: [
               { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
+              { deletedAt: { $lte: new Date('1971-01-01') } },
             ],
           },
         ],
@@ -423,11 +423,13 @@ export async function GET(request: NextRequest) {
     >();
 
     if (allLocationIds.length > 0) {
+      const allMachineIds = allMachines.map(m => String(m._id));
       // Use aggregation to group by location AND hour to avoid inflation
       const cursor = Meters.aggregate([
         {
           $match: {
             location: { $in: allLocationIds },
+            machine: { $in: allMachineIds },
             readAt: {
               $gte: globalStart,
               $lte: globalEnd,
@@ -518,7 +520,8 @@ export async function GET(request: NextRequest) {
         profitShare: location.profitShare,
         geoCoords: location.geoCoords,
         totalMachines: location.machineStats?.[0]?.totalMachines || 0,
-        onlineMachines: location.machineStats?.[0]?.onlineMachines || 0,
+        onlineMachines: location.aceEnabled ? (location.machineStats?.[0]?.totalMachines || 0) : (location.machineStats?.[0]?.onlineMachines || 0),
+        aceEnabled: location.aceEnabled || false,
         moneyIn: financialData.totalMoneyIn || 0,
         moneyOut: moneyOutValue,
         jackpot: jackpot,
@@ -587,7 +590,7 @@ export async function GET(request: NextRequest) {
         {
           $or: [
             { deletedAt: null },
-            { deletedAt: { $lt: new Date('2025-01-01') } },
+            { deletedAt: { $lte: new Date('1971-01-01') } },
           ],
         },
         { _id: 1, name: 1 }
@@ -724,4 +727,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

@@ -136,15 +136,12 @@ export default function AdministrationUsersSection({
                 />
               ))}
             </div>
-            {!isLoading && (
-              <div className="mt-8 flex justify-center pb-4">
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  setCurrentPage={setCurrentPage}
-                />
-              </div>
-            )}
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              setCurrentPage={setCurrentPage}
+              className="mt-8 pb-4"
+            />
           </>
         ) : (
           <p className="py-4 text-center text-gray-500">
@@ -172,13 +169,11 @@ export default function AdministrationUsersSection({
               onDelete={(user: User) => handleDeleteUser(user)}
               currentUser={currentUser as UserAuthPayload}
             />
-            {!isLoading && (
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                setCurrentPage={setCurrentPage}
-              />
-            )}
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              setCurrentPage={setCurrentPage}
+            />
           </>
         ) : (
           <p className="py-10 text-center text-gray-500">

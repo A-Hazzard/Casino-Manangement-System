@@ -123,12 +123,12 @@ export async function PUT(request: NextRequest) {
         'Username must use letters/numbers and cannot look like an email or phone number.';
     }
 
-    if (!validateNameField(firstName)) {
+    if (firstName && !validateNameField(firstName)) {
       errors.firstName =
         'First name may only contain letters and spaces and cannot resemble a phone number.';
     }
 
-    if (!validateNameField(lastName)) {
+    if (lastName && !validateNameField(lastName)) {
       errors.lastName =
         'Last name may only contain letters and spaces and cannot resemble a phone number.';
     }
@@ -138,16 +138,17 @@ export async function PUT(request: NextRequest) {
         'Other name may only contain letters and spaces and cannot resemble a phone number.';
     }
 
-    // Only enforce mandatory gender if it's being sent (to allow password-only updates from TempPasswordGate)
-    if (body.gender !== undefined && (!gender || !validateOptionalGender(gender))) {
+    // Only enforce mandatory gender if it's being sent
+    if (body.gender !== undefined && body.gender !== '' && (!gender || !validateOptionalGender(gender))) {
       errors.gender = !gender ? 'Gender is required.' : 'Select a valid gender option.';
     }
 
-    if (!validateEmail(emailAddress)) {
+    if (emailAddress && !validateEmail(emailAddress)) {
       errors.emailAddress = 'Provide a valid email address.';
     } else if (
-      containsEmailPattern(username) ||
-      emailAddress.toLowerCase() === username.toLowerCase()
+      emailAddress &&
+      (containsEmailPattern(username) ||
+      emailAddress.toLowerCase() === username.toLowerCase())
     ) {
       errors.emailAddress =
         'Email address must differ from username and other identifiers.';
@@ -389,11 +390,49 @@ export async function PUT(request: NextRequest) {
       a.length === b.length && a.every((value, index) => value === b[index]);
 
     if (passwordChangeRequested && newPassword) {
+      // Check against current password
+      if (await comparePassword(newPassword, user.password || '')) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: 'New password cannot be the same as current password.',
+            errors: { newPassword: 'New password cannot be the same as current password.' },
+          },
+          { status: 400 }
+        );
+      }
+
+      // Check against historical passwords (last 2)
+      if (user.previousPasswords && Array.isArray(user.previousPasswords)) {
+        for (const prevHashed of user.previousPasswords) {
+          if (await comparePassword(newPassword, prevHashed)) {
+            return NextResponse.json(
+              {
+                success: false,
+                message: 'New password cannot match any of your last 2 passwords.',
+                errors: { newPassword: 'New password cannot match any of your last 2 passwords.' },
+              },
+              { status: 400 }
+            );
+          }
+        }
+      }
+
+      const oldPasswordHash = user.password;
       updateSet.password = await hashPassword(newPassword);
       updateSet.passwordUpdatedAt = new Date();
       updateSet.tempPasswordChanged = true;
+      updateSet.previousPassword = oldPasswordHash;
       updateSet.requiresPasswordUpdate = false; // Successfully updated to a strong password
       unsetMap.tempPassword = ''; // Delete plain text temp password after first password change
+
+      // Update previousPasswords array (last 2 unique)
+      const previousPasswords = [...(user.previousPasswords || [])];
+      if (oldPasswordHash) {
+        previousPasswords.push(oldPasswordHash);
+      }
+      updateSet.previousPasswords = Array.from(new Set(previousPasswords)).slice(-2);
+
       if (!isTemporaryPassword) {
         incrementSession = true;
       }

@@ -3,22 +3,22 @@
 import { SyntheticEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/shared/ui/dialog';
 import { useCallback, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import ReactCrop, {
-    Crop,
-    PixelCrop,
-    centerCrop,
-    convertToPixelCrop,
-    makeAspectCrop,
+  Crop,
+  PixelCrop,
+  centerCrop,
+  convertToPixelCrop,
+  makeAspectCrop,
 } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import { CropIcon, CheckIcon, Cross2Icon } from '@radix-ui/react-icons';
 
 type CircleCropModalProps = {
   open: boolean;
@@ -28,6 +28,9 @@ type CircleCropModalProps = {
   size?: number;
 };
 
+/**
+ * Utility to center the aspect crop within the media dimensions
+ */
 function centerAspectCrop(
   mediaWidth: number,
   mediaHeight: number,
@@ -48,6 +51,12 @@ function centerAspectCrop(
   );
 }
 
+/**
+ * CircleCropModal Component
+ * 
+ * A premium image cropping modal that forces a circular aspect ratio.
+ * Used for profile pictures and other circular avatars.
+ */
 export default function CircleCropModal({
   open,
   onClose,
@@ -55,37 +64,39 @@ export default function CircleCropModal({
   onCropped,
 }: CircleCropModalProps) {
   const imgRef = useRef<HTMLImageElement>(null);
-  const imageWrapperRef = useRef<HTMLDivElement>(null);
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
 
-  const aspect = 1; // Square aspect ratio for circular crop
+  const aspect = 1; // Strictly 1:1 for perfect circles
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
 
   const handleImageLoad = (e: SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight, width, height } = e.currentTarget;
-    if (aspect) {
-      const initialCropPercent = centerAspectCrop(naturalWidth, naturalHeight, aspect);
-      setCrop(initialCropPercent);
-      setCompletedCrop(convertToPixelCrop(initialCropPercent, width, height));
-    }
+    const initialCropPercent = centerAspectCrop(naturalWidth, naturalHeight, aspect);
+    setCrop(initialCropPercent);
+    setCompletedCrop(convertToPixelCrop(initialCropPercent, width, height));
   };
 
+  /**
+   * Generates the final circular cropped image as a data URL
+   */
   const getCroppedImg = useCallback(
     (image: HTMLImageElement, crop: PixelCrop): Promise<{ url: string }> => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
 
-      if (!ctx) {
-        throw new Error('No 2d context');
-      }
+      if (!ctx) throw new Error('No 2d context');
 
-      // Calculate the actual crop coordinates
+      // Calculate scales between natural and rendered size
       const scaleX = image.naturalWidth / image.width;
       const scaleY = image.naturalHeight / image.height;
 
+      // Extract the square section from the image
       canvas.width = crop.width;
       canvas.height = crop.height;
-
       ctx.imageSmoothingQuality = 'high';
 
       ctx.drawImage(
@@ -100,38 +111,21 @@ export default function CircleCropModal({
         crop.height
       );
 
-      // Create circular mask - ensure perfect circle
+      // Create the circular mask
       const circleCanvas = document.createElement('canvas');
       const circleCtx = circleCanvas.getContext('2d');
-      if (!circleCtx) {
-        throw new Error('No 2d context for circle');
-      }
+      if (!circleCtx) throw new Error('No circle context');
 
-      // Use the crop size as the output size (should be square due to aspect ratio)
-      const outputSize = crop.width; // Should equal crop.height since aspect is 1
+      const outputSize = crop.width;
       circleCanvas.width = outputSize;
       circleCanvas.height = outputSize;
 
-      // Clear the canvas
-      circleCtx.clearRect(0, 0, outputSize, outputSize);
-
-      // Create circular clipping path
       circleCtx.beginPath();
-      circleCtx.arc(
-        outputSize / 2,
-        outputSize / 2,
-        outputSize / 2,
-        0,
-        2 * Math.PI
-      );
-      circleCtx.closePath();
+      circleCtx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, 2 * Math.PI);
       circleCtx.clip();
-
-      // Draw the cropped image into the circular mask
       circleCtx.drawImage(canvas, 0, 0);
 
-      // Return a persistent Data URL so it can be stored in DB and rendered later
-      const dataUrl = circleCanvas.toDataURL('image/png', 1);
+      const dataUrl = circleCanvas.toDataURL('image/png', 1.0);
       return Promise.resolve({ url: dataUrl });
     },
     []
@@ -145,60 +139,87 @@ export default function CircleCropModal({
       onCropped(url);
       onClose();
     } catch (e) {
-      console.error('Error cropping image:', e);
+      console.error('[CircleCrop] Failed to apply crop:', e);
     }
   };
 
+  // ============================================================================
+  // Render
+  // ============================================================================
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      {/* Elevated overlay above any underlying modal */}
-      {open &&
-        typeof window !== 'undefined' &&
-        createPortal(
-          <div className="fixed inset-0 z-[100001] bg-black/70" />,
-          document.body
-        )}
-      <DialogContent className="z-[100002] w-full max-w-md sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Crop Profile Picture</DialogTitle>
-        </DialogHeader>
+      <DialogContent 
+        className="z-[100001] max-w-[500px] overflow-hidden rounded-2xl border-none p-0 shadow-2xl"
+        backdropClassName="z-[100000]"
+        isMobileFullScreen={false}
+      >
+        {/* Header Section */}
+        <div className="bg-white px-6 py-4">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-50 text-green-600">
+                <CropIcon className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-gray-900">Crop Photo</DialogTitle>
+                <DialogDescription className="text-sm font-medium text-gray-500">
+                  Adjust the square to frame your face perfectly
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        </div>
 
-        <div ref={imageWrapperRef} className="flex justify-center">
+        {/* Cropping Area - Dark Backdrop for Focus */}
+        <div className="relative flex min-h-[400px] items-center justify-center bg-gray-950 p-6">
           <ReactCrop
             crop={crop}
             onChange={(_, percentCrop) => setCrop(percentCrop)}
             onComplete={c => setCompletedCrop(c)}
             aspect={aspect}
             circularCrop
+            className="shadow-2xl ring-1 ring-white/10"
           >
             <img
               ref={imgRef}
               src={imageSrc}
-              alt="Image to crop"
+              alt="Crop target"
               onLoad={handleImageLoad}
-              style={{
-                maxHeight: '380px',
-                maxWidth: '100%',
-                display: 'block',
-              }}
+              className="max-h-[50vh] w-auto max-w-full rounded-sm"
+              style={{ display: 'block' }}
             />
           </ReactCrop>
+
+          {/* Guidelines Overlay (Subtle) */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity hover:opacity-100">
+            <div className="h-[90%] w-[90%] rounded-full border border-dashed border-white/20" />
+          </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleApply}
-            disabled={!completedCrop}
-            className="bg-button text-white hover:bg-button/90"
-          >
-            Apply Crop
-          </Button>
-        </DialogFooter>
+        {/* Action Footer */}
+        <div className="bg-gray-50/50 px-6 py-4 backdrop-blur-sm">
+          <div className="flex w-full items-center justify-between gap-4">
+            <Button 
+              variant="outline" 
+              onClick={onClose}
+              className="group border-gray-200 bg-white px-6 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+            >
+              <Cross2Icon className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
+              Cancel
+            </Button>
+            
+            <Button
+              onClick={handleApply}
+              disabled={!completedCrop}
+              className="bg-green-600 px-8 text-white hover:bg-green-700 shadow-lg shadow-green-900/10 active:scale-[0.98] transition-all"
+            >
+              <CheckIcon className="mr-2 h-5 w-5" />
+              Save Picture
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
-

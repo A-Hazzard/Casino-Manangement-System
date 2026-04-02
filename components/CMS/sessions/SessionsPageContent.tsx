@@ -36,6 +36,7 @@ export default function SessionsPageContent() {
     // Data operations
     currentPage,
     totalPages,
+    pagination,
     handlePageChange,
     refreshSessions,
     // Status filter
@@ -155,15 +156,13 @@ if (refreshSessions) {
         />
 
         {/* Pagination */}
-        {!isLoading && sessions.length > 0 && totalPages > 1 && (
-          <div className="mt-4 flex justify-center pb-8">
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              setCurrentPage={handlePageChange}
-            />
-          </div>
-        )}
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={pagination?.totalItems || 0}
+          setCurrentPage={handlePageChange}
+          showTotalCount
+        />
       </div>
     </PageLayout>
   );

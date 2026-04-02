@@ -64,9 +64,9 @@ export function useCollectionReportPageData() {
     CollectionReportLocationWithMachines[]
   >([]);
 
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
+  const itemsPerPage = 20;
+  const itemsPerBatch = 40;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 2
 
   const filters = useCollectionReportFilters(
     allReports,

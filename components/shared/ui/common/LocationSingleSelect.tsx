@@ -137,10 +137,10 @@ export default function LocationSingleSelect({
           measureEl.style.padding = '0';
           
           // Find the longest option text
-          const longestName = options.reduce((longest, option) => 
-            option.name.length > longest.length ? option.name : longest, 
-            displayText
-          );
+          const longestName = options.reduce((longest, option) => {
+            const name = option.name || '';
+            return name.length > longest.length ? name : longest;
+          }, displayText);
           measureEl.textContent = longestName;
           document.body.appendChild(measureEl);
           

@@ -527,13 +527,14 @@ function convertDailyTrendItems(
 
     // Step 2: Reviewer Multiplier (only if currency conversion is active, otherwise handled in main loop)
     if (reviewerMultiplier !== null) {
-      handle *= reviewerMultiplier;
-      winLoss *= reviewerMultiplier;
-      jackpot *= reviewerMultiplier;
-      drop *= reviewerMultiplier;
-      totalCancelledCredits *= reviewerMultiplier;
-      gross *= reviewerMultiplier;
-      if (netGross !== undefined) netGross *= reviewerMultiplier;
+      const mult = (1 - reviewerMultiplier);
+      handle *= mult;
+      winLoss *= mult;
+      jackpot *= mult;
+      drop *= mult;
+      totalCancelledCredits *= mult;
+      gross *= mult;
+      if (netGross !== undefined) netGross *= mult;
     }
 
     return {
@@ -860,7 +861,9 @@ export async function getLocationTrends(
   granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly',
   status?: 'Online' | 'Offline' | 'All' | null,
   gameType?: string | null,
-  reviewerMultiplier: number | null = null
+  reviewerMultiplier: number | null = null,
+  searchTerm?: string,
+  includeArchived: boolean = false
 ): Promise<{
   locationIds: string[];
   timePeriod: TimePeriod;
@@ -909,14 +912,11 @@ export async function getLocationTrends(
   }
 
   // Fetch locations to get their gaming day offsets
-  // Handle case where targetLocations might be empty or invalid
   if (!targetLocations || targetLocations.length === 0) {
     throw new Error('No valid location IDs provided');
   }
 
-  // Filter out empty strings and invalid IDs
   const validLocationIds = targetLocations.filter(id => id && id.trim() !== '');
-
   if (validLocationIds.length === 0) {
     throw new Error('No valid location IDs provided after filtering');
   }
@@ -928,7 +928,6 @@ export async function getLocationTrends(
     .lean()
     .exec();
 
-  // If no locations found, return empty result instead of error
   if (!locationsData || locationsData.length === 0) {
     return {
       locationIds: validLocationIds,
@@ -969,7 +968,6 @@ export async function getLocationTrends(
       location: { $in: validLocationIds },
     };
 
-    // For Quarterly, only look for data within the 90-day range
     if (timePeriod === 'Quarterly') {
       matchStage.readAt = { $gte: queryStartDate, $lte: queryEndDate };
     }
@@ -996,7 +994,6 @@ export async function getLocationTrends(
         minDate,
         maxDate,
       };
-      // Update query dates ONLY for All Time to show full range
       if (timePeriod === 'All Time') {
         queryStartDate = minDate;
         queryEndDate = maxDate;
@@ -1004,7 +1001,7 @@ export async function getLocationTrends(
     }
   }
 
-  // Determine aggregation granularity (hourly, minute, monthly, yearly, weekly, or daily)
+  // Determine aggregation granularity
   const { useHourly, useMinute, useMonthly, useYearly, useWeekly, useDaily } =
     determineAggregationGranularity(
       timePeriod,
@@ -1015,39 +1012,77 @@ export async function getLocationTrends(
       granularity
     );
 
-  // Filter machines if status or gameType provided
-  let matchingMachineIds: string[] | undefined;
-  if ((status && status !== 'All') || (gameType && gameType !== 'all')) {
-    const machineQuery: Record<string, unknown> = { gamingLocation: { $in: targetLocations } };
+  // ALWAYS filter machines to ensure graph matches summary cards and visible machines
+  // Implement the same Archive logic as the Location Detail API
+  const machineQuery: Record<string, unknown> = { gamingLocation: { $in: targetLocations } };
 
-    if (gameType && gameType !== 'all') {
-      // Check both game and installedGame fields just in case, though schema says game
-      machineQuery.$or = [{ game: gameType }, { installedGame: gameType }];
-    }
+  if (!includeArchived) {
+    // Only Active machines (null or legacy date < 2025)
+    (machineQuery as { $or?: unknown[] }).$or = [
+      { deletedAt: null },
+      { deletedAt: { $lt: new Date('2025-01-01') } },
+    ];
+  } else {
+    // Show everything (Active AND Archived)
+    // Archived is >= 2025-01-01
+    (machineQuery as { $or?: unknown[] }).$or = [
+      { deletedAt: null },
+      { deletedAt: { $exists: true } },
+    ];
+  }
 
-    const normalizedStatus = status?.toLowerCase();
+  // Apply Search logic (matching logic from main location page)
+  const andClauses: Record<string, unknown>[] = [];
+  if (searchTerm && searchTerm.trim()) {
+    const searchRegex = new RegExp(searchTerm.trim(), 'i');
+    andClauses.push({
+      $or: [
+        { assetNumber: searchRegex },
+        { serialNumber: searchRegex },
+        { smbId: searchRegex },
+        { smibBoard: searchRegex },
+        { relayId: searchRegex },
+        { game: searchRegex },
+        { installedGame: searchRegex },
+        { 'custom.name': searchRegex },
+      ],
+    });
+  }
 
-    if (normalizedStatus === 'online') {
-      const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
-      machineQuery.lastActivity = { $gte: threeMinutesAgo };
-    } else if (normalizedStatus === 'offline') {
-      const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
-      machineQuery.$or = [
+  // Apply Game Type logic
+  if (gameType && gameType !== 'all') {
+    andClauses.push({ $or: [{ game: gameType }, { installedGame: gameType }] });
+  }
+
+  // Apply Status logic (Online/Offline/Never Online)
+  const normalizedStatus = status?.toLowerCase();
+  if (normalizedStatus === 'online') {
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+    andClauses.push({ lastActivity: { $gte: threeMinutesAgo } });
+  } else if (normalizedStatus === 'offline') {
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+    andClauses.push({
+      $or: [
         { lastActivity: { $lt: threeMinutesAgo } },
         { lastActivity: { $exists: false } },
         { lastActivity: null }
-      ];
-    }
-
-    const matchingMachines = await Machine.find(machineQuery).select('_id').lean();
-    matchingMachineIds = matchingMachines.map((m: Record<string, unknown>) => (m._id as { toString: () => string }).toString());
-
-
-    // If filtering and no machines match, we still want to continue to the pipeline
-    // The pipeline will match nothing (machine: { $in: [] }) and return 0 results
-    // Then the formatting functions will fill in the zero-value intervals
-
+      ]
+    });
+  } else if (normalizedStatus === 'never-online') {
+    andClauses.push({
+      $or: [
+        { lastActivity: { $exists: false } },
+        { lastActivity: null }
+      ]
+    });
   }
+
+  if (andClauses.length > 0) {
+    machineQuery.$and = andClauses;
+  }
+
+  const matchingMachines = await Machine.find(machineQuery).select('_id').lean();
+  const matchingMachineIds = matchingMachines.map(m => String(m._id));
 
   // Build and execute pipeline
   const pipeline = buildLocationTrendsPipeline(
@@ -1092,15 +1127,16 @@ export async function getLocationTrends(
     );
   } else if (reviewerMultiplier !== null) {
     // If no currency conversion but it's a reviewer, apply multiplier directly
+    const mult = (1 - reviewerMultiplier);
     convertedData = dailyData.map(item => ({
       ...item,
-      handle: item.handle * reviewerMultiplier,
-      winLoss: item.winLoss * reviewerMultiplier,
-      jackpot: item.jackpot * reviewerMultiplier,
-      drop: item.drop * reviewerMultiplier,
-      totalCancelledCredits: item.totalCancelledCredits * reviewerMultiplier,
-      gross: item.gross * reviewerMultiplier,
-      netGross: item.netGross !== undefined ? item.netGross * reviewerMultiplier : undefined,
+      handle: item.handle * mult,
+      winLoss: item.winLoss * mult,
+      jackpot: item.jackpot * mult,
+      drop: item.drop * mult,
+      totalCancelledCredits: item.totalCancelledCredits * mult,
+      gross: item.gross * mult,
+      netGross: item.netGross !== undefined ? item.netGross * mult : undefined,
     }));
   }
 

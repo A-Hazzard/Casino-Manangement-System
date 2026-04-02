@@ -279,7 +279,6 @@ export default function ActivityLogPanel({
               totalPages={totalPages}
               setCurrentPage={setCurrentPage}
               totalCount={filteredActivities.length}
-              limit={ITEMS_PER_PAGE}
             />
           </div>
         )}

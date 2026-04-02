@@ -834,10 +834,11 @@ function aggregateMetricsWithConversion(
       let jackpotValue = Number(metric.jackpot) || 0;
 
       if (reviewerMult !== null) {
-        dropValue *= reviewerMult;
-        cancelledValue *= reviewerMult;
-        grossValue *= reviewerMult;
-        jackpotValue *= reviewerMult;
+        const mult = (1 - reviewerMult);
+        dropValue *= mult;
+        cancelledValue *= mult;
+        grossValue *= mult;
+        jackpotValue *= mult;
       }
 
       accumulator(

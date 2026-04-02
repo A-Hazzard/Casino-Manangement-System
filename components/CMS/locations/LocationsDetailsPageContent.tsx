@@ -28,6 +28,7 @@ import { useLocationChartData } from '@/lib/hooks/locations/useLocationChartData
 import {
     canEditMachines,
     canManageLocations,
+    canViewArchivedMachines,
     hasAdminAccess,
     UserRole
 } from '@/lib/utils/permissions';
@@ -53,6 +54,7 @@ import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
 import LocationsDetailsHeader from './details/LocationsDetailsHeader';
 import LocationsDetailsViewToggle from './details/LocationsDetailsViewToggle';
 import ReviewerDebugPanel from '@/components/shared/ui/ReviewerDebugPanel';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 
 /**
  * Locations Details Page Content Component
@@ -89,6 +91,8 @@ export default function LocationsDetailsPageContent() {
   const isAdminUser = hasAdminAccess(userRoles);
   const canManageMachines = canEditMachines(userRoles);
   const canEditLocation = canManageLocations(userRoles);
+  const canViewArchived = canViewArchivedMachines(userRoles);
+  const canPermanentlyDelete = isAdminUser || userRoles.includes('developer');
 
   // View Toggle State - checks URL param first, defaults to machines
   const [activeView, setActiveView] = useState<'machines' | 'members'>(
@@ -118,6 +122,8 @@ export default function LocationsDetailsPageContent() {
     activeView,
     status: cabinetsData.selectedStatus,
     gameType: cabinetsData.selectedGameType,
+    searchTerm: cabinetsData.debouncedSearchTerm,
+    includeArchived: cabinetsData.showArchived,
   });
 
   // Machine status stats from dedicated API (location-specific)
@@ -251,6 +257,63 @@ export default function LocationsDetailsPageContent() {
 
   const { openCabinetModal } = useNewCabinetStore();
   const { openEditModal } = useLocationsActionsStore();
+
+  /**
+   * Restores a soft-deleted cabinet by clearing its deletedAt field.
+   */
+  const handleRestoreCabinet = async (cabinet: Cabinet) => {
+    if (!confirm(`Are you sure you want to restore machine ${cabinet.serialNumber || cabinet.custom?.name || 'N/A'}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/locations/${locationId}/cabinets/${cabinet._id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'restore' }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        import('sonner').then(({ toast }) => toast.success('Machine restored successfully'));
+        handleRefresh();
+      } else {
+        import('sonner').then(({ toast }) => toast.error(result.error || 'Failed to restore machine'));
+      }
+    } catch (error) {
+       console.error('Error restoring cabinet:', error);
+       import('sonner').then(({ toast }) => toast.error('An error occurred during restoration'));
+    }
+  };
+
+  /**
+   * Permanently deletes a cabinet from the database.
+   * This action is restricted to admins and developers.
+   */
+  const handlePermanentDeleteCabinet = async (cabinet: Cabinet) => {
+    if (!confirm(`CRITICAL: Are you sure you want to PERMANENTLY delete machine ${cabinet.serialNumber || cabinet.custom?.name || 'N/A'}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/locations/${locationId}/cabinets/${cabinet._id}?hardDelete=true`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        import('sonner').then(({ toast }) => toast.success('Machine permanently deleted'));
+        handleRefresh();
+      } else {
+        import('sonner').then(({ toast }) => toast.error(result.error || 'Failed to delete machine permanently'));
+      }
+    } catch (error) {
+      console.error('Error permanently deleting cabinet:', error);
+      import('sonner').then(({ toast }) => toast.error('An error occurred during permanent deletion'));
+    }
+  };
 
   // ============================================================================
   // Early Returns
@@ -400,6 +463,12 @@ export default function LocationsDetailsPageContent() {
             handleRefresh={handleRefresh}
             includeJackpot={cabinetsData.includeJackpot}
             handleFilterChange={handleFilterChange}
+            showArchived={cabinetsData.showArchived}
+            setShowArchived={cabinetsData.setShowArchived}
+            canViewArchived={canViewArchived}
+            onRestore={handleRestoreCabinet}
+            onPermanentDelete={handlePermanentDeleteCabinet}
+            canPermanentlyDeleteMachines={canPermanentlyDelete}
             handleLocationChangeInPlace={(newLocationId: string) => {
               if (newLocationId === 'all') {
                 router.push('/locations');
@@ -425,4 +494,3 @@ export default function LocationsDetailsPageContent() {
     </>
   );
 }
-

@@ -41,6 +41,8 @@ type EditCabinetLocationConfigProps = {
   hasValidSerialNumber: boolean;
   onFormDataChange: (updates: Partial<EditCabinetLocationConfigProps['formData']>) => void;
   onLocationErrorChange: (error: string) => void;
+  onSmibBlur?: (value: string) => void;
+  onCustomNameBlur?: (value: string) => void;
 };
 
 export default function EditCabinetLocationConfig({
@@ -54,6 +56,8 @@ export default function EditCabinetLocationConfig({
   hasValidSerialNumber,
   onFormDataChange,
   onLocationErrorChange,
+  onSmibBlur,
+  onCustomNameBlur,
 }: EditCabinetLocationConfigProps) {
   return (
     <div className="space-y-4">
@@ -138,6 +142,7 @@ export default function EditCabinetLocationConfig({
                 name="smbId"
                 value={formData.smbId}
                 onChange={e => onFormDataChange({ smbId: e.target.value })}
+                onBlur={e => onSmibBlur?.(e.target.value)}
                 placeholder="Enter SMIB Board"
                 className={`border-border bg-container ${
                   relayIdError ? 'border-red-500' : ''
@@ -193,6 +198,7 @@ export default function EditCabinetLocationConfig({
                     },
                   })
                 }
+                onBlur={e => onCustomNameBlur?.(e.target.value)}
                 placeholder="Enter custom name for this machine"
                 className="border-border bg-container"
               />

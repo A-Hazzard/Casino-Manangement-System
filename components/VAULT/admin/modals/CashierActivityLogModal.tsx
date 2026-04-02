@@ -69,13 +69,14 @@ export default function CashierActivityLogModal({
 
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const limit = 20;
 
   const locationId = user?.assignedLocations?.[0];
 
-  const fetchActivities = async (page = 1) => {
+  const fetchActivities = async (page = 0) => {
     if (!cashier || !locationId) return;
 
     setLoading(true);
@@ -84,7 +85,7 @@ export default function CashierActivityLogModal({
         locationId,
         cashierId: cashier._id,
         limit: limit.toString(),
-        skip: ((page - 1) * limit).toString(),
+        skip: (page * limit).toString(),
       });
 
       if (shiftId) {
@@ -96,6 +97,7 @@ export default function CashierActivityLogModal({
 
       if (data.success) {
         setActivities(data.activities || []);
+        setTotalCount(data.totalCount || 0);
         setTotalPages(Math.ceil((data.totalCount || 0) / limit));
       } else {
         toast.error('Failed to load activity log');
@@ -110,8 +112,8 @@ export default function CashierActivityLogModal({
 
   useEffect(() => {
     if (isOpen && cashier) {
-      fetchActivities(1);
-      setCurrentPage(1);
+      fetchActivities(0);
+      setCurrentPage(0);
     }
   }, [isOpen, cashier]);
 
@@ -235,15 +237,13 @@ export default function CashierActivityLogModal({
                 </Table>
               </div>
 
-              {totalPages > 1 && (
-                <div className="pt-4 border-t border-gray-100">
-                  <PaginationControls
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    setCurrentPage={setCurrentPage}
-                  />
-                </div>
-              )}
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalCount={totalCount}
+                setCurrentPage={setCurrentPage}
+                showTotalCount
+              />
             </>
           )}
         </div>

@@ -31,6 +31,8 @@ type UseLocationChartDataProps = {
   activeView: 'machines' | 'members';
   status?: string;
   gameType?: string;
+  searchTerm?: string;
+  includeArchived?: boolean;
 };
 
 export function useLocationChartData({
@@ -41,6 +43,8 @@ export function useLocationChartData({
   activeView,
   status,
   gameType,
+  searchTerm,
+  includeArchived,
 }: UseLocationChartDataProps) {
   const { displayCurrency } = useCurrencyFormat();
   const makeChartRequest = useAbortableRequest();
@@ -284,6 +288,8 @@ export function useLocationChartData({
       refreshTrigger,
       status,
       gameType,
+      searchTerm,
+      includeArchived,
       // Include granularity when it affects the data (short periods or monthly/weekly for long periods)
       ...(shouldIncludeInFetchKey ? { chartGranularity } : {}),
     });
@@ -336,6 +342,16 @@ export function useLocationChartData({
         // Add game type filter
         if (gameType && gameType !== 'all') {
           params.gameType = gameType;
+        }
+
+        // Add search term filter
+        if (searchTerm && searchTerm.trim()) {
+          params.search = searchTerm;
+        }
+
+        // Add archived filter
+        if (includeArchived) {
+          params.includeArchived = 'true';
         }
 
         // Add custom date range params only for Custom period
@@ -521,6 +537,8 @@ export function useLocationChartData({
     refreshTrigger, // Include refreshTrigger in dependencies to trigger refetch when refresh button is clicked
     status,
     gameType,
+    searchTerm,
+    includeArchived,
   ]);
 
   // Note: When user manually changes granularity, the setChartGranularity function

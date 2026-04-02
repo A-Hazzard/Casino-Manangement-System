@@ -329,7 +329,7 @@ const MembersMemberTable: FC<MembersMemberTableProps> = ({
       </div>
 
       {/* Pagination Controls */}
-      {members.length > 10 && (
+      {false && (
         <div className="mt-6 flex items-center justify-center space-x-2">
           <Button
             variant="ghost"

@@ -70,6 +70,10 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
     setValidationErrors,
     emailAddress,
     setEmailAddress,
+    isCurrentPasswordVerified,
+    passwordReuseError,
+    validateCurrentPassword,
+    validateNewPassword,
   } = useProfileModal({ open, onClose });
 
   const handleInputChange = (
@@ -191,13 +195,17 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
                   setValidationErrors={setValidationErrors}
                 />
 
-                    {isEditMode && (
+                {isEditMode && (
                   <ProfilePassword
                     passwordData={passwordData}
                     setPasswordData={setPasswordData}
                     isLoading={isLoading}
                     onPasswordChange={handlePasswordChange}
                     passwordStrength={passwordStrength}
+                    isCurrentPasswordVerified={isCurrentPasswordVerified}
+                    passwordReuseError={passwordReuseError}
+                    validateCurrentPassword={validateCurrentPassword}
+                    validateNewPassword={validateNewPassword}
                   />
                 )}
 
@@ -214,9 +222,9 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
                 </Button>
                 <Button
                   onClick={handleSave}
-                  disabled={isLoading}
-                      className="gap-2 bg-green-600 hover:bg-green-700"
-                    >
+                  disabled={isLoading || isCurrentPasswordVerified === false || !!passwordReuseError}
+                  className="gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-500"
+                >
                       <Save className="h-4 w-4" />
                       {isLoading ? 'Saving...' : 'Save Changes'}
                 </Button>

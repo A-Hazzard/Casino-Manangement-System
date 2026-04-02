@@ -52,8 +52,9 @@ export default function ReportsLocationsRevenueTable({
   locations,
   loading = false,
   error = null,
-  currentPage = 1,
+  currentPage = 0,
   totalPages = 1,
+  totalCount,
   onPageChange,
   onLocationClick,
 }: ReportsLocationsRevenueTableProps) {
@@ -565,14 +566,14 @@ export default function ReportsLocationsRevenueTable({
         </div>
 
         {/* Pagination - Use standard PaginationControls */}
-        {onPageChange && totalPages > 1 && (
-          <div className="mt-8 border-t border-gray-200 pt-6">
-            <PaginationControls
-              currentPage={currentPage - 1}
-              totalPages={totalPages}
-              setCurrentPage={page => onPageChange(page + 1)}
-            />
-          </div>
+        {onPageChange && (
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            setCurrentPage={onPageChange}
+            showTotalCount
+          />
         )}
       </CardContent>
     </Card>

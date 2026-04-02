@@ -107,6 +107,7 @@ export default function CashierManagementPanel({
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isTempPasswordModalOpen, setIsTempPasswordModalOpen] = useState(false);
@@ -346,6 +347,7 @@ export default function CashierManagementPanel({
       );
       setCashiers(data.users || []);
       setTotalPages(data.totalPages || 1);
+      setTotalCount(data.total || 0);
     } catch (error) {
       console.error('Failed to fetch cashiers:', error);
       setError('Failed to load cashiers');
@@ -1190,15 +1192,13 @@ export default function CashierManagementPanel({
           </div>
 
           {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="mt-4">
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                setCurrentPage={setCurrentPage}
-              />
-            </div>
-          )}
+          <PaginationControls
+            currentPage={currentPage - 1}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            setCurrentPage={(page) => setCurrentPage(page + 1)}
+            showTotalCount
+          />
         </CardContent>
       </Card>
 

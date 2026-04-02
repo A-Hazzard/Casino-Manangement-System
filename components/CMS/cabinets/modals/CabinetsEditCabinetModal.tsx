@@ -7,7 +7,6 @@
  */
 'use client';
 
-import { ChangeEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { fetchCabinetById, updateCabinet } from '@/lib/helpers/cabinets';
 import { fetchManufacturers } from '@/lib/helpers/machines';
@@ -15,20 +14,20 @@ import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
 import {
-    normalizeGameTypeValue,
-    normalizeStatusValue,
+  normalizeGameTypeValue,
+  normalizeStatusValue,
 } from '@/lib/utils/cabinet';
 import {
-    detectChanges,
-    filterMeaningfulChanges,
-    getChangesSummary,
+  detectChanges,
+  filterMeaningfulChanges,
+  getChangesSummary,
 } from '@/lib/utils/changeDetection';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import type { GamingMachine } from '@/shared/types/entities';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import axios from 'axios';
 import { gsap } from 'gsap';
-import {  useCallback, useEffect, useRef, useState  } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import EditCabinetBasicInfo from '../EditCabinetModal/EditCabinetBasicInfo';
 import EditCabinetCollectionSettings from '../EditCabinetModal/EditCabinetCollectionSettings';
@@ -61,8 +60,10 @@ export default function CabinetsEditCabinetModal({
 
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [manufacturersLoading, setManufacturersLoading] = useState(false);
+  const [isAddingManufacturer, setIsAddingManufacturer] = useState(false);
   const [relayIdError, setRelayIdError] = useState<string>('');
   const [serialNumberError, setSerialNumberError] = useState<string>('');
+  const [customNameError, setCustomNameError] = useState<string>('');
   const [installedGameError, setInstalledGameError] = useState<string>('');
   const [locationError, setLocationError] = useState<string>('');
   const [accountingDenominationError, setAccountingDenominationError] =
@@ -143,39 +144,66 @@ export default function CabinetsEditCabinetModal({
     }
   };
 
-  // SMIB Board validation function
-  const validateSmibBoard = (value: string): string => {
-    if (!value) return '';
 
-    // Check length
-    if (value.length !== 12) {
-      return 'SMIB Board must be exactly 12 characters long';
+
+  const checkSerialNumberAvailability = async (serialNumber: string) => {
+    if (!serialNumber || serialNumber.trim().length < 3) return;
+    if (!formData._id) return;
+
+    try {
+      const response = await fetch(
+        `/api/machines?checkSerial=${encodeURIComponent(
+          serialNumber.trim()
+        )}&excludeId=${formData._id}`
+      );
+      const result = await response.json();
+
+      if (result.success && !result.available) {
+        setSerialNumberError('Serial number already exists');
+      }
+    } catch (error) {
+      console.error('Failed to check serial number availability:', error);
     }
-
-    // Check if it's hexadecimal
-    const hexPattern = /^[0-9a-fA-F]+$/;
-    if (!hexPattern.test(value)) {
-      return 'SMIB Board must contain only hexadecimal characters (0-9, a-f, A-F)';
-    }
-
-    // Check if it ends with 0, 4, 8, or c
-    const lastChar = value.charAt(11).toLowerCase();
-    if (!['0', '4', '8', 'c'].includes(lastChar)) {
-      return 'SMIB Board must end with 0, 4, 8, or c';
-    }
-
-    return ''; // No error
   };
 
-  // Serial Number validation function
-  const validateSerialNumber = (value: string): string => {
-    if (!value) return '';
+  const checkSmibAvailability = async (smib: string) => {
+    if (!smib || smib.trim().length !== 12) return;
+    if (!formData._id) return;
 
-    if (value.trim().length < 3) {
-      return 'Serial number must be at least 3 characters long';
+    try {
+      const response = await fetch(
+        `/api/machines?checkSmib=${encodeURIComponent(
+          smib.trim()
+        )}&excludeId=${formData._id}`
+      );
+      const result = await response.json();
+
+      if (result.success && !result.available) {
+        setRelayIdError('SMIB board already exists');
+      }
+    } catch (error) {
+      console.error('Failed to check SMIB availability:', error);
     }
+  };
 
-    return ''; // No error
+  const checkCustomNameAvailability = async (name: string) => {
+    if (!name || name.trim().length === 0) return;
+    if (!formData._id) return;
+
+    try {
+      const response = await fetch(
+        `/api/machines?checkCustomName=${encodeURIComponent(
+          name.trim()
+        )}&excludeId=${formData._id}`
+      );
+      const result = await response.json();
+
+      if (result.success && !result.available) {
+        setCustomNameError('Machine custom name already exists');
+      }
+    } catch (error) {
+      console.error('Failed to check custom name availability:', error);
+    }
   };
 
   // Helper function to get display serial number
@@ -198,13 +226,6 @@ export default function CabinetsEditCabinetModal({
     }
 
     return 'Unknown';
-  };
-
-  // Helper function to check if serial number is valid (not empty or just whitespace)
-  const hasValidSerialNumber = (cabinet: GamingMachine | null): boolean => {
-    if (!cabinet) return false;
-
-    return Boolean(cabinet.serialNumber && cabinet.serialNumber.trim() !== '');
   };
 
   // Helper function to format creation date
@@ -335,7 +356,11 @@ export default function CabinetsEditCabinetModal({
         custom: selectedCabinet.custom || { name: '' },
         createdAt: selectedCabinet.createdAt,
         cabinetType: selectedCabinet.cabinetType || 'Standing',
-        otherGameType: !['slot', 'roulette', 'pulse'].includes(normalizeGameTypeValue(selectedCabinet.gameType)) ? selectedCabinet.gameType : '',
+        otherGameType: !['slot', 'roulette', 'pulse'].includes(
+          normalizeGameTypeValue(selectedCabinet.gameType)
+        )
+          ? selectedCabinet.gameType
+          : '',
         collectionSettings: {
           multiplier: selectedCabinet.collectionMultiplier || '1',
           lastCollectionTime: initialCollectionTime.toISOString(),
@@ -366,22 +391,22 @@ export default function CabinetsEditCabinetModal({
             console.warn(
               '[EditCabinetModal] Skipping fetch: Custom filter selected but date range not available',
               {
-              hasCustomDateRange: !!customDateRange,
-              hasStartDate: !!customDateRange?.startDate,
-              hasEndDate: !!customDateRange?.endDate,
+                hasCustomDateRange: !!customDateRange,
+                hasStartDate: !!customDateRange?.startDate,
+                hasEndDate: !!customDateRange?.endDate,
               }
             );
             setCabinetDataLoading(false);
             return;
           }
         }
-        
+
         setCabinetDataLoading(true);
         // Convert customDateRange to DateRange format expected by fetchCabinetById
         const dateRangeForFetch =
           customDateRange?.startDate && customDateRange?.endDate
-          ? { from: customDateRange.startDate, to: customDateRange.endDate }
-          : undefined;
+            ? { from: customDateRange.startDate, to: customDateRange.endDate }
+            : undefined;
         fetchCabinetById(
           selectedCabinet._id,
           activeMetricsFilter,
@@ -461,8 +486,12 @@ export default function CabinetsEditCabinetModal({
                   },
                   otherGameType: userModifiedFieldsRef.current.has('gameType')
                     ? prevData.otherGameType
-                    : !['slot', 'roulette', 'pulse'].includes(normalizeGameTypeValue(cabinetDetails.gameType || prevData.gameType)) 
-                      ? (cabinetDetails.gameType || prevData.gameType) 
+                    : !['slot', 'roulette', 'pulse'].includes(
+                          normalizeGameTypeValue(
+                            cabinetDetails.gameType || prevData.gameType
+                          )
+                        )
+                      ? cabinetDetails.gameType || prevData.gameType
                       : '',
                 };
                 // console.log(
@@ -537,39 +566,6 @@ export default function CabinetsEditCabinetModal({
       overwrite: true,
       onComplete: closeEditModal,
     });
-  };
-
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-
-    // Auto-capitalize serial number letters
-    if (name === 'assetNumber') {
-      const upperCaseValue = value.toUpperCase();
-
-      // Validate the serial number
-      const error = validateSerialNumber(upperCaseValue);
-      setSerialNumberError(error);
-
-      setFormData(prev => ({ ...prev, [name]: upperCaseValue }));
-    } else if (name === 'smbId') {
-      // Special handling for SMIB Board with validation
-      // Convert to lowercase and remove any non-hex characters
-      const cleanValue = value.replace(/[^0-9a-fA-F]/g, '');
-
-      // Limit to 12 characters
-      const limitedValue = cleanValue.slice(0, 12);
-
-      // Validate the value
-      const error = validateSmibBoard(limitedValue);
-      setRelayIdError(error);
-
-      setFormData(prev => ({ ...prev, [name]: limitedValue }));
-    } else {
-      if (name === 'installedGame') setInstalledGameError('');
-      if (name === 'accountingDenomination') setAccountingDenominationError('');
-      if (name === 'collectionMultiplier') setCollectionMultiplierError('');
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
   };
 
   const handleSubmit = async () => {
@@ -668,7 +664,13 @@ export default function CabinetsEditCabinetModal({
       const formDataComparison = {
         assetNumber: formData.assetNumber,
         installedGame: formData.installedGame,
-        gameType: ((formData.gameType === 'other' ? formData.otherGameType : formData.gameType) || '').toLowerCase().trim(),
+        gameType: (
+          (formData.gameType === 'other'
+            ? formData.otherGameType
+            : formData.gameType) || ''
+        )
+          .toLowerCase()
+          .trim(),
         accountingDenomination: formData.accountingDenomination,
         collectionMultiplier: formData.collectionMultiplier,
         locationId: formData.locationId,
@@ -704,11 +706,11 @@ export default function CabinetsEditCabinetModal({
 
       meaningfulChanges.forEach(change => {
         const fieldPath = change.path; // Use full path for nested fields
-        
+
         // Handle nested fields (e.g., "custom.name")
         if (fieldPath.includes('.')) {
           const [parent, child] = fieldPath.split('.');
-          
+
           // Special handling for objects that must be sent whole
           if (parent === 'custom') {
             updatePayload.custom = formData.custom;
@@ -730,7 +732,13 @@ export default function CabinetsEditCabinetModal({
         } else {
           // Special handling for gameType to ensure it's lowercased and uses otherGameType if needed
           if (fieldPath === 'gameType') {
-            updatePayload.gameType = ((formData.gameType === 'other' ? formData.otherGameType : formData.gameType) || '').toLowerCase().trim();
+            updatePayload.gameType = (
+              (formData.gameType === 'other'
+                ? formData.otherGameType
+                : formData.gameType) || ''
+            )
+              .toLowerCase()
+              .trim();
           } else {
             updatePayload[fieldPath] =
               formData[fieldPath as keyof typeof formData];
@@ -766,8 +774,8 @@ export default function CabinetsEditCabinetModal({
       // Convert customDateRange to DateRange format expected by updateCabinet
       const dateRangeForUpdate =
         customDateRange?.startDate && customDateRange?.endDate
-        ? { from: customDateRange.startDate, to: customDateRange.endDate }
-        : undefined;
+          ? { from: customDateRange.startDate, to: customDateRange.endDate }
+          : undefined;
       const success = await updateCabinet(
         updatePayload,
         activeMetricsFilter,
@@ -782,8 +790,8 @@ export default function CabinetsEditCabinetModal({
           selectedCabinet._id,
           `${
             selectedCabinet.installedGame ||
-              selectedCabinet.game ||
-              '(game name not provided)'
+            selectedCabinet.game ||
+            '(game name not provided)'
           } - ${
             selectedCabinet.assetNumber ||
             getSerialNumberIdentifier(selectedCabinet) ||
@@ -888,49 +896,50 @@ export default function CabinetsEditCabinetModal({
                   formData={{
                     assetNumber: formData.assetNumber || '',
                     installedGame: formData.installedGame || '',
-                    gameType: formData.gameType || '',
+                    gameType: formData.gameType || 'slot',
                     manufacturer: formData.manufacturer || '',
                     cabinetType: formData.cabinetType || 'Standing',
                     isCronosMachine: formData.isCronosMachine || false,
                     accountingDenomination: String(
                       formData.accountingDenomination || ''
                     ),
+                    otherGameType: formData.otherGameType,
                     custom: formData.custom || { name: '' },
                   }}
                   cabinetDataLoading={cabinetDataLoading}
                   manufacturersLoading={manufacturersLoading}
                   manufacturers={manufacturers}
                   serialNumberError={serialNumberError}
+                  customNameError={customNameError}
                   installedGameError={installedGameError}
-                  onFormDataChange={(updates: Record<string, unknown>) => {
-                    if ('assetNumber' in updates) {
-                      handleChange({
-                        target: {
-                          name: 'assetNumber',
-                          value: updates.assetNumber,
-                        },
-                      } as ChangeEvent<HTMLInputElement>);
-                    } else if ('installedGame' in updates) {
-                      handleChange({
-                        target: {
-                          name: 'installedGame',
-                          value: updates.installedGame,
-                        },
-                      } as ChangeEvent<HTMLInputElement>);
-                    } else if ('accountingDenomination' in updates) {
-                      handleChange({
-                        target: {
-                          name: 'accountingDenomination',
-                          value: updates.accountingDenomination,
-                        },
-                      } as ChangeEvent<HTMLInputElement>);
-                    } else {
-                      setFormData(prev => ({ ...prev, ...updates }));
-                    }
+                  isAddingManufacturer={isAddingManufacturer}
+                  onAddManufacturerToggle={setIsAddingManufacturer}
+                  onFormDataChange={updates => {
+                    const fieldKeys = Object.keys(updates);
+                    fieldKeys.forEach(field => {
+                      if (field === 'assetNumber' && serialNumberError) {
+                        setSerialNumberError('');
+                      }
+                      if (field === 'custom' && customNameError) {
+                        setCustomNameError('');
+                      }
+                      setUserModifiedFields(prev => {
+                        const next = new Set(prev);
+                        next.add(field);
+                        return next;
+                      });
+                    });
+                    setFormData(prev => ({ ...prev, ...updates }));
                   }}
-                  onUserModifiedFieldsChange={(field: string) =>
-                    setUserModifiedFields(prev => new Set([...prev, field]))
-                  }
+                  onSerialNumberBlur={checkSerialNumberAvailability}
+                  onCustomNameBlur={checkCustomNameAvailability}
+                  onUserModifiedFieldsChange={field => {
+                    setUserModifiedFields(prev => {
+                      const next = new Set(prev);
+                      next.add(field);
+                      return next;
+                    });
+                  }}
                 />
 
                 <EditCabinetLocationConfig
@@ -939,8 +948,8 @@ export default function CabinetsEditCabinetModal({
                       formData.accountingDenomination || ''
                     ),
                     locationId: formData.locationId || '',
-                    smbId: formData.smbId || '',
-                    status: formData.status || 'functional',
+                    smbId: formData.relayId || formData.smbId || '',
+                    status: formData.assetStatus || 'functional',
                     custom: formData.custom,
                   }}
                   locations={locations}
@@ -949,48 +958,60 @@ export default function CabinetsEditCabinetModal({
                   accountingDenominationError={accountingDenominationError}
                   locationError={locationError}
                   relayIdError={relayIdError}
-                  hasValidSerialNumber={hasValidSerialNumber(selectedCabinet)}
-                  onFormDataChange={(updates: Record<string, unknown>) => {
-                    if ('accountingDenomination' in updates) {
-                      handleChange({
-                        target: {
-                          name: 'accountingDenomination',
-                          value: updates.accountingDenomination,
-                        },
-                      } as ChangeEvent<HTMLInputElement>);
-                    } else if ('smbId' in updates) {
-                      handleChange({
-                        target: { name: 'smbId', value: updates.smbId },
-                      } as ChangeEvent<HTMLInputElement>);
-                    } else {
-                      setFormData(prev => {
-                        const updated: ExtendedCabinetFormData = { ...prev };
-                        // Handle custom field updates
-                        if ('custom' in updates) {
-                          const customValue = updates.custom;
-                          if (customValue && typeof customValue === 'object') {
-                            const val = customValue as Record<string, unknown>;
-                            updated.custom = {
-                              name: typeof val.name === 'string' ? val.name : (prev.custom?.name || ''),
-                            };
-                          } else {
-                            updated.custom = { name: '' };
-                          }
-
-                        }
-
-                        // Handle other field updates
-                        if ('locationId' in updates) {
-                          updated.locationId = updates.locationId as string | undefined;
-                        }
-                        if ('status' in updates) {
-                          updated.status = updates.status as string | undefined;
-                        }
-                        return updated;
-                      });
+                  hasValidSerialNumber={
+                    !!formData.assetNumber && formData.assetNumber.length >= 3
+                  }
+                  onFormDataChange={updates => {
+                    if (updates.smbId && relayIdError) {
+                      setRelayIdError('');
                     }
+                    if (updates.custom && customNameError) {
+                      setCustomNameError('');
+                    }
+
+                    // Map smbId back to relayId and smibBoard for formData
+                    const formDataUpdates: Partial<ExtendedCabinetFormData> = {};
+                    if (updates.smbId) {
+                      formDataUpdates.relayId = updates.smbId;
+                      formDataUpdates.smibBoard = updates.smbId;
+                    } else if ('smbId' in updates && !updates.smbId) {
+                      formDataUpdates.relayId = '';
+                      formDataUpdates.smibBoard = '';
+                    }
+
+                    if (updates.status) {
+                      formDataUpdates.assetStatus = updates.status;
+                    }
+
+                    if (updates.locationId) {
+                      formDataUpdates.locationId = updates.locationId;
+                    }
+
+                    if (updates.accountingDenomination) {
+                      formDataUpdates.accountingDenomination =
+                        updates.accountingDenomination;
+                    }
+
+                    if (updates.custom) {
+                      formDataUpdates.custom = {
+                        name: updates.custom.name || '',
+                      };
+                    }
+
+                    const fieldKeys = Object.keys(formDataUpdates);
+                    fieldKeys.forEach(field => {
+                      setUserModifiedFields(prev => {
+                        const next = new Set(prev);
+                        next.add(field);
+                        return next;
+                      });
+                    });
+
+                    setFormData(prev => ({ ...prev, ...formDataUpdates }));
                   }}
                   onLocationErrorChange={setLocationError}
+                  onSmibBlur={checkSmibAvailability}
+                  onCustomNameBlur={checkCustomNameAvailability}
                 />
 
                 <EditCabinetCollectionSettings
@@ -1004,15 +1025,15 @@ export default function CabinetsEditCabinetModal({
                     setFormData(prev => ({ ...prev, ...updates }));
                   }}
                   onCollectionTimeChange={(date: Date) => {
-                          setCollectionTime(date);
-                          setFormData(prev => ({
-                            ...prev,
-                            collectionSettings: {
-                              ...prev.collectionSettings,
-                              lastCollectionTime: date.toISOString(),
-                            },
-                          }));
-                        }}
+                    setCollectionTime(date);
+                    setFormData(prev => ({
+                      ...prev,
+                      collectionSettings: {
+                        ...prev.collectionSettings,
+                        lastCollectionTime: date.toISOString(),
+                      },
+                    }));
+                  }}
                   onCollectionMultiplierErrorChange={
                     setCollectionMultiplierError
                   }
@@ -1044,4 +1065,3 @@ export default function CabinetsEditCabinetModal({
     </div>
   );
 }
-

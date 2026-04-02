@@ -439,3 +439,35 @@ export const canManageLocations = (
     userRoles.includes(role as UserRole)
   );
 };
+
+/**
+ * Check if user can view archived (soft-deleted) machines
+ * @param userRoles - Array of user's roles
+ * @returns boolean indicating if user can view archived
+ */
+export const canViewArchivedMachines = (
+  userRoles: UserRole[] | undefined
+): boolean => {
+  if (!userRoles || userRoles.length === 0) return false;
+
+  // Admins, developers, and technicians can view archived machines
+  return ['developer', 'admin', 'technician'].some(role =>
+    userRoles.includes(role as UserRole)
+  );
+};
+
+/**
+ * Check if user can permanently delete machines
+ * @param userRoles - Array of user's roles
+ * @returns boolean indicating if user can permanently delete
+ */
+export const canPermanentlyDeleteMachines = (
+  userRoles: UserRole[] | undefined
+): boolean => {
+  if (!userRoles || userRoles.length === 0) return false;
+
+  // Only developers and admins can permanently delete
+  return ['developer', 'admin'].some(role =>
+    userRoles.includes(role as UserRole)
+  );
+};

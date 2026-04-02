@@ -77,13 +77,14 @@ export async function GET(request: NextRequest) {
       const isAdmin =
         normalizedRoles.includes('admin') ||
         normalizedRoles.includes('developer');
-      const reviewerMult =
+      const reviewerMultRaw =
         normalizedRoles.includes('reviewer') &&
         (userPayload as unknown as { multiplier?: number | null })
           ?.multiplier != null
           ? (userPayload as unknown as { multiplier?: number | null })
               .multiplier
           : null;
+      const reviewerMult = reviewerMultRaw !== null ? (1 - reviewerMultRaw!) : null;
 
       if (!isAdmin && !(await checkUserLocationAccess(locationId))) {
         return NextResponse.json(
@@ -167,32 +168,55 @@ export async function GET(request: NextRequest) {
         )?.includeJackpot;
       }
 
+      const includeArchived = searchParams.get('includeArchived') === 'true';
       const mMatch: Record<string, unknown> = {
         $and: [
           { gamingLocation: locationId },
-          {
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          },
         ] as unknown[],
       };
+
+      if (!includeArchived) {
+        // Active: null OR < 2025
+        (mMatch.$and as unknown[]).push({
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $lt: new Date('2025-01-01') } },
+          ],
+        });
+      } else {
+        // Archived View: Show ALL machines
+        // (If there's a third state to hide, we'd add another filter here)
+        (mMatch.$and as unknown[]).push({
+          $or: [
+            { deletedAt: null },
+            { deletedAt: { $exists: true } },
+          ],
+        });
+      }
+
       if (onlineStatus !== 'all') {
         const threeMin = new Date(Date.now() - 3 * 60 * 1000);
-        if (onlineStatus === 'online') mMatch.lastActivity = { $gte: threeMin };
-        else if (onlineStatus === 'offline')
-          (mMatch.$and as unknown[]).push({
-            $or: [
-              { lastActivity: { $lt: threeMin } },
-              { lastActivity: { $exists: false } },
-              { lastActivity: null },
-            ],
-          });
-        else if (onlineStatus === 'never-online')
-          (mMatch.$and as unknown[]).push({
-            $or: [{ lastActivity: { $exists: false } }, { lastActivity: null }],
-          });
+        if (locationCheck.aceEnabled) {
+          if (onlineStatus === 'online') {
+            // all active machines are online
+          } else if (onlineStatus === 'offline' || onlineStatus === 'never-online') {
+            (mMatch.$and as unknown[]).push({ _id: null });
+          }
+        } else {
+          if (onlineStatus === 'online') mMatch.lastActivity = { $gte: threeMin };
+          else if (onlineStatus === 'offline')
+            (mMatch.$and as unknown[]).push({
+              $or: [
+                { lastActivity: { $lt: threeMin } },
+                { lastActivity: { $exists: false } },
+                { lastActivity: null },
+              ],
+            });
+          else if (onlineStatus === 'never-online')
+            (mMatch.$and as unknown[]).push({
+              $or: [{ lastActivity: { $exists: false } }, { lastActivity: null }],
+            });
+        }
       }
 
       const machines = await Machine.find(mMatch, {
@@ -209,6 +233,8 @@ export async function GET(request: NextRequest) {
         gameType: 1,
         isCronosMachine: 1,
         sasMeters: 1,
+        assetStatus: 1,
+        deletedAt: 1,
       }).lean();
       if (!machines.length)
         return NextResponse.json({
@@ -291,7 +317,7 @@ export async function GET(request: NextRequest) {
           )?.trim() || '';
         const an = sn || cn || '';
         const la = m.lastActivity as Date | null;
-        const on = la && new Date(la) > new Date(Date.now() - 3 * 60 * 1000);
+        const on = locationCheck.aceEnabled || (la && new Date(la) > new Date(Date.now() - 3 * 60 * 1000));
         const mi = Number(me.moneyIn) || 0;
         const rmo = Number(me.moneyOut) || 0;
         const jp = Number(me.jackpot) || 0;
@@ -328,10 +354,12 @@ export async function GET(request: NextRequest) {
           sasMeters: m.sasMeters || null,
           online: !!on,
           includeJackpot: includeJackpotSetting,
+          deletedAt: (m as { deletedAt?: Date }).deletedAt || null,
         };
       });
 
       if (searchTerm) {
+
         const st = searchTerm.toLowerCase();
         cabWithMeters.sort((a, b) =>
           a.serialNumber.toLowerCase().startsWith(st) &&

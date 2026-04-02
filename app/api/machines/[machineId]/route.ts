@@ -112,17 +112,18 @@ export async function GET(
     let locationName = '';
     let gameDayOffset = 0;
     let includeJackpotSetting = false;
+    let aceEnabled = false;
 
     if (machine.gamingLocation) {
       try {
         const location = (await GamingLocations.findOne({
           _id: machine.gamingLocation,
         })
-          .select('name gameDayOffset rel')
+          .select('name gameDayOffset rel aceEnabled')
           .lean()) as Pick<
           LocationDocument,
           'name' | 'gameDayOffset' | 'rel'
-        > | null;
+        > & { aceEnabled?: boolean } | null;
 
         if (location) {
           // Check if user has access to this location (includes both licencee and location permissions)
@@ -157,6 +158,7 @@ export async function GET(
             if (licencee) includeJackpot = !!licencee.includeJackpot;
           }
           includeJackpotSetting = includeJackpot;
+          aceEnabled = location.aceEnabled === true;
         } else locationName = 'Location Not Found';
       } catch (error) {
         console.warn('Failed to fetch location name for machine:', error);
@@ -370,11 +372,12 @@ export async function GET(
     const rawGross = gross;
 
     if (reviewerMult !== null) {
-      moneyIn = moneyIn * reviewerMult;
-      moneyOut = moneyOut * reviewerMult;
-      jackpot = jackpot * reviewerMult;
-      coinIn = coinIn * reviewerMult;
-      coinOut = coinOut * reviewerMult;
+      const mult = (1 - reviewerMult);
+      moneyIn = moneyIn * mult;
+      moneyOut = moneyOut * mult;
+      jackpot = jackpot * mult;
+      coinIn = coinIn * mult;
+      coinOut = coinOut * mult;
       gross = moneyIn - moneyOut;
     }
 
@@ -448,6 +451,7 @@ export async function GET(
       smibVersion: machine.smibVersion || {},
       billMeters: machine.billMeters || {},
       lastActivity: machine.lastActivity,
+      aceEnabled,
       sessionHistory: machine.sessionHistory || [],
       balances: machine.balances || {},
       tasks: machine.tasks || {},

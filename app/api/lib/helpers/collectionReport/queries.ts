@@ -108,7 +108,7 @@ export async function fetchLocationsWithMachines(
             $match: {
               $or: [
                 { deletedAt: null },
-                { deletedAt: { $lt: new Date('1970-01-01') } },
+                { deletedAt: { $lt: new Date('2025-01-01') } },
               ],
             },
           },

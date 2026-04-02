@@ -65,7 +65,7 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
         }
       >
         <LocationSingleSelect
-          locations={locations.map(loc => ({
+          locations={locations.filter(loc => loc.name).map(loc => ({
             id: String(loc._id),
             name: loc.name,
             sasEnabled: false,

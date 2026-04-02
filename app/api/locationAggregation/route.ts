@@ -228,12 +228,12 @@ export async function GET(req: NextRequest) {
       userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     }
 
-    // Compute reviewer multiplier (used for cache key isolation and value scaling)
-    const reviewerMult =
-      userRoles.includes('reviewer') &&
+    const reviewerMultRaw =
+      userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase()).includes('reviewer') &&
       (userPayload as { multiplier?: number | null } | undefined)?.multiplier != null
         ? (userPayload as { multiplier?: number | null }).multiplier!
         : null;
+    const reviewerMult = reviewerMultRaw !== null ? (1 - reviewerMultRaw) : null;
 
     // ============================================================================
     // STEP 4.5: Determine display currency (if not provided) - AFTER DB connection

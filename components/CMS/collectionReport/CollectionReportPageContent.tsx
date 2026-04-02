@@ -298,7 +298,6 @@ export default function CollectionReportPageContent() {
                           currentPage={hook.currentPage}
                           totalPages={hook.totalPages || 1}
                           totalCount={hook.totalReports}
-                          limit={10}
                           setCurrentPage={setCurrentPage}
                         />
                       </div>

@@ -36,6 +36,7 @@ export type CabinetCardProps = {
   actualOfflineTime?: string;
   hideFinancials?: boolean;
   includeJackpot?: boolean;
+  deletedAt?: string | Date;
 };
 
 

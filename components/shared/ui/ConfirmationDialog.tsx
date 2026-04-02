@@ -98,7 +98,7 @@ export const ConfirmationDialog = ({
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100000]">
+    <div className="fixed inset-0 z-[100000] pointer-events-auto">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"

@@ -6,6 +6,7 @@ import {
   getOverviewMachines,
 } from '@/app/api/lib/helpers/reports/machines';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
 import type { CurrencyCode } from '@/shared/types/currency';
@@ -85,13 +86,41 @@ export async function GET(req: NextRequest) {
 
       if (onlineStatus !== 'all') {
         const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+
+        // Fetch aceEnabled location IDs — machines at these locations are always online
+        const aceEnabledLocs = await GamingLocations.find(
+          { aceEnabled: true },
+          { _id: 1 }
+        ).lean();
+        const aceEnabledLocIds = aceEnabledLocs.map(loc => String(loc._id));
+
         if (onlineStatus === 'online') {
-          machineMatchStage.lastActivity = { $gte: threeMinutesAgo };
+          if (aceEnabledLocIds.length > 0) {
+            // Online = recently active OR at an aceEnabled location
+            if (!machineMatchStage.$and) machineMatchStage.$and = [];
+            (machineMatchStage.$and as Array<Record<string, unknown>>).push({
+              $or: [
+                { lastActivity: { $gte: threeMinutesAgo } },
+                { gamingLocation: { $in: aceEnabledLocIds } },
+              ],
+            });
+          } else {
+            machineMatchStage.lastActivity = { $gte: threeMinutesAgo };
+          }
         } else {
-          machineMatchStage.$or = [
-            { lastActivity: { $lt: threeMinutesAgo } },
-            { lastActivity: { $exists: false } },
-          ];
+          // Offline = NOT recently active AND NOT at an aceEnabled location
+          if (!machineMatchStage.$and) machineMatchStage.$and = [];
+          (machineMatchStage.$and as Array<Record<string, unknown>>).push({
+            $or: [
+              { lastActivity: { $lt: threeMinutesAgo } },
+              { lastActivity: { $exists: false } },
+            ],
+          });
+          if (aceEnabledLocIds.length > 0) {
+            (machineMatchStage.$and as Array<Record<string, unknown>>).push({
+              gamingLocation: { $nin: aceEnabledLocIds },
+            });
+          }
         }
       }
 

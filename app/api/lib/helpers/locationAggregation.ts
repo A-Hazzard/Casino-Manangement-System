@@ -405,7 +405,7 @@ export const getLocationsWithMetrics = async (
 
           // Calculate machine status metrics
           const totalMachines = machines.length;
-          const onlineMachines = machines.filter(m => {
+          const onlineMachines = location.aceEnabled ? totalMachines : machines.filter(m => {
             if (!m.lastActivity) return false;
             try {
               const activityDate = m.lastActivity instanceof Date
@@ -461,6 +461,7 @@ export const getLocationsWithMetrics = async (
             rel: location.rel,
             country: location.country,
             membershipEnabled: location.membershipEnabled || false,
+            aceEnabled: location.aceEnabled || false,
             isNeverOnline,
             latestActivity,
           } as unknown as AggregatedLocation);
@@ -491,6 +492,7 @@ export const getLocationsWithMetrics = async (
             rel: location.rel,
             country: location.country,
             membershipEnabled: location.membershipEnabled || false,
+            aceEnabled: location.aceEnabled || false,
           } as unknown as AggregatedLocation);
         }
       }
@@ -722,7 +724,7 @@ export const getLocationsWithMetrics = async (
 
           // Calculate machine metrics
           const totalMachines = machines.length;
-          const onlineMachines = machines.filter(m => {
+          const onlineMachines = location.aceEnabled ? totalMachines : machines.filter(m => {
             if (!m.lastActivity) return false;
             try {
               const activityDate = m.lastActivity instanceof Date
@@ -779,6 +781,7 @@ export const getLocationsWithMetrics = async (
             rel: location.rel,
             country: location.country,
             membershipEnabled: location.membershipEnabled || false,
+            aceEnabled: location.aceEnabled || false,
             isNeverOnline,
             latestActivity,
           } as unknown as AggregatedLocation;
@@ -1058,7 +1061,7 @@ export const getLocationsWithMetrics = async (
 
       // Machine counts with proper fallbacks
       const totalMachines = location.totalMachines || 0;
-      const onlineMachines = location.onlineMachines || 0;
+      const onlineMachines = location.aceEnabled ? totalMachines : (location.onlineMachines || 0);
       const sasMachines = location.sasMachines || 0;
       const nonSasMachines = location.nonSasMachines || 0;
       const gamesPlayed = location.gamesPlayed || 0;

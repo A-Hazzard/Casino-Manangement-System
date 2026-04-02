@@ -307,17 +307,15 @@ export default function VaultFloatRequestsPageContent() {
           showHistory={true}
         />
 
-        {totalPages > 1 && (
-            <div className="mt-4">
-                <PaginationControls 
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    setCurrentPage={setCurrentPage}
-                    totalCount={totalItems}
-                    limit={ITEMS_PER_PAGE}
-                />
-            </div>
-        )}
+          {totalPages > 0 && (
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              setCurrentPage={setCurrentPage}
+              totalCount={totalItems}
+              showTotalCount
+            />
+          )}
       </div>
       </div>
     </PageLayout>

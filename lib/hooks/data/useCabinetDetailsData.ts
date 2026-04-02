@@ -138,7 +138,9 @@ export function useCabinetDetailsData({
         setLocationName('No Location Assigned');
       }
 
-      if (cabinetData?.lastActivity) {
+      if ((cabinetData as Record<string, unknown>)?.aceEnabled === true) {
+        setIsOnline(true);
+      } else if (cabinetData?.lastActivity) {
         const lastActive = new Date(cabinetData.lastActivity);
         setIsOnline(differenceInMinutes(new Date(), lastActive) <= 3);
       }

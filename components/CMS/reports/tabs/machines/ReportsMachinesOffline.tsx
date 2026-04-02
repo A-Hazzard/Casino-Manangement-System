@@ -668,33 +668,13 @@ export const ReportsMachinesOffline = ({
           )}
 
           {/* Pagination */}
-          {offlinePagination.totalPages > 1 && (
-            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm text-gray-500">
-                Showing{' '}
-                <span className="font-medium">
-                  {(offlinePagination.page - 1) * offlinePagination.limit + 1}
-                </span>{' '}
-                to{' '}
-                <span className="font-medium">
-                  {Math.min(
-                    offlinePagination.page * offlinePagination.limit,
-                    offlinePagination.totalCount
-                  )}
-                </span>{' '}
-                of{' '}
-                <span className="font-medium">
-                  {offlinePagination.totalCount}
-                </span>{' '}
-                results
-              </div>
-              <PaginationControls
-                currentPage={offlinePagination.page - 1}
-                totalPages={offlinePagination.totalPages}
-                setCurrentPage={(page: number) => onPageChange(page + 1)}
-              />
-            </div>
-          )}
+          <PaginationControls
+            currentPage={offlinePagination.page - 1}
+            totalPages={offlinePagination.totalPages}
+            totalCount={offlinePagination.totalCount}
+            setCurrentPage={(page: number) => onPageChange(page + 1)}
+            showTotalCount
+          />
         </CardContent>
       </Card>
 

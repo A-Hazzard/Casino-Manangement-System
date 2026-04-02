@@ -373,7 +373,7 @@ export async function GET(request: NextRequest) {
         pagination: {
           page,
           limit,
-          total: totalCount,
+          totalCount,
           totalPages: Math.ceil(totalCount / limit),
         },
       },

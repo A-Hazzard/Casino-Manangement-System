@@ -32,7 +32,10 @@ import {
 import { useDebounce } from '@/lib/utils/hooks';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { filterAndSortCabinets } from '@/lib/utils/ui';
-import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import type { 
+  GamingMachine as Cabinet,
+  AggregatedLocation
+} from '@/shared/types/entities';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -62,9 +65,9 @@ type UseLocationCabinetsDataProps = {
   setFiltersInitialized: (value: boolean) => void;
 };
 
-const ITEMS_PER_PAGE = 10;
-const ITEMS_PER_BATCH = 50;
-const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
+const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_BATCH = 40;
+const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 2
 
 export function useLocationCabinetsData({
   locationId,
@@ -89,13 +92,7 @@ export function useLocationCabinetsData({
   const [locationName, setLocationName] = useState('');
   const [locationMembershipEnabled, setLocationMembershipEnabled] =
     useState<boolean>(false);
-  const [locationData, setLocationData] = useState<{
-    geoCoords?: {
-      latitude?: number;
-      longitude?: number;
-      longtitude?: number;
-    };
-  } | null>(null);
+  const [locationData, setLocationData] = useState<AggregatedLocation | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedGameType, setSelectedGameType] = useState<string>('all');
   const [allCabinets, setAllCabinets] = useState<Cabinet[]>([]);
@@ -108,6 +105,7 @@ export function useLocationCabinetsData({
   const [metricsTotals, setMetricsTotals] = useState<FinancialTotals | null>(null);
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
   const [includeJackpot, setIncludeJackpot] = useState<boolean>(false);
+  const [showArchived, setShowArchived] = useState<boolean>(false);
 
   // Effect to handle automatic sorting when status changes to Offline sorting variants
   useEffect(() => {
@@ -240,7 +238,8 @@ export function useLocationCabinetsData({
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(0);
-  }, [sortOption, sortOrder, selectedStatus, selectedGameType, activeMetricsFilter, customDateRange]);
+  }, [sortOption, sortOrder, selectedStatus, selectedGameType, activeMetricsFilter, customDateRange, showArchived]);
+
 
   // Reset to default view when search is cleared
   useEffect(() => {
@@ -323,8 +322,11 @@ export function useLocationCabinetsData({
           : undefined,
         PAGES_PER_BATCH,
         ITEMS_PER_BATCH,
-        onlineStatus
+        undefined, // displayCurrency - not needed here if only IDs/metrics are returned similarly
+        onlineStatus,
+        showArchived
       ).then(result => {
+
         if (result.data.length > 0) {
           setLoadedBatches(prev => new Set([...prev, nextBatchNumber]));
           if (result.pagination?.total) {
@@ -392,8 +394,10 @@ export function useLocationCabinetsData({
         currentBatch,
         ITEMS_PER_BATCH,
         displayCurrency,
-        onlineStatus
+        onlineStatus,
+        showArchived
       ).then(result => {
+
         if (result.data.length > 0) {
           setLoadedBatches(prev => new Set([...prev, currentBatch]));
           if (result.pagination?.total) {
@@ -424,6 +428,7 @@ export function useLocationCabinetsData({
     debouncedSearchTerm,
     displayCurrency,
     selectedStatus,
+    showArchived,
   ]);
 
   // Effect to fetch metrics totals reliably when filters change
@@ -466,6 +471,7 @@ export function useLocationCabinetsData({
             ),
           'location-totals'
         );
+
         if (totals) {
           setMetricsTotals(totals);
         } else {
@@ -504,7 +510,8 @@ export function useLocationCabinetsData({
         ? JSON.stringify(customDateRange)
         : 'none';
 
-    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}-${selectedStatus}`;
+    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}-${selectedStatus}-${showArchived}`;
+
 
     const fetchData = async () => {
       // Only proceed if filters are initialized
@@ -554,13 +561,19 @@ export function useLocationCabinetsData({
           const locationData =
             locationResponse.data?.location || locationResponse.data;
           if (locationData) {
+            const locationWithId = {
+              ...locationData,
+              location: locationData._id ? String(locationData._id) : locationId,
+              // Map name to locationName for AggregatedLocation compatibility
+              locationName: locationData.name || 'Location'
+            };
             setLocationName(locationData.name || 'Location');
             setSelectedLocationId(locationId);
             setLocationMembershipEnabled(
               locationData.membershipEnabled === true ||
               locationData.enableMembership === true
             );
-            setLocationData(locationData);
+            setLocationData(locationWithId as AggregatedLocation);
             setIncludeJackpot(Boolean(locationData.includeJackpot));
           }
         } catch (locationError) {
@@ -710,8 +723,10 @@ export function useLocationCabinetsData({
               effectiveLimit,
               displayCurrency,
               onlineStatus,
+              showArchived,
               signal
             );
+
           });
 
           if (!result) {
@@ -793,7 +808,9 @@ export function useLocationCabinetsData({
     debouncedSearchTerm,
     displayCurrency,
     selectedStatus,
+    showArchived,
   ]);
+
 
   // Clear isFilterResetting when new data arrives
   useEffect(() => {
@@ -878,9 +895,10 @@ export function useLocationCabinetsData({
     setSortOption,
     setCurrentPage,
     setSelectedLocationId,
+    // Archived machine management
+    showArchived,
+    setShowArchived,
     // Handlers
     refreshCabinets,
   };
 }
-
-

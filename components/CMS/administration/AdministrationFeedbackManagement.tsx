@@ -40,9 +40,9 @@ export default function AdministrationFeedbackManagement() {
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
   const [feedbackToRestore, setFeedbackToRestore] = useState<Feedback | null>(null);
 
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
+  const itemsPerPage = 20;
+  const itemsPerBatch = 40;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 2
 
   const {
     feedback,
@@ -52,6 +52,7 @@ export default function AdministrationFeedbackManagement() {
     currentPage,
     setCurrentPage,
     totalPages,
+    serverTotalCount,
     fetchInitialBatch,
   } = useFeedbackData({
     debouncedEmailFilter,
@@ -249,15 +250,13 @@ export default function AdministrationFeedbackManagement() {
           </div>
 
           {/* Pagination Controls */}
-          {!loading && feedback.length > 0 && (
-            <div className="mt-8 flex justify-center pb-4">
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                setCurrentPage={setCurrentPage}
-              />
-            </div>
-          )}
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setCurrentPage={setCurrentPage}
+            totalCount={serverTotalCount}
+            showTotalCount
+          />
         </>
       )}
 

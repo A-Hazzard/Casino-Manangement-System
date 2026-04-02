@@ -579,9 +579,9 @@ export async function createUser(
         {
           field: 'profilePicture',
           oldValue: null,
-          newValue: profilePicture || 'None',
+          newValue: profilePicture ? 'Profile picture updated' : 'None',
         },
-      ];
+    ];
 
       await logActivity({
         action: 'CREATE',
@@ -1079,8 +1079,8 @@ export async function updateUser(
       if (oldPasswordHash) {
         previousPasswords.push(oldPasswordHash);
       }
-      // Keep only last 5 unique passwords in history
-      const uniquePrevious = Array.from(new Set(previousPasswords)).slice(-5);
+      // Keep only last 2 passwords in history to prevent re-use
+      const uniquePrevious = Array.from(new Set(previousPasswords)).slice(-2);
       updateFields.previousPasswords = uniquePrevious;
     } else if (typeof updateFields.password === 'string') {
       // Legacy support or Admin password reset: if password is a string, validate and hash it
@@ -1121,7 +1121,8 @@ export async function updateUser(
       if (oldPasswordHash) {
         previousPasswords.push(oldPasswordHash);
       }
-      const uniquePrevious = Array.from(new Set(previousPasswords)).slice(-5);
+      // Keep only last 2 passwords in history to prevent re-use
+      const uniquePrevious = Array.from(new Set(previousPasswords)).slice(-2);
       updateFields.previousPasswords = uniquePrevious;
     } else {
       // Invalid password format
@@ -1539,14 +1540,38 @@ function calculateUserChanges(
       original: (originalUser.profile as { notes?: string } | undefined)?.notes,
       updated: getUpdatedValue('notes'),
     },
+    {
+      field: 'username',
+      original: originalUser.username,
+      updated: updateFields.username,
+    },
+    {
+      field: 'emailAddress',
+      original: originalUser.emailAddress,
+      updated: updateFields.emailAddress,
+    },
+    {
+      field: 'profilePicture',
+      original: originalUser.profilePicture,
+      updated: updateFields.profilePicture,
+    },
   ];
 
   fieldChecks.forEach(({ field, original, updated }) => {
     if (updated !== undefined && updated !== original) {
+      let oldValue = (original as string) || '';
+      let newValue = (updated as string) || '';
+
+      // Mask profile picture content
+      if (field === 'profilePicture') {
+        oldValue = original ? 'Profile picture updated' : 'None';
+        newValue = updated ? 'Profile picture updated' : 'None';
+      }
+
       changes.push({
         field,
-        oldValue: (original as string) || '',
-        newValue: (updated as string) || '',
+        oldValue,
+        newValue,
       });
     }
   });

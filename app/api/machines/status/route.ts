@@ -125,7 +125,11 @@ export async function GET(req: NextRequest) {
               $match: {
                 $expr: {
                   $eq: [{ $toString: '$_id' }, { $ifNull: [{ $toString: '$$locId' }, ''] }]
-                }
+                },
+                $or: [
+                  { deletedAt: null },
+                  { deletedAt: { $lt: new Date('2025-01-01') } },
+                ],
               }
             }
           ],
@@ -232,15 +236,21 @@ export async function GET(req: NextRequest) {
       if (onlineStatus === 'online') {
         aggregationPipeline.push({
           $match: {
-            $and: [
-              { lastActivity: { $exists: true, $ne: null } },
-              { $expr: { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] } }
+            $or: [
+              { 'locationDetails.aceEnabled': true },
+              {
+                $and: [
+                  { lastActivity: { $exists: true, $ne: null } },
+                  { $expr: { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] } }
+                ]
+              }
             ]
           },
         });
       } else if (onlineStatus === 'offline') {
         aggregationPipeline.push({
           $match: {
+            'locationDetails.aceEnabled': { $ne: true },
             $or: [
               { lastActivity: { $exists: false } },
               { lastActivity: null },
@@ -250,7 +260,10 @@ export async function GET(req: NextRequest) {
         });
       } else if (onlineStatus === 'never-online' || onlineStatus === 'neveronline') {
         aggregationPipeline.push({
-          $match: { $or: [{ lastActivity: { $exists: false } }, { lastActivity: null }] },
+          $match: {
+            'locationDetails.aceEnabled': { $ne: true },
+            $or: [{ lastActivity: { $exists: false } }, { lastActivity: null }]
+          },
         });
       }
     }
@@ -279,10 +292,15 @@ export async function GET(req: NextRequest) {
       ...aggregationPipeline,
       {
         $match: {
-          $and: [
-            { lastActivity: { $exists: true, $ne: null } },
-            { $expr: { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] } }
-          ],
+          $or: [
+            { 'locationDetails.aceEnabled': true },
+            {
+              $and: [
+                { lastActivity: { $exists: true, $ne: null } },
+                { $expr: { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] } }
+              ]
+            }
+          ]
         },
       },
       { $count: 'total' },
@@ -302,6 +320,7 @@ export async function GET(req: NextRequest) {
       ...aggregationPipeline,
       {
         $match: {
+          'locationDetails.aceEnabled': { $ne: true },
           $or: [
             { lastActivity: { $exists: false } },
             { lastActivity: null },
@@ -319,6 +338,7 @@ export async function GET(req: NextRequest) {
       ...aggregationPipeline,
       {
         $match: {
+          'locationDetails.aceEnabled': { $ne: true },
           $and: [
             { lastActivity: { $exists: true, $ne: null } },
             {
@@ -346,9 +366,14 @@ export async function GET(req: NextRequest) {
             $max: {
               $cond: [
                 {
-                  $and: [
-                    { $gt: ['$lastActivity', null] },
-                    { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] }
+                  $or: [
+                    { $eq: ['$locationDetails.aceEnabled', true] },
+                    {
+                      $and: [
+                        { $gt: ['$lastActivity', null] },
+                        { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] }
+                      ]
+                    }
                   ]
                 },
                 1,

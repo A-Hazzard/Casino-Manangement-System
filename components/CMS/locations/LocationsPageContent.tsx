@@ -288,17 +288,13 @@ export default function LocationsPageContent() {
               </div>
 
               {/* Data Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="my-4 flex w-full justify-center">
-                  <PaginationControls
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalCount={totalCount}
-                    limit={10}
-                    setCurrentPage={setCurrentPage}
-                  />
-                </div>
-              )}
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalCount={totalCount}
+                setCurrentPage={setCurrentPage}
+                showTotalCount
+              />
             </div>
           )}
         </div>

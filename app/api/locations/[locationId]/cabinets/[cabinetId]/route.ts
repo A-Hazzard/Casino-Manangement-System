@@ -126,6 +126,7 @@ export async function GET(
 
     // Attach includeJackpot to the cabinet document for consistent data across routes
     (cabinet as Record<string, unknown>).includeJackpot = includeJackpot;
+    (cabinet as Record<string, unknown>).aceEnabled = location.aceEnabled === true;
 
     // ============================================================================
     // STEP 6: Aggregate and calculate financial metrics if a time period is provided
@@ -235,9 +236,10 @@ export async function GET(
 
     if (reviewerMult !== null) {
       const cab = cabinet as Record<string, unknown>;
-      const mi = ((cab.moneyIn as number) || 0) * reviewerMult;
-      const mo = ((cab.moneyOut as number) || 0) * reviewerMult;
-      const jp = ((cab.jackpot as number) || 0) * reviewerMult;
+      const mult = (1 - reviewerMult);
+      const mi = ((cab.moneyIn as number) || 0) * mult;
+      const mo = ((cab.moneyOut as number) || 0) * mult;
+      const jp = ((cab.jackpot as number) || 0) * mult;
       cab.moneyIn = mi;
       cab.moneyOut = mo;
       cab.jackpot = jp;
@@ -600,6 +602,28 @@ export async function PATCH(
 
     const data = await request.json();
 
+    // Handle restore action
+    if (data.action === 'restore') {
+      const restoredMachine = await Machine.findOneAndUpdate(
+        { _id: cabinetId },
+        { $unset: { deletedAt: 1 }, updatedAt: new Date() },
+        { new: true }
+      );
+
+      if (!restoredMachine) {
+        return NextResponse.json(
+          { success: false, error: 'Machine not found' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Machine restored successfully',
+        data: restoredMachine,
+      });
+    }
+
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const originalCabinet = await Machine.findOne({ _id: cabinetId });
     if (!originalCabinet) {
@@ -753,6 +777,21 @@ export async function DELETE(
       );
     }
 
+    // Check for hard delete (permanent)
+    const { searchParams } = new URL(request.url);
+    const hardDelete = searchParams.get('hardDelete') === 'true';
+
+    // Permanent delete restricted to admin/developer
+    if (hardDelete && !userRoles.includes('admin') && !userRoles.includes('developer')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Forbidden: Only admins and developers can permanently delete machines',
+        },
+        { status: 403 }
+      );
+    }
+
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const cabinetToDelete = await Machine.findOne({ _id: cabinetId });
     if (!cabinetToDelete) {
@@ -762,15 +801,19 @@ export async function DELETE(
       );
     }
 
-    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-    await Machine.findOneAndUpdate(
-      { _id: cabinetId },
-      {
-        deletedAt: new Date(),
-        updatedAt: new Date(),
-      },
-      { new: true }
-    );
+    if (hardDelete) {
+      await Machine.deleteOne({ _id: cabinetId });
+    } else {
+      // Soft delete
+      await Machine.findOneAndUpdate(
+        { _id: cabinetId },
+        {
+          deletedAt: new Date(),
+          updatedAt: new Date(),
+        },
+        { new: true }
+      );
+    }
 
     return NextResponse.json({
       success: true,

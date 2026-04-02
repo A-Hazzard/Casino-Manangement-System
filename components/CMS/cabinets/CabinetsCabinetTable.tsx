@@ -10,7 +10,7 @@
  * - Financial metrics display
  * - Action buttons (View, Edit, Delete)
  *
- * @module components/cabinets/CabinetsCabinetTable
+ * @module components/CMS/cabinets/CabinetsCabinetTable
  */
 'use client';
 
@@ -37,7 +37,7 @@ import type { DataTableProps } from '@/shared/types/components';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { ClockIcon, Cross1Icon, MobileIcon } from '@radix-ui/react-icons';
 import { format, formatDistanceToNow } from 'date-fns';
-import { ExternalLink, Eye } from 'lucide-react';
+import { ExternalLink, Eye, RotateCcw, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
@@ -48,6 +48,10 @@ type CabinetsCabinetTableProps = Omit<
   'loading' | 'onPageChange'
 > & {
   onMachineClick?: (machineId: string) => void;
+  onRestore?: (cabinet: Cabinet) => void;
+  onPermanentDelete?: (cabinet: Cabinet) => void;
+  canViewArchived?: boolean;
+  canPermanentlyDeleteMachines?: boolean;
   showLocation?: boolean;
   showStatus?: boolean;
   showMetrics?: boolean;
@@ -64,6 +68,7 @@ type CabinetsCabinetTableProps = Omit<
   showSortIcons?: boolean;
   showArchived?: boolean;
   includeJackpot?: boolean;
+  hideFinancials?: boolean;
 };
 
 export default function CabinetsCabinetTable({
@@ -73,8 +78,12 @@ export default function CabinetsCabinetTable({
   onSort,
   onEdit,
   onDelete,
-  canEditMachines = true, // Default to true for backward compatibility
-  canDeleteMachines = true, // Default to true for backward compatibility
+  onRestore,
+  onPermanentDelete,
+  canEditMachines = true,
+  canDeleteMachines = true,
+  canViewArchived = false,
+  canPermanentlyDeleteMachines = false,
   enableHeaderSorting = true,
   showSortIcons = true,
   hideFinancials = false,
@@ -133,7 +142,7 @@ export default function CabinetsCabinetTable({
             <TableHead
               className="relative w-[240px] font-semibold text-white"
               onClick={
-                enableHeaderSorting ? () => onSort('assetNumber') : undefined
+                enableHeaderSorting && onSort ? () => onSort('assetNumber') : undefined
               }
               isFirstColumn={true}
             >
@@ -148,7 +157,7 @@ export default function CabinetsCabinetTable({
             <TableHead
               className="relative font-semibold text-white"
               onClick={
-                enableHeaderSorting ? () => onSort('moneyIn') : undefined
+                enableHeaderSorting && onSort ? () => onSort('moneyIn') : undefined
               }
             >
               <span>MONEY IN</span>
@@ -161,7 +170,7 @@ export default function CabinetsCabinetTable({
             <TableHead
               className="relative font-semibold text-white"
               onClick={
-                enableHeaderSorting ? () => onSort('moneyOut') : undefined
+                enableHeaderSorting && onSort ? () => onSort('moneyOut') : undefined
               }
             >
               <span>MONEY OUT</span>
@@ -174,7 +183,7 @@ export default function CabinetsCabinetTable({
             <TableHead
               className="relative font-semibold text-white"
               onClick={
-                enableHeaderSorting ? () => onSort('jackpot') : undefined
+                enableHeaderSorting && onSort ? () => onSort('jackpot') : undefined
               }
             >
               <span>JACKPOT</span>
@@ -186,7 +195,7 @@ export default function CabinetsCabinetTable({
             </TableHead>
             <TableHead
               className="relative font-semibold text-white"
-              onClick={enableHeaderSorting ? () => onSort('gross') : undefined}
+              onClick={enableHeaderSorting && onSort ? () => onSort('gross') : undefined}
             >
               <span>GROSS</span>
               {showSortIcons && sortOption === 'gross' && (
@@ -221,13 +230,16 @@ export default function CabinetsCabinetTable({
               : 'Never');
 
             const smbId = cab.smbId || '';
+            // Archived machines have a deletedAt date of Jan 1st 2025 or later
+            const isArchived = Boolean(cab.deletedAt) &&
+                             new Date(cab.deletedAt!) >= new Date('2025-01-01');
 
             return (
-              <TableRow key={cab._id} className="hover:bg-grayHighlight/10">
+              <TableRow key={cab._id} className={`hover:bg-grayHighlight/10 ${isArchived ? 'bg-gray-50' : ''}`}>
                 <TableCell isFirstColumn={true} className="w-[240px]">
                   <div className="space-y-1">
                     {/* Row 1: Serial Number/Asset Number - Navigate to cabinet details */}
-                    <div className="min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
                       <button
                         onClick={e => {
                           e.stopPropagation();
@@ -238,6 +250,11 @@ export default function CabinetsCabinetTable({
                       >
                         {formatMachineDisplayNameWithBold(cab)}
                       </button>
+                      {isArchived && (
+                        <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 text-[10px] px-1.5 py-0">
+                          ARCHIVED
+                        </Badge>
+                      )}
                     </div>
                     {/* Row 2: Location Name - Navigate to location details with icon */}
                     <div className="flex items-center gap-1.5">
@@ -283,25 +300,27 @@ export default function CabinetsCabinetTable({
                       >
                         SMIB: {smbId || 'N/A'}
                       </button>
-                      <Badge
-                        variant={isOnline ? 'default' : 'destructive'}
-                        className={`ml-auto inline-block w-fit flex-shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                          isOnline
-                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                            : 'bg-red-100 text-red-700 hover:bg-red-200'
-                        } flex items-center gap-1`}
-                      >
-                        {isOnline ? (
-                          <MobileIcon className="h-3 w-3" />
-                        ) : (
-                          <Cross1Icon className="h-3 w-3" />
-                        )}
-                        {isOnline ? 'Online' : 'Offline'}
-                      </Badge>
+                      {!isArchived && (
+                        <Badge
+                          variant={isOnline ? 'default' : 'destructive'}
+                          className={`ml-auto inline-block w-fit flex-shrink-0 rounded-full px-2 py-0.5 text-xs ${
+                            isOnline
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-red-100 text-red-700 hover:bg-red-200'
+                          } flex items-center gap-1`}
+                        >
+                          {isOnline ? (
+                            <MobileIcon className="h-3 w-3" />
+                          ) : (
+                            <Cross1Icon className="h-3 w-3" />
+                          )}
+                          {isOnline ? 'Online' : 'Offline'}
+                        </Badge>
+                      )}
                     </div>
 
                     {/* Row 3: Last Activity - Only show time for offline machines */}
-                    {!isOnline && (
+                    {!isOnline && !isArchived && (
                       <div className="flex flex-col gap-0.5 text-xs text-gray-500">
                         <div className="flex items-center gap-1">
                           <ClockIcon className="h-3 w-3 flex-shrink-0" />
@@ -356,7 +375,7 @@ export default function CabinetsCabinetTable({
                     <TableCell className="text-gray-600">
                       {cab.deletedAt ? (
                         <>
-                          {format(new Date(cab.deletedAt), 'dd/MM/yyyy HH:mm')}
+                          {format(new Date(cab.deletedAt), 'MMM d, yyyy • h:mm a')}
                           <span className="ml-1 text-xs opacity-70">
                             ({formatDistanceToNow(new Date(cab.deletedAt), { addSuffix: true })})
                           </span>
@@ -370,54 +389,91 @@ export default function CabinetsCabinetTable({
                 )}
                 <TableCell>
                   <div className="action-buttons flex items-center justify-center gap-2">
-                    <Button
-                      variant="ghost"
-                      onClick={e => {
-                        e.stopPropagation();
-                        navigateToCabinet(cab._id);
-                      }}
-                      className="h-8 w-8 p-1 hover:bg-accent"
-                      title="View details"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    {canEditMachines && (
-                      <Button
-                        variant="ghost"
-                        onClick={e => {
-                          e.stopPropagation();
-                          onEdit?.(cab);
-                        }}
-                        className="h-8 w-8 p-1 hover:bg-accent"
-                        title="Edit"
-                      >
-                        <Image
-                          src={IMAGES.editIcon}
-                          alt="Edit"
-                          width={16}
-                          height={16}
-                          className="h-4 w-4"
-                        />
-                      </Button>
+                    {/* Common actions */}
+                    {!isArchived && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          onClick={e => {
+                            e.stopPropagation();
+                            navigateToCabinet(cab._id);
+                          }}
+                          className="h-8 w-8 p-1 hover:bg-accent"
+                          title="View details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {canEditMachines && (
+                          <Button
+                            variant="ghost"
+                            onClick={e => {
+                              e.stopPropagation();
+                              onEdit?.(cab);
+                            }}
+                            className="h-8 w-8 p-1 hover:bg-accent"
+                            title="Edit"
+                          >
+                            <Image
+                              src={IMAGES.editIcon}
+                              alt="Edit"
+                              width={16}
+                              height={16}
+                              className="h-4 w-4"
+                            />
+                          </Button>
+                        )}
+                        {canDeleteMachines && (
+                          <Button
+                            variant="ghost"
+                            onClick={e => {
+                              e.stopPropagation();
+                              onDelete?.(cab);
+                            }}
+                            className="h-8 w-8 p-1 hover:bg-accent"
+                            title="Delete"
+                          >
+                            <Image
+                              src={IMAGES.deleteIcon}
+                              alt="Delete"
+                              width={16}
+                              height={16}
+                              className="h-4 w-4"
+                            />
+                          </Button>
+                        )}
+                      </>
                     )}
-                    {canDeleteMachines && (
-                      <Button
-                        variant="ghost"
-                        onClick={e => {
-                          e.stopPropagation();
-                          onDelete?.(cab);
-                        }}
-                        className="h-8 w-8 p-1 hover:bg-accent"
-                        title="Delete"
-                      >
-                        <Image
-                          src={IMAGES.deleteIcon}
-                          alt="Delete"
-                          width={16}
-                          height={16}
-                          className="h-4 w-4"
-                        />
-                      </Button>
+
+                    {/* Archive management actions */}
+                    {isArchived && (
+                      <>
+                        {canViewArchived && (
+                          <Button
+                            variant="ghost"
+                            onClick={e => {
+                              e.stopPropagation();
+                              onRestore?.(cab);
+                            }}
+                            className="h-8 w-8 p-1 hover:bg-amber-100 text-amber-600"
+                            title="Restore machine"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canPermanentlyDeleteMachines && (
+                          <Button
+                            variant="ghost"
+                            onClick={e => {
+                              e.stopPropagation();
+                              onPermanentDelete?.(cab);
+                            }}
+                            className="h-8 w-8 p-1 hover:bg-red-100 text-red-600"
+                            title="PERMANENTLY delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </TableCell>
@@ -429,4 +485,3 @@ export default function CabinetsCabinetTable({
     </div>
   );
 }
-

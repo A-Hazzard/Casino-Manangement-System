@@ -493,30 +493,13 @@ export const ReportsMachinesOverview = ({
           )}
 
           {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm text-gray-500">
-                Showing{' '}
-                <span className="font-medium">
-                  {(pagination.page - 1) * pagination.limit + 1}
-                </span>{' '}
-                to{' '}
-                <span className="font-medium">
-                  {Math.min(
-                    pagination.page * pagination.limit,
-                    pagination.totalCount
-                  )}
-                </span>{' '}
-                of <span className="font-medium">{pagination.totalCount}</span>{' '}
-                results
-              </div>
-              <PaginationControls
-                currentPage={pagination.page - 1}
-                totalPages={pagination.totalPages}
-                setCurrentPage={(page: number) => onPageChange(page + 1)}
-              />
-            </div>
-          )}
+          <PaginationControls
+            currentPage={pagination.page - 1}
+            totalPages={pagination.totalPages}
+            totalCount={pagination.totalCount}
+            setCurrentPage={(page: number) => onPageChange(page + 1)}
+            showTotalCount
+          />
         </CardContent>
       </Card>
 

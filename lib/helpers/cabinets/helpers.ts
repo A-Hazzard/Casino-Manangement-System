@@ -528,6 +528,7 @@ export async function fetchCabinetsForLocation(
   limit?: number,
   currency?: string,
   onlineStatus?: string,
+  includeArchived?: boolean,
   signal?: AbortSignal
 ): Promise<{
   data: GamingMachine[];
@@ -577,6 +578,11 @@ export async function fetchCabinetsForLocation(
     // Add onlineStatus parameter if provided
     if (onlineStatus && onlineStatus !== 'all') {
       params.onlineStatus = onlineStatus;
+    }
+
+    // Add includeArchived parameter if provided
+    if (includeArchived) {
+      params.includeArchived = 'true';
     }
 
     // Handle custom date range
@@ -648,14 +654,10 @@ export async function fetchCabinetsForLocation(
       return { data: [] };
     }
   } catch (error) {
-    // CRITICAL: Check for abort errors FIRST - aborting is NOT an error, it's expected when switching filters
-    // Abort errors should NEVER show error logs or throw errors
     if (isAbortError(error)) {
-      // Silently return empty data - aborting is expected behavior when switching filters
       return { data: [] };
     }
 
-    // Check if it's a 403 Unauthorized error
     if (axios.isAxiosError(error) && error.response?.status === 403) {
       const unauthorizedError = new Error(
         'Unauthorized: You do not have access to this location'
@@ -665,13 +667,68 @@ export async function fetchCabinetsForLocation(
       throw unauthorizedError;
     }
 
-    // Only log actual errors (not aborts)
     console.error('❌ Error in fetchCabinetsForLocation:', error);
-
-    // Always return an empty array for other errors instead of throwing
     return { data: [] };
   }
 }
+
+/**
+ * Restore a soft-deleted (archived) cabinet.
+ *
+ * @param locationId - The ID of the location the cabinet belongs to.
+ * @param cabinetId - The ID of the cabinet to restore.
+ * @returns Promise resolving to the restored cabinet data.
+ */
+export async function restoreCabinet(locationId: string, cabinetId: string) {
+  try {
+    const response = await axios.patch(
+      `/api/locations/${locationId}/cabinets/${cabinetId}`,
+      { action: 'restore' },
+      { headers: getAuthHeaders() }
+    );
+
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+
+    throw new Error(response.data?.error || 'Failed to restore cabinet');
+  } catch (error) {
+    console.error(`Error restoring cabinet ${cabinetId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Permanently delete a cabinet (hard delete).
+ * Only accessible to admins and developers.
+ *
+ * @param locationId - The ID of the location the cabinet belongs to.
+ * @param cabinetId - The ID of the cabinet to permanently delete.
+ * @returns Promise resolving to the success response.
+ */
+export async function permanentlyDeleteCabinet(
+  locationId: string,
+  cabinetId: string
+) {
+  try {
+    const response = await axios.delete(
+      `/api/locations/${locationId}/cabinets/${cabinetId}?hardDelete=true`,
+      { headers: getAuthHeaders() }
+    );
+
+    if (response.data && response.data.success) {
+      return response.data;
+    }
+
+    throw new Error(
+      response.data?.error || 'Failed to permanently delete cabinet'
+    );
+  } catch (error) {
+    console.error(`Error permanently deleting cabinet ${cabinetId}:`, error);
+    throw error;
+  }
+}
+
 
 /**
  * Fetches cabinet/machine totals using the machines aggregation API

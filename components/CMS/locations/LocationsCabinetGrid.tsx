@@ -31,7 +31,7 @@ import type { LocationsCabinetGridProps } from '@/lib/types/components';
 import { CabinetSortOption } from '@/lib/hooks/data';
 import { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { ExtendedCabinetDetail } from '@/lib/types/pages';
-import { canDeleteMachines, canEditMachines, UserRole } from '@/lib/utils/permissions';
+import { canDeleteMachines, canEditMachines, canViewArchivedMachines, canPermanentlyDeleteMachines, UserRole } from '@/lib/utils/permissions';
 import { copyToClipboard } from '@/lib/utils/common/clipboard';
 import Image from 'next/image';
 import { useState } from 'react';
@@ -45,6 +45,9 @@ export default function LocationsCabinetGrid({
   sortOption: externalSortOption,
   sortOrder: externalSortOrder,
   onSortChange,
+  onRestore,
+  onPermanentDelete,
+  showArchived = false,
   includeJackpot = true,
 }: LocationsCabinetGridProps & { includeJackpot?: boolean }) {
   // Use external sort state if provided, otherwise use local state
@@ -64,6 +67,8 @@ export default function LocationsCabinetGrid({
 
   const canEdit = canEditMachines(userRoles);
   const canDelete = canDeleteMachines(userRoles);
+  const canViewArchived = canViewArchivedMachines(userRoles);
+  const canPermanentlyDelete = canPermanentlyDeleteMachines(userRoles);
 
   /**
    * Handles column sorting with toggle behavior.
@@ -114,16 +119,23 @@ export default function LocationsCabinetGrid({
                 cabinet.smbId ||
                 cabinet.smibBoard ||
                 '') as string,
-              onEdit: () => handleEdit(cabinet),
-              onDelete: () => handleDelete(cabinet),
+              onEdit: () => handleEdit(cabinet as ExtendedCabinetDetail),
+              onDelete: () => handleDelete(cabinet as ExtendedCabinetDetail),
+              onRestore: () => onRestore?.(cabinet),
+              onPermanentDelete: () => onPermanentDelete?.(cabinet),
             }))}
           sortOption={sortOption}
           sortOrder={sortOrder}
           onSort={column => handleColumnSort(column as CabinetSortOption)}
           onEdit={cabinet => handleEdit(cabinet as ExtendedCabinetDetail)}
           onDelete={cabinet => handleDelete(cabinet as ExtendedCabinetDetail)}
+          onRestore={cabinet => onRestore?.(cabinet)}
+          onPermanentDelete={cabinet => onPermanentDelete?.(cabinet)}
           canEditMachines={canEdit}
           canDeleteMachines={canDelete}
+          canViewArchived={canViewArchived}
+          canPermanentlyDeleteMachines={canPermanentlyDelete}
+          showArchived={showArchived}
           includeJackpot={includeJackpot}
         />
       </div>
@@ -140,8 +152,13 @@ export default function LocationsCabinetGrid({
                 router={router}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onRestore={onRestore}
+                onPermanentDelete={onPermanentDelete}
                 canEditMachines={canEdit}
                 canDeleteMachines={canDelete}
+                canViewArchived={canViewArchived}
+                canPermanentlyDeleteMachines={canPermanentlyDelete}
+                showArchived={showArchived}
                 copyToClipboard={copyToClipboard}
               />
             ))}

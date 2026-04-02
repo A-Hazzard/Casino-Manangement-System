@@ -20,7 +20,7 @@ import { Card, CardContent } from '@/components/shared/ui/card';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Eye, EyeOff, Copy, Check } from 'lucide-react';
-import { formatDate } from '@/lib/utils/formatting';
+import { formatDateString } from '@/lib/utils/formatting';
 import { toast } from 'sonner';
 import type { ActivityLog } from '@/app/api/lib/types/activityLog';
 import { useState } from 'react';
@@ -146,7 +146,7 @@ function AdministrationActivityLogCard({
           </div>
           <div className="text-left sm:text-right">
             <div className="font-mono text-sm text-gray-600">
-              {formatDate(log.timestamp)}
+              {formatDateString(log.timestamp)}
             </div>
             <div className="font-mono text-xs text-gray-500">
               <div className="flex items-center gap-2">

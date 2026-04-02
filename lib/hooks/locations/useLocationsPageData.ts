@@ -56,9 +56,9 @@ export function useLocationsPageData() {
   // ============================================================================
   // Pagination Constants
   // ============================================================================
-  const ITEMS_PER_PAGE = 10;
-  const ITEMS_PER_BATCH = 50;
-  const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
+  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_BATCH = 40;
+  const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 2
 
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
 

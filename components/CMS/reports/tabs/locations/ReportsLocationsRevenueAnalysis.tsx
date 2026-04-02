@@ -344,10 +344,10 @@ export default function ReportsLocationsRevenueAnalysis({
             key={`revenue-table-${paginatedLocations.length}`}
             locations={paginatedLocations}
             loading={paginationLoading}
-            currentPage={currentPage + 1}
+            currentPage={currentPage}
             totalPages={totalPages}
             totalCount={totalCount}
-            onPageChange={page => onPageChange(page - 1)}
+            onPageChange={onPageChange}
             onLocationClick={(location: AggregatedLocation) => {
               console.warn(`Location clicked: ${JSON.stringify(location)}`);
             }}

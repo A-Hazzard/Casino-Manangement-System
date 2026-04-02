@@ -36,6 +36,7 @@ import {
   Server,
   Trash2,
 } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 
@@ -66,7 +67,7 @@ export default function LocationsLocationCard({
   return (
     <div
       ref={cardRef}
-      className="relative mx-auto w-full rounded-lg border border-border bg-container p-4 shadow-sm transition-shadow hover:shadow-md"
+      className={`relative mx-auto w-full rounded-lg border p-4 shadow-sm transition-shadow hover:shadow-md ${showArchived ? 'bg-gray-50 border-amber-100' : 'bg-white border-border'}`}
     >
       <div className="mb-3 flex flex-col gap-2">
         {/* Location Name with Membership Icon */}
@@ -276,6 +277,19 @@ export default function LocationsLocationCard({
           formatCurrencyFn={formatCurrency}
         />
       </div>
+
+      {/* Archived Info */}
+      {showArchived && (location as { deletedAt?: string }).deletedAt && (
+        <div className="mb-3 flex flex-col gap-1 text-[11px] text-amber-700 bg-amber-50/50 p-2 rounded border border-amber-100/50">
+          <div className="flex items-center gap-1.5">
+            <Archive className="h-3.5 w-3.5" />
+            <span>Archived: {format(new Date((location as { deletedAt: string }).deletedAt), 'MMM d, yyyy • h:mm a')}</span>
+          </div>
+          <div className="ml-[18px] italic opacity-80">
+            ({formatDistanceToNow(new Date((location as { deletedAt: string }).deletedAt), { addSuffix: true })})
+          </div>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">

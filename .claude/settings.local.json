@@ -33,7 +33,10 @@
       "Bash(npm list:*)",
       "Bash(netstat -tlnp)",
       "Bash(netstat -tln)",
-      "Bash(pkill -f \"next dev\")"
+      "Bash(pkill -f \"next dev\")",
+      "Bash(node -e \":*)",
+      "Bash(find C:UserspcOneDriveDocumentsGithubevolution-one-cmslib -name id*)",
+      "Bash(node scripts/seed-db.js)"
     ]
   }
 }

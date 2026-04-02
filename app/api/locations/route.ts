@@ -7,6 +7,7 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
+import { Machine } from '@/app/api/lib/models/machines';
 import { UpdateLocationData } from '@/lib/types/location';
 import type { LocationDocument } from '@/lib/types/common';
 import { generateMongoId } from '@/lib/utils/id';
@@ -196,6 +197,7 @@ export async function POST(request: NextRequest) {
         geoCoords,
         billValidatorOptions,
         membershipEnabled,
+        aceEnabled,
         locationMembershipSettings,
       } = body;
 
@@ -247,6 +249,7 @@ export async function POST(request: NextRequest) {
           denom10000: false,
         },
         membershipEnabled: membershipEnabled || false,
+        aceEnabled: aceEnabled || false,
         locationMembershipSettings: locationMembershipSettings || {
           enableFreePlays: false,
           pointsRatioMethod: '',
@@ -316,6 +319,7 @@ export async function PUT(request: NextRequest) {
         geoCoords,
         billValidatorOptions,
         membershipEnabled,
+        aceEnabled,
         locationMembershipSettings,
       } = body;
 
@@ -366,6 +370,8 @@ export async function PUT(request: NextRequest) {
       }
       if (membershipEnabled !== undefined)
         updateData.membershipEnabled = Boolean(membershipEnabled);
+      if (aceEnabled !== undefined)
+        updateData.aceEnabled = Boolean(aceEnabled);
       if (locationMembershipSettings)
         updateData.locationMembershipSettings = locationMembershipSettings;
 
@@ -374,7 +380,8 @@ export async function PUT(request: NextRequest) {
       } catch {}
       await GamingLocations.updateOne(
         { _id: location._id },
-        { $set: updateData }
+        { $set: updateData },
+        { strict: false }
       );
 
       if (currentUser && currentUser.emailAddress) {
@@ -430,12 +437,20 @@ export async function DELETE(request: NextRequest) {
       const hardDelete = searchParams.get('hardDelete') === 'true';
       const isDev = userRoles.map(r => r.toLowerCase()).includes('developer');
 
+      const archiveTimestamp = new Date();
+
       if (hardDelete && isDev) {
         await GamingLocations.deleteOne({ _id: id });
+        await Machine.deleteMany({ gamingLocation: id });
       } else {
         await GamingLocations.findOneAndUpdate(
           { _id: id },
-          { deletedAt: new Date() }
+          { deletedAt: archiveTimestamp }
+        );
+        // Archive all machines belonging to this location
+        await Machine.updateMany(
+          { gamingLocation: id },
+          { deletedAt: archiveTimestamp }
         );
       }
 
@@ -491,6 +506,11 @@ export async function PATCH(request: NextRequest) {
 
       await GamingLocations.findOneAndUpdate(
         { _id: id },
+        { $unset: { deletedAt: 1 } }
+      );
+      // Restore all machines belonging to this location
+      await Machine.updateMany(
+        { gamingLocation: id },
         { $unset: { deletedAt: 1 } }
       );
 

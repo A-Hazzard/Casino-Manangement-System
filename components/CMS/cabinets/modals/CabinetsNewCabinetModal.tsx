@@ -49,6 +49,7 @@ export default function CabinetsNewCabinetModal({
 
   const [relayIdError, setRelayIdError] = useState<string>('');
   const [serialNumberError, setSerialNumberError] = useState<string>('');
+  const [customNameError, setCustomNameError] = useState<string>('');
   const [collectionTime, setCollectionTime] = useState<Date>(new Date());
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [manufacturersLoading, setManufacturersLoading] = useState(false);
@@ -353,6 +354,57 @@ export default function CabinetsNewCabinetModal({
     setSerialNumberError(''); // Clear any validation errors
   };
 
+  const checkSerialNumberAvailability = async (serialNumber: string) => {
+    if (!serialNumber || serialNumber.trim().length < 3) return;
+
+    try {
+      const response = await fetch(
+        `/api/machines?checkSerial=${encodeURIComponent(serialNumber.trim())}`
+      );
+      const result = await response.json();
+
+      if (result.success && !result.available) {
+        setSerialNumberError('Serial number already exists');
+      }
+    } catch (error) {
+      console.error('Failed to check serial number availability:', error);
+    }
+  };
+
+  const checkSmibAvailability = async (smib: string) => {
+    if (!smib || smib.trim().length !== 12) return;
+
+    try {
+      const response = await fetch(
+        `/api/machines?checkSmib=${encodeURIComponent(smib.trim())}`
+      );
+      const result = await response.json();
+
+      if (result.success && !result.available) {
+        setRelayIdError('SMIB board already exists');
+      }
+    } catch (error) {
+      console.error('Failed to check SMIB availability:', error);
+    }
+  };
+
+  const checkCustomNameAvailability = async (name: string) => {
+    if (!name || name.trim().length === 0) return;
+
+    try {
+      const response = await fetch(
+        `/api/machines?checkCustomName=${encodeURIComponent(name.trim())}`
+      );
+      const result = await response.json();
+
+      if (result.success && !result.available) {
+        setCustomNameError('Machine custom name already exists');
+      }
+    } catch (error) {
+      console.error('Failed to check custom name availability:', error);
+    }
+  };
+
   // Define a consistent change handler to fix the typing issues
   const handleInputChange = (
     field: keyof Omit<NewCabinetFormData, 'collectionSettings'>,
@@ -378,9 +430,10 @@ export default function CabinetsNewCabinetModal({
       // Auto-capitalize serial number letters
       const upperCaseValue = value.toUpperCase();
 
-      // Validate the serial number
-      const error = validateSerialNumber(upperCaseValue);
-      setSerialNumberError(error);
+      // Clear existing error while typing (will be re-validated on blur or submit)
+      if (serialNumberError) {
+        setSerialNumberError('');
+      }
 
       setFormData((prev: NewCabinetFormData) => ({
         ...prev,
@@ -485,6 +538,7 @@ export default function CabinetsNewCabinetModal({
                       onChange={e =>
                         handleInputChange('serialNumber', e.target.value)
                       }
+                      onBlur={e => checkSerialNumberAvailability(e.target.value)}
                       className={`h-10 border-border bg-container ${
                         serialNumberError ? 'border-red-500' : ''
                       }`}
@@ -522,17 +576,28 @@ export default function CabinetsNewCabinetModal({
                     id="customName"
                     placeholder="Enter Custom Name (Optional)"
                     value={formData.custom.name}
-                    onChange={e =>
+                    onChange={e => {
+                      if (customNameError) setCustomNameError('');
                       setFormData(prev => ({
                         ...prev,
                         custom: { name: e.target.value },
                       }))
                     }
-                    className="h-10 border-border bg-container"
+                    }
+                    onBlur={e => checkCustomNameAvailability(e.target.value)}
+                    className={`h-10 border-border bg-container ${
+                      customNameError ? 'border-red-500' : ''
+                    }`}
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    A friendly name for this machine to display in reports
-                  </p>
+                  {customNameError ? (
+                    <p className="mt-1 text-xs text-red-500">
+                      {customNameError}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-gray-500">
+                      A friendly name for this machine to display in reports
+                    </p>
+                  )}
                 </div>
 
                 {/* Game Type & Cabinet Type */}
@@ -745,6 +810,7 @@ export default function CabinetsNewCabinetModal({
                       onChange={e =>
                         handleInputChange('relayId', e.target.value)
                       }
+                      onBlur={e => checkSmibAvailability(e.target.value)}
                       className={`border-border bg-container ${
                         relayIdError ? 'border-red-500' : ''
                       }`}

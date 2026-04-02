@@ -78,11 +78,43 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const id = searchParams.get('id');
     const locationId = searchParams.get('locationId');
+    const serialNumberToCheck = searchParams.get('checkSerial');
+    const smibToCheck = searchParams.get('checkSmib');
+    const customNameToCheck = searchParams.get('checkCustomName');
+    const excludeId = searchParams.get('excludeId');
     const showArchived = searchParams.get('archived') === 'true';
 
     // ============================================================================
     // STEP 3: Validate parameters
     // ============================================================================
+    if (serialNumberToCheck || smibToCheck || customNameToCheck) {
+      // AVAILABILITY CHECKS
+      const query: Record<string, unknown> = {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      };
+
+      if (serialNumberToCheck) {
+        query.serialNumber = normalizeSerialNumber(serialNumberToCheck);
+      } else if (smibToCheck) {
+        query.relayId = normalizeSmibBoard(smibToCheck);
+      } else if (customNameToCheck) {
+        query['custom.name'] = customNameToCheck.trim();
+      }
+
+      if (excludeId) {
+        query._id = { $ne: excludeId };
+      }
+
+      const existing = await Machine.findOne(query).lean();
+      return NextResponse.json({
+        success: true,
+        available: !existing,
+      });
+    }
+
     if (!id && !locationId) {
       return NextResponse.json(
         {
@@ -141,7 +173,9 @@ export async function GET(request: NextRequest) {
 
       const query: Record<string, unknown> = { gamingLocation: locationId };
       if (!showArchived) {
-        query.$or = [{ deletedAt: null }, { deletedAt: { $exists: false } }];
+        // Active machines use deletedAt sentinel new Date(-1) (Dec 31 1969) by convention,
+        // not null. Must also match null/missing for machines created without the sentinel.
+        query.$or = [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }];
       }
 
       result = await Machine.find(query).lean();
@@ -178,6 +212,41 @@ export async function POST(request: NextRequest) {
 
     data.serialNumber = normalizeSerialNumber(data.serialNumber);
     data.smibBoard = normalizeSmibBoard(data.smibBoard) ?? '';
+
+    // Step 1: Duplicate checks
+    const activeCriteria = {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
+      ],
+    };
+
+    const duplicateCheck = (await Machine.findOne({
+      $and: [
+        {
+          $or: [
+            { serialNumber: data.serialNumber },
+            { relayId: data.smibBoard },
+            ...(data.custom?.name
+              ? [{ 'custom.name': data.custom.name.trim() }]
+              : []),
+          ],
+        },
+        activeCriteria,
+      ],
+    }).lean()) as GamingMachine | null;
+
+    if (duplicateCheck) {
+      let error = 'Record already exists';
+      if (duplicateCheck.serialNumber === data.serialNumber)
+        error = 'Serial number already exists';
+      else if (duplicateCheck.relayId === data.smibBoard)
+        error = 'SMIB board already exists';
+      else if (duplicateCheck.custom?.name === data.custom?.name?.trim())
+        error = 'Machine custom name already exists';
+
+      return NextResponse.json({ success: false, error }, { status: 400 });
+    }
 
     if (!data.gamingLocation)
       return NextResponse.json(
@@ -219,6 +288,61 @@ export async function PUT(request: NextRequest) {
       );
 
     const data = await request.json();
+    const activeCriteria = {
+      $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
+    };
+
+    if (data.serialNumber || data.relayId || data.smibBoard || data.custom?.name) {
+      const normalizedSerial = data.serialNumber
+        ? normalizeSerialNumber(data.serialNumber)
+        : undefined;
+      const normalizedSmib = (data.relayId || data.smibBoard)
+        ? normalizeSmibBoard(data.relayId || data.smibBoard)
+        : undefined;
+      const trimmedCustomName = data.custom?.name?.trim();
+
+      const duplicateCheck = (await Machine.findOne({
+        _id: { $ne: id },
+        $and: [
+          {
+            $or: [
+              ...(normalizedSerial ? [{ serialNumber: normalizedSerial }] : []),
+              ...(normalizedSmib ? [{ relayId: normalizedSmib }] : []),
+              ...(trimmedCustomName
+                ? [{ 'custom.name': trimmedCustomName }]
+                : []),
+            ],
+          },
+          activeCriteria,
+        ],
+      }).lean()) as GamingMachine | null;
+
+      if (duplicateCheck) {
+        let error = 'Record already exists';
+        if (
+          normalizedSerial &&
+          duplicateCheck.serialNumber === normalizedSerial
+        )
+          error = 'Serial number already exists';
+        else if (normalizedSmib && duplicateCheck.relayId === normalizedSmib)
+          error = 'SMIB board already exists';
+        else if (
+          trimmedCustomName &&
+          duplicateCheck.custom?.name === trimmedCustomName
+        )
+          error = 'Machine custom name already exists';
+
+        return NextResponse.json({ success: false, error }, { status: 400 });
+      }
+
+      // Update values if normalized
+      if (normalizedSerial) data.serialNumber = normalizedSerial;
+      if (normalizedSmib) {
+        data.relayId = normalizedSmib;
+        data.smibBoard = normalizedSmib;
+      }
+    }
+
     const updatedMachine = await Machine.findOneAndUpdate(
       { _id: id },
       { $set: data },

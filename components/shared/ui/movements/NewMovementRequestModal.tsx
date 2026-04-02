@@ -31,7 +31,8 @@ import { generateMongoId } from '@/lib/utils/id';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import axios from 'axios';
 import { Loader2, Search } from 'lucide-react';
-import {  useEffect, useState  } from 'react';
+import { useSMIBDiscovery } from '@/lib/hooks/data/useSMIBDiscovery';
+import { useEffect, useState } from 'react';
 
 
 // === Disabled field hint banner ===
@@ -64,6 +65,7 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const [machineSearchTerm, setMachineSearchTerm] = useState('');
+  const { availableSmibs, loading: loadingSmibs } = useSMIBDiscovery();
 
   const { user: currentUser } = useUserStore();
   const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
@@ -104,27 +106,49 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
     }
   }, [isOpen]);
 
-  // Fetch cabinets for selected from location
+  // Fetch cabinets or SMIBs for selected from location
   useEffect(() => {
     if (fromLocation) {
       setLoadingCabinets(true);
-      fetchCabinetsForLocation(fromLocation, undefined, 'All')
-        .then(result => {
-          setCabinets(result.data);
-          setSelectedCabinets([]);
-        })
-        .catch(error => {
-          console.error('Failed to fetch cabinets for location:', error);
-          setCabinets([]);
-          setSelectedCabinets([]);
-          setErrors(prev => ({ ...prev, fromLocation: 'Failed to load machines for this location' }));
-        })
-        .finally(() => setLoadingCabinets(false));
+      if (movementType === 'Machine') {
+        fetchCabinetsForLocation(fromLocation, undefined, 'All')
+          .then(result => {
+            setCabinets(result.data);
+            setSelectedCabinets([]);
+          })
+          .catch(error => {
+            console.error('Failed to fetch cabinets for location:', error);
+            setCabinets([]);
+            setSelectedCabinets([]);
+            setErrors(prev => ({ ...prev, fromLocation: 'Failed to load machines for this location' }));
+          })
+          .finally(() => setLoadingCabinets(false));
+      } else {
+        // SMIB Mode: Use availableSmibs from hook, filtered by fromLocation
+        // Map SmibDevice to Cabinet type for internal state compatibility
+        const filteredSmibs = availableSmibs.filter(smib => String(smib.locationId) === String(fromLocation));
+        const mappedSmibs = filteredSmibs.map(smib => ({
+          _id: smib.relayId, // Use relayId as _id for SMIBs in this context
+          relayId: smib.relayId,
+          serialNumber: smib.serialNumber || '',
+          assetNumber: smib.serialNumber || '', // Fallback for asset number
+          game: smib.game || 'Unassigned SMIB',
+          installedGame: smib.game || 'Unassigned SMIB',
+          gamingLocation: smib.locationName || '',
+          custom: { name: smib.relayId }, // Use relayId as name for SMIBs
+        } as unknown as Cabinet));
+        
+        setCabinets(mappedSmibs);
+        setSelectedCabinets([]);
+        setLoadingCabinets(loadingSmibs);
+        // If smibs discovery is already done, we can stop loading immediately
+        if (!loadingSmibs) setLoadingCabinets(false);
+      }
     } else {
       setCabinets([]);
       setSelectedCabinets([]);
     }
-  }, [fromLocation]);
+  }, [fromLocation, movementType, availableSmibs, loadingSmibs]);
 
   const validate = () => {
     const errs: { [key: string]: string } = {};
@@ -475,7 +499,8 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
                           return (
                             (cab.installedGame || cab.game || '').toLowerCase().includes(searchStr) ||
                             (cab.serialNumber || '').toLowerCase().includes(searchStr) ||
-                            (cab.assetNumber || '').toLowerCase().includes(searchStr)
+                            (cab.assetNumber || '').toLowerCase().includes(searchStr) ||
+                            (cab.relayId || '').toLowerCase().includes(searchStr)
                           );
                         });
 
@@ -506,13 +531,31 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
                               }}
                               className="mt-1 h-4 w-4 border-gray-300 data-[state=checked]:bg-buttonActive data-[state=checked]:border-buttonActive"
                             />
-                            <div className="flex flex-col leading-tight min-w-0 flex-1">
-                              <span className="text-sm font-bold text-gray-900 truncate group-hover:text-button transition-colors">
-                                {cab.installedGame || cab.game || cab.assetNumber || cab.serialNumber || 'Unknown Machine'}
-                              </span>
-                              <span className="text-[10px] text-gray-500 font-medium mt-0.5">
-                                <span className="text-gray-400">SN:</span> {cab.serialNumber || 'N/A'} | <span className="text-gray-400">Asset:</span> {cab.assetNumber || 'N/A'}
-                              </span>
+                            <div className="flex flex-1 items-center justify-between min-w-0 leading-tight">
+                              {movementType === 'SMIB' ? (
+                                <div className="flex flex-col min-w-0">
+                                  <span className="text-sm font-bold text-gray-900 truncate">
+                                    {cab.relayId}
+                                  </span>
+                                  <span className="text-[10px] text-gray-500 font-medium mt-0.5">
+                                    <span className="text-gray-400">SN:</span> {cab.serialNumber || 'N/A'} | <span className="text-gray-400">ID:</span> {cab.relayId || 'N/A'}
+                                  </span>
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-bold text-gray-900 truncate">
+                                      {cab.serialNumber || 'No Serial'}
+                                    </span>
+                                    <span className="text-[10px] text-gray-500 font-medium mt-0.5 truncate">
+                                      {cab.custom?.name || 'Unnamed Machine'}
+                                    </span>
+                                  </div>
+                                  <span className="text-[11px] font-bold text-buttonActive bg-violet-50 px-2 py-0.5 rounded ml-3 shrink-0 uppercase tracking-wider">
+                                    {cab.installedGame || cab.game || 'No Game'}
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </label>
                         ));
@@ -554,19 +597,14 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
               <div className="h-32 overflow-y-auto rounded-xl border border-dashed border-gray-200 bg-white p-3 shadow-inner">
                 {selectedCabinets.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {selectedCabinets.map(cab => {
-                      const displayName =
-                        cab.installedGame || cab.game || cab.assetNumber ||
-                        cab.serialNumber || 'Unknown Machine';
-                      return (
+                    {selectedCabinets.map(cab => (
                         <Chip
                           key={cab._id}
-                          label={displayName}
+                          label={movementType === 'SMIB' ? cab.relayId : (cab.serialNumber || cab.installedGame || cab.game || 'Machine')}
                           onRemove={() => handleRemoveCabinet(cab._id)}
                           className="bg-buttonActive text-white px-3 py-1 font-medium shadow-sm"
                         />
-                      );
-                    })}
+                      ))}
                   </div>
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center text-gray-400">

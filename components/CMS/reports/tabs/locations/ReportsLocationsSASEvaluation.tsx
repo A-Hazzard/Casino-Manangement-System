@@ -398,10 +398,10 @@ export default function ReportsLocationsSASEvaluation({
                 }}
                 loading={paginationLoading}
                 error={null}
-                currentPage={currentPage + 1}
+                currentPage={currentPage}
                 totalPages={totalPages}
                 totalCount={totalCount}
-                onPageChange={page => onPageChange(page - 1)}
+                onPageChange={onPageChange}
                 itemsPerPage={itemsPerPage}
               />
             </CardContent>

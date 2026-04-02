@@ -34,6 +34,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { CheckIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { Fragment, useMemo, useState } from 'react';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
 
 // ============================================================================
 // Types
@@ -102,8 +103,8 @@ export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTable
     eventType: '',
     type: '',
   });
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 20;
 
   const formatDate = (dateString: string | Date) => {
     if (!dateString) return '';
@@ -134,7 +135,7 @@ export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTable
     const filterValue = value === 'all' ? '' : value;
     const newFilters = { ...filters, [key]: filterValue };
     setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(0); // Reset to first page when filters change
     onFilterChange?.(newFilters);
   };
 
@@ -146,7 +147,7 @@ export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTable
       type: '',
     };
     setFilters(clearedFilters);
-    setCurrentPage(1);
+    setCurrentPage(0);
     onFilterChange?.(clearedFilters);
   };
 
@@ -219,7 +220,7 @@ export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTable
 
     // Calculate pagination
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
+    const startIndex = currentPage * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const paginatedData = filtered.slice(startIndex, endIndex);
 
@@ -597,80 +598,13 @@ export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTable
         </div>
 
         {/* Pagination controls */}
-        {filteredAndPaginatedData.totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-            >
-              {'<<'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              {'<'}
-            </Button>
-            <span className="px-3 py-2 text-sm">Page</span>
-            <input
-              type="number"
-              min={1}
-              max={filteredAndPaginatedData.totalPages}
-              value={currentPage}
-              onChange={e => {
-                let val = Number(e.target.value);
-                if (isNaN(val)) val = 1;
-                if (val < 1) val = 1;
-                if (val > filteredAndPaginatedData.totalPages)
-                  val = filteredAndPaginatedData.totalPages;
-                setCurrentPage(val);
-              }}
-              className="w-16 rounded-md border border-border px-2 py-2 text-center text-sm"
-              aria-label="Page number"
-            />
-            <span className="px-3 py-2 text-sm">
-              of {Math.max(1, filteredAndPaginatedData.totalPages)}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setCurrentPage(p =>
-                  Math.min(filteredAndPaginatedData.totalPages, p + 1)
-                )
-              }
-              disabled={
-                currentPage === filteredAndPaginatedData.totalPages ||
-                filteredAndPaginatedData.totalPages === 0
-              }
-            >
-              {'>'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setCurrentPage(filteredAndPaginatedData.totalPages)
-              }
-              disabled={
-                currentPage === filteredAndPaginatedData.totalPages ||
-                filteredAndPaginatedData.totalPages === 0
-              }
-            >
-              {'>>'}
-            </Button>
-          </div>
-        )}
-
-        {/* Results summary */}
-        <div className="mt-4 text-center text-sm text-gray-600">
-          Showing {filteredAndPaginatedData.data.length} of{' '}
-          {filteredAndPaginatedData.totalItems} results
-        </div>
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={filteredAndPaginatedData.totalPages}
+          totalCount={filteredAndPaginatedData.totalItems}
+          setCurrentPage={setCurrentPage}
+          showTotalCount
+        />
       </div>
     </LocalizationProvider>
   );

@@ -74,7 +74,7 @@ export default function VaultActivityLogPageContent() {
   const [customDateRange, setCustomDateRange] = useState<{ from: Date; to: Date } | undefined>();
   
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0); // 0-indexed
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const limit = 50;
@@ -95,15 +95,16 @@ export default function VaultActivityLogPageContent() {
     }
   };
 
-  const fetchActivities = async (page = 1) => {
+  const fetchActivities = async (pageParam?: number) => {
     if (!locationId) return;
     
     setLoading(true);
     try {
+      const page = pageParam !== undefined ? pageParam : currentPage;
       const params = new URLSearchParams({
         locationId,
         limit: limit.toString(),
-        skip: ((page - 1) * limit).toString(),
+        skip: (page * limit).toString(),
       });
 
       if (selectedCashier && selectedCashier !== 'all') {
@@ -151,8 +152,8 @@ export default function VaultActivityLogPageContent() {
   }, [locationId]);
 
   useEffect(() => {
-    fetchActivities(1);
-    setCurrentPage(1);
+    fetchActivities(0);
+    setCurrentPage(0);
   }, [selectedCashier, selectedType, timePeriod, customDateRange]);
 
   useEffect(() => {
@@ -558,15 +559,13 @@ export default function VaultActivityLogPageContent() {
                 </div>
 
                 {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="mt-4">
-                    <PaginationControls
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      setCurrentPage={setCurrentPage}
-                    />
-                  </div>
-                )}
+                <PaginationControls
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  setCurrentPage={setCurrentPage}
+                  totalCount={totalCount}
+                  showTotalCount
+                />
               </>
             )}
             

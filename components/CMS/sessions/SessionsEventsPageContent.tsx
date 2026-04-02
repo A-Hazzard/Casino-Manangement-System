@@ -687,15 +687,13 @@ export function SessionsEventsPageContent({
               {renderEventsTable()}
 
               {/* Pagination Section - Use server-side pagination from API */}
-              {!loading && pagination && pagination.totalPages > 1 && (
-                <div className="mt-4 flex justify-center pb-8">
-                  <PaginationControls
-                    currentPage={pagination.currentPage - 1} // Convert from 1-based to 0-based
-                    totalPages={pagination.totalPages}
-                    setCurrentPage={handlePageChange}
-                  />
-                </div>
-              )}
+              <PaginationControls
+                currentPage={(pagination?.currentPage || 1) - 1} // Convert from 1-based to 0-based
+                totalPages={pagination?.totalPages || 1}
+                totalCount={pagination?.totalEvents || 0}
+                setCurrentPage={handlePageChange}
+                showTotalCount
+              />
             </>
           )}
         </div>

@@ -18,11 +18,11 @@
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Input } from '@/components/shared/ui/input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
@@ -43,8 +43,15 @@ type EditCabinetBasicInfoProps = {
   manufacturers: string[];
   serialNumberError: string;
   installedGameError: string;
-  onFormDataChange: (updates: Partial<EditCabinetBasicInfoProps['formData']>) => void;
+  customNameError: string;
+  isAddingManufacturer?: boolean;
+  onFormDataChange: (
+    updates: Partial<EditCabinetBasicInfoProps['formData']>
+  ) => void;
   onUserModifiedFieldsChange: (field: string) => void;
+  onAddManufacturerToggle?: (adding: boolean) => void;
+  onSerialNumberBlur?: (value: string) => void;
+  onCustomNameBlur?: (value: string) => void;
 };
 
 export default function EditCabinetBasicInfo({
@@ -54,8 +61,13 @@ export default function EditCabinetBasicInfo({
   manufacturers,
   serialNumberError,
   installedGameError,
+  customNameError,
+  isAddingManufacturer = false,
   onFormDataChange,
   onUserModifiedFieldsChange,
+  onAddManufacturerToggle,
+  onSerialNumberBlur,
+  onCustomNameBlur,
 }: EditCabinetBasicInfoProps) {
   return (
     <div className="space-y-4">
@@ -76,7 +88,10 @@ export default function EditCabinetBasicInfo({
                 id="assetNumber"
                 name="assetNumber"
                 value={formData.assetNumber}
-                onChange={e => onFormDataChange({ assetNumber: e.target.value })}
+                onChange={e =>
+                  onFormDataChange({ assetNumber: e.target.value })
+                }
+                onBlur={e => onSerialNumberBlur?.(e.target.value)}
                 placeholder="Enter serial number"
                 className={`border-border bg-container ${
                   serialNumberError ? 'border-red-500' : ''
@@ -100,14 +115,18 @@ export default function EditCabinetBasicInfo({
                 id="installedGame"
                 name="installedGame"
                 value={formData.installedGame}
-                onChange={e => onFormDataChange({ installedGame: e.target.value })}
+                onChange={e =>
+                  onFormDataChange({ installedGame: e.target.value })
+                }
                 placeholder="Enter installed game name"
                 className={`border-border bg-container ${
                   installedGameError ? 'border-red-500' : ''
                 }`}
               />
               {installedGameError && (
-                <p className="mt-1 text-xs text-red-500">{installedGameError}</p>
+                <p className="mt-1 text-xs text-red-500">
+                  {installedGameError}
+                </p>
               )}
             </>
           )}
@@ -122,16 +141,29 @@ export default function EditCabinetBasicInfo({
         {cabinetDataLoading ? (
           <Skeleton className="h-10 w-full" />
         ) : (
-          <Input
-            id="customName"
-            name="customName"
-            value={formData.custom?.name || ''}
-            onChange={e =>
-              onFormDataChange({ custom: { name: e.target.value } })
-            }
-            placeholder="Enter custom machine name"
-            className="border-border bg-container"
-          />
+          <>
+            <Input
+              id="customName"
+              name="customName"
+              value={formData.custom?.name || ''}
+              onChange={e =>
+                onFormDataChange({
+                  custom: {
+                    ...formData.custom,
+                    name: e.target.value,
+                  },
+                })
+              }
+              onBlur={e => onCustomNameBlur?.(e.target.value)}
+              placeholder="Enter custom machine name"
+              className={`border-border bg-container ${
+                customNameError ? 'border-red-500' : ''
+              }`}
+            />
+            {customNameError && (
+              <p className="mt-1 text-xs text-red-500">{customNameError}</p>
+            )}
+          </>
         )}
         <p className="mt-1 text-xs text-gray-500">
           A friendly name for this machine to display in reports
@@ -183,16 +215,34 @@ export default function EditCabinetBasicInfo({
 
       {/* Manufacturer */}
       <div>
-        <label className="mb-2 block text-sm font-medium text-grayHighlight">
-          Manufacturer
-        </label>
-        {manufacturersLoading ? (
+        <div className="mb-2 flex items-center justify-between">
+          <label className="text-sm font-medium text-grayHighlight">
+            Manufacturer
+          </label>
+          <button
+            type="button"
+            onClick={() => onAddManufacturerToggle?.(!isAddingManufacturer)}
+            className="text-xs text-buttonActive hover:underline"
+          >
+            {isAddingManufacturer ? 'Select from list' : '+ Add New'}
+          </button>
+        </div>
+        {isAddingManufacturer ? (
+          <Input
+            placeholder="Enter manufacturer name"
+            value={formData.manufacturer}
+            onChange={e => {
+              onUserModifiedFieldsChange('manufacturer');
+              onFormDataChange({ manufacturer: e.target.value });
+            }}
+            className="h-10 border-border bg-container"
+          />
+        ) : manufacturersLoading ? (
           <Skeleton className="h-10 w-full" />
         ) : (
           <Select
             value={formData.manufacturer}
             onValueChange={value => {
-              // Prevent setting the disabled "no-manufacturers" value
               if (value !== 'no-manufacturers') {
                 onUserModifiedFieldsChange('manufacturer');
                 onFormDataChange({ manufacturer: value });
@@ -275,4 +325,3 @@ export default function EditCabinetBasicInfo({
     </div>
   );
 }
-

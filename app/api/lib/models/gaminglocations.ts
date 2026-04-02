@@ -48,6 +48,10 @@ const GamingLocationsSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    aceEnabled: {
+      type: Boolean,
+      default: false,
+    },
     locationMembershipSettings: {
       enableFreePlays: { type: Boolean, default: false },
       pointsRatioMethod: { type: String, default: '' },

@@ -29,5 +29,6 @@ export type OriginalUserType = {
       notes?: string;
     };
   };
+  profilePicture?: string;
 };
 

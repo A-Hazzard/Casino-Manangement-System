@@ -528,19 +528,13 @@ function MachinesWithDataModal({
             </div>
 
             {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="mt-4 flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
-                <p className="text-sm text-gray-600">
-                  Showing {startIndex + 1}-{Math.min(endIndex, sortedMachines.length)} of{' '}
-                  {sortedMachines.length} machines
-                </p>
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  setCurrentPage={setCurrentPage}
-                />
-              </div>
-            )}
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={sortedMachines.length}
+              setCurrentPage={setCurrentPage}
+              showTotalCount
+            />
           </div>
 
           <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">

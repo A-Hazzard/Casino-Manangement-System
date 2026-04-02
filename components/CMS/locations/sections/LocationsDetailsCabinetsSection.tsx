@@ -116,6 +116,13 @@ type LocationsDetailsCabinetsSectionProps = {
   handleFilterChange: (status: string) => void;
   includeJackpot?: boolean;
   handleLocationChangeInPlace: (newLocationId: string) => void;
+  onRestore?: (cabinet: Cabinet) => void;
+  onPermanentDelete?: (cabinet: Cabinet) => void;
+  // Archived machine management
+  showArchived: boolean;
+  setShowArchived: (value: boolean) => void;
+  canViewArchived: boolean;
+  canPermanentlyDeleteMachines?: boolean;
 };
 
 export default function LocationsDetailsCabinetsSection({
@@ -158,6 +165,11 @@ export default function LocationsDetailsCabinetsSection({
   handleRefresh,
   handleFilterChange,
   handleLocationChangeInPlace,
+  onRestore,
+  onPermanentDelete,
+  showArchived,
+  setShowArchived,
+  canViewArchived,
 }: LocationsDetailsCabinetsSectionProps) {
   const router = useRouter();
   const tableRef = useRef<HTMLDivElement>(null);
@@ -419,6 +431,22 @@ export default function LocationsDetailsCabinetsSection({
                 emptyMessage="No status options found"
               />
             </div>
+
+            {/* Show Archived Toggle */}
+            {canViewArchived && (
+              <div className="flex items-center gap-2 px-2">
+                <input
+                  type="checkbox"
+                  id="showArchivedDesktop"
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-buttonActive focus:ring-buttonActive"
+                />
+                <label htmlFor="showArchivedDesktop" className="text-sm font-medium text-white cursor-pointer select-none">
+                  View Archived
+                </label>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -574,6 +602,22 @@ export default function LocationsDetailsCabinetsSection({
                 emptyMessage="No sort options found"
               />
             </div>
+            
+            {/* Show Archived Toggle - Mobile */}
+            {canViewArchived && (
+              <div className="flex h-10 items-center gap-2 rounded-full border border-gray-300 bg-white px-4">
+                <input
+                  type="checkbox"
+                  id="showArchivedMobile"
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-buttonActive focus:ring-buttonActive"
+                />
+                <label htmlFor="showArchivedMobile" className="text-sm font-medium text-gray-700 cursor-pointer select-none whitespace-nowrap">
+                  View Archived
+                </label>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -623,6 +667,9 @@ export default function LocationsDetailsCabinetsSection({
                   setSortOption(option);
                   setSortOrder(order);
                 }}
+                onRestore={onRestore}
+                onPermanentDelete={onPermanentDelete}
+                showArchived={showArchived}
                 includeJackpot={includeJackpot}
               />
             </div>
@@ -634,7 +681,6 @@ export default function LocationsDetailsCabinetsSection({
                   currentPage={currentPage}
                   totalPages={effectiveTotalPages}
                   totalCount={totalCount}
-                  limit={10}
                   setCurrentPage={setCurrentPage}
                 />
               </div>
@@ -645,4 +691,3 @@ export default function LocationsDetailsCabinetsSection({
     </>
   );
 }
-

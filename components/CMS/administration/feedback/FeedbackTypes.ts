@@ -37,7 +37,7 @@ export type FeedbackResponse = {
   pagination: {
     page: number;
     limit: number;
-    total: number;
+    totalCount: number;
     totalPages: number;
   };
 };

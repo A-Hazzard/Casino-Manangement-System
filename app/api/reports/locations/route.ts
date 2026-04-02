@@ -71,11 +71,12 @@ export async function GET(req: NextRequest) {
           customEndDate = new Date(end);
         }
 
-        const reviewerMult =
+        const reviewerMultRaw =
           userRoles.includes('reviewer') &&
           (userPayload as { multiplier?: number | null })?.multiplier != null
             ? (userPayload as { multiplier?: number | null }).multiplier!
             : null;
+        const reviewerMult = reviewerMultRaw !== null ? (1 - reviewerMultRaw) : null;
 
         const userLocationPermissions =
           (userPayload as { assignedLocations?: string[] })
@@ -178,9 +179,73 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        // Machine type filters...
+        // Machine type filters (SMIB, No SMIB, Local Server, Membership, Coordinates)
         if (machineTypeFilter) {
-          // ... (preserving filter logic)
+          const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
+
+          const connectionFilters: Record<string, unknown>[] = [];
+          const featureFilters: Record<string, unknown>[] = [];
+          const qualityFilters: Record<string, unknown>[] = [];
+
+          filters.forEach(filter => {
+            const f = filter.trim();
+            switch (f) {
+              case 'LocalServersOnly':
+                connectionFilters.push({ isLocalServer: true });
+                break;
+              case 'SMIBLocationsOnly':
+                connectionFilters.push({ noSMIBLocation: { $ne: true } });
+                break;
+              case 'NoSMIBLocation':
+                connectionFilters.push({ noSMIBLocation: true });
+                break;
+              case 'MembershipOnly':
+                featureFilters.push({
+                  $or: [{ membershipEnabled: true }, { enableMembership: true }],
+                });
+                break;
+              case 'MissingCoordinates':
+                qualityFilters.push({
+                  $or: [
+                    { geoCoords: { $exists: false } },
+                    { geoCoords: null },
+                    { 'geoCoords.latitude': { $exists: false } },
+                    { 'geoCoords.latitude': null },
+                    { 'geoCoords.latitude': 0 },
+                    {
+                      $or: [
+                        { 'geoCoords.longitude': { $exists: false, $eq: null } },
+                        { 'geoCoords.longtitude': { $exists: false, $eq: null } },
+                      ],
+                    },
+                  ],
+                });
+                break;
+              case 'HasCoordinates':
+                qualityFilters.push({
+                  $and: [
+                    { 'geoCoords.latitude': { $exists: true, $nin: [null, 0] } },
+                    {
+                      $or: [
+                        { 'geoCoords.longitude': { $exists: true, $nin: [null, 0] } },
+                        { 'geoCoords.longtitude': { $exists: true, $nin: [null, 0] } },
+                      ],
+                    },
+                  ],
+                });
+                break;
+            }
+          });
+
+          if (!locationMatchStage.$and) locationMatchStage.$and = [];
+          const andArray = locationMatchStage.$and as Array<Record<string, unknown>>;
+
+          if (connectionFilters.length > 0)
+            andArray.push({ $or: connectionFilters });
+          if (featureFilters.length > 0)
+            andArray.push({ $or: featureFilters });
+          if (qualityFilters.length > 0)
+            andArray.push({ $or: qualityFilters });
         }
 
         // ============================================================================
@@ -195,13 +260,27 @@ export async function GET(req: NextRequest) {
         }
 
         const allLocationIds = locations.map(loc => String(loc._id));
-        const allMachinesData = await Machine.find({
-          gamingLocation: { $in: allLocationIds },
-          $or: [
+        
+        // Machine query logic - apply same rule as machine list to ensure totals match
+        const machineMatch: Record<string, unknown> = {
+          gamingLocation: { $in: allLocationIds }
+        };
+
+        // Note: For locations report, we typically only show totals for Active machines 
+        // unless viewing archived locations.
+        if (!showArchived) {
+          // Standard Active: null OR < 2025
+          machineMatch.$or = [
             { deletedAt: null },
             { deletedAt: { $lt: new Date('2025-01-01') } },
-          ],
-        }).lean();
+          ];
+        } else {
+          // Standard Archived: >= 2025
+          machineMatch.deletedAt = { $gte: new Date('2025-01-01') };
+        }
+
+        const allMachinesData = await Machine.find(machineMatch).lean();
+        const allMachineIds = allMachinesData.map(m => String(m._id));
 
         const locationToMachines = new Map<string, Record<string, unknown>[]>();
         allMachinesData.forEach(m => {
@@ -239,6 +318,7 @@ export async function GET(req: NextRequest) {
           {
             $match: {
               location: { $in: allLocationIds },
+              machine: { $in: allMachineIds },
               readAt: { $gte: globalStart, $lte: globalEnd },
             },
           },
@@ -325,13 +405,15 @@ export async function GET(req: NextRequest) {
               ) / 100,
             jackpot: Math.round(rawJackpot * 100) / 100,
             totalMachines: machines.length,
-            onlineMachines: machines.filter(
-              m =>
-                (m.lastActivity
-                  ? new Date(m.lastActivity as Date).getTime()
-                  : 0) >
-                Date.now() - 3 * 60 * 1000
-            ).length,
+            onlineMachines: loc.aceEnabled
+              ? machines.length
+              : machines.filter(
+                  m =>
+                    (m.lastActivity
+                      ? new Date(m.lastActivity as Date).getTime()
+                      : 0) >
+                    Date.now() - 3 * 60 * 1000
+                ).length,
             sasMachines: machines.filter(m => m.isSasMachine).length,
             nonSasMachines: machines.filter(m => !m.isSasMachine).length,
             hasSasMachines: machines.some(m => m.isSasMachine),

@@ -337,10 +337,21 @@ export async function GET(req: NextRequest) {
       }
 
       // Apply online/offline status filter at database level
+      // aceEnabled locations always count as online regardless of lastActivity
       if (onlineStatus !== 'all') {
         const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+        const aceEnabledLocIds = locations
+          .filter(loc => (loc as Record<string, unknown>).aceEnabled === true)
+          .map(loc => String(loc._id));
         if (onlineStatus === 'online') {
-          machineMatchQuery.lastActivity = { $gte: threeMinutesAgo };
+          const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
+          const onlineConds: Array<Record<string, unknown>> = [
+            { lastActivity: { $gte: threeMinutesAgo } },
+          ];
+          if (aceEnabledLocIds.length > 0) {
+            onlineConds.push({ gamingLocation: { $in: aceEnabledLocIds } });
+          }
+          andArray.push({ $or: onlineConds });
         } else if (onlineStatus === 'offline') {
           const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
           andArray.push({
@@ -350,6 +361,9 @@ export async function GET(req: NextRequest) {
               { lastActivity: null },
             ],
           });
+          if (aceEnabledLocIds.length > 0) {
+            andArray.push({ gamingLocation: { $nin: aceEnabledLocIds } });
+          }
         } else if (onlineStatus === 'never-online') {
           const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
           andArray.push({
@@ -358,6 +372,9 @@ export async function GET(req: NextRequest) {
               { lastActivity: null },
             ],
           });
+          if (aceEnabledLocIds.length > 0) {
+            andArray.push({ gamingLocation: { $nin: aceEnabledLocIds } });
+          }
         }
       }
 
@@ -546,6 +563,7 @@ export async function GET(req: NextRequest) {
             model: machine.model || '',
             status: machine.status || 'unknown',
             isSasMachine: machine.isSasMachine || false,
+            aceEnabled: location.aceEnabled === true,
             relayId: machine.relayId || '',
             smibBoard: machine.smibBoard || '',
             smbId: machine.relayId || machine.smibBoard || '',
@@ -560,11 +578,11 @@ export async function GET(req: NextRequest) {
             updatedAt: machine.updatedAt,
             lastOnline: (machine.lastActivity as Date | undefined) || null,
             lastActivity: (machine.lastActivity as Date | undefined) || null,
-            // Calculate online status: machine is online if lastActivity is within last 3 minutes
-            online: machine.lastActivity
+            // Calculate online status: machine is online if aceEnabled or lastActivity within last 3 minutes
+            online: location.aceEnabled === true || (machine.lastActivity
               ? new Date(machine.lastActivity as Date) >
               new Date(Date.now() - 3 * 60 * 1000)
-              : false,
+              : false),
             moneyIn,
             moneyOut,
             cancelledCredits: rawMoneyOut, // raw base (no jackpot) — used by currency converter
@@ -638,10 +656,21 @@ export async function GET(req: NextRequest) {
         }
 
         // Apply online/offline status filter at database level
+        // aceEnabled locations always count as online regardless of lastActivity
         if (onlineStatus !== 'all') {
           const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+          const batchAceEnabledLocIds = batch
+            .filter(loc => (loc as Record<string, unknown>).aceEnabled === true)
+            .map(loc => String(loc._id));
           if (onlineStatus === 'online') {
-            batchMachineMatchQuery.lastActivity = { $gte: threeMinutesAgo };
+            const andArray = batchMachineMatchQuery.$and as Array<Record<string, unknown>>;
+            const onlineConds: Array<Record<string, unknown>> = [
+              { lastActivity: { $gte: threeMinutesAgo } },
+            ];
+            if (batchAceEnabledLocIds.length > 0) {
+              onlineConds.push({ gamingLocation: { $in: batchAceEnabledLocIds } });
+            }
+            andArray.push({ $or: onlineConds });
           } else if (onlineStatus === 'offline') {
             const andArray = batchMachineMatchQuery.$and as Array<Record<string, unknown>>;
             andArray.push({
@@ -651,6 +680,9 @@ export async function GET(req: NextRequest) {
                 { lastActivity: null },
               ],
             });
+            if (batchAceEnabledLocIds.length > 0) {
+              andArray.push({ gamingLocation: { $nin: batchAceEnabledLocIds } });
+            }
           } else if (onlineStatus === 'never-online') {
             const andArray = batchMachineMatchQuery.$and as Array<Record<string, unknown>>;
             andArray.push({
@@ -659,6 +691,9 @@ export async function GET(req: NextRequest) {
                 { lastActivity: null },
               ],
             });
+            if (batchAceEnabledLocIds.length > 0) {
+              andArray.push({ gamingLocation: { $nin: batchAceEnabledLocIds } });
+            }
           }
         }
 
@@ -908,10 +943,12 @@ export async function GET(req: NextRequest) {
               lastOnline: (machine.lastActivity as Date | undefined) || null,
               lastActivity: (machine.lastActivity as Date | undefined) || null,
               // Calculate online status: machine is online if lastActivity is within last 3 minutes
-              online: machine.lastActivity
+              // or if the location has aceEnabled: true
+              online: (location.aceEnabled === true) || (machine.lastActivity
                 ? new Date(machine.lastActivity as Date) >
                 new Date(Date.now() - 3 * 60 * 1000)
-                : false,
+                : false),
+              aceEnabled: location.aceEnabled === true,
               createdAt: machine.createdAt as Date | undefined,
               deletedAt: machine.deletedAt as Date | undefined,
               timePeriod: timePeriod,
@@ -945,7 +982,8 @@ export async function GET(req: NextRequest) {
     let refinedMachines = allMachines.map(machine => {
       const lastActivityStr = (machine as Record<string, unknown>).lastActivity;
       const lastActivity = lastActivityStr ? new Date(lastActivityStr as string | Date) : null;
-      const isOnline = lastActivity && lastActivity > threeMinutesAgo;
+      const aceEnabled = (machine as Record<string, unknown>).aceEnabled === true;
+      const isOnline = aceEnabled || (lastActivity && lastActivity > threeMinutesAgo);
 
       let offlineTimeLabel: string | undefined = undefined;
       let actualOfflineTime: string | undefined = undefined;
@@ -992,7 +1030,9 @@ export async function GET(req: NextRequest) {
       refinedMachines = refinedMachines.filter(machine => {
         const lastActivityStr = (machine as Record<string, unknown>).lastActivity;
         const lastActivity = lastActivityStr ? new Date(lastActivityStr as string | Date) : null;
-        const isOnline = lastActivity && lastActivity > threeMinutesAgo;
+        const aceEnabled = (machine as Record<string, unknown>).aceEnabled === true;
+        const isOnline = aceEnabled || (lastActivity && lastActivity > threeMinutesAgo);
+        (machine as Record<string, unknown>).online = isOnline; // Sync the field for filtering below
 
         // 1. Must be currently offline
         if (isOnline) return false;
@@ -1166,11 +1206,14 @@ export async function GET(req: NextRequest) {
     // STEP 10.5: Apply reviewer multiplier if user is a reviewer
     // ============================================================================
     const userRolesLowerReviewer = userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase());
-    const reviewerMult =
+    const reviewerMultRaw =
       userRolesLowerReviewer.includes('reviewer') &&
         (userPayload as { multiplier?: number | null })?.multiplier != null
         ? (userPayload as { multiplier?: number | null }).multiplier!
         : null;
+    
+    // Formula: Value = Value * (1 - multiplier)
+    const reviewerMult = reviewerMultRaw !== null ? (1 - reviewerMultRaw) : null;
 
     if (reviewerMult !== null) {
       filteredMachines = filteredMachines.map(machine => {

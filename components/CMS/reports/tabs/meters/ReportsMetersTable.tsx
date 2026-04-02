@@ -30,8 +30,8 @@ type ReportsMetersTableProps = {
   onSearchChange: (value: string) => void;
   currentPage: number;
   totalPages: number;
+  totalCount: number;
   onPageChange: (page: number) => void;
-  loading: boolean;
   hasData: boolean;
 };
 
@@ -44,8 +44,8 @@ export default function ReportsMetersTable({
   onSearchChange,
   currentPage,
   totalPages,
+  totalCount,
   onPageChange,
-  loading,
   hasData,
 }: ReportsMetersTableProps) {
   const router = useRouter();
@@ -378,13 +378,13 @@ export default function ReportsMetersTable({
       </div>
 
       {/* Pagination Controls - Mobile Responsive */}
-      {!loading && totalPages > 1 && (
-        <PaginationControls
-          currentPage={currentPage}
-          totalPages={totalPages}
-          setCurrentPage={onPageChange}
-        />
-      )}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        setCurrentPage={onPageChange}
+        showTotalCount
+      />
     </div>
   );
 }

@@ -184,15 +184,13 @@ export default function MembersSummaryTab({
         />
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-center">
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            setCurrentPage={handlePageChange}
-          />
-        </div>
-      )}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={summaryData?.pagination?.total || 0}
+        setCurrentPage={handlePageChange}
+        showTotalCount
+      />
     </div>
   );
 }

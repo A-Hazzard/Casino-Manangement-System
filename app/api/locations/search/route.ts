@@ -159,14 +159,20 @@ export async function GET(request: NextRequest) {
           },
           // Machine statistics (count unique machines and online status)
           machineIds: { $addToSet: '$machineDetails._id' },
+          aceEnabled: { $first: '$locationDetails.aceEnabled' },
           onlineMachineIds: {
             $addToSet: {
               $cond: [
                 {
-                  $and: [
-                    { $ne: ['$machineDetails.lastActivity', null] },
+                  $or: [
+                    { $eq: ['$locationDetails.aceEnabled', true] },
                     {
-                      $gte: ['$machineDetails.lastActivity', threeMinutesAgo],
+                      $and: [
+                        { $ne: ['$machineDetails.lastActivity', null] },
+                        {
+                          $gte: ['$machineDetails.lastActivity', threeMinutesAgo],
+                        },
+                      ],
                     },
                   ],
                 },

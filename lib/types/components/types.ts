@@ -107,8 +107,8 @@ export type PaginationControlsProps = {
   totalPages: number;
   setCurrentPage: (page: number) => void;
   totalCount?: number;
-  limit?: number;
   showTotalCount?: boolean;
+  className?: string;
 };
 
 export type LocationsCabinetGridProps = {
@@ -146,6 +146,11 @@ export type LocationsCabinetGridProps = {
       | 'offlineTime',
     order: 'asc' | 'desc'
   ) => void;
+  onRestore?: (cabinet: ExtendedCabinetDetail) => void;
+  onPermanentDelete?: (cabinet: ExtendedCabinetDetail) => void;
+  canViewArchived?: boolean;
+  canPermanentlyDeleteMachines?: boolean;
+  showArchived?: boolean;
 };
 
 // Collector schedule types

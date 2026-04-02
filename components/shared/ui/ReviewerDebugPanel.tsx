@@ -59,7 +59,7 @@ export default function ReviewerDebugPanel({
           Reviewer & Financial Logic Trace
         </h3>
         <div className="text-[10px] px-2 py-1 bg-orange-100 text-orange-700 rounded-md font-medium uppercase tracking-wider">
-          Multiplier: {(multiplier * 100).toFixed(0)}% | Jackpot: {includeJackpot ? 'INCLUDED' : 'EXCLUDED'}
+          Adjustment: -{(multiplier * 100).toFixed(0)}% (Effective: {((1 - multiplier) * 100).toFixed(0)}%) | Jackpot: {includeJackpot ? 'INCLUDED' : 'EXCLUDED'}
         </div>
       </div>
       
@@ -70,7 +70,7 @@ export default function ReviewerDebugPanel({
               <th className="pb-2 font-medium">Metric</th>
               <th className="pb-2 font-medium">1. Base (Meters)</th>
               <th className="pb-2 font-medium">2. Raw (+Jackpot)</th>
-              <th className="pb-2 font-medium text-orange-700">3. Final (Scaled)</th>
+              <th className="pb-2 font-medium text-orange-700">3. Final ({( (1 - multiplier) * 100 ).toFixed(0)}%)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-orange-50">
@@ -127,7 +127,7 @@ export default function ReviewerDebugPanel({
           * Step 2: Addition of Jackpot to Money Out (if configured for licensee).
         </p>
         <p className="text-[10px] text-orange-600 italic">
-          * Step 3: Application of Reviewer Multiplier ({(multiplier * 100).toFixed(0)}%) to raw values.
+          * Step 3: Application of Reviewer Multiplier ({( (1 - multiplier) * 100 ).toFixed(0)}% share) to raw values.
         </p>
       </div>
     </div>

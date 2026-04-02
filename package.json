@@ -19,7 +19,7 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@infobip-api/sdk": "^0.3.2",
-    "@mui/material": "^7.1.0",
+    "@mui/material": "^7.3.9",
     "@mui/system": "^7.1.0",
     "@mui/x-date-pickers": "^8.3.1",
     "@radix-ui/react-alert-dialog": "^1.1.15",

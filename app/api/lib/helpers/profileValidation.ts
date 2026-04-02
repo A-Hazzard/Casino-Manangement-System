@@ -150,11 +150,9 @@ export function getInvalidProfileFields(
     }
   }
 
-  if (!firstName || !validateNameField(firstName)) {
+  if (firstName && !validateNameField(firstName)) {
     invalidFields.firstName = true;
-    if (!firstName) {
-      reasons.firstName = 'First name is required.';
-    } else if (containsPhonePattern(firstName)) {
+    if (containsPhonePattern(firstName)) {
       reasons.firstName =
         'First name cannot look like a phone number.';
     } else {
@@ -163,11 +161,9 @@ export function getInvalidProfileFields(
     }
   }
 
-  if (!lastName || !validateNameField(lastName)) {
+  if (lastName && !validateNameField(lastName)) {
     invalidFields.lastName = true;
-    if (!lastName) {
-      reasons.lastName = 'Last name is required.';
-    } else if (containsPhonePattern(lastName)) {
+    if (containsPhonePattern(lastName)) {
       reasons.lastName =
         'Last name cannot look like a phone number.';
     } else {
@@ -187,9 +183,9 @@ export function getInvalidProfileFields(
     }
   }
 
-  if (!gender || !validateOptionalGender(gender)) {
+  if (gender && !validateOptionalGender(gender)) {
     invalidFields.gender = true;
-    reasons.gender = !gender ? 'Gender is required.' : 'Select a valid gender option.';
+    reasons.gender = 'Select a valid gender option.';
   }
 
   // Date of birth validation removed as it's no longer required
@@ -219,11 +215,9 @@ export function getInvalidProfileFields(
     isPlaceholderEmail(emailAddress)
   ) {
     invalidFields.emailAddress = true;
-    if (!emailAddress) {
-      reasons.emailAddress = 'Email address is required.';
-    } else if (!validateEmail(emailAddress)) {
+    if (emailAddress && !validateEmail(emailAddress)) {
       reasons.emailAddress = 'Provide a valid email address.';
-    } else if (isPlaceholderEmail(emailAddress)) {
+    } else if (emailAddress && isPlaceholderEmail(emailAddress)) {
       reasons.emailAddress =
         'Please use a real email address. Placeholder emails like example@example.com are not allowed.';
     } else if (
@@ -241,14 +235,13 @@ export function getInvalidProfileFields(
   }
 
   if (
+    phone && (
     !validatePhoneNumber(phone) ||
     containsEmailPattern(phone) ||
-    (!!username && normalizePhoneNumber(username) === normalizedPhone)
+    (!!username && normalizePhoneNumber(username) === normalizedPhone))
   ) {
     invalidFields.phone = true;
-    if (!phone) {
-      reasons.phone = 'Phone number is required for account security.';
-    } else if (!validatePhoneNumber(phone)) {
+    if (!validatePhoneNumber(phone)) {
       reasons.phone =
         'Provide a valid phone number (digits, spaces, parentheses, hyphen, optional leading +).';
     } else if (containsEmailPattern(phone)) {

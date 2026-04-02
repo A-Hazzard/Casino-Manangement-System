@@ -70,6 +70,7 @@ type LocationDetails = {
     denom10000: boolean;
   };
   membershipEnabled?: boolean;
+  aceEnabled?: boolean;
   locationMembershipSettings?: {
     locationLimit?: number;
     freePlayAmount?: number;
@@ -221,6 +222,7 @@ export default function LocationsEditLocationModal({
     },
     // Membership settings
     membershipEnabled: false,
+    aceEnabled: false,
     locationMembershipSettings: {
       locationLimit: 0,
       freePlayAmount: 0,
@@ -380,6 +382,7 @@ export default function LocationsEditLocationModal({
         },
         // Membership settings
         membershipEnabled: selectedLocation.membershipEnabled || false,
+        aceEnabled: selectedLocation.aceEnabled || false,
         locationMembershipSettings: {
           locationLimit: 0,
           freePlayAmount: 0,
@@ -538,6 +541,7 @@ export default function LocationsEditLocationModal({
         },
         // Membership settings
         membershipEnabled: locationDetails.membershipEnabled || false,
+        aceEnabled: locationDetails.aceEnabled || false,
         locationMembershipSettings: {
           locationLimit: locationDetails.locationMembershipSettings?.locationLimit || 0,
           freePlayAmount: locationDetails.locationMembershipSettings?.freePlayAmount || 0,
@@ -732,6 +736,7 @@ export default function LocationsEditLocationModal({
             : undefined,
         billValidatorOptions: originalFormData.billValidatorOptions,
         membershipEnabled: originalFormData.membershipEnabled,
+        aceEnabled: originalFormData.aceEnabled,
         locationMembershipSettings: originalFormData.locationMembershipSettings,
       };
 
@@ -762,6 +767,7 @@ export default function LocationsEditLocationModal({
             : undefined,
         billValidatorOptions: formData.billValidatorOptions,
         membershipEnabled: formData.membershipEnabled,
+        aceEnabled: formData.aceEnabled,
         locationMembershipSettings: formData.locationMembershipSettings,
       };
 
@@ -924,7 +930,7 @@ export default function LocationsEditLocationModal({
                   <h3 className="text-sm font-medium text-gray-700">
                     Created
                   </h3>
-                  <p className="mt-1 text-sm text-gray-600">
+                  <div className="mt-1 text-sm text-gray-600">
                     {locationDetailsLoading && !locationDetails?.createdAt ? (
                       <div className="h-4 w-24 animate-pulse rounded bg-gray-200" />
                     ) : locationDetails?.createdAt ? (
@@ -941,7 +947,7 @@ export default function LocationsEditLocationModal({
                     ) : (
                       'Unknown'
                     )}
-                  </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1140,6 +1146,24 @@ export default function LocationsEditLocationModal({
                   className="text-lg font-semibold text-gray-800"
                 >
                   Membership Enabled
+                </Label>
+              </div>
+
+
+              <div className="flex items-center space-x-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <Checkbox
+                  id="aceEnabled"
+                  checked={formData.aceEnabled}
+                  onCheckedChange={checked =>
+                    handleCheckboxChange('aceEnabled', checked === true)
+                  }
+                  className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+                />
+                <Label
+                  htmlFor="aceEnabled"
+                  className="text-lg font-semibold text-gray-800"
+                >
+                  Ace Enabled
                 </Label>
               </div>
 

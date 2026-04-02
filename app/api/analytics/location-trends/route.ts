@@ -58,6 +58,8 @@ export async function GET(req: NextRequest) {
     const granularity = searchParams.get('granularity') as  'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
     const status = searchParams.get('status') as 'Online' | 'Offline' | 'All' | null;
     const gameType = searchParams.get('gameType');
+    const searchTerm = searchParams.get('search');
+    const includeArchived = searchParams.get('includeArchived') === 'true';
 
     // === Reviewer Scaling ===
     const { getUserFromServer } = await import('@/app/api/lib/helpers/users/users');
@@ -89,7 +91,9 @@ export async function GET(req: NextRequest) {
       effectiveGranularity,
       status,
       gameType,
-      reviewerMultiplier
+      reviewerMultiplier,
+      searchTerm || undefined,
+      includeArchived
     );
 
     // ============================================================================

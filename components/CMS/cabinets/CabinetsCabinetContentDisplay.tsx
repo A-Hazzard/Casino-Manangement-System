@@ -390,18 +390,13 @@ export const CabinetsCabinetContentDisplay = ({
       </div>
 
       {/* Pagination */}
-      {!loading && paginatedCabinets.length > 0 && totalPages > 1 && (
-        <div className="my-4 flex w-full justify-center">
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalCount={totalCount}
-            limit={10}
-            showTotalCount={false}
-            setCurrentPage={onPageChange}
-          />
-        </div>
-      )}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        setCurrentPage={onPageChange}
+        showTotalCount
+      />
     </>
   );
 };

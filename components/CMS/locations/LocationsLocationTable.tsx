@@ -361,7 +361,7 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                       <TableCell className="text-gray-600">
                         {loc.deletedAt ? (
                           <>
-                            {format(new Date(loc.deletedAt), 'dd/MM/yyyy HH:mm')}
+                            {format(new Date(loc.deletedAt), 'MMM d, yyyy • h:mm a')}
                             <span className="ml-1 text-xs opacity-70">
                               ({formatDistanceToNow(new Date(loc.deletedAt), { addSuffix: true })})
                             </span>

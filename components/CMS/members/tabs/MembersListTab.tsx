@@ -99,9 +99,9 @@ export default function MembersListTab({
     activeMembers: number;
   } | null>(null);
 
-  const itemsPerPage = 10;
+  const itemsPerPage = 50;
   const itemsPerBatch = 50;
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
+  const pagesPerBatch = 1; // 50 / 50
 
   // Calculate which batch we need based on current page
   const calculateBatchNumber = useCallback(
@@ -732,19 +732,13 @@ export default function MembersListTab({
         </div>
       </div>
 
-      {(() => {
-        const total = summaryStats?.totalMembers || allMembers.length;
-        const totalPages = Math.ceil(total / itemsPerPage);
-        return totalPages > 1 ? (
-          <div className="mt-6 flex justify-center pb-8">
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              setCurrentPage={setCurrentPage}
-            />
-          </div>
-        ) : null;
-      })()}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={Math.ceil((summaryStats?.totalMembers || allMembers.length) / itemsPerPage)}
+        totalCount={summaryStats?.totalMembers || allMembers.length}
+        setCurrentPage={setCurrentPage}
+        showTotalCount
+      />
 
       {/* Modals */}
       <MembersEditMemberModal
