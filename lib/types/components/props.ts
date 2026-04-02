@@ -436,7 +436,12 @@ export type DashboardMobileLayoutProps = {
   showGranularitySelector: boolean;
   sortBy: 'totalDrop' | 'totalWin';
   setSortBy: (sortBy: 'totalDrop' | 'totalWin') => void;
+  machineStats?: {
+    totalMachines: number;
+    onlineMachines: number;
+    offlineMachines: number;
+  } | null;
+  machineStatsLoading?: boolean;
 };
 
 export type DashboardDesktopLayoutProps = DashboardMobileLayoutProps;
-

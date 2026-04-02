@@ -56,12 +56,13 @@ type PageLayoutProps = {
 
 export default function PageLayout({
   children,
+  pageTitle,
   hideOptions = false,
   hideLicenceeFilter = false,
   hideCurrencyFilter = false,
   showHeader = true,
   headerProps,
-  mainClassName = 'flex-1 w-full max-w-full mx-auto px-2 py-4 sm:p-6 md:px-4 space-y-6 mt-4',
+  mainClassName = 'flex-1 w-full max-w-full mx-auto px-4 py-8 sm:p-10 md:px-12 space-y-12 mt-6',
   showToaster = true,
   toasterPosition = 'top-right',
   toasterRichColors = false,
@@ -115,6 +116,7 @@ export default function PageLayout({
             <Header
               selectedLicencee={headerSelectedLicencee}
               setSelectedLicencee={headerSetSelectedLicencee}
+              pageTitle={pageTitle}
               hideOptions={hideOptions}
               hideLicenceeFilter={hideLicenceeFilter}
               disabled={headerDisabled}

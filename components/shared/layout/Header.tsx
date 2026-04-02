@@ -54,6 +54,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export default function Header({
   selectedLicencee,
+  pageTitle,
   setSelectedLicencee,
   hideLicenceeFilter,
   containerPaddingMobile,
@@ -348,7 +349,7 @@ export default function Header({
     <ClientOnly fallback={<div className="h-16 animate-pulse bg-gray-100" />}>
       <div className={`flex flex-col gap-2 ${containerPaddingMobile || ''}`}>
         {/* Header Section: Main header with title and licencee selector */}
-        <header className="flex w-full flex-col p-0">
+        <header className="flex w-full flex-col p-2 mb-4">
           {/* Menu Button and Main Title Row: Mobile sidebar trigger and title */}
           <div className="flex w-full min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             {/* Left side: Menu button and title */}
@@ -365,7 +366,7 @@ export default function Header({
               </SidebarTrigger>
               <div className="flex min-w-0 items-center gap-2">
                 <h1 className="shrink-0 whitespace-nowrap text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl">
-                  Evolution CMS
+                  Evolution CMS {pageTitle && <span className="text-gray-400 font-normal"> — {pageTitle}</span>}
                 </h1>
                 {shouldShowLicenceeName && singleLicenceeName && (
                   <span className="inline-flex items-center rounded-full bg-buttonActive/10 px-3 py-1 text-xs font-medium text-buttonActive ring-1 ring-inset ring-buttonActive/20 sm:text-sm">

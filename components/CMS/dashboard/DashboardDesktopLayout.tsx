@@ -24,6 +24,7 @@ import TopPerformingLocationModal from '@/components/CMS/dashboard/modals/TopPer
 import TopPerformingMachineModal from '@/components/CMS/dashboard/modals/TopPerformingMachineModal';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards';
+import MachineStatusWidget from '@/components/shared/ui/MachineStatusWidget';
 import MapPreview from '@/components/shared/ui/MapPreview';
 import { RefreshButtonSkeleton } from '@/components/shared/ui/skeletons/ButtonSkeletons';
 import {
@@ -76,10 +77,21 @@ export default function DashboardDesktopLayout(
       {/* ============================================================================
          Left Section (Dashboard Content) - 60% Width (3/5 columns)
          ============================================================================ */}
-      <div className="col-span-3 space-y-6">
-        {/* Date Filter Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          <DateFilters hideAllTime={true} />
+      <div className="col-span-3 space-y-10">
+        {/* Date Filter Controls & Machine Status Widget */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex-shrink-0">
+            <DateFilters hideAllTime={true} />
+          </div>
+          <div className="flex-shrink-0">
+            <MachineStatusWidget
+              isLoading={props.machineStatsLoading}
+              onlineCount={props.machineStats?.onlineMachines ?? 0}
+              offlineCount={props.machineStats?.offlineMachines ?? 0}
+              totalCount={props.machineStats?.totalMachines ?? 0}
+              showTotal
+            />
+          </div>
         </div>
 
         {/* Metrics Description Text with Refresh Button */}
@@ -184,7 +196,7 @@ export default function DashboardDesktopLayout(
       {/* ============================================================================
          Right Section (Map & Status) - 40% Width (2/5 columns)
          ============================================================================ */}
-      <div className="col-span-2 space-y-6">
+      <div className="col-span-2 space-y-10">
         {/* Map Preview Section */}
         <div className="rounded-lg bg-container p-6 shadow-md">
           <div className="mb-4 flex items-center justify-between">
@@ -404,30 +416,28 @@ export default function DashboardDesktopLayout(
       </div>
 
       {/* Machine Preview Modal */}
-      {selectedMachine &&
-        selectedMachine.machineId &&
-        !selectedMachine.isLocation && (
-          <TopPerformingMachineModal
-            open={isModalOpen}
-            machineId={selectedMachine.machineId}
-            machineName={selectedMachine.machineName || ''}
-            game={selectedMachine.game}
-            locationName={selectedMachine.locationName}
-            locationId={selectedMachine.locationId}
-            onClose={() => {
-              setIsModalOpen(false);
-              setSelectedMachine(null);
-            }}
-            onNavigate={() => {
-              if (selectedMachine.machineId) {
-                router.push(`/cabinets/${selectedMachine.machineId}`);
-              }
-            }}
-          />
-        )}
+      {selectedMachine?.machineId && !selectedMachine.isLocation && (
+        <TopPerformingMachineModal
+          open={isModalOpen}
+          machineId={selectedMachine.machineId}
+          machineName={selectedMachine.machineName || ''}
+          game={selectedMachine.game}
+          locationName={selectedMachine.locationName}
+          locationId={selectedMachine.locationId}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedMachine(null);
+          }}
+          onNavigate={() => {
+            if (selectedMachine.machineId) {
+              router.push(`/cabinets/${selectedMachine.machineId}`);
+            }
+          }}
+        />
+      )}
 
       {/* Location Preview Modal */}
-      {selectedLocation && selectedLocation.locationId && (
+      {selectedLocation?.locationId && (
         <TopPerformingLocationModal
           open={isLocationModalOpen}
           locationId={selectedLocation.locationId}

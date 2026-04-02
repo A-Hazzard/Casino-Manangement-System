@@ -193,76 +193,109 @@ export async function getMachineStatsForAnalytics(
   const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
   const machineMatchStage = buildMachineStatsMatchStage(allowedLocationIds);
 
-  // Count totals and online in parallel
-  const [totalMachines, onlineMachines, sasMachines, financialTotals] =
-    await Promise.all([
-      Machine.countDocuments({
-        ...machineMatchStage,
-        lastActivity: { $exists: true },
-      }),
-      Machine.countDocuments({
-        ...machineMatchStage,
-        lastActivity: { $gte: onlineThreshold },
-      }),
-      Machine.countDocuments({
-        ...machineMatchStage,
-        isSasMachine: true,
-      }),
-      Machine.aggregate([
-        { $match: machineMatchStage },
-        {
-          $lookup: {
-            from: 'gaminglocations',
-            localField: 'gamingLocation',
-            foreignField: '_id',
-            as: 'locationDetails',
-          },
+  // Use aggregation to properly implement ACE logic and get counts in one pass
+  const [countsResult, financialTotals] = await Promise.all([
+    Machine.aggregate([
+      { $match: machineMatchStage },
+      {
+        $lookup: {
+          from: 'gaminglocations',
+          localField: 'gamingLocation',
+          foreignField: '_id',
+          as: 'locationDetails',
         },
-        { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
-        {
-          $lookup: {
-            from: 'licencees',
-            localField: 'locationDetails.rel.licencee',
-            foreignField: '_id',
-            as: 'licenceeDetails',
+      },
+      { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: null,
+          totalMachines: { $sum: 1 },
+          sasMachines: {
+            $sum: { $cond: ['$isSasMachine', 1, 0] },
           },
-        },
-        {
-          $project: {
-            moneyIn: { $ifNull: ['$sasMeters.drop', 0] },
-            rawMoneyOut: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
-            jackpot: { $ifNull: ['$sasMeters.jackpot', 0] },
-            includeJackpot: {
-              $ifNull: [{ $arrayElemAt: ['$licenceeDetails.includeJackpot', 0] }, false],
-            },
-          },
-        },
-        {
-          $project: {
-            moneyIn: 1,
-            totalJackpot: '$jackpot',
-            moneyOut: {
-              $add: [
-                '$rawMoneyOut',
+          onlineMachines: {
+            $sum: {
+              $cond: [
                 {
-                  $cond: [{ $eq: ['$includeJackpot', true] }, '$jackpot', 0],
+                  $or: [
+                    { $eq: ['$locationDetails.aceEnabled', true] },
+                    {
+                      $and: [
+                        { $gt: ['$lastActivity', null] },
+                        { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, onlineThreshold] }
+                      ]
+                    }
+                  ]
                 },
-              ],
-            },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      }
+    ]).exec(),
+    Machine.aggregate([
+      { $match: machineMatchStage },
+      {
+        $lookup: {
+          from: 'gaminglocations',
+          localField: 'gamingLocation',
+          foreignField: '_id',
+          as: 'locationDetails',
+        },
+      },
+      { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'licencees',
+          localField: 'locationDetails.rel.licencee',
+          foreignField: '_id',
+          as: 'licenceeDetails',
+        },
+      },
+      {
+        $project: {
+          moneyIn: { $ifNull: ['$sasMeters.drop', 0] },
+          rawMoneyOut: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
+          jackpot: { $ifNull: ['$sasMeters.jackpot', 0] },
+          includeJackpot: {
+            $ifNull: [{ $arrayElemAt: ['$licenceeDetails.includeJackpot', 0] }, false],
           },
         },
-        {
-          $group: {
-            _id: null,
-            totalDrop: { $sum: '$moneyIn' },
-            totalCancelledCredits: { $sum: '$moneyOut' },
-            totalGross: {
-              $sum: { $subtract: ['$moneyIn', '$moneyOut'] },
-            },
+      },
+      {
+        $project: {
+          moneyIn: 1,
+          totalJackpot: '$jackpot',
+          moneyOut: {
+            $add: [
+              '$rawMoneyOut',
+              {
+                $cond: [{ $eq: ['$includeJackpot', true] }, '$jackpot', 0],
+              },
+            ],
           },
         },
-      ]),
-    ]);
+      },
+      {
+        $group: {
+          _id: null,
+          totalDrop: { $sum: '$moneyIn' },
+          totalCancelledCredits: { $sum: '$moneyOut' },
+          totalGross: {
+            $sum: { $subtract: ['$moneyIn', '$moneyOut'] },
+          },
+        },
+      },
+    ]).exec(),
+  ]);
+
+  const counts = countsResult[0] || {
+    totalMachines: 0,
+    onlineMachines: 0,
+    sasMachines: 0,
+  };
 
   const financials = financialTotals[0] || {
     totalDrop: 0,
@@ -270,20 +303,18 @@ export async function getMachineStatsForAnalytics(
     totalGross: 0,
   };
 
-  const stats = {
-    totalDrop: financials.totalDrop,
-    totalCancelledCredits: financials.totalCancelledCredits,
-    totalGross: financials.totalGross,
-    totalMachines,
-    onlineMachines,
-    sasMachines,
-  };
-
   return {
-    stats,
-    totalMachines: stats.totalMachines,
-    onlineMachines: stats.onlineMachines,
-    offlineMachines: stats.totalMachines - stats.onlineMachines,
+    stats: {
+      totalDrop: financials.totalDrop,
+      totalCancelledCredits: financials.totalCancelledCredits,
+      totalGross: financials.totalGross,
+      totalMachines: counts.totalMachines,
+      onlineMachines: counts.onlineMachines,
+      sasMachines: counts.sasMachines,
+    },
+    totalMachines: counts.totalMachines,
+    onlineMachines: counts.onlineMachines,
+    offlineMachines: counts.totalMachines - counts.onlineMachines,
   };
 }
 
@@ -306,6 +337,7 @@ export type DashboardAnalyticsResult = {
  * @returns Aggregation pipeline stages
  */
 function buildDashboardAnalyticsPipeline(licencee: string, includeJackpot: boolean = false): PipelineStage[] {
+  const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
   return [
     {
       $lookup: {
@@ -336,7 +368,21 @@ function buildDashboardAnalyticsPipeline(licencee: string, includeJackpot: boole
         totalMachines: { $sum: 1 },
         onlineMachines: {
           $sum: {
-            $cond: [{ $eq: ['$assetStatus', 'active'] }, 1, 0],
+            $cond: [
+              {
+                $or: [
+                  { $eq: ['$locationDetails.aceEnabled', true] },
+                  {
+                    $and: [
+                      { $gt: ['$lastActivity', null] },
+                      { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, onlineThreshold] }
+                    ]
+                  }
+                ]
+              },
+              1,
+              0
+            ]
           },
         },
         sasMachines: {
