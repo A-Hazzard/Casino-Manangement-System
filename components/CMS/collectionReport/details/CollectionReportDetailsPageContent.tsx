@@ -18,9 +18,9 @@
 import CollectionReportDetailsCollectionsTable from '@/components/CMS/collectionReport/details/CollectionReportDetailsCollectionsTable';
 import CollectionReportDetailsLocationMetricsTab from '@/components/CMS/collectionReport/details/CollectionReportDetailsLocationMetricsTab';
 import CollectionReportDetailsSasCompareTab from '@/components/CMS/collectionReport/details/CollectionReportDetailsSasCompareTab';
+import CollectionReportEditCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportEditCollectionModal';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
-import { } from '@/components/shared/ui/dialog';
 import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
 import UnauthorizedError from '@/components/shared/ui/errors/UnauthorizedError';
 import { CollectionReportSkeleton } from '@/components/shared/ui/skeletons/CollectionReportDetailSkeletons';
@@ -28,17 +28,44 @@ import {
     animateDesktopTabTransition,
     calculateLocationTotal,
 } from '@/lib/helpers/collectionReport';
+import { getLocationsWithMachines } from '@/lib/helpers/collectionReport/fetching';
 import { useCollectionReportDetailsData } from '@/lib/hooks/collectionReport/useCollectionReportDetailsData';
+import { useUserStore } from '@/lib/store/userStore';
+import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import { formatCurrency } from '@/lib/utils/currency';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-/**
- * Collection Report Details Page Content Component
- */
 export default function CollectionReportDetailsPageContent() {
   const hook = useCollectionReportDetailsData();
+  const user = useUserStore(state => state.user);
+
+  // Only developer, owner and admin (not location admin) can edit
+  const canEdit = !!(
+    user?.roles &&
+    (user.roles.includes('developer') || user.roles.includes('admin') || user.roles.includes('owner')) &&
+    !user.roles.includes('location admin')
+  );
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editLocations, setEditLocations] = useState<CollectionReportLocationWithMachines[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+
+  const handleOpenEdit = useCallback(async () => {
+    if (loadingLocations) return;
+    setLoadingLocations(true);
+    try {
+      const locs = await getLocationsWithMachines();
+      setEditLocations(locs);
+    } catch {
+      // fall back to empty — the modal will still load its own data
+      setEditLocations([]);
+    } finally {
+      setLoadingLocations(false);
+    }
+    setShowEditModal(true);
+  }, [loadingLocations]);
 
   const {
     reportData,
@@ -129,6 +156,7 @@ export default function CollectionReportDetailsPageContent() {
   );
 
   return (
+    <>
     <PageLayout
       headerProps={{
         containerPaddingMobile: 'px-4 py-8 lg:px-0 lg:py-0',
@@ -157,11 +185,35 @@ export default function CollectionReportDetailsPageContent() {
             <h1 className="text-2xl font-bold">Collection Report Details</h1>
           </div>
 
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={handleRefresh}
+              disabled={loading}
+              title="Refresh Report Data"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+
+            {canEdit && (
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={handleOpenEdit}
+                disabled={loadingLocations}
+              >
+                <Pencil size={16} />
+                {loadingLocations ? 'Loading…' : 'Edit Report'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Mobile Back Button */}
-      <div className="px-2 pt-4 lg:hidden">
+      {/* Mobile Back Button & Actions */}
+      <div className="flex items-center justify-between px-2 pt-4 lg:hidden">
         <Link href="/collection-report" className="inline-block">
           <Button
             variant="ghost"
@@ -170,6 +222,32 @@ export default function CollectionReportDetailsPageContent() {
             <ArrowLeft size={18} className="h-5 w-5" />
           </Button>
         </Link>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 w-9 p-0"
+            onClick={handleRefresh}
+            disabled={loading}
+            title="Refresh Report Data"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 h-9 px-3"
+              onClick={handleOpenEdit}
+              disabled={loadingLocations}
+            >
+              <Pencil size={14} />
+              <span className="text-xs font-semibold">{loadingLocations ? 'Loading…' : 'Edit Report'}</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Report Header Section: Location name, report ID, and financial summary */}
@@ -292,6 +370,18 @@ export default function CollectionReportDetailsPageContent() {
 
 
     </PageLayout>
+
+    {/* Edit Collection Report Modal — developer / admin only */}
+    {canEdit && showEditModal && reportData && (
+      <CollectionReportEditCollectionModal
+        show={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        reportId={reportData.reportId}
+        locations={editLocations}
+        onRefresh={handleRefresh}
+      />
+    )}
+  </>
   );
 }
 

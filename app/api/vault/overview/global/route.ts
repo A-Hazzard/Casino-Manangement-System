@@ -179,19 +179,28 @@ export async function GET(request: NextRequest) {
         });
       });
 
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
+      const timePeriod = searchParams.get('timePeriod') || 'Today';
+      const startDateParam = searchParams.get('startDate');
+      const endDateParam = searchParams.get('endDate');
+
+      const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod(
+        timePeriod,
+        8,
+        startDateParam ? new Date(startDateParam) : undefined,
+        endDateParam ? new Date(endDateParam) : undefined
+      );
+
       let totalIn = 0,
         totalOut = 0,
         totalDiscrepancies = 0,
         payouts = 0,
         payoutsCount = 0;
 
-      const todayTransactions = (await VaultTransactionModel.find({
+      const filteredTransactions = (await VaultTransactionModel.find({
         locationId: { $in: locationIds },
-        timestamp: { $gte: startOfToday },
+        timestamp: { $gte: rangeStart, $lte: rangeEnd },
       }).lean()) as unknown as VaultTransactionDoc[];
-      todayTransactions.forEach(tx => {
+      filteredTransactions.forEach(tx => {
         if (tx.to?.type === 'vault') totalIn += tx.amount;
         if (tx.from?.type === 'vault') totalOut += tx.amount;
         if (tx.type === 'payout') {
@@ -209,7 +218,7 @@ export async function GET(request: NextRequest) {
           (sum, s) => sum + (s.currentBalance || 0),
           0
         );
-      const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod('Today', 8);
+
       const machineMeters = await Meters.aggregate([
         {
           $match: {

@@ -108,7 +108,7 @@ export function useCabinetPageData() {
   const canAccessSmibConfig = useMemo(() => {
     return (
       user?.roles?.some(role =>
-        ['technician', 'admin', 'developer'].includes(role)
+        ['technician', 'owner', 'admin', 'developer'].includes(role)
       ) ?? false
     );
   }, [user]);
@@ -119,6 +119,7 @@ export function useCabinetPageData() {
       user?.roles?.some(role =>
         [
           'developer',
+          'owner',
           'admin',
           'manager',
           'location admin',

@@ -1,6 +1,7 @@
 import type { MongooseId, TimePeriod } from '@/shared/types';
 import type { SmibDevice } from '@/shared/types/entities';
 import type { QueryFilter } from '../common/mongo';
+import type { CollectionSasMeters } from '../collection/types';
 
 // Re-export types for convenience
 export type { QueryFilter, TimePeriod };
@@ -169,6 +170,7 @@ export type CollectionReportMachineSummary = {
     metersIn: number;
     metersOut: number;
   };
+  sasMeters?: CollectionSasMeters | null;
   collectionTime?: string | Date;
 };
 
@@ -239,4 +241,21 @@ export type CollectionReportData = {
   isEditing?: boolean;
   includeJackpot?: boolean;
   useNetGross?: boolean;
+};
+
+// Types for Collection Report Variation Checking (pre-submission)
+export type MachineVariationData = {
+  machineId: string;
+  machineName: string;
+  variation: number | string; // "No SAS Data" or numeric value
+  sasGross: number | string;
+  meterGross: number;
+  sasStartTime?: string | null;
+  sasEndTime?: string | null;
+};
+
+export type VariationsCheckResponse = {
+  hasVariations: boolean;
+  totalVariation: number;
+  machines: MachineVariationData[];
 };

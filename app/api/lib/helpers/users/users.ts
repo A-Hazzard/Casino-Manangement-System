@@ -243,10 +243,8 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         jwtPayload.assignedLicencees = [];
       }
 
-      // Always use DB value for multiplier (reviewer multiplier may change after login)
-      if (dbUser.multiplier !== undefined) {
-        jwtPayload.multiplier = dbUser.multiplier ?? null;
-      }
+      // ALWAYS use database value for multiplier (source of truth — may have changed since login)
+      (jwtPayload as Record<string, unknown>).multiplier = dbUser.multiplier ?? null;
     }
 
     return jwtPayload;
@@ -383,13 +381,15 @@ export async function createUser(
     throw new Error('User roles not found. Please contact an administrator.');
   }
 
+  const isOwner = requestingUserRoles.includes('owner');
   const isDeveloper = requestingUserRoles.includes('developer');
-  const isAdmin = requestingUserRoles.includes('admin') && !isDeveloper;
+  const isAdmin = requestingUserRoles.includes('admin') && !isDeveloper && !isOwner;
   const isManager =
-    requestingUserRoles.includes('manager') && !isAdmin && !isDeveloper;
+    requestingUserRoles.includes('manager') && !isAdmin && !isDeveloper && !isOwner;
 
   // Validate role assignments based on creator's permissions
   const ALLOWED_ROLES = [
+    'owner',
     'developer',
     'admin',
     'manager',
@@ -412,7 +412,8 @@ export async function createUser(
     requestingUserRoles.includes('vault-manager') &&
     !isAdmin &&
     !isManager &&
-    !isDeveloper;
+    !isDeveloper &&
+    !isOwner;
 
   // Check role assignment permissions
   if (isManager) {
@@ -435,15 +436,18 @@ export async function createUser(
     if (unauthorizedRoles.length > 0) {
       throw new Error(`Vault managers can only create cashiers`);
     }
-  } else if (isAdmin) {
-    // Admin can assign all roles except developer and cashier
+  } else if (isAdmin || isOwner) {
+    // Admin and Owner can assign all roles except developer, owner and cashier
     if (roles.some(r => r.trim().toLowerCase() === 'developer')) {
-      throw new Error('Admins cannot assign the developer role');
+      throw new Error('Only Developers can assign the developer role');
+    }
+    if (roles.some(r => r.trim().toLowerCase() === 'owner')) {
+      throw new Error('Only Developers can assign the owner role');
     }
     if (roles.some(r => r.trim().toLowerCase() === 'cashier')) {
       throw new Error('Only Vault Managers can assign the cashier role');
     }
-  } else if (!isDeveloper && !isAdmin && !isManager && !isVaultManager) {
+  } else if (!isDeveloper && !isOwner && !isAdmin && !isManager && !isVaultManager) {
     // Only developer/admin/manager/vault-manager can create users
     console.error('[createUser] Permission check failed:', {
       requestingUserRoles,
@@ -454,7 +458,7 @@ export async function createUser(
       userId: requestingUser._id,
     });
     throw new Error(
-      'Insufficient permissions to create users. Only developers, admins, managers, and vault managers can create users.'
+      'Insufficient permissions to create users. Only owners, developers, admins, managers, and vault managers can create users.'
     );
   }
 
@@ -491,6 +495,7 @@ export async function createUser(
     let finalAssignedLocations = assignedLocations || [];
 
     // ENFORCEMENT: Managers and Vault Managers can ONLY create users within their own licencees and locations
+    // Owners and Developers have NO restrictions (handled by getUserLocationFilter returning 'all')
     if (isManager || isVaultManager) {
       finalAssignedLicencees = (requestingUser.assignedLicencees as string[]) || [];
       finalAssignedLocations = (requestingUser.assignedLocations as string[]) || [];
@@ -629,6 +634,7 @@ export async function updateUser(
   const isDevMode = process.env.NODE_ENV === 'development';
   let requestingUser = null;
   let requestingUserRoles: string[] = [];
+  let isOwner = false;
   let isDeveloper = false;
   let isAdmin = false;
   let isManager = false;
@@ -639,41 +645,45 @@ export async function updateUser(
     // Get current user to check permissions (early check for manager restrictions)
     requestingUser = await getUserFromServer();
     requestingUserRoles = (requestingUser?.roles || []) as string[];
+    isOwner = requestingUserRoles.includes('owner');
     isDeveloper = requestingUserRoles.includes('developer');
-    isAdmin = requestingUserRoles.includes('admin') && !isDeveloper;
+    isAdmin = requestingUserRoles.includes('admin') && !isDeveloper && !isOwner;
     isManager =
-      requestingUserRoles.includes('manager') && !isAdmin && !isDeveloper;
+      requestingUserRoles.includes('manager') && !isAdmin && !isDeveloper && !isOwner;
     isLocationAdmin =
       requestingUserRoles.includes('location admin') &&
       !isAdmin &&
       !isManager &&
-      !isDeveloper;
+      !isDeveloper &&
+      !isOwner;
     isVaultManager =
       requestingUserRoles.includes('vault-manager') &&
       !isAdmin &&
       !isManager &&
-      !isDeveloper;
+      !isDeveloper &&
+      !isOwner;
   } else {
     // In dev mode, treat as developer to bypass all restrictions
     isDeveloper = true;
   }
 
-  // Location admins cannot edit managers, developers, or admins
+  // Location admins cannot edit owners, managers, developers, or admins
   if (isLocationAdmin) {
+    const isTargetOwner = user.roles.includes('owner');
     const isTargetDeveloper = user.roles.includes('developer');
     const isTargetAdmin = user.roles.includes('admin');
     const isTargetManager = user.roles.includes('manager');
 
-    if (isTargetDeveloper || isTargetAdmin || isTargetManager) {
+    if (isTargetOwner || isTargetDeveloper || isTargetAdmin || isTargetManager) {
       throw new Error(
-        'Location admins cannot edit developers, admins, or managers'
+        'Location admins cannot edit owners, developers, admins, or managers'
       );
     }
   }
 
-  // ENFORCEMENT: Only admins and developers can edit assigned locations and licencees
+  // ENFORCEMENT: Only owners, admins and developers can edit assigned locations and licencees
   // This applies to both self-editing and editing others
-  const isAssignmentEditingAllowed = isDeveloper || isAdmin;
+  const isAssignmentEditingAllowed = isDeveloper || isAdmin || isOwner;
 
   if (!isAssignmentEditingAllowed) {
     if (updateFields.assignedLocations !== undefined || updateFields.assignedLicencees !== undefined) {
@@ -696,6 +706,7 @@ export async function updateUser(
     const rolesToUpdate = Array.isArray(updateFields.roles) ? (updateFields.roles as string[]) : [];
     
     const ALLOWED_ROLES = [
+      'owner',
       'developer',
       'admin',
       'manager',
@@ -718,23 +729,27 @@ export async function updateUser(
     }
 
     // Check role assignment permissions
-    if (isManager) {
-      // Manager can only assign: location admin, technician, collector
-      const managerAllowedRoles = ['location admin', 'technician', 'collector'];
-      const unauthorizedRoles = rolesToUpdate.filter(
-        r => !managerAllowedRoles.includes(r)
-      );
-      if (unauthorizedRoles.length > 0) {
-        throw new Error(
-          `Managers can only assign roles: ${managerAllowedRoles.join(', ')}`
+      const isOwner = requestingUserRoles.includes('owner');
+      if (isManager) {
+        // Manager can only assign: location admin, technician, collector
+        const managerAllowedRoles = ['location admin', 'technician', 'collector'];
+        const unauthorizedRoles = rolesToUpdate.filter(
+          r => !managerAllowedRoles.includes(r)
         );
-      }
-    } else if (isAdmin) {
-      // Admin can assign all roles except developer
-      if (rolesToUpdate.includes('developer')) {
-        throw new Error('Admins cannot assign the developer role');
-      }
-    } else if (isVaultManager) {
+        if (unauthorizedRoles.length > 0) {
+          throw new Error(
+            `Managers can only assign roles: ${managerAllowedRoles.join(', ')}`
+          );
+        }
+      } else if (isAdmin || isOwner) {
+        // Admin and Owner can assign all roles except developer and owner
+        if (rolesToUpdate.includes('developer')) {
+          throw new Error('Only Developers can assign the developer role');
+        }
+        if (rolesToUpdate.includes('owner')) {
+          throw new Error('Only Developers can assign the owner role');
+        }
+      } else if (isVaultManager) {
       // Vault manager can only assign 'cashier' role
       const vaultManagerAllowedRoles = ['cashier'];
       const unauthorizedRoles = rolesToUpdate.filter(
@@ -748,8 +763,8 @@ export async function updateUser(
       if (rolesToUpdate.includes('cashier')) {
         throw new Error('Only Vault Managers can assign the cashier role');
       }
-    } else if (!isDeveloper && !isAdmin && !isVaultManager) {
-      // Only developer/admin/manager/vault-manager can update roles
+    } else if (!isDeveloper && !isAdmin && !isOwner && !isVaultManager) {
+      // Only owner/developer/admin/manager/vault-manager can update roles
       throw new Error('Insufficient permissions to update user roles');
     }
 
@@ -1292,6 +1307,7 @@ export async function deleteUser(_id: string, request: NextRequest) {
     const currentUserRoles = (currentUser.roles || []) as string[];
     const isLocationAdmin =
       currentUserRoles.includes('location admin') &&
+      !currentUserRoles.includes('owner') &&
       !currentUserRoles.includes('developer') &&
       !currentUserRoles.includes('admin') &&
       !currentUserRoles.includes('manager');
@@ -1301,13 +1317,14 @@ export async function deleteUser(_id: string, request: NextRequest) {
       const normalizedTargetRoles = targetUserRoles.map(r =>
         String(r).trim().toLowerCase()
       );
+      const isTargetOwner = normalizedTargetRoles.includes('owner');
       const isTargetDeveloper = normalizedTargetRoles.includes('developer');
       const isTargetAdmin = normalizedTargetRoles.includes('admin');
       const isTargetManager = normalizedTargetRoles.includes('manager');
 
-      if (isTargetDeveloper || isTargetAdmin || isTargetManager) {
+      if (isTargetOwner || isTargetDeveloper || isTargetAdmin || isTargetManager) {
         throw new Error(
-          'Location admins cannot delete developers, admins, or managers'
+          'Location admins cannot delete owners, developers, admins, or managers'
         );
       }
     }
@@ -1554,6 +1571,11 @@ function calculateUserChanges(
       field: 'profilePicture',
       original: originalUser.profilePicture,
       updated: updateFields.profilePicture,
+    },
+    {
+      field: 'multiplier',
+      original: originalUser.multiplier,
+      updated: updateFields.multiplier,
     },
   ];
 
@@ -1892,7 +1914,8 @@ function applyRoleBasedFiltering(
 ): UserItem[] {
   const isAdmin =
     currentUserRoles.includes('admin') ||
-    currentUserRoles.includes('developer');
+    currentUserRoles.includes('developer') ||
+    currentUserRoles.includes('owner');
   const isManager = currentUserRoles.includes('manager') && !isAdmin;
   const isLocationAdmin =
     currentUserRoles.includes('location admin') && !isAdmin && !isManager;

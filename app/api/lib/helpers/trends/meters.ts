@@ -812,10 +812,18 @@ function aggregateMetricsWithConversion(
         nativeCurrency
       );
 
-      const convertedDrop = convertFromUSD(dropUSD, displayCurrency);
-      const convertedCancelled = convertFromUSD(cancelledUSD, displayCurrency);
-      const convertedGross = convertFromUSD(grossUSD, displayCurrency);
-      const convertedJackpot = convertFromUSD(jackpotUSD, displayCurrency);
+      let convertedDrop = convertFromUSD(dropUSD, displayCurrency);
+      let convertedCancelled = convertFromUSD(cancelledUSD, displayCurrency);
+      let convertedGross = convertFromUSD(grossUSD, displayCurrency);
+      let convertedJackpot = convertFromUSD(jackpotUSD, displayCurrency);
+
+      if (reviewerMult !== null) {
+        const mult = (1 - reviewerMult);
+        convertedDrop *= mult;
+        convertedCancelled *= mult;
+        convertedGross *= mult;
+        convertedJackpot *= mult;
+      }
 
       accumulator(
         key,
@@ -904,7 +912,7 @@ export async function getMeterTrends(
   } = params;
 
   const isAdminOrDev =
-    userRoles.includes('admin') || userRoles.includes('developer');
+    userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
   const shouldConvert =
     isAdminOrDev && shouldApplyCurrencyConversion(licencee || 'all');
 
@@ -950,7 +958,8 @@ export async function getMeterTrends(
   const isAdmin =
     accessibleLicencees === 'all' ||
     userRoles.includes('admin') ||
-    userRoles.includes('developer');
+    userRoles.includes('developer') ||
+    userRoles.includes('owner');
 
   if (licencee) {
     const filteredLocations = filterLocationsByPermissions(

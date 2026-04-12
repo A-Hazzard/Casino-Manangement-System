@@ -364,15 +364,19 @@ export default function CabinetsEditCabinetModal({
         collectionSettings: {
           multiplier: selectedCabinet.collectionMultiplier || '1',
           lastCollectionTime: initialCollectionTime.toISOString(),
-          lastMetersIn: selectedCabinet.collectionMeters
-            ? String(selectedCabinet.collectionMeters.metersIn ?? '')
-            : '',
-          lastMetersOut: selectedCabinet.collectionMeters
-            ? String(selectedCabinet.collectionMeters.metersOut ?? '')
-            : '',
+          // Prefer sasMeters (source of truth for CR baseline) over legacy collectionMeters
+          lastMetersIn: selectedCabinet.sasMeters?.drop != null && selectedCabinet.sasMeters.drop > 0
+            ? String(selectedCabinet.sasMeters.drop)
+            : selectedCabinet.collectionMeters
+              ? String(selectedCabinet.collectionMeters.metersIn ?? '')
+              : '',
+          lastMetersOut: selectedCabinet.sasMeters?.totalCancelledCredits != null && selectedCabinet.sasMeters.totalCancelledCredits > 0
+            ? String(selectedCabinet.sasMeters.totalCancelledCredits)
+            : selectedCabinet.collectionMeters
+              ? String(selectedCabinet.collectionMeters.metersOut ?? '')
+              : '',
         },
       };
-      // console.log("Initial form data gameType:", initialFormData.gameType);
       setFormData(initialFormData);
 
       // Fetch locations and manufacturers data when modal opens
@@ -473,16 +477,19 @@ export default function CabinetsEditCabinetModal({
                         ? new Date(cabinetDetails.collectionTime).toISOString()
                         : prevData.collectionSettings?.lastCollectionTime) ||
                       initialCollectionTime.toISOString(),
+                    // Prefer sasMeters as source of truth; fall back to collectionMeters then prev state
                     lastMetersIn:
-                      cabinetDetails.collectionMeters &&
-                      cabinetDetails.collectionMeters.metersIn !== undefined
-                        ? String(cabinetDetails.collectionMeters.metersIn)
-                        : prevData.collectionSettings?.lastMetersIn || '',
+                      cabinetDetails.sasMeters?.drop != null && cabinetDetails.sasMeters.drop > 0
+                        ? String(cabinetDetails.sasMeters.drop)
+                        : cabinetDetails.collectionMeters?.metersIn !== undefined
+                          ? String(cabinetDetails.collectionMeters.metersIn)
+                          : prevData.collectionSettings?.lastMetersIn || '',
                     lastMetersOut:
-                      cabinetDetails.collectionMeters &&
-                      cabinetDetails.collectionMeters.metersOut !== undefined
-                        ? String(cabinetDetails.collectionMeters.metersOut)
-                        : prevData.collectionSettings?.lastMetersOut || '',
+                      cabinetDetails.sasMeters?.totalCancelledCredits != null && cabinetDetails.sasMeters.totalCancelledCredits > 0
+                        ? String(cabinetDetails.sasMeters.totalCancelledCredits)
+                        : cabinetDetails.collectionMeters?.metersOut !== undefined
+                          ? String(cabinetDetails.collectionMeters.metersOut)
+                          : prevData.collectionSettings?.lastMetersOut || '',
                   },
                   otherGameType: userModifiedFieldsRef.current.has('gameType')
                     ? prevData.otherGameType
@@ -652,12 +659,17 @@ export default function CabinetsEditCabinetModal({
           lastCollectionTime: selectedCabinet.collectionTime
             ? new Date(selectedCabinet.collectionTime).toISOString()
             : '',
-          lastMetersIn: selectedCabinet.collectionMeters
-            ? String(selectedCabinet.collectionMeters.metersIn ?? '')
-            : '',
-          lastMetersOut: selectedCabinet.collectionMeters
-            ? String(selectedCabinet.collectionMeters.metersOut ?? '')
-            : '',
+          // Match what the form displays — prefer sasMeters for change detection baseline
+          lastMetersIn: selectedCabinet.sasMeters?.drop != null && selectedCabinet.sasMeters.drop > 0
+            ? String(selectedCabinet.sasMeters.drop)
+            : selectedCabinet.collectionMeters
+              ? String(selectedCabinet.collectionMeters.metersIn ?? '')
+              : '',
+          lastMetersOut: selectedCabinet.sasMeters?.totalCancelledCredits != null && selectedCabinet.sasMeters.totalCancelledCredits > 0
+            ? String(selectedCabinet.sasMeters.totalCancelledCredits)
+            : selectedCabinet.collectionMeters
+              ? String(selectedCabinet.collectionMeters.metersOut ?? '')
+              : '',
         },
       };
 

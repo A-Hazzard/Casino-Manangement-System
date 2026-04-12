@@ -291,7 +291,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
     if (!isAdmin) {
       return NextResponse.json(
@@ -416,7 +416,7 @@ export async function PATCH(request: NextRequest) {
 
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
     if (!isAdmin) {
       return NextResponse.json(
@@ -555,7 +555,7 @@ export async function PUT(request: NextRequest) {
 
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
     if (!isAdmin) {
       return NextResponse.json(

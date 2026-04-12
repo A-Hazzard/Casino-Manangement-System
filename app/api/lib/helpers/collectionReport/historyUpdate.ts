@@ -10,7 +10,6 @@
  * @module app/api/lib/helpers/reportHistoryUpdate
  */
 
-import mongoose from 'mongoose';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -23,6 +22,7 @@ export type MachineChange = {
   prevMetersIn: number;
   prevMetersOut: number;
   collectionId: string;
+  timestamp?: Date;
 };
 
 export type UpdateHistoryPayload = {
@@ -110,7 +110,7 @@ async function processSingleMachineChange(
     errors: Array<{ machineId: string; error: string }>;
   }
 ): Promise<void> {
-  const { machineId, locationReportId, collectionId } = change;
+  const { machineId, collectionId } = change;
 
   // Verify the collection exists and belongs to this report
   console.warn(`🔍 Validating collection:`, {
@@ -151,69 +151,58 @@ async function processSingleMachineChange(
 
   console.warn(`✅ Collection validated successfully for machine ${machineId}`);
 
-  // Check if machine exists
-  // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const machine = await Machine.findOne({ _id: machineId });
-  if (!machine) {
-    console.warn(`⚠️ Machine ${machineId} not found`);
-    results.failed++;
-    results.errors.push({
-      machineId,
-      error: 'Machine not found',
-    });
-    return;
-  }
-
-  // Fetch the actual collection document to get CORRECT prevIn/prevOut
-  // The collection's prevIn/prevOut may have been recalculated by the backend
-  // Don't trust the frontend payload which may have stale values
-  // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const actualCollection = await Collections.findOne({ _id: collectionId });
-  if (!actualCollection) {
-    console.error(`❌ Collection ${collectionId} not found`);
-    results.failed++;
-    results.errors.push({
-      machineId,
-      error: 'Collection not found',
-    });
-    return;
-  }
-
-  const historyEntryExists = machine.collectionMetersHistory?.some(
-    (h: { locationReportId: string }) => h.locationReportId === locationReportId
+  // ============================================================================
+  // STEP 1: Synchronize collection document with values from frontend
+  // ============================================================================
+  // The frontend payload (change object) contains the most up-to-date meter values
+  // entered by the user. We must persist these to the Collections document first
+  // to serve as the anchor for recalculation.
+  const syncedCollection = await Collections.findOneAndUpdate(
+    { _id: collectionId },
+    {
+      $set: {
+        metersIn: Number(change.metersIn),
+        metersOut: Number(change.metersOut),
+        prevIn: Number(change.prevMetersIn),
+        prevOut: Number(change.prevMetersOut),
+        collectionTime: change.timestamp ? new Date(change.timestamp) : undefined,
+        timestamp: change.timestamp ? new Date(change.timestamp) : undefined,
+        updatedAt: new Date(),
+      },
+    },
+    { new: true }
   );
 
-  if (historyEntryExists) {
-    // UPDATE existing history entry
-    await updateExistingHistoryEntry(
+  if (!syncedCollection) {
+    console.error(`❌ Failed to sync collection ${collectionId}`);
+    results.failed++;
+    results.errors.push({
       machineId,
-      locationReportId,
-      actualCollection,
-      results
-    );
-  } else {
-    // CREATE new history entry
-    await createNewHistoryEntry(
-      machineId,
-      locationReportId,
-      actualCollection,
-      results
-    );
+      error: 'Failed to synchronize collection data',
+    });
+    return;
   }
 
-  // Update machine's current collectionMeters
-  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-  await Machine.findOneAndUpdate({ _id: machineId }, {
-    $set: {
-      'collectionMeters.metersIn': actualCollection.metersIn,
-      'collectionMeters.metersOut': actualCollection.metersOut,
-      collectionTime: new Date(),
-      updatedAt: new Date(),
-    },
-  });
+  // ============================================================================
+  // STEP 2: Trigger recalculation cascade
+  // ============================================================================
+  // Use recalculateMachineCollections with the current collection as an anchor.
+  // This calculates movement, softMeters, and propagates prevMeters to any
+  // future collections of this machine. It also updates the Machine document's
+  // current meters and its entire collectionMetersHistory array.
+  try {
+    const { recalculateMachineCollections } = await import('./recalculation');
+    await recalculateMachineCollections(machineId);
+    console.warn(`🔄 Recalculation cascade completed for machine ${machineId}`);
+  } catch (recalcError) {
+    console.error(`❌ Recalculation failed for machine ${machineId}:`, recalcError);
+    // Continue even if cascade fails, as the current report entry is already synced
+  }
 
+  // ============================================================================
+  // STEP 3: Mark collection as completed and update machine timestamp
+  // ============================================================================
   // Mark the collection as completed since it's part of a finalized report
-  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
   await Collections.findOneAndUpdate({ _id: collectionId }, {
     $set: {
       isCompleted: true,
@@ -221,122 +210,19 @@ async function processSingleMachineChange(
     },
   });
 
+  // Update machine's collectionTime to match this finalized collection
+  await Machine.findOneAndUpdate({ _id: machineId }, {
+    $set: {
+      collectionTime: syncedCollection.collectionTime || syncedCollection.timestamp || new Date(),
+      updatedAt: new Date(),
+    },
+  });
+
   console.warn(
-    `✅ Updated machine ${machineId} history, meters, and marked collection as completed`
+    `✅ Successfully finalized machine ${machineId} and updated history chain`
   );
   results.updated++;
 }
 
-/**
- * Update existing history entry for a machine
- *
- * @param machineId - Machine ID
- * @param locationReportId - Report ID for the history entry
- * @param actualCollection - Actual collection document with correct values
- * @param results - Results object to update on failure
- */
-async function updateExistingHistoryEntry(
-  machineId: string,
-  locationReportId: string,
-  actualCollection: { metersIn: number; metersOut: number; prevIn: number; prevOut: number },
-  results: {
-    failed: number;
-    errors: Array<{ machineId: string; error: string }>;
-  }
-): Promise<void> {
-  console.warn(
-    `🔄 Updating existing history entry for machine ${machineId}, reportId ${locationReportId}`
-  );
-
-  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-  const historyUpdateResult = await Machine.findOneAndUpdate(
-    { _id: machineId },
-    {
-      $set: {
-        'collectionMetersHistory.$[elem].metersIn': actualCollection.metersIn,
-        'collectionMetersHistory.$[elem].metersOut':
-          actualCollection.metersOut,
-        'collectionMetersHistory.$[elem].prevMetersIn':
-          actualCollection.prevIn,
-        'collectionMetersHistory.$[elem].prevMetersOut':
-          actualCollection.prevOut,
-        'collectionMetersHistory.$[elem].timestamp': new Date(),
-        updatedAt: new Date(),
-      },
-    },
-    {
-      arrayFilters: [
-        {
-          'elem.locationReportId': locationReportId,
-        },
-      ],
-      new: true,
-    }
-  );
-
-  if (!historyUpdateResult) {
-    console.warn(`⚠️ Failed to update history for machine ${machineId}`);
-    results.failed++;
-    results.errors.push({
-      machineId,
-      error: 'Failed to update machine history',
-    });
-  }
-}
-
-/**
- * Create new history entry for a machine
- *
- * @param machineId - Machine ID
- * @param locationReportId - Report ID for the history entry
- * @param actualCollection - Actual collection document with correct values
- * @param results - Results object to update on failure
- */
-async function createNewHistoryEntry(
-  machineId: string,
-  locationReportId: string,
-  actualCollection: { metersIn: number; metersOut: number; prevIn: number; prevOut: number },
-  results: {
-    failed: number;
-    errors: Array<{ machineId: string; error: string }>;
-  }
-): Promise<void> {
-  console.warn(
-    `✨ Creating NEW history entry for machine ${machineId}, reportId ${locationReportId}`
-  );
-
-  const historyEntry = {
-    _id: new mongoose.Types.ObjectId(),
-    metersIn: actualCollection.metersIn,
-    metersOut: actualCollection.metersOut,
-    prevMetersIn: actualCollection.prevIn,
-    prevMetersOut: actualCollection.prevOut,
-    timestamp: new Date(),
-    locationReportId: locationReportId,
-  };
-
-  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-  const historyCreateResult = await Machine.findOneAndUpdate(
-    { _id: machineId },
-    {
-      $push: {
-        collectionMetersHistory: historyEntry,
-      },
-      $set: {
-        updatedAt: new Date(),
-      },
-    },
-    { new: true }
-  );
-
-  if (!historyCreateResult) {
-    console.warn(`⚠️ Failed to create history for machine ${machineId}`);
-    results.failed++;
-    results.errors.push({
-      machineId,
-      error: 'Failed to create machine history',
-    });
-  }
-}
 
 

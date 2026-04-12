@@ -1,23 +1,6 @@
 /**
  * Confirmation Dialog Component
- * Modal dialog for confirming destructive actions with GSAP animations.
- *
- * Features:
- * - Confirmation dialog with title and message
- * - Confirm and cancel buttons
- * - Loading state support
- * - GSAP animations
- * - Customizable button text
- * - Close button
- *
- * @param isOpen - Whether the dialog is visible
- * @param onClose - Callback to close the dialog
- * @param onConfirm - Callback when confirm is clicked
- * @param title - Dialog title
- * @param message - Dialog message
- * @param confirmText - Text for confirm button
- * @param cancelText - Text for cancel button
- * @param isLoading - Whether action is in progress
+ * Modal dialog for confirming actions with GSAP animations.
  */
 "use client";
 
@@ -29,10 +12,6 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import Image from "next/image";
 import { IMAGES } from '@/lib/constants';
 
-// ============================================================================
-// Types
-// ============================================================================
-
 type ConfirmationDialogProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -42,6 +21,9 @@ type ConfirmationDialogProps = {
   confirmText?: string;
   cancelText?: string;
   isLoading?: boolean;
+  footerMessage?: string;
+  showFooterWarning?: boolean;
+  confirmButtonVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 };
 
 export const ConfirmationDialog = ({
@@ -50,9 +32,12 @@ export const ConfirmationDialog = ({
   onConfirm,
   title,
   message,
-  confirmText = "Delete",
+  confirmText = "Confirm",
   cancelText = "Cancel",
   isLoading = false,
+  footerMessage = "This action cannot be undone. Please ensure you want to proceed.",
+  showFooterWarning = true,
+  confirmButtonVariant = 'destructive',
 }: ConfirmationDialogProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -109,7 +94,7 @@ export const ConfirmationDialog = ({
         }}
       />
 
-      <div className="fixed inset-0 flex items-center justify-center p-4 h-screen">
+      <div className="fixed inset-0 flex items-center justify-center p-4">
         <div
           ref={modalRef}
           className="w-full max-w-md rounded-md bg-container shadow-lg"
@@ -137,8 +122,8 @@ export const ConfirmationDialog = ({
             <div className="text-center">
               <div className="mb-4 flex justify-center">
                 <Image
-                  src={IMAGES.deleteIcon}
-                  alt="Delete"
+                  src={confirmButtonVariant === 'destructive' ? IMAGES.deleteIcon : IMAGES.details}
+                  alt="Status Icon"
                   width={64}
                   height={64}
                 />
@@ -146,10 +131,11 @@ export const ConfirmationDialog = ({
               <p className="mb-4 text-lg font-semibold text-grayHighlight">
                 {message}
               </p>
-              <p className="text-sm text-grayHighlight">
-                This action cannot be undone. This item will be permanently
-                removed from the system.
-              </p>
+              {showFooterWarning && (
+                <p className="text-sm text-grayHighlight">
+                  {footerMessage}
+                </p>
+              )}
             </div>
           </div>
 
@@ -161,10 +147,11 @@ export const ConfirmationDialog = ({
                   e.stopPropagation();
                   handleConfirm();
                 }}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                variant={confirmButtonVariant}
+                className={confirmButtonVariant === 'destructive' ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
                 disabled={isLoading}
               >
-                {isLoading ? "Deleting..." : confirmText}
+                {isLoading ? (confirmButtonVariant === 'destructive' ? "Deleting..." : "Processing...") : confirmText}
               </Button>
               <Button
                 onClick={(e) => {
@@ -185,4 +172,3 @@ export const ConfirmationDialog = ({
     document.body
   );
 };
-

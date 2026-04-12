@@ -16,16 +16,9 @@
  * Calculate the default collection time for a new collection
  *
  * Logic:
- * - Takes the location's gameDayOffset (e.g., 10 for 10 AM, 16 for 4 PM)
- * - Subtracts 2 hours to get the collection time
- * - Sets the time to the target date at the calculated hour
- * - gameDayOffset is in the user's local timezone (not UTC)
- *
- * Example:
- * - Target date: October 8th, 2025
- * - gameDayOffset: 10 (10 AM)
- * - Calculated time: 8:00 AM (10 - 2)
- * - Result: October 8th, 2025 at 8:00 AM
+ * - Takes the location's gameDayOffset (e.g., 8 for 8 AM, 14 for 2 PM)
+ * - Returns exactly 1 minute before the offset (e.g., 7:59 AM for 8, 1:59 PM for 14)
+ * - gameDayOffset is in the user's local timezone
  *
  * @param gameDayOffset - The location's game day offset (hour in 24-hour format, 0-23)
  * @param targetDate - The target date for the collection (defaults to today)
@@ -40,19 +33,20 @@ export function calculateDefaultCollectionTime(
   // Default to 10 AM if no gameDayOffset provided
   const offsetHour = gameDayOffset ?? 10;
 
-  // Subtract 2 hours from the gameDayOffset
-  const collectionHour = offsetHour - 2;
-
-  // Create a new date for the target date at the calculated hour
+  // Create a new date at the offset hour
   const collectionTime = new Date(
     baseDate.getFullYear(),
     baseDate.getMonth(),
     baseDate.getDate(),
-    collectionHour,
-    0, // Minutes: 0
-    0, // Seconds: 0
-    0 // Milliseconds: 0
+    offsetHour,
+    0, // Start at 00 minutes
+    0,
+    0
   );
+
+  // Subtract 1 minute to get 59 of the previous hour
+  // e.g., 8:00 AM -> 7:59 AM
+  collectionTime.setMinutes(collectionTime.getMinutes() - 1);
 
   return collectionTime;
 }

@@ -20,7 +20,6 @@ import Image from 'next/image';
 type CollectionReportHeaderProps = {
   activeTab: string;
   refreshing: boolean;
-  loading: boolean;
   onRefresh: () => void;
   onCreateDesktop: () => void;
   onCreateMobile: () => void;
@@ -29,7 +28,6 @@ type CollectionReportHeaderProps = {
 export default function CollectionReportHeader({
   activeTab,
   refreshing,
-  loading,
   onRefresh,
   onCreateDesktop,
   onCreateMobile,
@@ -60,28 +58,20 @@ export default function CollectionReportHeader({
 
         {/* Create Button */}
         {activeTab === 'collection' && (
-          <>
-            {refreshing || loading ? (
-              <div className="flex h-9 w-28 animate-pulse items-center justify-center rounded-md bg-gray-200 sm:w-44" />
-            ) : (
-              <Button
-                onClick={() => {
-                  if (refreshing) return;
-                  if (window.innerWidth < 1280) {
-                    onCreateMobile();
-                  } else {
-                    onCreateDesktop();
-                  }
-                }}
-                className="flex items-center gap-1 rounded-md bg-buttonActive text-white px-2 py-1 text-xs font-medium hover:bg-purple-700 transition-colors shadow-sm sm:gap-2 sm:px-4 sm:py-2 sm:text-sm flex-shrink-0"
-                disabled={refreshing}
-              >
-                <PlusCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">Create Collection Report</span>
-                <span className="sm:hidden">Create</span>
-              </Button>
-            )}
-          </>
+          <Button
+            onClick={() => {
+              if (window.innerWidth < 1280) {
+                onCreateMobile();
+              } else {
+                onCreateDesktop();
+              }
+            }}
+            className="flex items-center gap-1 rounded-md bg-buttonActive text-white px-2 py-1 text-xs font-medium hover:bg-purple-700 transition-colors shadow-sm sm:gap-2 sm:px-4 sm:py-2 sm:text-sm flex-shrink-0"
+          >
+            <PlusCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">Create Collection Report</span>
+            <span className="sm:hidden">Create</span>
+          </Button>
         )}
       </div>
     </div>

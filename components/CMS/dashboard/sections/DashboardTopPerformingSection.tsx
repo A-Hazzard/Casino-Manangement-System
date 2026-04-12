@@ -23,7 +23,7 @@ export type DashboardTopPerformingSectionProps = {
   selectedLicencee?: string;
   licenceeName: string;
   renderCustomizedLabel: (props: CustomizedLabelProps) => ReactNode;
-  onViewMachine?: (item: TopPerformingItem) => void;
+  onViewCabinet?: (item: TopPerformingItem) => void;
   onViewLocation?: (item: TopPerformingItem) => void;
 };
 
@@ -39,7 +39,7 @@ export function DashboardTopPerformingSection({
   selectedLicencee,
   licenceeName,
   renderCustomizedLabel,
-  onViewMachine,
+  onViewCabinet,
   onViewLocation,
 }: DashboardTopPerformingSectionProps) {
   const NoDataMessage = ({ message }: { message: string }) => (
@@ -138,7 +138,7 @@ export function DashboardTopPerformingSection({
                         <button
                           onClick={e => {
                             e.stopPropagation();
-                            onViewMachine?.(item);
+                            onViewCabinet?.(item);
                           }}
                           className="flex-shrink-0"
                           title="View machine preview"

@@ -35,7 +35,7 @@ export type AddUserForm = {
   idType?: string;
   idNumber?: string;
   notes?: string;
-  multiplier?: number | null;
+  multiplier?: number;
 };
 
 export type AddLicenceeForm = {

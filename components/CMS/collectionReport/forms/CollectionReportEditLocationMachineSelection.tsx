@@ -13,7 +13,7 @@
 
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
-import { LocationSelect } from '@/components/shared/ui/custom-select';
+import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import type {
   CollectionReportLocationWithMachines,
@@ -21,6 +21,7 @@ import type {
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import { toast } from 'sonner';
 
 type EditCollectionLocationMachineSelectionProps = {
   locations: CollectionReportLocationWithMachines[];
@@ -54,19 +55,20 @@ export default function CollectionReportEditLocationMachineSelection({
   editingEntryId,
 }: EditCollectionLocationMachineSelectionProps) {
   return (
-    <div className="flex h-[200px] lg:h-auto min-h-0 w-full lg:w-1/5 flex-col space-y-3 overflow-y-auto border-b lg:border-b-0 lg:border-r border-gray-300 p-3 md:p-4 shrink-0 transition-all">
-      <LocationSelect
-        value={selectedLocationId}
-        onValueChange={setSelectedLocationId}
-        locations={locations.map(loc => ({
-          _id: String(loc._id),
-          name: loc.name,
-        }))}
-        placeholder="Select Location"
-        disabled={true}
-        className="w-full"
-        emptyMessage="No locations found"
-      />
+    <div className="flex flex-1 flex-col h-full min-h-0 w-full space-y-3 p-3 md:p-4 transition-all">
+      <div className="pointer-events-none opacity-50">
+        <LocationSingleSelect
+          selectedLocation={selectedLocationId}
+          onSelectionChange={setSelectedLocationId}
+          locations={locations.map(loc => ({
+            id: String(loc._id),
+            name: loc.name,
+            sasEnabled: false,
+          }))}
+          placeholder="Select Location"
+          includeAllOption={false}
+        />
+      </div>
 
       {/* Machine search bar - always visible when location is selected */}
       {selectedLocationId && (
@@ -88,7 +90,7 @@ export default function CollectionReportEditLocationMachineSelection({
       )}
 
       {/* Machine list */}
-      <div className="min-h-0 space-y-2">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
         {selectedLocationId ? (
           isLoadingMachines ? (
             <div className="space-y-2">
@@ -109,14 +111,21 @@ export default function CollectionReportEditLocationMachineSelection({
                       ? 'default'
                       : 'outline'
                 }
-                className={`h-auto w-full justify-start whitespace-normal break-words px-3 py-2 text-left ${
-                  collectedMachineEntries.find(
-                    e => e.machineId === String(machine._id)
-                  ) && !editingEntryId
-                    ? 'cursor-not-allowed opacity-60'
-                    : ''
-                }`}
+                className="h-auto w-full justify-start whitespace-normal break-words px-3 py-2 text-left"
                 onClick={() => {
+                  if (
+                    collectedMachineEntries.find(
+                      e => e.machineId === String(machine._id)
+                    ) &&
+                    !editingEntryId
+                  ) {
+                    toast.info(
+                      `${machine.name} is already in the list. Click edit on the right to modify.`,
+                      { position: 'top-left' }
+                    );
+                    return;
+                  }
+
                   if (editingEntryId) {
                     const entryBeingEdited = collectedMachineEntries.find(
                       e => e._id === editingEntryId
@@ -126,14 +135,7 @@ export default function CollectionReportEditLocationMachineSelection({
                       return;
                     }
                   }
-                  if (
-                    collectedMachineEntries.find(
-                      e => e.machineId === String(machine._id)
-                    ) &&
-                    !editingEntryId
-                  ) {
-                    return;
-                  }
+                  
                   if (selectedMachineId === String(machine._id)) {
                     setSelectedMachineId('');
                     return;
@@ -145,11 +147,7 @@ export default function CollectionReportEditLocationMachineSelection({
                   (editingEntryId !== null &&
                     collectedMachineEntries.find(
                       e => e._id === editingEntryId
-                    )?.machineId !== String(machine._id)) ||
-                  (collectedMachineEntries.find(
-                    e => e.machineId === String(machine._id)
-                  ) &&
-                    !editingEntryId)
+                    )?.machineId !== String(machine._id))
                 }
               >
                 {formatMachineDisplayNameWithBold(machine)}

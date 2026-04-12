@@ -17,7 +17,6 @@ import { Meters } from '@/app/api/lib/models/meters';
 import { LocationResponse, MeterMatchStage } from '@/lib/types/location';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * Main GET handler for searching locations
  *

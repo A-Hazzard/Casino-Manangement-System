@@ -39,8 +39,10 @@ const formatSmartDecimal = (value: number): string => {
 export async function getAllCollectionReportsWithMachineCounts(
   licenceeId?: string,
   startDate?: Date,
-  endDate?: Date
-): Promise<CollectionReportRow[]> {
+  endDate?: Date,
+  page = 1,
+  limit = 50
+): Promise<{ reports: CollectionReportRow[]; total: number }> {
   let rawReports: Array<Record<string, unknown>> = [];
 
   // Build base match criteria with deletedAt filter
@@ -100,6 +102,25 @@ export async function getAllCollectionReportsWithMachineCounts(
         preserveNullAndEmptyArrays: true,
       },
     },
+    // Lookup licencee to get live includeJackpot flag (not stored on old CollectionReport docs)
+    {
+      $lookup: {
+        from: 'licencees',
+        let: { licenceeId: '$locationDetails.rel.licencee' },
+        pipeline: [
+          { $match: { $expr: { $eq: ['$_id', '$$licenceeId'] } } },
+          { $project: { includeJackpot: 1 } },
+        ],
+        as: 'licenceeDetails',
+      },
+    },
+    {
+      $addFields: {
+        licenceeIncludeJackpot: {
+          $ifNull: [{ $arrayElemAt: ['$licenceeDetails.includeJackpot', 0] }, false],
+        },
+      },
+    },
     // Apply licencee filter only if provided
     ...(licenceeId
       ? [
@@ -114,6 +135,18 @@ export async function getAllCollectionReportsWithMachineCounts(
       : []),
     { $sort: { timestamp: -1 } },
   ];
+
+  // Get total count separately (efficient — no skip/limit on count query)
+  const countPipeline: PipelineStage[] = [
+    ...aggregationPipeline,
+    { $count: 'total' },
+  ];
+  const [countResult] = await CollectionReport.aggregate(countPipeline);
+  const total: number = countResult?.total ?? 0;
+
+  // Apply pagination inside the pipeline so Meters queries only run for this page
+  const skip = (page - 1) * limit;
+  aggregationPipeline.push({ $skip: skip }, { $limit: limit });
 
   rawReports = await CollectionReport.aggregate(aggregationPipeline);
 
@@ -166,21 +199,29 @@ export async function getAllCollectionReportsWithMachineCounts(
         _id: '$locationReportId',
         collectedMachines: { $sum: 1 },
         calculatedGross: {
+          // Use stored movement.gross (denomination-adjusted) to match the detail page.
+          // Fall back to raw delta for legacy documents that pre-date the movement.gross field.
           $sum: {
-            $subtract: [
-              { $subtract: [{ $toDouble: { $ifNull: ['$metersIn', 0] } }, { $toDouble: { $ifNull: ['$prevIn', 0] } }] },
-              { $subtract: [{ $toDouble: { $ifNull: ['$metersOut', 0] } }, { $toDouble: { $ifNull: ['$prevOut', 0] } }] },
+            $ifNull: [
+              { $toDouble: '$movement.gross' },
+              {
+                $subtract: [
+                  { $subtract: [{ $toDouble: { $ifNull: ['$metersIn', 0] } }, { $toDouble: { $ifNull: ['$prevIn', 0] } }] },
+                  { $subtract: [{ $toDouble: { $ifNull: ['$metersOut', 0] } }, { $toDouble: { $ifNull: ['$prevOut', 0] } }] },
+                ],
+              },
             ],
           },
         },
         calculatedSasGross: { $sum: { $toDouble: { $ifNull: ['$sasMeters.gross', 0] } } },
         calculatedJackpot: { $sum: { $toDouble: { $ifNull: ['$sasMeters.jackpot', 0] } } },
-        // Collect meter query metadata for bulk processing
+        // Collect per-machine SAS time windows + stored jackpot so we can query Meters per-report
         meterQueryMeta: {
           $push: {
             machineId: '$machineId',
             startTime: '$sasMeters.sasStartTime',
             endTime: '$sasMeters.sasEndTime',
+            storedJackpot: '$sasMeters.jackpot',
           },
         },
       },
@@ -214,54 +255,62 @@ export async function getAllCollectionReportsWithMachineCounts(
     machineCounts.map(item => [item._id, item.totalMachines])
   );
 
-  // Batch query 3: Get live meter data from Meters collection for all machine/time-range pairs
-  // This ensures the list view is as accurate as the detail page
+  // Query Meters per-report to get accurate SAS gross.
+  // We CANNOT batch across all reports and group by machine — a machine that appears
+  // in multiple reports would have all its time windows summed together, inflating SAS gross.
+  // Instead, run one Meters aggregation per report, each scoped to its own machines+windows.
+  // This mirrors exactly what the detail page does for a single report.
   const { Meters } = await import('@/app/api/lib/models/meters');
-  const meterQueryPairs: Array<{ machine: string; readAt: { $gte: Date; $lte: Date } }> = [];
-  
-  collectionAggregation.forEach(report => {
-    if (report.meterQueryMeta) {
-      report.meterQueryMeta.forEach((meta: { machineId?: string; startTime?: string; endTime?: string }) => {
-        if (meta.machineId && meta.startTime && meta.endTime) {
-          meterQueryPairs.push({
-            machine: meta.machineId,
-            readAt: { 
-              $gte: new Date(meta.startTime), 
-              $lte: new Date(meta.endTime) 
-            }
-          });
-        }
-      });
-    }
-  });
+  const reportSasMap = new Map<string, { sasGross: number; jackpot: number }>();
 
-  const liveMeterDataMap = new Map<string, { sasGross: number; jackpot: number }>();
-  
-  if (meterQueryPairs.length > 0) {
-    // Perform bulk aggregation on Meters for all machine/range pairs
-    const liveMeters = await Meters.aggregate([
-      {
-        $match: {
-          $or: meterQueryPairs
-        }
-      },
-      {
-        $group: {
-          _id: '$machine',
-          totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-          totalCancelled: { $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] } },
-          totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
+  await Promise.all(
+    collectionAggregation.map(async (report) => {
+      const meta: Array<{ machineId?: string; startTime?: string; endTime?: string; storedJackpot?: number }> =
+        report.meterQueryMeta || [];
+      const validMeta = meta.filter(m => m.machineId && m.startTime && m.endTime);
+
+      if (validMeta.length === 0) return;
+
+      const pairs = validMeta.map(m => ({
+        machine: m.machineId,
+        readAt: { $gte: new Date(m.startTime!), $lte: new Date(m.endTime!) },
+      }));
+
+      // Group by machine (mirrors detail page) so we can apply per-machine jackpot fallback.
+      // movement.jackpot is 0 in Meters for some machines — fall back to sasMeters.jackpot snapshot.
+      const metersByMachine: Array<{ _id: string; totalDrop: number; totalCancelled: number; totalJackpot: number }> =
+        await Meters.aggregate([
+          { $match: { $or: pairs } },
+          {
+            $group: {
+              _id: '$machine',
+              totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
+              totalCancelled: { $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] } },
+              totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
+            },
+          },
+        ]);
+
+      const meterMap = new Map(metersByMachine.map(m => [m._id, m]));
+
+      let totalSasGross = 0;
+      let totalJackpot = 0;
+
+      for (const m of validMeta) {
+        const meterData = meterMap.get(m.machineId!);
+        if (meterData) {
+          totalSasGross += meterData.totalDrop - meterData.totalCancelled;
+          // Prefer movement.jackpot if non-zero; otherwise fall back to stored sasMeters.jackpot
+          totalJackpot += meterData.totalJackpot !== 0 ? meterData.totalJackpot : (m.storedJackpot || 0);
+        } else {
+          // No Meters data for this machine — use stored jackpot snapshot
+          totalJackpot += m.storedJackpot || 0;
         }
       }
-    ]);
 
-    liveMeters.forEach(m => {
-      liveMeterDataMap.set(m._id, {
-        sasGross: m.totalDrop - m.totalCancelled,
-        jackpot: m.totalJackpot
-      });
-    });
-  }
+      reportSasMap.set(report._id, { sasGross: totalSasGross, jackpot: totalJackpot });
+    })
+  );
 
   // Define type for the enriched report from aggregation
   type EnrichedCollectionReport = {
@@ -304,22 +353,6 @@ export async function getAllCollectionReportsWithMachineCounts(
       meterQueryMeta: [] as Array<{ machineId?: string; startTime?: string; endTime?: string }>,
     };
 
-    // Calculate "live" SAS metrics from enriched meter data if available
-    let liveSasGross = 0;
-    let liveJackpot = 0;
-    
-    if (collectionData.meterQueryMeta) {
-      collectionData.meterQueryMeta.forEach((meta: { machineId?: string }) => {
-        if (meta.machineId) {
-          const liveData = liveMeterDataMap.get(meta.machineId);
-          if (liveData) {
-            liveSasGross += liveData.sasGross;
-            liveJackpot += liveData.jackpot;
-          }
-        }
-      });
-    }
-
     // Get location ID for machine count lookup
     let locationId = doc.location;
     if (typeof locationId === 'object' && locationId !== null) {
@@ -354,19 +387,22 @@ export async function getAllCollectionReportsWithMachineCounts(
     // Priority: calculatedGross (Machine Delta) -> stored totalGross -> totalSasGross from report -> calculatedSasGross
     const displayGross = collectionData.calculatedGross || storedGross || collectionData.calculatedSasGross;
 
-    // Use the stored variance — same plain value shown as "Total Variation" on the detail page
-    // Prioritize calculation to match the detail page's "Total Variation"
-    const reportIncludeJackpot = Boolean(doc.includeJackpot);
-    
-    // Priority for SAS data: Live Meter Data -> stored totalSasGross -> calculatedSasGross (snapshot)
-    const sasGrossFromReport = liveSasGross || (doc.totalSasGross as number) || collectionData.calculatedSasGross || 0;
-    const jackpotFromReport = liveJackpot || (doc.totalJackpot as number) || collectionData.calculatedJackpot || 0;
-    
+    // SAS gross: prefer live Meters query (per-report, scoped to this report's time windows).
+    // Fall back to stored sasMeters.gross if Meters returned nothing for this report.
+    // Use live licenceeIncludeJackpot fetched via $lookup — older CollectionReport docs
+    // have includeJackpot=false by default and cannot be trusted.
+    const reportIncludeJackpot = Boolean(doc.licenceeIncludeJackpot);
+    const liveSas = reportSasMap.get(locationReportId);
+    const sasGrossFromReport = liveSas ? liveSas.sasGross : (collectionData.calculatedSasGross || 0);
+    // Jackpot is computed per-machine in the Meters query above:
+    //   - uses movement.jackpot if non-zero, else falls back to stored sasMeters.jackpot
+    // This mirrors the detail page's per-machine fallback logic exactly.
+    const jackpotFromReport = liveSas ? liveSas.jackpot : (collectionData.calculatedJackpot || 0);
+
     // Calculate adjusted SAS gross for variation calculation (Drop - NetCancelled - Jackpot if required)
     const adjustedSasGross = reportIncludeJackpot ? sasGrossFromReport - jackpotFromReport : sasGrossFromReport;
     const calculatedVariation = displayGross - adjustedSasGross;
 
-    // Use calculatedVariation. We trust live meter data to resolve "Bruh what are u doing" issues.
     const displayVariation = calculatedVariation;
 
     // Determine collector value (user ID) and display name
@@ -488,6 +524,6 @@ export async function getAllCollectionReportsWithMachineCounts(
     return result;
   });
 
-  return enrichedReports;
+  return { reports: enrichedReports, total };
 }
 

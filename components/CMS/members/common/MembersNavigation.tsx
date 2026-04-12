@@ -2,7 +2,7 @@
 import { Button } from '@/components/shared/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/shared/ui/tabs';
 import type { MembersTab, MembersView } from '@/shared/types/entities';
-import { BarChart3, RefreshCw, Users } from 'lucide-react';
+import { Activity, BarChart3, RefreshCw, Users } from 'lucide-react';
 
 type MembersNavigationProps = {
   availableTabs: MembersTab[];
@@ -34,6 +34,8 @@ export default function MembersNavigation({
         return <Users className="h-4 w-4" />;
       case 'bar-chart':
         return <BarChart3 className="h-4 w-4" />;
+      case 'activity':
+        return <Activity className="h-4 w-4" />;
       default:
         return <Users className="h-4 w-4" />;
     }
@@ -74,7 +76,7 @@ export default function MembersNavigation({
                 onValueChange={onTabChange}
                 className="w-full"
               >
-                <TabsList className="grid grid-cols-2 bg-gray-100">
+                <TabsList className={`grid ${availableTabs.length === 3 ? 'grid-cols-3 w-[360px]' : 'grid-cols-2'} bg-gray-100`}>
                   {availableTabs.map(tab => (
                     <TabsTrigger
                       key={tab.id}

@@ -247,7 +247,7 @@ export async function PUT(request: NextRequest) {
         String(role).toLowerCase()
       ) || [];
     const canManageAssignments =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
     // DO NOT require locations or licencees for admin and developer roles
     if (!canManageAssignments) {

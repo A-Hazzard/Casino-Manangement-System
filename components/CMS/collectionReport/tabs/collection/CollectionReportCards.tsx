@@ -271,7 +271,7 @@ export default function CollectionReportCards({
                     onClick={() =>
                       router.push(
                         `/collection-report/report/${
-                          row?.locationReportId || ''
+                          row?.locationReportId || row?._id || ''
                         }`
                       )
                     }

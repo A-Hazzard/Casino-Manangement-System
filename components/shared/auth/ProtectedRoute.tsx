@@ -136,31 +136,10 @@ export default function ProtectedRoute({
         }
       }
 
-      // Check if user is reviewer-only (has ONLY reviewer role, no other roles)
-      const isReviewerOnly =
-        user.roles.length === 1 && user.roles.includes('reviewer');
-
-      if (isReviewerOnly) {
-        // Allowed paths: /locations, /cabinets (and subpaths)
-        const isAllowedPath =
-          pathname === '/locations' ||
-          pathname?.startsWith('/locations/') ||
-          pathname === '/cabinets' ||
-          pathname?.startsWith('/cabinets/');
-
-        if (!isAllowedPath) {
-          router.push('/locations');
-          return;
-        }
-        // Reviewer is on an allowed path — skip requiredPage/hasPageAccess check
-        setIsChecking(false);
-        return;
-      }
-
       // Check local permissions first (faster)
       const userRoles = (user?.roles || []) as string[];
       const isAdminOrDeveloper =
-        userRoles.includes('developer') || userRoles.includes('admin');
+        userRoles.includes('developer') || userRoles.includes('owner') || userRoles.includes('admin');
 
       // STEP 1: Authorization Bypass for Developers and Admins
       // Developers and Admins have unrestricted access to all pages and locations
@@ -172,7 +151,7 @@ export default function ProtectedRoute({
       // STEP 2: Standard Authorization Check
       if (requireAdminAccess) {
         const hasAdminLocal =
-          user.roles.includes('admin') || user.roles.includes('developer');
+          user.roles.includes('admin') || user.roles.includes('owner') || user.roles.includes('developer');
         if (!hasAdminLocal) {
           router.push('/'); // Redirect to dashboard if not admin
           return;
@@ -197,6 +176,7 @@ export default function ProtectedRoute({
           requireAdminAccess &&
           (!user.roles ||
             (!user.roles.includes('admin') &&
+              !user.roles.includes('owner') &&
               !user.roles.includes('developer')))
         ) {
           const hasAdmin = await hasAdminAccessDb();
@@ -228,6 +208,7 @@ export default function ProtectedRoute({
           requireAdminAccess &&
           user.roles &&
           !user.roles.includes('admin') &&
+          !user.roles.includes('owner') &&
           !user.roles.includes('developer')
         ) {
           router.push('/');

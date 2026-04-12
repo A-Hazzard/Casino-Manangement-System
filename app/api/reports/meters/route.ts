@@ -236,16 +236,6 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 7.5: Calculate reviewer multiplier if applicable
-    // ============================================================================
-    const reviewerMultRaw =
-      userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase()).includes('reviewer') &&
-      (userPayload as { multiplier?: number | null })?.multiplier != null
-        ? (userPayload as { multiplier?: number | null }).multiplier!
-        : null;
-    const reviewerMultiplier = reviewerMultRaw !== null ? (1 - reviewerMultRaw) : null;
-
-    // ============================================================================
     // STEP 8: Transform machine and meter data into report format
     // ============================================================================
     let transformedData = transformMeterData(
@@ -253,8 +243,7 @@ export async function GET(req: NextRequest) {
       metersMap,
       locationMap,
       licenceeSettingsMap,
-      locationLicenceeMap,
-      reviewerMultiplier
+      locationLicenceeMap
     );
 
     // ============================================================================
@@ -266,9 +255,28 @@ export async function GET(req: NextRequest) {
       params.search
     );
 
-    console.log('[Meters Report API] After search filter:', {
+    // ============================================================================
+    // STEP 9.5: Apply reviewer multiplier scaling
+    // ============================================================================
+    const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+    if (reviewerMult !== null) {
+      const mult = 1 - reviewerMult;
+      transformedData = transformedData.map(item => ({
+        ...item,
+        metersIn: item.metersIn * mult,
+        metersOut: item.metersOut * mult,
+        jackpot: item.jackpot * mult,
+        billIn: item.billIn * mult,
+        voucherOut: item.voucherOut * mult,
+        attPaidCredits: item.attPaidCredits * mult,
+        netGross: item.netGross * mult,
+      }));
+    }
+
+    console.log('[Meters Report API] After search and multiplier:', {
       filteredCount: transformedData.length,
       searchTerm: params.search,
+      hasMultiplier: reviewerMult !== null,
     });
 
     // ============================================================================

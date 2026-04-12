@@ -48,9 +48,10 @@ export const hasPageAccess = (
   page: PageName
 ): boolean => {
   const pagePermissions: Record<PageName, UserRole[]> = {
-    dashboard: ['developer', 'admin', 'manager', 'location admin'], // ✅ Location admin can access dashboard
+    dashboard: ['developer', 'owner', 'admin', 'manager', 'location admin'],
     machines: [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
@@ -60,29 +61,32 @@ export const hasPageAccess = (
       'vault-manager',
       'cashier',
     ],
-    locations: ['developer', 'admin', 'manager', 'location admin', 'reviewer'],
+    locations: ['developer', 'owner', 'admin', 'manager', 'location admin', 'reviewer'],
     'location-details': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
       'technician',
       'reviewer',
     ],
-    members: ['developer', 'admin'], // ✅ Restricted to developer and admin
-    'member-details': ['developer', 'admin'], // ✅ Restricted to developer and admin
+    members: ['developer', 'owner', 'admin'],
+    'member-details': ['developer', 'owner', 'admin'],
     'collection-report': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
       'collector',
     ],
-    reports: ['developer', 'admin', 'manager', 'location admin'], // ✅ Restricted to developer, admin, manager, and location admin
-    sessions: ['developer', 'admin'], // ✅ Restricted to developer and admin
-    administration: ['developer', 'admin', 'manager', 'location admin'],
+    reports: ['developer', 'owner', 'admin', 'manager', 'location admin'],
+    sessions: ['developer', 'owner', 'admin'],
+    administration: ['developer', 'owner', 'admin', 'manager', 'location admin'],
     'vault-management': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
@@ -90,6 +94,7 @@ export const hasPageAccess = (
     ],
     'vault-cashier': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
@@ -97,6 +102,7 @@ export const hasPageAccess = (
     ],
     'vault-role-selection': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
@@ -122,25 +128,28 @@ export const hasTabAccess = (
   tab: string
 ): boolean => {
   const tabPermissions: Record<string, UserRole[]> = {
-    'administration-users': ['developer', 'admin', 'manager', 'location admin'],
-    'administration-licencees': ['developer', 'admin'],
-    'administration-countries': ['developer', 'admin'],
+    'administration-users': ['developer', 'owner', 'admin', 'manager', 'location admin'],
+    'administration-licencees': ['developer', 'owner', 'admin'],
+    'administration-countries': ['developer', 'owner', 'admin'],
     'administration-activity-logs': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
     ],
-    'administration-feedback': ['developer', 'admin'],
+    'administration-feedback': ['developer', 'owner', 'admin'],
     'collection-reports-monthly': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
     ],
-    'collection-reports-manager-schedules': ['developer', 'admin', 'manager'],
+    'collection-reports-manager-schedules': ['developer', 'owner', 'admin', 'manager'],
     'collection-reports-collector-schedules': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
@@ -158,7 +167,7 @@ export const hasTabAccess = (
  * @returns boolean indicating if user has admin access
  */
 export const hasAdminAccess = (userRoles: UserRole[]): boolean => {
-  return userRoles.includes('developer') || userRoles.includes('admin');
+  return userRoles.includes('developer') || userRoles.includes('owner') || userRoles.includes('admin');
 };
 
 /**
@@ -189,13 +198,14 @@ export const shouldShowNavigationLink = (
   // the highest-level role. This affects NAV/Sidebar visibility only and
   // does not change actual route access rules handled by hasPageAccess.
   if (page === 'sessions' || page === 'members') {
-    return userRoles.includes('developer') || userRoles.includes('admin');
+    return userRoles.includes('developer') || userRoles.includes('owner') || userRoles.includes('admin');
   }
 
   // Hide vault links unless the user has authorized roles
   if (page === 'vault-management') {
     return (
       userRoles.includes('developer') ||
+      userRoles.includes('owner') ||
       userRoles.includes('admin') ||
       userRoles.includes('manager') ||
       userRoles.includes('location admin') ||
@@ -206,6 +216,7 @@ export const shouldShowNavigationLink = (
   if (page === 'vault-cashier') {
     return (
       userRoles.includes('developer') ||
+      userRoles.includes('owner') ||
       userRoles.includes('admin') ||
       userRoles.includes('manager') ||
       userRoles.includes('location admin') ||
@@ -228,6 +239,7 @@ export const shouldShowNavigationLink = (
 export const getRoleDisplayName = (userRoles: UserRole[]): string => {
   const roleDisplayNames: Record<string, string> = {
     developer: 'Developer',
+    owner: 'Owner',
     admin: 'Administrator',
     manager: 'Manager',
     'location admin': 'Location Admin',
@@ -399,6 +411,7 @@ export const canEditMachines = (userRoles: UserRole[] | undefined): boolean => {
   // Check if user has a role that allows editing
   return [
     'developer',
+    'owner',
     'admin',
     'manager',
     'location admin',
@@ -420,7 +433,7 @@ export const canDeleteMachines = (userRoles: UserRole[] | undefined): boolean =>
   }
 
   // Check if user has a role that allows deletion
-  return ['developer', 'admin', 'manager', 'location admin'].some(role =>
+  return ['developer', 'owner', 'admin', 'manager', 'location admin'].some(role =>
     userRoles.includes(role as UserRole)
   );
 };
@@ -435,7 +448,7 @@ export const canManageLocations = (
 ): boolean => {
   if (!userRoles || userRoles.length === 0) return false;
 
-  return ['developer', 'admin', 'manager', 'location admin'].some(role =>
+  return ['developer', 'owner', 'admin', 'manager', 'location admin'].some(role =>
     userRoles.includes(role as UserRole)
   );
 };
@@ -451,7 +464,7 @@ export const canViewArchivedMachines = (
   if (!userRoles || userRoles.length === 0) return false;
 
   // Admins, developers, and technicians can view archived machines
-  return ['developer', 'admin', 'technician'].some(role =>
+  return ['developer', 'owner', 'admin', 'technician'].some(role =>
     userRoles.includes(role as UserRole)
   );
 };
@@ -467,7 +480,7 @@ export const canPermanentlyDeleteMachines = (
   if (!userRoles || userRoles.length === 0) return false;
 
   // Only developers and admins can permanently delete
-  return ['developer', 'admin'].some(role =>
+  return ['developer', 'owner', 'admin'].some(role =>
     userRoles.includes(role as UserRole)
   );
 };

@@ -510,32 +510,19 @@ async function getLocationCurrencies(
 function convertDailyTrendItems(
   dailyData: DailyTrendItem[],
   locationCurrencies: Map<string, string>,
-  displayCurrency: CurrencyCode,
-  reviewerMultiplier: number | null = null
+  displayCurrency: CurrencyCode
 ): DailyTrendItem[] {
   return dailyData.map(item => {
     const nativeCurrency = locationCurrencies.get(item.location) || 'USD';
     
     // Step 1: Currency Conversion
-    let handle = convertFromUSD(convertToUSD(item.handle, nativeCurrency), displayCurrency);
-    let winLoss = convertFromUSD(convertToUSD(item.winLoss, nativeCurrency), displayCurrency);
-    let jackpot = convertFromUSD(convertToUSD(item.jackpot, nativeCurrency), displayCurrency);
-    let drop = convertFromUSD(convertToUSD(item.drop, nativeCurrency), displayCurrency);
-    let totalCancelledCredits = convertFromUSD(convertToUSD(item.totalCancelledCredits, nativeCurrency), displayCurrency);
-    let gross = convertFromUSD(convertToUSD(item.gross, nativeCurrency), displayCurrency);
-    let netGross = item.netGross !== undefined ? convertFromUSD(convertToUSD(item.netGross, nativeCurrency), displayCurrency) : undefined;
-
-    // Step 2: Reviewer Multiplier (only if currency conversion is active, otherwise handled in main loop)
-    if (reviewerMultiplier !== null) {
-      const mult = (1 - reviewerMultiplier);
-      handle *= mult;
-      winLoss *= mult;
-      jackpot *= mult;
-      drop *= mult;
-      totalCancelledCredits *= mult;
-      gross *= mult;
-      if (netGross !== undefined) netGross *= mult;
-    }
+    const handle = convertFromUSD(convertToUSD(item.handle, nativeCurrency), displayCurrency);
+    const winLoss = convertFromUSD(convertToUSD(item.winLoss, nativeCurrency), displayCurrency);
+    const jackpot = convertFromUSD(convertToUSD(item.jackpot, nativeCurrency), displayCurrency);
+    const drop = convertFromUSD(convertToUSD(item.drop, nativeCurrency), displayCurrency);
+    const totalCancelledCredits = convertFromUSD(convertToUSD(item.totalCancelledCredits, nativeCurrency), displayCurrency);
+    const gross = convertFromUSD(convertToUSD(item.gross, nativeCurrency), displayCurrency);
+    const netGross = item.netGross !== undefined ? convertFromUSD(convertToUSD(item.netGross, nativeCurrency), displayCurrency) : undefined;
 
     return {
       ...item,
@@ -861,7 +848,6 @@ export async function getLocationTrends(
   granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly',
   status?: 'Online' | 'Offline' | 'All' | null,
   gameType?: string | null,
-  reviewerMultiplier: number | null = null,
   searchTerm?: string,
   includeArchived: boolean = false
 ): Promise<{
@@ -1122,22 +1108,8 @@ export async function getLocationTrends(
     convertedData = convertDailyTrendItems(
       dailyData,
       locationCurrencies,
-      displayCurrency,
-      reviewerMultiplier
+      displayCurrency
     );
-  } else if (reviewerMultiplier !== null) {
-    // If no currency conversion but it's a reviewer, apply multiplier directly
-    const mult = (1 - reviewerMultiplier);
-    convertedData = dailyData.map(item => ({
-      ...item,
-      handle: item.handle * mult,
-      winLoss: item.winLoss * mult,
-      jackpot: item.jackpot * mult,
-      drop: item.drop * mult,
-      totalCancelledCredits: item.totalCancelledCredits * mult,
-      gross: item.gross * mult,
-      netGross: item.netGross !== undefined ? item.netGross * mult : undefined,
-    }));
   }
 
   // Format trends data based on granularity

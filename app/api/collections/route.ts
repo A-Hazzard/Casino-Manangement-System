@@ -107,7 +107,7 @@ export async function GET(req: NextRequest) {
         .assignedLocations;
     }
     const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
     // Support both licencee spellings
     const licencee =
@@ -477,6 +477,8 @@ export async function POST(req: NextRequest) {
           action: 'CREATE',
           details: `Created collection for machine ${payload.machineId} at location ${payload.location} (${payload.metersIn} in, ${payload.metersOut} out)`,
           ipAddress: getClientIP(req) || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             resource: 'collection',
             resourceId: created._id.toString(),
@@ -602,73 +604,83 @@ export async function PATCH(req: NextRequest) {
           new Date(originalCollection.collectionTime || originalCollection.timestamp).getTime());
 
     // ============================================================================
-    // STEP 6: Recalculate prevIn/prevOut and movement if meters changed
+    // STEP 6: Resolve prevIn/prevOut and recalculate movement if meters changed
     // ============================================================================
     if (metersChanged) {
-      // Meters changed, recalculating prevIn/prevOut and movement
+      // CRITICAL: If the client explicitly provides BOTH prevIn AND prevOut we must trust
+      // them unconditionally. These values come from the edit form where the operator has
+      // already set the correct baseline. Overwriting them from a DB lookup is what was
+      // causing edits to revert — the old completed collection's metersIn/Out were being
+      // injected as prevIn/prevOut, discarding whatever the user typed.
+      const prevInProvided = updateData.prevIn !== undefined && updateData.prevIn !== null;
+      const prevOutProvided = updateData.prevOut !== undefined && updateData.prevOut !== null;
 
-      // Find actual previous collection (NOT from machine.collectionMeters)
-      const previousCollection = await Collections.findOne({
-        machineId: originalCollection.machineId,
-        timestamp: {
-          $lt:
-            originalCollection.timestamp || originalCollection.collectionTime,
-        },
-        isCompleted: true,
-        locationReportId: { $exists: true, $ne: '' },
-        $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-        _id: { $ne: id }, // Don't find this same collection
-      })
-        .sort({ timestamp: -1 })
-        .lean();
+      if (!prevInProvided || !prevOutProvided) {
+        // Both (or one) prev values are missing — fall back to DB lookup
+        const previousCollection = await Collections.findOne({
+          machineId: originalCollection.machineId,
+          timestamp: {
+            $lt:
+              originalCollection.timestamp || originalCollection.collectionTime,
+          },
+          isCompleted: true,
+          locationReportId: { $exists: true, $ne: '' },
+          $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
+          _id: { $ne: id },
+        })
+          .sort({ timestamp: -1 })
+          .lean();
 
-      // Set prevIn/prevOut from actual previous collection
-      if (previousCollection) {
-        updateData.prevIn = previousCollection.metersIn || 0;
-        updateData.prevOut = previousCollection.metersOut || 0;
-      } else {
-        // No previous collection, this is first collection
-        updateData.prevIn = 0;
-        updateData.prevOut = 0;
+        if (previousCollection) {
+          if (!prevInProvided) updateData.prevIn = previousCollection.metersIn ?? 0;
+          if (!prevOutProvided) updateData.prevOut = previousCollection.metersOut ?? 0;
+        } else {
+          // No previous collection — first collection for the machine.
+          const editMachine = (await Machine.findOne({
+            _id: originalCollection.machineId,
+          }).lean()) as Record<string, unknown> | null;
+          const sasM = editMachine?.sasMeters as Record<string, unknown> | undefined;
+          const colM = editMachine?.collectionMeters as Record<string, unknown> | undefined;
+
+          const sasIn = (sasM?.drop as number) ?? null;
+          const sasOut = (sasM?.totalCancelledCredits as number) ?? null;
+
+          if (!prevInProvided) {
+            updateData.prevIn = (sasIn !== null && sasIn > 0) ? sasIn : ((colM?.metersIn as number) ?? 0);
+          }
+          if (!prevOutProvided) {
+            updateData.prevOut = (sasOut !== null && sasOut > 0) ? sasOut : ((colM?.metersOut as number) ?? 0);
+          }
+        }
       }
 
-      // Recalculate movement using the correct prevIn/prevOut
-      const currentMetersIn =
-        updateData.metersIn ?? originalCollection.metersIn;
-      const currentMetersOut =
-        updateData.metersOut ?? originalCollection.metersOut;
+      // Recalculate movement using the resolved prevIn/prevOut
+      const currentMetersIn = updateData.metersIn ?? originalCollection.metersIn;
+      const currentMetersOut = updateData.metersOut ?? originalCollection.metersOut;
       const ramClear = updateData.ramClear ?? originalCollection.ramClear;
-      const ramClearMetersIn =
-        updateData.ramClearMetersIn ?? originalCollection.ramClearMetersIn;
-      const ramClearMetersOut =
-        updateData.ramClearMetersOut ?? originalCollection.ramClearMetersOut;
+      const ramClearMetersIn = updateData.ramClearMetersIn ?? originalCollection.ramClearMetersIn;
+      const ramClearMetersOut = updateData.ramClearMetersOut ?? originalCollection.ramClearMetersOut;
 
       let movementIn: number;
       let movementOut: number;
 
       if (ramClear) {
         if (ramClearMetersIn !== undefined && ramClearMetersOut !== undefined) {
-          // RAM clear with ramClearMeters: (ramClearMetersIn - prevIn) + (currentMetersIn - 0)
           movementIn = ramClearMetersIn - updateData.prevIn + currentMetersIn;
-          movementOut =
-            ramClearMetersOut - updateData.prevOut + currentMetersOut;
+          movementOut = ramClearMetersOut - updateData.prevOut + currentMetersOut;
         } else {
-          // RAM clear without ramClearMeters: use current values directly
           movementIn = currentMetersIn;
           movementOut = currentMetersOut;
         }
       } else {
-        // Standard: current - previous
         movementIn = currentMetersIn - updateData.prevIn;
         movementOut = currentMetersOut - updateData.prevOut;
       }
 
-      const movementGross = movementIn - movementOut;
-
       updateData.movement = {
         metersIn: Number(movementIn.toFixed(2)),
         metersOut: Number(movementOut.toFixed(2)),
-        gross: Number(movementGross.toFixed(2)),
+        gross: Number((movementIn - movementOut).toFixed(2)),
       };
     }
 
@@ -777,6 +789,8 @@ export async function PATCH(req: NextRequest) {
           action: 'UPDATE',
           details: `Updated collection for machine ${originalCollection.machineId} at location ${originalCollection.location}`,
           ipAddress: getClientIP(req) || undefined,
+          userId: (currentUser._id || currentUser.id || currentUser.sub) as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             resource: 'collection',
             resourceId: id,
@@ -921,6 +935,8 @@ export async function DELETE(req: NextRequest) {
           action: 'DELETE',
           details: `Deleted collection for machine ${collectionToDelete.machineId} at location ${collectionToDelete.location}`,
           ipAddress: getClientIP(req) || undefined,
+          userId: (currentUser._id || currentUser.id || currentUser.sub) as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             resource: 'collection',
             resourceId: id,

@@ -19,6 +19,8 @@ import type {
     CollectionReportLocationWithMachines,
     CollectionReportMachineSummary,
     CreateCollectionReportPayload,
+    VariationsCheckResponse,
+    MachineVariationData,
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
@@ -153,8 +155,11 @@ export function useNewCollectionModal({
     useState(false);
   const [showCreateReportConfirmation, setShowCreateReportConfirmation] =
     useState(false);
-  const [prevIn, setPrevIn] = useState<number | null>(null);
-  const [prevOut, setPrevOut] = useState<number | null>(null);
+  const prevIn = storeFormData.prevIn !== '' ? Number(storeFormData.prevIn) : null;
+  const prevOut = storeFormData.prevOut !== '' ? Number(storeFormData.prevOut) : null;
+  const setPrevIn = (val: string | number | null) => setStoreFormData({ prevIn: val?.toString() || '' });
+  const setPrevOut = (val: string | number | null) => setStoreFormData({ prevOut: val?.toString() || '' });
+
   const [previousCollectionTime, setPreviousCollectionTime] = useState<
     string | Date | undefined
   >(undefined);
@@ -424,12 +429,14 @@ export function useNewCollectionModal({
   const fetchExistingCollections = useCallback(
     async (locationId?: string) => {
       try {
+        console.log('🔄 [NewCollection] fetchExistingCollections starting', { locationId });
         setIsLoadingExistingCollections(true);
         let url = `/api/collections?incompleteOnly=true&_t=${Date.now()}`;
         if (locationId) url += `&location=${locationId}`;
         if (userId) url += `&collector=${userId}`;
 
         const response = await axios.get(url);
+        console.log('📦 [NewCollection] fetchExistingCollections response:', { count: response.data?.length });
         if (response.data && response.data.length > 0) {
           setCollectedMachineEntries(response.data);
           const sortedCollections = [...response.data].sort((a, b) => {
@@ -591,17 +598,45 @@ export function useNewCollectionModal({
         // Ensure advanced is NOT selected by default when editing
         setShowAdvancedSas(false);
       } else {
-        if (machineForDataEntry.collectionMeters) {
-          setPrevIn(machineForDataEntry.collectionMeters.metersIn || 0);
-          setPrevOut(machineForDataEntry.collectionMeters.metersOut || 0);
-        } else {
-          setPrevIn(0);
-          setPrevOut(0);
-        }
+        // No existing entry for this machine — it hasn't been collected yet in this report.
+        // Use sasMeters.drop / sasMeters.totalCancelledCredits as the initial prev values
+        // (these are set when the cabinet is first configured via the Edit Cabinet modal).
+        // Fall back to collectionMeters if sasMeters aren't available, then 0.
+        const sasIn = machineForDataEntry.sasMeters?.drop ?? null;
+        const sasOut = machineForDataEntry.sasMeters?.totalCancelledCredits ?? null;
+        const legacyIn = machineForDataEntry.collectionMeters?.metersIn ?? null;
+        const legacyOut = machineForDataEntry.collectionMeters?.metersOut ?? null;
+
+        setPrevIn((legacyIn !== null && legacyIn > 0) ? legacyIn : (sasIn ?? 0));
+        setPrevOut((legacyOut !== null && legacyOut > 0) ? legacyOut : (sasOut ?? 0));
         setCurrentMetersIn('');
         setCurrentMetersOut('');
         setCurrentMachineNotes('');
         setCurrentRamClear(false);
+
+        // Auto-populate sasStartTime from the last completed collection for this machine.
+        // Query the Collections model directly (most accurate source) rather than relying
+        // on the potentially stale machine.collectionTime cached field.
+        // sasStartTime = collectionTime of previous collection = start of current gaming period.
+        axios
+          .get(`/api/collections/last-collection-time?machineId=${selectedMachineId}`)
+          .then(res => {
+            const data = res.data?.data;
+            const lastTime = data?.collectionTime;
+            setSasStartTime(lastTime ? new Date(lastTime) : null);
+            
+            if (data?.hasPreviousCollection) {
+              setPrevIn(data.metersIn !== null ? data.metersIn : 0);
+              setPrevOut(data.metersOut !== null ? data.metersOut : 0);
+            }
+          })
+          .catch(() => {
+            // Fallback: use machine.collectionTime from the locations data if available
+            const machineFromLocation = locations
+              .flatMap(l => l.machines || [])
+              .find(m => String(m._id) === selectedMachineId);
+            setSasStartTime(machineFromLocation?.collectionTime ? new Date(machineFromLocation.collectionTime) : null);
+          });
       }
       const loc = locations.find(
         l => String(l._id) === (lockedLocationId || selectedLocationId)
@@ -682,12 +717,16 @@ export function useNewCollectionModal({
         sasEndTime: showAdvancedSas && sasEndTime ? sasEndTime : currentCollectionTime,
         ...(showAdvancedSas && sasStartTime ? { sasStartTime } : {}),
         ...(showAdvancedSas && sasEndTime ? { timestamp: sasEndTime, collectionTime: sasEndTime } : {}),
+        ramClear: currentRamClear,
         ...(currentRamClear
           ? {
               ramClearMetersIn: Number(currentRamClearMetersIn),
               ramClearMetersOut: Number(currentRamClearMetersOut),
             }
-          : {}),
+          : {
+              ramClearMetersIn: undefined,
+              ramClearMetersOut: undefined,
+            }),
       };
 
       const createdCollection = await addMachineCollection(entryData);
@@ -748,10 +787,18 @@ export function useNewCollectionModal({
 
   const handleAddEntry = useCallback(() => {
     if (!isAddMachineEnabled || isProcessing) return;
-    
+
     const onConfirm = () => executeAddEntry();
-    
-    if (prevIn !== null && Number(currentMetersIn) < prevIn) {
+
+    // Use live machine data as fallback when prevIn state hasn't resolved yet
+    // (race condition: executeAddEntry resets prevIn to null, then useEffect re-sets
+    // it from machineForDataEntry — but user may submit before the effect fires)
+    const effectivePrevIn =
+      prevIn !== null
+        ? prevIn
+        : (machineForDataEntry?.collectionMeters?.metersIn ?? null);
+
+    if (effectivePrevIn !== null && Number(currentMetersIn) < effectivePrevIn) {
       setPendingMachineSubmission(() => onConfirm);
       setShowMachineRolloverWarning(true);
       return;
@@ -762,6 +809,7 @@ export function useNewCollectionModal({
     isProcessing,
     prevIn,
     currentMetersIn,
+    machineForDataEntry,
     executeAddEntry,
   ]);
 
@@ -781,6 +829,8 @@ export function useNewCollectionModal({
         collectionTime: currentCollectionTime,
         ramClear: currentRamClear,
         notes: currentMachineNotes,
+        prevIn: prevIn || 0,
+        prevOut: prevOut || 0,
         ...(currentRamClear
           ? {
               ramClearMetersIn: Number(currentRamClearMetersIn),
@@ -862,16 +912,21 @@ export function useNewCollectionModal({
 
   const confirmUpdateEntry = useCallback(async () => {
     if (!editingEntryId) return;
-    
+
     const onConfirm = () => executeUpdateEntry();
-    
-    if (prevIn !== null && Number(currentMetersIn) < prevIn) {
+
+    const effectivePrevIn =
+      prevIn !== null
+        ? prevIn
+        : (machineForDataEntry?.collectionMeters?.metersIn ?? null);
+
+    if (effectivePrevIn !== null && Number(currentMetersIn) < effectivePrevIn) {
       setPendingMachineSubmission(() => onConfirm);
       setShowMachineRolloverWarning(true);
       return;
     }
     onConfirm();
-  }, [editingEntryId, prevIn, currentMetersIn, executeUpdateEntry]);
+  }, [editingEntryId, prevIn, currentMetersIn, machineForDataEntry, executeUpdateEntry]);
 
   const confirmDeleteEntry = async () => {
     if (!entryToDelete) return;
@@ -916,13 +971,35 @@ export function useNewCollectionModal({
     }
   };
 
-  const confirmCreateReports = async () => {
+  const confirmCreateReports = async (variationsData?: VariationsCheckResponse | null) => {
     try {
+      console.log('🚀 [NewCollection] confirmCreateReports started', { hasVariationsData: !!variationsData });
       setIsProcessing(true);
-      const locationIdToUse = lockedLocationId || selectedLocationId;
-      if (!locationIdToUse || collectedMachineEntries.length === 0) return;
+      
+      // Use direct store access to ensure we have the absolute latest state
+      const storeState = useCollectionModalStore.getState();
+      const locationIdToUse = storeState.lockedLocationId || storeState.selectedLocationId;
+      const collectedEntries = storeState.collectedMachines;
+      
+      console.log('📍 [NewCollection] Location targeting (direct store):', {
+        locationIdToUse,
+        locationName: storeState.selectedLocationName,
+        machinesCount: collectedEntries.length
+      });
+      
+      if (!locationIdToUse || collectedEntries.length === 0) {
+        console.error('❌ [NewCollection] Blocked creation:', {
+          reason: !locationIdToUse ? 'Missing location ID' : 'Empty machine list',
+          locationIdToUse,
+          machinesCount: collectedEntries.length,
+          storeStateLocation: storeState.selectedLocationId,
+          storeStateLocked: storeState.lockedLocationId
+        });
+        toast.error(`Cannot create report: ${!locationIdToUse ? 'Location' : 'Machines'} missing.`);
+        return;
+      }
 
-      const totalMovementData = collectedMachineEntries.map(entry => {
+      const totalMovementData = collectedEntries.map(entry => {
         const movement = calculateMachineMovement(
           entry.metersIn || 0,
           entry.metersOut || 0,
@@ -969,7 +1046,7 @@ export function useNewCollectionModal({
         totalDrop: reportTotalData.drop,
         totalCancelled: reportTotalData.cancelledCredits,
         totalGross: reportTotalData.gross,
-        totalSasGross: 0,
+        totalSasGross: variationsData?.machines.reduce((sum: number, m: MachineVariationData) => sum + (Number(m.sasGross) || 0), 0) || 0,
         timestamp: currentCollectionTime,
         varianceReason: financials.varianceReason,
         previousCollectionTime: previousCollectionTime
@@ -982,16 +1059,21 @@ export function useNewCollectionModal({
         balanceCorrection: Number(financials.balanceCorrection) || 0,
         balanceCorrectionReas: financials.balanceCorrectionReason,
         includeJackpot: selectedLocation?.includeJackpot || false,
-        machines: collectedMachineEntries.map(e => ({
-          machineId: String(e.machineId),
-          metersIn: e.metersIn,
-          metersOut: e.metersOut,
-          prevMetersIn: e.prevIn || 0,
-          prevMetersOut: e.prevOut || 0,
-          timestamp: e.timestamp,
-          locationReportId: reportId,
-        })),
-        collectionIds: collectedMachineEntries.map(e => String(e._id)),
+        machines: collectedEntries.map(e => {
+          const varData = variationsData?.machines.find(m => m.machineId === e.machineId);
+          return {
+            machineId: String(e.machineId),
+            metersIn: e.metersIn,
+            metersOut: e.metersOut,
+            prevMetersIn: e.prevIn || 0,
+            prevMetersOut: e.prevOut || 0,
+            timestamp: e.timestamp,
+            locationReportId: reportId,
+            sasGross: varData ? Number(varData.sasGross) || 0 : undefined,
+            variation: varData ? Number(varData.variation) || 0 : undefined,
+          };
+        }),
+        collectionIds: collectedEntries.map(e => String(e._id)),
       };
 
       const validation = validateCollectionReportPayload(payload);
@@ -1000,17 +1082,22 @@ export function useNewCollectionModal({
           errors: validation.errors,
           payload,
         });
-        toast.error(`Validation Error: ${validation.errors.join(', ')}`);
+        toast.error(`Validation Error: ${validation.errors.join(', ')}`, {
+          duration: 8000,
+          position: 'top-center'
+        });
         return;
       }
+
+      console.log('📤 [NewCollection] Sending payload to API...', payload);
 
       const result = await createCollectionReport(payload);
       await logActivityCallback(
         'create',
         'collection-report',
         String(result.report._id),
-        `Collection Report for ${selectedLocationName}`,
-        `Created collection report for ${collectedMachineEntries.length} machines at ${selectedLocationName}`,
+        `Collection Report for ${storeState.selectedLocationName}`,
+        `Created collection report for ${collectedEntries.length} machines at ${storeState.selectedLocationName}`,
         null,
         result.report as unknown as Record<string, unknown>
       );
@@ -1042,9 +1129,15 @@ export function useNewCollectionModal({
         setFinancials({
           previousBalance: (selectedLoc.collectionBalance || 0).toString(),
         });
+        
+        // Set default collection time based on gameDayOffset
+        if (selectedLoc.gameDayOffset !== undefined) {
+          const defaultTime = calculateDefaultCollectionTime(selectedLoc.gameDayOffset);
+          setCurrentCollectionTime(defaultTime);
+        }
       }
     },
-    [locations, setSelectedLocation, setFinancials]
+    [locations, setSelectedLocation, setFinancials, setCurrentCollectionTime]
   );
 
   const handleDisabledFieldClick = useCallback(() => {
@@ -1105,7 +1198,23 @@ export function useNewCollectionModal({
         toast.info('Editing machine collection entry');
       }
     },
-    [collectedMachineEntries]
+    [
+      collectedMachineEntries,
+      setCurrentMetersIn,
+      setCurrentMetersOut,
+      setCurrentMachineNotes,
+      setCurrentRamClear,
+      setCurrentRamClearMetersIn,
+      setCurrentRamClearMetersOut,
+      setPrevIn,
+      setPrevOut,
+      setShowAdvancedSas,
+      setSasStartTime,
+      setSasEndTime,
+      setCurrentCollectionTime,
+      setEditingEntryId,
+      setSelectedMachineId,
+    ]
   );
 
   const handleDeleteCollectedEntry = useCallback((id: string) => {
@@ -1146,8 +1255,13 @@ export function useNewCollectionModal({
       setIsProcessing(true);
       const axios = (await import('axios')).default;
       const patchData: Record<string, string> = {};
-      if (updateAllSasStartDate) patchData.sasStartTime = updateAllSasStartDate.toISOString();
-      if (updateAllSasEndDate) patchData.sasEndTime = updateAllSasEndDate.toISOString();
+      
+      const startTimeISO = updateAllSasStartDate?.toISOString();
+      const endTimeISO = updateAllSasEndDate?.toISOString();
+      
+      if (startTimeISO) patchData.sasStartTime = startTimeISO;
+      if (endTimeISO) patchData.sasEndTime = endTimeISO;
+
       const results = await Promise.allSettled(
         collectedMachineEntries.map(async entry => {
           if (!entry._id) return;
@@ -1159,6 +1273,18 @@ export function useNewCollectionModal({
         toast.error(`${failed} machine${failed > 1 ? 's' : ''} failed to update`);
         return;
       }
+
+      // Update local state so UI reflects changes immediately without needing refresh/close
+      const updatedEntries = collectedMachineEntries.map(entry => ({
+        ...entry,
+        sasMeters: {
+          ...entry.sasMeters,
+          ...(startTimeISO ? { sasStartTime: startTimeISO } : {}),
+          ...(endTimeISO ? { sasEndTime: endTimeISO } : {}),
+        }
+      }));
+      setCollectedMachineEntries(updatedEntries);
+
       toast.success('All SAS times updated successfully!');
       setUpdateAllSasStartDate(undefined);
       setUpdateAllSasEndDate(undefined);
@@ -1167,7 +1293,7 @@ export function useNewCollectionModal({
     } finally {
       setIsProcessing(false);
     }
-  }, [updateAllSasStartDate, updateAllSasEndDate, collectedMachineEntries]);
+  }, [updateAllSasStartDate, updateAllSasEndDate, collectedMachineEntries, setCollectedMachineEntries]);
 
   return {
     selectedLocationId,
@@ -1219,8 +1345,10 @@ export function useNewCollectionModal({
     setFinancials,
     baseBalanceCorrection,
     setBaseBalanceCorrection,
-    prevIn,
-    prevOut,
+    prevIn: storeFormData.prevIn,
+    setPrevIn,
+    prevOut: storeFormData.prevOut,
+    setPrevOut,
     previousCollectionTime,
     isLoadingExistingCollections,
     filteredMachines,

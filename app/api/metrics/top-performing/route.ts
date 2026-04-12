@@ -108,7 +108,8 @@ export async function GET(req: NextRequest) {
     const currentUserRoles = (currentUser?.roles as string[]) || [];
     const isAdminOrDev =
       currentUserRoles.includes('admin') ||
-      currentUserRoles.includes('developer');
+      currentUserRoles.includes('developer') ||
+      currentUserRoles.includes('owner');
 
     let convertedData = data as unknown as TopPerformingItem[];
 

@@ -112,9 +112,10 @@ export const CabinetsCabinetContentDisplay = ({
     if (userRoles.includes('collector')) {
       return false;
     }
-    // Technicians, managers, admins, developers, and location admins can edit
+    // Technicians, managers, admins, developers, owners, and location admins can edit
     return [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
@@ -124,7 +125,7 @@ export const CabinetsCabinetContentDisplay = ({
 
   /**
    * Determines if the user can delete machines.
-   * Only managers, admins, developers, and location admins can delete.
+   * Only managers, admins, developers, owners, and location admins can delete.
    * Only collectors cannot delete.
    */
   const canDeleteMachines = useMemo(() => {
@@ -134,9 +135,10 @@ export const CabinetsCabinetContentDisplay = ({
     if (userRoles.includes('collector')) {
       return false;
     }
-    // Admins, developers, managers, location admins, and technicians can delete
+    // Owners, admins, developers, managers, location admins, and technicians can delete
     return [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',

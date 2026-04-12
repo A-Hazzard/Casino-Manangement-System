@@ -29,6 +29,8 @@ export type CustomizedLabelProps = {
 export type DateFiltersProps = {
   disabled?: boolean;
   onCustomRangeGo?: () => void;
+  /** Label for the calendar's apply button. Defaults to "Get Meters". Use context-specific labels e.g. "Get Reports", "Get Sessions", "Get Activity". */
+  customRangeGoLabel?: string;
   hideAllTime: boolean;
   showQuarterly?: boolean;
   mode?: 'auto' | 'mobile' | 'desktop';

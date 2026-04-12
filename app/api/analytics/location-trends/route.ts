@@ -61,14 +61,6 @@ export async function GET(req: NextRequest) {
     const searchTerm = searchParams.get('search');
     const includeArchived = searchParams.get('includeArchived') === 'true';
 
-    // === Reviewer Scaling ===
-    const { getUserFromServer } = await import('@/app/api/lib/helpers/users/users');
-    const userPayload = await getUserFromServer();
-    const userRoles = (userPayload?.roles as string[]) || [];
-    const userRolesLowerReviewer = userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase());
-    const userMultiplier = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
-    const reviewerMultiplier = userRolesLowerReviewer.includes('reviewer') ? userMultiplier : null;
-
     if (!locationIds) {
       return NextResponse.json(
         { error: 'Location IDs are required' },
@@ -91,7 +83,6 @@ export async function GET(req: NextRequest) {
       effectiveGranularity,
       status,
       gameType,
-      reviewerMultiplier,
       searchTerm || undefined,
       includeArchived
     );

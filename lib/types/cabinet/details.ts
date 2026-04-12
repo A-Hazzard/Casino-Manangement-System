@@ -53,6 +53,10 @@ export type CabinetsCabinetSearchFiltersProps = {
   selectedStatus: string;
   onStatusChange: (status: string) => void;
 
+  // Membership filter state
+  selectedMembership: string;
+  onMembershipChange: (membership: string) => void;
+
   // Sort state
   sortOption: CabinetSortOption;
   sortOrder: 'asc' | 'desc';

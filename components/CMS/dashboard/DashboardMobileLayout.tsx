@@ -20,7 +20,7 @@
 
 import DashboardChart from '@/components/CMS/dashboard/DashboardChart';
 import TopPerformingLocationModal from '@/components/CMS/dashboard/modals/TopPerformingLocationModal';
-import TopPerformingMachineModal from '@/components/CMS/dashboard/modals/TopPerformingMachineModal';
+import TopPerformingCabinetModal from '@/components/CMS/dashboard/modals/TopPerformingCabinetModal';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards';
 import MachineStatusWidget from '@/components/shared/ui/MachineStatusWidget';
@@ -198,7 +198,7 @@ export default function DashboardMobileLayout(
         selectedLicencee={props.selectedLicencee}
         licenceeName={licenceeName}
         renderCustomizedLabel={props.renderCustomizedLabel}
-        onViewMachine={item => {
+        onViewCabinet={item => {
           if (item.machineId) {
             setSelectedMachine({
               machineId: item.machineId,
@@ -222,9 +222,9 @@ export default function DashboardMobileLayout(
         }}
       />
 
-      {/* Machine Preview Modal - Show only when machine is selected and not a location */}
+      {/* Cabinet Preview Modal - Show only when cabinet is selected and not a location */}
       {selectedMachine?.machineId && !selectedMachine.isLocation && (
-        <TopPerformingMachineModal
+        <TopPerformingCabinetModal
           open={isModalOpen}
           machineId={selectedMachine.machineId}
           machineName={selectedMachine.machineName || ''}

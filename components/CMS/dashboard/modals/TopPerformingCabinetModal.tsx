@@ -1,18 +1,18 @@
 /**
- * Top Performing Machine Preview Modal
+ * Top Performing Cabinet Preview Modal
  *
- * Displays a preview of a top performing machine with:
- * - Machine information (name, game, location)
+ * Displays a preview of a top performing cabinet with:
+ * - Cabinet information (name, game, location)
  * - Performance metrics overview
  * - Chart visualization
- * - Navigation button to view machine details
+ * - Navigation button to view cabinet details
  *
  * Features:
  * - Modal overlay with backdrop
- * - Machine details display
+ * - Cabinet details display
  * - Performance metrics cards
  * - Chart visualization (similar to dashboard)
- * - Navigation to machine location
+ * - Navigation to cabinet location
  */
 
 'use client';
@@ -38,7 +38,7 @@ import { ExternalLink, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-type TopPerformingMachineModalProps = {
+type TopPerformingCabinetModalProps = {
   open: boolean;
   machineId: string;
   machineName: string;
@@ -49,7 +49,7 @@ type TopPerformingMachineModalProps = {
   onNavigate: () => void;
 };
 
-export default function TopPerformingMachineModal({
+export default function TopPerformingCabinetModal({
   open,
   machineId,
   machineName,
@@ -57,7 +57,7 @@ export default function TopPerformingMachineModal({
   locationName,
   onClose,
   onNavigate,
-}: TopPerformingMachineModalProps) {
+}: TopPerformingCabinetModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const [machineData, setMachineData] = useState<MachineMetricsData | null>(
@@ -71,7 +71,7 @@ export default function TopPerformingMachineModal({
   const { activePieChartFilter, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
 
-  // Use activeMetricsFilter if available (from machine detail page), otherwise fall back to activePieChartFilter (from dashboard)
+  // Use activeMetricsFilter if available (from cabinet detail page), otherwise fall back to activePieChartFilter (from dashboard)
   const effectiveTimePeriod =
     activeMetricsFilter || activePieChartFilter || 'Today';
 
@@ -165,7 +165,7 @@ export default function TopPerformingMachineModal({
     customDateRange?.endDate,
   ]);
 
-  // Fetch machine data and chart data
+  // Fetch cabinet data and chart data
   useEffect(() => {
     if (!open || !machineId) return;
 
@@ -177,10 +177,10 @@ export default function TopPerformingMachineModal({
       setLoadingChart(true);
 
       try {
-        // Use effectiveTimePeriod which prioritizes activeMetricsFilter (from machine detail page) over activePieChartFilter (from dashboard)
+        // Use effectiveTimePeriod which prioritizes activeMetricsFilter (from cabinet detail page) over activePieChartFilter (from dashboard)
         const timePeriod = effectiveTimePeriod as TimePeriod;
 
-        // Fetch machine metrics and chart data in parallel
+        // Fetch cabinet metrics and chart data in parallel
         // For 7d and 30d, don't pass granularity (API will return daily data)
         // For other periods, use the selected granularity
         const shouldPassGranularity =
@@ -216,7 +216,7 @@ export default function TopPerformingMachineModal({
         setMachineData(metrics);
         setChartData(chartResult.data);
       } catch (error) {
-        console.error('Error fetching machine data:', error);
+        console.error('Error fetching cabinet data:', error);
       } finally {
         setLoading(false);
         setLoadingChart(false);
@@ -279,7 +279,7 @@ export default function TopPerformingMachineModal({
   });
 
   const handleNavigate = () => {
-    // Navigate to machine details page
+    // Navigate to cabinet details page
     if (machineId) {
       router.push(`/cabinets/${machineId}`);
     }
@@ -302,7 +302,7 @@ export default function TopPerformingMachineModal({
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white p-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
-              Machine Preview
+              Cabinet Preview
             </h2>
             <p className="mt-1 text-sm text-gray-500">{formattedMachineName}</p>
             {locationName && (
@@ -370,13 +370,13 @@ export default function TopPerformingMachineModal({
                 {showGranularitySelector && (
                   <div className="mb-3 flex items-center justify-end gap-2">
                     <label
-                      htmlFor="chart-granularity-machine-modal"
+                      htmlFor="chart-granularity-cabinet-modal"
                       className="text-sm font-medium text-gray-700 dark:text-gray-300"
                     >
                       Granularity:
                     </label>
                     <select
-                      id="chart-granularity-machine-modal"
+                      id="chart-granularity-cabinet-modal"
                       value={chartGranularity}
                       onChange={e =>
                         setChartGranularity(
@@ -450,7 +450,7 @@ export default function TopPerformingMachineModal({
               className="flex items-center gap-2"
             >
               <ExternalLink className="h-4 w-4" />
-              View Machine
+              View Cabinet
             </Button>
           </div>
         </div>
@@ -458,4 +458,3 @@ export default function TopPerformingMachineModal({
     </div>
   );
 }
-

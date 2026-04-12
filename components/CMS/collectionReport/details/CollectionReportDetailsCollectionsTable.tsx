@@ -93,6 +93,12 @@ function SasGrossCell({
   metric: MachineMetric;
   useNetGross: boolean;
 }) {
+  if (typeof metric.sasGross === 'string') {
+    return (
+      <span className="font-medium text-gray-500 italic">{metric.sasGross}</span>
+    );
+  }
+
   const jackpot = metric.jackpot ?? 0;
   const hasJackpotDeduction = useNetGross && jackpot > 0;
 
@@ -314,7 +320,9 @@ export default function CollectionReportDetailsCollectionsTable({
                     {useNetGross ? 'SAS Gross (Net)' : 'SAS Gross'}
                   </p>
                   <p className={`mt-0.5 font-medium ${hasJackpotDeduction && displaySasGross < 0 ? 'text-red-600' : ''}`}>
-                    {displaySasGross.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {typeof metric.sasGross === 'string' 
+                      ? <span className="text-gray-500 italic">{metric.sasGross}</span>
+                      : displaySasGross.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </p>
                   {hasJackpotDeduction && (
                     <p className="text-[10px] text-amber-600 mt-0.5">
@@ -325,7 +333,7 @@ export default function CollectionReportDetailsCollectionsTable({
                 <MobileField
                   label="Variation"
                   value={metric.variation ?? 0}
-                  isCurrency
+                  isCurrency={typeof metric.variation !== 'string'}
                   isBold
                   className={Number(metric.variation || 0) < 0 ? 'text-red-600' : 'text-green-600'}
                 />

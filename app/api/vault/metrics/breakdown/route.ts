@@ -6,6 +6,7 @@ import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import type { TimePeriod } from '@/app/api/lib/types';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 import type { LocationDocument } from '@/lib/types/common';
@@ -44,9 +45,15 @@ export async function GET(request: NextRequest) {
         { gameDayOffset: 1 }
       ).lean()) as Pick<LocationDocument, 'gameDayOffset'> | null;
       const gameDayOffset = locationInfo?.gameDayOffset ?? 8;
+      const timePeriod = searchParams.get('timePeriod') || 'Today';
+      const startDateParam = searchParams.get('startDate');
+      const endDateParam = searchParams.get('endDate');
+
       const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod(
-        'Today',
-        gameDayOffset
+        timePeriod as TimePeriod,
+        gameDayOffset,
+        startDateParam ? new Date(startDateParam) : undefined,
+        endDateParam ? new Date(endDateParam) : undefined
       );
 
       const query: Record<string, unknown> = {

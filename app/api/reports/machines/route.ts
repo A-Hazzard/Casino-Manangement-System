@@ -166,19 +166,20 @@ export async function GET(req: NextRequest) {
       // ============================================================================
       // STEP 3: Route to appropriate handler
       // ============================================================================
+      const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
       let result;
       switch (type) {
         case 'stats':
-          result = await getMachineStats(machineMatchStage, locationMatchStage, startDate, endDate, licencee, displayCurrency, isAdminOrDev, timePeriod);
+          result = await getMachineStats(machineMatchStage, locationMatchStage, startDate, endDate, licencee, displayCurrency, isAdminOrDev, timePeriod, reviewerMult);
           break;
         case 'offline':
-          result = await getOfflineMachines(searchParams, page, limit, skip, startDate, endDate, locationMatchStage, timePeriod, searchTerm || undefined);
+          result = await getOfflineMachines(searchParams, page, limit, skip, startDate, endDate, locationMatchStage, timePeriod, searchTerm || undefined, reviewerMult);
           break;
         case 'all':
-          result = await getAllMachines(searchParams, startDate, endDate, locationMatchStage);
+          result = await getAllMachines(searchParams, startDate, endDate, locationMatchStage, reviewerMult);
           break;
         default:
-          result = await getOverviewMachines(machineMatchStage, locationMatchStage, page, limit, skip, startDate, endDate, timePeriod, searchTerm || undefined);
+          result = await getOverviewMachines(machineMatchStage, locationMatchStage, page, limit, skip, startDate, endDate, timePeriod, searchTerm || undefined, reviewerMult);
       }
 
       const duration = Date.now() - startTime;

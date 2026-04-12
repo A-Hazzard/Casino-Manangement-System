@@ -81,7 +81,7 @@ export async function getUserAccessibleLicenceesFromToken(userPayloadOverride?: 
       }
     }
 
-    const isAdmin = roles.includes('admin') || roles.includes('developer');
+    const isAdmin = roles.includes('admin') || roles.includes('developer') || roles.includes('owner');
 
     if (isAdmin) {
       return 'all';
@@ -366,7 +366,7 @@ export async function checkUserLocationAccess(
     const userAccessibleLicencees = userPayload.assignedLicencees || [];
     const userLocationPermissions = userPayload.assignedLocations || [];
 
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('developer');
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
     // Get user's accessible locations
     const allowedLocationIds = await getUserLocationFilter(

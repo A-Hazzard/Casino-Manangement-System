@@ -600,7 +600,7 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
                     {selectedCabinets.map(cab => (
                         <Chip
                           key={cab._id}
-                          label={movementType === 'SMIB' ? cab.relayId : (cab.serialNumber || cab.installedGame || cab.game || 'Machine')}
+                          label={movementType === 'SMIB' ? (cab.relayId || 'Unknown SMIB') : (cab.serialNumber || cab.installedGame || cab.game || 'Machine')}
                           onRemove={() => handleRemoveCabinet(cab._id)}
                           className="bg-buttonActive text-white px-3 py-1 font-medium shadow-sm"
                         />

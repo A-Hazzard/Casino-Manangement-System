@@ -60,7 +60,7 @@ export async function POST() {
 
     // Check if user has admin or developer access
     const hasAdminAccess =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
     if (!hasAdminAccess) {
       return NextResponse.json(
         {

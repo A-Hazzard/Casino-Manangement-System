@@ -82,6 +82,13 @@ export function useAdministrationUsers({
     );
   }, [user?.roles]);
 
+  const isOwner = useMemo(() => {
+    const userRoles = user?.roles || [];
+    return userRoles.some(
+      role => typeof role === 'string' && role === 'owner'
+    );
+  }, [user?.roles]);
+
   // Calculate which batch corresponds to the current page
   const calculateBatchNumber = useCallback((page: number) => {
     return Math.floor(page / pagesPerBatch) + 1;
@@ -129,7 +136,8 @@ export function useAdministrationUsers({
       effectiveSearchValue,
       'username',
       sortConfig,
-      isDeveloper
+      isDeveloper,
+      isOwner
     );
   }, [
     paginatedUsers,

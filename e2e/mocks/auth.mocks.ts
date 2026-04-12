@@ -56,7 +56,7 @@ export const MOCK_USER_DEVELOPER: MockUserPayload = {
   profile: { firstName: 'E2E', lastName: 'Developer', gender: 'other' },
 };
 
-export const MOCK_USER_ADMIN = MOCK_USER_PAYLOAD; // admin@gmail.com
+ export const MOCK_USER_ADMIN: MockUserPayload = { ...MOCK_USER_PAYLOAD }; // admin@gmail.com
 
 export const MOCK_USER_MANAGER: MockUserPayload = {
   _id: '69b6ff3588664816450beac8', // Real manager from list_users
@@ -126,40 +126,11 @@ export const MOCK_USER_COLLECTOR: MockUserPayload = {
 
 // ─── All role users map ───────────────────────────────────────────────────────
 
-export const MOCK_USERS_BY_ROLE: Record<string, MockUserPayload> = {
-  developer: MOCK_USER_DEVELOPER,
-  admin: MOCK_USER_ADMIN,
-  manager: MOCK_USER_MANAGER,
-  'location admin': MOCK_USER_LOCATION_ADMIN,
-  'vault-manager': MOCK_USER_VAULT_MANAGER,
-  cashier: MOCK_USER_CASHIER,
-  technician: MOCK_USER_TECHNICIAN,
-  collector: MOCK_USER_COLLECTOR,
-};
+
 
 // ─── Auth API response helpers ────────────────────────────────────────────────
 
-/** Successful login response */
-export const MOCK_LOGIN_SUCCESS = {
-  success: true,
-  data: {
-    user: MOCK_USER_PAYLOAD,
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    requiresPasswordUpdate: false,
-    requiresProfileUpdate: false,
-  },
-  message: 'Login successful',
-  timestamp: new Date().toISOString(),
-};
 
-/** Failed login response — wrong credentials */
-export const MOCK_LOGIN_FAILURE = {
-  success: false,
-  error: 'Invalid credentials',
-  message: 'The identifier or password you entered is incorrect.',
-  code: 'AUTH_FAILED',
-  timestamp: new Date().toISOString(),
-};
 
 /**
  * Build a current-user API response that matches the EXACT shape returned by

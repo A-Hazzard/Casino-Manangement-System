@@ -50,7 +50,8 @@ export async function GET(request: NextRequest): Promise<Response> {
     const currentUserRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
       currentUserRoles.includes('admin') ||
-      currentUserRoles.includes('developer');
+      currentUserRoles.includes('developer') ||
+      currentUserRoles.includes('owner');
     const isManager = currentUserRoles.includes('manager') && !isAdmin;
     const isLocationAdmin =
       currentUserRoles.includes('location admin') && !isAdmin && !isManager;
@@ -159,7 +160,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       if (userRoles.includes('collector')) {
         counts.collectors++;
       }
-      if (userRoles.includes('admin') || userRoles.includes('developer')) {
+      if (userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner')) {
         counts.admins++;
       }
       if (userRoles.includes('location admin')) {

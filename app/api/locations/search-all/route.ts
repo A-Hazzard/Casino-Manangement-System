@@ -31,7 +31,6 @@ import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { TimePeriod } from '@/shared/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
-
 type LocationAggregationResult = {
   _id: string;
   name: string;
@@ -490,6 +489,11 @@ export async function GET(request: NextRequest) {
     const licenceeIncludeJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.includeJackpot]));
 
     // Step 8: Combine results and create the initial AggregatedLocation objects
+    const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+    const reviewerScale = reviewerMult !== null ? 1 - reviewerMult : 1;
+
+    console.log(`[locations/search-all] User ${userPayload?._id} (${userPayload?.username}) multiplier: ${reviewerMult}, scale: ${reviewerScale}`);
+
     const locations: LocationAggregationResult[] = matchingLocations.map(location => {
       const locationId = String(location._id);
       const financialData = metersByLocation.get(locationId) || {
@@ -504,8 +508,9 @@ export async function GET(request: NextRequest) {
       );
 
       const includeJackpot = licenceeIncludeJackpotMap.get(String(location.rel?.licencee)) || false;
-      const rawMoneyOut = financialData.totalMoneyOut || 0;
-      const jackpot = financialData.totalJackpot || 0;
+      const rawMoneyIn = (financialData.totalMoneyIn || 0) * reviewerScale;
+      const rawMoneyOut = (financialData.totalMoneyOut || 0) * reviewerScale;
+      const jackpot = (financialData.totalJackpot || 0) * reviewerScale;
 
       // Logic: TRUE = Low Gross (Include jackpot in deduction), FALSE = High Gross (Exclude jackpot from deduction)
       // rawMoneyOut is totalCancelledCredits which is typically NET handpays.
@@ -522,11 +527,11 @@ export async function GET(request: NextRequest) {
         totalMachines: location.machineStats?.[0]?.totalMachines || 0,
         onlineMachines: location.aceEnabled ? (location.machineStats?.[0]?.totalMachines || 0) : (location.machineStats?.[0]?.onlineMachines || 0),
         aceEnabled: location.aceEnabled || false,
-        moneyIn: financialData.totalMoneyIn || 0,
+        moneyIn: rawMoneyIn,
         moneyOut: moneyOutValue,
         jackpot: jackpot,
         includeJackpot: includeJackpot,
-        gross: (financialData.totalMoneyIn || 0) - moneyOutValue,
+        gross: rawMoneyIn - moneyOutValue,
         isLocalServer: location.isLocalServer || false,
         hasSmib: location.hasSmib || false,
         noSMIBLocation: !(location.hasSmib || false),
@@ -580,7 +585,8 @@ export async function GET(request: NextRequest) {
     const currentUserRoles = (currentUser?.roles as string[]) || [];
     const isAdminOrDev =
       currentUserRoles.includes('admin') ||
-      currentUserRoles.includes('developer');
+      currentUserRoles.includes('developer') ||
+      currentUserRoles.includes('owner');
 
     // Apply currency conversion ONLY for Admin/Developer viewing "All Licencees"
     let convertedLocations = finalFilteredLocations;

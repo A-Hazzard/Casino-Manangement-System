@@ -10,7 +10,8 @@ export type UseCabinetFiltersProps = {
     searchTerm: string,
     selectedLocation: string[],
     selectedGameType: string[],
-    selectedStatus: string
+    selectedStatus: string,
+    selectedMembership: string
   ) => void;
 };
 
@@ -19,10 +20,12 @@ export type UseCabinetFiltersReturn = {
   selectedLocation: string[];
   selectedGameType: string[];
   selectedStatus: string;
+  selectedMembership: string;
   setSearchTerm: (term: string) => void;
   setSelectedLocation: (locationIds: string[]) => void;
   setSelectedGameType: (gameTypeIds: string[]) => void;
   setSelectedStatus: (status: string) => void;
+  setSelectedMembership: (membership: string) => void;
   clearFilters: () => void;
   hasActiveFilters: boolean;
 };

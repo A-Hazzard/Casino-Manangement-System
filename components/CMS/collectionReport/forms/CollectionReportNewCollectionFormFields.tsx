@@ -48,8 +48,8 @@ type NewCollectionFormFieldsProps = {
   currentRamClearMetersOut: string;
   currentMachineNotes: string;
   currentRamClear: boolean;
-  prevIn: number | null;
-  prevOut: number | null;
+  prevIn: string;
+  prevOut: string;
   debouncedCurrentMetersIn: string;
   debouncedCurrentMetersOut: string;
   debouncedCurrentRamClearMetersIn: string;
@@ -72,6 +72,8 @@ type NewCollectionFormFieldsProps = {
   onAddEntry: () => void;
   onCancelEdit: () => void;
   onAddOrUpdateEntry: () => void;
+  onPrevInChange: (val: string) => void;
+  onPrevOutChange: (val: string) => void;
   onViewMachine: () => void;
 };
 
@@ -113,6 +115,8 @@ export default function CollectionReportNewCollectionFormFields({
   onAddEntry,
   onCancelEdit,
   onAddOrUpdateEntry,
+  onPrevInChange,
+  onPrevOutChange,
   onViewMachine,
 }: NewCollectionFormFieldsProps) {
   return (
@@ -183,10 +187,10 @@ export default function CollectionReportNewCollectionFormFields({
           <p className="mb-4 text-[11px] font-bold text-blue-900 uppercase tracking-wide">
             Manual SAS Period:
           </p>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
-                SAS Start Time:
+                Start Time:
               </label>
               <ModernCalendar
                 date={
@@ -206,7 +210,7 @@ export default function CollectionReportNewCollectionFormFields({
             </div>
             <div>
               <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
-                SAS End Time:
+                End Time:
               </label>
               <ModernCalendar
                 date={
@@ -255,9 +259,25 @@ export default function CollectionReportNewCollectionFormFields({
               disabled={!inputsEnabled || isProcessing}
             />
           </div>
-          <p className="mt-1 text-xs text-grayHighlight">
-            Prev In: {prevIn !== null ? prevIn : 'N/A'}
+          <p className="mt-1 text-xs text-grayHighlight font-medium">
+            Prev In:
           </p>
+          <div onClick={onDisabledFieldClick}>
+            <Input
+              type="text"
+              placeholder="0"
+              value={prevIn || ''}
+              onChange={e => {
+                const val = e.target.value;
+                if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                  onPrevInChange(val);
+                }
+              }}
+              disabled={!inputsEnabled || isProcessing}
+              className="h-7 text-xs"
+            />
+          </div>
+
           {/* Regular Meters In Validation - Debounced */}
           {debouncedCurrentMetersIn &&
             prevIn &&
@@ -293,9 +313,25 @@ export default function CollectionReportNewCollectionFormFields({
               disabled={!inputsEnabled || isProcessing}
             />
           </div>
-          <p className="mt-1 text-xs text-grayHighlight">
-            Prev Out: {prevOut !== null ? prevOut : 'N/A'}
+          <p className="mt-1 text-xs text-grayHighlight font-medium">
+            Prev Out:
           </p>
+          <div onClick={onDisabledFieldClick}>
+            <Input
+              type="text"
+              placeholder="0"
+              value={prevOut || ''}
+              onChange={e => {
+                const val = e.target.value;
+                if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                  onPrevOutChange(val);
+                }
+              }}
+              disabled={!inputsEnabled || isProcessing}
+              className="h-7 text-xs"
+            />
+          </div>
+
           {/* Regular Meters Out Validation - Debounced */}
           {debouncedCurrentMetersOut &&
             prevOut &&

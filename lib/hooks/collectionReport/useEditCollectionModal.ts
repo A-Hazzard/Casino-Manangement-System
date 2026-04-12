@@ -37,6 +37,7 @@ import type {
   PreviousCollectionMeters,
 } from '@/lib/types/collection';
 import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
+import type { VariationsCheckResponse } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
 import {
   calculateMachineMovement,
   calculateMovement,
@@ -201,8 +202,16 @@ export function useEditCollectionModal({
     (val: Date | null) => setStoreFormData({ sasEndTime: val }),
     [setStoreFormData]
   );
-  const [prevIn, setPrevIn] = useState<number | null>(null);
-  const [prevOut, setPrevOut] = useState<number | null>(null);
+  const prevIn = storeFormData.prevIn !== '' ? Number(storeFormData.prevIn) : null;
+  const prevOut = storeFormData.prevOut !== '' ? Number(storeFormData.prevOut) : null;
+  const setPrevIn = useCallback(
+    (val: string | number | null) => setStoreFormData({ prevIn: val?.toString() || '' }),
+    [setStoreFormData]
+  );
+  const setPrevOut = useCallback(
+    (val: string | number | null) => setStoreFormData({ prevOut: val?.toString() || '' }),
+    [setStoreFormData]
+  );
   const [isFirstCollection, setIsFirstCollection] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
@@ -269,11 +278,13 @@ export function useEditCollectionModal({
             collectedEntry.serialNumber ||
             collectedEntry.machineId,
           serialNumber: collectedEntry.serialNumber || collectedEntry.machineId,
+          custom: { name: collectedEntry.machineCustomName },
+          game: collectedEntry.game,
           collectionMeters: {
             metersIn: collectedEntry.prevIn || 0,
             metersOut: collectedEntry.prevOut || 0,
           },
-        } as (typeof machinesOfSelectedLocation)[0];
+        } as CollectionReportMachineSummary;
       }
     }
 
@@ -283,13 +294,28 @@ export function useEditCollectionModal({
   // Synchronize form with selected machine for NEW entries
   useEffect(() => {
     if (show && selectedMachineId && machineForDataEntry && !editingEntryId) {
-      if (machineForDataEntry.collectionMeters) {
-        setPrevIn(machineForDataEntry.collectionMeters.metersIn || 0);
-        setPrevOut(machineForDataEntry.collectionMeters.metersOut || 0);
-      } else {
-        setPrevIn(0);
-        setPrevOut(0);
-      }
+      const sasIn = machineForDataEntry.sasMeters?.drop ?? null;
+      const sasOut = machineForDataEntry.sasMeters?.totalCancelledCredits ?? null;
+      const legacyIn = machineForDataEntry.collectionMeters?.metersIn ?? null;
+      const legacyOut = machineForDataEntry.collectionMeters?.metersOut ?? null;
+      
+      // Default immediately before fetch to prevent UI jump
+      setPrevIn((legacyIn !== null && legacyIn > 0) ? legacyIn : (sasIn ?? 0));
+      setPrevOut((legacyOut !== null && legacyOut > 0) ? legacyOut : (sasOut ?? 0));
+
+      // Attempt to load the exact last collection prev meters
+      axios
+        .get(`/api/collections/last-collection-time?machineId=${selectedMachineId}`)
+        .then(res => {
+          const data = res.data?.data;
+          if (data?.hasPreviousCollection) {
+            setPrevIn(data.metersIn !== null ? data.metersIn : 0);
+            setPrevOut(data.metersOut !== null ? data.metersOut : 0);
+          }
+        })
+        .catch(error => {
+          console.error('Failed to load last collection meters:', error);
+        });
     } else if (show && !selectedMachineId && !editingEntryId) {
       setPrevIn(null);
       setPrevOut(null);
@@ -369,6 +395,7 @@ export function useEditCollectionModal({
     currentRamClear,
     prevIn,
     prevOut,
+    currentCollectionTime,
   ]);
 
   // Debounced values
@@ -500,13 +527,54 @@ export function useEditCollectionModal({
         setShowAdvancedSas(false);
 
         // Set the collection time — store auto-sync will set sasEndTime = this value
-        if (entryToEdit.timestamp) {
+        if (entryToEdit.sasMeters?.sasEndTime) {
+          setCurrentCollectionTime(new Date(entryToEdit.sasMeters.sasEndTime));
+          setSasEndTime(new Date(entryToEdit.sasMeters.sasEndTime));
+        } else if (entryToEdit.timestamp) {
           setCurrentCollectionTime(new Date(entryToEdit.timestamp));
         }
 
-        // Set previous values for display
-        setPrevIn(entryToEdit.prevIn || 0);
-        setPrevOut(entryToEdit.prevOut || 0);
+        if (entryToEdit.sasMeters?.sasStartTime) {
+          setSasStartTime(new Date(entryToEdit.sasMeters.sasStartTime));
+        } else {
+          setSasStartTime(null);
+        }
+
+        // Set previous values for display.
+        // CRITICAL: Use ?? (nullish coalescing) not || so that a legitimately-stored
+        // prevIn=0 is respected. The || operator treated 0 as "missing" and replaced it
+        // with stale machine collectionMeters data, causing visible reversion after edits.
+        //
+        // Only fall back to machine meter data when prevIn/prevOut are strictly
+        // null/undefined — meaning the field was never stored for this collection at all.
+        const storedPrevIn = entryToEdit.prevIn ?? null;
+        const storedPrevOut = entryToEdit.prevOut ?? null;
+
+        let effectivePrevIn = storedPrevIn !== null ? storedPrevIn : 0;
+        let effectivePrevOut = storedPrevOut !== null ? storedPrevOut : 0;
+
+        // Only apply machine meter fallbacks when the collection genuinely has no
+        // prevIn/prevOut stored (null/undefined coming from the DB).
+        if (storedPrevIn === null || storedPrevOut === null) {
+          const machine = machinesOfSelectedLocation.find(
+            m => String(m._id) === entryToEdit.machineId
+          );
+          if (machine) {
+            const sasIn = machine.sasMeters?.drop ?? null;
+            const sasOut = machine.sasMeters?.totalCancelledCredits ?? null;
+            const legacyIn = machine.collectionMeters?.metersIn ?? null;
+            const legacyOut = machine.collectionMeters?.metersOut ?? null;
+            if (storedPrevIn === null) {
+              effectivePrevIn = (sasIn !== null && sasIn > 0) ? sasIn : (legacyIn ?? 0);
+            }
+            if (storedPrevOut === null) {
+              effectivePrevOut = (sasOut !== null && sasOut > 0) ? sasOut : (legacyOut ?? 0);
+            }
+          }
+        }
+
+        setPrevIn(effectivePrevIn);
+        setPrevOut(effectivePrevOut);
 
         toast.info(
           "Edit mode activated. Make your changes and click 'Update Entry in List'.",
@@ -514,13 +582,31 @@ export function useEditCollectionModal({
         );
       }
     },
-    [isProcessing, collectedMachineEntries]
+    [
+      isProcessing, 
+      collectedMachineEntries, 
+      machinesOfSelectedLocation,
+      setEditingEntryId,
+      setSelectedMachineId,
+      setCurrentMetersIn,
+      setCurrentMetersOut,
+      setCurrentMachineNotes,
+      setCurrentRamClear,
+      setCurrentRamClearMetersIn,
+      setCurrentRamClearMetersOut,
+      setCurrentCollectionTime,
+      setShowAdvancedSas,
+      setPrevIn,
+      setPrevOut
+    ]
   );
 
   const handleCancelEdit = useCallback(() => {
     // Reset editing state
     setEditingEntryId(null);
-
+    // CRITICAL: Also clear the selected machine — without this, selectedMachineId remains set
+    // after cancel, causing handleUpdateReport to incorrectly block with "unsaved machine data".
+    setSelectedMachineId('');
     // Clear all input fields
     setCurrentMetersIn('');
     setCurrentMetersOut('');
@@ -540,7 +626,24 @@ export function useEditCollectionModal({
     setShowAdvancedSas(showAdvancedSas);
 
     toast.info('Edit cancelled', { position: 'top-left' });
-  }, [setSasStartTime, setSasEndTime, setShowAdvancedSas]);
+  }, [
+    setSasStartTime, 
+    setSasEndTime, 
+    setShowAdvancedSas,
+    setEditingEntryId,
+    setSelectedMachineId,
+    setCurrentMetersIn,
+    setCurrentMetersOut,
+    setCurrentMachineNotes,
+    setCurrentRamClear,
+    setCurrentRamClearMetersIn,
+    setCurrentRamClearMetersOut,
+    setPrevIn,
+    setPrevOut,
+    showAdvancedSas,
+    sasStartTime,
+    sasEndTime
+  ]);
 
   const handleConfirmMachineRollover = useCallback(() => {
     if (pendingMachineSubmission) {
@@ -556,93 +659,89 @@ export function useEditCollectionModal({
     setIsProcessing(false);
   }, []);
 
-  const confirmAddOrUpdateEntry = useCallback(async () => {
-    if (isProcessing) return;
-
-    // Validation logic here (same as existing validation)
-    const validation = validateMachineEntry(
-      selectedMachineId,
-      machineForDataEntry,
-      currentMetersIn,
-      currentMetersOut,
-      userId,
-      currentRamClear,
-      prevIn || 0,
-      prevOut || 0,
-      currentRamClearMetersIn ? Number(currentRamClearMetersIn) : undefined,
-      currentRamClearMetersOut ? Number(currentRamClearMetersOut) : undefined,
-      !!editingEntryId
-    );
-
-    if (!validation.isValid) {
-      toast.error(validation.error || 'Validation failed', {
-        position: 'top-left',
-      });
-      return;
-    }
-
-    const onConfirm = () => executeAddOrUpdateEntry();
-
-    if (prevIn !== null && Number(currentMetersIn) < prevIn) {
-      setPendingMachineSubmission(() => onConfirm);
-      setShowMachineRolloverWarning(true);
-      return;
-    }
-
-    onConfirm();
-  }, [
-    isProcessing,
-    selectedMachineId,
-    machineForDataEntry,
-    currentMetersIn,
-    currentMetersOut,
-    userId,
-    currentRamClear,
-    prevIn,
-    prevOut,
-    currentRamClearMetersIn,
-    currentRamClearMetersOut,
-    editingEntryId,
-  ]);
-
   const executeAddOrUpdateEntry = useCallback(async () => {
     setIsProcessing(true);
+
+    // Capture form values synchronously BEFORE any awaits so they are never stale
+    const capturedEditingEntryId = editingEntryId;
+    const capturedMetersIn = Number(currentMetersIn);
+    const capturedMetersOut = Number(currentMetersOut);
+    const capturedPrevIn = prevIn !== null ? prevIn : 0;
+    const capturedPrevOut = prevOut !== null ? prevOut : 0;
+    const capturedNotes = currentMachineNotes;
+    const capturedRamClear = currentRamClear;
+    const capturedRamClearMetersIn = currentRamClearMetersIn ? Number(currentRamClearMetersIn) : undefined;
+    const capturedRamClearMetersOut = currentRamClearMetersOut ? Number(currentRamClearMetersOut) : undefined;
+    const capturedCollectionTime = currentCollectionTime;
+    const capturedSasStartTime = sasStartTime;
+    const capturedSasEndTime = sasEndTime;
+    const capturedShowAdvancedSas = showAdvancedSas;
+    // Capture the current entries array so the post-await map doesn't use a stale closure.
+    // NOTE: Zustand setters only accept values (not functional updaters like React's useState),
+    // so we snapshot the array here and pass the mapped result directly.
+    const capturedEntries = collectedMachineEntries;
+
     try {
-      if (editingEntryId) {
+      if (capturedEditingEntryId) {
         // Find the existing collection to get its locationReportId
         const existingEntry = collectedMachineEntries.find(
-          e => e._id === editingEntryId
+          e => e._id === capturedEditingEntryId
         );
 
         // Update existing collection
-        const result = await updateCollection(editingEntryId, {
-          metersIn: Number(currentMetersIn),
-          metersOut: Number(currentMetersOut),
-          notes: currentMachineNotes,
-          ramClear: currentRamClear,
-          ramClearMetersIn: currentRamClearMetersIn
-            ? Number(currentRamClearMetersIn)
-            : undefined,
-          ramClearMetersOut: currentRamClearMetersOut
-            ? Number(currentRamClearMetersOut)
-            : undefined,
-          timestamp: currentCollectionTime,
-          collectionTime: currentCollectionTime, // KEEP IN SYNC
-          prevIn: prevIn || 0,
-          prevOut: prevOut || 0,
+        const result = await updateCollection(capturedEditingEntryId, {
+          metersIn: capturedMetersIn,
+          metersOut: capturedMetersOut,
+          notes: capturedNotes,
+          ramClear: capturedRamClear,
+          ramClearMetersIn: capturedRamClearMetersIn,
+          ramClearMetersOut: capturedRamClearMetersOut,
+          timestamp: capturedCollectionTime,
+          collectionTime: capturedCollectionTime,
+          prevIn: capturedPrevIn,
+          prevOut: capturedPrevOut,
           // CRITICAL: Preserve the existing locationReportId for history update
           locationReportId: existingEntry?.locationReportId || reportId,
           // sasEndTime always saved: advanced uses user-set value, simple uses collectionTime
-          sasEndTime: showAdvancedSas && sasEndTime ? sasEndTime : currentCollectionTime,
-          ...(showAdvancedSas && sasStartTime ? { sasStartTime } : {}),
-          ...(showAdvancedSas && sasEndTime ? { timestamp: sasEndTime, collectionTime: sasEndTime } : {}),
+          sasEndTime: capturedShowAdvancedSas && capturedSasEndTime ? capturedSasEndTime : capturedCollectionTime,
+          ...(capturedShowAdvancedSas && capturedSasStartTime ? { sasStartTime: capturedSasStartTime } : {}),
+          ...(capturedShowAdvancedSas && capturedSasEndTime ? { timestamp: capturedSasEndTime, collectionTime: capturedSasEndTime } : {}),
         });
 
-        // Update local state
+        // CRITICAL: Build the updated entries array from the pre-await snapshot (capturedEntries)
+        // rather than the closure variable, so we never overwrite concurrent state changes.
+        // Always trust capturedPrevIn/capturedPrevOut over the API response — these are exactly
+        // what the user typed, whereas the API cascade may have re-adjusted them.
         setCollectedMachineEntries(
-          collectedMachineEntries.map(entry =>
-            entry._id === editingEntryId ? { ...entry, ...result } : entry
-          )
+          capturedEntries.map(entry => {
+            if (entry._id !== capturedEditingEntryId) return entry;
+            return {
+              ...entry,
+              metersIn: result.metersIn ?? capturedMetersIn,
+              metersOut: result.metersOut ?? capturedMetersOut,
+              // Always trust what the user typed for prevIn/prevOut
+              prevIn: capturedPrevIn,
+              prevOut: capturedPrevOut,
+              notes: result.notes ?? capturedNotes,
+              ramClear: result.ramClear ?? capturedRamClear,
+              ramClearMetersIn: result.ramClearMetersIn ?? capturedRamClearMetersIn,
+              ramClearMetersOut: result.ramClearMetersOut ?? capturedRamClearMetersOut,
+              timestamp: result.timestamp ?? capturedCollectionTime,
+              collectionTime: result.collectionTime ?? capturedCollectionTime,
+              movement: result.movement ?? entry.movement,
+              sasMeters: result.sasMeters ?? entry.sasMeters,
+              softMetersIn: result.softMetersIn ?? entry.softMetersIn,
+              softMetersOut: result.softMetersOut ?? entry.softMetersOut,
+              updatedAt: result.updatedAt ?? entry.updatedAt,
+              // Always keep original display/identity fields to prevent "Unknown" regression
+              machineName: entry.machineName,
+              serialNumber: entry.serialNumber,
+              machineCustomName: entry.machineCustomName,
+              game: entry.game,
+              location: entry.location,
+              machineId: entry.machineId,
+            };
+          })
         );
 
         // Clear editing state and machine selection first to disable inputs
@@ -741,6 +840,8 @@ export function useEditCollectionModal({
             machineCustomName: machineForDataEntry?.custom?.name || '',
             metersIn: Number(currentMetersIn),
             metersOut: Number(currentMetersOut),
+            prevIn: prevIn || 0,
+            prevOut: prevOut || 0,
             notes: currentMachineNotes,
             ramClear: currentRamClear,
             ramClearMetersIn: currentRamClearMetersIn
@@ -836,9 +937,66 @@ export function useEditCollectionModal({
     setCurrentRamClearMetersOut,
     setPrevIn,
     setPrevOut,
-    setSasStartTime,
-    setSasEndTime,
-    setShowAdvancedSas,
+  ]);
+
+  const confirmAddOrUpdateEntry = useCallback(async () => {
+    if (isProcessing) return;
+
+    // Validation logic here (same as existing validation)
+    const validation = validateMachineEntry(
+      selectedMachineId,
+      machineForDataEntry,
+      currentMetersIn,
+      currentMetersOut,
+      userId,
+      currentRamClear,
+      prevIn || 0,
+      prevOut || 0,
+      currentRamClearMetersIn ? Number(currentRamClearMetersIn) : undefined,
+      currentRamClearMetersOut ? Number(currentRamClearMetersOut) : undefined,
+      !!editingEntryId
+    );
+
+    if (!validation.isValid) {
+      toast.error(validation.error || 'Validation failed', {
+        position: 'top-left',
+      });
+      return;
+    }
+
+    const onConfirm = () => executeAddOrUpdateEntry();
+
+    // Fallback to live machine data when prevIn state hasn't resolved yet
+    // (race: after editing an entry, prevIn resets to null until the effect re-fires)
+    const sasInFallback = machineForDataEntry?.sasMeters?.drop ?? null;
+    const legacyInFallback = machineForDataEntry?.collectionMeters?.metersIn ?? null;
+    const effectivePrevIn =
+      prevIn !== null
+        ? prevIn
+        : ((sasInFallback !== null && sasInFallback > 0) ? sasInFallback : legacyInFallback);
+
+    if (effectivePrevIn !== null && Number(currentMetersIn) < effectivePrevIn) {
+      setPendingMachineSubmission(() => onConfirm);
+      setShowMachineRolloverWarning(true);
+      return;
+    }
+
+    onConfirm();
+  }, [
+    isProcessing,
+    selectedMachineId,
+    machineForDataEntry,
+    currentMetersIn,
+    currentMetersOut,
+    userId,
+    currentRamClear,
+    prevIn,
+    prevOut,
+    currentRamClearMetersIn,
+    currentRamClearMetersOut,
+    editingEntryId,
+    currentCollectionTime,
+    executeAddOrUpdateEntry,
   ]);
 
   const confirmUpdateEntry = useCallback(() => {
@@ -849,14 +1007,9 @@ export function useEditCollectionModal({
   const handleAddOrUpdateEntry = useCallback(async () => {
     if (isProcessing) return;
 
-    // If updating an existing entry, show confirmation dialog
-    if (editingEntryId) {
-      setShowUpdateConfirmation(true);
-      return;
-    }
-
-    // If adding a new entry, proceed directly
-    if (machineForDataEntry) {
+    // Always go directly to confirmAddOrUpdateEntry — the confirmation dialog
+    // was never rendered in the JSX so the old gate silently blocked all updates.
+    if (editingEntryId || machineForDataEntry) {
       confirmAddOrUpdateEntry();
     }
   }, [
@@ -936,7 +1089,7 @@ export function useEditCollectionModal({
     }
   }, [entryToDelete, reportId, onRefresh]);
 
-  const handleUpdateReport = useCallback(async () => {
+  const handleUpdateReport = useCallback(async (reconciliationData?: VariationsCheckResponse) => {
     if (isProcessing || !userId || !reportData) {
       toast.error('Missing required data.', { position: 'top-left' });
       return;
@@ -1025,6 +1178,9 @@ export function useEditCollectionModal({
       }
     }
 
+    // Variations check via native alert removed. The custom UI modal (VariationsConfirmationDialog)
+    // now handles the confirmation before this function is called.
+
     setIsProcessing(true);
     try {
       // PHASE 1: Detect machine meter changes and call batch update API
@@ -1036,16 +1192,26 @@ export function useEditCollectionModal({
         prevMetersIn: number;
         prevMetersOut: number;
         collectionId: string;
+        timestamp: Date;
       }> = [];
 
       for (const current of collectedMachineEntries) {
         const original = originalCollections.find(o => o._id === current._id);
         if (original) {
-          // Check if meters changed
+          // Check if meters or collection time changed
           const metersInChanged = current.metersIn !== original.metersIn;
           const metersOutChanged = current.metersOut !== original.metersOut;
+          const prevInChanged = current.prevIn !== original.prevIn;
+          const prevOutChanged = current.prevOut !== original.prevOut;
+          
+          // Timestamp comparison (ISO mismatch check)
+          const timeChanged = 
+            (current.timestamp && original.timestamp && 
+             new Date(current.timestamp).getTime() !== new Date(original.timestamp).getTime()) ||
+            (current.collectionTime && original.collectionTime && 
+             new Date(current.collectionTime).getTime() !== new Date(original.collectionTime).getTime());
 
-          if (metersInChanged || metersOutChanged) {
+          if (metersInChanged || metersOutChanged || prevInChanged || prevOutChanged || timeChanged) {
             changes.push({
               machineId: current.machineId,
               locationReportId: current.locationReportId || reportId,
@@ -1054,6 +1220,7 @@ export function useEditCollectionModal({
               prevMetersIn: current.prevIn || 0,
               prevMetersOut: current.prevOut || 0,
               collectionId: current._id,
+              timestamp: current.collectionTime ? new Date(current.collectionTime) : (current.timestamp ? new Date(current.timestamp) : new Date()),
             });
           }
         } else {
@@ -1066,11 +1233,12 @@ export function useEditCollectionModal({
             prevMetersIn: current.prevIn || 0,
             prevMetersOut: current.prevOut || 0,
             collectionId: current._id,
+            timestamp: current.collectionTime ? new Date(current.collectionTime) : (current.timestamp ? new Date(current.timestamp) : new Date()),
           });
         }
       }
 
-      // If there are meter changes, call batch update API
+      // If there are changes (meters or time), call batch update API
       if (changes.length > 0) {
         const batchResponse = await axios.patch(
           `/api/collection-reports/${reportId}/update-history`,
@@ -1090,8 +1258,39 @@ export function useEditCollectionModal({
         );
       }
 
-      // PHASE 2: Update collection report financials
-      const updateData = {
+      // Recalculate report totals based on currently collected machines
+      const totalMovementData = collectedMachineEntries.map((entry) => {
+        const movement = calculateMachineMovement(
+          entry.metersIn || 0,
+          entry.metersOut || 0,
+          entry.prevIn || 0,
+          entry.prevOut || 0,
+          entry.ramClear || false,
+          undefined,
+          undefined,
+          entry.ramClearMetersIn,
+          entry.ramClearMetersOut
+        );
+        return {
+          drop: movement.metersIn,
+          cancelledCredits: movement.metersOut,
+          gross: movement.gross,
+          sasGross: entry.sasMeters?.gross || 0,
+        };
+      });
+
+      const totals = totalMovementData.reduce(
+        (prev, curr) => ({
+          drop: prev.drop + curr.drop,
+          cancelledCredits: prev.cancelledCredits + curr.cancelledCredits,
+          gross: prev.gross + curr.gross,
+          sasGross: prev.sasGross + curr.sasGross,
+        }),
+        { drop: 0, cancelledCredits: 0, gross: 0, sasGross: 0 }
+      );
+
+      // PHASE 2: Update collection report financials and totals
+      const updateData: Record<string, unknown> = {
         ...reportData,
         variance: Number(financials.variance) || 0,
         previousBalance: Number(financials.previousBalance) || 0,
@@ -1103,7 +1302,13 @@ export function useEditCollectionModal({
         reasonShortagePayment: financials.reasonForShortagePayment,
         balanceCorrection: Number(financials.balanceCorrection) || 0,
         balanceCorrectionReas: financials.balanceCorrectionReason,
+        reconciliation: reconciliationData || null,
         collector: userId || '',
+        totalDrop: totals.drop,
+        totalCancelled: totals.cancelledCredits,
+        totalGross: totals.gross,
+        totalSasGross: totals.sasGross,
+        machinesCollected: collectedMachineEntries.length.toString(),
       };
 
       await updateCollectionReport(reportId, updateData);
@@ -1143,6 +1348,54 @@ export function useEditCollectionModal({
     currentMachineNotes,
     selectedMachineId,
   ]);
+
+  const handleApplyAllDates = useCallback(async () => {
+    if (!updateAllSasStartDate && !updateAllSasEndDate) return;
+    if (collectedMachineEntries.length < 2) return;
+    try {
+      setIsProcessing(true);
+      const axios = (await import('axios')).default;
+      const patchData: Record<string, string> = {};
+      
+      const startTimeISO = updateAllSasStartDate?.toISOString();
+      const endTimeISO = updateAllSasEndDate?.toISOString();
+      
+      if (startTimeISO) patchData.sasStartTime = startTimeISO;
+      if (endTimeISO) patchData.sasEndTime = endTimeISO;
+
+      const results = await Promise.allSettled(
+        collectedMachineEntries.map(async entry => {
+          if (!entry._id) return;
+          return await axios.patch(`/api/collections?id=${entry._id}`, patchData);
+        })
+      );
+      const failed = results.filter(r => r.status === 'rejected').length;
+      if (failed > 0) {
+        toast.error(`${failed} machine${failed > 1 ? 's' : ''} failed to update`);
+        return;
+      }
+
+      // Update local state so UI reflects changes immediately without needing refresh/close
+      const updatedEntries = collectedMachineEntries.map(entry => ({
+        ...entry,
+        sasMeters: {
+          ...entry.sasMeters,
+          ...(startTimeISO ? { sasStartTime: startTimeISO } : {}),
+          ...(endTimeISO ? { sasEndTime: endTimeISO } : {}),
+        }
+      }));
+      setCollectedMachineEntries(updatedEntries);
+
+      toast.success('All SAS times updated successfully!');
+      setUpdateAllSasStartDate(undefined);
+      setUpdateAllSasEndDate(undefined);
+    } catch (error) {
+      console.error('Failed to update SAS times:', error);
+      toast.error('Failed to update SAS times');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [updateAllSasStartDate, updateAllSasEndDate, collectedMachineEntries, setCollectedMachineEntries]);
 
   // ============================================================================
   // Effects
@@ -1494,7 +1747,9 @@ export function useEditCollectionModal({
       if (original) {
         if (
           current.metersIn !== original.metersIn ||
-          current.metersOut !== original.metersOut
+          current.metersOut !== original.metersOut ||
+          (current.timestamp && original.timestamp && new Date(current.timestamp).getTime() !== new Date(original.timestamp).getTime()) ||
+          (current.collectionTime && original.collectionTime && new Date(current.collectionTime).getTime() !== new Date(original.collectionTime).getTime())
         ) {
           hasChanges = true;
           break;
@@ -1599,50 +1854,50 @@ export function useEditCollectionModal({
             timestamp: currentCollectionTime.toISOString(),
           });
 
+          // Helper: resolve sasMeters → collectionMeters → 0 for this machine
+          const resolveMachineFallback = (which: 'in' | 'out') => {
+            const sasVal = which === 'in'
+              ? (machineForDataEntry?.sasMeters?.drop ?? null)
+              : (machineForDataEntry?.sasMeters?.totalCancelledCredits ?? null);
+            const legacyVal = which === 'in'
+              ? (machineForDataEntry?.collectionMeters?.metersIn ?? null)
+              : (machineForDataEntry?.collectionMeters?.metersOut ?? null);
+            return (sasVal !== null && sasVal > 0) ? sasVal : (legacyVal ?? 0);
+          };
+
           if (previousMeters !== null) {
             console.warn('🔍 Using historical prevIn/prevOut:', previousMeters);
-            // If the query returns 0 (common for SAS integraton where no past 'Collections' documents exist),
-            // safely fall back to the last known meters from the machine's actual collectionMeters.
-            if (
-              previousMeters.prevIn === 0 &&
-              previousMeters.prevOut === 0 &&
-              machineForDataEntry?.collectionMeters
-            ) {
-              console.warn('🔍 Historical query returned 0, falling back to machine collectionMeters');
-              if (prevIn !== machineForDataEntry.collectionMeters.metersIn) {
-                setPrevIn(machineForDataEntry.collectionMeters.metersIn || 0);
-              }
-              if (prevOut !== machineForDataEntry.collectionMeters.metersOut) {
-                setPrevOut(machineForDataEntry.collectionMeters.metersOut || 0);
-              }
+            // If the query returns 0 (common for SAS integration where no past Collections exist),
+            // fall back to sasMeters.drop / totalCancelledCredits, then collectionMeters.
+            if (previousMeters.prevIn === 0 && previousMeters.prevOut === 0) {
+              console.warn('🔍 Historical query returned 0, falling back to machine sasMeters');
+              const fbIn = resolveMachineFallback('in');
+              const fbOut = resolveMachineFallback('out');
+              if (prevIn !== fbIn) setPrevIn(fbIn);
+              if (prevOut !== fbOut) setPrevOut(fbOut);
             } else {
               if (prevIn !== previousMeters.prevIn) setPrevIn(previousMeters.prevIn);
               if (prevOut !== previousMeters.prevOut) setPrevOut(previousMeters.prevOut);
             }
           } else {
-            // Query failed - use latest meters as safe fallback
-            console.warn('🔍 Historical query returned null, falling back to machine collectionMeters');
-            if (machineForDataEntry?.collectionMeters) {
-              setPrevIn(machineForDataEntry.collectionMeters.metersIn || 0);
-              setPrevOut(machineForDataEntry.collectionMeters.metersOut || 0);
-            } else {
-              if (prevIn !== 0) setPrevIn(0);
-              if (prevOut !== 0) setPrevOut(0);
-            }
+            // Query failed — use sasMeters → collectionMeters → 0
+            console.warn('🔍 Historical query returned null, falling back to machine sasMeters');
+            const fbIn = resolveMachineFallback('in');
+            const fbOut = resolveMachineFallback('out');
+            if (prevIn !== fbIn) setPrevIn(fbIn);
+            if (prevOut !== fbOut) setPrevOut(fbOut);
           }
         } catch (error) {
           console.error('Error fetching historical prev meters:', error);
-          // Use latest meters as safe fallback on error
-          console.warn(
-            '🔍 Error in historical query, falling back to machine collectionMeters'
-          );
-          if (machineForDataEntry?.collectionMeters) {
-            setPrevIn(machineForDataEntry.collectionMeters.metersIn || 0);
-            setPrevOut(machineForDataEntry.collectionMeters.metersOut || 0);
-          } else {
-            if (prevIn !== 0) setPrevIn(0);
-            if (prevOut !== 0) setPrevOut(0);
-          }
+          console.warn('🔍 Error in historical query, falling back to machine sasMeters');
+          const sasIn = machineForDataEntry?.sasMeters?.drop ?? null;
+          const sasOut = machineForDataEntry?.sasMeters?.totalCancelledCredits ?? null;
+          const legacyIn = machineForDataEntry?.collectionMeters?.metersIn ?? null;
+          const legacyOut = machineForDataEntry?.collectionMeters?.metersOut ?? null;
+          const fbIn = (sasIn !== null && sasIn > 0) ? sasIn : (legacyIn ?? 0);
+          const fbOut = (sasOut !== null && sasOut > 0) ? sasOut : (legacyOut ?? 0);
+          if (prevIn !== fbIn) setPrevIn(fbIn);
+          if (prevOut !== fbOut) setPrevOut(fbOut);
         }
       };
 
@@ -1745,9 +2000,9 @@ export function useEditCollectionModal({
     setSasStartTime,
     sasEndTime,
     setSasEndTime,
-    prevIn,
+    prevIn: storeFormData.prevIn,
     setPrevIn,
-    prevOut,
+    prevOut: storeFormData.prevOut,
     setPrevOut,
     isFirstCollection,
     setIsFirstCollection,
@@ -1797,6 +2052,7 @@ export function useEditCollectionModal({
     handleUpdateReport,
     handleConfirmMachineRollover,
     handleCancelMachineRollover,
+    handleApplyAllDates,
 
     // User
     user,

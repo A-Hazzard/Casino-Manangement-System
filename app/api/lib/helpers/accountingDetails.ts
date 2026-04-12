@@ -396,7 +396,13 @@ export async function getCollectionReportById(
   }, 0);
 
   const totalMetersGross = collections.reduce((sum, col) => {
-    return sum + (col.movement?.gross || 0);
+    // Prefer stored movement.gross; fall back to raw delta calculation for older documents
+    const storedGross = col.movement?.gross;
+    if (storedGross !== undefined && storedGross !== null) {
+      return sum + storedGross;
+    }
+    // Fallback: same formula as the main list page aggregation
+    return sum + (((col.metersIn || 0) - (col.prevIn || 0)) - ((col.metersOut || 0) - (col.prevOut || 0)));
   }, 0);
 
   // Fetch licencee's includeJackpot flag BEFORE calculating total variation
@@ -584,14 +590,14 @@ export async function getCollectionReportById(
       // So if includeJackpot is TRUE, we want Low Gross, so we SUBTRACT jackpot.
       const adjustedSasGross = includeJackpot ? sasGross - (jackpot || 0) : sasGross;
 
-      // Check if SAS data exists - if not, show "No SAS Data"
-      // Note: sasMeters.gross can be 0 (valid value), so we only check for undefined/null
-      const variation =
-        !collection.sasMeters ||
-          collection.sasMeters.gross === undefined ||
-          collection.sasMeters.gross === null
-          ? 'No SAS Data'
-          : meterGross - adjustedSasGross;
+      // Check if SAS data exists - if no SAS time window or no meter records found, show "No SAS Data"
+      // Note: sasMeters.gross is NOT used as the gate (it can be 0 from a stale snapshot).
+      // We rely on sasStartTime/sasEndTime presence AND whether the Meters DB query returned data.
+      const hasNoSasData =
+        (!collection.sasMeters?.sasStartTime || !collection.sasMeters?.sasEndTime)
+          || !meterDataMap.has(String(collection.machineId));
+
+      const variation = meterGross - (hasNoSasData ? 0 : adjustedSasGross);
 
       return {
         id: String(idx + 1),
@@ -603,11 +609,8 @@ export async function getCollectionReportById(
         metersGross: meterGross,
         jackpot,
         netGross,
-        sasGross: formatSmartDecimal(sasGross),
-        variation:
-          typeof variation === 'string'
-            ? variation
-            : formatSmartDecimal(variation),
+        sasGross: hasNoSasData ? 'No SAS Data' : formatSmartDecimal(sasGross),
+        variation: formatSmartDecimal(variation),
         sasStartTime: collection.sasMeters?.sasStartTime || null,
         sasEndTime: collection.sasMeters?.sasEndTime || null,
         hasIssue: false,

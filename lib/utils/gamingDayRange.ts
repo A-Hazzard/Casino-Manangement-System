@@ -275,10 +275,18 @@ function handleCustom(
   }
 
   const hasSpecificTime =
-    hasExplicitTime(customStartDate) || hasExplicitTime(customEndDate);
+    hasExplicitTime(customStartDate, timezoneOffset) || 
+    hasExplicitTime(customEndDate, timezoneOffset);
 
   if (hasSpecificTime) {
-    return { rangeStart: customStartDate, rangeEnd: customEndDate };
+    const finalStart = customStartDate;
+    let finalEnd = customEndDate;
+    // Auto-correct if end time is before or equal to start time (e.g., user picked 8:00 AM to 7:59 AM on the same date)
+    // This perfectly captures the user's intent to query until the next day's 7:59 AM.
+    if (finalEnd.getTime() <= finalStart.getTime()) {
+      finalEnd = new Date(finalEnd.getTime() + 24 * 60 * 60 * 1000);
+    }
+    return { rangeStart: finalStart, rangeEnd: finalEnd };
   }
 
   return expandToGamingDays(
@@ -377,7 +385,7 @@ function expandToGamingDays(
     timezoneOffset
   );
   const daysDiff = calculateDaysDifference(customStartDate, customEndDate);
-  const isSingleDay = daysDiff <= 1;
+  const isSingleDay = daysDiff < 1;
 
   if (isSingleDay) {
     const endGamingDay = calculateGamingDayRange(
@@ -439,8 +447,10 @@ function subtractDays(date: Date, days: number): Date {
 /**
  * Check if a date has explicit time components (not midnight).
  */
-function hasExplicitTime(date: Date): boolean {
-  return date.getUTCHours() !== 0 || date.getUTCMinutes() !== 0;
+function hasExplicitTime(date: Date, timezoneOffset: number): boolean {
+  // Check if it's midnight in the specified timezone
+  const localDate = new Date(date.getTime() + timezoneOffset * 60 * 60 * 1000);
+  return localDate.getUTCHours() !== 0 || localDate.getUTCMinutes() !== 0;
 }
 
 /**
@@ -454,11 +464,21 @@ function isValidDate(date: Date): boolean {
  * Calculate days difference between two dates.
  */
 function calculateDaysDifference(start: Date, end: Date): number {
-  const startUTC = new Date(
-    start.toISOString().split('T')[0] + 'T00:00:00.000Z'
+  // Normalize both dates to midnight UTC based on their LOCAL calendar date
+  // This avoids timezone shifts where 11 PM Local becomes tomorrow in UTC
+  const startLocal = new Date(start.getTime() + DEFAULT_TIMEZONE_OFFSET * 60 * 60 * 1000);
+  const endLocal = new Date(end.getTime() + DEFAULT_TIMEZONE_OFFSET * 60 * 60 * 1000);
+  
+  const startUTC = Date.UTC(
+    startLocal.getUTCFullYear(),
+    startLocal.getUTCMonth(),
+    startLocal.getUTCDate()
   );
-  const endUTC = new Date(end.toISOString().split('T')[0] + 'T00:00:00.000Z');
-  return Math.floor(
-    (endUTC.getTime() - startUTC.getTime()) / (1000 * 60 * 60 * 24)
+  const endUTC = Date.UTC(
+    endLocal.getUTCFullYear(),
+    endLocal.getUTCMonth(),
+    endLocal.getUTCDate()
   );
+  
+  return Math.floor((endUTC - startUTC) / (1000 * 60 * 60 * 24));
 }

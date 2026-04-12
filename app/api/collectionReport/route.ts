@@ -186,30 +186,26 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 8: Fetch and filter collection reports
     // ============================================================================
-    const reports = await getAllCollectionReportsWithMachineCounts(
+    const { reports, total } = await getAllCollectionReportsWithMachineCounts(
       licencee,
       startDate,
-      endDate
+      endDate,
+      page,
+      limit
     );
 
     // Filter reports by allowed locations if needed
     // Note: Collection reports store location NAME in the location field, not ID
-    let filteredReports = reports;
+    let paginatedReports = reports;
     if (allowedLocationIds !== 'all') {
       const allowedLocationNames =
         await getLocationNamesFromIds(allowedLocationIds);
-      filteredReports = reports.filter(report => {
+      paginatedReports = reports.filter(report => {
         const reportLocationName = String(report.location);
         return allowedLocationNames.includes(reportLocationName);
       });
     }
 
-    // ============================================================================
-    // STEP 9: Apply pagination
-    // ============================================================================
-    const total = filteredReports.length;
-    const skip = (page - 1) * limit;
-    const paginatedReports = filteredReports.slice(skip, skip + limit);
     const totalPages = Math.ceil(total / limit);
 
     // ============================================================================

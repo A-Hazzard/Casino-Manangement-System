@@ -26,6 +26,12 @@ export const MEMBERS_TABS_CONFIG: MembersTab[] = [
     icon: 'bar-chart',
     description: 'Analytics and member insights',
   },
+  {
+    id: 'activity-log',
+    label: 'Activity Log',
+    icon: 'activity',
+    description: 'Track SMS and member actions',
+  },
 ];
 
 /**

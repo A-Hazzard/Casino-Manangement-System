@@ -92,6 +92,7 @@ export default function Header({
     return Array.isArray(user?.assignedLicencees) ? user.assignedLicencees : [];
   }, [user?.assignedLicencees]);
 
+  const isOwner = userRoles.includes('owner');
   const isAdmin =
     userRoles.includes('admin') || userRoles.includes('developer');
   const isManager = userRoles.includes('manager');
@@ -365,8 +366,12 @@ export default function Header({
                 <PanelLeft className="h-6 w-6" suppressHydrationWarning />
               </SidebarTrigger>
               <div className="flex min-w-0 items-center gap-2">
-                <h1 className="shrink-0 whitespace-nowrap text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl">
-                  Evolution CMS {pageTitle && <span className="text-gray-400 font-normal"> — {pageTitle}</span>}
+                <h1 className="shrink-0 whitespace-nowrap text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl flex items-center gap-2">
+                  Evolution CMS {isOwner && (
+                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm animate-pulse">
+                      OWNER
+                    </span>
+                  )} {pageTitle && <span className="text-gray-400 font-normal"> — {pageTitle}</span>}
                 </h1>
                 {shouldShowLicenceeName && singleLicenceeName && (
                   <span className="inline-flex items-center rounded-full bg-buttonActive/10 px-3 py-1 text-xs font-medium text-buttonActive ring-1 ring-inset ring-buttonActive/20 sm:text-sm">

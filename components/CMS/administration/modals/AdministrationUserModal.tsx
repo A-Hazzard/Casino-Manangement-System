@@ -7,14 +7,13 @@
 
 'use client';
 
-import { ChangeEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import type { MultiSelectOption } from '@/components/shared/ui/common/MultiSelectDropdown';
@@ -31,27 +30,27 @@ import type { User } from '@/lib/types/administration';
 import type { Country, Licencee } from '@/lib/types/common';
 import type { LocationSelectItem } from '@/lib/types/location';
 import {
-    getPasswordStrengthLabel,
-    isPlaceholderEmail,
-    validateEmail,
-    validatePasswordStrength,
-    validatePhoneNumber,
+  getPasswordStrengthLabel,
+  isPlaceholderEmail,
+  validateEmail,
+  validatePasswordStrength,
+  validatePhoneNumber,
 } from '@/lib/utils/validation';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
 import {
-    AlertCircle,
-    Camera,
-    Edit3,
-    Info,
-    Loader2,
-    Save,
-    Trash2,
-    X,
-    XCircle
+  AlertCircle,
+  Camera,
+  Edit3,
+  Info,
+  Loader2,
+  Save,
+  Trash2,
+  X,
+  XCircle
 } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AdministrationRolePermissionsDialog } from './AdministrationRolePermissionsDialog';
 
@@ -62,6 +61,7 @@ const EMAIL_REGEX = /\S+@\S+\.\S+/;
 // ============================================================================
 
 const ROLE_OPTIONS = [
+  { label: 'Owner', value: 'owner' },
   { label: 'Developer', value: 'developer' },
   { label: 'Administrator', value: 'admin' },
   { label: 'Manager', value: 'manager' },
@@ -106,8 +106,9 @@ export default function AdministrationUserModal({
 }: AdministrationUserModalProps) {
   const currentUser = useUserStore(state => state.user);
   const currentUserRoles = (currentUser?.roles || []) as string[];
+  const isOwner = currentUserRoles.includes('owner');
   const isDeveloper = currentUserRoles.includes('developer');
-  const isAdmin = currentUserRoles.includes('admin') && !isDeveloper;
+  const isAdmin = currentUserRoles.includes('admin') && !isDeveloper && !isOwner;
   const isManager =
     currentUserRoles.includes('manager') && !isAdmin && !isDeveloper;
   const isLocationAdmin =
@@ -117,7 +118,7 @@ export default function AdministrationUserModal({
     !isManager;
   const canEditAccountFields = Boolean(
     currentUser?.roles?.some(role =>
-      ['admin', 'developer', 'manager', 'location admin'].includes(role)
+      ['admin', 'developer', 'owner', 'manager', 'location admin'].includes(role)
     )
   );
   const canEditLicencees = isDeveloper || isAdmin; // Only admins/developers can edit licencee assignments
@@ -133,15 +134,15 @@ export default function AdministrationUserModal({
   
   const [isEditMode, setIsEditMode] = useState(false);
   const [roles, setRoles] = useState<string[]>([]);
-  const [multiplier, setMultiplier] = useState<string>('');
-  const isReviewerSelected = roles.includes('reviewer');
 
   // Filter available roles based on editor's permissions
   const availableRoles = useMemo(() => {
     if (isDeveloper) {
-      return ROLE_OPTIONS;
+      return ROLE_OPTIONS.filter(role => role.value !== 'reviewer');
+    } else if (isOwner) {
+      return ROLE_OPTIONS.filter(role => role.value !== 'developer' && role.value !== 'owner');
     } else if (isAdmin) {
-      return ROLE_OPTIONS.filter(role => role.value !== 'developer');
+      return ROLE_OPTIONS.filter(role => !['developer', 'owner', 'reviewer'].includes(role.value));
     } else if (isManager) {
       return ROLE_OPTIONS.filter(role =>
         [
@@ -149,7 +150,6 @@ export default function AdministrationUserModal({
           'technician',
           'collector',
           'vault-manager',
-          'reviewer',
         ].includes(role.value)
       );
     } else if (isLocationAdmin) {
@@ -234,11 +234,12 @@ export default function AdministrationUserModal({
   const isVaultManagerSelected = roles.includes('vault-manager');
   const isCashierSelected = roles.includes('cashier');
   const hasRestrictedAssignments = isVaultManagerSelected || isCashierSelected;
-  const isAssignmentsEnabled = roles.length > 0;
+  const isAssignmentsEnabled = roles.length > 0 || isOwner;
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [allLocationsSelected, setAllLocationsSelected] = useState(false);
+  const [multiplier, setMultiplier] = useState<number>(0);
   const [rolePermissionsDialog, setRolePermissionsDialog] = useState<{
     open: boolean;
     role: string;
@@ -296,7 +297,7 @@ export default function AdministrationUserModal({
     setAccountTouched({});
 
     setRoles(targetUser.roles || []);
-    setMultiplier(targetUser.multiplier != null ? String((targetUser.multiplier as number) * 100) : '');
+    setMultiplier(targetUser.multiplier || 0);
     setIsEnabled(targetUser.isEnabled !== undefined ? targetUser.isEnabled : true);
 
     let rawLicenceeIds: string[] = [];
@@ -1581,6 +1582,8 @@ export default function AdministrationUserModal({
       originalRoles.length !== newRoles.length ||
       !originalRoles.every((role, idx) => role === newRoles[idx]);
 
+    const multiplierChanged = (user.multiplier || 0) !== multiplier;
+
     const updatedUser: Partial<User> & {
       password?: string;
       isEnabled?: boolean;
@@ -1604,6 +1607,10 @@ export default function AdministrationUserModal({
 
     if (rolesChanged) {
       updatedUser.roles = roles;
+    }
+
+    if (multiplierChanged && roles.includes('reviewer')) {
+        updatedUser.multiplier = multiplier;
     }
 
     if (isLocationAdmin && currentUserLicenceeIds.length > 0) {
@@ -1644,15 +1651,8 @@ export default function AdministrationUserModal({
       updatedUser.password = password;
     }
 
-    if ((isDeveloper || isAdmin || isManager) && user.isEnabled !== isEnabled) {
+    if ((isDeveloper || isAdmin || isOwner || isManager) && user.isEnabled !== isEnabled) {
       updatedUser.isEnabled = isEnabled;
-    }
-
-    // Handle reviewer multiplier
-    const newMultiplierValue = isReviewerSelected && multiplier ? parseFloat(multiplier) / 100 : null;
-    const oldMultiplierValue = (user as Record<string, unknown>).multiplier as number | null | undefined;
-    if (newMultiplierValue !== (oldMultiplierValue ?? null)) {
-      (updatedUser as Record<string, unknown>).multiplier = newMultiplierValue;
     }
 
     if (updatedEmail && !/\S+@\S+\.\S+/.test(updatedEmail)) {
@@ -1766,11 +1766,21 @@ export default function AdministrationUserModal({
       });
     }
 
+    if (multiplierChanged) {
+      meaningfulChanges.push({
+        field: 'multiplier',
+        oldValue: user.multiplier || 0,
+        newValue: multiplier,
+        path: 'multiplier',
+      });
+    }
+
     const hasAnyChanges =
       Object.keys(updatedUser).filter(key => key !== '_id').length > 0 ||
       meaningfulChanges.length > 0 ||
       locationIdsChanged ||
-      licenceeIdsChanged;
+      licenceeIdsChanged ||
+      multiplierChanged;
 
     if (!hasAnyChanges) {
       toast.info('No changes detected');
@@ -1909,9 +1919,16 @@ export default function AdministrationUserModal({
                       )}
                     </div>
                     <div className="mt-3 flex flex-col items-center gap-1 lg:items-start">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {user?.username || 'User'}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {user?.username || 'User'}
+                        </h3>
+                        {user?._id && (
+                          <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-mono font-medium text-gray-500 ring-1 ring-inset ring-gray-500/10">
+                            ID: {user._id}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-600">
                         {accountData.email || user?.emailAddress || 'No email'}
                       </p>
@@ -2329,41 +2346,41 @@ export default function AdministrationUserModal({
                     </div>
                   )}
 
-                  {/* Reviewer Multiplier Input - only shown when reviewer role is selected */}
-                  {isReviewerSelected && (
-                    <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                      <Label htmlFor="edit-multiplier" className="text-sm font-semibold text-blue-800">
-                        Reviewer Multiplier (%)
-                      </Label>
-                      <p className="mb-2 text-xs text-blue-600">
-                        Financial values (Money In, Money Out, Jackpot) will be multiplied by this percentage for this reviewer.
-                      </p>
+                  {roles.includes('reviewer') && isOwner && (
+                    <div className="mt-4 animate-in slide-in-from-top-2 border-t border-blue-100 pt-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Label className="text-sm font-bold text-blue-900 leading-none">
+                          Reviewer Multiplier (%)
+                        </Label>
+                        {isEditMode && <Info className="h-4 w-4 text-blue-400 cursor-help" />}
+                      </div>
+                      
                       {isEditMode ? (
-                        <>
+                        <div className="relative max-w-xs">
                           <Input
-                            id="edit-multiplier"
                             type="number"
                             step="0.01"
                             min="0"
-                            max="100"
-                            placeholder="e.g. 50 for 50%"
+                            max="1"
                             value={multiplier}
-                            onChange={e => setMultiplier(e.target.value)}
-                            className="w-48 bg-white"
+                            onChange={(e) => setMultiplier(parseFloat(e.target.value) || 0)}
+                            className="border-blue-200 focus:ring-blue-500 bg-blue-50/30"
+                            placeholder="e.g. 0.10 for 10%"
                           />
-                          {multiplier && (
-                            <p className="mt-1 text-xs text-gray-500">
-                              Stored as: {(parseFloat(multiplier) / 100).toFixed(4)} (multiply factor)
-                            </p>
-                          )}
-                        </>
+                          <p className="mt-2 text-xs font-medium text-blue-600 bg-blue-50 p-2 rounded-md border border-blue-100 italic">
+                            ℹ️ Results: This user will see financial data reduced by <span className="text-blue-900 font-bold">{(multiplier * 100).toFixed(0)}%</span>.
+                          </p>
+                        </div>
                       ) : (
-                        <p className="text-sm font-medium text-gray-900">
-                          {multiplier ? `${multiplier}%` : 'Not set'}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-gray-900 bg-blue-50 px-3 py-1 rounded-md border border-blue-100">
+                             {(multiplier * 100).toFixed(0)}% Reduction
+                          </span>
+                        </div>
                       )}
                     </div>
                   )}
+
                 </div>
 
                 {isEditMode && (isDeveloper || isAdmin || isManager) && (

@@ -30,7 +30,7 @@ export function SessionsFilters({
     <div className="w-full max-w-full space-y-4">
       {/* Date Filters */}
       <div>
-        <DateFilters hideAllTime={false} mode="desktop" />
+        <DateFilters hideAllTime={false} mode="desktop" customRangeGoLabel="Get Sessions" />
       </div>
 
       {/* Mobile: Search + Horizontal scroll filters */}

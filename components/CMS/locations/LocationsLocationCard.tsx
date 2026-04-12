@@ -80,7 +80,7 @@ export default function LocationsLocationCard({
               onLocationClick(locationId);
             }
           }}
-          className="inline-flex cursor-pointer items-start gap-1.5 text-left text-base font-semibold hover:text-blue-600 hover:underline"
+          className="inline-flex cursor-pointer items-start gap-1.5 text-left text-lg font-bold hover:text-blue-600 hover:underline"
           title="Click to view location details"
         >
           <span className="break-words">

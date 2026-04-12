@@ -30,9 +30,6 @@ import dynamic from 'next/dynamic';
 import CabinetsDeleteCabinetModal from './modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from './modals/CabinetsEditCabinetModal';
 import CabinetsNewCabinetModal from './modals/CabinetsNewCabinetModal';
-import ReviewerDebugPanel from '@/components/shared/ui/ReviewerDebugPanel';
-import { SHOW_REVIEWER_DEBUG_PANEL } from '@/lib/constants/uiConstants';
-
 const CabinetsMovementRequests = dynamic(
   () => import('@/components/CMS/cabinets/CabinetsMovementRequests'),
   { ssr: false }
@@ -85,6 +82,7 @@ export default function CabinetsPageContent() {
     selectedLocation,
     selectedGameType,
     selectedStatus,
+    selectedMembership,
     isNewMovementOpen,
     isUploadSmibOpen,
     refreshTrigger,
@@ -97,6 +95,7 @@ export default function CabinetsPageContent() {
     setSelectedLocation,
     setSelectedGameType,
     setSelectedStatus,
+    setSelectedMembership,
     setCurrentPage,
     handleColumnSort,
     handleRefresh,
@@ -114,9 +113,6 @@ export default function CabinetsPageContent() {
     !userRoles.some(r =>
       ['admin', 'developer', 'manager', 'location admin'].includes(r)
     );
-  const isReviewerOnly =
-    userRoles.length === 1 && userRoles.includes('reviewer');
-
   // ============================================================================
   // Permission Checks
   // ============================================================================
@@ -197,23 +193,21 @@ export default function CabinetsPageContent() {
         </div>
 
         {/* Tab Navigation Section */}
-        {!isReviewerOnly && (
-          <CabinetsNavigation
-            tabs={CABINET_TABS_CONFIG.filter(tab => {
-              if (tab.id === 'movement') {
-                const userRoles = (user?.roles || []).filter(
-                  (r): r is string => typeof r === 'string'
-                );
-                return !userRoles.some((role: string) =>
-                  EXCLUDED_MOVEMENT_ROLES.includes(role)
-                );
-              }
-              return true;
-            })}
-            activeSection={activeSection}
-            onChange={setActiveSection}
-          />
-        )}
+        <CabinetsNavigation
+          tabs={CABINET_TABS_CONFIG.filter(tab => {
+            if (tab.id === 'movement') {
+              const userRoles = (user?.roles || []).filter(
+                (r): r is string => typeof r === 'string'
+              );
+              return !userRoles.some((role: string) =>
+                EXCLUDED_MOVEMENT_ROLES.includes(role)
+              );
+            }
+            return true;
+          })}
+          activeSection={activeSection}
+          onChange={setActiveSection}
+        />
 
         {/* Include Jackpot Indicator */}
         {cabinetsPageData.includeJackpot && (
@@ -230,19 +224,6 @@ export default function CabinetsPageContent() {
            ============================================================================ */}
         {activeSection === 'cabinets' && (
           <div className="mt-6 w-full max-w-full overflow-x-hidden">
-            {/* Reviewer Debug Panel */}
-            {SHOW_REVIEWER_DEBUG_PANEL && userRoles.includes('reviewer') && (
-              <div className="mb-6">
-                <ReviewerDebugPanel
-                  rawValues={
-                    metricsTotals?._raw || financialTotals?._raw || null
-                  }
-                  finalValues={metricsTotals || financialTotals}
-                  multiplier={user?.multiplier || 0.05}
-                />
-              </div>
-            )}
-
             {/* Financial Metrics Summary Cards */}
             {false && (
               <div className="mb-6 w-full max-w-full">
@@ -345,6 +326,8 @@ export default function CabinetsPageContent() {
                 onGameTypeChange={setSelectedGameType}
                 selectedStatus={selectedStatus}
                 onStatusChange={setSelectedStatus}
+                selectedMembership={selectedMembership}
+                onMembershipChange={setSelectedMembership}
                 sortOption={sortOption}
                 sortOrder={sortOrder}
                 onSortChange={handleColumnSort}
@@ -383,12 +366,9 @@ export default function CabinetsPageContent() {
         {/* ============================================================================
            Tab Content: SMIB Management
            ============================================================================ */}
-        {activeSection === 'smib' &&
-          (isReviewerOnly ? (
-            <AccessRestricted sectionName="SMIB Management" />
-          ) : (
-            <CabinetsSMIBManagementTab refreshTrigger={refreshTrigger} />
-          ))}
+        {activeSection === 'smib' && (
+          <CabinetsSMIBManagementTab refreshTrigger={refreshTrigger} />
+        )}
 
         {/* ============================================================================
            Tab Content: Movement Requests
@@ -401,7 +381,7 @@ export default function CabinetsPageContent() {
             const isAuthorized =
               !userRoles.some((role: string) =>
                 EXCLUDED_MOVEMENT_ROLES.includes(role)
-              ) && !isReviewerOnly;
+              );
 
             if (!isAuthorized) {
               return <AccessRestricted sectionName="Movement Requests" />;
@@ -418,12 +398,9 @@ export default function CabinetsPageContent() {
         {/* ============================================================================
            Tab Content: Firmware Management
            ============================================================================ */}
-        {activeSection === 'firmware' &&
-          (isReviewerOnly ? (
-            <AccessRestricted sectionName="Firmware Management" />
-          ) : (
-            <SMIBFirmwareSection refreshTrigger={refreshTrigger} />
-          ))}
+        {activeSection === 'firmware' && (
+          <SMIBFirmwareSection refreshTrigger={refreshTrigger} />
+        )}
       </PageLayout>
     </>
   );

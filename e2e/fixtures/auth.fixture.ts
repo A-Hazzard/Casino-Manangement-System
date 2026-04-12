@@ -23,7 +23,7 @@
  *                       env vars pointing to a real user in the database.
  */
 
-import { type BrowserContext, type Page, expect } from '@playwright/test';
+import { type BrowserContext, type Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as nodePath from 'path';
 import {
@@ -222,21 +222,7 @@ export async function loginViaUI(page: Page): Promise<void> {
   });
 }
 
-// ─── Login via direct API call ────────────────────────────────────────────────
 
-export async function loginViaAPI(context: BrowserContext): Promise<void> {
-  const response = await context.request.post('/api/auth/login', {
-    data: {
-      identifier: TEST_USER.identifier,
-      password: TEST_USER.password,
-      rememberMe: false,
-    },
-  });
-
-  expect(response.ok()).toBeTruthy();
-  const body = await response.json();
-  expect(body.success).toBe(true);
-}
 
 // ─── Login via mock (no real user in DB needed) ───────────────────────────────
 

@@ -160,11 +160,7 @@ export function formatLocalDateTimeString(
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${offsetHoursStr}:${offsetMinutesStr}`;
 }
 
-/**
- * @deprecated Use formatLocalDateTimeString instead.
- * This function's previous behavior was incorrect for multi-timezone deployments.
- */
-export const formatTrinidadDateTime = formatLocalDateTimeString;
+
 
 /**
  * Create a Date object in Trinidad timezone from local time components.
@@ -233,27 +229,7 @@ export function setTimeToGamingDayStart(
  * @param gameDayOffset - The hour when gaming day starts (e.g., 8 for 8 AM)
  * @returns New Date with gaming day end time (Trinidad timezone)
  */
-export function setTimeToGamingDayEnd(date: Date, gameDayOffset: number): Date {
-  const result = new Date(date);
-  const year = result.getFullYear();
-  const month = result.getMonth() + 1;
-  const day = result.getDate();
 
-  // End hour is one minute before gameDayOffset (e.g., 7:59:59 for offset 8)
-  // Special case: if gameDayOffset is 0, end is 23:59:59
-  const endHour = gameDayOffset === 0 ? 23 : gameDayOffset - 1;
-  const endMinutes = 59;
-  const endSeconds = 59;
-
-  return createDateInTrinidadTime(
-    year,
-    month,
-    day,
-    endHour,
-    endMinutes,
-    endSeconds
-  );
-}
 
 /**
  * Create the end of gaming day in Trinidad timezone.

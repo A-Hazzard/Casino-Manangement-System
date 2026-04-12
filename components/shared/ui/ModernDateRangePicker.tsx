@@ -50,6 +50,7 @@ type ModernDateRangePickerProps = {
   enableTimeInputs?: boolean;
   hideGoButton?: boolean;
   hideCancelButton?: boolean;
+  goLabel?: string;
 };
 
 // Custom Time Picker Component - Optimized for mobile performance
@@ -172,6 +173,7 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
   enableTimeInputs = false,
   hideGoButton = false,
   hideCancelButton = false,
+  goLabel = 'Go',
 }) => {
   // Time input states - Default to 8 AM for both start and end time
   const [startTime, setStartTime] = useState('08:00');
@@ -361,7 +363,7 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
               onClick={onGo}
               disabled={!value?.from || !value?.to}
             >
-              Go
+              {goLabel}
             </button>
           )}
           {!hideCancelButton && (
@@ -377,4 +379,3 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
     </div>
   );
 };
-

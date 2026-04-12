@@ -46,7 +46,8 @@ export const fetchCabinets = async (
   onlineStatus?: string,
   signal?: AbortSignal,
   sortBy?: string,
-  sortOrder?: 'asc' | 'desc'
+  sortOrder?: 'asc' | 'desc',
+  membership?: string
 ) => {
   try {
     // Construct the URL with appropriate parameters
@@ -128,6 +129,11 @@ export const fetchCabinets = async (
     // Add onlineStatus parameter if provided
     if (onlineStatus && onlineStatus !== 'all') {
       queryParams.push(`onlineStatus=${encodeURIComponent(onlineStatus)}`);
+    }
+
+    // Add membership parameter if provided
+    if (membership && membership !== 'all') {
+      queryParams.push(`membership=${encodeURIComponent(membership)}`);
     }
 
     // Add pagination parameters
@@ -744,7 +750,8 @@ export async function fetchCabinetTotals(
   locationId?: string | string[],
   gameType?: string | string[],
   onlineStatus?: string,
-  searchTerm?: string
+  searchTerm?: string,
+  membership?: string
 ): Promise<{
   moneyIn: number;
   moneyOut: number;
@@ -797,6 +804,10 @@ export async function fetchCabinetTotals(
 
     if (displayCurrency) {
       url += `&currency=${displayCurrency}`;
+    }
+
+    if (membership && membership !== 'all') {
+      url += `&membership=${encodeURIComponent(membership)}`;
     }
 
     // Add location filter if provided
@@ -862,12 +873,6 @@ export async function fetchCabinetTotals(
           gross: number;
           jackpot: number;
           netGross: number;
-          _raw?: {
-            moneyIn: number;
-            moneyOut: number;
-            jackpot: number;
-            gross: number;
-          };
         },
         machine: {
           moneyIn?: number;
@@ -876,16 +881,6 @@ export async function fetchCabinetTotals(
           jackpot?: number;
           netGross?: number;
           includeJackpot?: boolean;
-          _rawMoneyIn?: number;
-          _rawMoneyOut?: number;
-          _rawJackpot?: number;
-          _rawGross?: number;
-          _raw?: {
-            moneyIn?: number;
-            moneyOut?: number;
-            jackpot?: number;
-            gross?: number;
-          };
         }
       ) => {
         const moneyIn = Number(machine.moneyIn) || 0;
@@ -899,51 +894,13 @@ export async function fetchCabinetTotals(
         const netGross =
           machine.netGross !== undefined ? Number(machine.netGross) : 0;
 
-        // Sum raw values if they exist
-        // Handle both flat property naming AND nested _raw object from API
-        const machineRawObj = machine._raw;
-
-        const rawMoneyIn = Number(
-          machineRawObj?.moneyIn ?? machine._rawMoneyIn ?? 0
-        );
-        const rawMoneyOut = Number(
-          machineRawObj?.moneyOut ?? machine._rawMoneyOut ?? 0
-        );
-        const rawJackpot = Number(
-          machineRawObj?.jackpot ?? machine._rawJackpot ?? 0
-        );
-        const rawGross = Number(machineRawObj?.gross ?? machine._rawGross ?? 0);
-
-        // When includeJackpot=true, moneyOut already includes jackpot, so don't double-count jackpot in totals
-        // But we still need jackpot for display (Jackpot card, and for calculating base cancelled = moneyOut - jackpot)
-        const newAcc = {
+        return {
           moneyIn: acc.moneyIn + moneyIn,
           moneyOut: acc.moneyOut + moneyOut,
           gross: acc.gross + gross,
           jackpot: acc.jackpot + jackpot,
           netGross: acc.netGross + netGross,
         };
-
-        // If any machine has raw values, build/update the raw accumulator
-        if (machineRawObj !== undefined || machine._rawMoneyIn !== undefined) {
-          const currentRaw = acc._raw || {
-            moneyIn: 0,
-            moneyOut: 0,
-            jackpot: 0,
-            gross: 0,
-          };
-          return {
-            ...newAcc,
-            _raw: {
-              moneyIn: (currentRaw.moneyIn || 0) + rawMoneyIn,
-              moneyOut: (currentRaw.moneyOut || 0) + rawMoneyOut,
-              jackpot: (currentRaw.jackpot || 0) + rawJackpot,
-              gross: (currentRaw.gross || 0) + rawGross,
-            },
-          };
-        }
-
-        return newAcc;
       },
       { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0, netGross: 0 }
     );

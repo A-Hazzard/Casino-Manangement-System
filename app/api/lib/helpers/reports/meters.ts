@@ -605,9 +605,9 @@ export async function getHourlyChartData(
  * @returns Formatted machine ID string
  */
 function formatMachineId(machine: MachineData): string {
-  const serialNumber = machine.serialNumber?.trim() || '';
+  const serialNumber = String(machine.serialNumber || '').trim();
   const hasValidSerialNumber = serialNumber.length > 0;
-  const customName = machine.custom?.name?.trim() || '';
+  const customName = String(machine.custom?.name || '').trim();
 
   if (customName && hasValidSerialNumber && customName !== serialNumber) {
     return `${customName} (${serialNumber})`;
@@ -651,8 +651,7 @@ export function transformMeterData(
   metersMap: Map<string, MeterAggregationResult>,
   locationMap: Map<string, string>,
   licenceeSettingsMap: Map<string, boolean>,
-  locationLicenceeMap: Map<string, string>,
-  reviewerMultiplier: number | null = null
+  locationLicenceeMap: Map<string, string>
 ): TransformedMeterData[] {
   return machinesData.map(machine => {
     const locationName =
@@ -700,35 +699,16 @@ export function transformMeterData(
       ? validateMeterValue(metersIn - metersOut - jackpot)
       : validateMeterValue(metersIn - metersOut);
 
-    // Apply Reviewer Scaling
-    let finalMetersIn = metersIn;
-    let finalMetersOut = metersOut;
-    let finalJackpot = jackpot;
-    let finalBillIn = billIn;
-    let finalVoucherOut = voucherOut;
-    let finalHandPaidCredits = handPaidCredits;
-    let finalNetGross = netGross;
-
-    if (reviewerMultiplier !== null) {
-      finalMetersIn *= reviewerMultiplier;
-      finalMetersOut *= reviewerMultiplier;
-      finalJackpot *= reviewerMultiplier;
-      finalBillIn *= reviewerMultiplier;
-      finalVoucherOut *= reviewerMultiplier;
-      finalHandPaidCredits *= reviewerMultiplier;
-      finalNetGross *= reviewerMultiplier;
-    }
-
     return {
       machineId,
-      metersIn: finalMetersIn,
-      metersOut: finalMetersOut,
-      jackpot: finalJackpot,
-      billIn: finalBillIn,
-      voucherOut: finalVoucherOut,
-      attPaidCredits: finalHandPaidCredits,
+      metersIn,
+      metersOut,
+      jackpot,
+      billIn,
+      voucherOut,
+      attPaidCredits: handPaidCredits,
       gamesPlayed,
-      netGross: finalNetGross,
+      netGross,
       includeJackpot,
       location: locationName,
       locationId: machine.gamingLocation,
@@ -736,8 +716,8 @@ export function transformMeterData(
       machineDocumentId,
       game: machine.game || undefined,
       // Include raw fields for export logic
-      customName: machine.custom?.name || undefined,
-      serialNumber: machine.serialNumber?.trim() || undefined,
+      customName: String(machine.custom?.name || '').trim() || undefined,
+      serialNumber: String(machine.serialNumber || '').trim() || undefined,
     };
   });
 }
@@ -771,8 +751,8 @@ export function filterMeterDataBySearch(
       m => m._id === item.machineDocumentId
     );
 
-    const serialNumber = (machineData?.serialNumber || '').trim();
-    const customName = (machineData?.custom?.name || '').trim();
+    const serialNumber = String(machineData?.serialNumber || '').trim();
+    const customName = String(machineData?.custom?.name || '').trim();
     const searchLower = (search || '').toLowerCase();
 
     return (

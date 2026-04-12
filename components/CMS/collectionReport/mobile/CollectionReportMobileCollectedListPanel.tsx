@@ -32,7 +32,7 @@ type MobileCollectedListPanelProps = {
   };
 
   isProcessing: boolean;
-  isCreateReportsEnabled: boolean;
+  isCreateReportsEnabled?: boolean;
 
   // Update all SAS times feature
   updateAllSasStartDate: Date | undefined;
@@ -56,6 +56,7 @@ type MobileCollectedListPanelProps = {
   onCollectedAmountChange?: (value: string) => void;
   baseBalanceCorrection?: string;
   onBaseBalanceCorrectionChange?: (value: string) => void;
+  variationMachineIds?: string[];
 };
 
 /**
@@ -87,6 +88,7 @@ export default function CollectionReportMobileCollectedListPanel({
   onCreateReport,
   onCollectedAmountChange,
   onBaseBalanceCorrectionChange,
+  variationMachineIds = [],
 }: MobileCollectedListPanelProps) {
   // Filter and sort machines
   const filteredMachines = collectedMachines.filter(machine => {
@@ -162,228 +164,13 @@ export default function CollectionReportMobileCollectedListPanel({
               // Show Financial Form
               <div className="flex flex-1 flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto pb-4">
-                  {/* Financial Form Section */}
                   <div className="p-4 pb-8">
                     <h3 className="mb-4 text-center text-lg font-semibold text-gray-700">
                       Financial Summary
                     </h3>
 
-                    <div className="space-y-4">
-                      {/* Amount to Collect */}
-                      <div>
-                        <label className="mb-1 flex items-center text-sm font-bold text-gray-700">
-                          Amount to Collect *
-                          <CalculationHelp
-                            title="Amount to Collect"
-                            formula="(Meters Profit - Variance - Advance) - Partner Share + Opening Balance"
-                            description="This is the ESTIMATED target amount. It starts with the machine revenue (Meters In - Out), subtracts manual adjustments (Advance/Variance) and the Partner's share, and then adds the opening balance carried over from the previous collection."
-                          />
-                        </label>
-                        <input
-                          type="text"
-                          value={financials.amountToCollect}
-                          readOnly
-                          className="w-full cursor-not-allowed rounded-lg border bg-gray-50 p-3 font-semibold text-gray-900"
-                          title="Auto-calculated based on machine data and financial inputs"
-                        />
-                        <p className="mt-1 text-[10px] text-gray-500">
-                          Calculated automatically based on meters and location
-                          share settings.
-                        </p>
-                      </div>
-
-                      {/* Balance Correction */}
-                      <div>
-                        <label className="mb-1 flex items-center text-sm font-bold text-gray-700">
-                          Balance Correction *
-                          <CalculationHelp
-                            title="Balance Correction"
-                            formula="Manual Adjustment + (Collected - Amount to Collect)"
-                            description="This field shows the final balance for the current location. It's calculated by taking the manual correction and adding the current collection difference (Shortage/Overage). You must set a manual value here first to unlock the 'Collected Amount' field."
-                          />
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="0.00"
-                          value={financials.balanceCorrection}
-                          onChange={e => {
-                            const val = e.target.value;
-                            if (/^-?\d*\.?\d*$/.test(val) || val === '') {
-                              onFinancialDataChange('balanceCorrection', val);
-                              if (onBaseBalanceCorrectionChange)
-                                onBaseBalanceCorrectionChange(val);
-                            }
-                          }}
-                          disabled={
-                            isProcessing ||
-                            financials.collectedAmount.trim() !== ''
-                          }
-                          className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <p className="mt-1.5 text-xs font-medium leading-tight">
-                          {financials.collectedAmount.trim() !== '' ? (
-                            <span className="flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 p-2 text-amber-600">
-                              <Info className="h-3.5 w-3.5 shrink-0" />
-                              Note: Clear the 'Collected Amount' below if you
-                              need to re-adjust this field.
-                            </span>
-                          ) : (
-                            <span className="block rounded border border-gray-200 bg-gray-50 p-2 text-gray-600">
-                              Required: Set the opening balance or adjustments
-                              for this collection batch.
-                            </span>
-                          )}
-                        </p>
-                      </div>
-
-                      {/* Collected Amount */}
-                      <div>
-                        <label className="mb-1 flex items-center text-sm font-bold text-gray-700">
-                          Collected Amount
-                          <CalculationHelp
-                            title="Collected Amount"
-                            formula="The actual physical cash you counted"
-                            description="Enter the EXACT total amount of physical cash retrieving from all machines. The system compares this to the 'Amount to Collect' to determine the shortage or overage for the next report."
-                          />
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="0.00"
-                          value={financials.collectedAmount}
-                          onChange={e => {
-                            const val = e.target.value;
-                            if (/^-?\d*\.?\d*$/.test(val) || val === '') {
-                              onFinancialDataChange('collectedAmount', val);
-                              if (onCollectedAmountChange)
-                                onCollectedAmountChange(val);
-                            }
-                          }}
-                          disabled={
-                            isProcessing ||
-                            financials.balanceCorrection.trim() === ''
-                          }
-                          className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <p className="mt-1.5 text-xs font-medium leading-tight">
-                          {financials.balanceCorrection.trim() === '' ? (
-                            <span className="flex items-center gap-1.5 rounded border border-amber-200 bg-amber-50 p-2 text-amber-600">
-                              <Info className="h-3.5 w-3.5 shrink-0" />
-                              Locked: Enter a Balance Correction first (even if
-                              0) to unlock this field.
-                            </span>
-                          ) : (
-                            <span className="block rounded border border-blue-200 bg-blue-50 p-2 text-blue-700">
-                              Action: Count all physical cash collected from
-                              machines and enter the exact total here.
-                            </span>
-                          )}
-                        </p>
-                      </div>
-
-                      {/* Taxes */}
-                      <div>
-                        <label className="mb-1 flex items-center text-sm font-medium">
-                          Taxes
-                          <CalculationHelp
-                            title="Taxes"
-                            formula="Value entered manually"
-                            description="Government taxes applied to the profit share."
-                          />
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="0.00"
-                          value={financials.taxes}
-                          onChange={e => {
-                            const val = e.target.value;
-                            if (/^-?\d*\.?\d*$/.test(val) || val === '') {
-                              onFinancialDataChange('taxes', val);
-                            }
-                          }}
-                          disabled={isProcessing}
-                          className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-
-                      {/* Variance */}
-                      <div>
-                        <label className="mb-1 flex items-center text-sm font-medium">
-                          Variance
-                          <CalculationHelp
-                            title="Variance"
-                            formula="Value entered manually"
-                            description="Expected vs actual money difference."
-                          />
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="0.00"
-                          value={financials.variance}
-                          onChange={e => {
-                            const val = e.target.value;
-                            if (/^-?\d*\.?\d*$/.test(val) || val === '') {
-                              onFinancialDataChange('variance', val);
-                            }
-                          }}
-                          disabled={isProcessing}
-                          className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-
-                      {/* Advance */}
-                      <div>
-                        <label className="mb-1 flex items-center text-sm font-medium">
-                          Advance
-                          <CalculationHelp
-                            title="Advance"
-                            formula="Value entered manually"
-                            description="Upfront payment or loan provided to the partner."
-                          />
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="0.00"
-                          value={financials.advance}
-                          onChange={e => {
-                            const val = e.target.value;
-                            if (/^-?\d*\.?\d*$/.test(val) || val === '') {
-                              onFinancialDataChange('advance', val);
-                            }
-                          }}
-                          disabled={isProcessing}
-                          className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-
-                      {/* Previous Balance */}
-                      <div>
-                        <label className="mb-1 flex items-center text-sm font-medium">
-                          Previous Balance
-                          <CalculationHelp
-                            title="Current/New Balance"
-                            formula="Collected Amount - Amount to Collect"
-                            description="The difference between what you actually collected and what the system expected. A negative value means a shortage. This net result is carried forward to the next collection report automatically."
-                          />
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="0.00"
-                          value={financials.previousBalance}
-                          onChange={e => {
-                            const val = e.target.value;
-                            if (/^-?\d*\.?\d*$/.test(val) || val === '') {
-                              onFinancialDataChange('previousBalance', val);
-                            }
-                          }}
-                          disabled={isProcessing}
-                          className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          title="Auto-calculated as collected amount minus amount to collect (editable)"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Financial Reconciliation Summary Breakdown */}
-                    <div className="mt-4 border-t border-gray-100 bg-blue-50/40 p-4">
+                    {/* Financial Reconciliation Summary Breakdown - Moved to top of mobile tab */}
+                    <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50/40 p-4 shadow-sm">
                       <h5 className="mb-3 flex items-center gap-2 text-sm font-bold text-blue-900">
                         <Info className="h-4 w-4 text-blue-600" />
                         Reconciliation Summary
@@ -419,44 +206,150 @@ export default function CollectionReportMobileCollectedListPanel({
                             ${financials.previousBalance || '0.00'}
                           </p>
                         </div>
+                      </div>
+                    </div>
 
-                        <div className="rounded-lg border border-blue-100 bg-blue-900/5 p-2.5">
-                          <p className="text-center font-mono text-xs leading-relaxed text-blue-800">
-                            <span className="font-bold">
-                              {financials.collectedAmount || '0.00'}
-                            </span>
-                            <span className="mx-1 text-blue-400">-</span>
-                            <span className="font-bold">
-                              {financials.amountToCollect || '0.00'}
-                            </span>
-                            <span className="mx-1 text-blue-400">=</span>
-                            <span
-                              className={`font-bold ${Number(financials.previousBalance) < 0 ? 'text-red-600' : 'text-green-600'}`}
-                            >
-                              {financials.previousBalance || '0.00'}
-                            </span>
-                          </p>
-                        </div>
+                    <div className="space-y-4">
+                      {/* Amount to Collect */}
+                      <div>
+                        <label className="mb-1 flex items-center text-sm font-bold text-gray-700">
+                          Amount to Collect *
+                          <CalculationHelp
+                            title="Amount to Collect"
+                            formula="(Meters Profit - Variance - Advance) - Partner Share + Opening Balance"
+                            description="This is the ESTIMATED target amount. It starts with the machine revenue (Meters In - Out), subtracts manual adjustments (Advance/Variance) and the Partner's share, and then adds the opening balance carried over from the previous collection."
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          value={financials.amountToCollect}
+                          readOnly
+                          className="w-full cursor-not-allowed rounded-lg border bg-gray-50 p-3 font-semibold text-gray-900"
+                        />
+                      </div>
 
-                        <div className="rounded-lg border border-blue-100 bg-white/60 p-3">
-                          <p className="mb-1.5 text-[10px] font-bold uppercase text-blue-900">
-                            Breakdown Guide:
-                          </p>
-                          <ul className="space-y-1 text-[9px] text-gray-700">
-                            <li>
-                              • <span className="font-bold">Target</span>:
-                              Expected based on revenue/share + Correction.
-                            </li>
-                            <li>
-                              • <span className="font-bold">Collected</span>:
-                              Physical cash Retrieved.
-                            </li>
-                            <li>
-                              • <span className="font-bold">Carryover</span>:
-                              Collected minus Target. Becomes next Opening.
-                            </li>
-                          </ul>
-                        </div>
+                      {/* Balance Correction */}
+                      <div>
+                        <label className="mb-1 flex items-center text-sm font-bold text-gray-700">
+                          Balance Correction *
+                          <CalculationHelp
+                            title="Balance Correction"
+                            formula="Manual Adjustment + (Collected - Amount to Collect)"
+                            description="This field shows the final balance for the current location. It's calculated by taking the manual correction and adding the current collection difference (Shortage/Overage)."
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="0.00"
+                          value={financials.balanceCorrection}
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                              onFinancialDataChange('balanceCorrection', val);
+                              if (onBaseBalanceCorrectionChange) onBaseBalanceCorrectionChange(val);
+                            }
+                          }}
+                          disabled={isProcessing || financials.collectedAmount.trim() !== ''}
+                          className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {/* Collected Amount */}
+                      <div>
+                        <label className="mb-1 flex items-center text-sm font-bold text-gray-700">
+                          Collected Amount
+                          <CalculationHelp
+                            title="Collected Amount"
+                            formula="The actual physical cash you counted"
+                            description="Enter the EXACT total amount of physical cash retrieving from all machines."
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="0.00"
+                          value={financials.collectedAmount}
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                              onFinancialDataChange('collectedAmount', val);
+                              if (onCollectedAmountChange) onCollectedAmountChange(val);
+                            }
+                          }}
+                          disabled={isProcessing || financials.balanceCorrection.trim() === ''}
+                          className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {/* Taxes */}
+                      <div>
+                        <label className="mb-1 flex items-center text-sm font-medium">Taxes</label>
+                        <input
+                          type="text"
+                          placeholder="0.00"
+                          value={financials.taxes}
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                              onFinancialDataChange('taxes', val);
+                            }
+                          }}
+                          disabled={isProcessing}
+                          className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {/* Variance */}
+                      <div>
+                        <label className="mb-1 flex items-center text-sm font-medium">Variance</label>
+                        <input
+                          type="text"
+                          placeholder="0.00"
+                          value={financials.variance}
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                              onFinancialDataChange('variance', val);
+                            }
+                          }}
+                          disabled={isProcessing}
+                          className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {/* Advance */}
+                      <div>
+                        <label className="mb-1 flex items-center text-sm font-medium">Advance</label>
+                        <input
+                          type="text"
+                          placeholder="0.00"
+                          value={financials.advance}
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                              onFinancialDataChange('advance', val);
+                            }
+                          }}
+                          disabled={isProcessing}
+                          className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {/* Previous Balance */}
+                      <div>
+                        <label className="mb-1 flex items-center text-sm font-medium">Previous Balance</label>
+                        <input
+                          type="text"
+                          placeholder="0.00"
+                          value={financials.previousBalance}
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                              onFinancialDataChange('previousBalance', val);
+                            }
+                          }}
+                          disabled={isProcessing}
+                          className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
                     </div>
                   </div>
@@ -474,9 +367,7 @@ export default function CollectionReportMobileCollectedListPanel({
                     }`}
                   >
                     {isProcessing
-                      ? isEditing
-                        ? 'Updating Report...'
-                        : 'Creating Report...'
+                      ? isEditing ? 'Updating Report...' : 'Creating Report...'
                       : isEditing
                         ? `UPDATE COLLECTION REPORT (${collectedMachines.length} machines)`
                         : `CREATE COLLECTION REPORT (${collectedMachines.length} machines)`}
@@ -484,18 +375,15 @@ export default function CollectionReportMobileCollectedListPanel({
                 </div>
               </div>
             ) : collectedMachines.length === 0 ? (
-              <div className="flex flex-1 items-center justify-center p-8">
-                <div className="text-center text-gray-500">
+              <div className="flex flex-1 items-center justify-center p-8 text-center text-gray-500">
+                <div>
                   <p>No machines added to collection yet.</p>
-                  <p className="mt-2 text-sm">
-                    Go back and select machines to add them here.
-                  </p>
+                  <p className="mt-2 text-sm">Go back and select machines to add them here.</p>
                 </div>
               </div>
             ) : (
               // === Machine List View ===
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                {/* Scrollable content - ensure it grows to fill flex container */}
                 <div className="mobile-collection-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
                   {/* Live Reconciliation Summary - ALWAYS SHOWN ABOVE LIST */}
                   <div className="border-b bg-blue-50/50 px-4 py-4">
@@ -506,112 +394,63 @@ export default function CollectionReportMobileCollectedListPanel({
                       </h5>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-0.5 border-r border-gray-100">
-                          <p className="text-[9px] font-bold uppercase text-gray-400">
-                            Target
-                          </p>
-                          <p className="text-sm font-black text-gray-900">
-                            ${financials.amountToCollect || '0.00'}
-                          </p>
+                          <p className="text-[9px] font-bold uppercase text-gray-400">Target</p>
+                          <p className="text-sm font-black text-gray-900">${financials.amountToCollect || '0.00'}</p>
                         </div>
                         <div className="space-y-0.5 pl-2">
-                          <p className="text-[9px] font-bold uppercase text-gray-400">
-                            Actual
-                          </p>
-                          <p className="text-sm font-black text-blue-600">
-                            ${financials.collectedAmount || '0.00'}
-                          </p>
+                          <p className="text-[9px] font-bold uppercase text-gray-400">Actual</p>
+                          <p className="text-sm font-black text-blue-600">${financials.collectedAmount || '0.00'}</p>
                         </div>
                       </div>
                       <div className="mt-3 border-t border-gray-50 pt-3">
                         <div className="flex items-center justify-between">
-                          <p className="text-[9px] font-bold uppercase text-gray-400">
-                            Next Opening Balance
-                          </p>
-                          <p
-                            className={`text-xs font-black ${Number(financials.previousBalance) < 0 ? 'text-red-600' : 'text-green-600'}`}
-                          >
+                          <p className="text-[9px] font-bold uppercase text-gray-400">Next Opening Balance</p>
+                          <p className={`text-xs font-black ${Number(financials.previousBalance) < 0 ? 'text-red-600' : 'text-green-600'}`}>
                             ${financials.previousBalance || '0.00'}
                           </p>
                         </div>
                       </div>
                     </div>
-                    <div className="mt-2 text-center">
-                      <p className="px-2 text-[9px] italic text-blue-600/70">
-                        (Collected minus Target = New Carryover Balance)
-                      </p>
-                    </div>
                   </div>
 
                   <div className="flex-1 p-4">
-                    {/* Update All SAS Times - Show if there are 1 or more machines */}
+                    {/* Update All SAS Times */}
                     {collectedMachines.length >= 1 && (
                       <div className="mb-3 space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
-                        <label className="block text-sm font-semibold text-gray-700">
-                          Update All SAS Times
-                        </label>
-
-                        {/* SAS Start Time */}
-                        <div>
-                          <label className="mb-1 block text-[10px] font-medium text-gray-600">
-                            SAS Start Time
-                          </label>
-                          <ModernCalendar
-                            date={
-                              updateAllSasStartDate
-                                ? {
-                                    from: updateAllSasStartDate,
-                                    to: updateAllSasStartDate,
-                                  }
-                                : undefined
-                            }
-                            onSelect={range =>
-                              onUpdateAllSasStartDate(range?.from)
-                            }
-                            disabled={isProcessing}
-                            mode="single"
-                            enableTimeInputs={true}
-                          />
+                        <label className="block text-sm font-semibold text-gray-700">Update All Times</label>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex-1 min-w-0">
+                            <label className="block text-[10px] font-medium text-gray-500 mb-0.5">Start Time</label>
+                            <ModernCalendar
+                              date={updateAllSasStartDate ? { from: updateAllSasStartDate, to: updateAllSasStartDate } : undefined}
+                              onSelect={(range) => onUpdateAllSasStartDate(range?.from)}
+                              enableTimeInputs={true}
+                              mode="single"
+                              className="w-full"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <label className="block text-[10px] font-medium text-gray-500 mb-0.5">End Time</label>
+                            <ModernCalendar
+                              date={updateAllSasEndDate ? { from: updateAllSasEndDate, to: updateAllSasEndDate } : undefined}
+                              onSelect={(range) => onUpdateAllSasEndDate(range?.from)}
+                              enableTimeInputs={true}
+                              mode="single"
+                              className="w-full"
+                            />
+                          </div>
                         </div>
-
-                        {/* SAS End Time */}
-                        <div>
-                          <label className="mb-1 block text-[10px] font-medium text-gray-600">
-                            SAS End Time
-                          </label>
-                          <ModernCalendar
-                            date={
-                              updateAllSasEndDate
-                                ? {
-                                    from: updateAllSasEndDate,
-                                    to: updateAllSasEndDate,
-                                  }
-                                : undefined
-                            }
-                            onSelect={range =>
-                              onUpdateAllSasEndDate(range?.from)
-                            }
-                            disabled={isProcessing}
-                            mode="single"
-                            enableTimeInputs={true}
-                          />
-                        </div>
-
                         <button
                           onClick={onApplyAllDates}
-                          disabled={
-                            (!updateAllSasStartDate && !updateAllSasEndDate) ||
-                            isProcessing
-                          }
-                          className="mt-1 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={(!updateAllSasStartDate && !updateAllSasEndDate) || isProcessing}
+                          className="w-full rounded-lg bg-blue-600 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-md active:scale-95 disabled:bg-gray-400"
                         >
-                          {isProcessing
-                            ? 'Updating...'
-                            : 'Apply SAS Times to All'}
+                          {isProcessing ? 'Updating...' : 'Apply Times to All'}
                         </button>
                       </div>
                     )}
 
-                    {/* Search bar for collected machines */}
+                    {/* Search */}
                     <div className="mb-4">
                       <input
                         type="text"
@@ -624,127 +463,92 @@ export default function CollectionReportMobileCollectedListPanel({
 
                     {sortedMachines.length === 0 && searchTerm ? (
                       <div className="py-8 text-center text-gray-500">
-                        <p>
-                          No machines found matching &quot;{searchTerm}&quot;
-                        </p>
+                        <p>No machines found matching &quot;{searchTerm}&quot;</p>
                       </div>
                     ) : (
-                      sortedMachines.map(machine => (
-                        <div
-                          key={machine._id}
-                          className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm"
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 space-y-2">
-                              {/* Rich Machine Identification */}
-                              <div>
-                                <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-600">
-                                  {machine.serialNumber || 'No Serial'}
-                                </p>
-                                <h4 className="text-sm font-black leading-tight text-gray-900">
-                                  {machine.machineCustomName ||
-                                    machine.machineName ||
-                                    'Unknown Machine'}
-                                </h4>
-                                <p className="text-[10px] font-medium italic text-gray-400">
-                                  Game: {machine.game || 'Standard Slot'}
-                                </p>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
-                                <p>
-                                  In:{' '}
-                                  <span className="font-bold text-gray-900">
-                                    {machine.metersIn}
-                                  </span>
-                                </p>
-                                <p>
-                                  Out:{' '}
-                                  <span className="font-bold text-gray-900">
-                                    {machine.metersOut}
-                                  </span>
-                                </p>
-                                <p className="col-span-2 text-[10px]">
-                                  Time:{' '}
-                                  <span className="font-medium">
-                                    {formatDate(new Date(machine.timestamp))}
-                                  </span>
-                                </p>
-                                {machine.sasMeters?.sasStartTime &&
-                                machine.sasMeters?.sasEndTime ? (
-                                  <p className="col-span-2 text-[10px]">
-                                    SAS:{' '}
-                                    <span className="font-medium">
-                                      {formatDate(
-                                        new Date(machine.sasMeters.sasStartTime)
-                                      )}{' '}
-                                      →{' '}
-                                      {formatDate(
-                                        new Date(machine.sasMeters.sasEndTime)
-                                      )}
-                                    </span>
-                                  </p>
-                                ) : (
-                                  <p className="col-span-2 text-[10px] italic text-gray-400">
-                                    SAS: Not Set
-                                  </p>
-                                )}
-                              </div>
-                              {machine.notes && (
-                                <p className="line-clamp-2 text-[10px] italic text-gray-400">
-                                  Notes: {machine.notes}
-                                </p>
-                              )}
-                              {machine.ramClear && (
-                                <div className="flex w-fit items-center gap-1.5 rounded-md border border-red-100 bg-red-50 px-2 py-1">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-red-500"></span>
-                                  <span className="text-[10px] font-bold uppercase tracking-tighter text-red-600">
-                                    RAM Cleared
-                                  </span>
+                      sortedMachines.map(machine => {
+                        const hasVariation = variationMachineIds.some(vid => String(vid) === String(machine.machineId));
+                        return (
+                          <div
+                            key={machine._id}
+                            className={`mb-3 rounded-xl border p-4 shadow-sm transition-colors ${
+                              hasVariation 
+                                ? 'border-amber-400 bg-amber-50 ring-1 ring-amber-400 shadow-amber-100' 
+                                : 'border-gray-100 bg-white'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <p className={`mb-0.5 text-[10px] font-bold uppercase tracking-wider ${hasVariation ? 'text-amber-800' : 'text-blue-600'}`}>
+                                      {machine.serialNumber || 'No Serial'}
+                                    </p>
+                                    <h4 className={`text-sm font-black leading-tight ${hasVariation ? 'text-amber-950' : 'text-gray-900'}`}>
+                                      {machine.machineCustomName || machine.machineName || 'Unknown Machine'}
+                                    </h4>
+                                  </div>
+                                  {hasVariation && (
+                                    <div className="flex items-center gap-1 rounded-full bg-amber-500 px-2 py-0.5 text-[8px] font-black uppercase text-white shadow-sm">
+                                      <Info className="h-2 w-2" />
+                                      Variation
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-
-                            <div className="flex flex-col space-y-2">
-                              <button
-                                onClick={() => onEditMachine(machine)}
-                                className="rounded-full bg-blue-50 p-2.5 text-blue-600 shadow-sm transition-all hover:bg-blue-100 active:scale-90"
-                                disabled={isProcessing}
-                              >
-                                <Edit3 className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={() => onDeleteMachine(machine._id)}
-                                className="rounded-full bg-red-50 p-2.5 text-red-600 shadow-sm transition-all hover:bg-red-100 active:scale-90"
-                                disabled={isProcessing}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500">
+                                  <p>In: <span className="font-bold text-gray-900">{machine.metersIn}</span> <span className="ml-1 text-[10px] font-normal text-gray-400">(Prev: {machine.prevIn || 0})</span></p>
+                                  <p>Out: <span className="font-bold text-gray-900">{machine.metersOut}</span> <span className="ml-1 text-[10px] font-normal text-gray-400">(Prev: {machine.prevOut || 0})</span></p>
+                                  <div className="col-span-2 mt-1 space-y-0.5 border-t border-gray-50 pt-1 text-[9px]">
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-400">Start Time:</span>
+                                      <span className="font-bold text-gray-700">{machine.sasMeters?.sasStartTime ? formatDate(new Date(machine.sasMeters.sasStartTime)) : 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-400">End Time:</span>
+                                      <span className="font-bold text-gray-700">{machine.sasMeters?.sasEndTime ? formatDate(new Date(machine.sasMeters.sasEndTime)) : 'N/A'}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex flex-col space-y-2">
+                                <button
+                                  onClick={() => onEditMachine(machine)}
+                                  className="rounded-full bg-blue-50 p-2 text-blue-600 hover:bg-blue-100"
+                                  disabled={isProcessing}
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => onDeleteMachine(machine._id)}
+                                  className="rounded-full bg-red-50 p-2 text-red-600 hover:bg-red-100"
+                                  disabled={isProcessing}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
 
-                {/* Sticky Submit Footer */}
                 <div className="shrink-0 border-t bg-white/90 p-4 backdrop-blur-md">
                   <button
                     onClick={onCreateReport}
                     disabled={!isCreateReportsEnabled || isProcessing}
-                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold shadow-lg transition-all active:scale-95 ${
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold shadow-lg transition-all ${
                       isCreateReportsEnabled && !isProcessing
-                        ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-green-600/20 hover:shadow-green-200'
-                        : 'cursor-not-allowed bg-gray-400 text-gray-200'
+                        ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-green-600/20'
+                        : 'bg-gray-400 text-gray-200 cursor-not-allowed'
                     }`}
                   >
                     <SendHorizontal className="h-5 w-5" />
                     {isProcessing ? 'PROCESSING...' : 'SUBMIT FINAL REPORT'}
                   </button>
                   <p className="mt-2 text-center text-[10px] font-medium text-gray-400">
-                    Finalize readings for all {collectedMachines.length}{' '}
-                    machines.
+                    Finalize readings for all {collectedMachines.length} machines.
                   </p>
                 </div>
               </div>

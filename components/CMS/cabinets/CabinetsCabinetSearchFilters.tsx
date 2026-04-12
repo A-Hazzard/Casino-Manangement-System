@@ -9,6 +9,7 @@
  * - Location filter dropdown
  * - Game type filter dropdown
  * - Status filter (All/Online/Offline)
+ * - Membership filter (All/Enabled/Disabled)
  * - Sort options dropdown
  * - Responsive design (mobile vs desktop layouts)
  */
@@ -33,6 +34,8 @@ export const CabinetsCabinetSearchFilters = ({
   onGameTypeChange,
   selectedStatus,
   onStatusChange,
+  selectedMembership,
+  onMembershipChange,
   sortOption,
   sortOrder,
   onSortChange,
@@ -160,6 +163,22 @@ export const CabinetsCabinetSearchFilters = ({
                 emptyMessage="No sort options found"
               />
             </div>
+            <div className="w-48 flex-shrink-0 relative">
+              <CustomSelect
+                value={selectedMembership}
+                onValueChange={onMembershipChange}
+                options={[
+                  { value: 'all', label: 'All Membership' },
+                  { value: 'enabled', label: 'Membership Enabled' },
+                  { value: 'disabled', label: 'Membership Disabled' },
+                ]}
+                placeholder="All Membership"
+                className="w-full"
+                triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={false}
+                emptyMessage="No options found"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -180,7 +199,7 @@ export const CabinetsCabinetSearchFilters = ({
           </div>
 
           {/* Filter Dropdowns */}
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {showLocationFilter && (
               <div className="w-auto min-w-[200px] max-w-[250px] flex-shrink-0">
                 <MultiSelectDropdown
@@ -225,10 +244,27 @@ export const CabinetsCabinetSearchFilters = ({
                 emptyMessage="No status options found"
               />
             </div>
+
+            {/* Membership Filter */}
+            <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
+              <CustomSelect
+                value={selectedMembership}
+                onValueChange={onMembershipChange}
+                options={[
+                  { value: 'all', label: 'All Membership' },
+                  { value: 'enabled', label: 'Membership Enabled' },
+                  { value: 'disabled', label: 'Membership Disabled' },
+                ]}
+                placeholder="All Membership"
+                className="w-full"
+                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={false}
+                emptyMessage="No options found"
+              />
+            </div>
           </div>
         </div>
       </div>
     </>
   );
 };
-

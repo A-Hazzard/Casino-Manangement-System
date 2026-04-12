@@ -59,6 +59,8 @@ type CollectionModalState = {
     ramClearMetersOut: string;
     notes: string;
     collectionTime: Date;
+    prevIn: string;
+    prevOut: string;
     sasStartTime: Date | null;
     sasEndTime: Date | null;
     showAdvancedSas: boolean;
@@ -121,6 +123,8 @@ const initialFormData = {
   ramClearMetersOut: '',
   notes: '',
   collectionTime: new Date(),
+  prevIn: '',
+  prevOut: '',
   sasStartTime: null,
   sasEndTime: null,
   showAdvancedSas: false,
@@ -226,7 +230,9 @@ const createStore = () => {
       // If toggling advanced mode OFF, sync sasEndTime to collectionTime
       if (formData.showAdvancedSas === false) {
         newFormData.sasEndTime = newFormData.collectionTime;
-        newFormData.sasStartTime = null; // Clear manual start time override
+        if (formData.sasStartTime === undefined) {
+          newFormData.sasStartTime = null; // Clear manual start time override only if not explicitly passed
+        }
       }
 
       return {
@@ -265,7 +271,8 @@ const createStore = () => {
       };
     });
   },
-  resetState: () =>
+  resetState: () => {
+    console.log('🧹 [Store] resetState called');
     set({
       selectedLocationId: undefined,
       selectedLocationName: '',
@@ -277,7 +284,8 @@ const createStore = () => {
       collectionTime: new Date(),
       financials: initialFinancials,
       formData: initialFormData,
-    }),
+    });
+  },
   }));
 };
 

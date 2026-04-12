@@ -88,11 +88,4 @@ export type TransformedCabinet = {
   sasMeters: Record<string, unknown> | null;
   online?: boolean;
   includeJackpot?: boolean;
-  _raw?: {
-    moneyIn: number;
-    moneyOut: number;
-    jackpot: number;
-    gross: number;
-  };
-  _reviewerMultiplier?: number | null;
 };

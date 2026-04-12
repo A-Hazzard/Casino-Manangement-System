@@ -9,7 +9,6 @@
 
 import LocationsPageFilterSection from '@/components/CMS/locations/LocationsPageFilterSection';
 import LocationsPageHeaderSection from '@/components/CMS/locations/LocationsPageHeaderSection';
-import LocationsReviewerDebugTable from '@/components/CMS/locations/LocationsReviewerDebugTable';
 import LocationsCabinetTableSkeleton from '@/components/CMS/locations/LocationsCabinetTableSkeleton';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import ClientOnly from '@/components/shared/ui/common/ClientOnly';
@@ -24,7 +23,6 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { AggregatedLocation } from '@/shared/types';
-import { SHOW_REVIEWER_DEBUG_PANEL } from '@/lib/constants/uiConstants';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import axios from 'axios';
@@ -86,14 +84,9 @@ export default function LocationsPageContent() {
    */
   const canManageLocations = useMemo(() => {
     const roles = user?.roles || [];
-    return ['developer', 'admin', 'manager', 'location admin'].some(r =>
-      roles.includes(r)
+    return ['developer', 'owner', 'admin', 'manager', 'location admin'].some(
+      r => roles.includes(r)
     );
-  }, [user]);
-
-  const isReviewer = useMemo(() => {
-    const roles = user?.roles || [];
-    return roles.includes('reviewer');
   }, [user]);
 
   // ============================================================================
@@ -180,12 +173,6 @@ export default function LocationsPageContent() {
             title="Total for all Locations"
           />
         </div>
-
-        {/* ── REVIEWER DEBUG PANEL ─────────────────────────────────────────── */}
-        {SHOW_REVIEWER_DEBUG_PANEL && isReviewer && !loading && locationData.length > 0 && (
-          <LocationsReviewerDebugTable locationData={locationData} />
-        )}
-        {/* ── END REVIEWER DEBUG PANEL ─────────────────────────────────────── */}
 
         {/* Filters and Status Section */}
         <div className="flex flex-col gap-4">

@@ -32,7 +32,6 @@ import { MachineAggregationMatchStage } from '@/shared/types/mongo';
 import { formatDistanceToNow } from 'date-fns';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * Main GET handler for machine aggregation
  *
@@ -77,6 +76,7 @@ export async function GET(req: NextRequest) {
     const displayCurrency = (searchParams.get('currency') as CurrencyCode) || 'USD';
     const rawOnlineStatus = searchParams.get('onlineStatus') || 'all';
     const onlineStatus = rawOnlineStatus.toLowerCase();
+    const membership = searchParams.get('membership')?.toLowerCase() || 'all';
 
     // Pagination parameters
     const pageParam = searchParams.get('page');
@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
     // CRITICAL: For Admins and Developers, if specific locations are requested,
     // we bypass the restrictive allowedLocationIds check (which might be filtered by a stale licencee UI tag)
     // to ensure they can see the data for the location they are specifically viewing.
-    const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer');
+    const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer' || r === 'owner');
     if (isAdmin && locationIdArray.length > 0) {
       allowedLocationIds = 'all';
     }
@@ -125,7 +125,7 @@ export async function GET(req: NextRequest) {
     // STEP 4.5: Technician Restriction - Force last hour meter data
     // ============================================================================
     const userRolesLower = userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase());
-    const isOnlyTechnician = userRolesLower.includes('technician') && !userRolesLower.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
+    const isOnlyTechnician = userRolesLower.includes('technician') && !userRolesLower.some(r => ['admin', 'developer', 'manager', 'location admin', 'owner'].includes(r));
     if (isOnlyTechnician && !isAdmin) {
       console.warn('[API Aggregation] Applying technician restriction: forcing LastHour timePeriod');
       timePeriod = 'LastHour';
@@ -240,6 +240,13 @@ export async function GET(req: NextRequest) {
     } else if (allowedLocationIds !== 'all') {
       // Apply allowed locations filter
       matchStage._id = { $in: allowedLocationIds };
+    }
+
+    // Apply membership filter
+    if (membership === 'enabled') {
+      matchStage.membershipEnabled = true;
+    } else if (membership === 'disabled') {
+      matchStage.membershipEnabled = false;
     }
 
     // Get all locations with their gameDayOffset
@@ -542,11 +549,10 @@ export async function GET(req: NextRequest) {
           const gross = moneyIn - moneyOut;
           const netGross = moneyIn - rawMoneyOut - jackpot;
 
-         
           // Get serialNumber with fallback to custom.name
-          const m = machine as { serialNumber?: string; custom?: { name?: string }; Custom?: { name?: string } };
-          const serialNumber = m.serialNumber?.trim() || '';
-          const customName = (m.custom?.name || m.Custom?.name)?.trim() || '';
+          const machineData = machine as { serialNumber?: string | number; custom?: { name?: string | number }; Custom?: { name?: string | number } };
+          const serialNumber = String(machineData.serialNumber || '').trim();
+          const customName = String(machineData.custom?.name || machineData.Custom?.name || '').trim();
           const finalSerialNumber = serialNumber || customName || '';
       
           allMachines.push({
@@ -555,7 +561,7 @@ export async function GET(req: NextRequest) {
             locationName: (location.name as string) || '(No Location)',
             assetNumber: finalSerialNumber,
             serialNumber: finalSerialNumber,
-            custom: m.custom || m.Custom || {},
+            custom: machineData.custom || machineData.Custom || {},
             game: String(machine.game || machine.gameType || ''),
             installedGame: String(machine.game || machine.gameType || ''),
             denomination: machine.denomination || '',
@@ -913,9 +919,9 @@ export async function GET(req: NextRequest) {
 
             // Get serialNumber with fallback to custom.name
             const machineRecord = machine as Record<string, unknown>;
-            const serialNumber = (machineRecord.serialNumber as string)?.trim() || '';
-            const customData = machine.custom || {};
-            const customName = (customData.name as string)?.trim() || '';
+            const serialNumber = String(machineRecord.serialNumber || '').trim();
+            const customData = (machine.custom || machine.Custom || {}) as Record<string, unknown>;
+            const customName = String(customData.name || '').trim();
             const finalSerialNumber = serialNumber || customName || '';
 
             return {
@@ -1203,55 +1209,25 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 10.5: Apply reviewer multiplier if user is a reviewer
+    // STEP 10.5: Apply reviewer multiplier
     // ============================================================================
-    const userRolesLowerReviewer = userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase());
-    const reviewerMultRaw =
-      userRolesLowerReviewer.includes('reviewer') &&
-        (userPayload as { multiplier?: number | null })?.multiplier != null
-        ? (userPayload as { multiplier?: number | null }).multiplier!
-        : null;
-    
-    // Formula: Value = Value * (1 - multiplier)
-    const reviewerMult = reviewerMultRaw !== null ? (1 - reviewerMultRaw) : null;
-
+    const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
     if (reviewerMult !== null) {
+      const mult = 1 - reviewerMult;
       filteredMachines = filteredMachines.map(machine => {
         const m = machine as Record<string, unknown>;
-        const includeJackpot = m.includeJackpot === true;
-
-        const rawMoneyIn = (m.moneyIn as number) || 0;
-        const rawMoneyOut = (m.moneyOut as number) || 0;
-        const rawJackpot = (m.jackpot as number) || 0;
-
-        // Multiplier from the Reviewer record
-        const mi = rawMoneyIn * reviewerMult;
-        const baseMo = rawMoneyOut * reviewerMult;
-        const jp = rawJackpot * reviewerMult;
-
-        // Final display values
-        const mo = baseMo + (includeJackpot ? jp : 0);
-        const gross = mi - mo;
-        const netGross = mi - baseMo - jp;
-
+        const moneyIn = ((m.moneyIn as number) || 0) * mult;
+        const moneyOut = ((m.moneyOut as number) || 0) * mult;
+        const jackpot = ((m.jackpot as number) || 0) * mult;
+        const cancelledCredits = ((m.cancelledCredits as number) || 0) * mult;
         return {
           ...machine,
-          moneyIn: mi,
-          moneyOut: mo,
-          jackpot: jp,
-          gross,
-          netGross,
-          coinIn: ((m.coinIn as number) || 0) * reviewerMult,
-          coinOut: ((m.coinOut as number) || 0) * reviewerMult,
-          handPaidCancelledCredits: ((m.handPaidCancelledCredits as number) || 0) * reviewerMult,
-          // Attach raw values in _raw object for the ReviewerDebugPanel component
-          _raw: {
-            moneyIn: rawMoneyIn,
-            moneyOut: includeJackpot ? (rawMoneyOut + rawJackpot) : rawMoneyOut,
-            jackpot: rawJackpot,
-            gross: rawMoneyIn - (includeJackpot ? (rawMoneyOut + rawJackpot) : rawMoneyOut),
-          },
-          _reviewerMultiplier: reviewerMult,
+          moneyIn,
+          moneyOut,
+          jackpot,
+          cancelledCredits,
+          gross: moneyIn - moneyOut,
+          netGross: moneyIn - cancelledCredits - jackpot,
         };
       });
     }

@@ -96,13 +96,6 @@ export type AggregatedLocation = {
     lastActivity?: Date | null;
   }>; // Optional machines array for location details
   deletedAt?: string | Date | null;
-  _raw?: {
-    moneyIn: number;
-    moneyOut: number;
-    jackpot: number;
-    gross: number;
-  };
-  _reviewerMultiplier?: number | null;
 };
 
 // Location metrics for reports and analytics
@@ -141,7 +134,7 @@ export type GamingMachine = {
   origSerialNumber?: string; // Original serial number from system
   assetNumber?: string;
   machineId?: string;
-  relayId: string;
+  relayId?: string;
   smbId?: string; // Alias for smibBoard for UI convenience
   smibBoard?: string;
   custom: { name: string }; // Custom name for machines - required field
@@ -326,13 +319,6 @@ export type GamingMachine = {
   offlineTimeLabel?: string;
   actualOfflineTime?: string;
   network?: string;
-  _raw?: {
-    moneyIn: number;
-    moneyOut: number;
-    jackpot: number;
-    gross: number;
-  };
-  _reviewerMultiplier?: number | null;
 };
 
 export type SmibConfig = {
@@ -578,7 +564,7 @@ export type MemberSession = {
 };
 
 // Members UI types
-export type MembersView = 'members' | 'summary-report';
+export type MembersView = 'members' | 'summary-report' | 'activity-log';
 
 export type MembersTab = {
   id: MembersView;
@@ -597,7 +583,7 @@ export type NewCabinetFormData = {
   cabinetType: string;
   assetStatus: string;
   gamingLocation: string;
-  relayId: string;
+  relayId?: string;
   smibBoard?: string;
   smbId?: string;
   manufacturer: string;

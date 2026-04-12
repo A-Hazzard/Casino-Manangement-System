@@ -31,9 +31,6 @@ import CabinetsDetailsAccountingSection from '@/components/CMS/cabinets/details/
 import CabinetsDetailsChartSection from '@/components/CMS/cabinets/details/CabinetsDetailsChartSection';
 import CabinetsDetailsSMIBManagementSection from '@/components/CMS/cabinets/details/CabinetsDetailsSMIBManagementSection';
 import CabinetsDetailsSummarySection from '@/components/CMS/cabinets/details/CabinetsDetailsSummarySection';
-import ReviewerDebugPanel from '@/components/shared/ui/ReviewerDebugPanel';
-import { SHOW_REVIEWER_DEBUG_PANEL } from '@/lib/constants/uiConstants';
-
 /**
  * Cabinets Details Page Content Component
  */
@@ -229,19 +226,6 @@ export default function CabinetsDetailsPageContent() {
             onSetEditingSection={setEditingSection}
             onCopyToClipboard={copyToClipboard}
           />
-
-          {/* Reviewer Debug Panel */}
-          {SHOW_REVIEWER_DEBUG_PANEL && 
-           (user?.roles || []).some(r => ['reviewer', 'developer'].includes(r.toLowerCase())) && 
-           cabinet && (
-            <div className="">
-              <ReviewerDebugPanel
-                rawValues={cabinet._raw || null}
-                finalValues={cabinet}
-                multiplier={user?.multiplier || 0.05}
-              />
-            </div>
-          )}
 
           {/* Chart Section */}
           <CabinetsDetailsChartSection

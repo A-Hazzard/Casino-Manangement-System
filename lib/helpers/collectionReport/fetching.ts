@@ -69,7 +69,7 @@ export async function fetchCollectionReportById(reportId: string) {
  */
 export async function updateCollectionReport(reportId: string, data: unknown) {
   const response = await axios.patch(
-    `/api/collection-reports/${reportId}`,
+    `/api/collection-report/${reportId}`,
     data
   );
   return response.data;

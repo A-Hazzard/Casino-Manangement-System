@@ -73,7 +73,7 @@ export async function withApiAuth(
     }
 
     const userRoles = (userPayload?.roles as string[]) || [];
-    const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer');
+    const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
     // 3. Execute Handler
     return await handler({

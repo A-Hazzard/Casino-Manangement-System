@@ -96,13 +96,6 @@ export function getInvalidProfileFields(
   user: ProfileLike,
   options: ValidationOptions = {}
 ): ProfileValidationResult {
-  // We determine if the user is an admin or developer to potentially skip some validations
-  const userRoles = Array.isArray(user.roles) ? user.roles : [];
-  const isAdminOrDeveloper = userRoles.some(
-    role =>
-      typeof role === 'string' &&
-      (role.toLowerCase() === 'admin' || role.toLowerCase() === 'developer')
-  );
 
   const username = normalizeNullable(user.username);
   const firstName = normalizeNullable(user.profile?.firstName);
@@ -292,28 +285,6 @@ export function getInvalidProfileFields(
     invalidFields.password = true;
     reasons.password =
       'A security update is required for your account password.';
-  }
-
-  // For admins and developers, we only enforce the password update requirement.
-  // Other profile fields are exempt to avoid blocking internal accounts with incomplete data.
-  if (isAdminOrDeveloper) {
-    const onlyPasswordInvalid: InvalidProfileFields = {};
-    const onlyPasswordReasons: ProfileValidationReasons = {};
-
-    if (invalidFields.password) {
-      onlyPasswordInvalid.password = true;
-      onlyPasswordReasons.password = reasons.password;
-    }
-
-    if (invalidFields.gender) {
-      onlyPasswordInvalid.gender = true;
-      onlyPasswordReasons.gender = reasons.gender;
-    }
-
-    return {
-      invalidFields: onlyPasswordInvalid,
-      reasons: onlyPasswordReasons,
-    };
   }
 
   return { invalidFields, reasons };

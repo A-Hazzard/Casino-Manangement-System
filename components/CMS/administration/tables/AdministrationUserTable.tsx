@@ -58,15 +58,19 @@ export function AdministrationUserTable({
         )
     ) || false;
 
+
+
   // Helper function to check if a user is a manager, developer, or admin
-  const isProtectedRole = (user: User): boolean => {
-    const roles = (user.roles || []).map(r => r?.toLowerCase());
+  const isProtectedRole = (targetUser: User): boolean => {
+    const roles = (targetUser.roles || []).map(r => r?.toLowerCase());
     return (
       roles.includes('developer') ||
       roles.includes('admin') ||
       roles.includes('manager')
     );
   };
+
+
   // Map column headers to their corresponding sort keys
   const columnConfig = [
     { header: 'NAME', sortKey: 'name' as SortKey },

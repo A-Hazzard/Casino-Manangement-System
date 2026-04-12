@@ -47,7 +47,8 @@ export async function getMachineStats(
   licencee: string | undefined,
   displayCurrency: CurrencyCode,
   isAdminOrDev: boolean,
-  timePeriod: string = 'Today'
+  timePeriod: string = 'Today',
+  reviewerMult: number | null = null
 ) {
   const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
@@ -248,9 +249,10 @@ export async function getMachineStats(
     const includesJackpot = licenceeJackpotMap.get(licId) || false;
     const adjustedMoneyOut = includesJackpot ? moneyOut + jackpotVal : moneyOut;
 
-    totalDrop += drop;
-    totalMoneyOut += adjustedMoneyOut;
-    totalGross += drop - adjustedMoneyOut;
+    const mult = reviewerMult !== null ? (1 - reviewerMult) : 1;
+    totalDrop += drop * mult;
+    totalMoneyOut += adjustedMoneyOut * mult;
+    totalGross += (drop - adjustedMoneyOut) * mult;
   }
 
   const totals = {
@@ -383,9 +385,10 @@ export async function getMachineStats(
         nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
       }
 
-      totalDropUSD += convertToUSD(machine.drop || 0, nativeCurrency);
-      totalMoneyOutUSD += convertToUSD(machine.moneyOut || 0, nativeCurrency);
-      totalGrossUSD += convertToUSD(machine.gross || 0, nativeCurrency);
+      const mult = reviewerMult !== null ? (1 - reviewerMult) : 1;
+      totalDropUSD += convertToUSD(machine.drop || 0, nativeCurrency) * mult;
+      totalMoneyOutUSD += convertToUSD(machine.moneyOut || 0, nativeCurrency) * mult;
+      totalGrossUSD += convertToUSD(machine.gross || 0, nativeCurrency) * mult;
     }
 
     convertedTotals = {
@@ -423,7 +426,8 @@ export async function getOverviewMachines(
   startDate: Date | undefined,
   endDate: Date | undefined,
   timePeriod: string = 'Today',
-  searchTerm?: string
+  searchTerm?: string,
+  reviewerMult: number | null = null
 ) {
   const searchLower = searchTerm?.toLowerCase().trim();
   // Fetch locations to get gaming day ranges
@@ -584,14 +588,15 @@ export async function getOverviewMachines(
     const licId = machine.licenceeId ? String(machine.licenceeId) : '';
     const includesJackpot = licenceeJackpotMap.get(licId) || false;
     
-    const jackpotVal = Math.round((Number(machine.rawJackpot) || 0) * 100) / 100;
-    const rawMoneyOut = Math.round((Number(machine.rawMoneyOut) || 0) * 100) / 100;
+    const multiplier = reviewerMult !== null ? (1 - reviewerMult) : 1;
+    const jackpotVal = Math.round(((Number(machine.rawJackpot) || 0) * multiplier) * 100) / 100;
+    const rawMoneyOut = Math.round(((Number(machine.rawMoneyOut) || 0) * multiplier) * 100) / 100;
     const adjustedMoneyOut = includesJackpot ? rawMoneyOut + jackpotVal : rawMoneyOut;
-    const dropVal = Math.round((Number(machine.rawDrop) || 0) * 100) / 100;
+    const dropVal = Math.round(((Number(machine.rawDrop) || 0) * multiplier) * 100) / 100;
     const adjustedGross = Math.round((dropVal - adjustedMoneyOut) * 100) / 100;
 
-    const coinInVal = Math.round((Number(machine.rawCoinIn) || 0) * 100) / 100;
-    const coinOutVal = Math.round((Number(machine.rawCoinOut) || 0) * 100) / 100;
+    const coinInVal = Math.round(((Number(machine.rawCoinIn) || 0) * multiplier) * 100) / 100;
+    const coinOutVal = Math.round(((Number(machine.rawCoinOut) || 0) * multiplier) * 100) / 100;
     const netWinVal = Math.round((coinInVal - coinOutVal) * 100) / 100;
 
     const holdPct = coinInVal > 0 ? (adjustedGross / coinInVal) * 100 : 0;
@@ -690,7 +695,8 @@ export async function getAllMachines(
   searchParams: URLSearchParams,
   startDate: Date | undefined,
   endDate: Date | undefined,
-  locationMatchStage: Record<string, unknown>
+  locationMatchStage: Record<string, unknown>,
+  reviewerMult: number | null = null
 ) {
   const searchTerm = searchParams.get('search');
   const machineMatchStage: Record<string, unknown> = {
@@ -821,14 +827,15 @@ export async function getAllMachines(
     const licId = machine.licenceeId ? String(machine.licenceeId) : '';
     const includesJackpot = licenceeJackpotMap.get(licId) || false;
     
-    const jackpotVal = Math.round((Number(machine.rawJackpot) || 0) * 100) / 100;
-    const rawMoneyOut = Math.round((Number(machine.rawMoneyOut) || 0) * 100) / 100;
+    const multiplier = reviewerMult !== null ? (1 - reviewerMult) : 1;
+    const jackpotVal = Math.round(((Number(machine.rawJackpot) || 0) * multiplier) * 100) / 100;
+    const rawMoneyOut = Math.round(((Number(machine.rawMoneyOut) || 0) * multiplier) * 100) / 100;
     const adjustedMoneyOut = includesJackpot ? rawMoneyOut + jackpotVal : rawMoneyOut;
-    const dropVal = Math.round((Number(machine.rawDrop) || 0) * 100) / 100;
+    const dropVal = Math.round(((Number(machine.rawDrop) || 0) * multiplier) * 100) / 100;
     const adjustedGross = Math.round((dropVal - adjustedMoneyOut) * 100) / 100;
 
-    const coinInVal = Math.round((Number(machine.rawCoinIn) || 0) * 100) / 100;
-    const coinOutVal = Math.round((Number(machine.rawCoinOut) || 0) * 100) / 100;
+    const coinInVal = Math.round(((Number(machine.rawCoinIn) || 0) * multiplier) * 100) / 100;
+    const coinOutVal = Math.round(((Number(machine.rawCoinOut) || 0) * multiplier) * 100) / 100;
     const netWinVal = Math.round((coinInVal - coinOutVal) * 100) / 100;
 
     const holdPct = coinInVal > 0 ? (adjustedGross / coinInVal) * 100 : 0;
@@ -901,7 +908,8 @@ export async function getOfflineMachines(
   endDate: Date | undefined,
   locationMatchStage: Record<string, unknown>,
   timePeriod: string = 'Today',
-  searchTerm?: string
+  searchTerm?: string,
+  reviewerMult: number | null = null
 ) {
   const searchLower = searchTerm?.toLowerCase().trim();
   // Fetch locations to get gaming day ranges (also used to build aceEnabled exclusion set)
@@ -1161,14 +1169,15 @@ export async function getOfflineMachines(
     const licId = machine.licenceeId ? String(machine.licenceeId) : '';
     const includesJackpot = licenceeJackpotMap.get(licId) || false;
     
-    const jackpotVal = Math.round((Number(machine.rawJackpot) || 0) * 100) / 100;
-    const rawMoneyOut = Math.round((Number(machine.rawMoneyOut) || 0) * 100) / 100;
+    const multiplier = reviewerMult !== null ? (1 - reviewerMult) : 1;
+    const jackpotVal = Math.round(((Number(machine.rawJackpot) || 0) * multiplier) * 100) / 100;
+    const rawMoneyOut = Math.round(((Number(machine.rawMoneyOut) || 0) * multiplier) * 100) / 100;
     const adjustedMoneyOut = includesJackpot ? rawMoneyOut + jackpotVal : rawMoneyOut;
-    const dropVal = Math.round((Number(machine.rawDrop) || 0) * 100) / 100;
+    const dropVal = Math.round(((Number(machine.rawDrop) || 0) * multiplier) * 100) / 100;
     const adjustedGross = Math.round((dropVal - adjustedMoneyOut) * 100) / 100;
 
-    const coinInVal = Math.round((Number(machine.rawCoinIn) || 0) * 100) / 100;
-    const coinOutVal = Math.round((Number(machine.rawCoinOut) || 0) * 100) / 100;
+    const coinInVal = Math.round(((Number(machine.rawCoinIn) || 0) * multiplier) * 100) / 100;
+    const coinOutVal = Math.round(((Number(machine.rawCoinOut) || 0) * multiplier) * 100) / 100;
     const netWinVal = Math.round((coinInVal - coinOutVal) * 100) / 100;
 
     const holdPct = coinInVal > 0 ? (adjustedGross / coinInVal) * 100 : 0;

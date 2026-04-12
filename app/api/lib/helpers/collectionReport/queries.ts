@@ -61,7 +61,7 @@ export async function fetchLocationsWithMachines(
       .assignedLocations;
   }
   const isAdmin =
-    userRoles.includes('admin') || userRoles.includes('developer');
+    userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
   // Get user's accessible locations based on role and permissions
   const allowedLocationIds = await getUserLocationFilter(
@@ -95,6 +95,7 @@ export async function fetchLocationsWithMachines(
         name: 1,
         previousCollectionTime: 1,
         profitShare: 1,
+        gameDayOffset: 1,
       },
     },
     {
@@ -122,6 +123,7 @@ export async function fetchLocationsWithMachines(
               game: 1,
               collectionMeters: 1,
               collectionTime: 1,
+              sasMeters: 1,
             },
           },
         ],
@@ -133,6 +135,7 @@ export async function fetchLocationsWithMachines(
         name: 1,
         previousCollectionTime: 1,
         profitShare: 1,
+        gameDayOffset: 1,
         machines: {
           $map: {
             input: '$machines',
@@ -158,6 +161,7 @@ export async function fetchLocationsWithMachines(
                 ],
               },
               collectionTime: '$$machine.collectionTime',
+              sasMeters: '$$machine.sasMeters',
             },
           },
         },
@@ -185,6 +189,10 @@ export function calculateDateRangeForTimePeriod(
     // Custom date range without timePeriod
     const startDate = new Date(startDateStr);
     const endDate = new Date(endDateStr);
+    // If they are exactly the same (YYYY-MM-DD), set end date to end of day
+    if (startDate.getTime() === endDate.getTime()) {
+      endDate.setHours(23, 59, 59, 999);
+    }
     return { startDate, endDate };
   }
 
@@ -281,7 +289,7 @@ export async function determineAllowedLocationIds(
   userLocationPermissions: string[]
 ): Promise<string[] | 'all'> {
   const isAdmin =
-    userRoles.includes('admin') || userRoles.includes('developer');
+    userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
   const isManager = userRoles.includes('manager');
 
   if (isAdmin) {

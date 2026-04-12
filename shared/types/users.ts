@@ -30,5 +30,8 @@ export type OriginalUserType = {
     };
   };
   profilePicture?: string;
+  multiplier?: number;
+  isEnabled?: boolean;
+  roles?: string[];
 };
 

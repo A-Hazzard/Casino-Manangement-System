@@ -55,6 +55,7 @@ export async function GET(
         userRoles.includes('collector') &&
         !userRoles.includes('developer') &&
         !userRoles.includes('admin') &&
+        !userRoles.includes('owner') &&
         !userRoles.includes('manager') &&
         !userRoles.includes('location admin') &&
         !userRoles.includes('technician');

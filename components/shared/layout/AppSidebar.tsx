@@ -977,8 +977,13 @@ export default function AppSidebar({
                     collapsed ? 'md:hidden' : ''
                   )}
                 >
-                  <div className="truncate text-sm font-medium text-gray-900">
+                  <div className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900">
                     {displayName}
+                    {(user?.roles || []).includes('owner') && (
+                      <span className="flex-shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm animate-pulse">
+                        OWNER
+                      </span>
+                    )}
                   </div>
                   <div className="truncate text-xs text-gray-600">{email}</div>
                 </div>
@@ -1020,8 +1025,13 @@ export default function AppSidebar({
                       />
                     </div>
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-medium text-gray-900">
+                      <div className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900">
                         {displayName}
+                        {(user?.roles || []).includes('owner') && (
+                          <span className="flex-shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm animate-pulse">
+                            OWNER
+                          </span>
+                        )}
                       </div>
                       <div className="truncate text-xs text-gray-600">
                         {email}
@@ -1143,8 +1153,13 @@ export default function AppSidebar({
                 />
               </div>
               <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-gray-900">
+                <div className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900">
                   {displayName}
+                  {(user?.roles || []).includes('owner') && (
+                    <span className="flex-shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm animate-pulse">
+                      OWNER
+                    </span>
+                  )}
                 </div>
                 <div className="truncate text-xs text-gray-600">{email}</div>
               </div>

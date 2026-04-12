@@ -109,6 +109,7 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
             isEditMode={isEditMode}
             onToggleEdit={() => setIsEditMode(!isEditMode)}
             onClose={onClose}
+            userId={userData?._id}
           />
 
           <div className="flex-1 space-y-6 overflow-y-auto p-6">

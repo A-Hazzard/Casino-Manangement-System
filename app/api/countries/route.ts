@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     const userRoles = (user.roles as string[]) || [];
     const isAdminOrDev =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
     if (!isAdminOrDev) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -154,7 +154,7 @@ export async function PUT(req: NextRequest) {
 
     const userRoles = (user.roles as string[]) || [];
     const isAdminOrDev =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
     if (!isAdminOrDev) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

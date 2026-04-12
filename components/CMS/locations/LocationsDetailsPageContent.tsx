@@ -34,7 +34,6 @@ import {
 } from '@/lib/utils/permissions';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
-import { SHOW_REVIEWER_DEBUG_PANEL } from '@/lib/constants/uiConstants';
 import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import LocationsEditLocationModal from './modals/LocationsEditLocationModal';
@@ -53,7 +52,6 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
 import LocationsDetailsHeader from './details/LocationsDetailsHeader';
 import LocationsDetailsViewToggle from './details/LocationsDetailsViewToggle';
-import ReviewerDebugPanel from '@/components/shared/ui/ReviewerDebugPanel';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 
 /**
@@ -373,7 +371,6 @@ export default function LocationsDetailsPageContent() {
         <LocationsDetailsHeader
           locationId={locationId}
           locationData={cabinetsData.locationData as AggregatedLocation}
-          loading={cabinetsData.loading || cabinetsData.cabinetsLoading}
           refreshing={cabinetsData.refreshing}
           activeView={activeView}
           canManageMachines={canManageMachines}
@@ -392,19 +389,6 @@ export default function LocationsDetailsPageContent() {
           showMembersTab={showMembersTab}
           onViewChange={handleViewChange}
         />
-
-        {/* Reviewer Debug Panel */}
-        {SHOW_REVIEWER_DEBUG_PANEL && 
-         user?.roles?.map((r: string) => r?.toLowerCase()).includes('reviewer') && 
-         cabinetsData.financialTotals?._raw && (
-          <div className="mb-6">
-            <ReviewerDebugPanel
-              rawValues={cabinetsData.financialTotals._raw}
-              finalValues={cabinetsData.financialTotals}
-              multiplier={user?.multiplier || 0.05}
-            />
-          </div>
-        )}
 
         {activeView === 'members' ? (
           <MembersHandlersProvider>

@@ -64,6 +64,8 @@ export async function calculateSasMetrics(
   sasStartTime: Date,
   sasEndTime: Date
 ): Promise<SasMetricsCalculation> {
+  // NOTE: Manual overrides (prevIn/prevOut) from the collection form only affect movement/gross.
+  // SAS metrics (drop, cancelled credits, gross) are derived strictly from the Meters collection deltas.
   await connectDB();
 
   const machineIdentifier = await getMachineIdentifier(machineId);
@@ -411,22 +413,30 @@ async function getPreviousCollectionMeters(
       prevMetersOut,
     });
   } else {
-    // No previous collection found, check machine.collectionMeters as fallback
-    const collectionMeters = (machineData.collectionMeters as Record<
-      string,
-      unknown
-    >) || {
-      metersIn: 0,
-      metersOut: 0,
-    };
+    // No previous collection found.
+    // Priority: sasMeters.drop / sasMeters.totalCancelledCredits (set via the Edit Cabinet modal)
+    // Fallback:  collectionMeters.metersIn / metersOut (legacy field)
+    // Last resort: 0
+    const sasMeters = machineData.sasMeters as Record<string, unknown> | undefined;
+    const collectionMeters = machineData.collectionMeters as Record<string, unknown> | undefined;
 
-    prevMetersIn = (collectionMeters.metersIn as number) || 0;
-    prevMetersOut = (collectionMeters.metersOut as number) || 0;
+    const sasIn = (sasMeters?.drop as number) ?? null;
+    const sasOut = (sasMeters?.totalCancelledCredits as number) ?? null;
+    const legacyIn = (collectionMeters?.metersIn as number) ?? null;
+    const legacyOut = (collectionMeters?.metersOut as number) ?? null;
 
-    console.warn("⚠️ No previous collection found, using machine.collectionMeters:", {
+    // Use sasMeters if present and non-zero, otherwise fall back to collectionMeters, then 0
+    prevMetersIn = (sasIn !== null && sasIn > 0) ? sasIn : (legacyIn ?? 0);
+    prevMetersOut = (sasOut !== null && sasOut > 0) ? sasOut : (legacyOut ?? 0);
+
+    console.warn("⚠️ No previous collection found, using machine sasMeters as initial prev values:", {
       machineId,
-      prevMetersIn,
-      prevMetersOut,
+      sasMetersIn: sasIn,
+      sasMetersOut: sasOut,
+      legacyMetersIn: legacyIn,
+      legacyMetersOut: legacyOut,
+      resolvedPrevIn: prevMetersIn,
+      resolvedPrevOut: prevMetersOut,
     });
 
     // Get previousCollectionTime from gaming location, not machine
@@ -636,12 +646,20 @@ export async function createCollectionWithCalculations(
     finalSasEndTime
   );
 
-  // Get previous collection meters
-  const previousMeters = await getPreviousCollectionMeters(
+  // Get previous collection meters (historical baseline)
+  const historicalMeters = await getPreviousCollectionMeters(
     payload.machineId as string
   );
 
-  // Calculate movement
+  // CRITICAL: Prioritize manual overrides from payload for movement/gross calculation
+  // This ensures accuracy when the user manually provides the correct previous meters
+  const previousMeters: PreviousCollectionMeters = {
+    ...historicalMeters,
+    metersIn: payload.prevIn !== undefined ? Number(payload.prevIn) : historicalMeters.metersIn,
+    metersOut: payload.prevOut !== undefined ? Number(payload.prevOut) : historicalMeters.metersOut,
+  };
+
+  // Calculate movement (gross) - uses final previousMeters (manual or historical)
   const movement = calculateMovement(
     payload.metersIn as number,
     payload.metersOut as number,

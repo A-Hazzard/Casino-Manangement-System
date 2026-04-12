@@ -26,6 +26,8 @@ type MobileFormPanelProps = {
     sasStartTime: Date | null;
     sasEndTime: Date | null;
     showAdvancedSas: boolean;
+    prevIn: string;
+    prevOut: string;
   };
 
   // Financials
@@ -108,12 +110,12 @@ export default function CollectionReportMobileFormPanel({
               >
                 <ArrowLeft className="h-6 w-6" />
               </button>
-              <h3 className="text-lg font-bold text-gray-900">
+              <h3 className="text-lg font-bold text-gray-900 line-clamp-1 pr-2">
                 {isManager
                   ? 'Financial Summary'
-                  : editingEntryId
-                    ? `Edit ${selectedMachineData?.name || 'Machine'}`
-                    : selectedMachineData?.name || 'Machine'}
+                  : selectedMachineData
+                    ? formatMachineDisplay(selectedMachineData)
+                    : 'Machine'}
               </h3>
             </div>
             {!isManager && !editingEntryId && (
@@ -157,8 +159,10 @@ export default function CollectionReportMobileFormPanel({
                 ramClear={formData.ramClear}
                 ramClearMetersIn={formData.ramClearMetersIn}
                 ramClearMetersOut={formData.ramClearMetersOut}
-                prevIn={selectedMachineData?.collectionMeters?.metersIn}
-                prevOut={selectedMachineData?.collectionMeters?.metersOut}
+                prevIn={formData.prevIn}
+                prevOut={formData.prevOut}
+                onPrevInChange={val => onFormDataChange('prevIn', val)}
+                onPrevOutChange={val => onFormDataChange('prevOut', val)}
                 onMetersInChange={val => onFormDataChange('metersIn', val)}
                 onMetersOutChange={val => onFormDataChange('metersOut', val)}
                 onRamClearChange={autoFillRamClearMeters}

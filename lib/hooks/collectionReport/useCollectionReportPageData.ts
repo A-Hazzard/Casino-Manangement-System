@@ -298,6 +298,7 @@ export function useCollectionReportPageData() {
       setLoadedBatches(new Set());
       setCurrentPage(0);
       setLoading(true);
+      setInitialLoading(true);
       fetchReports(1);
     } else {
       // If not on collection tab, ensure loading is false
@@ -387,6 +388,7 @@ export function useCollectionReportPageData() {
     if (!user || !user.roles) return new Set<string>();
 
     const userRoles = (user.roles || []) as string[];
+    const isOwner = userRoles.includes('owner');
     const isDeveloper = userRoles.includes('developer');
     const isAdmin = userRoles.includes('admin');
     const isManager = userRoles.includes('manager');
@@ -396,8 +398,8 @@ export function useCollectionReportPageData() {
       return new Set(allReports.map(r => r.locationReportId));
     }
 
-    // Admins and Managers can only edit the two most recent reports per location
-    if (isAdmin || isManager) {
+    // Owners, Admins and Managers can only edit the two most recent reports per location
+    if (isOwner || isAdmin || isManager) {
       const reportsByLocation: Record<string, CollectionReportRow[]> = {};
 
       // Group reports by location

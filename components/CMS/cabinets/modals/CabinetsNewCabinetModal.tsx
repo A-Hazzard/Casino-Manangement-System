@@ -264,7 +264,7 @@ export default function CabinetsNewCabinetModal({
       setLoading(true);
 
       // Validate SMIB Board before submission
-      const smibError = validateSmibBoard(formData.relayId);
+      const smibError = validateSmibBoard(formData.relayId || '');
       if (smibError) {
         setRelayIdError(smibError);
         toast.error('Please fix the SMIB Board validation errors');
@@ -801,7 +801,7 @@ export default function CabinetsNewCabinetModal({
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-buttonActive">
-                      SMIB Board <span className="text-red-500">*</span>
+                      SMIB Board
                     </label>
                     <Input
                       id="relayId"

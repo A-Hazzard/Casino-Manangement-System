@@ -52,7 +52,8 @@ export async function GET(request: NextRequest) {
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const isAdminOrDev =
         normalizedRoles.includes('admin') ||
-        normalizedRoles.includes('developer');
+        normalizedRoles.includes('developer') ||
+        normalizedRoles.includes('owner');
 
       const licenceeFilterToUse =
         forceAll && isAdminOrDev
@@ -184,7 +185,10 @@ export async function GET(request: NextRequest) {
  * Main POST handler for creating a new location
  */
 export async function POST(request: NextRequest) {
-  return withApiAuth(request, async ({ user: currentUser }) => {
+  return withApiAuth(request, async ({ user: currentUser, isAdminOrDev }) => {
+    if (!isAdminOrDev) {
+      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
+    }
     try {
       const body = await request.json();
       const {
@@ -305,7 +309,10 @@ export async function POST(request: NextRequest) {
  * Main PUT handler for updating an existing location
  */
 export async function PUT(request: NextRequest) {
-  return withApiAuth(request, async ({ user: currentUser }) => {
+  return withApiAuth(request, async ({ user: currentUser, isAdminOrDev }) => {
+    if (!isAdminOrDev) {
+      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
+    }
     try {
       const body = await request.json();
       const {
@@ -417,7 +424,10 @@ export async function PUT(request: NextRequest) {
  * Main DELETE handler
  */
 export async function DELETE(request: NextRequest) {
-  return withApiAuth(request, async ({ user: currentUser, userRoles }) => {
+  return withApiAuth(request, async ({ user: currentUser, userRoles, isAdminOrDev }) => {
+    if (!isAdminOrDev) {
+      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
+    }
     try {
       const { searchParams } = new URL(request.url);
       const id = searchParams.get('id');
@@ -435,7 +445,9 @@ export async function DELETE(request: NextRequest) {
         );
 
       const hardDelete = searchParams.get('hardDelete') === 'true';
-      const isDev = userRoles.map(r => r.toLowerCase()).includes('developer');
+      const isDev = userRoles
+        .map(r => r.toLowerCase())
+        .some(r => r === 'developer' || r === 'owner');
 
       const archiveTimestamp = new Date();
 
@@ -487,7 +499,10 @@ export async function DELETE(request: NextRequest) {
  * PATCH handler for restore
  */
 export async function PATCH(request: NextRequest) {
-  return withApiAuth(request, async ({ user: currentUser }) => {
+  return withApiAuth(request, async ({ user: currentUser, isAdminOrDev }) => {
+    if (!isAdminOrDev) {
+      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
+    }
     try {
       const { id, action } = await request.json();
 

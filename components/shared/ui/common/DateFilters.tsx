@@ -36,6 +36,7 @@ import { useEffect, useMemo, useState } from 'react';
 export default function DateFilters({
   disabled,
   onCustomRangeGo,
+  customRangeGoLabel = 'Get Meters',
   hideAllTime,
   showQuarterly = false,
   mode = 'auto',
@@ -54,6 +55,12 @@ export default function DateFilters({
   } = useDashBoardStore();
 
   const [shouldTriggerCallback, setShouldTriggerCallback] = useState(false);
+  // Mobile-only: tracks whether to show the custom calendar picker.
+  // We don't set activeMetricsFilter='Custom' in the store until the user
+  // actually picks a range and clicks "Get Meters", so no premature queries fire.
+  const [showMobileCustomPicker, setShowMobileCustomPicker] = useState(
+    activeMetricsFilter === 'Custom'
+  );
 
   useEffect(() => {
     if (hideAllTime && activeMetricsFilter === 'All Time') {
@@ -179,7 +186,13 @@ export default function DateFilters({
   };
 
   const handleSelectChange = (value: string) => {
-    handleFilterClick(value as TimePeriod);
+    if (value === 'Custom') {
+      // Don't update the store yet — show the picker and wait for "Get Meters"
+      setShowMobileCustomPicker(true);
+    } else {
+      setShowMobileCustomPicker(false);
+      handleFilterClick(value as TimePeriod);
+    }
   };
 
   // If only showing indicator, return early
@@ -209,7 +222,7 @@ export default function DateFilters({
           }
         >
           <CustomSelect
-            value={activeMetricsFilter}
+            value={showMobileCustomPicker ? 'Custom' : activeMetricsFilter}
             onValueChange={handleSelectChange}
             options={timeFilterButtons.map(filter => ({
               value: filter.value as string,
@@ -222,12 +235,13 @@ export default function DateFilters({
             contentClassName="text-gray-700"
           />
 
-          {/* MuiDateCalendar for mobile - shown only when Custom is selected */}
-          {activeMetricsFilter === 'Custom' && (
+          {/* MuiDateCalendar for mobile - shown when picker is open */}
+          {showMobileCustomPicker && (
             <div className="w-full">
               <MuiDateCalendar
                 date={useDashBoardStore.getState().customDateRange?.startDate}
                 gameDayOffset={gameDayOffset}
+                buttonLabel={customRangeGoLabel}
                 onSelect={range => {
                   if (range) {
                     setCustomDateRange({
@@ -236,6 +250,7 @@ export default function DateFilters({
                     });
                     setActiveMetricsFilter('Custom');
                     setActivePieChartFilter('Custom');
+                    setShowMobileCustomPicker(false);
                     if (onCustomRangeGo) {
                       setTimeout(() => onCustomRangeGo(), 0);
                     }
@@ -277,7 +292,6 @@ export default function DateFilters({
             <Popover>
               <PopoverTrigger asChild>
                 <Button
-                  onClick={() => setActiveMetricsFilter('Custom')}
                   className={`rounded-md px-3 py-1 text-sm transition-colors ${
                     activeMetricsFilter === 'Custom'
                       ? 'bg-buttonActive text-white'
@@ -292,12 +306,15 @@ export default function DateFilters({
                 <MuiDateCalendar
                   date={useDashBoardStore.getState().customDateRange?.startDate}
                   gameDayOffset={gameDayOffset}
+                  buttonLabel={customRangeGoLabel}
                   onSelect={range => {
                     if (range) {
                       setCustomDateRange({
                         startDate: range.from,
                         endDate: range.to,
                       });
+                      setActiveMetricsFilter('Custom');
+                      setActivePieChartFilter('Custom');
                       if (onCustomRangeGo) {
                         setTimeout(() => onCustomRangeGo(), 0);
                       }

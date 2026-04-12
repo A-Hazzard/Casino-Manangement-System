@@ -53,6 +53,7 @@ export function useCabinetsPageData() {
   const [selectedLocation, setSelectedLocation] = useState<string[]>([]);
   const [selectedGameType, setSelectedGameType] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedMembership, setSelectedMembership] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   // Local loading state to bridge the gap between clearing data and fetch start
   const [isFilterResetting, setIsFilterResetting] = useState(false);
@@ -99,6 +100,7 @@ export function useCabinetsPageData() {
     selectedLocation,
     selectedGameType,
     selectedStatus,
+    selectedMembership,
     searchTerm,
   });
 
@@ -354,12 +356,18 @@ export function useCabinetsPageData() {
     loadedBatchesRef.current = new Set();
     // Bump counter to trigger the data fetch effect
     setBatchResetCounter(c => c + 1);
-  }, [selectedLocation, selectedGameType, searchTerm, debouncedSearchTerm, selectedLicencee, activeMetricsFilter, customDateRange, sortOption, sortOrder, displayCurrency]);
+  }, [selectedLocation, selectedGameType, searchTerm, debouncedSearchTerm, selectedLicencee, activeMetricsFilter, customDateRange, sortOption, sortOrder, displayCurrency, selectedMembership]);
 
   // Wrapped setters
   const handleSetSelectedStatus = useCallback((status: string) => {
     setIsFilterResetting(true);
     setSelectedStatus(status);
+    setCurrentPage(0);
+  }, []);
+
+  const handleSetSelectedMembership = useCallback((membership: string) => {
+    setIsFilterResetting(true);
+    setSelectedMembership(membership);
     setCurrentPage(0);
   }, []);
 
@@ -414,6 +422,7 @@ export function useCabinetsPageData() {
     sortOption,
     sortOrder,
     selectedStatus,
+    selectedMembership,
     selectedLocation,
     selectedGameType,
     activeSection,
@@ -456,6 +465,7 @@ export function useCabinetsPageData() {
     selectedLocation,
     selectedGameType,
     selectedStatus,
+    selectedMembership,
     chartGranularity,
     isNewMovementOpen,
     isUploadSmibOpen,
@@ -471,6 +481,7 @@ export function useCabinetsPageData() {
     setSelectedLocation: handleSetSelectedLocation,
     setSelectedGameType: handleSetSelectedGameType,
     setSelectedStatus: handleSetSelectedStatus,
+    setSelectedMembership: handleSetSelectedMembership,
     setChartGranularity,
     setCurrentPage,
     handleColumnSort,

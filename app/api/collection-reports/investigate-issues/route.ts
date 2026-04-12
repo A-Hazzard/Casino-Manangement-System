@@ -56,7 +56,8 @@ export async function GET() {
 
       if (
         !user.roles?.includes('admin') &&
-        !user.roles?.includes('developer')
+        !user.roles?.includes('developer') &&
+        !user.roles?.includes('owner')
       ) {
         const duration = Date.now() - startTime;
         console.error(

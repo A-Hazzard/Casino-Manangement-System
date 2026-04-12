@@ -76,16 +76,8 @@ export async function GET(request: NextRequest) {
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const isAdmin =
         normalizedRoles.includes('admin') ||
-        normalizedRoles.includes('developer');
-      const reviewerMultRaw =
-        normalizedRoles.includes('reviewer') &&
-        (userPayload as unknown as { multiplier?: number | null })
-          ?.multiplier != null
-          ? (userPayload as unknown as { multiplier?: number | null })
-              .multiplier
-          : null;
-      const reviewerMult = reviewerMultRaw !== null ? (1 - reviewerMultRaw!) : null;
-
+        normalizedRoles.includes('developer') ||
+        normalizedRoles.includes('owner');
       if (!isAdmin && !(await checkUserLocationAccess(locationId))) {
         return NextResponse.json(
           { success: false, message: 'Unauthorized' },
@@ -167,6 +159,9 @@ export async function GET(request: NextRequest) {
           licDoc as unknown as { includeJackpot?: boolean }
         )?.includeJackpot;
       }
+
+      const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+      const reviewerScale = reviewerMult !== null ? 1 - reviewerMult : 1;
 
       const includeArchived = searchParams.get('includeArchived') === 'true';
       const mMatch: Record<string, unknown> = {
@@ -250,23 +245,23 @@ export async function GET(request: NextRequest) {
           },
         });
 
-      let filtered = machines;
+      let filteredMachines = machines;
       if (searchTerm) {
-        const st = searchTerm.toLowerCase();
-        filtered = machines.filter(
-          m =>
-            m.serialNumber?.toLowerCase().includes(st) ||
-            m.relayId?.toLowerCase().includes(st) ||
-            m.smibBoard?.toLowerCase().includes(st) ||
-            (m.custom as unknown as { name?: string })?.name
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        filteredMachines = machines.filter(
+          machine =>
+            machine.serialNumber?.toLowerCase().includes(lowerSearchTerm) ||
+            machine.relayId?.toLowerCase().includes(lowerSearchTerm) ||
+            machine.smibBoard?.toLowerCase().includes(lowerSearchTerm) ||
+            (machine.custom as unknown as { name?: string })?.name
               ?.toLowerCase()
-              .includes(st) ||
-            String(m._id).toLowerCase().includes(st)
+              .includes(lowerSearchTerm) ||
+            String(machine._id).toLowerCase().includes(lowerSearchTerm)
         );
       }
 
-      const mIds = filtered.map(m => String(m._id));
-      const mMetrics: Array<{
+      const filteredMachineIds = filteredMachines.map(machine => String(machine._id));
+      const rawMachineMetrics: Array<{
         _id: string;
         moneyIn: number;
         moneyOut: number;
@@ -275,12 +270,12 @@ export async function GET(request: NextRequest) {
         gamesWon: number;
         gross: number;
       }> = [];
-      const mCursor = Meters.aggregate([
+      const metricsCursor = Meters.aggregate([
         {
           $match: {
             $and: [
               { location: locationId },
-              { machine: { $in: mIds } },
+              { machine: { $in: filteredMachineIds } },
               { readAt: { $gte: gdr.rangeStart, $lte: gdr.rangeEnd } },
             ],
           },
@@ -297,12 +292,12 @@ export async function GET(request: NextRequest) {
         },
         { $addFields: { gross: { $subtract: ['$moneyIn', '$moneyOut'] } } },
       ]).cursor({ batchSize: 1000 });
-      for await (const doc of mCursor) mMetrics.push(doc);
+      for await (const doc of metricsCursor) rawMachineMetrics.push(doc);
 
-      const mMaps = new Map(mMetrics.map(m => [String(m._id), m]));
-      const cabWithMeters = filtered.map(m => {
-        const mId = String(m._id);
-        const me = mMaps.get(mId) || {
+      const machineMetricsMap = new Map(rawMachineMetrics.map(metric => [String(metric._id), metric]));
+      const machinesWithMeters = filteredMachines.map(machine => {
+        const currentMachineId = String(machine._id);
+        const machineMeters = machineMetricsMap.get(currentMachineId) || {
           moneyIn: 0,
           moneyOut: 0,
           gross: 0,
@@ -310,95 +305,78 @@ export async function GET(request: NextRequest) {
           gamesPlayed: 0,
           gamesWon: 0,
         };
-        const sn = (m.serialNumber as string)?.trim() || '';
-        const cn =
+        const serialNumber = (machine.serialNumber as string)?.trim() || '';
+        const customName =
           (
-            (m.custom as unknown as { name?: string })?.name as string
+            (machine.custom as unknown as { name?: string })?.name as string
           )?.trim() || '';
-        const an = sn || cn || '';
-        const la = m.lastActivity as Date | null;
-        const on = locationCheck.aceEnabled || (la && new Date(la) > new Date(Date.now() - 3 * 60 * 1000));
-        const mi = Number(me.moneyIn) || 0;
-        const rmo = Number(me.moneyOut) || 0;
-        const jp = Number(me.jackpot) || 0;
-        const mo = rmo + (includeJackpotSetting ? jp : 0);
-        const gr = mi - mo;
+        const assetNumber = serialNumber || customName || '';
+        const lastActivityDate = machine.lastActivity as Date | null;
+        const isOnline = locationCheck.aceEnabled || (lastActivityDate && new Date(lastActivityDate) > new Date(Date.now() - 3 * 60 * 1000));
+        const rawMoneyIn = (Number(machineMeters.moneyIn) || 0) * reviewerScale;
+        const rawMoneyOut = (Number(machineMeters.moneyOut) || 0) * reviewerScale;
+        const rawJackpot = (Number(machineMeters.jackpot) || 0) * reviewerScale;
+        const adjustedMoneyOut = rawMoneyOut + (includeJackpotSetting ? rawJackpot : 0);
+        const grossProfit = rawMoneyIn - adjustedMoneyOut;
 
         return {
-          _id: mId,
+          _id: currentMachineId,
           locationId,
           locationName: locationCheck.name || 'Location',
-          assetNumber: an,
-          serialNumber: an,
-          custom: m.custom || {},
-          relayId: (m.relayId as string) || '',
-          smibBoard: (m.smibBoard as string) || '',
-          smbId: (m.smibBoard as string) || (m.relayId as string) || '',
-          lastActivity: la,
-          lastOnline: la,
-          game: (m.game as string) || '',
-          installedGame: (m.game as string) || '',
+          assetNumber: assetNumber,
+          serialNumber: assetNumber,
+          custom: machine.custom || {},
+          relayId: (machine.relayId as string) || '',
+          smibBoard: (machine.smibBoard as string) || '',
+          smbId: (machine.smibBoard as string) || (machine.relayId as string) || '',
+          lastActivity: lastActivityDate,
+          lastOnline: lastActivityDate,
+          game: (machine.game as string) || '',
+          installedGame: (machine.game as string) || '',
           manufacturer:
-            (m.manufacturer as string) || (m.manuf as string) || 'Unknown',
-          cabinetType: (m.cabinetType as string) || '',
-          status: (m.assetStatus as string) || '',
-          gameType: (m.gameType as string) || '',
-          isCronosMachine: !!m.isCronosMachine,
-          moneyIn: mi,
-          moneyOut: mo,
-          gross: gr,
-          jackpot: jp,
-          gamesPlayed: Number(me.gamesPlayed) || 0,
-          gamesWon: Number(me.gamesWon) || 0,
-          cancelledCredits: mo,
-          sasMeters: m.sasMeters || null,
-          online: !!on,
+            (machine.manufacturer as string) || (machine.manuf as string) || 'Unknown',
+          cabinetType: (machine.cabinetType as string) || '',
+          status: (machine.assetStatus as string) || '',
+          gameType: (machine.gameType as string) || '',
+          isCronosMachine: !!machine.isCronosMachine,
+          moneyIn: rawMoneyIn,
+          moneyOut: adjustedMoneyOut,
+          gross: grossProfit,
+          jackpot: rawJackpot,
+          gamesPlayed: Number(machineMeters.gamesPlayed) || 0,
+          gamesWon: Number(machineMeters.gamesWon) || 0,
+          cancelledCredits: adjustedMoneyOut,
+          sasMeters: machine.sasMeters || null,
+          online: !!isOnline,
           includeJackpot: includeJackpotSetting,
-          deletedAt: (m as { deletedAt?: Date }).deletedAt || null,
+          deletedAt: (machine as { deletedAt?: Date }).deletedAt || null,
         };
       });
 
       if (searchTerm) {
-
-        const st = searchTerm.toLowerCase();
-        cabWithMeters.sort((a, b) =>
-          a.serialNumber.toLowerCase().startsWith(st) &&
-          !b.serialNumber.toLowerCase().startsWith(st)
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        machinesWithMeters.sort((a, b) =>
+          a.serialNumber.toLowerCase().startsWith(lowerSearchTerm) &&
+          !b.serialNumber.toLowerCase().startsWith(lowerSearchTerm)
             ? -1
             : 0
         );
       }
 
-      const total = cabWithMeters.length;
+      const total = machinesWithMeters.length;
       const paginated = limit
-        ? cabWithMeters.slice(skip, skip + limit)
-        : cabWithMeters;
+        ? machinesWithMeters.slice(skip, skip + limit)
+        : machinesWithMeters;
 
-      const transformed: TransformedCabinet[] = paginated.map(c => {
-        const mi = Number(c.moneyIn) || 0;
-        const mo = Number(c.moneyOut) || 0;
-        const jp = Number(c.jackpot) || 0;
-        const gr = Number(c.gross) || 0;
+      const transformed: TransformedCabinet[] = paginated.map(transformedMachine => {
+        const currentGross = Number(transformedMachine.gross) || 0;
+        const currentJackpot = Number(transformedMachine.jackpot) || 0;
         const base: TransformedCabinet = {
-          ...c,
-          netGross: c.includeJackpot ? gr - jp : undefined,
+          ...transformedMachine,
+          netGross: transformedMachine.includeJackpot ? currentGross - currentJackpot : undefined,
           metersData: null,
         } as unknown as TransformedCabinet;
 
-        const mult = reviewerMult ?? null;
-        if (mult !== null) {
-          return {
-            ...base,
-            moneyIn: mi * mult,
-            moneyOut: mo * mult,
-            jackpot: jp * mult,
-            gross: (mi - mo) * mult,
-            netGross: c.includeJackpot ? (mi - mo - jp) * mult : undefined,
-            cancelledCredits: mo * mult,
-            _raw: { moneyIn: mi, moneyOut: mo, jackpot: jp, gross: gr },
-            _reviewerMultiplier: mult,
-          };
-        }
         return base;
       });
 

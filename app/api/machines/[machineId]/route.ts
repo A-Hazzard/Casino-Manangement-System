@@ -355,29 +355,14 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 9.5: Apply reviewer multiplier if applicable
+    // STEP 9.5: Apply reviewer multiplier
     // ============================================================================
-    const userPayloadTyped = userPayload as { multiplier?: number | null };
-    const userMultiplier = userPayloadTyped?.multiplier ?? null;
-    const userRolesReviewer = userRoles.map(
-      r => r?.toLowerCase?.() ?? String(r).toLowerCase()
-    );
-    const isReviewer = userRolesReviewer.includes('reviewer');
-    const reviewerMult =
-      isReviewer && userMultiplier !== null ? userMultiplier : null;
-
-    const rawMI = moneyIn;
-    const rawMO = moneyOut;
-    const rawJP = jackpot;
-    const rawGross = gross;
-
+    const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
     if (reviewerMult !== null) {
-      const mult = (1 - reviewerMult);
-      moneyIn = moneyIn * mult;
-      moneyOut = moneyOut * mult;
-      jackpot = jackpot * mult;
-      coinIn = coinIn * mult;
-      coinOut = coinOut * mult;
+      const mult = 1 - reviewerMult;
+      moneyIn *= mult;
+      moneyOut *= mult;
+      jackpot *= mult;
       gross = moneyIn - moneyOut;
     }
 
@@ -421,17 +406,6 @@ export async function GET(
       gross,
       includeJackpot: includeJackpotSetting,
       netGross: includeJackpotSetting ? gross : gross - (jackpot || 0),
-      // Raw values for reviewer debug
-      _raw:
-        reviewerMult !== null
-          ? {
-              moneyIn: rawMI,
-              moneyOut: rawMO,
-              jackpot: rawJP,
-              gross: rawGross,
-            }
-          : undefined,
-      _reviewerMultiplier: reviewerMult,
       // Additional metrics for comprehensive financial tracking
       coinIn,
       coinOut,

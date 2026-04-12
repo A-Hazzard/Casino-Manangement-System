@@ -7,7 +7,7 @@ import PayoutModel from '@/app/api/lib/models/payout';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  return withApiAuth(request, async ({ userRoles }) => {
+  return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const hasVaultAccess = normalizedRoles.some(role =>
@@ -94,6 +94,19 @@ export async function GET(request: NextRequest) {
         ]),
         PayoutModel.countDocuments(query),
       ]);
+
+      // ============================================================================
+      // Reviewer Multiplier Scaling
+      // ============================================================================
+      const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+      if (reviewerMult !== null) {
+        const mult = 1 - reviewerMult;
+        payouts.forEach((p: { amount: number }) => {
+          if (typeof p.amount === 'number') {
+            p.amount *= mult;
+          }
+        });
+      }
 
       return NextResponse.json({
         success: true,

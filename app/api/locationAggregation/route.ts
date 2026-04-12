@@ -228,13 +228,6 @@ export async function GET(req: NextRequest) {
       userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     }
 
-    const reviewerMultRaw =
-      userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase()).includes('reviewer') &&
-      (userPayload as { multiplier?: number | null } | undefined)?.multiplier != null
-        ? (userPayload as { multiplier?: number | null }).multiplier!
-        : null;
-    const reviewerMult = reviewerMultRaw !== null ? (1 - reviewerMultRaw) : null;
-
     // ============================================================================
     // STEP 4.5: Determine display currency (if not provided) - AFTER DB connection
     // ============================================================================
@@ -299,7 +292,6 @@ export async function GET(req: NextRequest) {
           : Array.isArray(allowedLocationIds)
             ? allowedLocationIds.sort().join(',')
             : 'none',
-      reviewerMultiplier: reviewerMult ?? 'none',
     });
 
     const skipCacheForSelected = Boolean(selectedLocations);
@@ -347,7 +339,8 @@ export async function GET(req: NextRequest) {
     const currentUserRoles = (currentUser?.roles as string[]) || [];
     const isAdminOrDev =
       currentUserRoles.includes('admin') ||
-      currentUserRoles.includes('developer');
+      currentUserRoles.includes('developer') ||
+      currentUserRoles.includes('owner');
 
     let convertedRows = sortedRows;
     if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
@@ -359,73 +352,18 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 10.5: Apply reviewer multiplier (after currency conversion)
+    // STEP 10.5: Apply Reviewer Multiplier Scaling
     // ============================================================================
-    // Capture pre-multiplier snapshot for debug response field
-    const preMultiplierSnapshot = reviewerMult !== null
-      ? convertedRows.map(loc => ({
-          name: loc.name,
-          rawMoneyIn: loc.moneyIn || 0,
-          rawMoneyOut: loc.moneyOut || 0,
-          rawJackpot: loc.jackpot || 0,
-          rawGross: loc.gross || 0,
-        }))
-      : null;
-
+    const reviewerMult = (currentUser as { multiplier?: number | null })?.multiplier ?? null;
     if (reviewerMult !== null) {
-      // ██████████████████████████████████████████████████████████████████████
-      // REVIEWER MULTIPLIER DEBUG LOG
-      console.log('\n████████████████████████████████████████████████████████████');
-      console.log(`█ [locationAggregation] REVIEWER MULT = ${reviewerMult}`);
-      console.log(`█ timePeriod=${timePeriod}  licencee=${licencee}`);
-      console.log('█ PRE-MULTIPLIER VALUES:');
-      convertedRows.forEach(loc => {
-        console.log(`█   "${loc.name}": moneyIn=${loc.moneyIn}, moneyOut=${loc.moneyOut}, jackpot=${loc.jackpot}, gross=${loc.gross}`);
-      });
-      console.log('████████████████████████████████████████████████████████████\n');
-
-      convertedRows = convertedRows.map(loc => {
-        const rawMi = loc.moneyIn || 0;
-        const rawMo = loc.moneyOut || 0;
-        const rawJp = loc.jackpot || 0;
-        const includeJackpot = loc.includeJackpot === true;
-
-        const mi = rawMi * reviewerMult;
-        const mo = rawMo * reviewerMult; // loc.moneyOut is already total if includeJackpot is true
-        const jp = rawJp * reviewerMult;
-
-        // Gross is defined as (In - Displayed Out)
-        const gross = mi - mo;
-        // netGross is always (In - Base Out - Jackpot)
-        // If includeJackpot is true, mo already includes jp, so mi - mo is netGross.
-        // If includeJackpot is false, mo is just baseMo, so mi - mo - jp is netGross.
-        const netGross = includeJackpot ? (mi - mo) : (mi - mo - jp);
-
-        return {
-          ...loc,
-          moneyIn: mi,
-          moneyOut: mo,
-          jackpot: jp,
-          gross,
-          netGross,
-          coinIn: (loc.coinIn || 0) * reviewerMult,
-          coinOut: (loc.coinOut || 0) * reviewerMult,
-          ...(loc.totalDrop != null ? { totalDrop: loc.totalDrop * reviewerMult } : {}),
-          _raw: {
-            moneyIn: rawMi,
-            moneyOut: rawMo,
-            jackpot: rawJp,
-            gross: rawMi - rawMo,
-          },
-          _reviewerMultiplier: reviewerMult,
-        };
-      });
-
-      console.log('█ POST-MULTIPLIER VALUES:');
-      convertedRows.forEach(loc => {
-        console.log(`█   "${loc.name}": moneyIn=${loc.moneyIn}, moneyOut=${loc.moneyOut}, jackpot=${loc.jackpot}, gross=${loc.gross}`);
-      });
-      console.log('████████████████████████████████████████████████████████████\n');
+      const scale = 1 - reviewerMult;
+      convertedRows = convertedRows.map((row) => ({
+        ...row,
+        moneyIn: typeof row.moneyIn === 'number' ? row.moneyIn * scale : row.moneyIn,
+        moneyOut: typeof row.moneyOut === 'number' ? row.moneyOut * scale : row.moneyOut,
+        jackpot: typeof row.jackpot === 'number' ? row.jackpot * scale : row.jackpot,
+        gross: typeof row.gross === 'number' ? row.gross * scale : row.gross,
+      }));
     }
 
     // ============================================================================
@@ -440,12 +378,6 @@ export async function GET(req: NextRequest) {
       hasMore: false,
       currency: displayCurrency,
       converted: shouldApplyCurrencyConversion(licencee),
-      ...(preMultiplierSnapshot !== null ? {
-        _reviewerDebug: {
-          multiplier: reviewerMult,
-          preMultiplier: preMultiplierSnapshot,
-        }
-      } : {}),
     };
 
     if (!clearCacheParam && !skipCacheForSelected) {

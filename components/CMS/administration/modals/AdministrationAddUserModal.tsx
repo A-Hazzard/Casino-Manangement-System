@@ -59,6 +59,7 @@ const EMAIL_REGEX = /\S+@\S+\.\S+/;
 // ============================================================================
 
 const ROLE_OPTIONS = [
+  { label: 'Owner', value: 'owner' },
   { label: 'Developer', value: 'developer' },
   { label: 'Administrator', value: 'admin' },
   { label: 'Manager', value: 'manager' },
@@ -86,22 +87,28 @@ export default function AdministrationAddUserModal({
 }: AdministrationAddUserModalProps) {
   const currentUser = useUserStore(state => state.user);
   const currentUserRoles = (currentUser?.roles || []) as string[];
+  const isOwner = currentUserRoles.includes('owner');
   const isDeveloper = currentUserRoles.includes('developer');
-  const isAdmin = currentUserRoles.includes('admin') && !isDeveloper;
+  const isAdmin = currentUserRoles.includes('admin') && !isDeveloper && !isOwner;
   const isManager =
-    currentUserRoles.includes('manager') && !isAdmin && !isDeveloper;
+    currentUserRoles.includes('manager') && !isAdmin && !isDeveloper && !isOwner;
   const isLocationAdmin =
     currentUserRoles.includes('location admin') &&
     !isAdmin &&
     !isDeveloper &&
-    !isManager;
+    !isManager &&
+    !isOwner;
 
   // Filter available roles based on creator's permissions
   const availableRoles = useMemo(() => {
     if (isDeveloper) {
-      return ROLE_OPTIONS;
+      return ROLE_OPTIONS.filter(role => role.value !== 'reviewer');
+    } else if (isOwner) {
+      // Owners can create everything except developer and owner
+      return ROLE_OPTIONS.filter(role => !['developer', 'owner'].includes(role.value));
     } else if (isAdmin) {
-      return ROLE_OPTIONS.filter(role => role.value !== 'developer');
+      // Admins cannot create reviewer, developer, or owner
+      return ROLE_OPTIONS.filter(role => !['developer', 'owner', 'reviewer'].includes(role.value));
     } else if (isManager) {
       return ROLE_OPTIONS.filter(role =>
         [
@@ -109,7 +116,6 @@ export default function AdministrationAddUserModal({
           'technician',
           'collector',
           'vault-manager',
-          'reviewer',
         ].includes(role.value)
       );
     } else if (isLocationAdmin) {
@@ -120,7 +126,7 @@ export default function AdministrationAddUserModal({
       );
     }
     return [];
-  }, [isDeveloper, isAdmin, isManager, isLocationAdmin]);
+  }, [isDeveloper, isOwner, isAdmin, isManager, isLocationAdmin]);
 
   const currentUserLicenceeIds = useMemo(
     () =>
@@ -195,8 +201,6 @@ export default function AdministrationAddUserModal({
 
   // Roles and permissions
   const [roles, setRoles] = useState<string[]>([]);
-  const [multiplier, setMultiplier] = useState<string>('');
-  const isReviewerSelected = roles.includes('reviewer');
   const isVaultManagerSelected = roles.includes('vault-manager');
   const isCashierSelected = roles.includes('cashier');
   const hasRestrictedAssignments = isVaultManagerSelected || isCashierSelected;
@@ -207,6 +211,7 @@ export default function AdministrationAddUserModal({
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [allLocationsSelected, setAllLocationsSelected] = useState(false);
+  const [multiplier, setMultiplier] = useState<number>(0);
   const [rolePermissionsDialog, setRolePermissionsDialog] = useState<{
     open: boolean;
     role: string;
@@ -260,6 +265,7 @@ export default function AdministrationAddUserModal({
       setAllLicenceesSelected(false);
       setSelectedLocationIds([]);
       setAllLocationsSelected(false);
+      setMultiplier(0);
       setAccountErrors({});
       setAccountTouched({});
       setPasswordStrength({
@@ -733,6 +739,11 @@ export default function AdministrationAddUserModal({
     
     setRoles(newRoles);
 
+    // Reset multiplier if reviewer role is removed
+    if (!newRoles.includes('reviewer')) {
+      setMultiplier(0);
+    }
+
     // Enforce single selection if vault-manager or cashier is selected
     if (checked && (role === 'vault-manager' || role === 'cashier')) {
       if (selectedLicenceeIds.length > 1) {
@@ -990,6 +1001,7 @@ export default function AdministrationAddUserModal({
       licenceeIds: allLicenceesSelected
         ? licencees.map(lic => String(lic._id))
         : selectedLicenceeIds,
+      multiplier: roles.includes('reviewer') ? multiplier : 0,
       allowedLocations: allLocationsSelected
         ? availableLocations.map(loc => loc._id)
         : selectedLocationIds,
@@ -1002,7 +1014,6 @@ export default function AdministrationAddUserModal({
       idType: formData.idType.trim() || undefined,
       idNumber: formData.idNumber.trim() || undefined,
       notes: formData.notes.trim() || undefined,
-      multiplier: isReviewerSelected && multiplier ? parseFloat(multiplier) / 100 : null,
     };
 
     setIsLoading(true);
@@ -1646,33 +1657,34 @@ export default function AdministrationAddUserModal({
                     </p>
                   )}
 
-                  {/* Reviewer Multiplier Input - only shown when reviewer role is selected */}
-                  {isReviewerSelected && (
-                    <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                      <Label htmlFor="multiplier" className="text-sm font-semibold text-blue-800">
-                        Reviewer Multiplier (%)
-                      </Label>
-                      <p className="mb-2 text-xs text-blue-600">
-                        Financial values (Money In, Money Out, Jackpot) will be multiplied by this percentage for this reviewer.
-                      </p>
-                      <Input
-                        id="multiplier"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        placeholder="e.g. 50 for 50%"
-                        value={multiplier}
-                        onChange={e => setMultiplier(e.target.value)}
-                        className="w-48 bg-white"
-                      />
-                      {multiplier && (
-                        <p className="mt-1 text-xs text-gray-500">
-                          Stored as: {(parseFloat(multiplier) / 100).toFixed(4)} (multiply factor)
+                  {roles.includes('reviewer') && isOwner && (
+                    <div className="mt-4 animate-in slide-in-from-top-2 border-t border-blue-100 pt-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Label className="text-sm font-bold text-blue-900 leading-none">
+                          Reviewer Multiplier (%)
+                        </Label>
+                        <span title="This user will see financial reports scaled down by this percentage.">
+                          <Info className="h-4 w-4 text-blue-400 cursor-help" />
+                        </span>
+                      </div>
+                      <div className="relative max-w-xs">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="1"
+                          value={multiplier}
+                          onChange={(e) => setMultiplier(parseFloat(e.target.value) || 0)}
+                          className="border-blue-200 focus:ring-blue-500 bg-blue-50/30"
+                          placeholder="e.g. 0.10 for 10%"
+                        />
+                        <p className="mt-2 text-xs font-medium text-blue-600 bg-blue-50 p-2 rounded-md border border-blue-100 italic">
+                          ℹ️ Results: This user will see financial data reduced by <span className="text-blue-900 font-bold">{(multiplier * 100).toFixed(0)}%</span>.
                         </p>
-                      )}
+                      </div>
                     </div>
                   )}
+
                 </div>
 
                 <div className="h-px w-full bg-gray-200" />

@@ -14,6 +14,8 @@ type MuiDateCalendarProps = {
   onSelect?: (date?: { from: Date; to: Date }) => void;
   className?: string;
   gameDayOffset?: number;
+  /** Label for the apply/go button. Defaults to "Get Meters". */
+  buttonLabel?: string;
 };
 
 // === Styled Components for Range Highlighting ===
@@ -138,7 +140,7 @@ const TimeInput = ({ hours, minutes, onChange, label, color = 'primary.main' }: 
 };
 
 // === Main Component ===
-export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8 }: MuiDateCalendarProps) {
+export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8, buttonLabel = 'Get Meters' }: MuiDateCalendarProps) {
   const [fromDate, setFromDate] = useState<Date>(date || new Date());
   const [toDate, setToDate] = useState<Date>(date || new Date());
   
@@ -165,6 +167,15 @@ export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8 }
       />
     );
   };
+
+  // Sync internal state with provided date prop when it changes
+  useEffect(() => {
+    if (date) {
+      setFromDate(date);
+      // If toDate is before new fromDate, sync it too
+      if (toDate < date) setToDate(date);
+    }
+  }, [date]);
 
   const theme = useMemo(() => createTheme({
     palette: {
@@ -198,13 +209,15 @@ export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8 }
           flexDirection: 'column',
           border: '1px solid rgba(0,0,0,0.12)',
           background: '#ffffff',
+          maxHeight: '90vh', // Prevent overflow on small screens
           maxWidth: '100%',
+          overflowY: 'auto'
         }}
       >
         <LocalizationProvider dateAdapter={AdapterDateFns}>
           <Stack 
-            direction={{ xs: 'column', md: 'row' }} 
-            divider={<Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', md: 'block' } }} />}
+            direction={{ xs: 'column', lg: 'row' }} 
+            divider={<Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', lg: 'block' } }} />}
           >
             {/* Start Section */}
             <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -237,9 +250,9 @@ export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8 }
                 }}
               />
             </Box>
-
+ 
             {/* End Section */}
-            <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', bgcolor: { xs: 'grey.50', md: 'white' } }}>
+            <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', bgcolor: { xs: 'grey.50', lg: 'white' } }}>
               <Box sx={{ p: 1, mb: 1, bgcolor: 'grey.100', borderRadius: 2, width: '100%' }}>
                 <TimeInput 
                   label="End Date & Time" 
@@ -272,11 +285,11 @@ export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8 }
                 }}
               />
             </Box>
-
-            {/* Action Section (Only on Desktop) */}
+ 
+            {/* Action Section (Only on Desktop/Large screens) */}
             <Box sx={{ 
               p: 3, 
-              display: { xs: 'none', md: 'flex' }, 
+              display: { xs: 'none', lg: 'flex' }, 
               flexDirection: 'column', 
               justifyContent: 'center',
               minWidth: '160px',
@@ -294,13 +307,13 @@ export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8 }
                   boxShadow: '0 4px 14px rgba(26, 115, 232, 0.4)',
                 }}
               >
-                Get Meters
+                {buttonLabel}
               </Button>
             </Box>
           </Stack>
-
-          {/* Action Footer (Only on Mobile) */}
-          <Box sx={{ p: 2, display: { xs: 'block', md: 'none' }, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
+ 
+          {/* Action Footer (Only on Mobile/Small screens) */}
+          <Box sx={{ p: 2, display: { xs: 'block', lg: 'none' }, borderTop: '1px solid rgba(0,0,0,0.08)' }}>
             <Button
               fullWidth
               variant="contained"
@@ -313,7 +326,7 @@ export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8 }
                 fontSize: '1.1rem',
               }}
             >
-              Get Meters
+              {buttonLabel}
             </Button>
           </Box>
         </LocalizationProvider>

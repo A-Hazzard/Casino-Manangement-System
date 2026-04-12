@@ -149,11 +149,7 @@ export const MOCK_USERS_LIST_AFTER_DELETE = {
 
 // ─── Single user ──────────────────────────────────────────────────────────────
 
-export const MOCK_USER_DETAIL = {
-  success: true,
-  data: MOCK_USER_ADMIN,
-  timestamp: new Date().toISOString(),
-};
+
 
 // ─── Create / Update / Delete ─────────────────────────────────────────────────
 
@@ -203,10 +199,4 @@ export const MOCK_USER_DUPLICATE_USERNAME = {
   timestamp: new Date().toISOString(),
 };
 
-export const MOCK_USER_DUPLICATE_EMAIL = {
-  success: false,
-  error: 'Validation Error',
-  message: 'A user with this email address already exists.',
-  code: 'DUPLICATE_EMAIL',
-  timestamp: new Date().toISOString(),
-};
+

@@ -28,6 +28,7 @@ type UseCabinetDataProps = {
   selectedLocation: string[];
   selectedGameType: string[];
   selectedStatus: string;
+  selectedMembership: string;
   displayCurrency?: string;
 };
 
@@ -73,6 +74,7 @@ export const useCabinetData = ({
   selectedLocation,
   selectedGameType,
   selectedStatus,
+  selectedMembership,
   displayCurrency,
 }: UseCabinetDataProps): UseCabinetDataReturn => {
   // Debounce search term to reduce API calls
@@ -251,6 +253,7 @@ export const useCabinetData = ({
           selectedLocation,
           selectedGameType,
           selectedStatus,
+          selectedMembership,
         });
 
         const dateRangeForFetch =
@@ -296,7 +299,8 @@ export const useCabinetData = ({
           onlineStatus,
           signal,
           sortBy,
-          sortOrder
+          sortOrder,
+          selectedMembership
         );
 
         return result;
@@ -561,7 +565,8 @@ export const useCabinetData = ({
                     : selectedStatus === 'Archived'
                       ? 'archived'
                       : selectedStatus.toLowerCase(),
-              searchTerm
+              searchTerm,
+              selectedMembership
             ),
           'totals'
         );

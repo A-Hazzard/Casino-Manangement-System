@@ -114,7 +114,7 @@ export async function buildCollectionReportsLocationFilter(
 ): Promise<string[] | null> {
   const { roles, licencees, locationPermissions } = userPermissions;
 
-  const isAdmin = roles.includes('admin') || roles.includes('developer');
+    const isAdmin = roles.includes('admin') || roles.includes('developer') || roles.includes('owner');
   const isManager = roles.includes('manager');
 
   // Admin with no location restrictions - no filter

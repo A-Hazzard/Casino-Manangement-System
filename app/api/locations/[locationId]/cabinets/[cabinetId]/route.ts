@@ -13,7 +13,7 @@
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
@@ -24,7 +24,6 @@ import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { LocationDocument, MachineDocument } from '@/lib/types/common';
 import type { TimePeriod } from '@/shared/types/common';
 import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * Main GET handler for fetching a specific cabinet
  *
@@ -190,9 +189,15 @@ export async function GET(
               totalCancelledCredits: number;
               jackpot: number;
             };
-            const moneyIn = raw.drop;
-            const rawCancelled = raw.totalCancelledCredits;
-            const jackpot = raw.jackpot;
+
+            // Apply reviewer multiplier if set
+            const currentUser = await getUserFromServer();
+            const reviewerMult = (currentUser as { multiplier?: number | null })?.multiplier ?? null;
+            const mult = reviewerMult !== null ? 1 - reviewerMult : 1;
+
+            const moneyIn = raw.drop * mult;
+            const rawCancelled = raw.totalCancelledCredits * mult;
+            const jackpot = raw.jackpot * mult;
 
             // Apply includeJackpot logic: if true, Money Out = Cancelled + Jackpot
             const moneyOut = rawCancelled + (includeJackpot ? jackpot : 0);
@@ -221,30 +226,6 @@ export async function GET(
           metricsError
         );
       }
-    }
-
-    // ============================================================================
-    // STEP 7: Apply reviewer multiplier if applicable, then return cabinet data
-    // ============================================================================
-    const currentUser = await getUserFromServer();
-    const currentUserRoles = (currentUser?.roles as string[]) || [];
-    const reviewerMult =
-      currentUserRoles.includes('reviewer') &&
-      (currentUser as { multiplier?: number | null })?.multiplier != null
-        ? (currentUser as { multiplier?: number | null }).multiplier!
-        : null;
-
-    if (reviewerMult !== null) {
-      const cab = cabinet as Record<string, unknown>;
-      const mult = (1 - reviewerMult);
-      const mi = ((cab.moneyIn as number) || 0) * mult;
-      const mo = ((cab.moneyOut as number) || 0) * mult;
-      const jp = ((cab.jackpot as number) || 0) * mult;
-      cab.moneyIn = mi;
-      cab.moneyOut = mo;
-      cab.jackpot = jp;
-      cab.gross = mi - mo;
-      cab.netGross = mi - mo - jp;
     }
 
     return NextResponse.json({
@@ -306,7 +287,6 @@ export async function PUT(
     }
 
     // Check if user has permission to edit machines (admin, technician, developer)
-    const { getUserFromServer } = await import('@/app/api/lib/helpers/users');
     const user = await getUserFromServer();
     if (!user) {
       return NextResponse.json(
@@ -322,7 +302,9 @@ export async function PUT(
     const canEditMachines =
       userRoles.includes('admin') ||
       userRoles.includes('technician') ||
-      userRoles.includes('developer');
+      userRoles.includes('developer') ||
+      userRoles.includes('owner') ||
+      userRoles.includes('location admin');
 
     if (!canEditMachines) {
       return NextResponse.json(
@@ -446,6 +428,15 @@ export async function PUT(
       }
       if (Object.keys(metersUpdate).length > 0) {
         updateFields.collectionMeters = metersUpdate;
+        // Mirror the values into sasMeters so collection reports use them as the
+        // initial prev in/out baseline when no prior collection exists.
+        // sasMeters.drop = Money In (metersIn), sasMeters.totalCancelledCredits = Money Out (metersOut)
+        if (metersUpdate.metersIn !== undefined) {
+          updateFields['sasMeters.drop'] = metersUpdate.metersIn;
+        }
+        if (metersUpdate.metersOut !== undefined) {
+          updateFields['sasMeters.totalCancelledCredits'] = metersUpdate.metersOut;
+        }
       }
     }
     if (data.collectionTime !== undefined && data.collectionTime !== '') {
@@ -734,7 +725,6 @@ export async function DELETE(
     }
 
     // Check if user has permission to delete machines (admin, technician, developer)
-    const { getUserFromServer } = await import('@/app/api/lib/helpers/users');
     const user = await getUserFromServer();
     if (!user) {
       return NextResponse.json(
@@ -750,7 +740,8 @@ export async function DELETE(
     const canDeleteMachines =
       userRoles.includes('admin') ||
       userRoles.includes('technician') ||
-      userRoles.includes('developer');
+      userRoles.includes('developer') ||
+      userRoles.includes('owner');
 
     if (!canDeleteMachines) {
       return NextResponse.json(
@@ -782,7 +773,7 @@ export async function DELETE(
     const hardDelete = searchParams.get('hardDelete') === 'true';
 
     // Permanent delete restricted to admin/developer
-    if (hardDelete && !userRoles.includes('admin') && !userRoles.includes('developer')) {
+    if (hardDelete && !userRoles.includes('admin') && !userRoles.includes('developer') && !userRoles.includes('owner')) {
       return NextResponse.json(
         {
           success: false,

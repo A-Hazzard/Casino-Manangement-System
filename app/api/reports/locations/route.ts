@@ -19,7 +19,6 @@ import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { AggregatedLocation } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * Main GET handler for fetching locations report
  */
@@ -70,13 +69,6 @@ export async function GET(req: NextRequest) {
           customStartDate = new Date(start);
           customEndDate = new Date(end);
         }
-
-        const reviewerMultRaw =
-          userRoles.includes('reviewer') &&
-          (userPayload as { multiplier?: number | null })?.multiplier != null
-            ? (userPayload as { multiplier?: number | null }).multiplier!
-            : null;
-        const reviewerMult = reviewerMultRaw !== null ? (1 - reviewerMultRaw) : null;
 
         const userLocationPermissions =
           (userPayload as { assignedLocations?: string[] })
@@ -374,6 +366,8 @@ export async function GET(req: NextRequest) {
           licencees.map(l => [String(l._id), !!l.includeJackpot])
         );
 
+        const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+
         const locationResults: AggregatedLocation[] = locations.map(loc => {
           const locId = String(loc._id);
           const machines = locationToMachines.get(locId) || [];
@@ -382,9 +376,15 @@ export async function GET(req: NextRequest) {
             totalCancelledCredits: 0,
             totalJackpot: 0,
           };
-          const rawDrop = metrics.totalDrop || 0;
-          const rawCancelled = metrics.totalCancelledCredits || 0;
-          const rawJackpot = metrics.totalJackpot || 0;
+          let scaledDrop = metrics.totalDrop || 0;
+          let scaledCancelled = metrics.totalCancelledCredits || 0;
+          let scaledJackpot = metrics.totalJackpot || 0;
+          if (reviewerMult !== null) {
+            const mult = 1 - reviewerMult;
+            scaledDrop *= mult;
+            scaledCancelled *= mult;
+            scaledJackpot *= mult;
+          }
           const includeJackpot =
             licenceeIncludeJackpotMap.get(String(loc.rel?.licencee)) || false;
 
@@ -393,17 +393,17 @@ export async function GET(req: NextRequest) {
             location: locId,
             locationName: loc.name,
             includeJackpot,
-            moneyIn: Math.round(rawDrop * 100) / 100,
+            moneyIn: Math.round(scaledDrop * 100) / 100,
             moneyOut:
               Math.round(
-                (rawCancelled + (includeJackpot ? rawJackpot : 0)) * 100
+                (scaledCancelled + (includeJackpot ? scaledJackpot : 0)) * 100
               ) / 100,
             gross:
               Math.round(
-                (rawDrop - (rawCancelled + (includeJackpot ? rawJackpot : 0))) *
+                (scaledDrop - (scaledCancelled + (includeJackpot ? scaledJackpot : 0))) *
                   100
               ) / 100,
-            jackpot: Math.round(rawJackpot * 100) / 100,
+            jackpot: Math.round(scaledJackpot * 100) / 100,
             totalMachines: machines.length,
             onlineMachines: loc.aceEnabled
               ? machines.length
@@ -478,23 +478,12 @@ export async function GET(req: NextRequest) {
         });
 
         const paginated = filteredResults.slice(skip, skip + limit);
-        let converted = await applyLocationsCurrencyConversion(
+        const converted = await applyLocationsCurrencyConversion(
           paginated,
           licencee,
           displayCurrency,
           isAdminOrDev
         );
-
-        if (reviewerMult !== null) {
-          converted = converted.map(loc => ({
-            ...loc,
-            moneyIn: loc.moneyIn * reviewerMult,
-            moneyOut: loc.moneyOut * reviewerMult,
-            jackpot: loc.jackpot * reviewerMult,
-            gross: (loc.moneyIn - loc.moneyOut) * reviewerMult,
-            _reviewerMultiplier: reviewerMult,
-          }));
-        }
 
         return NextResponse.json({
           data: converted,

@@ -21,7 +21,6 @@ import { generateMongoId } from '@/lib/utils/id';
 import type { GamingMachine } from '@/shared/types/entities';
 import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
-
 // TODO: Move these to shared types or create new ones
 type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
   collectionSettings?: {
@@ -148,6 +147,7 @@ export async function GET(request: NextRequest) {
       if (
         !hasAccess &&
         !userRoles.includes('developer') &&
+        !userRoles.includes('owner') &&
         !userRoles.includes('admin')
       ) {
         return NextResponse.json(

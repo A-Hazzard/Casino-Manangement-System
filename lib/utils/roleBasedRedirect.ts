@@ -10,7 +10,6 @@
  * - Role priority handling (admin/developer/manager > technician > location admin > collector)
  */
 
-import { HIGH_PRIORITY_ROLES } from '../constants/';
 import { UserRole } from './permissions';
 // ============================================================================
 // Redirect Path Functions
@@ -32,12 +31,23 @@ import { UserRole } from './permissions';
 export function getDefaultRedirectPathFromRoles(userRoles: UserRole[]): string {
   if (!userRoles || userRoles.length === 0) return '/cabinets'; 
 
-  // Priority 1: If user has admin, developer, manager, or location admin → dashboard
-  // (If user has any of these 4 roles, always redirect to dashboard, even with other roles)
-  const hasHighPriorityRole = HIGH_PRIORITY_ROLES.some(role =>
+  // Priority 1: Developer always goes to Dashboard
+  if (userRoles.includes('developer')) {
+    return '/';
+  }
+
+  // Priority 2: Reviewer and Owner go to Locations as requested
+  if (userRoles.includes('reviewer') || userRoles.includes('owner')) {
+    return '/locations';
+  }
+
+  // Priority 3: If user has admin, manager, or location admin → dashboard
+  // (If user has any of these roles, always redirect to dashboard, even with other roles)
+  const dashboardRoles: UserRole[] = ['admin', 'manager', 'location admin'];
+  const hasDashboardAccess = dashboardRoles.some(role =>
     userRoles.includes(role)
   );
-  if (hasHighPriorityRole) return '/';
+  if (hasDashboardAccess) return '/';
 
   // Priority 2: If user has vault-manager → vault management
   if (userRoles.includes('vault-manager')) return '/vault/management';
@@ -69,12 +79,22 @@ export function getRedirectDestinationNameFromRoles(
 ): string {
   if (!userRoles || userRoles.length === 0) return 'Machines';
 
-  // Priority 1: If user has admin, developer, manager, or location admin → Dashboard
-  
-  const hasHighPriorityRole = HIGH_PRIORITY_ROLES.some(role =>
+  // Priority 1: Developer always goes to Dashboard
+  if (userRoles.includes('developer')) {
+    return 'Dashboard';
+  }
+
+  // Priority 2: Reviewer and Owner go to Locations
+  if (userRoles.includes('reviewer') || userRoles.includes('owner')) {
+    return 'Locations';
+  }
+
+  // Priority 3: If user has admin, manager, or location admin → Dashboard
+  const dashboardRoles = ['admin', 'manager', 'location admin'];
+  const hasDashboardAccess = dashboardRoles.some(role =>
     userRoles.includes(role)
   );
-  if (hasHighPriorityRole) {
+  if (hasDashboardAccess) {
     return 'Dashboard';
   }
 

@@ -21,7 +21,7 @@
 
 import DashboardChart from '@/components/CMS/dashboard/DashboardChart';
 import TopPerformingLocationModal from '@/components/CMS/dashboard/modals/TopPerformingLocationModal';
-import TopPerformingMachineModal from '@/components/CMS/dashboard/modals/TopPerformingMachineModal';
+import TopPerformingCabinetModal from '@/components/CMS/dashboard/modals/TopPerformingCabinetModal';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards';
 import MachineStatusWidget from '@/components/shared/ui/MachineStatusWidget';
@@ -127,7 +127,7 @@ export default function DashboardDesktopLayout(
         <FinancialMetricsCards
           totals={props.totals}
           loading={props.loadingTotals ?? props.loadingChartData}
-          title="Total for all Locations and Machines"
+          title="Total for all Locations and Cabinets"
           locationFiltered={false}
           includeJackpot={props.gamingLocations?.some(
             (loc: Record<string, unknown>) => loc.includeJackpot
@@ -332,7 +332,7 @@ export default function DashboardDesktopLayout(
                                       }
                                     }}
                                     className="flex-shrink-0"
-                                    title="View machine preview"
+                                    title="View cabinet preview"
                                   >
                                     <ExternalLink className="h-3.5 w-3.5 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
                                   </button>
@@ -415,9 +415,9 @@ export default function DashboardDesktopLayout(
         </div>
       </div>
 
-      {/* Machine Preview Modal */}
+      {/* Cabinet Preview Modal */}
       {selectedMachine?.machineId && !selectedMachine.isLocation && (
-        <TopPerformingMachineModal
+        <TopPerformingCabinetModal
           open={isModalOpen}
           machineId={selectedMachine.machineId}
           machineName={selectedMachine.machineName || ''}

@@ -7,10 +7,8 @@ import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Meters } from '@/app/api/lib/models/meters';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
-import {
-  getGamingDayRange,
-  getGamingDayRangeForPeriod,
-} from '@/lib/utils/gamingDayRange';
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import type { TimePeriod } from '@/app/api/lib/types';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 import type { LocationDocument } from '@/lib/types/common';
@@ -20,7 +18,6 @@ export async function GET(request: NextRequest) {
     try {
       const { searchParams } = new URL(request.url);
       const locationId = searchParams.get('locationId');
-      const dateStr = searchParams.get('date');
       if (!locationId)
         return NextResponse.json(
           { success: false, error: 'Location ID is required' },
@@ -49,9 +46,16 @@ export async function GET(request: NextRequest) {
         { gameDayOffset: 1 }
       ).lean()) as Pick<LocationDocument, 'gameDayOffset'> | null;
       const gameDayOffset = locationInfo?.gameDayOffset ?? 8;
-      const { rangeStart, rangeEnd } = dateStr
-        ? getGamingDayRange(new Date(dateStr), gameDayOffset)
-        : getGamingDayRangeForPeriod('Today', gameDayOffset);
+      const timePeriod = searchParams.get('timePeriod') || 'Today';
+      const startDateParam = searchParams.get('startDate');
+      const endDateParam = searchParams.get('endDate');
+
+      const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod(
+        timePeriod as TimePeriod,
+        gameDayOffset,
+        startDateParam ? new Date(startDateParam) : undefined,
+        endDateParam ? new Date(endDateParam) : undefined
+      );
 
       const [transactions, activeCashiersData, machineMeters] =
         await Promise.all([
@@ -102,18 +106,35 @@ export async function GET(request: NextRequest) {
       const totalMachineBalance =
         machineMeters.length > 0 ? machineMeters[0].totalMoneyIn : 0;
 
+      const metrics = {
+        totalCashIn,
+        totalCashOut,
+        netCashFlow: totalCashIn - totalCashOut,
+        payouts,
+        payoutsCount,
+        totalMachineBalance,
+        totalCashierFloats,
+        expenses,
+      };
+
+      // ============================================================================
+      // Reviewer Multiplier Scaling
+      // ============================================================================
+      const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+      if (reviewerMult !== null) {
+        const mult = 1 - reviewerMult;
+        metrics.totalCashIn *= mult;
+        metrics.totalCashOut *= mult;
+        metrics.netCashFlow *= mult;
+        metrics.payouts *= mult;
+        metrics.totalMachineBalance *= mult;
+        metrics.totalCashierFloats *= mult;
+        metrics.expenses *= mult;
+      }
+
       return NextResponse.json({
         success: true,
-        metrics: {
-          totalCashIn,
-          totalCashOut,
-          netCashFlow: totalCashIn - totalCashOut,
-          payouts,
-          payoutsCount,
-          totalMachineBalance,
-          totalCashierFloats,
-          expenses,
-        },
+        metrics,
         rangeStart: rangeStart.toISOString(),
         rangeEnd: rangeEnd.toISOString(),
       });

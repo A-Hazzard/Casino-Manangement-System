@@ -109,7 +109,7 @@ if (refreshSessions) {
         </div>
 
         <div className="mt-4">
-          <DateFilters hideAllTime={false} onCustomRangeGo={refreshSessions} />
+          <DateFilters hideAllTime={false} onCustomRangeGo={refreshSessions} customRangeGoLabel="Get Sessions" />
         </div>
 
         {/* Filters row */}

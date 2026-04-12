@@ -462,9 +462,6 @@ export async function authenticateUser(
       );
     }
 
-    const isAdminOrDeveloper =
-      userObject.roles?.includes('admin') ||
-      userObject.roles?.includes('developer');
 
     const userPayload = {
       _id: userObject._id.toString(),
@@ -482,7 +479,7 @@ export async function authenticateUser(
       isLocked: false,
       lockedUntil: undefined,
       failedLoginAttempts: 0,
-      requiresProfileUpdate: profileInvalid && !isAdminOrDeveloper,
+      requiresProfileUpdate: profileInvalid,
       requiresPasswordUpdate: requiresPasswordUpdate, // Set flag here as well
       invalidProfileFields: undefined,
       invalidProfileReasons: undefined,
@@ -509,7 +506,7 @@ export async function authenticateUser(
       refreshToken,
       user: userPayload,
       expiresAt,
-      requiresProfileUpdate: profileInvalid && !isAdminOrDeveloper,
+      requiresProfileUpdate: profileInvalid,
       requiresPasswordUpdate: requiresPasswordUpdate,
       invalidProfileFields: profileInvalid ? invalidFields : undefined,
       invalidProfileReasons: profileInvalid ? invalidReasons : undefined,

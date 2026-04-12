@@ -40,7 +40,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 9. Cascade recalculation to related collections if needed
  * 10. Return updated collection
  */
-export async function PUT(
+export async function PATCH(
   request: NextRequest
 ) {
   const { pathname } = request.nextUrl;
@@ -94,8 +94,6 @@ export async function PUT(
     const shouldCascade =
       updateData.metersIn !== undefined ||
       updateData.metersOut !== undefined ||
-      updateData.prevIn !== undefined ||
-      updateData.prevOut !== undefined ||
       updateData.timestamp !== undefined ||
       updateData.collectionTime !== undefined ||
       updateData.ramClear !== undefined ||
@@ -323,7 +321,7 @@ export async function PUT(
         // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
         const finalUpdatedCollection = await Collections.findOneAndUpdate(
           { _id: collectionId },
-          recalculatedData,
+          { $set: recalculatedData },
           { new: true, runValidators: true }
         );
 

@@ -192,8 +192,8 @@ export async function GET(request: NextRequest) {
               | undefined;
             return m
               ? `Machine (${
-                  (m.serialNumber || '')?.trim() ||
-                  m.custom?.name?.trim() ||
+                  String(m.serialNumber || '').trim() ||
+                  String(m.custom?.name || '').trim() ||
                   actor.id
                 })`
               : `Machine (${actor.id})`;
@@ -224,10 +224,10 @@ export async function GET(request: NextRequest) {
                 }
               | undefined;
             if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
-            const sn = m.serialNumber?.trim() || '';
-            const nm = m.custom?.name?.trim() || '';
-            const g = m.game || m.installedGame || '';
-            const gt = m.gameType || '';
+            const sn = String(m.serialNumber || '').trim();
+            const nm = String(m.custom?.name || '').trim();
+            const g = String(m.game || m.installedGame || '');
+            const gt = String(m.gameType || '');
             const main = sn || nm || 'N/A';
             return {
               identifier: nm && nm !== main ? `${main} (${nm})` : main,
@@ -238,6 +238,19 @@ export async function GET(request: NextRequest) {
         }
         return res;
       });
+
+      // ============================================================================
+      // Reviewer Multiplier Scaling
+      // ============================================================================
+      const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+      if (reviewerMult !== null) {
+        const mult = 1 - reviewerMult;
+        populated.forEach(t => {
+          if (typeof t.amount === 'number') {
+            t.amount *= mult;
+          }
+        });
+      }
 
       populated.forEach(t => {
         const expenseDetails = t.expenseDetails as

@@ -28,9 +28,9 @@ export const REPORTS_TABS_CONFIG: ReportTab[] = [
   },
   {
     id: 'machines',
-    label: 'Machines',
+    label: 'Cabinets',
     icon: '🎰',
-    description: 'Individual machine performance and revenue tracking',
+    description: 'Individual cabinet performance and revenue tracking',
   },
 ];
 

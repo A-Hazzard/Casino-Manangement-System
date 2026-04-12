@@ -154,7 +154,7 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                             onLocationClick(locationId);
                           }
                         }}
-                        className="cursor-pointer text-left font-medium text-gray-900 hover:text-blue-600 hover:underline"
+                        className="cursor-pointer text-left text-lg font-bold text-gray-900 hover:text-blue-600 hover:underline"
                         title="Click to view location details"
                         disabled={!location.location}
                       >

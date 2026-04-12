@@ -9,7 +9,6 @@ import { MapPinOff, PlusCircle, RefreshCw, Settings } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/shared/ui/button';
-import { ActionButtonSkeleton } from '@/components/shared/ui/skeletons/ButtonSkeletons';
 import { IMAGES } from '@/lib/constants';
 import type { AggregatedLocation } from '@/shared/types';
 import { hasMissingCoordinates } from '@/lib/utils/location';
@@ -17,7 +16,6 @@ import { hasMissingCoordinates } from '@/lib/utils/location';
 type LocationsDetailsHeaderProps = {
   locationId: string;
   locationData: AggregatedLocation | null;
-  loading: boolean;
   refreshing: boolean;
   activeView: 'machines' | 'members';
   canManageMachines: boolean;
@@ -29,7 +27,6 @@ type LocationsDetailsHeaderProps = {
 export default function LocationsDetailsHeader({
   locationId,
   locationData,
-  loading,
   refreshing,
   activeView,
   canManageMachines,
@@ -50,8 +47,8 @@ export default function LocationsDetailsHeader({
               <ArrowLeftIcon className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-lg font-bold text-gray-800">
-            Location Details
+          <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-xl font-bold text-gray-900 leading-tight">
+            {locationData?.locationName || 'Location Details'}
             {locationData && hasMissingCoordinates(locationData) ? (
               <div className="group relative inline-flex flex-shrink-0">
                 <MapPinOff className="h-4 w-4 flex-shrink-0 text-red-600" />
@@ -85,9 +82,7 @@ export default function LocationsDetailsHeader({
 
           {activeView === 'machines' && (
             <>
-              {loading ? (
-                <div className="h-4 w-4 flex-shrink-0" />
-              ) : canManageMachines ? (
+              {canManageMachines ? (
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => {
@@ -100,8 +95,7 @@ export default function LocationsDetailsHeader({
                   </button>
                   <button
                     onClick={() => onNewMachine(locationId)}
-                    disabled={refreshing}
-                    className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex-shrink-0 p-1.5 transition-colors"
                     aria-label="Create Machine"
                   >
                     <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
@@ -124,8 +118,8 @@ export default function LocationsDetailsHeader({
               <ArrowLeftIcon className="h-5 w-5" />
             </Button>
           </Link>
-          <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-2xl font-bold text-gray-800 sm:text-3xl">
-            Location Details
+          <h1 className="flex min-w-0 flex-1 items-center gap-3 truncate text-4xl font-black tracking-tight text-gray-900">
+            {locationData?.locationName || 'Location Details'}
             {locationData && hasMissingCoordinates(locationData) ? (
               <div className="group relative inline-flex flex-shrink-0">
                 <MapPinOff className="h-6 w-6 flex-shrink-0 text-red-600 sm:h-8 sm:w-8" />
@@ -169,9 +163,7 @@ export default function LocationsDetailsHeader({
                 className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`}
               />
             </button>
-            {loading ? (
-              <ActionButtonSkeleton width="w-36" showIcon={false} />
-            ) : canManageMachines ? (
+            {canManageMachines ? (
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -187,7 +179,6 @@ export default function LocationsDetailsHeader({
                 <Button
                   variant="default"
                   className="bg-button text-white"
-                  disabled={refreshing}
                   onClick={() => onNewMachine(locationId)}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />

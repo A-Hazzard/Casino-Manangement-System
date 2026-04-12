@@ -1,39 +1,318 @@
 /**
- * Edit Collection Modal Component
- *
- * Comprehensive modal for editing existing collection reports with machine data.
- *
- * Features:
- * - Location selection (locked)
- * - Collection time/date editing
- * - Machine data editing (meters in/out, RAM clear, notes)
- * - Financial data management
- * - Report updates
- * - Loading states and skeletons
- * - Toast notifications
- *
- * @module components/collectionReport/EditCollectionModal
+ * CollectionReportEditCollectionModal Component (Unified)
+ * 
+ * Master entry point for editing collection reports.
+ * Automatically switches between Mobile and Desktop layouts based on screen size.
  */
 
 'use client';
 
-import CollectionReportEditCollectedMachines from '@/components/CMS/collectionReport/forms/CollectionReportEditCollectedMachines';
-import CollectionReportEditFinancials from '@/components/CMS/collectionReport/forms/CollectionReportEditFinancials';
-import CollectionReportEditFormFields from '@/components/CMS/collectionReport/forms/CollectionReportEditFormFields';
-import CollectionReportEditLocationMachineSelection from '@/components/CMS/collectionReport/forms/CollectionReportEditLocationMachineSelection';
-import { ConfirmationDialog } from '@/components/shared/ui/ConfirmationDialog';
 import {
     Dialog,
     DialogContent,
+    DialogTitle,
     DialogDescription,
     DialogHeader,
-    DialogTitle,
+    DialogFooter,
+    DialogClose
 } from '@/components/shared/ui/dialog';
-import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
+import { Button } from '@/components/shared/ui/button';
 import { useEditCollectionModal } from '@/lib/hooks/collectionReport/useEditCollectionModal';
-import { CollectionReportEditCollectionModalProps } from '@/lib/types/components';
-import { Info } from 'lucide-react';
-import { useCallback } from 'react';
+import { useMobileEditCollectionModal, type MobileModalState } from '@/lib/hooks/collectionReport/useMobileEditCollectionModal';
+import { useCollectionReportVariationCheck } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { VariationsConfirmationDialog } from '@/components/CMS/collectionReport/variations/VariationsConfirmationDialog';
+import { VariationCheckPopover } from '@/components/CMS/collectionReport/variations/VariationCheckPopover';
+import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
+import { MobileCollectionModalSkeleton } from '@/components/shared/ui/skeletons/MobileCollectionModalSkeleton';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useState, useRef, useEffect } from 'react';
+import { X } from 'lucide-react';
+import type { CollectionReportLocationWithMachines, MachineVariationData } from '@/lib/types/api';
+
+// Layouts
+import DesktopEditLayout from './edit/DesktopEditLayout';
+import MobileEditLayout from './edit/MobileEditLayout';
+
+type CollectionReportEditCollectionModalProps = {
+  show: boolean;
+  onClose: () => void;
+  reportId: string;
+  locations: CollectionReportLocationWithMachines[];
+  onRefresh: () => void;
+};
+
+// === Wrappers to isolate hook lifecycle ===
+
+type WrapperProps = {
+  show: boolean;
+  onClose: () => void;
+  reportId: string;
+  locations: CollectionReportLocationWithMachines[];
+  onRefresh: () => void;
+  gameDayOffset?: number;
+};
+
+function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gameDayOffset }: WrapperProps) {
+  const desktopHook = useEditCollectionModal({ show, reportId, locations, onRefresh, onClose });
+  const variation = useCollectionReportVariationCheck();
+  const [variationsCollapsibleExpanded, setVariationsCollapsibleExpanded] = useState(false);
+  const [showVariationPopover, setShowVariationPopover] = useState(false);
+  const [showVariationsConfirmation, setShowVariationsConfirmation] = useState(false);
+
+  // Auto-check variations when collections are loaded (Request 5)
+  const initialCheckPerformedRef = useRef(false);
+  useEffect(() => {
+    if (show && !desktopHook.isLoadingCollections && desktopHook.collectedMachineEntries.length > 0 && !initialCheckPerformedRef.current) {
+      initialCheckPerformedRef.current = true;
+      const machinesForCheck = desktopHook.collectedMachineEntries.map(entry => ({
+        machineId: entry.machineId,
+        machineName: entry.machineCustomName || entry.machineName || entry.serialNumber || entry.machineId,
+        metersIn: entry.metersIn || 0,
+        metersOut: entry.metersOut || 0,
+        sasStartTime: entry.sasMeters?.sasStartTime ? new Date(entry.sasMeters.sasStartTime).toISOString() : undefined,
+        sasEndTime: entry.sasMeters?.sasEndTime ? new Date(entry.sasMeters.sasEndTime).toISOString() : undefined,
+        prevMetersIn: entry.prevIn || 0,
+        prevMetersOut: entry.prevOut || 0,
+      }));
+      variation.checkVariations(desktopHook.selectedLocationId ?? '', machinesForCheck);
+    }
+    if (!show) {
+      initialCheckPerformedRef.current = false;
+    }
+  }, [show, desktopHook.isLoadingCollections, desktopHook.collectedMachineEntries.length, desktopHook.selectedLocationId]);
+
+  const handleDesktopSubmit = () => {
+    if (desktopHook.collectedMachineEntries.length === 0 || desktopHook.isProcessing) return;
+    setShowVariationPopover(true);
+    const machinesForCheck = desktopHook.collectedMachineEntries.map(entry => ({
+      machineId: entry.machineId,
+      machineName: entry.machineCustomName || entry.machineName || entry.serialNumber || entry.machineId,
+      metersIn: entry.metersIn || 0,
+      metersOut: entry.metersOut || 0,
+      sasStartTime: entry.sasMeters?.sasStartTime ? new Date(entry.sasMeters.sasStartTime).toISOString() : undefined,
+      sasEndTime: entry.sasMeters?.sasEndTime ? new Date(entry.sasMeters.sasEndTime).toISOString() : undefined,
+      prevMetersIn: entry.prevIn || 0,
+      prevMetersOut: entry.prevOut || 0,
+    }));
+    variation.checkVariations(desktopHook.selectedLocationId ?? '', machinesForCheck);
+  };
+
+  return (
+    <>
+      {/* Desktop Header */}
+      <DialogHeader className="p-4 pb-0 md:p-6 flex-shrink-0">
+        <DialogTitle className="text-xl font-bold md:text-2xl">
+          Edit Collection Report
+        </DialogTitle>
+        <DialogDescription>
+          Modify collection data, meters, and financials for this report.
+        </DialogDescription>
+      </DialogHeader>
+
+      <DesktopEditLayout 
+        {...desktopHook} 
+        locations={locations}
+        onRefresh={onRefresh}
+        isMinimized={variation.isMinimized}
+        variationsData={variation.variationsData}
+        checkComplete={variation.checkComplete}
+        variationsCollapsibleExpanded={variationsCollapsibleExpanded}
+        setVariationsCollapsibleExpanded={setVariationsCollapsibleExpanded}
+        gameDayOffset={gameDayOffset}
+      />
+
+      <DialogFooter className="flex justify-center border-t border-gray-300 p-4 pt-2 md:p-6 md:pt-4 flex-shrink-0">
+        <Button
+          onClick={handleDesktopSubmit}
+          disabled={!desktopHook.isUpdateReportEnabled || desktopHook.isProcessing}
+          className={`w-auto bg-button px-8 py-3 text-base hover:bg-buttonActive ${
+            !desktopHook.isUpdateReportEnabled || desktopHook.isProcessing
+              ? 'cursor-not-allowed'
+              : 'cursor-pointer'
+          }`}
+        >
+          {desktopHook.isProcessing
+            ? 'UPDATING REPORT...'
+            : `SUBMIT FINAL REPORT (${desktopHook.collectedMachineEntries.length})`}
+        </Button>
+      </DialogFooter>
+
+      {/* Variation Dialogs */}
+      <VariationCheckPopover
+        isOpen={showVariationPopover && !variation.isMinimized}
+        isChecking={variation.isChecking}
+        hasVariations={variation.hasVariations}
+        error={variation.error}
+        variationsData={variation.variationsData}
+        onMinimize={() => {
+          variation.toggleMinimize();
+          setVariationsCollapsibleExpanded(true);
+        }}
+        onSubmit={() => {
+          setShowVariationPopover(false);
+          if (variation.hasVariations && variation.variationsData) {
+            setShowVariationsConfirmation(true);
+          } else {
+            desktopHook.handleUpdateReport(variation.variationsData || undefined);
+          }
+        }}
+        onRetry={() => {/* retry logic */}}
+        onClose={() => setShowVariationPopover(false)}
+      />
+
+      <VariationsConfirmationDialog
+        isOpen={showVariationsConfirmation}
+        machineCount={variation.variationsData?.machines.filter((m: MachineVariationData) => typeof m.variation === 'number').length || 0}
+        totalVariation={variation.variationsData?.totalVariation || 0}
+        isLoading={desktopHook.isProcessing}
+        onConfirm={() => {
+          desktopHook.handleUpdateReport(variation.variationsData || undefined);
+          setShowVariationsConfirmation(false);
+        }}
+        onCancel={() => setShowVariationsConfirmation(false)}
+      />
+
+      {/* Shared Dialogs (Desktop side) */}
+      <InfoConfirmationDialog
+        isOpen={desktopHook.showViewMachineConfirmation}
+        onClose={() => desktopHook.setShowViewMachineConfirmation(false)}
+        onConfirm={() => {
+          const id = desktopHook.selectedMachineId;
+          if (id) window.open(`/cabinets/${id}`, '_blank');
+          desktopHook.setShowViewMachineConfirmation(false);
+        }}
+        title="View Machine"
+        message="Do you want to open this machine's details in a new tab?"
+        confirmText="Yes, View Machine"
+        cancelText="Cancel"
+        isLoading={false}
+      />
+    </>
+  );
+}
+
+function MobileEditWrapper({ show, reportId, locations, onRefresh, onClose }: WrapperProps) {
+  const mobileHook = useMobileEditCollectionModal({ show, reportId, locations, onRefresh, onClose });
+  const variation = useCollectionReportVariationCheck();
+  const [showVariationPopover, setShowVariationPopover] = useState(false);
+  const [showVariationsConfirmation, setShowVariationsConfirmation] = useState(false);
+
+  const handleMobileSubmit = () => {
+    if (mobileHook.collectedMachines.length === 0 || mobileHook.modalState.isProcessing) return;
+    setShowVariationPopover(true);
+    const machinesForCheck = mobileHook.collectedMachines.map(entry => ({
+      machineId: entry.machineId,
+      machineName: entry.machineCustomName || entry.machineName || entry.serialNumber || entry.machineId,
+      metersIn: entry.metersIn || 0,
+      metersOut: entry.metersOut || 0,
+      sasStartTime: entry.sasStartTime ? new Date(entry.sasStartTime).toISOString() : undefined,
+      sasEndTime: entry.sasEndTime ? new Date(entry.sasEndTime).toISOString() : undefined,
+      prevMetersIn: entry.prevIn || 0,
+      prevMetersOut: entry.prevOut || 0,
+    }));
+    variation.checkVariations(mobileHook.lockedLocationId || mobileHook.selectedLocationId || '', machinesForCheck);
+  };
+
+  // Auto-check variations when collections are loaded (Request 5)
+  const initialCheckPerformedRef = useRef(false);
+  useEffect(() => {
+    if (show && !mobileHook.modalState.isLoadingCollections && mobileHook.collectedMachines.length > 0 && !initialCheckPerformedRef.current) {
+      initialCheckPerformedRef.current = true;
+      const machinesForCheck = mobileHook.collectedMachines.map(entry => ({
+        machineId: entry.machineId,
+        machineName: entry.machineCustomName || entry.machineName || entry.serialNumber || entry.machineId,
+        metersIn: entry.metersIn || 0,
+        metersOut: entry.metersOut || 0,
+        sasStartTime: entry.sasStartTime ? new Date(entry.sasStartTime).toISOString() : undefined,
+        sasEndTime: entry.sasEndTime ? new Date(entry.sasEndTime).toISOString() : undefined,
+        prevMetersIn: entry.prevIn || 0,
+        prevMetersOut: entry.prevOut || 0,
+      }));
+      variation.checkVariations(mobileHook.lockedLocationId || mobileHook.selectedLocationId || '', machinesForCheck);
+    }
+    if (!show) {
+      initialCheckPerformedRef.current = false;
+    }
+  }, [show, mobileHook.modalState.isLoadingCollections, mobileHook.collectedMachines.length, mobileHook.lockedLocationId, mobileHook.selectedLocationId]);
+
+  return (
+    <>
+      {/* Mobile Header */}
+      {mobileHook.modalState.navigationStack.length === 0 && (
+        <div className="sticky top-0 z-[100] border-b bg-white px-5 py-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold tracking-tight text-gray-900">Edit Collection Report</h2>
+            <DialogClose asChild>
+              <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+            </DialogClose>
+          </div>
+        </div>
+      )}
+      
+      {mobileHook.modalState.isLoadingMachines || mobileHook.modalState.isLoadingCollections ? (
+        <MobileCollectionModalSkeleton />
+      ) : (
+        <MobileEditLayout 
+          {...mobileHook} 
+          handleStartSubmit={handleMobileSubmit}
+          variationsData={variation.variationsData}
+        />
+      )}
+
+      {/* Variation Dialogs */}
+      <VariationCheckPopover
+        isOpen={showVariationPopover && !variation.isMinimized}
+        isChecking={variation.isChecking}
+        hasVariations={variation.hasVariations}
+        error={variation.error}
+        variationsData={variation.variationsData}
+        onMinimize={() => {
+          variation.toggleMinimize();
+          mobileHook.handleViewCollectedMachines();
+        }}
+        onSubmit={() => {
+          setShowVariationPopover(false);
+          if (variation.hasVariations && variation.variationsData) {
+            setShowVariationsConfirmation(true);
+          } else {
+            mobileHook.updateCollectionReportHandler(variation.variationsData || undefined);
+          }
+        }}
+        onRetry={() => {/* retry logic */}}
+        onClose={() => setShowVariationPopover(false)}
+      />
+
+      <VariationsConfirmationDialog
+        isOpen={showVariationsConfirmation}
+        machineCount={variation.variationsData?.machines.filter((m: MachineVariationData) => typeof m.variation === 'number').length || 0}
+        totalVariation={variation.variationsData?.totalVariation || 0}
+        isLoading={mobileHook.modalState.isProcessing}
+        onConfirm={() => {
+          mobileHook.updateCollectionReportHandler(variation.variationsData || undefined);
+          setShowVariationsConfirmation(false);
+        }}
+        onCancel={() => setShowVariationsConfirmation(false)}
+      />
+
+      {/* Shared Dialogs (Mobile side) */}
+      <InfoConfirmationDialog
+        isOpen={mobileHook.modalState.showViewMachineConfirmation}
+        onClose={() => mobileHook.setModalState((prev: MobileModalState) => ({...prev, showViewMachineConfirmation: false}))}
+        onConfirm={() => {
+          const id = mobileHook.modalState.selectedMachineData?._id;
+          if (id) window.open(`/cabinets/${id}`, '_blank');
+          mobileHook.setModalState((prev: MobileModalState) => ({...prev, showViewMachineConfirmation: false}));
+        }}
+        title="View Machine"
+        message="Do you want to open this machine's details in a new tab?"
+        confirmText="Yes, View Machine"
+        cancelText="Cancel"
+        isLoading={false}
+      />
+    </>
+  );
+}
 
 export default function CollectionReportEditCollectionModal({
   show,
@@ -42,302 +321,42 @@ export default function CollectionReportEditCollectionModal({
   locations = [],
   onRefresh,
 }: CollectionReportEditCollectionModalProps) {
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const { gameDayOffset } = useDashBoardStore();
 
-
-
-  // ============================================================================
-  // Hooks & State (via custom hook)
-  // ============================================================================
-  const {
-    // State
-    selectedLocationId,
-    setSelectedLocationId,
-    selectedLocationName,
-    selectedMachineId,
-    setSelectedMachineId,
-    collectedMachineEntries,
-    machinesOfSelectedLocation,
-    machineSearchTerm,
-    setMachineSearchTerm,
-    updateAllSasStartDate,
-    setUpdateAllSasStartDate,
-    updateAllSasEndDate,
-    setUpdateAllSasEndDate,
-    isLoadingMachines,
-    isProcessing,
-    editingEntryId,
-    showUpdateConfirmation,
-    setShowUpdateConfirmation,
-    showDeleteConfirmation,
-    setShowDeleteConfirmation,
-    showViewMachineConfirmation,
-    setShowViewMachineConfirmation,
-    showMachineRolloverWarning,
-    showUnsavedChangesWarning,
-    setShowUnsavedChangesWarning,
-    handleConfirmMachineRollover,
-    handleCancelMachineRollover,
-    currentCollectionTime,
-    setCurrentCollectionTime,
-    currentMetersIn,
-    setCurrentMetersIn,
-    currentMetersOut,
-    setCurrentMetersOut,
-    currentRamClearMetersIn,
-    setCurrentRamClearMetersIn,
-    currentRamClearMetersOut,
-    setCurrentRamClearMetersOut,
-    currentMachineNotes,
-    setCurrentMachineNotes,
-    currentRamClear,
-    setCurrentRamClear,
-    showAdvancedSas,
-    setShowAdvancedSas,
-    sasStartTime,
-    setSasStartTime,
-    sasEndTime,
-    setSasEndTime,
-    prevIn,
-    prevOut,
-    financials,
-    setFinancials,
-    calculateCarryover,
-    baseBalanceCorrection,
-    setBaseBalanceCorrection,
-
-    // Computed
-    machineForDataEntry,
-    filteredMachines,
-    isUpdateReportEnabled,
-
-    // Handlers
-    handleClose,
-    handleDisabledFieldClick,
-    handleEditEntry,
-    handleCancelEdit,
-    handleAddOrUpdateEntry,
-    confirmUpdateEntry,
-    handleDeleteEntry,
-    confirmDeleteEntry,
-    handleUpdateReport,
-  } = useEditCollectionModal({
-    show,
-    reportId,
-    locations,
-    onRefresh,
-    onClose,
-  });
-
-  // Memoize onOpenChange handler to prevent Dialog re-renders
-  const handleDialogOpenChange = useCallback(
-    (isOpen: boolean) => {
-      if (!isOpen) {
-        handleClose();
-      }
-      // When opening (isOpen === true), we don't need to do anything
-      // The Dialog will handle the open state via the `open` prop
-    },
-    [handleClose]
-  );
+  if (!show) return null;
 
   return (
-    <>
-      <Dialog open={show} onOpenChange={handleDialogOpenChange}>
-        <DialogContent
-          className="flex h-[90vh] max-h-[98vh] max-w-6xl flex-col bg-container p-0 md:max-h-[95vh] lg:max-h-[90vh] lg:max-w-7xl"
-          onInteractOutside={e => e.preventDefault()}
-        >
-          <DialogHeader className="p-4 pb-0 md:p-6">
-            <DialogTitle className="text-xl font-bold md:text-2xl">
-              Edit Collection Report
-            </DialogTitle>
-            <DialogDescription>
-              Edit the collection report for the selected location and machines.
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog open={show} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent
+        className={isMobile 
+          ? "m-0 flex h-[100dvh] w-full max-w-full flex-col overflow-hidden border-none bg-gray-50 p-0 shadow-2xl"
+          : "flex h-[95vh] w-[98vw] max-w-[98vw] flex-col bg-container p-0 md:h-[90vh] md:w-full md:max-w-6xl lg:max-w-7xl"
+        }
+        showCloseButton={!isMobile}
+        isMobileFullScreen={isMobile}
+      >
+        <DialogTitle className="sr-only">Edit Collection Report</DialogTitle>
 
-          <div className="flex min-h-0 flex-grow flex-col lg:flex-row overflow-hidden">
-            {/* Left sidebar: Location selector and machine list - 1/5 width */}
-            <CollectionReportEditLocationMachineSelection
-              locations={locations}
-              selectedLocationId={selectedLocationId}
-              setSelectedLocationId={setSelectedLocationId}
-              machinesOfSelectedLocation={machinesOfSelectedLocation}
-              machineSearchTerm={machineSearchTerm}
-              setMachineSearchTerm={setMachineSearchTerm}
-              filteredMachines={filteredMachines}
-              isLoadingMachines={isLoadingMachines}
-              isProcessing={isProcessing}
-              selectedMachineId={selectedMachineId}
-              setSelectedMachineId={setSelectedMachineId}
-              collectedMachineEntries={collectedMachineEntries}
-              editingEntryId={editingEntryId}
-            />
-
-            {/* Middle section: Form fields - 3/5 width (60%) */}
-            <div className="flex min-h-0 w-full lg:w-3/5 flex-col space-y-3 overflow-y-auto p-3 md:p-4 border-b lg:border-b-0 border-gray-200">
-              {(selectedMachineId && machineForDataEntry) ||
-              collectedMachineEntries.length > 0 ? (
-                <>
-                  <CollectionReportEditFormFields
-                    selectedLocationName={selectedLocationName}
-                    machineForDataEntry={machineForDataEntry}
-                    currentCollectionTime={currentCollectionTime}
-                    setCurrentCollectionTime={setCurrentCollectionTime}
-                    showAdvancedSas={showAdvancedSas}
-                    setShowAdvancedSas={setShowAdvancedSas}
-                    sasStartTime={sasStartTime}
-                    setSasStartTime={setSasStartTime}
-                    sasEndTime={sasEndTime}
-                    setSasEndTime={setSasEndTime}
-                    currentMetersIn={currentMetersIn}
-                    setCurrentMetersIn={setCurrentMetersIn}
-                    currentMetersOut={currentMetersOut}
-                    setCurrentMetersOut={setCurrentMetersOut}
-                    currentRamClearMetersIn={currentRamClearMetersIn}
-                    setCurrentRamClearMetersIn={setCurrentRamClearMetersIn}
-                    currentRamClearMetersOut={currentRamClearMetersOut}
-                    setCurrentRamClearMetersOut={setCurrentRamClearMetersOut}
-                    currentMachineNotes={currentMachineNotes}
-                    setCurrentMachineNotes={setCurrentMachineNotes}
-                    currentRamClear={currentRamClear}
-                    setCurrentRamClear={setCurrentRamClear}
-                    prevIn={prevIn}
-                    prevOut={prevOut}
-                    debouncedCurrentMetersIn={currentMetersIn} // Using direct for now, or from hook
-                    debouncedCurrentMetersOut={currentMetersOut}
-                    inputsEnabled={!!selectedMachineId}
-                    isProcessing={isProcessing}
-                    editingEntryId={editingEntryId}
-                    isAddMachineEnabled={true} // Simplified for now
-                    onAddOrUpdateEntry={handleAddOrUpdateEntry}
-                    onCancelEdit={handleCancelEdit}
-                    onDisabledFieldClick={handleDisabledFieldClick}
-                    onViewMachine={() => setShowViewMachineConfirmation(true)}
-                  />
-
-                  <CollectionReportEditFinancials
-                    financials={financials}
-                    setFinancials={setFinancials}
-                    baseBalanceCorrection={baseBalanceCorrection}
-                    setBaseBalanceCorrection={setBaseBalanceCorrection}
-                    isProcessing={isProcessing}
-                    onCollectedAmountChange={(value: string) => {
-                      calculateCarryover(value, baseBalanceCorrection);
-                    }}
-                  />
-
-                  {/* Reconciliation Guide Note - PC Only version */}
-                  <div className="mt-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
-                    <p className="text-[11px] font-bold text-blue-900 mb-2 uppercase tracking-wide flex items-center gap-1.5">
-                      <Info className="h-3 w-3" />
-                      Reconciliation Guide:
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-white/60 p-2.5 rounded border border-blue-50">
-                        <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">Target</p>
-                        <p className="text-[10px] text-gray-600 leading-relaxed text-pretty">Based on machines, profit share, plus Opening Balance/Correction.</p>
-                      </div>
-                      <div className="bg-white/60 p-2.5 rounded border border-blue-50">
-                        <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">Collected</p>
-                        <p className="text-[10px] text-gray-600 leading-relaxed text-pretty">The physical cash retrieved. This field unlocks after setting Correction.</p>
-                      </div>
-                      <div className="bg-white/60 p-2.5 rounded border border-blue-50">
-                        <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">Carryover</p>
-                        <p className="text-[10px] text-gray-600 leading-relaxed text-pretty">Collected minus Target. This value starts the next collection cycle.</p>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="flex h-full items-center justify-center">
-                  <p className="text-center text-gray-500">
-                    Select a location and machine from the left to enter its
-                    collection data.
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Right sidebar: Collected machines list - 1/5 width */}
-            <CollectionReportEditCollectedMachines
-              collectedMachineEntries={collectedMachineEntries}
-              isProcessing={isProcessing}
-              onEditEntry={handleEditEntry}
-              onDeleteEntry={handleDeleteEntry}
-              updateAllSasStartDate={updateAllSasStartDate}
-              setUpdateAllSasStartDate={setUpdateAllSasStartDate}
-              updateAllSasEndDate={updateAllSasEndDate}
-              setUpdateAllSasEndDate={setUpdateAllSasEndDate}
-              onRefresh={onRefresh}
-              financials={financials}
-              isUpdateReportEnabled={isUpdateReportEnabled}
-              onUpdateReport={handleUpdateReport}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirmation Dialogs */}
-      <ConfirmationDialog
-        isOpen={showUpdateConfirmation}
-        onClose={() => setShowUpdateConfirmation(false)}
-        onConfirm={confirmUpdateEntry}
-        title="Update Machine Entry"
-        message="Are you sure you want to update this machine's meter readings? This will change the collection history for this machine."
-        confirmText="Update Entry"
-        cancelText="Cancel"
-      />
-
-      <ConfirmationDialog
-        isOpen={showDeleteConfirmation}
-        onClose={() => setShowDeleteConfirmation(false)}
-        onConfirm={confirmDeleteEntry}
-        title="Delete Machine Collection"
-        message="Are you sure you want to delete this machine from the collection report? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-      />
-
-      <ConfirmationDialog
-        isOpen={showUnsavedChangesWarning}
-        onClose={() => setShowUnsavedChangesWarning(false)}
-        onConfirm={() => {
-          setShowUnsavedChangesWarning(false);
-          onClose();
-        }}
-        title="Unsaved Changes"
-        message="You have unsaved changes. Are you sure you want to close and discard them?"
-        confirmText="Discard Changes"
-        cancelText="Keep Editing"
-      />
-
-      <InfoConfirmationDialog
-        isOpen={showViewMachineConfirmation}
-        onClose={() => setShowViewMachineConfirmation(false)}
-        onConfirm={() => {
-          if (machineForDataEntry?._id) {
-            window.open(`/cabinets/${machineForDataEntry._id}`, '_blank');
-          }
-          setShowViewMachineConfirmation(false);
-        }}
-        title="View Machine Details"
-        message={`Open ${machineForDataEntry?.name || 'machine'} details in a new tab?`}
-        confirmText="Open in New Tab"
-        cancelText="Cancel"
-      />
-
-      {/* Machine Rollover/Ramclear Warning */}
-      <InfoConfirmationDialog
-        isOpen={showMachineRolloverWarning}
-        onClose={handleCancelMachineRollover}
-        onConfirm={handleConfirmMachineRollover}
-        title="Rollover/Ramclear Warning"
-        message="This machine has a meters value less than its previous value. This typically indicates a rollover or RAM clear situation. Are you sure you want to save this machine collection?"
-        confirmText="Yes, Save Machine"
-        cancelText="Cancel"
-      />
-    </>
+        {isMobile ? (
+          <MobileEditWrapper 
+            show={show} 
+            reportId={reportId} 
+            locations={locations} 
+            onRefresh={onRefresh} 
+            onClose={onClose} 
+          />
+        ) : (
+          <DesktopEditWrapper 
+            show={show} 
+            reportId={reportId} 
+            locations={locations} 
+            onRefresh={onRefresh} 
+            onClose={onClose}
+            gameDayOffset={gameDayOffset}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
-

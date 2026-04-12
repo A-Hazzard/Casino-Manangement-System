@@ -25,8 +25,10 @@ type MachineDataEntryFormProps = {
   ramClear: boolean;
   ramClearMetersIn?: string;
   ramClearMetersOut?: string;
-  prevIn?: number | null;
-  prevOut?: number | null;
+  prevIn?: string | number | null;
+  prevOut?: string | number | null;
+  onPrevInChange?: (value: string) => void;
+  onPrevOutChange?: (value: string) => void;
   onMetersInChange: (value: string) => void;
   onMetersOutChange: (value: string) => void;
   onRamClearChange: (checked: boolean) => void;
@@ -97,6 +99,8 @@ export default function CollectionReportFormMachineDataEntry({
   onSasStartTimeChange,
   sasEndTime = null,
   onSasEndTimeChange,
+  onPrevInChange,
+  onPrevOutChange,
 }: MachineDataEntryFormProps) {
   const inputsEnabled = !disabled && !isProcessing;
 
@@ -188,6 +192,8 @@ export default function CollectionReportFormMachineDataEntry({
         onRamClearChange={onRamClearChange}
         onRamClearMetersInChange={onRamClearMetersInChange}
         onRamClearMetersOutChange={onRamClearMetersOutChange}
+        onPrevInChange={onPrevInChange}
+        onPrevOutChange={onPrevOutChange}
         disabled={!inputsEnabled}
       />
 

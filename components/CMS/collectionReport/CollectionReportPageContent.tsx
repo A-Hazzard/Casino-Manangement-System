@@ -184,7 +184,6 @@ export default function CollectionReportPageContent() {
         <CollectionReportHeader
           activeTab={effectiveTab}
           refreshing={refreshing}
-          loading={loading}
           onRefresh={handleRefresh}
           onCreateDesktop={handleCreate}
           onCreateMobile={handleCreate}
@@ -203,7 +202,7 @@ export default function CollectionReportPageContent() {
         {/* Date Filter Integration (applicable to main collections tab) */}
         {effectiveTab === 'collection' && (
           <div className="mb-6">
-            <DateFilters hideAllTime={false} />
+            <DateFilters hideAllTime={false} customRangeGoLabel="Get Reports" />
           </div>
         )}
 

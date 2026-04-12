@@ -143,6 +143,7 @@ function convertMeterDataCurrency(
     'jackpot',
     'voucherOut',
     'attPaidCredits',
+    'netGross',
   ];
 
   financialFields.forEach(field => {

@@ -130,7 +130,6 @@ export default function LocationsDetailsCabinetsSection({
   chartData,
   filteredCabinets,
   gameTypes,
-  locationName,
   locationId,
   selectedLocationId,
   locations,
@@ -299,9 +298,6 @@ export default function LocationsDetailsCabinetsSection({
           </div>
         )}
         <div className="mb-2 flex items-center gap-2">
-          <h2 className="text-base font-semibold text-gray-800 sm:text-lg">
-            Financial Metrics for {locationName || 'Location'}
-          </h2>
           {includeJackpot && (
             <div className="group relative hidden flex-shrink-0 lg:inline-flex">
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">

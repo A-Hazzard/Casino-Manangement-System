@@ -54,15 +54,16 @@ export function calculateLocationFinancialTotals(
         netGross: (acc.netGross || 0) + netGross,
       };
 
-      if (location._raw) {
+      const locRaw = (location as { _raw?: { moneyIn?: number; moneyOut?: number; jackpot?: number; gross?: number } })._raw;
+      if (locRaw) {
         const currentRaw = acc._raw || { moneyIn: 0, moneyOut: 0, jackpot: 0, gross: 0 };
         return {
           ...newAcc,
           _raw: {
-            moneyIn: currentRaw.moneyIn + (location._raw.moneyIn || 0),
-            moneyOut: currentRaw.moneyOut + (location._raw.moneyOut || 0),
-            jackpot: currentRaw.jackpot + (location._raw.jackpot || 0),
-            gross: currentRaw.gross + (location._raw.gross || 0),
+            moneyIn: currentRaw.moneyIn + (locRaw.moneyIn || 0),
+            moneyOut: currentRaw.moneyOut + (locRaw.moneyOut || 0),
+            jackpot: currentRaw.jackpot + (locRaw.jackpot || 0),
+            gross: currentRaw.gross + (locRaw.gross || 0),
           }
         };
       }
@@ -105,15 +106,16 @@ export function calculateCabinetFinancialTotals(
         netGross: (acc.netGross || 0) + netGross,
       };
 
-      if (cabinet._raw) {
+      const cabRaw = (cabinet as { _raw?: { moneyIn?: number; moneyOut?: number; jackpot?: number; gross?: number } })._raw;
+      if (cabRaw) {
         const currentRaw = acc._raw || { moneyIn: 0, moneyOut: 0, jackpot: 0, gross: 0 };
         return {
           ...newAcc,
           _raw: {
-            moneyIn: currentRaw.moneyIn + (cabinet._raw.moneyIn || 0),
-            moneyOut: currentRaw.moneyOut + (cabinet._raw.moneyOut || 0),
-            jackpot: currentRaw.jackpot + (cabinet._raw.jackpot || 0),
-            gross: currentRaw.gross + (cabinet._raw.gross || 0),
+            moneyIn: currentRaw.moneyIn + (cabRaw.moneyIn || 0),
+            moneyOut: currentRaw.moneyOut + (cabRaw.moneyOut || 0),
+            jackpot: currentRaw.jackpot + (cabRaw.jackpot || 0),
+            gross: currentRaw.gross + (cabRaw.gross || 0),
           }
         };
       }

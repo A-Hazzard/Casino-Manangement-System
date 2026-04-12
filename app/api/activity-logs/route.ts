@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action');
     const resource = searchParams.get('resource');
     const resourceId = searchParams.get('resourceId');
+    const membershipLog = searchParams.get('membershipLog');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const search = searchParams.get('search');
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
     if (action) filter.action = action;
     if (resource) filter.resource = resource;
     if (resourceId) filter.resourceId = resourceId;
+    if (membershipLog !== null) filter.membershipLog = membershipLog === 'true';
 
     if (startDate || endDate) {
       filter.timestamp = {} as Record<string, Date>;

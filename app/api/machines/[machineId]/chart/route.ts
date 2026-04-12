@@ -29,7 +29,6 @@ import type { CurrencyCode } from '@/shared/types/currency';
 import type { GamingMachine } from '@/shared/types/entities';
 import { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * Main GET handler for fetching chart data for a single machine
  *
@@ -575,11 +574,6 @@ export async function GET(
       totalCancelledCredits: item.totalCancelledCredits || 0,
       gross: item.gross || 0,
     }));
-
-    const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Machine Chart API] Completed in ${duration}ms`);
-    }
 
     return NextResponse.json({
       success: true,

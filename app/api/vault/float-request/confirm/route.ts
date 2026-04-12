@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const isVM = normalizedRoles.some(r =>
-        ['admin', 'manager', 'vault-manager'].includes(r)
+        ['admin', 'developer', 'owner', 'manager', 'vault-manager'].includes(r)
       );
       const isOwner = floatRequest.cashierId.toString() === userPayload._id;
 
@@ -33,7 +33,9 @@ export async function POST(request: NextRequest) {
         (floatRequest.type === 'decrease' && isVM) ||
         (floatRequest.type === 'increase' && isOwner) ||
         (!floatRequest.type && isOwner) ||
-        normalizedRoles.includes('admin');
+        normalizedRoles.includes('admin') ||
+        normalizedRoles.includes('developer') ||
+        normalizedRoles.includes('owner');
 
       if (!canConfirm)
         return NextResponse.json(

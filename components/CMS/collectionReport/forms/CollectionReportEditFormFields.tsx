@@ -21,7 +21,7 @@ import {
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import { formatDate } from '@/lib/utils/formatting';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
-import { Clock, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 
 type EditCollectionFormFieldsProps = {
   selectedLocationName: string;
@@ -46,8 +46,11 @@ type EditCollectionFormFieldsProps = {
   setCurrentMachineNotes: (val: string) => void;
   currentRamClear: boolean;
   setCurrentRamClear: (checked: boolean) => void;
-  prevIn: number | null;
-  prevOut: number | null;
+  prevIn: string;
+  prevOut: string;
+  onPrevInChange: (val: string) => void;
+  onPrevOutChange: (val: string) => void;
+
   debouncedCurrentMetersIn: string;
   debouncedCurrentMetersOut: string;
   inputsEnabled: boolean;
@@ -85,6 +88,8 @@ export default function CollectionReportEditFormFields({
   setCurrentRamClear,
   prevIn,
   prevOut,
+  onPrevInChange,
+  onPrevOutChange,
   debouncedCurrentMetersIn,
   debouncedCurrentMetersOut,
   inputsEnabled,
@@ -108,34 +113,28 @@ export default function CollectionReportEditFormFields({
         </p>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-gray-100 p-3">
-        <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-gray-700">
-          <Clock className="h-4 w-4" />
-          Machine Data Entry
-        </h3>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-900">
-            {machineForDataEntry
-              ? formatMachineDisplayNameWithBold({
-                  serialNumber: getSerialNumberIdentifier(machineForDataEntry),
-                  custom: { name: machineForDataEntry.name },
-                })
-              : 'Select a machine to edit'}
-          </span>
-          {machineForDataEntry && (
-            <button
-              type="button"
-              className="rounded p-0.5 text-blue-600 transition-transform hover:scale-110 hover:bg-blue-50"
-              onClick={(e) => {
-                e.stopPropagation();
-                onViewMachine();
-              }}
-              aria-label="View machine details"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+      <div className="flex w-full items-center justify-between rounded-md bg-lighterBlueHighlight px-4 py-2 text-primary-foreground">
+        <span className="text-sm font-medium">
+          {machineForDataEntry
+            ? formatMachineDisplayNameWithBold({
+                ...machineForDataEntry,
+                serialNumber: getSerialNumberIdentifier(machineForDataEntry),
+              })
+            : 'Select a machine to edit'}
+        </span>
+        {machineForDataEntry && (
+          <button
+            type="button"
+            className="ml-2 shrink-0 rounded p-0.5 transition-transform hover:scale-110 hover:bg-white/20"
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewMachine();
+            }}
+            aria-label="View machine details"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <div className="mb-4">
@@ -176,10 +175,10 @@ export default function CollectionReportEditFormFields({
           <p className="mb-4 text-[11px] font-bold text-blue-900 uppercase tracking-wide">
             Manual SAS Period:
           </p>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
-                SAS Start Time:
+                Start Time:
               </label>
               <ModernCalendar
                 date={
@@ -200,7 +199,7 @@ export default function CollectionReportEditFormFields({
             </div>
             <div>
               <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
-                SAS End Time:
+                End Time:
               </label>
               <ModernCalendar
                 date={
@@ -249,9 +248,24 @@ export default function CollectionReportEditFormFields({
               disabled={!inputsEnabled || isProcessing}
             />
           </div>
-          <p className="mt-1 text-xs text-grayHighlight">
-            Prev In: {prevIn !== null ? prevIn : 'N/A'}
+          <p className="mt-1 text-xs text-grayHighlight font-medium">
+            Prev In:
           </p>
+          <div onClick={onDisabledFieldClick}>
+            <Input
+              type="text"
+              placeholder="0"
+              value={prevIn || ''}
+              onChange={e => {
+                const val = e.target.value;
+                if (/^-?\d*\.?\d*$/.test(val) || val === '')
+                  onPrevInChange(val);
+              }}
+              disabled={!inputsEnabled || isProcessing}
+              className="h-7 text-xs"
+            />
+          </div>
+
           {debouncedCurrentMetersIn &&
             prevIn &&
             Number(debouncedCurrentMetersIn) < Number(prevIn) && (
@@ -285,9 +299,24 @@ export default function CollectionReportEditFormFields({
               disabled={!inputsEnabled || isProcessing}
             />
           </div>
-          <p className="mt-1 text-xs text-grayHighlight">
-            Prev Out: {prevOut !== null ? prevOut : 'N/A'}
+          <p className="mt-1 text-xs text-grayHighlight font-medium">
+            Prev Out:
           </p>
+          <div onClick={onDisabledFieldClick}>
+            <Input
+              type="text"
+              placeholder="0"
+              value={prevOut || ''}
+              onChange={e => {
+                const val = e.target.value;
+                if (/^-?\d*\.?\d*$/.test(val) || val === '')
+                  onPrevOutChange(val);
+              }}
+              disabled={!inputsEnabled || isProcessing}
+              className="h-7 text-xs"
+            />
+          </div>
+
           {debouncedCurrentMetersOut &&
             prevOut &&
             Number(debouncedCurrentMetersOut) < Number(prevOut) && (
