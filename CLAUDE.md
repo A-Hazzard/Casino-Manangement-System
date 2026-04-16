@@ -4,36 +4,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Evolution1 CMS** is a casino management system for real-time casino operations, financial tracking, and compliance monitoring. It operates in two modes controlled by `NEXT_PUBLIC_APPLICATION`:
-
-- **CMS** — Dashboard, analytics, slot machine management, reporting
-- **VAULT** — Cash management, cashier shifts, float requests, payouts
+**Evolution1 CMS** is a casino management system for real-time casino operations, financial tracking, and compliance monitoring. It is a single unified application — routing and available pages are determined entirely by the user's assigned role after login.
 
 ## Commands
 
 ```bash
 # Development
-pnpm run dev              # Start dev server at localhost:3000
-pnpm run dev:turbo        # Dev with Turbopack
+bun run dev              # Start dev server at localhost:3000
+bun run dev:turbo        # Dev with Turbopack
 
 # Production
-pnpm run build            # Build Next.js application
-pnpm run start            # Start production server
+bun run build            # Build Next.js application
+bun run start            # Start production server
 
 # Code Quality
-pnpm run lint             # ESLint on .ts/.tsx files
-pnpm run lint:fix         # Auto-fix ESLint issues
-pnpm run type-check       # TypeScript type checking (tsc --noEmit)
-pnpm run format           # Prettier formatting
-pnpm run check            # type-check && lint
+bun run lint             # ESLint on .ts/.tsx files
+bun run lint:fix         # Auto-fix ESLint issues
+bun run type-check       # TypeScript type checking (tsc --noEmit)
+bun run format           # Prettier formatting
+bun run check            # type-check && lint
 
 # Testing
-pnpm run test             # Run Jest tests
-pnpm run test:watch       # Jest in watch mode
-pnpm run test:coverage    # Jest with coverage
+bun run test             # Run Jest tests
+bun run test:watch       # Jest in watch mode
+bun run test:coverage    # Jest with coverage
 ```
 
-Use **pnpm exclusively** — the project has pnpm-specific overrides in package.json.
+Use **bun exclusively** — the project has bun-specific overrides in package.json.
 
 ## Architecture
 
@@ -240,7 +237,6 @@ React.useState();
 ```
 MONGODB_URI              # MongoDB connection string
 JWT_SECRET               # JWT signing secret
-NEXT_PUBLIC_APPLICATION  # "CMS" or "VAULT" (controls app mode)
 COOKIE_SECURE            # "true" | "false" — overrides auto-detection of secure cookie flag
                          # Leave unset in production (auto-detects from x-forwarded-proto)
                          # Set to "false" for LAN/IP HTTP access or dev environments

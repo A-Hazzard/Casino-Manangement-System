@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
 
     // ============================================================================
     // STEP 2: Parse and validate request parameters
+    // Example: GET /api/analytics/location-trends?locationIds=6801f2a3b4c5d6e7f8901234,6802f3b4c5d6e7f890123456&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&timePeriod=Yesterday&granularity=hourly
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const locationIds = searchParams.get('locationIds');
@@ -60,6 +61,8 @@ export async function GET(req: NextRequest) {
     const gameType = searchParams.get('gameType');
     const searchTerm = searchParams.get('search');
     const includeArchived = searchParams.get('includeArchived') === 'true';
+
+    console.log(`[Location Trends API] Request — locationIds: ${locationIds}, timePeriod: ${timePeriod}, startDate: ${startDateParam ?? 'none'}, endDate: ${endDateParam ?? 'none'}, granularity: ${granularity ?? 'auto'}, currency: ${displayCurrency}`);
 
     if (!locationIds) {
       return NextResponse.json(
@@ -92,9 +95,9 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
-      console.warn(
-        `[Analytics Location Trends GET API] Completed in ${duration}ms`
-      );
+      console.warn(`[Location Trends API] Slow response — ${duration}ms`);
+    } else {
+      console.log(`[Location Trends API] Completed in ${duration}ms`);
     }
 
     return NextResponse.json(trendsData);
@@ -103,7 +106,7 @@ export async function GET(req: NextRequest) {
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
     console.error(
-      `[Analytics Location Trends GET API] Error after ${duration}ms:`,
+      `[Location Trends API] Error after ${duration}ms:`,
       errorMessage
     );
     return NextResponse.json(

@@ -291,6 +291,18 @@ export function formatValue(value: unknown, fieldName?: string): string {
       const keys = Object.keys(value);
       if (keys.length === 0) return 'Empty object';
 
+      // Check for sasMeters object
+      if (fieldName === 'sasMeters' || ('drop' in value && 'gross' in value)) {
+        const sas = value as Record<string, unknown>;
+        return `Drop: ${sas.drop}, Gross: ${sas.gross}${sas.jackpot !== undefined ? `, JP: ${sas.jackpot}` : ''}${sas.gamesPlayed !== undefined ? `, GP: ${sas.gamesPlayed}` : ''}`;
+      }
+
+      // Check for movement object
+      if (fieldName === 'movement' || ('metersIn' in value && 'metersOut' in value && 'gross' in value)) {
+        const m = value as Record<string, unknown>;
+        return `In: ${m.metersIn}, Out: ${m.metersOut}, Gross: ${m.gross}`;
+      }
+
       // Check if it's a profile object (has profile-like properties)
       if (
         'firstName' in value ||

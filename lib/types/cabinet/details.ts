@@ -57,6 +57,10 @@ export type CabinetsCabinetSearchFiltersProps = {
   selectedMembership: string;
   onMembershipChange: (membership: string) => void;
 
+  // SMIB filter state
+  selectedSmibStatus: string;
+  onSmibStatusChange: (status: string) => void;
+
   // Sort state
   sortOption: CabinetSortOption;
   sortOrder: 'asc' | 'desc';

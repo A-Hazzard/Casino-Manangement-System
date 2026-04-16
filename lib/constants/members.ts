@@ -8,6 +8,7 @@
  * Used by members page components for consistent navigation and animations.
  */
 import type { MembersTab } from '@/shared/types/entities';
+import { isTabAvailable } from '@/lib/constants/maintenance';
 
 /**
  * Configuration for members tabs
@@ -19,18 +20,21 @@ export const MEMBERS_TABS_CONFIG: MembersTab[] = [
     label: 'Members List',
     icon: 'users',
     description: 'View and manage all members',
+    available: isTabAvailable('members', 'members'),
   },
   {
     id: 'summary-report',
     label: 'Summary Report',
     icon: 'bar-chart',
     description: 'Analytics and member insights',
+    available: isTabAvailable('members', 'summary-report'),
   },
   {
     id: 'activity-log',
     label: 'Activity Log',
     icon: 'activity',
     description: 'Track SMS and member actions',
+    available: isTabAvailable('members', 'activity-log'),
   },
 ];
 

@@ -270,7 +270,6 @@ export async function authenticateUser(
         roles: userObject.roles || [],
         sessionId,
         sessionVersion: Number(userObject.sessionVersion) || 1,
-        multiplier: userObject.multiplier ?? null,
         dbContext: {
           connectionString: getCurrentDbConnectionString(),
           timestamp: Date.now(),
@@ -356,7 +355,6 @@ export async function authenticateUser(
         // Full data is in userPayload (localStorage) and can be fetched from DB when needed
         sessionId: sessionId,
         sessionVersion: Number(userObject.sessionVersion) || 1,
-        multiplier: userObject.multiplier ?? null,
         dbContext: {
           connectionString: getCurrentDbConnectionString(),
           timestamp: Date.now(),
@@ -438,7 +436,6 @@ export async function authenticateUser(
       // Full data is in userPayload (localStorage) and can be fetched from DB when needed
       sessionId: sessionId,
       sessionVersion: userObject.sessionVersion || 1,
-      multiplier: userObject.multiplier ?? null,
       dbContext: {
         connectionString: getCurrentDbConnectionString(),
         timestamp: Date.now(),
@@ -592,7 +589,6 @@ export async function refreshAccessToken(
       assignedLicencees,
       sessionId: sessionId,
       sessionVersion: userObject.sessionVersion || 1,
-      multiplier: userObject.multiplier ?? null,
       dbContext: {
         connectionString: getCurrentDbConnectionString(),
         timestamp: Date.now(),

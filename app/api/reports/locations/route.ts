@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
       try {
         // ============================================================================
         // STEP 1: Parse and validate request parameters
+        // Example: GET /api/reports/locations?limit=1000&page=1&showAllLocations=true&summary=true&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&timePeriod=Yesterday
         // ============================================================================
         const { searchParams } = new URL(req.url);
         const timePeriod =

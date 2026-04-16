@@ -1,8 +1,8 @@
 # Financial Calculation Engine (The Core)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** March 23, 2026  
-**Version:** 4.0.0
+**Last Updated:** April 2026  
+**Version:** 4.3.0
 
 ---
 
@@ -72,4 +72,34 @@ When hardware is reset, cumulative meters drop to zero.
 If a SMIB is offline for a week, the engine identifies the "Missing Period" and generates a `Bridge entry` during the next collection to maintain continuity in the 30-day performance charts.
 
 ---
-**Core Technical Document** - Evolution One Engineering
+
+## 6. Reviewer Multiplier
+
+### 🔢 Per-User Financial Scaling
+Users with the `reviewer` role (or any user assigned a `multiplier` value) see scaled financial figures across all metric endpoints.
+
+**Formula:**
+```
+displayedValue = rawValue * (1 - user.multiplier)
+```
+
+**Example:** A reviewer with `multiplier = 0.95` sees 5% of raw values.  
+`147,068,296 * (1 - 0.95) = 7,353,414.8`
+
+**Implementation Rules:**
+- Applied **server-side** in every financial metric route before the response is built.
+- Applied **after** currency conversion so the reviewer sees scaled values in their display currency.
+- `user.multiplier` is always read from the **live database** (not the JWT) by `getUserFromServer()` — changes take effect immediately without requiring re-login.
+- `multiplier: null` → no scaling applied (full values shown).
+
+**Affected Routes:**
+- `GET /api/reports/locations` — applied per location before `moneyIn/moneyOut/gross/jackpot` are computed
+- `GET /api/locations/search-all` — applied to `totalMoneyIn/Out/Jackpot` per location
+- `GET /api/locations/[locationId]` — applied per machine inside the location
+- `GET /api/locations/[locationId]/cabinets/[cabinetId]` — applied to raw meter totals
+- `GET /api/machines/aggregation` — applied in STEP 10.5 (post-currency conversion)
+- `GET /api/machines/[machineId]` — applied in STEP 9.5 (post-currency conversion)
+- `GET /api/metrics/meters` — passed as `userMultiplier` param to `getMeterTrends()` helper
+
+---
+**Core Technical Document** — Evolution One Engineering

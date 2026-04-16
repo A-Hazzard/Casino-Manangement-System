@@ -8,6 +8,7 @@
  * Used by reports page components for consistent tab navigation.
  */
 import type { ReportTab } from '@/lib/types';
+import { isTabAvailable } from '@/lib/constants/maintenance';
 
 /**
  * Configuration for reports tabs
@@ -19,18 +20,21 @@ export const REPORTS_TABS_CONFIG: ReportTab[] = [
     label: 'Meters',
     icon: '📈',
     description: 'Meter readings and financial data by location',
+    available: isTabAvailable('reports', 'meters'),
   },
   {
     id: 'locations',
     label: 'Locations',
     icon: '🏢',
     description: 'Location performance analysis and comparisons',
+    available: isTabAvailable('reports', 'locations'),
   },
   {
     id: 'machines',
     label: 'Cabinets',
     icon: '🎰',
     description: 'Individual cabinet performance and revenue tracking',
+    available: isTabAvailable('reports', 'machines'),
   },
 ];
 

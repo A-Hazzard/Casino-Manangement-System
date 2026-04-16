@@ -107,9 +107,7 @@ export function useMetersTabData({
     );
   }, [user?.roles]);
 
-  const [fetchedLocationPermissions, setFetchedLocationPermissions] = useState<
-    string[]
-  >([]);
+  const [fetchedLocationPermissions, setFetchedLocationPermissions] = useState<string[]>([]);
 
   const locationAdminLocations = useMemo(() => {
     if (!isLocationAdmin) return [];
@@ -254,6 +252,8 @@ export function useMetersTabData({
       setError(null);
 
       await makeMetersRequest(async signal => {
+        // Base query params for the meters API request.
+        // "locations=Mapau,Stabroek&timePeriod=Yesterday&page=1&limit=50"
         const params = new URLSearchParams({
           locations: selectedLocations.join(','),
           timePeriod: activeMetricsFilter,
@@ -262,31 +262,36 @@ export function useMetersTabData({
         });
 
         if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
-          params.append(
-            'startDate',
-            customDateRange.startDate.toISOString().split('T')[0]
-          );
-          params.append(
-            'endDate',
-            customDateRange.endDate.toISOString().split('T')[0]
-          );
+          const formatLocalDate = (d: Date) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          };
+          params.append('startDate', formatLocalDate(customDateRange.startDate));
+          params.append('endDate', formatLocalDate(customDateRange.endDate));
+          // "locations=Mapau,Stabroek&timePeriod=Custom&page=1&limit=50&startDate=2026-01-01&endDate=2026-01-31"
         }
 
         if (selectedLicencee && selectedLicencee !== 'all') {
           params.append('licencee', selectedLicencee);
+          // "locations=Mapau,Stabroek&timePeriod=Yesterday&page=1&limit=50&licencee=9a5db2cb29ffd2d962fd1d91"
         }
 
         if (displayCurrency) {
           params.append('currency', displayCurrency);
+          // "locations=Mapau,Stabroek&timePeriod=Yesterday&page=1&limit=50&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD"
         }
 
         if (selectedLocations.length > 0) {
           params.append('includeHourlyData', 'true');
           params.append('granularity', chartGranularity);
+          // "locations=Mapau,Stabroek&timePeriod=Yesterday&page=1&limit=50&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&includeHourlyData=true&granularity=hourly"
           setHourlyChartLoading(true);
         }
 
         try {
+          // GET /api/reports/meters?locations=Mapau,Stabroek&timePeriod=Yesterday&page=1&limit=50&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&includeHourlyData=true&granularity=hourly
           const response = await axios.get<
             MetersReportResponse & {
               hourlyChartData?: HourlyChartData;
@@ -474,6 +479,8 @@ export function useMetersTabData({
         try {
           setHourlyChartLoading(true);
           setReportsLoading(true);
+          // Base params for filtered hourly chart (search-driven refetch).
+          // "locations=Mapau,Stabroek&timePeriod=Yesterday&includeHourlyData=true&hourlyDataMachineIds=6801f2a3b4c5d6e7f8901234,6802f3b4c5d6e7f890123456&granularity=hourly"
           const params = new URLSearchParams({
             locations: selectedLocations.join(','),
             timePeriod: activeMetricsFilter,
@@ -483,24 +490,28 @@ export function useMetersTabData({
           });
 
           if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
-            params.append(
-              'startDate',
-              customDateRange.startDate.toISOString().split('T')[0]
-            );
-            params.append(
-              'endDate',
-              customDateRange.endDate.toISOString().split('T')[0]
-            );
+            const formatLocalDate = (d: Date) => {
+              const year = d.getFullYear();
+              const month = String(d.getMonth() + 1).padStart(2, '0');
+              const day = String(d.getDate()).padStart(2, '0');
+              return `${year}-${month}-${day}`;
+            };
+            params.append('startDate', formatLocalDate(customDateRange.startDate));
+            params.append('endDate', formatLocalDate(customDateRange.endDate));
+            // "...&startDate=2026-01-01&endDate=2026-01-31"
           }
 
           if (selectedLicencee && selectedLicencee !== 'all') {
             params.append('licencee', selectedLicencee);
+            // "...&licencee=9a5db2cb29ffd2d962fd1d91"
           }
 
           if (displayCurrency) {
             params.append('currency', displayCurrency);
+            // "...&currency=TTD"
           }
 
+          // GET /api/reports/meters?locations=Mapau,Stabroek&timePeriod=Yesterday&includeHourlyData=true&hourlyDataMachineIds=6801f2a3b4c5d6e7f8901234,6802f3b4c5d6e7f890123456&granularity=hourly&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD
           const response = await axios.get<{
             hourlyChartData?: HourlyChartData;
           }>(`/api/reports/meters?${params}`, { signal });
@@ -515,14 +526,11 @@ export function useMetersTabData({
           }
         } catch (error) {
           // Silently handle aborted requests - this is expected behavior when switching filters
-          if (isAbortError(error)) {
-            setHourlyChartLoading(false);
-            setReportsLoading(false);
-            return;
-          }
+          if (isAbortError(error)) return; // finally block still runs
 
           console.error('Error fetching filtered hourly chart data:', error);
           setHourlyChartData(allHourlyChartData);
+        } finally {
           setHourlyChartLoading(false);
           setReportsLoading(false);
         }

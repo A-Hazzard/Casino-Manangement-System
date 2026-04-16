@@ -12,7 +12,7 @@ export default defineConfig({
 
   /* Auto-start the Next.js dev server before running tests */
   webServer: {
-    command: 'pnpm run dev',
+    command: 'bun run dev',
     url: 'http://localhost:3000',
     cwd: path.join(__dirname, '..'),
     reuseExistingServer: !process.env.CI,

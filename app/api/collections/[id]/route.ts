@@ -774,6 +774,20 @@ export async function PATCH(
             newValue: updateData.ramClear,
           });
         }
+        if (updateData.ramClearMetersIn !== undefined && preUpdateDoc) {
+          updateChanges.push({
+            field: 'ramClearMetersIn',
+            oldValue: preUpdateDoc.ramClearMetersIn,
+            newValue: updateData.ramClearMetersIn,
+          });
+        }
+        if (updateData.ramClearMetersOut !== undefined && preUpdateDoc) {
+          updateChanges.push({
+            field: 'ramClearMetersOut',
+            oldValue: preUpdateDoc.ramClearMetersOut,
+            newValue: updateData.ramClearMetersOut,
+          });
+        }
         if (updateData.timestamp !== undefined && preUpdateDoc) {
           updateChanges.push({
             field: 'timestamp',
@@ -799,6 +813,8 @@ export async function PATCH(
             locationReportId: updatedCollection.locationReportId || '',
             location: updatedCollection.location || '',
             changes: updateChanges,
+            previousData: preUpdateDoc,
+            newData: finalCollection,
           },
         });
       } catch (logError) {

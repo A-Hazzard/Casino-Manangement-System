@@ -11,14 +11,17 @@
 import AdministrationPageContent from '@/components/CMS/administration/AdministrationPageContent';
 import { AdministrationUserTableSkeleton } from '@/components/CMS/administration/skeletons/AdministrationUserTableSkeleton';
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
+import MaintenanceWrapper from '@/components/shared/maintenance/MaintenanceWrapper';
 import { Suspense } from 'react';
 
 export default function AdministrationPage() {
   return (
     <ProtectedRoute requiredPage="administration">
-      <Suspense fallback={<AdministrationUserTableSkeleton />}>
-        <AdministrationPageContent />
-      </Suspense>
+      <MaintenanceWrapper pageKey="administration">
+        <Suspense fallback={<AdministrationUserTableSkeleton />}>
+          <AdministrationPageContent />
+        </Suspense>
+      </MaintenanceWrapper>
     </ProtectedRoute>
   );
 }

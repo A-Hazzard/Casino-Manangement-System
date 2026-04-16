@@ -5,32 +5,32 @@
  * Features:
  * - Collector schedule data display
  * - Status badges
- * - Date formatting
+ * - Edit and soft-delete actions (manager, admin, location admin, owner, developer)
+ * - Date formatting and duration calculations
  * - Loading states
  * - Empty state handling
  * - Responsive design (desktop only)
- *
- * @param data - Array of collector schedule rows
- * @param loading - Whether data is loading
  */
 import { Badge } from '@/components/shared/ui/badge';
+import { Button } from '@/components/shared/ui/button';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
-import type {
-    CollectorSchedule,
-    CollectorScheduleTableProps,
-} from '@/lib/types/components';
+import type { CollectorSchedule, CollectorScheduleTableProps } from '@/lib/types/components';
 import { formatDateString } from '@/lib/utils/date';
+import { Pencil, Trash2 } from 'lucide-react';
 
 export default function CollectionReportCollectorScheduleTable({
   data,
   loading,
+  onEdit,
+  onDelete,
+  showActions = false,
 }: CollectorScheduleTableProps) {
   if (loading) {
     return (
@@ -58,16 +58,15 @@ export default function CollectionReportCollectorScheduleTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
-            <TableHead className="font-semibold text-white">
-              COLLECTOR
-            </TableHead>
+            <TableHead className="font-semibold text-white">COLLECTOR</TableHead>
             <TableHead className="font-semibold text-white">LOCATION</TableHead>
-            <TableHead className="font-semibold text-white">
-              START TIME
-            </TableHead>
+            <TableHead className="font-semibold text-white">START TIME</TableHead>
             <TableHead className="font-semibold text-white">END TIME</TableHead>
             <TableHead className="font-semibold text-white">DURATION</TableHead>
             <TableHead className="font-semibold text-white">STATUS</TableHead>
+            {showActions && (
+              <TableHead className="font-semibold text-white">ACTIONS</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -75,37 +74,22 @@ export default function CollectionReportCollectorScheduleTable({
             const startTime = new Date(schedule.startTime);
             const endTime = new Date(schedule.endTime);
             const duration = (
-              (endTime.getTime() - startTime.getTime()) /
-              (1000 * 60 * 60)
+              (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)
             ).toFixed(1);
 
             return (
-              <TableRow
-                key={schedule._id || index}
-                className="hover:bg-gray-50"
-              >
+              <TableRow key={schedule._id || index} className="hover:bg-gray-50">
                 <TableCell className="font-medium">
                   {schedule.collectorName || schedule.collector || 'Unknown'}
                 </TableCell>
-                <TableCell>
-                  {schedule.locationName || schedule.location}
-                </TableCell>
+                <TableCell>{schedule.locationName || schedule.location}</TableCell>
                 <TableCell>{formatDateString(schedule.startTime)}</TableCell>
                 <TableCell>{formatDateString(schedule.endTime)}</TableCell>
                 <TableCell>{duration} hours</TableCell>
                 <TableCell>
                   <Badge
-                    variant={
-                      schedule.status === 'scheduled' ||
-                      schedule.status === 'in-progress'
-                        ? 'secondary'
-                        : schedule.status === 'completed'
-                          ? 'default'
-                          : 'destructive'
-                    }
                     className={
-                      schedule.status === 'scheduled' ||
-                      schedule.status === 'in-progress'
+                      schedule.status === 'scheduled' || schedule.status === 'in-progress'
                         ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                         : schedule.status === 'completed'
                           ? 'bg-green-100 text-green-800 hover:bg-green-200'
@@ -115,6 +99,30 @@ export default function CollectionReportCollectorScheduleTable({
                     {schedule.status}
                   </Badge>
                 </TableCell>
+                {showActions && (
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-gray-500 hover:text-button"
+                        onClick={() => onEdit?.(schedule)}
+                        title="Edit schedule"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                        onClick={() => onDelete?.(schedule)}
+                        title="Delete schedule"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             );
           })}
@@ -123,4 +131,3 @@ export default function CollectionReportCollectorScheduleTable({
     </div>
   );
 }
-

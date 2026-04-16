@@ -47,7 +47,8 @@ export const fetchCabinets = async (
   signal?: AbortSignal,
   sortBy?: string,
   sortOrder?: 'asc' | 'desc',
-  membership?: string
+  membership?: string,
+  smibStatus?: string
 ) => {
   try {
     // Construct the URL with appropriate parameters
@@ -134,6 +135,11 @@ export const fetchCabinets = async (
     // Add membership parameter if provided
     if (membership && membership !== 'all') {
       queryParams.push(`membership=${encodeURIComponent(membership)}`);
+    }
+
+    // Add smibStatus parameter if provided
+    if (smibStatus && smibStatus !== 'all') {
+      queryParams.push(`smibStatus=${encodeURIComponent(smibStatus)}`);
     }
 
     // Add pagination parameters
@@ -535,6 +541,7 @@ export async function fetchCabinetsForLocation(
   currency?: string,
   onlineStatus?: string,
   includeArchived?: boolean,
+  smibStatus?: string,
   signal?: AbortSignal
 ): Promise<{
   data: GamingMachine[];
@@ -589,6 +596,11 @@ export async function fetchCabinetsForLocation(
     // Add includeArchived parameter if provided
     if (includeArchived) {
       params.includeArchived = 'true';
+    }
+ 
+    // Add smibStatus parameter if provided
+    if (smibStatus && smibStatus !== 'all') {
+      params.smibStatus = smibStatus;
     }
 
     // Handle custom date range
@@ -751,7 +763,8 @@ export async function fetchCabinetTotals(
   gameType?: string | string[],
   onlineStatus?: string,
   searchTerm?: string,
-  membership?: string
+  membership?: string,
+  smibStatus?: string
 ): Promise<{
   moneyIn: number;
   moneyOut: number;
@@ -808,6 +821,10 @@ export async function fetchCabinetTotals(
 
     if (membership && membership !== 'all') {
       url += `&membership=${encodeURIComponent(membership)}`;
+    }
+
+    if (smibStatus && smibStatus !== 'all') {
+      url += `&smibStatus=${encodeURIComponent(smibStatus)}`;
     }
 
     // Add location filter if provided

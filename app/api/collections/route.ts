@@ -14,7 +14,7 @@
  * @module app/api/collections/route
  */
 
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
   calculateSasMetrics,
   createCollectionWithCalculations,
@@ -473,6 +473,10 @@ export async function POST(req: NextRequest) {
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
+        // Calculate changes for granular logging
+        // For CREATE, we compare null with the created object to log all fields
+        const changes = calculateChanges({}, created.toObject ? created.toObject() : created);
+
         await logActivity({
           action: 'CREATE',
           details: `Created collection for machine ${payload.machineId} at location ${payload.location} (${payload.metersIn} in, ${payload.metersOut} out)`,
@@ -482,9 +486,12 @@ export async function POST(req: NextRequest) {
           metadata: {
             resource: 'collection',
             resourceId: created._id.toString(),
-            resourceName: `Machine ${payload.machineId}`,
+            resourceName: `${created.machineCustomName || created.machineName || payload.machineId} at ${payload.location}`,
             userId: currentUser._id as string,
             username: currentUser.emailAddress as string,
+            changes: changes,
+            previousData: null,
+            newData: created,
           },
         });
       } catch (logError) {
@@ -785,6 +792,12 @@ export async function PATCH(req: NextRequest) {
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
+        // Calculate granular changes
+        const changes = calculateChanges(
+          originalCollection.toObject ? originalCollection.toObject() : originalCollection, 
+          updated && updated.toObject ? updated.toObject() : (updated || {})
+        );
+
         await logActivity({
           action: 'UPDATE',
           details: `Updated collection for machine ${originalCollection.machineId} at location ${originalCollection.location}`,
@@ -794,11 +807,14 @@ export async function PATCH(req: NextRequest) {
           metadata: {
             resource: 'collection',
             resourceId: id,
-            resourceName: `Machine ${originalCollection.machineId}`,
+            resourceName: `${originalCollection.machineCustomName || originalCollection.machineName || originalCollection.machineId} at ${originalCollection.location}`,
             userId: (currentUser._id ||
               currentUser.id ||
               currentUser.sub) as string,
             username: currentUser.emailAddress as string,
+            changes: changes,
+            previousData: originalCollection,
+            newData: updated || originalCollection,
           },
         });
       } catch (logError) {

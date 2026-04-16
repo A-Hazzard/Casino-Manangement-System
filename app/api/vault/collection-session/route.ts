@@ -1,3 +1,14 @@
+/**
+ * Vault Collection Session API Route
+ *
+ * Manages collection sessions during vault soft counts and end-of-day processes.
+ * Sessions track per-machine collection entries and totals within a vault shift.
+ *
+ * GET  /api/vault/collection-session  - Retrieve the active session for a vault shift
+ * POST /api/vault/collection-session  - Start, add/remove entries to, or cancel a session
+ *
+ * Supported POST actions: start | addEntry | removeEntry | cancel
+ */
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
 import { NextRequest, NextResponse } from 'next/server';
@@ -92,7 +103,7 @@ export async function POST(request: NextRequest) {
             { success: false, error: 'Session ID and Entry Data required' },
             { status: 400 }
           );
-        session = await VaultCollectionSession.findById(sessionId);
+        session = await VaultCollectionSession.findOne({ _id: sessionId });
         if (!session || session.status !== 'active')
           return NextResponse.json(
             { success: false, error: 'Active session not found' },
@@ -131,7 +142,7 @@ export async function POST(request: NextRequest) {
             { success: false, error: 'Session ID and Machine ID required' },
             { status: 400 }
           );
-        session = await VaultCollectionSession.findById(sessionId);
+        session = await VaultCollectionSession.findOne({ _id: sessionId });
         if (!session)
           return NextResponse.json(
             { success: false, error: 'Session not found' },
@@ -152,8 +163,8 @@ export async function POST(request: NextRequest) {
             { success: false, error: 'Session ID required' },
             { status: 400 }
           );
-        session = await VaultCollectionSession.findByIdAndUpdate(
-          sessionId,
+        session = await VaultCollectionSession.findOneAndUpdate(
+          { _id: sessionId },
           { status: 'cancelled' },
           { new: true }
         );

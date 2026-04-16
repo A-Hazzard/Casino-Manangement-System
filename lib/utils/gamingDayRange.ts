@@ -379,36 +379,25 @@ function expandToGamingDays(
   gameDayStartHour: number,
   timezoneOffset: number
 ): GamingDayRange {
-  const startGamingDay = calculateGamingDayRange(
+  // Boundary calculations:
+  // 1. The start of the period is the gaming day start of the chosen startDate.
+  const startRange = calculateGamingDayRange(
     customStartDate,
     gameDayStartHour,
     timezoneOffset
   );
-  const daysDiff = calculateDaysDifference(customStartDate, customEndDate);
-  const isSingleDay = daysDiff < 1;
 
-  if (isSingleDay) {
-    const endGamingDay = calculateGamingDayRange(
-      customStartDate,
-      gameDayStartHour,
-      timezoneOffset
-    );
-    return {
-      rangeStart: startGamingDay.rangeStart,
-      rangeEnd: endGamingDay.rangeEnd,
-    };
-  }
-
-  const nextDayAfterEnd = subtractDays(customEndDate, -1);
-  const endGamingDay = calculateGamingDayRange(
-    nextDayAfterEnd,
+  // 2. The end of the period is the gaming day end of the chosen endDate.
+  // Note: calculateGamingDayRange(date) already includes the full 24-hour window for that date.
+  const endRange = calculateGamingDayRange(
+    customEndDate,
     gameDayStartHour,
     timezoneOffset
   );
 
   return {
-    rangeStart: startGamingDay.rangeStart,
-    rangeEnd: endGamingDay.rangeStart,
+    rangeStart: startRange.rangeStart,
+    rangeEnd: endRange.rangeEnd,
   };
 }
 
@@ -437,6 +426,7 @@ function getLocalDateFromUTC(nowLocal: Date): Date {
   );
 }
 
+
 /**
  * Subtract days from a date.
  */
@@ -448,9 +438,21 @@ function subtractDays(date: Date, days: number): Date {
  * Check if a date has explicit time components (not midnight).
  */
 function hasExplicitTime(date: Date, timezoneOffset: number): boolean {
-  // Check if it's midnight in the specified timezone
+  // Check if it's midnight UTC (frequently used by browsers/libraries as a "Date Only" indicator)
+  const isUtcMidnight =
+    date.getUTCHours() === 0 &&
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0;
+
+  // Check if it's midnight in the specified local timezone
   const localDate = new Date(date.getTime() + timezoneOffset * 60 * 60 * 1000);
-  return localDate.getUTCHours() !== 0 || localDate.getUTCMinutes() !== 0;
+  const isLocalMidnight =
+    localDate.getUTCHours() === 0 &&
+    localDate.getUTCMinutes() === 0 &&
+    localDate.getUTCSeconds() === 0;
+
+  // If it is midnight in either UTC or Local, we assume no explicit time intent was provided (Date Only)
+  return !isUtcMidnight && !isLocalMidnight;
 }
 
 /**
@@ -460,25 +462,3 @@ function isValidDate(date: Date): boolean {
   return date instanceof Date && !isNaN(date.getTime());
 }
 
-/**
- * Calculate days difference between two dates.
- */
-function calculateDaysDifference(start: Date, end: Date): number {
-  // Normalize both dates to midnight UTC based on their LOCAL calendar date
-  // This avoids timezone shifts where 11 PM Local becomes tomorrow in UTC
-  const startLocal = new Date(start.getTime() + DEFAULT_TIMEZONE_OFFSET * 60 * 60 * 1000);
-  const endLocal = new Date(end.getTime() + DEFAULT_TIMEZONE_OFFSET * 60 * 60 * 1000);
-  
-  const startUTC = Date.UTC(
-    startLocal.getUTCFullYear(),
-    startLocal.getUTCMonth(),
-    startLocal.getUTCDate()
-  );
-  const endUTC = Date.UTC(
-    endLocal.getUTCFullYear(),
-    endLocal.getUTCMonth(),
-    endLocal.getUTCDate()
-  );
-  
-  return Math.floor((endUTC - startUTC) / (1000 * 60 * 60 * 24));
-}

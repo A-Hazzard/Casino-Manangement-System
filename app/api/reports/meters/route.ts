@@ -99,12 +99,15 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 1: Parse and validate request parameters
     // ============================================================================
+    // Example: GET /api/reports/meters?locations=Mapau,Stabroek&timePeriod=Yesterday&page=1&limit=50&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&includeHourlyData=true&granularity=hourly
+    console.log('[Meters Report API] STEP 1: Parsing parameters...');
     const { searchParams } = new URL(req.url);
     const params = parseMetersReportParams(searchParams);
 
     // ============================================================================
     // STEP 3: Get user permissions and determine accessible locations
     // ============================================================================
+    console.log('[Meters Report API] STEP 3: Determining accessible locations...');
     const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     let userLocationPermissions: string[] = [];
     if (
@@ -146,6 +149,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 4: Fetch location data and calculate gaming day ranges
     // ============================================================================
+    console.log('[Meters Report API] STEP 4: Fetch location data and calculate gaming day ranges...');
     const locationsToQuery =
       locationList.length > 0
         ? locationList
@@ -173,7 +177,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Calculate gaming day ranges for all locations
-    const { queryStartDate, queryEndDate } = calculateGamingDayRanges(
+    const { gamingDayRanges, queryStartDate, queryEndDate } = calculateGamingDayRanges(
       locationsData,
       params.timePeriod,
       params.customStartDate,
@@ -183,6 +187,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 5: Fetch machines data
     // ============================================================================
+    console.log(`[Meters Report API] STEP 5: Fetching machines for ${locationList.length} defined locations...`);
     const machinesData = await fetchMachinesData(
       locationList,
       params.licencee
@@ -197,6 +202,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 6: Get last meter document per machine
     // ============================================================================
+    console.log(`[Meters Report API] STEP 6: Fetching last meter for ${machineIds.length} machines...`);
     /**
      * CRITICAL: We get the LAST meter document for each machine, not a sum.
      * The aggregation sorts by readAt descending and uses $first to get
@@ -206,13 +212,13 @@ export async function GET(req: NextRequest) {
      */
     const metersMap = await getLastMeterPerMachine(
       machineIds,
-      queryStartDate,
-      queryEndDate
+      gamingDayRanges
     );
 
     // ============================================================================
     // STEP 7: Optionally aggregate hourly chart data
     // ============================================================================
+    console.log(`[Meters Report API] STEP 7: Optionally aggregate hourly chart data (includeHourlyData: ${params.includeHourlyData})...`);
     /**
      * Hourly chart data uses movement fields (deltas) and sums them by hour.
      * This is different from the main meter aggregation which uses absolute values.
@@ -238,6 +244,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 8: Transform machine and meter data into report format
     // ============================================================================
+    console.log(`[Meters Report API] STEP 8: Transforming meter data for ${machinesData.length} machines...`);
     let transformedData = transformMeterData(
       machinesData,
       metersMap,
@@ -249,6 +256,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 9: Apply search filter if provided
     // ============================================================================
+    console.log(`[Meters Report API] STEP 9: Applying search filter ('${params.search}') if provided...`);
     transformedData = filterMeterDataBySearch(
       transformedData,
       machinesData,
@@ -258,6 +266,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 9.5: Apply reviewer multiplier scaling
     // ============================================================================
+    console.log('[Meters Report API] STEP 9.5: Applying reviewer multiplier if present...');
     const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
     if (reviewerMult !== null) {
       const mult = 1 - reviewerMult;
@@ -282,6 +291,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 10: Paginate data
     // ============================================================================
+    console.log(`[Meters Report API] STEP 10: Paginating data (Page: ${params.page}, Limit: ${params.limit})...`);
     const { paginatedData, totalCount, totalPages } = paginateMeterData(
       transformedData,
       params.page,
@@ -291,6 +301,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 11: Apply currency conversion if needed
     // ============================================================================
+    console.log('[Meters Report API] STEP 11: Applying currency conversion if necessary...');
     /**
      * Currency conversion is ONLY applied when:
      * 1. User is Admin/Developer
@@ -337,6 +348,7 @@ export async function GET(req: NextRequest) {
       locationList.length > 0 ? locationList : actualLocationIds;
 
     const duration = Date.now() - startTime;
+    console.log(`[Meters Report API] STEP 12: Building response. Processed total items: ${totalCount}. Duration: ${duration}ms`);
     if (duration > 2000) {
       console.warn(
         `[Meters Report API] Slow response: ${duration}ms for ${totalCount} machines`

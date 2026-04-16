@@ -1,13 +1,23 @@
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import {
-  getUserAccessibleLicenceesFromToken,
-  getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenceeFilter';
+/**
+ * Locations API Route
+ *
+ * Handles CRUD operations for gaming locations.
+ * Admin/developer access is required for write operations (POST, PUT, DELETE, PATCH).
+ *
+ * GET    /api/locations  - List locations filtered by user permissions and licencee
+ * POST   /api/locations  - Create a new location
+ * PUT    /api/locations  - Update an existing location
+ * DELETE /api/locations  - Soft-delete or hard-delete a location (and its machines)
+ * PATCH  /api/locations  - Restore a soft-deleted location (and its machines)
+ */
+import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserAccessibleLicenceesFromToken } from '@/app/api/lib/helpers/licenceeFilter';
+import { buildLocationQueryFilter } from '@/app/api/lib/helpers/locations';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { UpdateLocationData } from '@/lib/types/location';
 import type { LocationDocument } from '@/lib/types/common';
 import { generateMongoId } from '@/lib/utils/id';
@@ -17,7 +27,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiLogger } from '../lib/services/loggerService';
 
 /**
- * Main GET handler for fetching locations
+ * GET /api/locations
+ * Returns locations filtered by user permissions, licencee, and archive state.
+ * Supports minimal mode (id/name/coords only) and forceAll for admins.
+ *
+ * Flow:
+ * 1. Parse query params
+ * 2. Resolve user accessible licencees and location permissions
+ * 3. Build query filter via helper
+ * 4. Fetch locations and enrich with licencee jackpot flag
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
@@ -34,93 +52,19 @@ export async function GET(request: NextRequest) {
         searchParams.get('forceAll') === '1';
       const showArchived = searchParams.get('archived') === 'true';
 
-      const userAccessibleLicencees =
-        await getUserAccessibleLicenceesFromToken();
+      const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
       const userLocationPermissions =
-        (userPayload as { assignedLocations?: string[] })?.assignedLocations ||
-        [];
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations || [];
 
-      const deletionFilter = showArchived
-        ? { deletedAt: { $gte: new Date('2025-01-01') } }
-        : {
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          };
-
-      const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
-      const isAdminOrDev =
-        normalizedRoles.includes('admin') ||
-        normalizedRoles.includes('developer') ||
-        normalizedRoles.includes('owner');
-
-      const licenceeFilterToUse =
-        forceAll && isAdminOrDev
-          ? undefined
-          : licencee && licencee !== 'all'
-            ? licencee
-            : undefined;
-
-      const allowedLocationIds = await getUserLocationFilter(
+      // Build the query filter using all permission and licencee context
+      const queryFilter = await buildLocationQueryFilter({
+        licencee,
+        forceAll,
+        showArchived,
+        userRoles,
         userAccessibleLicencees,
-        licenceeFilterToUse,
         userLocationPermissions,
-        userRoles
-      );
-
-      const queryFilter: Record<string, unknown> = { ...deletionFilter };
-
-      if (allowedLocationIds !== 'all') {
-        if (allowedLocationIds.length === 0) {
-          queryFilter._id = null;
-        } else {
-          queryFilter._id = { $in: allowedLocationIds };
-          if (licenceeFilterToUse && licenceeFilterToUse !== 'all') {
-            let resId = licenceeFilterToUse;
-            try {
-              const lDoc = await Licencee.findOne(
-                {
-                  $or: [
-                    { _id: licenceeFilterToUse },
-                    {
-                      name: {
-                        $regex: new RegExp(`^${licenceeFilterToUse}$`, 'i'),
-                      },
-                    },
-                  ],
-                },
-                { _id: 1 }
-              ).lean();
-              if (lDoc && !Array.isArray(lDoc)) resId = String(lDoc._id);
-            } catch {}
-            const andArray =
-              (queryFilter.$and as Array<Record<string, unknown>>) || [];
-            andArray.push({ $or: [{ 'rel.licencee': resId }] });
-            queryFilter.$and = andArray;
-          }
-        }
-      } else if (licenceeFilterToUse && licenceeFilterToUse !== 'all') {
-        let resId = licenceeFilterToUse;
-        try {
-          const lDoc = await Licencee.findOne(
-            {
-              $or: [
-                { _id: licenceeFilterToUse },
-                {
-                  name: { $regex: new RegExp(`^${licenceeFilterToUse}$`, 'i') },
-                },
-              ],
-            },
-            { _id: 1 }
-          ).lean();
-          if (lDoc && !Array.isArray(lDoc)) resId = String(lDoc._id);
-        } catch {}
-        const andArray =
-          (queryFilter.$and as Array<Record<string, unknown>>) || [];
-        andArray.push({ $or: [{ 'rel.licencee': resId }] });
-        queryFilter.$and = andArray;
-      }
+      });
 
       const projection = minimal
         ? { _id: 1, name: 1, geoCoords: 1, 'rel.licencee': 1 }
@@ -391,6 +335,7 @@ export async function PUT(request: NextRequest) {
         { strict: false }
       );
 
+      console.log(`[Locations PUT] Updated location "${location.name}" (${location._id})`);
       if (currentUser && currentUser.emailAddress) {
         await logActivity({
           action: 'UPDATE',
@@ -403,6 +348,12 @@ export async function PUT(request: NextRequest) {
             resource: 'location',
             resourceId: String(location._id),
             resourceName: location.name,
+            changes: calculateChanges(
+              location.toObject() as Record<string, unknown>,
+              updateData as Record<string, unknown>
+            ),
+            previousData: location.toObject(),
+            newData: updateData,
           },
         });
       }

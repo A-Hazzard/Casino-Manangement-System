@@ -12,8 +12,10 @@
  * @module app/api/locations/[locationId]/cabinets/[cabinetId]/route
  */
 
+import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getReviewerScale } from '@/app/api/lib/utils/reviewerScale';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
@@ -190,10 +192,9 @@ export async function GET(
               jackpot: number;
             };
 
-            // Apply reviewer multiplier if set
+            // Apply reviewer scale (role-aware: only scales for reviewer role)
             const currentUser = await getUserFromServer();
-            const reviewerMult = (currentUser as { multiplier?: number | null })?.multiplier ?? null;
-            const mult = reviewerMult !== null ? 1 - reviewerMult : 1;
+            const mult = getReviewerScale(currentUser as { multiplier?: number | null; roles?: string[] });
 
             const moneyIn = raw.drop * mult;
             const rawCancelled = raw.totalCancelledCredits * mult;
@@ -271,6 +272,8 @@ export async function PUT(
     const parts = pathname.split('/');
     const cabinetId = parts[parts.length - 1];
     const locationId = parts[parts.length - 3];
+
+    console.log(`[Cabinet PUT] Request — cabinet: ${cabinetId}, location: ${locationId}`);
 
     await connectDB();
 
@@ -380,7 +383,8 @@ export async function PUT(
     }
 
     // Handle SMIB board fields consistently
-    const smibValue = data.smbId || data.smibBoard || data.relayId;
+    // Use nullish coalescing to preserve empty strings (for clearing the field)
+    const smibValue = data.smbId ?? data.smibBoard ?? data.relayId;
     if (smibValue !== undefined) {
       updateFields.relayId = smibValue;
       updateFields.smibBoard = smibValue;
@@ -400,37 +404,41 @@ export async function PUT(
         data.accountingDenomination
       );
     }
-    if (
-      data.collectionMultiplier !== undefined &&
-      data.collectionMultiplier !== ''
-    ) {
-      updateFields.collectionMultiplier = data.collectionMultiplier;
+    
+    // Handle collectionMultiplier and collectorDenomination consistently
+    const multValue = data.collectionMultiplier ?? data.collectorDenomination;
+    if (multValue !== undefined && multValue !== '') {
+      updateFields.collectionMultiplier = String(multValue);
+      updateFields.collectorDenomination = Number(multValue) || 1;
     }
+
     if (data.isCronosMachine !== undefined) {
-      updateFields.isCronosMachine = data.isCronosMachine;
+      updateFields.isSasMachine = !data.isCronosMachine;
     }
-    if (data.location !== undefined && data.location !== '') {
-      updateFields.gamingLocation = data.location;
+
+    // Handle location and locationId fallbacks
+    const locationValue = data.location ?? data.locationId;
+    if (locationValue !== undefined && locationValue !== '') {
+      updateFields.gamingLocation = locationValue;
     }
-    if (data.collectionMeters !== undefined) {
+
+    // Handle collection meters from either direct or nested collectionSettings format
+    const colMeters = data.collectionMeters ?? data.collectionSettings;
+    if (colMeters !== undefined) {
       const metersUpdate: Record<string, number> = {};
-      if (
-        data.collectionMeters.metersIn !== undefined &&
-        data.collectionMeters.metersIn !== ''
-      ) {
-        metersUpdate.metersIn = Number(data.collectionMeters.metersIn) || 0;
+      const metersIn = colMeters.metersIn ?? colMeters.lastMetersIn;
+      const metersOut = colMeters.metersOut ?? colMeters.lastMetersOut;
+
+      if (metersIn !== undefined && metersIn !== '') {
+        metersUpdate.metersIn = Number(metersIn) || 0;
       }
-      if (
-        data.collectionMeters.metersOut !== undefined &&
-        data.collectionMeters.metersOut !== ''
-      ) {
-        metersUpdate.metersOut = Number(data.collectionMeters.metersOut) || 0;
+      if (metersOut !== undefined && metersOut !== '') {
+        metersUpdate.metersOut = Number(metersOut) || 0;
       }
+
       if (Object.keys(metersUpdate).length > 0) {
         updateFields.collectionMeters = metersUpdate;
-        // Mirror the values into sasMeters so collection reports use them as the
-        // initial prev in/out baseline when no prior collection exists.
-        // sasMeters.drop = Money In (metersIn), sasMeters.totalCancelledCredits = Money Out (metersOut)
+        // Mirror metrics to sasMeters for collection baseline
         if (metersUpdate.metersIn !== undefined) {
           updateFields['sasMeters.drop'] = metersUpdate.metersIn;
         }
@@ -439,19 +447,19 @@ export async function PUT(
         }
       }
     }
-    if (data.collectionTime !== undefined && data.collectionTime !== '') {
-      const collectionTime = new Date(data.collectionTime);
-      updateFields.collectionTime = collectionTime;
-      if (originalCabinet.collectionTime) {
-        updateFields.previousCollectionTime = originalCabinet.collectionTime;
+
+    // Handle collection time from either direct or nested collectionSettings format
+    const colTimeValue = data.collectionTime ?? data.collectionSettings?.lastCollectionTime;
+    if (colTimeValue !== undefined && colTimeValue !== '') {
+      const collectionTime = new Date(colTimeValue);
+      if (!isNaN(collectionTime.getTime())) {
+        updateFields.collectionTime = collectionTime;
+        if (originalCabinet.collectionTime) {
+          updateFields.previousCollectionTime = originalCabinet.collectionTime;
+        }
       }
     }
-    if (
-      data.collectorDenomination !== undefined &&
-      data.collectorDenomination !== ''
-    ) {
-      updateFields.collectorDenomination = Number(data.collectorDenomination);
-    }
+
     if (data.custom !== undefined) {
       if (data.custom && typeof data.custom === 'object' && data.custom.name !== undefined) {
         updateFields['custom.name'] = data.custom.name;
@@ -519,8 +527,30 @@ export async function PUT(
     }
 
     // ============================================================================
-    // STEP 9: Return updated cabinet
+    // STEP 9: Activity log + return updated cabinet
     // ============================================================================
+    const duration = Date.now() - startTime;
+    console.log(`[Cabinet PUT] Updated cabinet ${cabinetId} at location ${locationId} — ${duration}ms`);
+
+    // Fire-and-forget activity log — don't fail the response if logging fails
+    logActivity({
+      action: 'update',
+      details: `Cabinet ${originalCabinet.serialNumber || cabinetId} updated at location ${locationId}`,
+      userId: String(user._id),
+      username: String(user.username || user.email || user._id),
+      metadata: {
+        resource: 'cabinet',
+        resourceId: cabinetId,
+        resourceName: originalCabinet.serialNumber || cabinetId,
+        changes: calculateChanges(
+          originalCabinet.toObject(),
+          updateFields as Record<string, unknown>
+        ),
+        previousData: originalCabinet.toObject(),
+        newData: updatedMachine.toObject(),
+      },
+    }).catch(err => console.error('[Cabinet PUT] Activity log failed:', err));
+
     return NextResponse.json({
       success: true,
       data: updatedMachine,
@@ -563,6 +593,8 @@ export async function PATCH(
     const parts = pathname.split('/');
     const cabinetId = parts[parts.length - 1];
     const locationId = parts[parts.length - 3];
+
+    console.log(`[Cabinet PATCH] Request — cabinet: ${cabinetId}, location: ${locationId}`);
 
     await connectDB();
 
@@ -667,6 +699,30 @@ export async function PATCH(
       );
     }
 
+    const patchDuration = Date.now() - startTime;
+    console.log(`[Cabinet PATCH] Updated cabinet ${cabinetId} — ${patchDuration}ms`);
+
+    const patchUser = await getUserFromServer();
+    if (patchUser) {
+      logActivity({
+        action: 'patch',
+        details: `Cabinet ${originalCabinet.serialNumber || cabinetId} settings updated`,
+        userId: String(patchUser._id),
+        username: String(patchUser.username || patchUser.email || patchUser._id),
+        metadata: {
+          resource: 'cabinet',
+          resourceId: cabinetId,
+          resourceName: originalCabinet.serialNumber || cabinetId,
+          changes: calculateChanges(
+            originalCabinet.toObject(),
+            updateFields as Record<string, unknown>
+          ),
+          previousData: originalCabinet.toObject(),
+          newData: updatedMachine.toObject(),
+        },
+      }).catch(err => console.error('[Cabinet PATCH] Activity log failed:', err));
+    }
+
     return NextResponse.json({
       success: true,
       data: updatedMachine,
@@ -678,7 +734,7 @@ export async function PATCH(
         ? error.message
         : 'Failed to update cabinet collection settings';
     console.error(
-      `[Location Cabinet API PATCH] Error after ${duration}ms:`,
+      `[Cabinet PATCH] Error after ${duration}ms:`,
       errorMessage
     );
     return NextResponse.json(

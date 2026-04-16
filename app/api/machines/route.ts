@@ -14,8 +14,10 @@
  * @module app/api/machines/route
  */
 
+import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { Machine } from '@/app/api/lib/models/machines';
 import { generateMongoId } from '@/lib/utils/id';
 import type { GamingMachine } from '@/shared/types/entities';
@@ -296,8 +298,8 @@ export async function PUT(request: NextRequest) {
       const normalizedSerial = data.serialNumber
         ? normalizeSerialNumber(data.serialNumber)
         : undefined;
-      const normalizedSmib = (data.relayId || data.smibBoard)
-        ? normalizeSmibBoard(data.relayId || data.smibBoard)
+      const normalizedSmib = (data.relayId ?? data.smibBoard ?? data.smbId) !== undefined
+        ? normalizeSmibBoard(data.relayId ?? data.smibBoard ?? data.smbId)
         : undefined;
       const trimmedCustomName = data.custom?.name?.trim();
 
@@ -343,9 +345,122 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Fetch original document for activity logging (before/after diff)
+    const originalMachine = await Machine.findOne({ _id: id }).lean() as GamingMachine | null;
+    if (!originalMachine) {
+      return NextResponse.json(
+        { success: false, error: 'Machine not found' },
+        { status: 404 }
+      );
+    }
+
+    console.log(`[Machines PUT] Updating machine ${id}`);
+
+    // ============================================================================
+    // STEP 6: Build update fields from request data
+    // ============================================================================
+    const updateFields: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+
+    // Use robust mapping instead of naive $set to handle aliases and nested fields
+    if (data.assetNumber !== undefined && data.assetNumber !== '') {
+      updateFields.serialNumber = data.assetNumber;
+      updateFields.assetNumber = data.assetNumber;
+    } else if (data.serialNumber) {
+      updateFields.serialNumber = data.serialNumber;
+    }
+
+    if (data.installedGame !== undefined && data.installedGame !== '') {
+      updateFields.game = data.installedGame;
+    } else if (data.game) {
+      updateFields.game = data.game;
+    }
+
+    if (data.gameType !== undefined && data.gameType !== '') {
+      updateFields.gameType = data.gameType;
+    }
+
+    if (data.manufacturer !== undefined && data.manufacturer !== '') {
+      updateFields.manufacturer = data.manufacturer;
+      updateFields.manuf = data.manufacturer;
+    } else if (data.manuf) {
+      updateFields.manuf = data.manuf;
+      updateFields.manufacturer = data.manuf;
+    }
+
+    // Handle SMIB board fields consistently
+    const smibValue = data.smbId ?? data.smibBoard ?? data.relayId;
+    if (smibValue !== undefined) {
+      updateFields.relayId = smibValue;
+      updateFields.smibBoard = smibValue;
+      updateFields.smbId = smibValue;
+    }
+
+    if (data.status !== undefined && data.status !== '') {
+      updateFields.assetStatus = data.status;
+    } else if (data.assetStatus) {
+      updateFields.assetStatus = data.assetStatus;
+    }
+
+    if (data.cabinetType !== undefined && data.cabinetType !== '') {
+      updateFields.cabinetType = data.cabinetType;
+    }
+
+    if (data.accountingDenomination !== undefined && data.accountingDenomination !== '') {
+      updateFields['gameConfig.accountingDenomination'] = Number(data.accountingDenomination);
+    }
+
+    const multValue = data.collectionMultiplier ?? data.collectorDenomination;
+    if (multValue !== undefined && multValue !== '') {
+      updateFields.collectionMultiplier = String(multValue);
+      updateFields.collectorDenomination = Number(multValue) || 1;
+    }
+
+    if (data.isCronosMachine !== undefined) {
+      updateFields.isSasMachine = !data.isCronosMachine;
+    } else if (data.isSasMachine !== undefined) {
+       updateFields.isSasMachine = data.isSasMachine;
+    }
+
+    const locationValue = data.location ?? data.locationId ?? data.gamingLocation;
+    if (locationValue !== undefined && locationValue !== '') {
+      updateFields.gamingLocation = locationValue;
+    }
+
+    // Handle collection meters / settings
+    const colMeters = data.collectionMeters ?? data.collectionSettings;
+    if (colMeters !== undefined) {
+      const metersUpdate: Record<string, number> = {};
+      const metersIn = colMeters.metersIn ?? colMeters.lastMetersIn;
+      const metersOut = colMeters.metersOut ?? colMeters.lastMetersOut;
+
+      if (metersIn !== undefined && metersIn !== '') {
+        metersUpdate.metersIn = Number(metersIn) || 0;
+      }
+      if (metersOut !== undefined && metersOut !== '') {
+        metersUpdate.metersOut = Number(metersOut) || 0;
+      }
+
+      if (Object.keys(metersUpdate).length > 0) {
+        updateFields.collectionMeters = metersUpdate;
+      }
+    }
+
+    const colTimeValue = data.collectionTime ?? data.collectionSettings?.lastCollectionTime;
+    if (colTimeValue !== undefined && colTimeValue !== '') {
+      updateFields.collectionTime = new Date(colTimeValue);
+    }
+
+    if (data.custom !== undefined) {
+      if (data.custom && typeof data.custom === 'object' && data.custom.name !== undefined) {
+        updateFields['custom.name'] = data.custom.name;
+      }
+    }
+
     const updatedMachine = await Machine.findOneAndUpdate(
       { _id: id },
-      { $set: data },
+      { $set: updateFields },
       { new: true }
     );
 
@@ -357,6 +472,30 @@ export async function PUT(request: NextRequest) {
 
     revalidatePath('/cabinets');
     revalidatePath('/machines');
+
+    console.log(`[Machines PUT] Machine ${id} updated successfully`);
+
+    // Fire-and-forget activity log
+    const machineUser = await getUserFromServer();
+    if (machineUser) {
+      logActivity({
+        action: 'update',
+        details: `Machine ${originalMachine.serialNumber || id} updated`,
+        userId: String(machineUser._id),
+        username: String(machineUser.username || machineUser.email || machineUser._id),
+        metadata: {
+          resource: 'machine',
+          resourceId: id,
+          resourceName: originalMachine.serialNumber || id,
+          changes: calculateChanges(
+            originalMachine as unknown as Record<string, unknown>,
+            data as Record<string, unknown>
+          ),
+          previousData: originalMachine,
+          newData: updatedMachine.toObject(),
+        },
+      }).catch(err => console.error('[Machines PUT] Activity log failed:', err));
+    }
 
     return NextResponse.json({
       success: true,

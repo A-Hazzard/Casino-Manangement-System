@@ -41,7 +41,8 @@ export async function getAllCollectionReportsWithMachineCounts(
   startDate?: Date,
   endDate?: Date,
   page = 1,
-  limit = 50
+  limit = 50,
+  scale = 1
 ): Promise<{ reports: CollectionReportRow[]; total: number }> {
   let rawReports: Array<Record<string, unknown>> = [];
 
@@ -383,6 +384,7 @@ export async function getAllCollectionReportsWithMachineCounts(
     const calculatedCollected = (doc.amountCollected as number) || 0;
     const calculatedLocationRevenue = (doc.partnerProfit as number) || 0;
     const calculatedBalance = (doc.currentBalance as number) || 0;
+    const calculatedUncollected = typeof doc.amountUncollected === 'number' ? doc.amountUncollected as number : null;
 
     // Priority: calculatedGross (Machine Delta) -> stored totalGross -> totalSasGross from report -> calculatedSasGross
     const displayGross = collectionData.calculatedGross || storedGross || collectionData.calculatedSasGross;
@@ -403,7 +405,14 @@ export async function getAllCollectionReportsWithMachineCounts(
     const adjustedSasGross = reportIncludeJackpot ? sasGrossFromReport - jackpotFromReport : sasGrossFromReport;
     const calculatedVariation = displayGross - adjustedSasGross;
 
-    const displayVariation = calculatedVariation;
+    // Apply reviewer scale to all financial output values before formatting.
+    // For non-reviewers scale === 1, so multiplication is a no-op.
+    const displayVariation = calculatedVariation * scale;
+    const scaledGross = displayGross * scale;
+    const scaledCollected = calculatedCollected * scale;
+    const scaledLocationRevenue = calculatedLocationRevenue * scale;
+    const scaledBalance = calculatedBalance * scale;
+    const scaledUncollected = calculatedUncollected !== null ? calculatedUncollected * scale : null;
 
     // Determine collector value (user ID) and display name
     const collectorUserId = (doc.collector as string) || '';
@@ -480,16 +489,16 @@ export async function getAllCollectionReportsWithMachineCounts(
       collectorTooltipData, // Tooltip data with firstName, lastName, ID, email
       collectorUserNotFound, // Flag to indicate user no longer exists
       location: locationName,
-      gross: formatSmartDecimal(displayGross),
+      gross: formatSmartDecimal(scaledGross),
       machines: `${collectionData.collectedMachines || 0}/${totalMachines || 0}`,
-      collected: formatSmartDecimal(calculatedCollected),
+      collected: formatSmartDecimal(scaledCollected),
       uncollected:
-        typeof doc.amountUncollected === 'number'
-          ? formatSmartDecimal(doc.amountUncollected as number)
+        scaledUncollected !== null
+          ? formatSmartDecimal(scaledUncollected)
           : (doc.amountUncollected as string) || '-',
       variation: formatSmartDecimal(displayVariation),
-      balance: formatSmartDecimal(calculatedBalance),
-      locationRevenue: formatSmartDecimal(calculatedLocationRevenue),
+      balance: formatSmartDecimal(scaledBalance),
+      locationRevenue: formatSmartDecimal(scaledLocationRevenue),
       time: (() => {
         const ts = doc.timestamp;
         if (ts) {

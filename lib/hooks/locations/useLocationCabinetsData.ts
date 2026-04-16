@@ -97,6 +97,7 @@ export function useLocationCabinetsData({
   const [selectedGameType, setSelectedGameType] = useState<string>('all');
   const [allCabinets, setAllCabinets] = useState<Cabinet[]>([]);
   const [accumulatedCabinets, setAccumulatedCabinets] = useState<Cabinet[]>([]);
+  const [selectedSmibStatus, setSelectedSmibStatus] = useState<string>('all');
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
@@ -238,7 +239,7 @@ export function useLocationCabinetsData({
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(0);
-  }, [sortOption, sortOrder, selectedStatus, selectedGameType, activeMetricsFilter, customDateRange, showArchived]);
+  }, [sortOption, sortOrder, selectedStatus, selectedGameType, selectedSmibStatus, activeMetricsFilter, customDateRange, showArchived]);
 
 
   // Reset to default view when search is cleared
@@ -249,7 +250,7 @@ export function useLocationCabinetsData({
       setLoadedBatches(new Set([1]));
       setTotalCount(0);
     }
-  }, [searchTerm, debouncedSearchTerm]);
+  }, [searchTerm, debouncedSearchTerm, selectedSmibStatus]);
 
   // Update allCabinets when accumulatedCabinets changes
   // Update allCabinets when accumulatedCabinets changes
@@ -294,38 +295,40 @@ export function useLocationCabinetsData({
               : selectedStatus.startsWith('Offline')
                 ? 'offline'
                 : 'all';
-
-      fetchCabinetsForLocation(
-        locationId,
-        selectedLicencee ?? undefined,
-        activeMetricsFilter,
-        undefined, // No searchTerm for batch fetching
-        activeMetricsFilter === 'Custom' && customDateRange
-          ? {
-            from:
-              customDateRange.startDate instanceof Date
-                ? customDateRange.startDate
-                : customDateRange.startDate
-                  ? new Date(customDateRange.startDate)
-                  : customDateRange.from
-                    ? new Date(customDateRange.from)
-                    : undefined,
-            to:
-              customDateRange.endDate instanceof Date
-                ? customDateRange.endDate
-                : customDateRange.endDate
-                  ? new Date(customDateRange.endDate)
-                  : customDateRange.to
-                    ? new Date(customDateRange.to)
-                    : undefined,
-          }
-          : undefined,
-        PAGES_PER_BATCH,
-        ITEMS_PER_BATCH,
-        undefined, // displayCurrency - not needed here if only IDs/metrics are returned similarly
-        onlineStatus,
-        showArchived
-      ).then(result => {
+ 
+       fetchCabinetsForLocation(
+         locationId,
+         selectedLicencee ?? undefined,
+         activeMetricsFilter,
+         undefined, // No searchTerm for batch fetching
+         activeMetricsFilter === 'Custom' && customDateRange
+           ? {
+             from:
+               customDateRange.startDate instanceof Date
+                 ? customDateRange.startDate
+                 : customDateRange.startDate
+                   ? new Date(customDateRange.startDate)
+                   : customDateRange.from
+                     ? new Date(customDateRange.from)
+                     : undefined,
+             to:
+               customDateRange.endDate instanceof Date
+                 ? customDateRange.endDate
+                 : customDateRange.endDate
+                   ? new Date(customDateRange.endDate)
+                   : customDateRange.to
+                     ? new Date(customDateRange.to)
+                     : undefined,
+           }
+           : undefined,
+         nextBatchNumber,
+         ITEMS_PER_BATCH,
+         undefined, // displayCurrency
+         onlineStatus,
+         showArchived,
+         selectedSmibStatus,
+         undefined // signal
+       ).then(result => {
 
         if (result.data.length > 0) {
           setLoadedBatches(prev => new Set([...prev, nextBatchNumber]));
@@ -395,7 +398,9 @@ export function useLocationCabinetsData({
         ITEMS_PER_BATCH,
         displayCurrency,
         onlineStatus,
-        showArchived
+        showArchived,
+        selectedSmibStatus,
+        undefined // signal
       ).then(result => {
 
         if (result.data.length > 0) {
@@ -429,6 +434,7 @@ export function useLocationCabinetsData({
     displayCurrency,
     selectedStatus,
     showArchived,
+    selectedSmibStatus,
   ]);
 
   // Effect to fetch metrics totals reliably when filters change
@@ -467,7 +473,9 @@ export function useLocationCabinetsData({
               locationId,
               selectedGameType !== 'all' ? selectedGameType : undefined,
               onlineStatus,
-              debouncedSearchTerm
+              debouncedSearchTerm,
+              undefined, // membership
+              selectedSmibStatus
             ),
           'location-totals'
         );
@@ -494,6 +502,8 @@ export function useLocationCabinetsData({
     displayCurrency,
     locationId,
     selectedStatus,
+    selectedSmibStatus,
+    selectedGameType,
     debouncedSearchTerm,
     dateFilterInitialized,
     filtersInitialized,
@@ -510,7 +520,7 @@ export function useLocationCabinetsData({
         ? JSON.stringify(customDateRange)
         : 'none';
 
-    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}-${selectedStatus}-${showArchived}`;
+    const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}-${selectedStatus}-${selectedSmibStatus}-${showArchived}`;
 
 
     const fetchData = async () => {
@@ -724,6 +734,7 @@ export function useLocationCabinetsData({
               displayCurrency,
               onlineStatus,
               showArchived,
+              selectedSmibStatus,
               signal
             );
 
@@ -808,6 +819,7 @@ export function useLocationCabinetsData({
     debouncedSearchTerm,
     displayCurrency,
     selectedStatus,
+    selectedSmibStatus,
     showArchived,
   ]);
 
@@ -860,6 +872,7 @@ export function useLocationCabinetsData({
     locationData,
     selectedStatus,
     selectedGameType,
+    selectedSmibStatus,
     allCabinets,
     accumulatedCabinets,
     loadedBatches,
@@ -889,6 +902,12 @@ export function useLocationCabinetsData({
       setAccumulatedCabinets([]);
       setCurrentPage(0); // Reset to first page
       setSelectedStatus(status);
+    }, []),
+    setSelectedSmibStatus: useCallback((status: string) => {
+      setIsFilterResetting(true);
+      setAccumulatedCabinets([]);
+      setCurrentPage(0); // Reset to first page
+      setSelectedSmibStatus(status);
     }, []),
     setSelectedGameType,
     setSortOrder,

@@ -428,6 +428,7 @@ export default function LocationsDetailsPageContent() {
             searchTerm={cabinetsData.searchTerm}
             selectedStatus={cabinetsData.selectedStatus}
             selectedGameType={cabinetsData.selectedGameType}
+            selectedSmibStatus={cabinetsData.selectedSmibStatus}
             sortOption={cabinetsData.sortOption}
             sortOrder={cabinetsData.sortOrder}
             currentPage={cabinetsData.currentPage}
@@ -439,6 +440,7 @@ export default function LocationsDetailsPageContent() {
             setSearchTerm={cabinetsData.setSearchTerm}
             setSelectedStatus={cabinetsData.setSelectedStatus}
             setSelectedGameType={cabinetsData.setSelectedGameType}
+            setSelectedSmibStatus={cabinetsData.setSelectedSmibStatus}
             setSortOption={cabinetsData.setSortOption}
             setSortOrder={cabinetsData.setSortOrder}
             setCurrentPage={cabinetsData.setCurrentPage}

@@ -12,6 +12,12 @@ import { GamingLocations } from '../models/gaminglocations';
 import { MachineEvent } from '../models/machineEvents';
 import { Machine } from '../models/machines';
 import { getDatesForTimePeriod } from '../utils/dates';
+import { getReviewerScale, scaleMachineValues } from '../utils/reviewerScale';
+import type { JwtPayload } from '@/shared/types/auth';
+
+type UserWithMultiplier = JwtPayload & {
+  multiplier?: number | null;
+};
 
 /**
  * Formats a number with smart decimal handling
@@ -188,15 +194,20 @@ export async function getAccountingDetails(
 /**
  * Fetches and formats a collection report by its reportId.
  * @param reportId - The unique report ID to fetch.
+ * @param currentUser - The authenticated user with multiplier from DB.
  * @returns Promise resolving to a CollectionReportData object or null if not found.
  */
 export async function getCollectionReportById(
-  reportId: string
+  reportId: string,
+  currentUser: UserWithMultiplier
 ): Promise<CollectionReportData | null> {
   const report = await CollectionReport.findOne({
     locationReportId: reportId,
   }).lean();
   if (!report) return null;
+
+  // Get multiplier from user for reviewer calculations
+  const scale = getReviewerScale(currentUser);
 
   // Fetch actual collections for this report with machine details resolved
   const collections = await Collections.aggregate([
@@ -212,8 +223,17 @@ export async function getCollectionReportById(
         foreignField: '_id',
         as: 'machineDetails',
         pipeline: [
-          { $project: { _id: 1, serialNumber: 1, custom: 1, machineId: 1, 'gameConfig.accountingDenomination': 1, collectorDenomination: 1 } }
-        ]
+          {
+            $project: {
+              _id: 1,
+              serialNumber: 1,
+              custom: 1,
+              machineId: 1,
+              'gameConfig.accountingDenomination': 1,
+              collectorDenomination: 1,
+            },
+          },
+        ],
       },
     },
     {
@@ -344,8 +364,8 @@ export async function getCollectionReportById(
     totalJackpot: number;
     meterCount: number;
   }> = [];
-  
-  // Create a machine denomination map for the second aggregation if possible, 
+
+  // Create a machine denomination map for the second aggregation if possible,
   // or use $lookup in aggregation. Let's use $lookup for accuracy in aggregation sum.
   if (meterQueries.length > 0) {
     const cursor = Meters.aggregate([
@@ -361,7 +381,9 @@ export async function getCollectionReportById(
         $group: {
           _id: '$machine',
           totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-          totalCancelled: { $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] } },
+          totalCancelled: {
+            $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+          },
           totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
           meterCount: { $sum: 1 },
         },
@@ -381,7 +403,7 @@ export async function getCollectionReportById(
         drop: m.totalDrop,
         cancelled: m.totalCancelled,
         jackpot: m.totalJackpot,
-        count: m.meterCount
+        count: m.meterCount,
       },
     ])
   );
@@ -402,38 +424,50 @@ export async function getCollectionReportById(
       return sum + storedGross;
     }
     // Fallback: same formula as the main list page aggregation
-    return sum + (((col.metersIn || 0) - (col.prevIn || 0)) - ((col.metersOut || 0) - (col.prevOut || 0)));
+    return (
+      sum +
+      ((col.metersIn || 0) -
+        (col.prevIn || 0) -
+        ((col.metersOut || 0) - (col.prevOut || 0)))
+    );
   }, 0);
 
   // Fetch licencee's includeJackpot flag BEFORE calculating total variation
   let includeJackpot = false;
   try {
     if (report.location) {
-      const location = await GamingLocations.findOne(
+      const location = (await GamingLocations.findOne(
         { _id: report.location },
         { 'rel.licencee': 1 }
-      ).lean() as { rel?: { licencee?: string } } | null;
-      
+      ).lean()) as { rel?: { licencee?: string } } | null;
+
       const licenceeId = location?.rel?.licencee;
-      
+
       if (licenceeId) {
         const { Licencee } = await import('@/app/api/lib/models/licencee');
-        const licenceeDoc = await Licencee.findOne(
+        const licenceeDoc = (await Licencee.findOne(
           { _id: licenceeId },
           { includeJackpot: 1 }
-        ).lean() as Record<string, unknown> | null;
+        ).lean()) as Record<string, unknown> | null;
         includeJackpot = Boolean(licenceeDoc?.includeJackpot);
       }
     }
   } catch (err) {
-    console.warn('[Collection Report] Could not fetch licencee includeJackpot:', err);
+    console.warn(
+      '[Collection Report] Could not fetch licencee includeJackpot:',
+      err
+    );
   }
 
   // Calculate total SAS gross and jackpot from meter data map
   let totalSasGross = 0;
   let totalJackpots = 0;
   for (const collection of collections) {
-    if (collection.machineId && collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime) {
+    if (
+      collection.machineId &&
+      collection.sasMeters?.sasStartTime &&
+      collection.sasMeters?.sasEndTime
+    ) {
       const meterData = meterDataMap.get(collection.machineId);
       if (meterData) {
         totalSasGross += meterData.drop - meterData.cancelled;
@@ -450,7 +484,9 @@ export async function getCollectionReportById(
   // totalSasGross is (Drop - NetCancelled), which is the HIGH GROSS.
   // If includeJackpot is true, we want LOW GROSS, so we subtract totalJackpots.
   // If includeJackpot is false, we keep it as HIGH GROSS.
-  const adjustedTotalSasGross = includeJackpot ? totalSasGross - totalJackpots : totalSasGross;
+  const adjustedTotalSasGross = includeJackpot
+    ? totalSasGross - totalJackpots
+    : totalSasGross;
   const totalVariation = totalMetersGross - adjustedTotalSasGross;
 
   // Get total number of machines for this location
@@ -473,31 +509,33 @@ export async function getCollectionReportById(
 
   // Map location metrics (use calculated values for core metrics, keep report values for financial fields)
   const locationMetrics = {
-    droppedCancelled: `${totalDrop}/${totalCancelled}`,
-    metersGross: totalMetersGross,
+    droppedCancelled: `${formatSmartDecimal(totalDrop * scale)} / ${formatSmartDecimal(totalCancelled * scale)}`,
+    metersGross: totalMetersGross * scale,
     jackpot: collections.reduce((sum, col) => {
       const meterData = meterDataMap.get(col.machineId);
       return sum + (meterData?.jackpot ?? col.sasMeters?.jackpot ?? 0);
-    }, 0),
-    netGross: totalMetersGross - collections.reduce((sum, col) => {
-      const meterData = meterDataMap.get(col.machineId);
-      return sum + (meterData?.jackpot ?? col.sasMeters?.jackpot ?? 0);
-    }, 0),
-    variation: totalVariation,
-    sasGross: totalSasGross,
-    locationRevenue: report.partnerProfit || 0,
-    amountUncollected: report.amountUncollected || 0,
-    amountToCollect: report.amountToCollect || 0,
+    }, 0) * scale,
+    netGross:
+      (totalMetersGross -
+      collections.reduce((sum, col) => {
+        const meterData = meterDataMap.get(col.machineId);
+        return sum + (meterData?.jackpot ?? col.sasMeters?.jackpot ?? 0);
+      }, 0)) * scale,
+    variation: totalVariation * scale,
+    sasGross: totalSasGross * scale,
+    locationRevenue: (report.partnerProfit || 0) * scale,
+    amountUncollected: (report.amountUncollected || 0) * scale,
+    amountToCollect: (report.amountToCollect || 0) * scale,
     machinesNumber: `${collections.length}/${totalMachinesForLocation}`,
-    collectedAmount: report.amountCollected || 0,
+    collectedAmount: (report.amountCollected || 0) * scale,
     reasonForShortage: report.reasonShortagePayment || '-',
-    taxes: report.taxes || 0,
-    advance: report.advance || 0,
-    previousBalanceOwed: report.previousBalance || 0,
-    balanceCorrection: report.balanceCorrection || 0,
-    currentBalanceOwed: report.currentBalance || 0,
+    taxes: (report.taxes || 0) * scale,
+    advance: (report.advance || 0) * scale,
+    previousBalanceOwed: (report.previousBalance || 0) * scale,
+    balanceCorrection: (report.balanceCorrection || 0) * scale,
+    currentBalanceOwed: (report.currentBalance || 0) * scale,
     correctionReason: report.balanceCorrectionReas || '-',
-    variance: report.variance || '-',
+    variance: typeof report.variance === 'number' ? report.variance * scale : report.variance || '-',
     varianceReason: report.varianceReason || '-',
   };
 
@@ -524,9 +562,9 @@ export async function getCollectionReportById(
 
   // Map SAS metrics from meter data map (calculated above)
   const sasMetrics = {
-    dropped: sasDropTotal,
-    cancelled: sasCancelledTotal,
-    gross: sasGrossTotal,
+    dropped: sasDropTotal * scale,
+    cancelled: sasCancelledTotal * scale,
+    gross: sasGrossTotal * scale,
   };
 
   return {
@@ -541,10 +579,19 @@ export async function getCollectionReportById(
       // Get machine identifier with priority: serialNumber -> machineName -> machineCustomName -> machineId
       // Get raw values with fallbacks handling older collection documents
       const serialNumberRaw = (collection.serialNumber || '').trim();
-      const customName = (collection.custom?.name || collection.machineCustomName || collection.machineName || '').trim();
+      const customName = (
+        collection.custom?.name ||
+        collection.machineCustomName ||
+        collection.machineName ||
+        ''
+      ).trim();
       const game = (collection.game || '').trim();
 
-      const mainIdentifier = serialNumberRaw || customName || collection.machineId || `Machine ${idx + 1}`;
+      const mainIdentifier =
+        serialNumberRaw ||
+        customName ||
+        collection.machineId ||
+        `Machine ${idx + 1}`;
       const bracketParts: string[] = [];
 
       // Only add customName if it's provided AND different from main identifier
@@ -562,13 +609,13 @@ export async function getCollectionReportById(
       const machineDisplayName = `${mainIdentifier} (${bracketParts.join(', ')})`;
 
       // Calculate drop/cancelled from the difference between current and previous meters
-      const drop = ((collection.metersIn || 0) - (collection.prevIn || 0));
-      const cancelled = ((collection.metersOut || 0) - (collection.prevOut || 0));
-      const meterGross = (collection.movement?.gross || 0);
+      const drop = (collection.metersIn || 0) - (collection.prevIn || 0);
+      const cancelled = (collection.metersOut || 0) - (collection.prevOut || 0);
+      const meterGross = collection.movement?.gross || 0;
 
       // 🚀 OPTIMIZED: Use pre-fetched meter data from batch query (no individual queries!)
       let sasGross = 0;
-      let recalculatedJackpot = (collection.sasMeters?.jackpot || 0);
+      let recalculatedJackpot = collection.sasMeters?.jackpot || 0;
 
       if (
         collection.machineId &&
@@ -588,33 +635,40 @@ export async function getCollectionReportById(
       // Logic: includeJackpot = true means "Include Jackpot in Money Out" -> Lower Gross.
       // Since sasGross is (Drop - NetCancelled), which is the HIGH GROSS.
       // So if includeJackpot is TRUE, we want Low Gross, so we SUBTRACT jackpot.
-      const adjustedSasGross = includeJackpot ? sasGross - (jackpot || 0) : sasGross;
+      const adjustedSasGross = includeJackpot
+        ? sasGross - (jackpot || 0)
+        : sasGross;
 
       // Check if SAS data exists - if no SAS time window or no meter records found, show "No SAS Data"
       // Note: sasMeters.gross is NOT used as the gate (it can be 0 from a stale snapshot).
       // We rely on sasStartTime/sasEndTime presence AND whether the Meters DB query returned data.
       const hasNoSasData =
-        (!collection.sasMeters?.sasStartTime || !collection.sasMeters?.sasEndTime)
-          || !meterDataMap.has(String(collection.machineId));
+        !collection.sasMeters?.sasStartTime ||
+        !collection.sasMeters?.sasEndTime ||
+        !meterDataMap.has(String(collection.machineId));
 
       const variation = meterGross - (hasNoSasData ? 0 : adjustedSasGross);
+
+      const scaled = scaleMachineValues(
+        { drop, cancelled, meterGross, jackpot, netGross, sasGross, variation, hasNoSasData },
+        scale
+      );
 
       return {
         id: String(idx + 1),
         machineId: machineDisplayName,
-        actualMachineId: collection.machineId, // The actual machine ID for navigation
-        dropCancelled: `${formatSmartDecimal(drop)} / ${formatSmartDecimal(
-          cancelled
-        )}`,
-        metersGross: meterGross,
-        jackpot,
-        netGross,
-        sasGross: hasNoSasData ? 'No SAS Data' : formatSmartDecimal(sasGross),
-        variation: formatSmartDecimal(variation),
+        actualMachineId: collection.machineId,
+        dropCancelled: `${formatSmartDecimal(scaled.drop)} / ${formatSmartDecimal(scaled.cancelled)}`,
+        metersGross: scaled.meterGross,
+        jackpot: scaled.jackpot,
+        netGross: scaled.netGross,
+        sasGross: hasNoSasData ? 'No SAS Data' : formatSmartDecimal(scaled.sasGross),
+        variation: formatSmartDecimal(scaled.variation),
         sasStartTime: collection.sasMeters?.sasStartTime || null,
         sasEndTime: collection.sasMeters?.sasEndTime || null,
         hasIssue: false,
         ramClear: collection.ramClear || false,
+        notes: (collection.notes as string | undefined) || undefined,
       };
     }),
     locationMetrics,

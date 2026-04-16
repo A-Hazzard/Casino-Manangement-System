@@ -50,7 +50,10 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 3: Build query filters
     // ============================================================================
-    const query: Record<string, MongoDBQueryValue> = {};
+    // Always exclude soft-deleted records
+    const query: Record<string, MongoDBQueryValue> = {
+      deletedAt: { $exists: false },
+    };
 
     if (licencee && licencee.toLowerCase() !== 'all') {
       query.licencee = licencee;

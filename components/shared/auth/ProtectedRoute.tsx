@@ -138,12 +138,15 @@ export default function ProtectedRoute({
 
       // Check local permissions first (faster)
       const userRoles = (user?.roles || []) as string[];
-      const isAdminOrDeveloper =
-        userRoles.includes('developer') || userRoles.includes('owner') || userRoles.includes('admin');
-
       // STEP 1: Authorization Bypass for Developers and Admins
-      // Developers and Admins have unrestricted access to all pages and locations
-      if (isAdminOrDeveloper) {
+      // Developers have unrestricted access to all pages. 
+      // Admins and Owners have unrestricted access to all pages EXCEPT sessions.
+      const isDeveloper = userRoles.includes('developer');
+      const isAdminOrOwner = userRoles.includes('owner') || userRoles.includes('admin');
+      
+      const isBypassAuthorized = isDeveloper || (isAdminOrOwner && requiredPage !== 'sessions');
+
+      if (isBypassAuthorized) {
         setIsChecking(false);
         return;
       }

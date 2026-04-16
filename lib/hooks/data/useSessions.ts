@@ -54,6 +54,7 @@ export function useSessions() {
     async (batch: number = 1, append: boolean = false) => {
       setLoading(true);
       await makeRequest(async signal => {
+        // "page=1&limit=100"
         const params = new URLSearchParams({
           page: batch.toString(),
           limit: itemsPerBatch.toString(),
@@ -61,22 +62,27 @@ export function useSessions() {
 
         if (debouncedSearchTerm) {
           params.append('search', debouncedSearchTerm);
+          // "page=1&limit=100&search=John"
         }
 
         if (statusFilter && statusFilter !== 'all') {
           params.append('status', statusFilter);
+          // "page=1&limit=100&search=John&status=active"
         }
 
         if (sortBy) {
           params.append('sortBy', sortBy);
+          // "...&sortBy=startTime"
         }
 
         if (sortOrder) {
           params.append('sortOrder', sortOrder);
+          // "...&sortBy=startTime&sortOrder=desc"
         }
 
         if (selectedLicencee && selectedLicencee !== 'all') {
           params.append('licencee', selectedLicencee);
+          // "...&licencee=9a5db2cb29ffd2d962fd1d91"
         }
 
         if (
@@ -96,6 +102,7 @@ export function useSessions() {
 
           params.append('startDate', startDate.toISOString());
           params.append('endDate', endDate.toISOString());
+          // "...&startDate=2026-01-01T04:00:00.000Z&endDate=2026-01-31T04:00:00.000Z"
         } else if (activeMetricsFilter && activeMetricsFilter !== 'Custom') {
           const now = new Date();
           let startDate: Date;
@@ -159,6 +166,7 @@ export function useSessions() {
         }
 
         try {
+          // GET /api/sessions?page=1&limit=100&search=John&status=active&sortBy=startTime&sortOrder=desc&licencee=9a5db2cb29ffd2d962fd1d91&startDate=2026-01-01T04:00:00.000Z&endDate=2026-01-31T04:00:00.000Z
           const response = await axios.get(`/api/sessions?${params}`, {
             signal,
           });

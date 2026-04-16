@@ -42,10 +42,12 @@ export async function getUserAccessibleLicenceesFromToken(userPayloadOverride?: 
 
     if ((needsRoleHydration || needsLicenceeHydration) && userId) {
       try {
-        const dbUser = await UserModel.findOne(
+        const dbUser = (await UserModel.findOne(
           { _id: userId },
           { roles: 1, assignedLicencees: 1 }
-        ).lean().exec() as {
+        )
+          .lean()
+          .exec()) as {
           roles?: unknown;
           assignedLicencees?: string[];
         } | null;
@@ -63,13 +65,8 @@ export async function getUserAccessibleLicenceesFromToken(userPayloadOverride?: 
           if (needsLicenceeHydration) {
             // Use only new field
             const rawDbLicencees = dbUser.assignedLicencees;
-            if (
-              Array.isArray(rawDbLicencees) &&
-              rawDbLicencees.length > 0
-            ) {
-              userLicencees = rawDbLicencees.map(value =>
-                String(value)
-              );
+            if (Array.isArray(rawDbLicencees) && rawDbLicencees.length > 0) {
+              userLicencees = rawDbLicencees.map(value => String(value));
             }
           }
         }
@@ -81,7 +78,10 @@ export async function getUserAccessibleLicenceesFromToken(userPayloadOverride?: 
       }
     }
 
-    const isAdmin = roles.includes('admin') || roles.includes('developer') || roles.includes('owner');
+    const isAdmin =
+      roles.includes('admin') ||
+      roles.includes('developer') ||
+      roles.includes('owner');
 
     if (isAdmin) {
       return 'all';
@@ -143,7 +143,6 @@ export async function getUserAccessibleLicenceesFromToken(userPayloadOverride?: 
   }
 }
 
-
 /**
  * Gets location filter based on licencee access
  * Use this when you need to filter by location IDs
@@ -175,8 +174,8 @@ async function getLicenceeLocationFilter(
             { deletedAt: null },
             { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
-        }
-      ]
+        },
+      ],
     },
     { _id: 1 }
   ).lean()) as unknown as Pick<LocationDocument, '_id'>[];
@@ -218,7 +217,7 @@ export async function getUserLocationFilter(
       selectedLicenceeFilter &&
       selectedLicenceeFilter !== '' &&
       selectedLicenceeFilter !== 'all';
-    
+
     if (!hasSpecificLicencee) return 'all';
   }
 
@@ -281,8 +280,8 @@ export async function getUserLocationFilter(
               { deletedAt: null },
               { deletedAt: { $lt: new Date('2025-01-01') } },
             ],
-          }
-        ]
+          },
+        ],
       },
       { _id: 1 }
     ).lean();
@@ -359,18 +358,22 @@ export async function checkUserLocationAccess(
   try {
     const user = await getUserFromServer();
     if (!user) return false;
-    
+
     const userRoles = (user.roles as User['roles']) || [];
 
     const userPayload = user as User;
     const userAccessibleLicencees = userPayload.assignedLicencees || [];
     const userLocationPermissions = userPayload.assignedLocations || [];
 
-    const isAdmin = userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
+    const hasAllLocationAccess =
+      userRoles.includes('admin') ||
+      userRoles.includes('developer') ||
+      userRoles.includes('owner') ||
+      userRoles.includes('reviewer');
 
     // Get user's accessible locations
     const allowedLocationIds = await getUserLocationFilter(
-      isAdmin ? 'all' : userAccessibleLicencees,
+      hasAllLocationAccess ? 'all' : userAccessibleLicencees,
       undefined, // No specific licencee filter for direct location access check
       userLocationPermissions,
       userRoles
@@ -378,7 +381,7 @@ export async function checkUserLocationAccess(
 
     // Check if location is in allowed list
     if (allowedLocationIds === 'all') {
-      return true; // Admin with no restrictions
+      return true; // User with unrestricted location access
     }
 
     // Normalize locationId to string for comparison
@@ -389,4 +392,3 @@ export async function checkUserLocationAccess(
     return false;
   }
 }
-

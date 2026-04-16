@@ -139,8 +139,7 @@ export type JwtPayload = {
   roles?: string[];
   assignedLocations?: string[];
   assignedLicencees?: string[];
-  multiplier?: number | null;
-  // Enhanced security
+  // multiplier removed from JWT to ensure live DB lookup
   sessionId: string;
   sessionVersion?: number;
   dbContext: {

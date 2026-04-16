@@ -1,26 +1,37 @@
 /**
  * useNewCollectionModal Hook
  *
- * Encapsulates state and logic for the New Collection Modal.
- * Handles location selection, machine fetching, validation, and entry management.
+ * Manages state and logic for the New Collection Modal.
+ * Handles location selection, machine fetching, validation, entry management,
+ * and collection report creation.
+ *
+ * Architecture:
+ * - Uses Zustand store for shared state (location, machines, financials)
+ * - Local state for UI-specific concerns (modals, editing)
+ * - Effects for side effects (fetching, syncing)
+ * - Debounced values for expensive calculations
  */
 
 'use client';
 
+// ============================================================================
+// External Dependencies
+// ============================================================================
+
 import { createCollectionReport } from '@/lib/helpers/collectionReport';
 import {
-    addMachineCollection,
-    deleteMachineCollection,
+  addMachineCollection,
+  deleteMachineCollection,
 } from '@/lib/helpers/collectionReport/newCollectionModalHelpers';
 import { updateCollection } from '@/lib/helpers/collections';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import type {
-    CollectionReportLocationWithMachines,
-    CollectionReportMachineSummary,
-    CreateCollectionReportPayload,
-    VariationsCheckResponse,
-    MachineVariationData,
+  CollectionReportLocationWithMachines,
+  CollectionReportMachineSummary,
+  CreateCollectionReportPayload,
+  MachineVariationData,
+  VariationsCheckResponse,
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
@@ -30,6 +41,10 @@ import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
 type UseNewCollectionModalProps = {
   show: boolean;
@@ -50,6 +65,37 @@ type UseNewCollectionModalProps = {
   ) => Promise<void>;
 };
 
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Sorts machines alphabetically with numeric awareness
+ * Groups machines like "Machine 1, Machine 2, Machine 10" correctly
+ */
+function sortMachinesAlphabetically<
+  T extends { name?: string; serialNumber?: string },
+>(machines: T[]): T[] {
+  return [...machines].sort((a, b) => {
+    const nameA = (a.name || a.serialNumber || '').toString();
+    const nameB = (b.name || b.serialNumber || '').toString();
+    const matchA = nameA.match(/^(.+?)(\d+)?$/);
+    const matchB = nameB.match(/^(.+?)(\d+)?$/);
+    if (!matchA || !matchB) return nameA.localeCompare(nameB);
+    const [, baseA, numA] = matchA;
+    const [, baseB, numB] = matchB;
+    const baseCompare = baseA.localeCompare(baseB);
+    if (baseCompare !== 0) return baseCompare;
+    const numAInt = numA ? parseInt(numA, 10) : 0;
+    const numBInt = numB ? parseInt(numB, 10) : 0;
+    return numAInt - numBInt;
+  });
+}
+
+// ============================================================================
+// Main Hook
+// ============================================================================
+
 export function useNewCollectionModal({
   show,
   locations,
@@ -60,6 +106,9 @@ export function useNewCollectionModal({
   onClose,
   logActivityCallback,
 }: UseNewCollectionModalProps) {
+  // ==========================================================================
+  // Store State - Shared across modals
+  // ==========================================================================
   const {
     selectedLocationId,
     setSelectedLocation,
@@ -74,9 +123,12 @@ export function useNewCollectionModal({
     resetState: resetStoreState,
   } = useCollectionModalStore();
 
-  const [hasChanges, setHasChanges] = useState(false);
-  const selectedLocationName = useCollectionModalStore(state => state.selectedLocationName);
-  
+  // ==========================================================================
+  // Local State - UI-specific concerns
+  // ==========================================================================
+
+  // Location & Machine Selection
+  const [selectedLocationName] = useState('');
   const [machinesOfSelectedLocation, setMachinesOfSelectedLocation] = useState<
     CollectionReportMachineSummary[]
   >([]);
@@ -85,188 +137,153 @@ export function useNewCollectionModal({
     string | undefined
   >(undefined);
 
-  const currentCollectionTime = storeFormData.collectionTime;
-  const currentMetersIn = storeFormData.metersIn;
-  const currentMetersOut = storeFormData.metersOut;
-  const currentRamClearMetersIn = storeFormData.ramClearMetersIn;
-  const currentRamClearMetersOut = storeFormData.ramClearMetersOut;
-  const currentMachineNotes = storeFormData.notes;
-  const currentRamClear = storeFormData.ramClear;
-  const showAdvancedSas = storeFormData.showAdvancedSas;
-  const sasStartTime = storeFormData.sasStartTime;
-  const sasEndTime = storeFormData.sasEndTime;
-
-  const setCurrentMetersIn = (val: string) => setStoreFormData({ metersIn: val });
-  const setCurrentMetersOut = (val: string) => setStoreFormData({ metersOut: val });
-  const setCurrentRamClearMetersIn = (val: string) => setStoreFormData({ ramClearMetersIn: val });
-  const setCurrentRamClearMetersOut = (val: string) => setStoreFormData({ ramClearMetersOut: val });
-  const setCurrentMachineNotes = (val: string) => setStoreFormData({ notes: val });
-  const setCurrentRamClear = (val: boolean) => setStoreFormData({ ramClear: val });
-  const setCurrentCollectionTime = (val: Date) => setStoreFormData({ collectionTime: val });
-  const setShowAdvancedSas = (val: boolean | ((p: boolean) => boolean)) => {
-    const newVal = typeof val === 'function' ? val(showAdvancedSas) : val;
-    const updates: Partial<typeof storeFormData> = { showAdvancedSas: newVal };
-
-    // If turning on and times are null, set reasonable defaults
-    if (newVal) {
-      const locationIdToUse = lockedLocationId || selectedLocationId;
-      const location = locations.find(l => String(l._id) === locationIdToUse);
-      const machine = locations
-        .flatMap(l => l.machines || [])
-        .find(m => String(m._id) === selectedMachineId);
-
-      if (!sasStartTime) {
-        let defaultStart = new Date();
-        if (machine?.collectionTime) {
-          defaultStart = new Date(machine.collectionTime);
-        } else if (location?.previousCollectionTime) {
-          defaultStart = new Date(location.previousCollectionTime);
-        }
-        updates.sasStartTime = defaultStart;
-      }
-      
-      if (!sasEndTime) {
-        const gameDayOffset = location?.gameDayOffset ?? 8;
-        const defaultEnd = new Date(currentCollectionTime || new Date());
-        if (defaultEnd.getHours() < gameDayOffset) {
-          defaultEnd.setDate(defaultEnd.getDate() - 1);
-        }
-        defaultEnd.setHours(gameDayOffset - 1, 59, 59, 0);
-        updates.sasEndTime = defaultEnd;
-      }
-    }
-
-    setStoreFormData(updates);
-  };
-  const setSasStartTime = (val: Date | null) => setStoreFormData({ sasStartTime: val });
-  const setSasEndTime = (val: Date | null) => setStoreFormData({ sasEndTime: val });
+  // Machine Data Entry
   const [isFirstCollection, setIsFirstCollection] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
-  const [showUpdateConfirmation, setShowUpdateConfirmation] = useState(false);
-  const [showMachineRolloverWarning, setShowMachineRolloverWarning] =
-    useState(false);
-  const [pendingMachineSubmission, setPendingMachineSubmission] = useState<
-    (() => void) | null
-  >(null);
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-  const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
-  const [showViewMachineConfirmation, setShowViewMachineConfirmation] =
-    useState(false);
-  const [showCreateReportConfirmation, setShowCreateReportConfirmation] =
-    useState(false);
-  const prevIn = storeFormData.prevIn !== '' ? Number(storeFormData.prevIn) : null;
-  const prevOut = storeFormData.prevOut !== '' ? Number(storeFormData.prevOut) : null;
-  const setPrevIn = (val: string | number | null) => setStoreFormData({ prevIn: val?.toString() || '' });
-  const setPrevOut = (val: string | number | null) => setStoreFormData({ prevOut: val?.toString() || '' });
-
   const [previousCollectionTime, setPreviousCollectionTime] = useState<
     string | Date | undefined
   >(undefined);
   const [isLoadingExistingCollections, setIsLoadingExistingCollections] =
     useState(false);
-  const [baseBalanceCorrection, setBaseBalanceCorrection] =
-    useState<string>('0');
-  const [updateAllSasStartDate, setUpdateAllSasStartDate] = useState<Date | undefined>(undefined);
-  const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<Date | undefined>(undefined);
 
+  // Processing State
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Editing State
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+
+  // Bulk SAS Update
+  const [updateAllSasStartDate, setUpdateAllSasStartDate] = useState<
+    Date | undefined
+  >(undefined);
+  const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<
+    Date | undefined
+  >(undefined);
+
+  // ==========================================================================
+  // Form Data Bindings - Derive from store and create setters
+  // ==========================================================================
+
+  const {
+    collectionTime: currentCollectionTime,
+    metersIn: currentMetersIn,
+    metersOut: currentMetersOut,
+    ramClearMetersIn: currentRamClearMetersIn,
+    ramClearMetersOut: currentRamClearMetersOut,
+    notes: currentMachineNotes,
+    ramClear: currentRamClear,
+    showAdvancedSas,
+    sasStartTime,
+    sasEndTime,
+    prevIn: storePrevIn,
+    prevOut: storePrevOut,
+  } = storeFormData;
+
+  // Setter functions for form data
+  const setCurrentCollectionTime = (val: Date) =>
+    setStoreFormData({ collectionTime: val });
+  const setCurrentMetersIn = (val: string) =>
+    setStoreFormData({ metersIn: val });
+  const setCurrentMetersOut = (val: string) =>
+    setStoreFormData({ metersOut: val });
+  const setCurrentRamClearMetersIn = (val: string) =>
+    setStoreFormData({ ramClearMetersIn: val });
+  const setCurrentRamClearMetersOut = (val: string) =>
+    setStoreFormData({ ramClearMetersOut: val });
+  const setCurrentMachineNotes = (val: string) =>
+    setStoreFormData({ notes: val });
+  const setCurrentRamClear = (val: boolean) =>
+    setStoreFormData({ ramClear: val });
+  const setSasStartTime = (val: Date | null) =>
+    setStoreFormData({ sasStartTime: val });
+  const setSasEndTime = (val: Date | null) =>
+    setStoreFormData({ sasEndTime: val });
+  const setPrevIn = (val: string | number | null) =>
+    setStoreFormData({ prevIn: val?.toString() || '' });
+  const setPrevOut = (val: string | number | null) =>
+    setStoreFormData({ prevOut: val?.toString() || '' });
+
+  // Derived prev values
+  const prevIn = storePrevIn !== '' ? Number(storePrevIn) : null;
+  const prevOut = storePrevOut !== '' ? Number(storePrevOut) : null;
+
+  // ==========================================================================
+  // Modal Confirmation State
+  // ==========================================================================
+
+  const [showUpdateConfirmation, setShowUpdateConfirmation] = useState(false);
+  const [showMachineRolloverWarning, setShowMachineRolloverWarning] =
+    useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [showCreateReportConfirmation, setShowCreateReportConfirmation] =
+    useState(false);
+  const [showViewMachineConfirmation, setShowViewMachineConfirmation] =
+    useState(false);
+  const [pendingMachineSubmission, setPendingMachineSubmission] = useState<
+    (() => void) | null
+  >(null);
+  const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
+
+  // ==========================================================================
+  // Helper Functions (defined early for use in effects)
+  // ==========================================================================
+
+  /**
+   * Find location ID for a given machine
+   */
+  const getLocationIdFromMachine = useCallback(
+    (machineId: string) => {
+      for (const location of locations) {
+        if (location.machines?.some(m => String(m._id) === machineId)) {
+          return String(location._id);
+        }
+      }
+      return null;
+    },
+    [locations]
+  );
+
+  // ==========================================================================
+  // Computed Values (useMemo)
+  // ==========================================================================
+
+  /**
+   * Selected location object from locations array
+   */
   const selectedLocation = useMemo(() => {
     const locationIdToUse = lockedLocationId || selectedLocationId;
     return locations.find(l => String(l._id) === locationIdToUse);
   }, [locations, selectedLocationId, lockedLocationId]);
 
-  // Extract primitive values from selectedLocation to prevent unnecessary effect triggers
+  /**
+   * Location's collection balance for calculations
+   */
   const locationCollectionBalance = useMemo(
     () => selectedLocation?.collectionBalance ?? 0,
     [selectedLocation?.collectionBalance]
   );
 
+  /**
+   * Location's profit share percentage
+   */
   const locationProfitShare = useMemo(
     () => selectedLocation?.profitShare ?? 50,
     [selectedLocation?.profitShare]
   );
 
+  /**
+   * Check if any confirmation modal is open
+   */
   const anyConfirmationOpen = !!(
     showUpdateConfirmation ||
     showMachineRolloverWarning ||
     showDeleteConfirmation ||
-    showViewMachineConfirmation ||
     showCreateReportConfirmation
   );
 
-  // Update location name when location changes
-  // Handled by the store now via selectedLocationName being reactive
-  useEffect(() => {
-    // This effect is mostly kept for machines fetching which depends on the IDs
-    const locationIdToUse = lockedLocationId || selectedLocationId;
-    if (locationIdToUse) {
-      const fetchMachinesForLocation = async () => {
-        try {
-          const response = await axios.get(
-            `/api/machines?locationId=${locationIdToUse}&_t=${Date.now()}`
-          );
-          if (response.data?.success && response.data?.data) {
-            setMachinesOfSelectedLocation(response.data.data);
-          } else {
-            setMachinesOfSelectedLocation([]);
-          }
-        } catch (error) {
-          console.error('Error fetching machines for location:', error);
-          setMachinesOfSelectedLocation([]);
-        }
-      };
-      fetchMachinesForLocation();
-      setSelectedMachineId(undefined);
-    } else {
-      setMachinesOfSelectedLocation([]);
-      setSelectedMachineId(undefined);
-      setMachineSearchTerm('');
-    }
-  }, [selectedLocationId, lockedLocationId, locations]);
-
-  const sortMachinesAlphabetically = useCallback(
-    <T extends { name?: string; serialNumber?: string }>(
-      machines: T[]
-    ): T[] => {
-      return [...machines].sort((a, b) => {
-        const nameA = (a.name || a.serialNumber || '').toString();
-        const nameB = (b.name || b.serialNumber || '').toString();
-        const matchA = nameA.match(/^(.+?)(\d+)?$/);
-        const matchB = nameB.match(/^(.+?)(\d+)?$/);
-        if (!matchA || !matchB) return nameA.localeCompare(nameB);
-        const [, baseA, numA] = matchA;
-        const [, baseB, numB] = matchB;
-        const baseCompare = baseA.localeCompare(baseB);
-        if (baseCompare !== 0) return baseCompare;
-        const numAInt = numA ? parseInt(numA, 10) : 0;
-        const numBInt = numB ? parseInt(numB, 10) : 0;
-        return numAInt - numBInt;
-      });
-    },
-    []
-  );
-
-  const filteredMachines = useMemo(() => {
-    let result = machinesOfSelectedLocation;
-    if (machineSearchTerm.trim()) {
-      const searchLower = machineSearchTerm.toLowerCase();
-      result = machinesOfSelectedLocation.filter(
-        machine =>
-          (machine.name && machine.name.toLowerCase().includes(searchLower)) ||
-          (machine.serialNumber &&
-            machine.serialNumber.toLowerCase().includes(searchLower)) ||
-          (machine.custom?.name &&
-            machine.custom.name.toLowerCase().includes(searchLower)) ||
-          (machine.game && machine.game.toLowerCase().includes(searchLower))
-      );
-    }
-    return sortMachinesAlphabetically(result);
-  }, [
-    machinesOfSelectedLocation,
-    machineSearchTerm,
-    sortMachinesAlphabetically,
-  ]);
-
+  /**
+   * Machine being edited or added
+   */
   const machineForDataEntry = useMemo(() => {
     let found = machinesOfSelectedLocation.find(
       m => String(m._id) === selectedMachineId
@@ -293,11 +310,37 @@ export function useNewCollectionModal({
     return found;
   }, [machinesOfSelectedLocation, selectedMachineId, collectedMachineEntries]);
 
+  /**
+   * Filter machines based on search term
+   */
+  const filteredMachines = useMemo(() => {
+    let result = machinesOfSelectedLocation;
+    if (machineSearchTerm.trim()) {
+      const searchLower = machineSearchTerm.toLowerCase();
+      result = machinesOfSelectedLocation.filter(
+        machine =>
+          (machine.name && machine.name.toLowerCase().includes(searchLower)) ||
+          (machine.serialNumber &&
+            machine.serialNumber.toLowerCase().includes(searchLower)) ||
+          (machine.custom?.name &&
+            machine.custom.name.toLowerCase().includes(searchLower)) ||
+          (machine.game && machine.game.toLowerCase().includes(searchLower))
+      );
+    }
+    return sortMachinesAlphabetically(result);
+  }, [machinesOfSelectedLocation, machineSearchTerm]);
+
+  /**
+   * Whether meter input fields should be enabled
+   */
   const inputsEnabled = useMemo(
     () => !!machineForDataEntry || !!selectedMachineId,
     [machineForDataEntry, selectedMachineId]
   );
 
+  /**
+   * Whether the "Add Machine" button should be enabled
+   */
   const isAddMachineEnabled = useMemo(() => {
     if (!machineForDataEntry) return false;
     if (!currentMetersIn || !currentMetersOut) return false;
@@ -316,6 +359,90 @@ export function useNewCollectionModal({
     currentRamClearMetersOut,
   ]);
 
+  // ==========================================================================
+  // Debounced Values
+  // ==========================================================================
+
+  const debouncedCurrentMetersIn = useDebounce(currentMetersIn, 500);
+  const debouncedCurrentMetersOut = useDebounce(currentMetersOut, 500);
+  const debouncedCurrentRamClearMetersIn = useDebounce(
+    currentRamClearMetersIn,
+    500
+  );
+  const debouncedCurrentRamClearMetersOut = useDebounce(
+    currentRamClearMetersOut,
+    500
+  );
+
+  // ==========================================================================
+  // Refs
+  // ==========================================================================
+
+  const hasFetchedOnOpenRef = useRef(false);
+  const onRefreshRef = useRef(onRefresh);
+  const onRefreshLocationsRef = useRef(onRefreshLocations);
+
+  // ==========================================================================
+  // Effects
+  // ==========================================================================
+
+  /**
+   * Sync refs when callbacks change
+   */
+  useEffect(() => {
+    onRefreshRef.current = onRefresh;
+    onRefreshLocationsRef.current = onRefreshLocations;
+  });
+
+  /**
+   * Fetch machines when location changes
+   */
+  useEffect(() => {
+    const locationIdToUse = lockedLocationId || selectedLocationId;
+    if (locationIdToUse) {
+      const fetchMachinesForLocation = async () => {
+        try {
+          const response = await axios.get(
+            `/api/machines?locationId=${locationIdToUse}&_t=${Date.now()}`
+          );
+          if (response.data?.success && response.data?.data) {
+            setMachinesOfSelectedLocation(response.data.data);
+          } else {
+            setMachinesOfSelectedLocation([]);
+          }
+        } catch (error) {
+          console.error('Error fetching machines for location:', error);
+          setMachinesOfSelectedLocation([]);
+        }
+      };
+      fetchMachinesForLocation();
+      setSelectedMachineId(undefined);
+    } else {
+      setMachinesOfSelectedLocation([]);
+      setSelectedMachineId(undefined);
+      setMachineSearchTerm('');
+    }
+  }, [selectedLocationId, lockedLocationId]);
+
+  /**
+   * Update collection time when location changes
+   */
+  useEffect(() => {
+    const locationIdToUse = lockedLocationId || selectedLocationId;
+    if (locationIdToUse) {
+      const location = locations.find(l => String(l._id) === locationIdToUse);
+      if (location?.gameDayOffset !== undefined) {
+        const defaultTime = calculateDefaultCollectionTime(
+          location.gameDayOffset
+        );
+        setCurrentCollectionTime(defaultTime);
+      }
+    }
+  }, [selectedLocationId, lockedLocationId, locations]);
+
+  /**
+   * Calculate amount to collect based on collected machines
+   */
   const calculateAmountToCollect = useCallback(() => {
     if (!collectedMachineEntries.length) {
       setFinancials({ amountToCollect: '0' });
@@ -384,59 +511,33 @@ export function useNewCollectionModal({
     });
   }, [
     collectedMachineEntries,
-    financials.taxes,
-    financials.variance,
-    financials.advance,
-    financials.balanceCorrection,
-    financials.collectedAmount,
+    financials,
     locationCollectionBalance,
     locationProfitShare,
-    locations,
-    isLoadingExistingCollections,
   ]);
 
   useEffect(() => {
     calculateAmountToCollect();
   }, [calculateAmountToCollect]);
 
-  // Update collection time when location changes
-  // Use selectedLocationId/lockedLocationId instead of selectedLocation to avoid dependency on locations array
-  useEffect(() => {
-    const locationIdToUse = lockedLocationId || selectedLocationId;
-    if (locationIdToUse) {
-      const location = locations.find(l => String(l._id) === locationIdToUse);
-      if (location?.gameDayOffset !== undefined) {
-        const defaultTime = calculateDefaultCollectionTime(
-          location.gameDayOffset
-        );
-        setCurrentCollectionTime(defaultTime);
-      }
-    }
-  }, [selectedLocationId, lockedLocationId, locations]);
-
-  const getLocationIdFromMachine = useCallback(
-    (machineId: string) => {
-      for (const location of locations) {
-        if (location.machines?.some(m => String(m._id) === machineId)) {
-          return String(location._id);
-        }
-      }
-      return null;
-    },
-    [locations]
-  );
-
+  /**
+   * Fetch existing collections when modal opens
+   */
   const fetchExistingCollections = useCallback(
     async (locationId?: string) => {
       try {
-        console.log('🔄 [NewCollection] fetchExistingCollections starting', { locationId });
+        console.log('🔄 [NewCollection] fetchExistingCollections starting', {
+          locationId,
+        });
         setIsLoadingExistingCollections(true);
         let url = `/api/collections?incompleteOnly=true&_t=${Date.now()}`;
         if (locationId) url += `&location=${locationId}`;
         if (userId) url += `&collector=${userId}`;
 
         const response = await axios.get(url);
-        console.log('📦 [NewCollection] fetchExistingCollections response:', { count: response.data?.length });
+        console.log('📦 [NewCollection] fetchExistingCollections response:', {
+          count: response.data?.length,
+        });
         if (response.data && response.data.length > 0) {
           setCollectedMachineEntries(response.data);
           const sortedCollections = [...response.data].sort((a, b) => {
@@ -474,9 +575,6 @@ export function useNewCollectionModal({
               }
             }
           }
-        } else {
-          // If no collections found, don't force a clear here as it might be a genuinely new report starting
-          // But if we're resolving state on open, we might want to ensure it's clean
         }
       } catch (error) {
         console.error('Error fetching existing collections:', error);
@@ -484,37 +582,48 @@ export function useNewCollectionModal({
         setIsLoadingExistingCollections(false);
       }
     },
-    [locations, getLocationIdFromMachine, userId, setSelectedLocation, setLockedLocation, setCollectedMachineEntries, setCurrentCollectionTime, setFinancials]
+    [
+      locations,
+      userId,
+      setSelectedLocation,
+      setLockedLocation,
+      setCollectedMachineEntries,
+      setCurrentCollectionTime,
+      setFinancials,
+    ]
   );
-
-  // Fetch existing collections when modal opens
-  const hasFetchedOnOpenRef = useRef(false);
-  const fetchExistingCollectionsRef = useRef(fetchExistingCollections);
-  useEffect(() => {
-    fetchExistingCollectionsRef.current = fetchExistingCollections;
-  }, [fetchExistingCollections]);
 
   useEffect(() => {
     if (show) {
       if (!hasFetchedOnOpenRef.current) {
-        fetchExistingCollectionsRef.current(undefined);
+        fetchExistingCollections(undefined);
         hasFetchedOnOpenRef.current = true;
       }
     } else {
       hasFetchedOnOpenRef.current = false;
     }
-  }, [show]);
+  }, [show, fetchExistingCollections]);
 
-  // Attempt to resolve location if machines were fetched before locations were ready
+  /**
+   * Resolve location from machines if not yet set
+   */
   useEffect(() => {
-    if (show && collectedMachineEntries.length > 0 && !selectedLocationId && locations.length > 0) {
+    if (
+      show &&
+      collectedMachineEntries.length > 0 &&
+      !selectedLocationId &&
+      locations.length > 0
+    ) {
       const firstCollection = collectedMachineEntries[0];
-      const properLocationId = getLocationIdFromMachine(firstCollection.machineId);
+      const properLocationId = getLocationIdFromMachine(
+        firstCollection.machineId
+      );
       if (properLocationId) {
-        const locationData = locations.find(loc => String(loc._id) === properLocationId);
+        const locationData = locations.find(
+          loc => String(loc._id) === properLocationId
+        );
         setSelectedLocation(properLocationId, locationData?.name || '');
         setLockedLocation(properLocationId);
-        
         if (locationData) {
           setFinancials({
             previousBalance: (locationData.collectionBalance || 0).toString(),
@@ -523,53 +632,36 @@ export function useNewCollectionModal({
       }
     }
   }, [
-    show, 
-    collectedMachineEntries, 
-    locations, 
-    selectedLocationId, 
-    getLocationIdFromMachine, 
-    setSelectedLocation, 
-    setLockedLocation, 
-    setFinancials
+    show,
+    collectedMachineEntries,
+    locations,
+    selectedLocationId,
+    getLocationIdFromMachine,
+    setSelectedLocation,
+    setLockedLocation,
+    setFinancials,
   ]);
 
-  // Use refs for callbacks to prevent re-triggering on callback reference changes
-  const onRefreshRef = useRef(onRefresh);
-  const onRefreshLocationsRef = useRef(onRefreshLocations);
-  useEffect(() => {
-    onRefreshRef.current = onRefresh;
-    onRefreshLocationsRef.current = onRefreshLocations;
-  });
-
+  /**
+   * Refresh data when modal opens
+   */
   useEffect(() => {
     if (show) {
       if (onRefreshLocationsRef.current) onRefreshLocationsRef.current();
       if (onRefreshRef.current) onRefreshRef.current();
-
-      // Ensure we have a clean state for location if no machines are in the list
-      // This helps with the "Select Location" issue
-      if (collectedMachineEntries.length === 0 && !selectedLocationId && !lockedLocationId) {
-        // Just refresh to be safe
-      }
     }
   }, [show]);
 
-  // Consolidating redundant effects: Handled by the effect at line 159
-  /*
-  useEffect(() => {
-    const locationIdToUse = lockedLocationId || selectedLocationId;
-    if (locationIdToUse) {
-      ...
-    }
-  }, [selectedLocationId, lockedLocationId]);
-  */
-
+  /**
+   * Populate form when machine is selected
+   */
   useEffect(() => {
     if (selectedMachineId && machineForDataEntry) {
       const existingEntry = collectedMachineEntries.find(
         entry => entry.machineId === selectedMachineId
       );
       if (existingEntry) {
+        // Editing existing entry
         setCurrentMetersIn(existingEntry.metersIn?.toString() || '');
         setCurrentMetersOut(existingEntry.metersOut?.toString() || '');
         setCurrentMachineNotes(existingEntry.notes || '');
@@ -581,75 +673,72 @@ export function useNewCollectionModal({
         );
         setPrevIn(existingEntry.prevIn || 0);
         setPrevOut(existingEntry.prevOut || 0);
-        
-        // Populate SAS times if available - BUT DON'T SELECT BY DEFAULT as per user request
-        if (existingEntry.sasMeters?.sasStartTime) {
-          setSasStartTime(new Date(existingEntry.sasMeters.sasStartTime));
-        } else {
-          setSasStartTime(null);
-        }
-        
-        if (existingEntry.sasMeters?.sasEndTime) {
-          setSasEndTime(new Date(existingEntry.sasMeters.sasEndTime));
-        } else {
-          setSasEndTime(null);
-        }
-
-        // Ensure advanced is NOT selected by default when editing
+        setSasStartTime(
+          existingEntry.sasMeters?.sasStartTime
+            ? new Date(existingEntry.sasMeters.sasStartTime)
+            : null
+        );
+        setSasEndTime(
+          existingEntry.sasMeters?.sasEndTime
+            ? new Date(existingEntry.sasMeters.sasEndTime)
+            : null
+        );
         setShowAdvancedSas(false);
       } else {
-        // No existing entry for this machine — it hasn't been collected yet in this report.
-        // Use sasMeters.drop / sasMeters.totalCancelledCredits as the initial prev values
-        // (these are set when the cabinet is first configured via the Edit Cabinet modal).
-        // Fall back to collectionMeters if sasMeters aren't available, then 0.
-        const sasIn = machineForDataEntry.sasMeters?.drop ?? null;
-        const sasOut = machineForDataEntry.sasMeters?.totalCancelledCredits ?? null;
-        const legacyIn = machineForDataEntry.collectionMeters?.metersIn ?? null;
-        const legacyOut = machineForDataEntry.collectionMeters?.metersOut ?? null;
-
-        setPrevIn((legacyIn !== null && legacyIn > 0) ? legacyIn : (sasIn ?? 0));
-        setPrevOut((legacyOut !== null && legacyOut > 0) ? legacyOut : (sasOut ?? 0));
+        // New entry - fetch previous collection data
+        setPrevIn(
+          machineForDataEntry.collectionMeters?.metersIn ??
+            machineForDataEntry.sasMeters?.drop ??
+            0
+        );
+        setPrevOut(
+          machineForDataEntry.collectionMeters?.metersOut ??
+            machineForDataEntry.sasMeters?.totalCancelledCredits ??
+            0
+        );
         setCurrentMetersIn('');
         setCurrentMetersOut('');
         setCurrentMachineNotes('');
         setCurrentRamClear(false);
 
-        // Auto-populate sasStartTime from the last completed collection for this machine.
-        // Query the Collections model directly (most accurate source) rather than relying
-        // on the potentially stale machine.collectionTime cached field.
-        // sasStartTime = collectionTime of previous collection = start of current gaming period.
+        // Fetch last collection time from API
         axios
-          .get(`/api/collections/last-collection-time?machineId=${selectedMachineId}`)
+          .get(
+            `/api/collections/last-collection-time?machineId=${selectedMachineId}`
+          )
           .then(res => {
             const data = res.data?.data;
             const lastTime = data?.collectionTime;
             setSasStartTime(lastTime ? new Date(lastTime) : null);
-            
             if (data?.hasPreviousCollection) {
               setPrevIn(data.metersIn !== null ? data.metersIn : 0);
               setPrevOut(data.metersOut !== null ? data.metersOut : 0);
             }
           })
           .catch(() => {
-            // Fallback: use machine.collectionTime from the locations data if available
+            // Fallback to machine's cached collection time
             const machineFromLocation = locations
               .flatMap(l => l.machines || [])
               .find(m => String(m._id) === selectedMachineId);
-            setSasStartTime(machineFromLocation?.collectionTime ? new Date(machineFromLocation.collectionTime) : null);
+            setSasStartTime(
+              machineFromLocation?.collectionTime
+                ? new Date(machineFromLocation.collectionTime)
+                : null
+            );
           });
       }
+
+      // Set previous collection time from location
       const loc = locations.find(
         l => String(l._id) === (lockedLocationId || selectedLocationId)
       );
       setPreviousCollectionTime(loc?.previousCollectionTime);
-    } else {
-      if (
-        selectedMachineId === undefined &&
-        machinesOfSelectedLocation.length > 0
-      ) {
-        setPrevIn(null);
-        setPrevOut(null);
-      }
+    } else if (
+      selectedMachineId === undefined &&
+      machinesOfSelectedLocation.length > 0
+    ) {
+      setPrevIn(null);
+      setPrevOut(null);
     }
   }, [
     selectedMachineId,
@@ -661,42 +750,98 @@ export function useNewCollectionModal({
     collectedMachineEntries,
   ]);
 
-  const debouncedCurrentMetersIn = useDebounce(currentMetersIn, 500);
-  const debouncedCurrentMetersOut = useDebounce(currentMetersOut, 500);
-  const debouncedCurrentRamClearMetersIn = useDebounce(
-    currentRamClearMetersIn,
-    500
-  );
-  const debouncedCurrentRamClearMetersOut = useDebounce(
-    currentRamClearMetersOut,
-    500
-  );
+  // ==========================================================================
+  // Event Handlers - Location & Machine Selection
+  // ==========================================================================
+  // Helper Functions
+  // ==========================================================================
 
-  const handleClose = useCallback(() => {
-    if (hasChanges && onRefresh) {
-      onRefresh();
+  /**
+   * Toggle advanced SAS mode and set default times if needed
+   */
+  const setShowAdvancedSas = (val: boolean | ((p: boolean) => boolean)) => {
+    const newVal = typeof val === 'function' ? val(showAdvancedSas) : val;
+    const updates: Partial<typeof storeFormData> = { showAdvancedSas: newVal };
+
+    if (newVal) {
+      const locationIdToUse = lockedLocationId || selectedLocationId;
+      const location = locations.find(l => String(l._id) === locationIdToUse);
+      const machine = locations
+        .flatMap(l => l.machines || [])
+        .find(m => String(m._id) === selectedMachineId);
+
+      if (!sasStartTime) {
+        const gameDayOffset = location?.gameDayOffset ?? 8;
+        let defaultStart = new Date();
+        defaultStart.setHours(gameDayOffset, 0, 0, 0);
+
+        if (machine?.collectionTime) {
+          defaultStart = new Date(machine.collectionTime);
+        } else if (location?.previousCollectionTime) {
+          defaultStart = new Date(location.previousCollectionTime);
+        }
+        updates.sasStartTime = defaultStart;
+      }
+
+      if (!sasEndTime) {
+        const gameDayOffset = location?.gameDayOffset ?? 8;
+        const defaultEnd = new Date(currentCollectionTime || new Date());
+        if (defaultEnd.getHours() < gameDayOffset) {
+          defaultEnd.setDate(defaultEnd.getDate() - 1);
+        }
+        defaultEnd.setHours(gameDayOffset, 0, 0, 0);
+        updates.sasEndTime = defaultEnd;
+      }
     }
 
-    // Always clear the state completely when closing
-    setCollectedMachineEntries([]);
-    setSelectedLocation(undefined, '');
-    setSelectedMachineId(undefined);
-    setLockedLocation(undefined);
-    setMachineSearchTerm('');
-    setHasChanges(false);
-    resetStoreState();
-    setMachinesOfSelectedLocation([]);
-    setCurrentMetersIn('');
-    setCurrentMetersOut('');
-    setCurrentMachineNotes('');
-    setCurrentRamClear(false);
-    setSasStartTime(null);
-    setSasEndTime(null);
-    setShowAdvancedSas(false);
+    setStoreFormData(updates);
+  };
 
-    onClose();
-  }, [hasChanges, onRefresh, onClose, resetStoreState]);
+  // ==========================================================================
+  // Event Handlers - Location & Machine Selection
+  // ==========================================================================
 
+  /**
+   * Handle location dropdown change
+   */
+  const handleLocationChange = useCallback(
+    (value: string) => {
+      const selectedLoc = locations.find(loc => String(loc._id) === value);
+      setSelectedLocation(value, selectedLoc?.name || '');
+      if (selectedLoc) {
+        setFinancials({
+          previousBalance: (selectedLoc.collectionBalance || 0).toString(),
+        });
+        if (selectedLoc.gameDayOffset !== undefined) {
+          const defaultTime = calculateDefaultCollectionTime(
+            selectedLoc.gameDayOffset
+          );
+          setCurrentCollectionTime(defaultTime);
+        }
+      }
+    },
+    [locations, setSelectedLocation, setFinancials, setCurrentCollectionTime]
+  );
+
+  /**
+   * Handle clicking disabled input field
+   */
+  const handleDisabledFieldClick = useCallback(() => {
+    if (!inputsEnabled) {
+      toast.warning('Please select a machine first', {
+        duration: 3000,
+        position: 'top-left',
+      });
+    }
+  }, [inputsEnabled]);
+
+  // ==========================================================================
+  // Event Handlers - Machine Entry
+  // ==========================================================================
+
+  /**
+   * Execute adding a machine entry to the collection
+   */
   const executeAddEntry = useCallback(async () => {
     try {
       setIsProcessing(true);
@@ -710,13 +855,15 @@ export function useNewCollectionModal({
         prevIn: prevIn || 0,
         prevOut: prevOut || 0,
         timestamp: currentCollectionTime,
-        collectionTime: currentCollectionTime, // KEEP IN SYNC
+        collectionTime: currentCollectionTime,
         collector: userId,
         notes: currentMachineNotes,
-        // sasEndTime always saved: advanced uses user-set value, simple uses collectionTime
-        sasEndTime: showAdvancedSas && sasEndTime ? sasEndTime : currentCollectionTime,
+        sasEndTime:
+          showAdvancedSas && sasEndTime ? sasEndTime : currentCollectionTime,
         ...(showAdvancedSas && sasStartTime ? { sasStartTime } : {}),
-        ...(showAdvancedSas && sasEndTime ? { timestamp: sasEndTime, collectionTime: sasEndTime } : {}),
+        ...(showAdvancedSas && sasEndTime
+          ? { timestamp: sasEndTime, collectionTime: sasEndTime }
+          : {}),
         ramClear: currentRamClear,
         ...(currentRamClear
           ? {
@@ -730,30 +877,56 @@ export function useNewCollectionModal({
       };
 
       const createdCollection = await addMachineCollection(entryData);
-      setCollectedMachineEntries([...collectedMachineEntries, createdCollection]);
+      setCollectedMachineEntries([
+        ...collectedMachineEntries,
+        createdCollection,
+      ]);
       setLockedLocation(selectedLocationId);
       setHasChanges(true);
-      setSelectedMachineId(undefined);
-      setCurrentMetersIn('');
-      setCurrentMetersOut('');
-      setCurrentRamClearMetersIn('');
-      setCurrentRamClearMetersOut('');
-      setCurrentMachineNotes('');
-      setCurrentRamClear(false);
-      setSasStartTime(showAdvancedSas ? sasStartTime : null);
-      setSasEndTime(showAdvancedSas ? sasEndTime : null);
-      setShowAdvancedSas(showAdvancedSas);
-
+      resetEntryForm();
       toast.success('Machine added to list', { position: 'top-left' });
+
       if (selectedLocationName) {
+        const machineName =
+          machineForDataEntry?.name ||
+          machineForDataEntry?.serialNumber ||
+          selectedMachineId;
+        const detailParts = [
+          `MIn: ${Number(currentMetersIn)}`,
+          `MOut: ${Number(currentMetersOut)}`,
+          `PrevIn: ${prevIn ?? 0}`,
+          `PrevOut: ${prevOut ?? 0}`,
+          `RAM Clear: ${currentRamClear ? 'Yes' : 'No'}`,
+        ];
+        if (currentRamClear) {
+          detailParts.push(
+            `RC MIn: ${Number(currentRamClearMetersIn)}`,
+            `RC MOut: ${Number(currentRamClearMetersOut)}`
+          );
+        }
+        if (currentMachineNotes)
+          detailParts.push(`Notes: ${currentMachineNotes}`);
         await logActivityCallback(
           'create',
           'collection',
           String(createdCollection._id),
-          `${machineForDataEntry?.name || selectedMachineId} at ${selectedLocationName}`,
-          `Added machine ${machineForDataEntry?.name || selectedMachineId} to collection list`,
+          `${machineName} at ${selectedLocationName}`,
+          `Added machine ${machineName} to collection at ${selectedLocationName} — ${detailParts.join(', ')}`,
           null,
-          createdCollection as unknown as Record<string, unknown>
+          {
+            metersIn: Number(currentMetersIn),
+            metersOut: Number(currentMetersOut),
+            prevIn: prevIn ?? 0,
+            prevOut: prevOut ?? 0,
+            ramClear: currentRamClear,
+            ramClearMetersIn: currentRamClear
+              ? Number(currentRamClearMetersIn)
+              : undefined,
+            ramClearMetersOut: currentRamClear
+              ? Number(currentRamClearMetersOut)
+              : undefined,
+            notes: currentMachineNotes || undefined,
+          }
         );
       }
     } catch (error) {
@@ -775,7 +948,6 @@ export function useNewCollectionModal({
     currentRamClear,
     currentMachineNotes,
     userId,
-    isFirstCollection,
     sasStartTime,
     sasEndTime,
     currentRamClearMetersIn,
@@ -785,14 +957,14 @@ export function useNewCollectionModal({
     showAdvancedSas,
   ]);
 
+  /**
+   * Handle add machine button click (with rollover check)
+   */
   const handleAddEntry = useCallback(() => {
     if (!isAddMachineEnabled || isProcessing) return;
 
     const onConfirm = () => executeAddEntry();
 
-    // Use live machine data as fallback when prevIn state hasn't resolved yet
-    // (race condition: executeAddEntry resets prevIn to null, then useEffect re-sets
-    // it from machineForDataEntry — but user may submit before the effect fires)
     const effectivePrevIn =
       prevIn !== null
         ? prevIn
@@ -813,6 +985,21 @@ export function useNewCollectionModal({
     executeAddEntry,
   ]);
 
+  /**
+   * Handle add or update entry based on editing state
+   */
+  const handleAddOrUpdateEntry = useCallback(() => {
+    if (editingEntryId) setShowUpdateConfirmation(true);
+    else handleAddEntry();
+  }, [editingEntryId, handleAddEntry]);
+
+  // ==========================================================================
+  // Event Handlers - Editing
+  // ==========================================================================
+
+  /**
+   * Execute updating an existing machine entry
+   */
   const executeUpdateEntry = useCallback(async () => {
     if (!editingEntryId) return;
     try {
@@ -837,10 +1024,12 @@ export function useNewCollectionModal({
               ramClearMetersOut: Number(currentRamClearMetersOut),
             }
           : { ramClearMetersIn: undefined, ramClearMetersOut: undefined }),
-        // sasEndTime always saved: advanced uses user-set value, simple uses collectionTime
-        sasEndTime: showAdvancedSas && sasEndTime ? sasEndTime : currentCollectionTime,
+        sasEndTime:
+          showAdvancedSas && sasEndTime ? sasEndTime : currentCollectionTime,
         ...(showAdvancedSas && sasStartTime ? { sasStartTime } : {}),
-        ...(showAdvancedSas && sasEndTime ? { timestamp: sasEndTime, collectionTime: sasEndTime } : {}),
+        ...(showAdvancedSas && sasEndTime
+          ? { timestamp: sasEndTime, collectionTime: sasEndTime }
+          : {}),
       };
 
       const updatedCollection = await updateCollection(
@@ -853,26 +1042,56 @@ export function useNewCollectionModal({
       setCollectedMachineEntries(updatedList);
       setHasChanges(true);
       setEditingEntryId(null);
-      setSelectedMachineId(undefined);
-      setCurrentMetersIn('');
-      setCurrentMetersOut('');
-      setCurrentRamClearMetersIn('');
-      setCurrentRamClearMetersOut('');
-      setCurrentMachineNotes('');
-      setCurrentRamClear(false);
-      setPrevIn(null);
-      setPrevOut(null);
+      resetEntryForm();
       toast.success('Machine updated successfully!');
 
       if (selectedLocationName) {
+        const machineName =
+          entryToUpdate.machineCustomName ||
+          entryToUpdate.machineName ||
+          entryToUpdate.serialNumber ||
+          editingEntryId;
+        const changes: string[] = [];
+        if (entryToUpdate.metersIn !== Number(currentMetersIn))
+          changes.push(
+            `MIn: ${entryToUpdate.metersIn} → ${Number(currentMetersIn)}`
+          );
+        if (entryToUpdate.metersOut !== Number(currentMetersOut))
+          changes.push(
+            `MOut: ${entryToUpdate.metersOut} → ${Number(currentMetersOut)}`
+          );
+        if (entryToUpdate.ramClear !== currentRamClear)
+          changes.push(
+            `RAM Clear: ${entryToUpdate.ramClear ? 'Yes' : 'No'} → ${currentRamClear ? 'Yes' : 'No'}`
+          );
+        if ((entryToUpdate.notes || '') !== (currentMachineNotes || ''))
+          changes.push(
+            `Notes: "${entryToUpdate.notes || ''}" → "${currentMachineNotes || ''}"`
+          );
+        const detailStr =
+          changes.length > 0 ? changes.join(', ') : 'No meter changes';
         await logActivityCallback(
           'update',
           'collection',
           editingEntryId,
-          `${entryToUpdate.machineCustomName} at ${selectedLocationName}`,
-          `Updated collection entry for machine: ${entryToUpdate.machineCustomName} at ${selectedLocationName}`,
-          entryToUpdate as unknown as Record<string, unknown>,
-          updatedCollection as unknown as Record<string, unknown>
+          `${machineName} at ${selectedLocationName}`,
+          `Updated machine ${machineName} at ${selectedLocationName} — ${detailStr}`,
+          {
+            metersIn: entryToUpdate.metersIn,
+            metersOut: entryToUpdate.metersOut,
+            prevIn: entryToUpdate.prevIn,
+            prevOut: entryToUpdate.prevOut,
+            ramClear: entryToUpdate.ramClear,
+            notes: entryToUpdate.notes,
+          },
+          {
+            metersIn: Number(currentMetersIn),
+            metersOut: Number(currentMetersOut),
+            prevIn: prevIn ?? 0,
+            prevOut: prevOut ?? 0,
+            ramClear: currentRamClear,
+            notes: currentMachineNotes || undefined,
+          }
         );
       }
     } catch (error) {
@@ -896,25 +1115,15 @@ export function useNewCollectionModal({
     sasEndTime,
     selectedLocationName,
     logActivityCallback,
-    setCollectedMachineEntries,
-    setHasChanges,
-    setEditingEntryId,
-    setSelectedMachineId,
-    setCurrentMetersIn,
-    setCurrentMetersOut,
-    setCurrentRamClearMetersIn,
-    setCurrentRamClearMetersOut,
-    setCurrentMachineNotes,
-    setCurrentRamClear,
-    setPrevIn,
-    setPrevOut,
   ]);
 
+  /**
+   * Confirm update with rollover check
+   */
   const confirmUpdateEntry = useCallback(async () => {
     if (!editingEntryId) return;
 
     const onConfirm = () => executeUpdateEntry();
-
     const effectivePrevIn =
       prevIn !== null
         ? prevIn
@@ -923,11 +1132,84 @@ export function useNewCollectionModal({
     if (effectivePrevIn !== null && Number(currentMetersIn) < effectivePrevIn) {
       setPendingMachineSubmission(() => onConfirm);
       setShowMachineRolloverWarning(true);
+      setShowUpdateConfirmation(false);
       return;
     }
     onConfirm();
-  }, [editingEntryId, prevIn, currentMetersIn, machineForDataEntry, executeUpdateEntry]);
+    setShowUpdateConfirmation(false);
+  }, [
+    editingEntryId,
+    prevIn,
+    currentMetersIn,
+    machineForDataEntry,
+    executeUpdateEntry,
+  ]);
 
+  /**
+   * Start editing a collected entry
+   */
+  const handleEditCollectedEntry = useCallback(
+    (id: string) => {
+      const entry = collectedMachineEntries.find(e => String(e._id) === id);
+      if (entry) {
+        setEditingEntryId(id);
+        setSelectedMachineId(entry.machineId);
+        setCurrentMetersIn(entry.metersIn.toString());
+        setCurrentMetersOut(entry.metersOut.toString());
+        setCurrentMachineNotes(entry.notes || '');
+        setCurrentRamClear(entry.ramClear || false);
+        if (entry.ramClear) {
+          setCurrentRamClearMetersIn(entry.ramClearMetersIn?.toString() || '');
+          setCurrentRamClearMetersOut(
+            entry.ramClearMetersOut?.toString() || ''
+          );
+        }
+        setPrevIn(entry.prevIn || 0);
+        setPrevOut(entry.prevOut || 0);
+        setShowAdvancedSas(false);
+        setSasStartTime(
+          entry.sasMeters?.sasStartTime
+            ? new Date(entry.sasMeters.sasStartTime)
+            : null
+        );
+        setSasEndTime(
+          entry.sasMeters?.sasEndTime
+            ? new Date(entry.sasMeters.sasEndTime)
+            : null
+        );
+        setCurrentCollectionTime(
+          entry.timestamp ? new Date(entry.timestamp) : new Date()
+        );
+        toast.info('Editing machine collection entry');
+      }
+    },
+    [collectedMachineEntries]
+  );
+
+  /**
+   * Cancel editing mode
+   */
+  const handleCancelEdit = useCallback(() => {
+    setEditingEntryId(null);
+    resetEntryForm();
+    toast.info('Edit cancelled');
+  }, []);
+
+  // ==========================================================================
+  // Event Handlers - Deletion
+  // ==========================================================================
+
+  /**
+   * Start delete confirmation for an entry
+   */
+  const handleDeleteCollectedEntry = useCallback((id: string) => {
+    setEntryToDelete(id);
+    setShowDeleteConfirmation(true);
+  }, []);
+
+  /**
+   * Execute deletion of an entry
+   */
   const confirmDeleteEntry = async () => {
     if (!entryToDelete) return;
     try {
@@ -954,11 +1236,7 @@ export function useNewCollectionModal({
       setHasChanges(true);
       if (editingEntryId === entryToDelete) {
         setEditingEntryId(null);
-        setSelectedMachineId(undefined);
-        setCurrentMetersIn('');
-        setCurrentMetersOut('');
-        setCurrentMachineNotes('');
-        setCurrentRamClear(false);
+        resetEntryForm();
       }
       if (updatedEntries.length === 0) setLockedLocation(undefined);
       setShowDeleteConfirmation(false);
@@ -971,31 +1249,61 @@ export function useNewCollectionModal({
     }
   };
 
-  const confirmCreateReports = async (variationsData?: VariationsCheckResponse | null) => {
+  // ==========================================================================
+  // Event Handlers - Rollover Warning
+  // ==========================================================================
+
+  const handleConfirmMachineRollover = useCallback(() => {
+    if (pendingMachineSubmission) {
+      pendingMachineSubmission();
+      setPendingMachineSubmission(null);
+    }
+    setShowMachineRolloverWarning(false);
+  }, [pendingMachineSubmission]);
+
+  const handleCancelMachineRollover = useCallback(() => {
+    setPendingMachineSubmission(null);
+    setShowMachineRolloverWarning(false);
+  }, []);
+
+  // ==========================================================================
+  // Event Handlers - Report Creation
+  // ==========================================================================
+
+  /**
+   * Create collection report from collected machines
+   */
+  const confirmCreateReports = async (
+    variationsData?: VariationsCheckResponse | null
+  ) => {
     try {
-      console.log('🚀 [NewCollection] confirmCreateReports started', { hasVariationsData: !!variationsData });
+      console.log('🚀 [NewCollection] confirmCreateReports started', {
+        hasVariationsData: !!variationsData,
+      });
       setIsProcessing(true);
-      
-      // Use direct store access to ensure we have the absolute latest state
+
       const storeState = useCollectionModalStore.getState();
-      const locationIdToUse = storeState.lockedLocationId || storeState.selectedLocationId;
+      const locationIdToUse =
+        storeState.lockedLocationId || storeState.selectedLocationId;
       const collectedEntries = storeState.collectedMachines;
-      
+
       console.log('📍 [NewCollection] Location targeting (direct store):', {
         locationIdToUse,
         locationName: storeState.selectedLocationName,
-        machinesCount: collectedEntries.length
+        machinesCount: collectedEntries.length,
       });
-      
+
       if (!locationIdToUse || collectedEntries.length === 0) {
         console.error('❌ [NewCollection] Blocked creation:', {
-          reason: !locationIdToUse ? 'Missing location ID' : 'Empty machine list',
+          reason: !locationIdToUse
+            ? 'Missing location ID'
+            : 'Empty machine list',
           locationIdToUse,
           machinesCount: collectedEntries.length,
-          storeStateLocation: storeState.selectedLocationId,
-          storeStateLocked: storeState.lockedLocationId
         });
-        toast.error(`Cannot create report: ${!locationIdToUse ? 'Location' : 'Machines'} missing.`);
+        toast.error(
+          `Cannot create report: ${!locationIdToUse ? 'Location' : 'Machines'} missing.`
+        );
         return;
       }
 
@@ -1034,7 +1342,10 @@ export function useNewCollectionModal({
         previousBalance: Number(financials.previousBalance) || 0,
         currentBalance: 0,
         amountToCollect: Number(financials.amountToCollect) || 0,
-        amountCollected: Number(financials.collectedAmount) || Number(financials.amountToCollect) || 0,
+        amountCollected:
+          Number(financials.collectedAmount) ||
+          Number(financials.amountToCollect) ||
+          0,
         amountUncollected: 0,
         partnerProfit: 0,
         taxes: Number(financials.taxes) || 0,
@@ -1046,7 +1357,12 @@ export function useNewCollectionModal({
         totalDrop: reportTotalData.drop,
         totalCancelled: reportTotalData.cancelledCredits,
         totalGross: reportTotalData.gross,
-        totalSasGross: variationsData?.machines.reduce((sum: number, m: MachineVariationData) => sum + (Number(m.sasGross) || 0), 0) || 0,
+        totalSasGross:
+          variationsData?.machines.reduce(
+            (sum: number, m: MachineVariationData) =>
+              sum + (Number(m.sasGross) || 0),
+            0
+          ) || 0,
         timestamp: currentCollectionTime,
         varianceReason: financials.varianceReason,
         previousCollectionTime: previousCollectionTime
@@ -1060,7 +1376,9 @@ export function useNewCollectionModal({
         balanceCorrectionReas: financials.balanceCorrectionReason,
         includeJackpot: selectedLocation?.includeJackpot || false,
         machines: collectedEntries.map(e => {
-          const varData = variationsData?.machines.find(m => m.machineId === e.machineId);
+          const varData = variationsData?.machines.find(
+            m => m.machineId === e.machineId
+          );
           return {
             machineId: String(e.machineId),
             metersIn: e.metersIn,
@@ -1084,7 +1402,7 @@ export function useNewCollectionModal({
         });
         toast.error(`Validation Error: ${validation.errors.join(', ')}`, {
           duration: 8000,
-          position: 'top-center'
+          position: 'top-center',
         });
         return;
       }
@@ -1121,167 +1439,51 @@ export function useNewCollectionModal({
     }
   };
 
-  const handleLocationChange = useCallback(
-    (value: string) => {
-      const selectedLoc = locations.find(loc => String(loc._id) === value);
-      setSelectedLocation(value, selectedLoc?.name || '');
-      if (selectedLoc) {
-        setFinancials({
-          previousBalance: (selectedLoc.collectionBalance || 0).toString(),
-        });
-        
-        // Set default collection time based on gameDayOffset
-        if (selectedLoc.gameDayOffset !== undefined) {
-          const defaultTime = calculateDefaultCollectionTime(selectedLoc.gameDayOffset);
-          setCurrentCollectionTime(defaultTime);
-        }
-      }
-    },
-    [locations, setSelectedLocation, setFinancials, setCurrentCollectionTime]
-  );
+  // ==========================================================================
+  // Event Handlers - Bulk Operations
+  // ==========================================================================
 
-  const handleDisabledFieldClick = useCallback(() => {
-    if (!inputsEnabled) {
-      toast.warning('Please select a machine first', {
-        duration: 3000,
-        position: 'top-left',
-      });
-    }
-  }, [inputsEnabled]);
-
-  const handleAddOrUpdateEntry = useCallback(() => {
-    if (editingEntryId) setShowUpdateConfirmation(true);
-    else handleAddEntry();
-  }, [editingEntryId, handleAddEntry]);
-
-  const handleEditCollectedEntry = useCallback(
-    (id: string) => {
-      const entry = collectedMachineEntries.find(e => String(e._id) === id);
-      if (entry) {
-        setEditingEntryId(id);
-        setSelectedMachineId(entry.machineId);
-        setCurrentMetersIn(entry.metersIn.toString());
-        setCurrentMetersOut(entry.metersOut.toString());
-        setCurrentMachineNotes(entry.notes || '');
-        setCurrentRamClear(entry.ramClear || false);
-        if (entry.ramClear) {
-          setCurrentRamClearMetersIn(entry.ramClearMetersIn?.toString() || '');
-          setCurrentRamClearMetersOut(
-            entry.ramClearMetersOut?.toString() || ''
-          );
-        }
-        setPrevIn(entry.prevIn || 0);
-        setPrevOut(entry.prevOut || 0);
-
-        // CRITICAL: Reset to simple mode BEFORE setting collection time so the store
-        // auto-sync correctly sets sasEndTime = collectionTime in simple mode.
-        // Advanced mode must never be selected by default when editing.
-        // Pre-load sasMeters times so that when the user clicks Advanced, the correct
-        // times appear rather than auto-generated defaults.
-        setShowAdvancedSas(false);
-        setSasStartTime(
-          entry.sasMeters?.sasStartTime
-            ? new Date(entry.sasMeters.sasStartTime)
-            : null
-        );
-        setSasEndTime(
-          entry.sasMeters?.sasEndTime
-            ? new Date(entry.sasMeters.sasEndTime)
-            : null
-        );
-
-        // Set collection time — store auto-sync will set sasEndTime = this value
-        setCurrentCollectionTime(
-          entry.timestamp ? new Date(entry.timestamp) : new Date()
-        );
-
-        toast.info('Editing machine collection entry');
-      }
-    },
-    [
-      collectedMachineEntries,
-      setCurrentMetersIn,
-      setCurrentMetersOut,
-      setCurrentMachineNotes,
-      setCurrentRamClear,
-      setCurrentRamClearMetersIn,
-      setCurrentRamClearMetersOut,
-      setPrevIn,
-      setPrevOut,
-      setShowAdvancedSas,
-      setSasStartTime,
-      setSasEndTime,
-      setCurrentCollectionTime,
-      setEditingEntryId,
-      setSelectedMachineId,
-    ]
-  );
-
-  const handleDeleteCollectedEntry = useCallback((id: string) => {
-    setEntryToDelete(id);
-    setShowDeleteConfirmation(true);
-  }, []);
-
-  const handleConfirmMachineRollover = useCallback(() => {
-    if (pendingMachineSubmission) {
-      pendingMachineSubmission();
-      setPendingMachineSubmission(null);
-    }
-    setShowMachineRolloverWarning(false);
-  }, [pendingMachineSubmission]);
-
-  const handleCancelMachineRollover = useCallback(() => {
-    setPendingMachineSubmission(null);
-    setShowMachineRolloverWarning(false);
-  }, []);
-
-  const handleCancelEdit = useCallback(() => {
-    setEditingEntryId(null);
-    setSelectedMachineId(undefined);
-    setCurrentMetersIn('');
-    setCurrentMetersOut('');
-    setCurrentMachineNotes('');
-    setCurrentRamClear(false);
-    setSasStartTime(showAdvancedSas ? sasStartTime : null);
-    setSasEndTime(showAdvancedSas ? sasEndTime : null);
-    setShowAdvancedSas(showAdvancedSas);
-    toast.info('Edit cancelled');
-  }, []);
-
+  /**
+   * Apply SAS times to all collected machines
+   */
   const handleApplyAllDates = useCallback(async () => {
     if (!updateAllSasStartDate && !updateAllSasEndDate) return;
     if (collectedMachineEntries.length < 2) return;
     try {
       setIsProcessing(true);
-      const axios = (await import('axios')).default;
+      const axiosInstance = (await import('axios')).default;
       const patchData: Record<string, string> = {};
-      
+
       const startTimeISO = updateAllSasStartDate?.toISOString();
       const endTimeISO = updateAllSasEndDate?.toISOString();
-      
+
       if (startTimeISO) patchData.sasStartTime = startTimeISO;
       if (endTimeISO) patchData.sasEndTime = endTimeISO;
 
       const results = await Promise.allSettled(
         collectedMachineEntries.map(async entry => {
           if (!entry._id) return;
-          return await axios.patch(`/api/collections?id=${entry._id}`, patchData);
+          return await axiosInstance.patch(
+            `/api/collections?id=${entry._id}`,
+            patchData
+          );
         })
       );
       const failed = results.filter(r => r.status === 'rejected').length;
       if (failed > 0) {
-        toast.error(`${failed} machine${failed > 1 ? 's' : ''} failed to update`);
+        toast.error(
+          `${failed} machine${failed > 1 ? 's' : ''} failed to update`
+        );
         return;
       }
 
-      // Update local state so UI reflects changes immediately without needing refresh/close
       const updatedEntries = collectedMachineEntries.map(entry => ({
         ...entry,
         sasMeters: {
           ...entry.sasMeters,
           ...(startTimeISO ? { sasStartTime: startTimeISO } : {}),
           ...(endTimeISO ? { sasEndTime: endTimeISO } : {}),
-        }
+        },
       }));
       setCollectedMachineEntries(updatedEntries);
 
@@ -1293,9 +1495,55 @@ export function useNewCollectionModal({
     } finally {
       setIsProcessing(false);
     }
-  }, [updateAllSasStartDate, updateAllSasEndDate, collectedMachineEntries, setCollectedMachineEntries]);
+  }, [updateAllSasStartDate, updateAllSasEndDate, collectedMachineEntries]);
+
+  // ==========================================================================
+  // Event Handlers - Modal Close
+  // ==========================================================================
+
+  /**
+   * Close modal and reset state
+   */
+  const handleClose = useCallback(() => {
+    if (hasChanges && onRefresh) {
+      onRefresh();
+    }
+
+    setCollectedMachineEntries([]);
+    setSelectedLocation(undefined, '');
+    setSelectedMachineId(undefined);
+    setLockedLocation(undefined);
+    setMachineSearchTerm('');
+    setHasChanges(false);
+    resetStoreState();
+    setMachinesOfSelectedLocation([]);
+    resetEntryForm();
+
+    onClose();
+  }, [hasChanges, onRefresh, onClose, resetStoreState]);
+
+  /**
+   * Reset entry form fields
+   */
+  const resetEntryForm = () => {
+    setSelectedMachineId(undefined);
+    setCurrentMetersIn('');
+    setCurrentMetersOut('');
+    setCurrentRamClearMetersIn('');
+    setCurrentRamClearMetersOut('');
+    setCurrentMachineNotes('');
+    setCurrentRamClear(false);
+    setSasStartTime(showAdvancedSas ? sasStartTime : null);
+    setSasEndTime(showAdvancedSas ? sasEndTime : null);
+    setShowAdvancedSas(showAdvancedSas);
+  };
+
+  // ==========================================================================
+  // Return
+  // ==========================================================================
 
   return {
+    // Location & Machine Selection
     selectedLocationId,
     selectedLocationName,
     machinesOfSelectedLocation,
@@ -1304,6 +1552,12 @@ export function useNewCollectionModal({
     lockedLocationId,
     selectedMachineId,
     setSelectedMachineId,
+    filteredMachines,
+    machineForDataEntry,
+    inputsEnabled,
+    isAddMachineEnabled,
+
+    // Form Data
     currentCollectionTime,
     setCurrentCollectionTime,
     currentMetersIn,
@@ -1324,60 +1578,75 @@ export function useNewCollectionModal({
     setSasStartTime,
     sasEndTime,
     setSasEndTime,
+    prevIn: storePrevIn,
+    setPrevIn,
+    prevOut: storePrevOut,
+    setPrevOut,
+
+    // State
     isFirstCollection,
     setIsFirstCollection,
     collectedMachineEntries,
     isProcessing,
     editingEntryId,
+    previousCollectionTime,
+    isLoadingExistingCollections,
+    baseBalanceCorrection: '0',
+    setBaseBalanceCorrection: () => {},
+
+    // Financials
+    financials,
+    setFinancials,
+
+    // Confirmation Modals
     showUpdateConfirmation,
     setShowUpdateConfirmation,
     showMachineRolloverWarning,
     setShowMachineRolloverWarning,
     showDeleteConfirmation,
     setShowDeleteConfirmation,
-    entryToDelete,
-    setEntryToDelete,
-    showViewMachineConfirmation,
-    setShowViewMachineConfirmation,
     showCreateReportConfirmation,
     setShowCreateReportConfirmation,
-    financials,
-    setFinancials,
-    baseBalanceCorrection,
-    setBaseBalanceCorrection,
-    prevIn: storeFormData.prevIn,
-    setPrevIn,
-    prevOut: storeFormData.prevOut,
-    setPrevOut,
-    previousCollectionTime,
-    isLoadingExistingCollections,
-    filteredMachines,
-    machineForDataEntry,
-    inputsEnabled,
-    isAddMachineEnabled,
-    debouncedCurrentMetersIn,
-    debouncedCurrentMetersOut,
-    debouncedCurrentRamClearMetersIn,
-    debouncedCurrentRamClearMetersOut,
-    handleLocationChange,
-    handleClose,
-    handleDisabledFieldClick,
-    handleAddOrUpdateEntry,
-    handleEditCollectedEntry,
-    handleDeleteCollectedEntry,
-    confirmUpdateEntry,
-    confirmDeleteEntry,
-    confirmCreateReports,
-    handleConfirmMachineRollover,
-    handleCancelMachineRollover,
-    handleCancelEdit,
-    handleAddEntry,
+    showViewMachineConfirmation,
+    setShowViewMachineConfirmation,
+    entryToDelete,
+    setEntryToDelete,
     anyConfirmationOpen,
+
+    // Bulk SAS Update
     updateAllSasStartDate,
     setUpdateAllSasStartDate,
     updateAllSasEndDate,
     setUpdateAllSasEndDate,
+
+    // Debounced Values
+    debouncedCurrentMetersIn,
+    debouncedCurrentMetersOut,
+    debouncedCurrentRamClearMetersIn,
+    debouncedCurrentRamClearMetersOut,
+
+    // Event Handlers - Selection
+    handleLocationChange,
+    handleClose,
+    handleDisabledFieldClick,
+
+    // Event Handlers - Entry
+    handleAddOrUpdateEntry,
+    handleEditCollectedEntry,
+    handleDeleteCollectedEntry,
+    handleAddEntry,
+    confirmUpdateEntry,
+    confirmDeleteEntry,
+
+    // Event Handlers - Rollover
+    handleConfirmMachineRollover,
+    handleCancelMachineRollover,
+    handleCancelEdit,
+
+    // Event Handlers - Report
+    confirmCreateReports,
+
+    // Event Handlers - Bulk
     handleApplyAllDates,
   };
 }
-

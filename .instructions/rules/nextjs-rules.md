@@ -47,16 +47,24 @@ All contributors should adhere to the following rules, which are enforced throug
 **CRITICAL**: Never import the React namespace itself.
 
 **Rules:**
+
 - ❌ **NEVER** use `import React from 'react'` or `import * as React from 'react'`
 - ❌ **NEVER** use `React.useState`, `React.useEffect`, `React.FC`, etc.
 - ✅ **ALWAYS** import hooks and types directly: `import { useState, useEffect } from 'react'`
 - ✅ **ALWAYS** import types directly: `import { FC, ChangeEvent, ReactNode } from 'react'`
 
 **Correct patterns:**
+
 ```typescript
 // ✅ CORRECT - Direct named imports
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { FC, ChangeEvent, ReactNode, ElementRef, ComponentPropsWithoutRef } from 'react';
+import {
+  FC,
+  ChangeEvent,
+  ReactNode,
+  ElementRef,
+  ComponentPropsWithoutRef,
+} from 'react';
 
 // ❌ INCORRECT - React namespace
 import React from 'react';
@@ -65,10 +73,12 @@ const [state, setState] = React.useState(); // Never do this
 ```
 
 **Common hooks to import directly:**
+
 - Hooks: `useState`, `useEffect`, `useCallback`, `useMemo`, `useRef`, `useContext`, `useReducer`, `useLayoutEffect`, `useImperativeHandle`, `forwardRef`, `memo`, `Children`, `createContext`, `createElement`, `Fragment`
 - Types: `FC`, `FunctionComponent`, `Dispatch`, `SetStateAction`, `ChangeEvent`, `MouseEvent`, `KeyboardEvent`, `FormEvent`, `FocusEvent`, `RefObject`, `MutableRefObject`, `ReactElement`, `ReactNode`, `PropsWithChildren`, `DetailedHTMLProps`, `HTMLAttributes`, `InputHTMLAttributes`, `ButtonHTMLAttributes`, `ElementRef`, `ComponentPropsWithoutRef`, `ComponentProps`, `CSSProperties`, `ErrorInfo`, `DragEvent`, `SyntheticEvent`, `JSX`
 
 **Legacy cleanup scripts** (if needed):
+
 - `scripts/fix-all-react-usage.ts` - Replaces all `React.` usages with direct imports
 - `scripts/find-all-react-usage.ts` - Finds all remaining `React.` patterns
 - `scripts/remove-all-unused-react.ts` - Removes unused `import * as React`
@@ -113,9 +123,9 @@ const [state, setState] = React.useState(); // Never do this
 
 - **Never ignore ESLint rule violations.**
 - Address all ESLint warnings and errors immediately.
-- Run `pnpm lint` regularly to catch and fix style issues.
+- Run `bun lint` regularly to catch and fix style issues.
 - Follow the established code style in the existing files for consistency.
-- Use ESLint's auto-fix feature when possible: `pnpm lint --fix`.
+- Use ESLint's auto-fix feature when possible: `bun lint --fix`.
 
 **Reference:**
 
@@ -448,7 +458,248 @@ export default function ComponentName(props: ComponentProps) {
 
 ---
 
-## 4.4. JSX Commenting & Spacing (Frontend)
+## 4.4. Custom Hook Structure - CRITICAL REQUIREMENTS
+
+**MANDATORY**: All custom hooks must follow a consistent organization pattern for maintainability.
+
+### Hook Structure Template
+
+```typescript
+/**
+ * use[HookName] Hook
+ *
+ * [Brief description of hook purpose]
+ *
+ * [Additional context about what the hook manages]
+ *
+ * Architecture:
+ * - [Architecture point 1]
+ * - [Architecture point 2]
+ * - [Architecture point 3]
+ */
+
+'use client';
+
+// ============================================================================
+// External Dependencies
+// ============================================================================
+
+import { dep1, dep2 } from '@/lib/helpers/[feature]';
+import { useStore } from '@/lib/store/[store]';
+import type { Type1, Type2 } from '@/lib/types/[types]';
+import { utility1, utility2 } from '@/lib/utils/[utils]';
+import axios from 'axios';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+type UseHookNameProps = {
+  prop1: string;
+  prop2?: number;
+  onSuccess?: () => void;
+};
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * [Description of what helper does]
+ */
+function helperFunction(params) {
+  // Implementation
+}
+
+// ============================================================================
+// Main Hook
+// ============================================================================
+
+export function useHookName({ prop1, prop2, onSuccess }: UseHookNameProps) {
+  // ==========================================================================
+  // Store State - [Brief description]
+  // ==========================================================================
+  const { storeValue, setStoreValue } = useStore();
+
+  // ==========================================================================
+  // Local State - [Grouped by concern]
+  // ==========================================================================
+
+  // [Concern 1: Brief description]
+  const [state1, setState1] = useState<type1>();
+  const [state2, setState2] = useState<type2>();
+
+  // [Concern 2: Brief description]
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // ==========================================================================
+  // Form Data Bindings - [Brief description]
+  // ==========================================================================
+
+  const { field1, field2 } = formData;
+  const setField1 = (val: type1) => setFormData({ field1: val });
+  const setField2 = (val: type2) => setFormData({ field2: val });
+
+  // ==========================================================================
+  // Computed Values (useMemo)
+  // ==========================================================================
+
+  /**
+   * [Brief description of computed value]
+   */
+  const computedValue = useMemo(() => {
+    // Implementation
+  }, [dependencies]);
+
+  // ==========================================================================
+  // Debounced Values
+  // ==========================================================================
+
+  const debouncedValue = useDebounce(value, 500);
+
+  // ==========================================================================
+  // Refs
+  // ==========================================================================
+
+  const callbackRef = useRef(onSuccess);
+  const hasFetchedRef = useRef(false);
+
+  // ==========================================================================
+  // Effects
+  // ==========================================================================
+
+  /**
+   * [Brief description of effect]
+   */
+  useEffect(() => {
+    // Implementation
+  }, [dependencies]);
+
+  // ==========================================================================
+  // Event Handlers - [Category 1]
+  // ==========================================================================
+
+  /**
+   * [Brief description of handler]
+   */
+  const handleAction1 = useCallback(() => {
+    // Implementation
+  }, [dependencies]);
+
+  /**
+   * [Brief description of handler]
+   */
+  const handleAction2 = useCallback(() => {
+    // Implementation
+  }, [dependencies]);
+
+  // ==========================================================================
+  // Event Handlers - [Category 2]
+  // ==========================================================================
+
+  /**
+   * [Brief description of handler]
+   */
+  const handleSubmit = useCallback(async () => {
+    // Implementation
+  }, [dependencies]);
+
+  // ==========================================================================
+  // Return
+  // ==========================================================================
+
+  return {
+    // State
+    state1,
+    state2,
+    isLoading,
+    error,
+    // Computed
+    computedValue,
+    // Handlers
+    handleAction1,
+    handleAction2,
+    handleSubmit,
+  };
+}
+```
+
+### Requirements
+
+1. **File-Level JSDoc**: Must describe hook purpose and architecture
+2. **Section Organization**: Use section comments to organize code
+3. **State Grouping**: Group related state by concern (e.g., "Selection State", "Processing State")
+4. **Helper Functions**: Define small helpers before the main hook
+5. **Event Handler Grouping**: Group handlers by category (e.g., "Location & Machine Selection", "Form Submission")
+6. **Computed Values**: Use useMemo for expensive calculations
+7. **Debounced Values**: Use for input fields to prevent excessive processing
+8. **Refs**: Use for callback persistence and flags
+9. **Effects**: Document each effect with a brief description
+
+### Section Order (CRITICAL)
+
+The sections MUST appear in this order:
+
+1. External Dependencies
+2. Type Definitions
+3. Helper Functions
+4. Main Hook Function
+5. Store State
+6. Local State (grouped by concern)
+7. Form Data Bindings
+8. Computed Values (useMemo)
+9. Debounced Values
+10. Refs
+11. Effects
+12. Event Handlers (grouped by category)
+13. Return
+
+### State Grouping Examples
+
+**Good grouping by concern:**
+
+```typescript
+// Location & Machine Selection
+const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
+  null
+);
+const [selectedMachineId, setSelectedMachineId] = useState<
+  string | undefined
+>();
+
+// Machine Data Entry
+const [metersIn, setMetersIn] = useState('');
+const [metersOut, setMetersOut] = useState('');
+const [isFirstCollection, setIsFirstCollection] = useState(false);
+
+// Processing State
+const [isProcessing, setIsProcessing] = useState(false);
+const [error, setError] = useState<string | null>(null);
+```
+
+**Bad grouping (no grouping):**
+
+```typescript
+const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
+  null
+);
+const [metersIn, setMetersIn] = useState('');
+const [isProcessing, setIsProcessing] = useState(false);
+const [selectedMachineId, setSelectedMachineId] = useState<
+  string | undefined
+>();
+```
+
+### Reference Examples
+
+- `lib/hooks/collectionReport/useNewCollectionModal.ts` - Exemplary hook organization
+
+---
+
+## 4.5. JSX Commenting & Spacing (Frontend)
 
 **CRITICAL**: JSX should be easy to navigate and understand. Use comments and spacing strategically (see `Documentation/frontend/FRONTEND_GUIDELINES.md` for full details).
 

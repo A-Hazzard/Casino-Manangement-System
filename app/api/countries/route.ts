@@ -11,6 +11,7 @@
  * @module app/api/countries/route
  */
 
+import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
@@ -175,8 +176,20 @@ export async function PUT(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3: Update country
+    // STEP 3: Pre-fetch existing country for before-state
     // ============================================================================
+    const existingCountry = await Countries.findOne({ _id }).lean();
+    if (!existingCountry) {
+      return NextResponse.json(
+        { error: 'Country not found' },
+        { status: 404 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 4: Update country
+    // ============================================================================
+    console.log(`[Countries PUT] Request — id: ${_id}, fields: ${[name && 'name', alpha2 && 'alpha2', alpha3 && 'alpha3', isoNumeric && 'isoNumeric'].filter(Boolean).join(', ')}`);
     const updateData: Record<string, unknown> = {};
     if (name) updateData.name = name;
     if (alpha2) updateData.alpha2 = alpha2.toUpperCase();
@@ -196,6 +209,25 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    console.log(`[Countries PUT] Updated country "${updatedCountry.name}" (${_id})`);
+    logActivity({
+      action: 'update',
+      details: `Country "${updatedCountry.name}" updated`,
+      userId: String(user._id),
+      username: String(user.emailAddress || user.username || user._id),
+      metadata: {
+        resource: 'country',
+        resourceId: String(_id),
+        resourceName: String(updatedCountry.name),
+        changes: calculateChanges(
+          existingCountry as Record<string, unknown>,
+          updateData
+        ),
+        previousData: existingCountry,
+        newData: updatedCountry.toObject(),
+      },
+    }).catch(err => console.error('[Countries PUT] Activity log failed:', err));
+
     return NextResponse.json({
       success: true,
       country: updatedCountry,
@@ -203,7 +235,7 @@ export async function PUT(req: NextRequest) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to update country';
-    console.error('[Countries API] Update error:', errorMessage);
+    console.error('[Countries PUT] Update error:', errorMessage);
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }

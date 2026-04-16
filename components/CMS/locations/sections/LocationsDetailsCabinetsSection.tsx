@@ -86,6 +86,7 @@ type LocationsDetailsCabinetsSectionProps = {
   selectedGameType: string;
   sortOption: CabinetSortOption;
   sortOrder: 'asc' | 'desc';
+  selectedSmibStatus: string;
   // Pagination
   currentPage: number;
   effectiveTotalPages: number;
@@ -104,6 +105,7 @@ type LocationsDetailsCabinetsSectionProps = {
   setSearchTerm: (value: string) => void;
   setSelectedStatus: (status: string) => void;
   setSelectedGameType: (type: string) => void;
+  setSelectedSmibStatus: (status: string) => void;
   setSortOption: (option: CabinetSortOption) => void;
   setSortOrder: (order: 'asc' | 'desc') => void;
   setCurrentPage: (page: number) => void;
@@ -146,6 +148,7 @@ export default function LocationsDetailsCabinetsSection({
   searchTerm,
   selectedStatus,
   selectedGameType,
+  selectedSmibStatus,
   sortOption,
   sortOrder,
   currentPage,
@@ -156,6 +159,7 @@ export default function LocationsDetailsCabinetsSection({
   membershipStats,
   setSearchTerm,
   setSelectedGameType,
+  setSelectedSmibStatus,
   setSortOption,
   setSortOrder,
   setCurrentPage,
@@ -230,6 +234,7 @@ export default function LocationsDetailsCabinetsSection({
     filteredCabinets,
     selectedStatus,
     selectedGameType,
+    selectedSmibStatus,
     searchTerm,
     sortOption,
     sortOrder,
@@ -428,6 +433,24 @@ export default function LocationsDetailsCabinetsSection({
               />
             </div>
 
+            {/* SMIB Status Filter */}
+            <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[150px] lg:min-w-[180px]">
+              <CustomSelect
+                value={selectedSmibStatus}
+                onValueChange={setSelectedSmibStatus}
+                options={[
+                  { value: 'all', label: 'All SMIB Status' },
+                  { value: 'smib', label: 'Only SMIB' },
+                  { value: 'no-smib', label: 'No SMIB' },
+                ]}
+                placeholder="SMIB Status"
+                className="w-full"
+                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={false}
+                emptyMessage="No SMIB options found"
+              />
+            </div>
+
             {/* Show Archived Toggle */}
             {canViewArchived && (
               <div className="flex items-center gap-2 px-2">
@@ -515,6 +538,23 @@ export default function LocationsDetailsCabinetsSection({
                 triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
                 searchable={false}
                 emptyMessage="No status options found"
+              />
+            </div>
+
+            <div className="relative w-44 flex-shrink-0">
+              <CustomSelect
+                value={selectedSmibStatus}
+                onValueChange={setSelectedSmibStatus}
+                options={[
+                  { value: 'all', label: 'All SMIB Status' },
+                  { value: 'smib', label: 'Only SMIB' },
+                  { value: 'no-smib', label: 'No SMIB' },
+                ]}
+                placeholder="SMIB Status"
+                className="w-full"
+                triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={false}
+                emptyMessage="No SMIB options found"
               />
             </div>
             <div className="relative w-40 flex-shrink-0">

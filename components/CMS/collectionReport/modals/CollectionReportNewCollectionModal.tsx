@@ -214,6 +214,8 @@ export default function CollectionReportNewCollectionModal({
 
   return (
     <>
+
+    {/* Main Container */}
       <Dialog 
         open={show} 
         onOpenChange={(open) => {
@@ -226,9 +228,10 @@ export default function CollectionReportNewCollectionModal({
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
+          {/* Top Left Of the Container */}
           <DialogHeader className="p-4 pb-0 md:p-6">
             <DialogTitle className="text-xl font-bold md:text-2xl">
-              New Collection Report Batch
+              Collection Report Form
             </DialogTitle>
             <DialogDescription>
               Create a new collection report for the selected location and
@@ -270,6 +273,7 @@ export default function CollectionReportNewCollectionModal({
                 <>
                   <CollectionReportNewCollectionFormFields
                     selectedLocationName={selectedLocationName}
+                    currentCollectionTime={currentCollectionTime}
                     previousCollectionTime={
                       previousCollectionTime
                         ? typeof previousCollectionTime === 'string'
@@ -278,7 +282,6 @@ export default function CollectionReportNewCollectionModal({
                         : null
                     }
                     machineForDataEntry={machineForDataEntry || null}
-                    currentCollectionTime={currentCollectionTime}
                     showAdvancedSas={showAdvancedSas}
                     sasStartTime={sasStartTime}
                     sasEndTime={sasEndTime}
@@ -523,6 +526,18 @@ export default function CollectionReportNewCollectionModal({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+
+
+
+
+
+
+
+
+
+
+      
 
       {/* Machine Rollover/Ramclear Warning */}
       <InfoConfirmationDialog

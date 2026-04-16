@@ -54,8 +54,9 @@ function MembersPageContentInner() {
     (user.roles.includes('developer') || user.roles.includes('admin') || user.roles.includes('owner'))
   );
 
-  // Filter tabs - only show activity log to management
+  // Filter tabs - apply maintenance state first, then role-based access
   const availableTabs = MEMBERS_TABS_CONFIG.filter(tab => {
+    if (tab.available === false) return false;
     if (tab.id === 'activity-log') return isManagement;
     return true;
   });

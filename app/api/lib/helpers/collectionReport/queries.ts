@@ -61,7 +61,9 @@ export async function fetchLocationsWithMachines(
       .assignedLocations;
   }
   const isAdmin =
-    userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
+    userRoles.includes('admin') ||
+    userRoles.includes('developer') ||
+    userRoles.includes('owner');
 
   // Get user's accessible locations based on role and permissions
   const allowedLocationIds = await getUserLocationFilter(
@@ -95,6 +97,7 @@ export async function fetchLocationsWithMachines(
         name: 1,
         previousCollectionTime: 1,
         profitShare: 1,
+        collectionBalance: 1,
         gameDayOffset: 1,
       },
     },
@@ -135,6 +138,7 @@ export async function fetchLocationsWithMachines(
         name: 1,
         previousCollectionTime: 1,
         profitShare: 1,
+        collectionBalance: 1,
         gameDayOffset: 1,
         machines: {
           $map: {
@@ -288,11 +292,14 @@ export async function determineAllowedLocationIds(
   userLicencees: string[],
   userLocationPermissions: string[]
 ): Promise<string[] | 'all'> {
-  const isAdmin =
-    userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
+  const hasAllLocationAccess =
+    userRoles.includes('admin') ||
+    userRoles.includes('developer') ||
+    userRoles.includes('owner') ||
+    userRoles.includes('reviewer');
   const isManager = userRoles.includes('manager');
 
-  if (isAdmin) {
+  if (hasAllLocationAccess) {
     return 'all';
   }
 

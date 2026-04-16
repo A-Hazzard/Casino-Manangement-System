@@ -99,6 +99,10 @@ function AdministrationActivityLogsTable({
   const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
   const isDeveloper = userRoles.includes('developer');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // ObjectID resolution state (developer-only)
+  const [resolveProgress, setResolveProgress] = useState<{ updated: number; total: number; remaining: number } | null>(null);
+  const [isResolving, setIsResolving] = useState(false);
   const [logToDelete, setLogToDelete] = useState<ActivityLog | null>(null);
   const [deleteType, setDeleteType] = useState<'soft' | 'hard'>('soft');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -475,6 +479,43 @@ function AdministrationActivityLogsTable({
     };
   }, [fetchInitialBatch]);
 
+  // Developer-only: poll to resolve ObjectID resourceNames every 5 seconds
+  useEffect(() => {
+    if (!isDeveloper) return;
+
+    const runResolve = async () => {
+      if (isResolving) return;
+      setIsResolving(true);
+      try {
+        const res = await fetch('/api/admin/resolve-machine-names?limit=100');
+        const data = await res.json();
+        if (data.success) {
+          setResolveProgress({ updated: data.updated, total: data.total, remaining: data.remaining });
+          // If any logs were updated, refresh the table
+          if (data.updated > 0) {
+            fetchInitialBatch();
+          }
+        }
+      } catch {
+        // Silently ignore resolution errors
+      } finally {
+        setIsResolving(false);
+      }
+    };
+
+    // Run immediately on mount
+    runResolve();
+
+    // Then poll every 5 seconds while there are remaining logs
+    const interval = setInterval(() => {
+      if (resolveProgress === null || resolveProgress.remaining > 0) {
+        runResolve();
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isDeveloper, fetchInitialBatch]);
+
   // Handle delete action
   const handleDeleteClick = (log: ActivityLog) => {
     setLogToDelete(log);
@@ -508,6 +549,19 @@ function AdministrationActivityLogsTable({
 
   return (
     <div className={className}>
+      {/* Developer-only: ObjectID resolution progress banner */}
+      {isDeveloper && resolveProgress !== null && resolveProgress.total > 0 && (
+        <div className="mb-3 flex items-center gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm text-violet-800">
+          <span className="font-semibold text-violet-600">[DEV]</span>
+          {resolveProgress.remaining > 0 ? (
+            <span>
+              Resolving machine names: <strong>{resolveProgress.updated}</strong> updated this pass, <strong>{resolveProgress.remaining}</strong> remaining…
+            </span>
+          ) : (
+            <span>Machine name resolution complete — <strong>{resolveProgress.total}</strong> names resolved.</span>
+          )}
+        </div>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

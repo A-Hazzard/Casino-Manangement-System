@@ -7,10 +7,10 @@
 
 ## Project at a Glance
 
-**Evolution1 CMS** is a casino management system (Next.js 16 App Router, TypeScript, MongoDB/Mongoose, Zustand, React Query). Two modes: `CMS` (dashboards, analytics, collection reports) and `VAULT` (cashier shifts, float requests).
+**Evolution1 CMS** is a casino management system (Next.js 16 App Router, TypeScript, MongoDB/Mongoose, Zustand, React Query). It is a single unified application — the interface each user sees (CMS dashboard vs. Vault operations) is determined entirely by their assigned role after login.
 
 Key rules:
-- `pnpm` only
+- `bun` only
 - No `import React from 'react'` — import named exports directly
 - `type` over `interface`, no `any`
 - Cookie security: always `getAuthCookieOptions(request)` — never hardcode `secure: true`
@@ -182,7 +182,6 @@ interface CheckVariationsMachine {
 
 ## Environment
 
-- Dev server: `pnpm run dev` → `localhost:3000`
+- Dev server: `bun run dev` → `localhost:3000`
 - Production DB connected (no test writes)
-- `NEXT_PUBLIC_APPLICATION=CMS`
 - Cookie: `COOKIE_SECURE=false` for LAN/HTTP dev

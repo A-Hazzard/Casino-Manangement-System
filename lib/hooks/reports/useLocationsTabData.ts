@@ -236,12 +236,15 @@ export function useLocationsTabData({
     await makeGamingLocationsRequest(async signal => {
       setGamingLocationsLoading(true);
       try {
+        // "licencee=9a5db2cb29ffd2d962fd1d91" (empty string if no licencee selected)
         const params = new URLSearchParams();
         // Always pass licencee parameter so API knows user's selection
         if (selectedLicencee) {
           params.append('licencee', selectedLicencee);
+          // "licencee=9a5db2cb29ffd2d962fd1d91"
         }
 
+        // GET /api/locations?licencee=9a5db2cb29ffd2d962fd1d91
         const response = await axios.get(
           `/api/locations?${params.toString()}`,
           {
@@ -275,14 +278,19 @@ export function useLocationsTabData({
         // Set time period
         if (activeMetricsFilter === 'Today') {
           params.append('timePeriod', 'Today');
+          // "timePeriod=Today"
         } else if (activeMetricsFilter === 'Yesterday') {
           params.append('timePeriod', 'Yesterday');
+          // "timePeriod=Yesterday"
         } else if (activeMetricsFilter === '7d') {
           params.append('timePeriod', '7d');
+          // "timePeriod=7d"
         } else if (activeMetricsFilter === '30d') {
           params.append('timePeriod', '30d');
+          // "timePeriod=30d"
         } else if (activeMetricsFilter === 'All Time') {
           params.append('timePeriod', 'All Time');
+          // "timePeriod=All+Time"
         } else if (activeMetricsFilter === 'Custom' && customDateRange) {
           if (customDateRange.startDate && customDateRange.endDate) {
             const sd =
@@ -296,6 +304,7 @@ export function useLocationsTabData({
             params.append('startDate', sd.toISOString());
             params.append('endDate', ed.toISOString());
             params.append('timePeriod', 'Custom');
+            // "startDate=2026-01-01T04:00:00.000Z&endDate=2026-01-31T04:00:00.000Z&timePeriod=Custom"
           } else {
             return;
           }
@@ -305,16 +314,20 @@ export function useLocationsTabData({
 
         if (selectedLicencee && selectedLicencee !== 'all') {
           params.append('licencee', selectedLicencee);
+          // "timePeriod=Yesterday&licencee=9a5db2cb29ffd2d962fd1d91"
         }
 
         if (displayCurrency) {
           params.append('currency', displayCurrency);
+          // "timePeriod=Yesterday&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD"
         }
 
         // Request all locations (high limit like dashboard)
         params.append('limit', '1000000');
         params.append('page', '1');
+        // "timePeriod=Yesterday&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&limit=1000000&page=1"
 
+        // GET /api/locationAggregation?timePeriod=Yesterday&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&limit=1000000&page=1
         const requestKey = `/api/locationAggregation?${params.toString()}`;
 
         // Use deduplication to prevent duplicate requests
@@ -544,6 +557,7 @@ export function useLocationsTabData({
         setLocationsLoading(false);
 
         // Build API parameters for dropdown
+        // "limit=1000&page=1&showAllLocations=true&summary=true"
         const params: Record<string, string> = {
           limit: '1000',
           page: '1',
@@ -553,19 +567,23 @@ export function useLocationsTabData({
 
         if (selectedLicencee && selectedLicencee !== 'all') {
           params.licencee = selectedLicencee;
+          // "limit=1000&page=1&showAllLocations=true&summary=true&licencee=9a5db2cb29ffd2d962fd1d91"
         }
 
         if (displayCurrency) {
           params.currency = displayCurrency;
+          // "...&currency=TTD"
         }
 
         if (activeTab === 'location-evaluation') {
           params.sasEvaluationOnly = 'true';
+          // "...&sasEvaluationOnly=true" (only when on SAS evaluation tab)
         }
 
         buildTimePeriodParams(params);
+        // "...&timePeriod=Yesterday"
 
-        // API call to get location data with financial metrics
+        // GET /api/reports/locations?limit=1000&page=1&showAllLocations=true&summary=true&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&timePeriod=Yesterday
         const response = await axios.get('/api/reports/locations', {
           params,
           timeout: 60000,
@@ -802,6 +820,7 @@ export function useLocationsTabData({
       setTopMachinesLoading(true);
       // Don't set global loading - use specific topMachinesLoading state
       try {
+        // "type=all"
         const params: Record<string, string | string[]> = {
           type: 'all',
         };
@@ -809,15 +828,19 @@ export function useLocationsTabData({
         if (currentSelectedLocations.length > 0) {
           if (currentSelectedLocations.length === 1) {
             params.locationId = currentSelectedLocations[0];
+            // "type=all&locationId=6801f2a3b4c5d6e7f8901234" (only appended for a single selected location)
           }
         }
 
         if (selectedLicencee && selectedLicencee !== 'all') {
           params.licencee = selectedLicencee;
+          // "type=all&locationId=6801f2a3b4c5d6e7f8901234&licencee=9a5db2cb29ffd2d962fd1d91"
         }
 
         buildTimePeriodParams(params);
+        // "type=all&locationId=6801f2a3b4c5d6e7f8901234&licencee=9a5db2cb29ffd2d962fd1d91&timePeriod=Yesterday"
 
+        // GET /api/reports/machines?type=all&locationId=6801f2a3b4c5d6e7f8901234&licencee=9a5db2cb29ffd2d962fd1d91&timePeriod=Yesterday
         const response = await axios.get('/api/reports/machines', {
           params,
           signal,
@@ -884,6 +907,7 @@ export function useLocationsTabData({
       setBottomMachinesLoading(true);
       // Don't set global loading - use specific bottomMachinesLoading state
       try {
+        // "type=all"
         const params: Record<string, string | string[]> = {
           type: 'all',
         };
@@ -891,15 +915,19 @@ export function useLocationsTabData({
         if (currentSelectedLocations.length > 0) {
           if (currentSelectedLocations.length === 1) {
             params.locationId = currentSelectedLocations[0];
+            // "type=all&locationId=6801f2a3b4c5d6e7f8901234"
           }
         }
 
         if (selectedLicencee && selectedLicencee !== 'all') {
           params.licencee = selectedLicencee;
+          // "type=all&locationId=6801f2a3b4c5d6e7f8901234&licencee=9a5db2cb29ffd2d962fd1d91"
         }
 
         buildTimePeriodParams(params);
+        // "type=all&locationId=6801f2a3b4c5d6e7f8901234&licencee=9a5db2cb29ffd2d962fd1d91&timePeriod=Yesterday"
 
+        // GET /api/reports/machines?type=all&locationId=6801f2a3b4c5d6e7f8901234&licencee=9a5db2cb29ffd2d962fd1d91&timePeriod=Yesterday
         const response = await axios.get('/api/reports/machines', {
           params,
           signal,
@@ -972,24 +1000,30 @@ export function useLocationsTabData({
       await makeTrendDataRequest(async signal => {
         setLocationTrendLoading(true);
         try {
+          // "locationIds=6801f2a3b4c5d6e7f8901234,6802f3b4c5d6e7f890123456"
           const params: Record<string, string> = {
             locationIds: locationsToFetch.join(','),
           };
 
           if (selectedLicencee && selectedLicencee !== 'all') {
             params.licencee = selectedLicencee;
+            // "locationIds=6801f2a3b4c5d6e7f8901234,6802f3b4c5d6e7f890123456&licencee=9a5db2cb29ffd2d962fd1d91"
           }
 
           if (displayCurrency) {
             params.currency = displayCurrency;
+            // "...&currency=TTD"
           }
 
           buildTimePeriodParams(params);
+          // "...&timePeriod=Yesterday"
 
           if (chartGranularity) {
             params.granularity = chartGranularity;
+            // "...&granularity=hourly"
           }
 
+          // GET /api/analytics/location-trends?locationIds=6801f2a3b4c5d6e7f8901234,6802f3b4c5d6e7f890123456&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&timePeriod=Yesterday&granularity=hourly
           const response = await axios.get('/api/analytics/location-trends', {
             params,
             signal,

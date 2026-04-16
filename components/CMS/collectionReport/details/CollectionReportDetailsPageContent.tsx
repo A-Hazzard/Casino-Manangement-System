@@ -15,7 +15,7 @@
 
 'use client';
 
-import CollectionReportDetailsCollectionsTable from '@/components/CMS/collectionReport/details/CollectionReportDetailsCollectionsTable';
+import { CollectionReportDetailsCollectionsTable } from '@/components/CMS/collectionReport/details/CollectionReportDetailsCollectionsTable';
 import CollectionReportDetailsLocationMetricsTab from '@/components/CMS/collectionReport/details/CollectionReportDetailsLocationMetricsTab';
 import CollectionReportDetailsSasCompareTab from '@/components/CMS/collectionReport/details/CollectionReportDetailsSasCompareTab';
 import CollectionReportEditCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportEditCollectionModal';
@@ -41,17 +41,16 @@ export default function CollectionReportDetailsPageContent() {
   const hook = useCollectionReportDetailsData();
   const user = useUserStore(state => state.user);
 
-  // Only developer, owner and admin (not location admin) can edit
-  const canEdit = !!(
-    user?.roles &&
-    (user.roles.includes('developer') || user.roles.includes('admin') || user.roles.includes('owner')) &&
-    !user.roles.includes('location admin')
-  );
+  // Only developer, owner and admin can edit
+  const canEdit = !!(user?.roles && (user.roles.includes('developer') || user.roles.includes('admin') || user.roles.includes('owner')));
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editLocations, setEditLocations] = useState<CollectionReportLocationWithMachines[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
 
+  // ============================================================================
+  // Table Interaction & Edit Handlers
+  // ============================================================================
   const handleOpenEdit = useCallback(async () => {
     if (loadingLocations) return;
     setLoadingLocations(true);
@@ -88,7 +87,7 @@ export default function CollectionReportDetailsPageContent() {
   } = hook;
 
   // ============================================================================
-  // Effects
+  // Tab Transition Effects
   // ============================================================================
   // Animate tab transitions on desktop
   useEffect(() => {
@@ -96,15 +95,11 @@ export default function CollectionReportDetailsPageContent() {
   }, [activeTab, tabContentRef]);
 
   // ============================================================================
-  // Computed Values
+  // Report Financial Calculations
   // ============================================================================
   const locationTotal = reportData ? calculateLocationTotal(collections) : 0;
-  const textColorClass = locationTotal < 0 ? 'text-red-600' : 'text-green-600';
-
-
-  // ============================================================================
-  // Render Logic
-  // ============================================================================
+  //red = negative values, green = positive values
+  const textColorClass = locationTotal < 0 ? 'text-red-600' : 'text-green-600'; 
   if (loading) return <CollectionReportSkeleton />;
 
   // Handle error states
@@ -170,7 +165,7 @@ export default function CollectionReportDetailsPageContent() {
       onRefresh={handleRefresh}
       refreshing={loading}
     >
-      {/* Header Section (Desktop Only): Back button, title, and Fix Report button */}
+      {/* Header Section (Desktop Only): Back button, title */}
       <div className="hidden px-2 pt-6 lg:block lg:px-6">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -261,7 +256,8 @@ export default function CollectionReportDetailsPageContent() {
               {reportData.locationName}
             </h1>
             <p className="mb-4 text-sm text-gray-600 lg:text-base">
-              Report ID: {reportData.reportId}
+              {/* TODO Change to Compound field later to a more understandable report ID rather than using _id*/}
+              Report ID: {reportData.reportId} 
             </p>
             <p className={`text-lg font-semibold`}>
               Collection Report Machine Total Gross:{' '}
@@ -279,6 +275,7 @@ export default function CollectionReportDetailsPageContent() {
 
       {/* Desktop Content Section: Sidebar navigation (1/4 width) and main content (3/4 width) */}
       <div className="hidden px-2 pb-6 lg:flex lg:flex-row lg:space-x-6 lg:px-6">
+        {/* Sidebar */}
         <div className="mb-6 lg:mb-0 lg:w-1/4">
           <div className="space-y-2 rounded-lg bg-white p-3 shadow">
             <h3 className="mb-4 text-lg font-semibold text-gray-800">
@@ -291,6 +288,8 @@ export default function CollectionReportDetailsPageContent() {
             </div>
           </div>
         </div>
+
+        {/* Main Content */}
         <div className="lg:w-3/4" ref={tabContentRef}>
           {activeTab === 'Machine Metrics' && (
             <CollectionReportDetailsCollectionsTable

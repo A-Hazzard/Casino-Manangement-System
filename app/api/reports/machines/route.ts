@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
     try {
       // ============================================================================
       // STEP 1: Parse and validate request parameters
+      // Example: GET /api/reports/machines?type=all&locationId=6801f2a3b4c5d6e7f8901234&licencee=9a5db2cb29ffd2d962fd1d91&timePeriod=Yesterday
       // ============================================================================
       const { searchParams } = new URL(req.url);
       const type = searchParams.get('type');

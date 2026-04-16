@@ -83,6 +83,7 @@ export default function CabinetsPageContent() {
     selectedGameType,
     selectedStatus,
     selectedMembership,
+    selectedSmibStatus,
     isNewMovementOpen,
     isUploadSmibOpen,
     refreshTrigger,
@@ -96,6 +97,7 @@ export default function CabinetsPageContent() {
     setSelectedGameType,
     setSelectedStatus,
     setSelectedMembership,
+    setSelectedSmibStatus,
     setCurrentPage,
     handleColumnSort,
     handleRefresh,
@@ -328,6 +330,8 @@ export default function CabinetsPageContent() {
                 onStatusChange={setSelectedStatus}
                 selectedMembership={selectedMembership}
                 onMembershipChange={setSelectedMembership}
+                selectedSmibStatus={selectedSmibStatus}
+                onSmibStatusChange={setSelectedSmibStatus}
                 sortOption={sortOption}
                 sortOrder={sortOrder}
                 onSortChange={handleColumnSort}

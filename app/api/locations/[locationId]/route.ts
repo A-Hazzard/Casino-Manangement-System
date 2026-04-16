@@ -3,6 +3,7 @@
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
+import { getReviewerScale } from '@/app/api/lib/utils/reviewerScale';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -119,6 +120,7 @@ export async function GET(request: NextRequest) {
       const customStart = searchParams.get('startDate');
       const customEnd = searchParams.get('endDate');
       const onlineStatus = searchParams.get('onlineStatus') || 'all';
+      const smibStatus = (searchParams.get('smibStatus') || 'all').toLowerCase();
       const limitParam = searchParams.get('limit');
       const limit = limitParam ? parseInt(limitParam) : undefined;
       const page = parseInt(searchParams.get('page') || '1');
@@ -160,8 +162,7 @@ export async function GET(request: NextRequest) {
         )?.includeJackpot;
       }
 
-      const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
-      const reviewerScale = reviewerMult !== null ? 1 - reviewerMult : 1;
+      const reviewerScale = getReviewerScale(userPayload as { multiplier?: number | null; roles?: string[] });
 
       const includeArchived = searchParams.get('includeArchived') === 'true';
       const mMatch: Record<string, unknown> = {
@@ -211,6 +212,24 @@ export async function GET(request: NextRequest) {
             (mMatch.$and as unknown[]).push({
               $or: [{ lastActivity: { $exists: false } }, { lastActivity: null }],
             });
+        }
+      }
+
+      if (smibStatus !== 'all') {
+        if (smibStatus === 'smib') {
+          (mMatch.$and as unknown[]).push({
+            $or: [
+              { relayId: { $ne: '', $exists: true, $not: /^\s*$/ } },
+              { smibBoard: { $ne: '', $exists: true, $not: /^\s*$/ } },
+            ],
+          });
+        } else if (smibStatus === 'no-smib') {
+          (mMatch.$and as unknown[]).push({
+            $and: [
+              { $or: [{ relayId: '' }, { relayId: null }, { relayId: { $exists: false } }, { relayId: /^\s*$/ }] },
+              { $or: [{ smibBoard: '' }, { smibBoard: null }, { smibBoard: { $exists: false } }, { smibBoard: /^\s*$/ }] },
+            ],
+          });
         }
       }
 

@@ -266,13 +266,11 @@ export function ModernCalendar({
         minutes: date.to.getMinutes(),
       };
     }
-    // For range mode, default end time to 1 minute before gameDayOffset
+    // For range mode, default end time to the same as start time (gameDayOffset:00)
     if (enableTimeInputs && mode === 'range') {
-      // If offset is 0, end time is 23:59
-      const endHours = gameDayOffset === 0 ? 23 : (gameDayOffset - 1 + 24) % 24;
       return {
-        hours: endHours,
-        minutes: 59,
+        hours: gameDayOffset,
+        minutes: 0,
       };
     }
     return null;

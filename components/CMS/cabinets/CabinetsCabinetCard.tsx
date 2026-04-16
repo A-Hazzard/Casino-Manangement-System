@@ -160,7 +160,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
           title={smbId ? 'Click to copy SMIB' : 'No SMIB'}
           disabled={!smbId}
         >
-          {smbId || 'N/A'}
+          {smbId || <span className="font-bold text-red-600">NO SMIB</span>}
         </button>
         {/* Network Badge */}
         {props.network && (

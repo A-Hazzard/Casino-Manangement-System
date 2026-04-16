@@ -571,6 +571,8 @@ export type MembersTab = {
   label: string;
   icon: string;
   description: string;
+  /** false when this tab is under maintenance */
+  available?: boolean;
 };
 
 // Form data types for cabinet creation/editing

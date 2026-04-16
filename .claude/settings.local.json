@@ -11,7 +11,7 @@
       "Bash(node scripts/investigate-meters-boundary.js)",
       "Bash(node scripts/investigate-cumulative-delta.js)",
       "mcp__Claude_Preview__preview_start",
-      "Bash(pnpm run:*)",
+      "Bash(bun run:*)",
       "Bash(ls \"C:\\\\Users\\\\pc\\\\OneDrive\\\\Documents\\\\Github\\\\evolution-one-cms\\\\components\\\\shared\\\\ui\"\" | grep -E \"separator)",
       "Bash(scroll)",
       "Bash(tabs)",
@@ -36,7 +36,9 @@
       "Bash(pkill -f \"next dev\")",
       "Bash(node -e \":*)",
       "Bash(find C:UserspcOneDriveDocumentsGithubevolution-one-cmslib -name id*)",
-      "Bash(node scripts/seed-db.js)"
+      "Bash(node scripts/seed-db.js)",
+      "Bash(xargs wc *)",
+      "Bash(find /c/Users/ahazzard.DYNAMIC1/OneDrive/Documents/Github/evolution-one-cms/app/api -name route.ts -type f -exec sh -c 'lines=$\\(wc -l < \"$1\"\\); if [ \"$lines\" -ge 80 ]; then head -1 \"$1\" | grep -q \"^/\\\\*\\\\*\" || echo \"$1\"; fi' _ '{}' ';')"
     ]
   }
 }

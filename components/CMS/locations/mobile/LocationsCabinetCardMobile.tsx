@@ -181,7 +181,9 @@ export default function LocationsCabinetCardMobile({
           disabled={!cabinet.relayId && !cabinet.smibBoard && !cabinet.smbId}
         >
           <span>
-            {cabinet.relayId || cabinet.smibBoard || cabinet.smbId || 'N/A'}
+            {cabinet.relayId || cabinet.smibBoard || cabinet.smbId || (
+              <span className="font-bold text-red-600">NO SMIB</span>
+            )}
           </span>
           {/* Show copy icon only if SMIB ID exists */}
           {(cabinet.relayId || cabinet.smibBoard || cabinet.smbId) && (

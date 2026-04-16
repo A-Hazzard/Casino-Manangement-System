@@ -1,14 +1,14 @@
 # Collection Report Page Implementation (`/collection-report`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** March 2026  
-**Version:** 4.2.0
+**Last Updated:** April 2026  
+**Version:** 4.3.0
 
 ---
 
 ## 1. Page Overview
 
-Multi-step financial wizard for reconciling electronic machine meters with physical cash collection. The page also provides management views for historical reports, monthly summaries, and collector scheduling.
+Multi-step financial wizard for reconciling electronic machine meters with physical cash collection. The page provides management views for historical reports, monthly summaries, and collector scheduling. Fully responsive with dedicated mobile and desktop layouts.
 
 ---
 
@@ -24,8 +24,9 @@ The primary audit log for all finalized financial collections.
 | **Variance** | `variance` | `GET /api/collectionReport` |
 | **Status** | `isFinalized` | `GET /api/collectionReport` |
 
-- **Filters**: Responsive to `Licencee`, `Location`, `Collector`, and `Date Range`.
-- **Implementation**: `CollectionReportDesktopLayout` component powered by the `collectionReport` API with server-side pagination.
+- **Filters**: Licencee, Location, Collector, Date Range.
+- **Pagination**: Server-side with batch loading. Skeleton loader shown on every fetch trigger (not just initial load).
+- **Implementation**: `CollectionReportDesktopLayout` + `CollectionReportMobileLayout`.
 
 ### 📅 Monthly Revenue Report
 Aggregated financial performance for owner-level reconciliation and tax preparation.
@@ -35,8 +36,8 @@ Aggregated financial performance for owner-level reconciliation and tax preparat
 | **Daily Breakdown** | `details[].date`, `details[].gross` | `GET /api/collectionReport?startDate=&endDate=` |
 | **Variance Total** | `summary.totalVariance` | `GET /api/collectionReport?startDate=&endDate=` |
 
-- **Export**: Provides "Download PDF/Excel" for external accounting handover.
-- **Implementation**: `CollectionReportMonthlyDesktop` using the `getMonthlyCollectionReportSummary` helper.
+- **Export**: PDF and Excel download for external accounting handover.
+- **Implementation**: `CollectionReportMonthlyDesktop` / `CollectionReportMonthlyMobile`.
 
 ### 🗂️ Manager Schedule View
 High-level planning tool for overseeing the property collection cycle.
@@ -46,8 +47,8 @@ High-level planning tool for overseeing the property collection cycle.
 | **Last Collection** | `lastCollectionDate` | `GET /api/collectionReport?locationsWithMachines=true` |
 | **Machine Count** | `machineCount` | `GET /api/collectionReport?locationsWithMachines=true` |
 
-- **Visuals**: Rows are highlighted in Red if a property is "Overdue" (>7 days since last count).
-- **Implementation**: `CollectionReportManagerDesktop`.
+- **Visuals**: Rows highlighted red if a property is overdue (>7 days since last collection).
+- **Implementation**: `CollectionReportManagerDesktop` / `CollectionReportManagerMobile`.
 
 ### 👷 Collectors Schedule View
 The operational task list for field staff performing the counts.
@@ -57,57 +58,92 @@ The operational task list for field staff performing the counts.
 | **Machine List** | `machines[].machineId` | `GET /api/collectionReport?locationsWithMachines=true` |
 | **Pending Items** | `incompleteCount` | `GET /api/collections?incompleteOnly=true` |
 
-- **Mobile Optimized**: The view switches to a "Task Checklist" card on mobile for one-handed operation.
-- **Implementation**: `CollectionReportCollectorDesktop`.
+- **Mobile**: Switches to card-based task checklist for one-handed operation.
+- **Implementation**: `CollectionReportCollectorDesktop` / `CollectionReportCollectorMobile`.
 
 ---
 
 ## 3. The 3-Step Collection Wizard
 
-Triggered via the **"Create Collection Report"** button. Each step must be completed before proceeding to the next.
+Triggered via **"Create Collection Report"**. Both a desktop modal (`CollectionReportNewCollectionModal`) and a mobile modal (`CollectionReportMobileNewCollectionModal`) exist with feature parity.
 
 ### STEP 1: Property & Asset Selection
-- **UI**: Select a Location from a dropdown, then check all machines to include in this batch.
-- **Data**: Machine list is fetched from `GET /api/collectionReport?locationsWithMachines=true`.
-- **Sync**: Clicking a machine's "Sync" icon fetches live SAS meters from the hardware in real time.
-- **API**: Machine entries are staged via `POST /api/collections` (creates an `isCompleted: false` Draft record).
+
+- **Location Dropdown**: Uses `LocationSingleSelect` component — rendered via a **React portal** (`createPortal` to `document.body`) to escape `overflow: hidden` clipping inside the modal. The dropdown width auto-sizes to the longest location name using a hidden DOM measurement element. Supports 248+ locations without display issues.
+- **Machine List**: Fetched from `GET /api/collectionReport?locationsWithMachines=true`. Includes the location's `gameDayOffset` field to compute correct default collection times.
+- **Sync**: Clicking a machine's "Sync" icon fetches live SAS meters from hardware in real time.
+- **Draft Creation**: Machine entries staged via `POST /api/collections` (creates `isCompleted: false` draft record).
 
 ### STEP 2: Meter & Cash Verification
-- **UI**: Enter the current physical `Meter In` and `Meter Out` readings from each machine cabinet.
-- **Recalculation**: Upon entry, the system auto-calculates `Movement Gross = (Current In - Prev In) - (Current Out - Prev Out)`.
-- **RAM Clear Toggle**: For machines that had a reset, enabling the toggle reveals the `ramClearMeters` fields to bridge the reading gap.
-- **API**: Edits to a draft are saved via `PATCH /api/collections?id=[id]`.
+
+- **UI**: Enter physical `Meter In` / `Meter Out` readings for each machine.
+- **Recalculation**: Auto-calculates `Movement Gross = (Current In - Prev In) - (Current Out - Prev Out)`.
+- **RAM Clear Toggle**: Reveals `ramClearMeters` fields for machines that were reset.
+- **Collection Time Default**: Pre-populated to 1 minute before the `gameDayOffset` boundary (e.g. 7:59 AM for an 8 AM offset). Read from the location's `gameDayOffset` field returned by the locations API.
+- **SAS Start Time Default**: Pre-populated from the **last completed collection** for that machine via `GET /api/collections/last-collection-time?machineId=<id>`. This represents the end of the previous gaming period and is used as the start of the SAS window for the current collection.
+- **Draft Updates**: Edits saved via `PATCH /api/collections?id=[id]`.
 
 ### STEP 3: Financial Reconciliation & Commit
+
 - **UI**: Shows `Amount to Collect` (electronic) vs. `Amount Collected` (physical cash in bag).
-- **Variance**: Auto-calculated. A note is mandatory if the variance exceeds the Licencee's defined threshold.
-- **Commit**: Finalizes the batch, links all draft `Collection` records to a parent `CollectionReport`, and updates the `GamingLocation` bank balance. Triggers `POST /api/collectionReport`.
+- **Variance**: Auto-calculated. A mandatory note is required if variance exceeds the licencee's threshold.
+- **Variation Check**: Before committing, runs a variation check comparing current values against historical averages. Flagged machines show a `VariationCheckPopover` with details, and a `VariationsConfirmationDialog` requires acknowledgment.
+- **Commit**: Finalizes the batch, links draft `Collection` records to a parent `CollectionReport`, updates the `GamingLocation` bank balance. Triggers `POST /api/collectionReport`.
 
 ---
 
-## 4. UI Indicators & Validation
+## 4. Edit Collection Report
 
-- ⚡ **Sync Desync**: Appears if the last electronic heartbeat was >2 hours ago, suggesting physical inspection is required before counting.
-- 📉 **Negative Gross**: Highlighted in red if the meter delta indicates the machine paid out more than it collected.
-- 🕒 **History Bridge**: Displays if there is a gap between the current reading and the last finalized report for that machine.
-- ⚠️ **High Variance**: A banner is shown if the submitted variance exceeds the Licencee's configured tolerance limit.
-
----
-
-## 5. Form Persistence & Mobile Resilience
-
-- **Save Progress**: The wizard state is synchronized to `localStorage` every 10 seconds, enabling full recovery from browser crashes or accidental navigation.
-- **One-Tap Entry**: Large numeric keypads are shown for meter data entry on handheld devices.
-- **Offline Detection**: The header shows a "No Connection" banner if the network drops during the wizard, preventing partial submits.
+- **Desktop**: `CollectionReportEditCollectionModal` → `DesktopEditLayout`
+- **Mobile**: `CollectionReportMobileEditCollectionModal` → `MobileEditLayout`
+- **Meter Reversion**: On save, recalculates and reverts affected meter history entries.
+- **Machine List Display**: Edit modal defaults to showing the machines list (not the collected list) so users can see all machines with green "Added to Collection" indicators.
+- **SAS Time Pre-fill**: Opening an existing entry pre-fills `sasStartTime` from `entry.sasMeters.sasStartTime`.
+- **Delete**: Soft-deletes the report and reverts meter readings via `DELETE /api/collection-report/[reportId]`.
 
 ---
 
-## 6. Role-Based Access Control (RBAC)
+## 5. Variation Checking
 
-- **Collectors**: Can access the "Collectors Schedule" view and the 3-Step Wizard only.
-- **Managers**: Full access to all tabs including "Monthly Revenue Report" and "Manager Schedule".
-- **Location Admins**: Restricted to viewing history and schedules for their assigned properties only.
-- **Admins / Developers**: Can access the variance fix tool (`POST /api/collection-report/[reportId]/fix`) to correct errors in finalized reports.
+- **Hook**: `useCollectionReportVariationCheck`
+- **Logic**: Compares submitted meter values against historical averages. Values outside threshold flagged.
+- **Components**: `VariationCheckPopover` (inline flag detail), `VariationsConfirmationDialog` (acknowledgment gate before submission).
+- **Scope**: Applied on both new collection creation and edit saves.
 
 ---
-**Internal Document** - Engineering Team
+
+## 6. UI Indicators & Validation
+
+- ⚡ **Sync Desync**: Shown if last electronic heartbeat was >2 hours ago.
+- 📉 **Negative Gross**: Highlighted red if meter delta indicates a net payout.
+- 🕒 **History Bridge**: Displayed if there is a meter gap between current and last finalized reading.
+- ⚠️ **High Variance**: Banner shown if submitted variance exceeds licencee's tolerance.
+- ✅ **Added to Collection**: Green highlight + label on machines already added in current session.
+
+---
+
+## 7. Form Persistence & Mobile Resilience
+
+- **State Persistence**: Wizard state synchronized to Zustand store (`collectionModalStore`) for cross-component access.
+- **Mobile Architecture**: Uses a navigation stack (`pushNavigation` / `popNavigation`) to move between machine list → form → collected list views without full re-renders.
+- **Offline Detection**: Header shows "No Connection" banner if network drops during wizard.
+
+---
+
+## 8. Skeleton Loader Behaviour
+
+- Skeleton displays on **every fetch trigger** (not just initial load) — including tab switches and filter changes.
+- `setInitialLoading(true)` is called in the fetch-trigger effect in `useCollectionReportPageData.ts` to ensure the skeleton always replaces "No Data Available" during loading.
+
+---
+
+## 9. Role-Based Access Control (RBAC)
+
+- **Collectors**: Collectors Schedule view and 3-Step Wizard only.
+- **Managers**: Full access including Monthly Revenue Report and Manager Schedule.
+- **Location Admins**: Restricted to assigned properties only.
+- **Admins / Developers**: Can access the variance fix tool (`POST /api/collection-report/[reportId]/fix`) and bulk repair endpoints.
+
+---
+
+**Internal Document** — Engineering Team

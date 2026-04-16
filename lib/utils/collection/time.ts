@@ -44,10 +44,6 @@ export function calculateDefaultCollectionTime(
     0
   );
 
-  // Subtract 1 minute to get 59 of the previous hour
-  // e.g., 8:00 AM -> 7:59 AM
-  collectionTime.setMinutes(collectionTime.getMinutes() - 1);
-
   return collectionTime;
 }
 

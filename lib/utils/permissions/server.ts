@@ -124,7 +124,15 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'collector',
       'reviewer',
     ],
-    locations: ['developer', 'owner', 'admin', 'manager', 'location admin', 'collector', 'reviewer'],
+    locations: [
+      'developer',
+      'owner',
+      'admin',
+      'manager',
+      'location admin',
+      'collector',
+      'reviewer',
+    ],
     'location-details': [
       'developer',
       'owner',
@@ -144,10 +152,23 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'manager',
       'location admin',
       'collector',
+      'reviewer',
     ],
-    reports: ['developer', 'owner', 'admin', 'manager', 'location admin'],
-    sessions: ['developer', 'owner', 'admin'],
-    administration: ['developer', 'owner', 'admin', 'manager', 'location admin'],
+    reports: [
+      'developer',
+      'owner',
+      'admin',
+      'manager',
+      'location admin',
+    ],
+    sessions: ['developer'],
+    administration: [
+      'developer',
+      'owner',
+      'admin',
+      'manager',
+      'location admin',
+    ],
     'vault-management': [
       'developer',
       'owner',
@@ -193,7 +214,11 @@ export async function hasAdminAccessDb(): Promise<boolean> {
   }
 
   const { roles } = userData;
-  return roles.includes('developer') || roles.includes('owner') || roles.includes('admin');
+  return (
+    roles.includes('developer') ||
+    roles.includes('owner') ||
+    roles.includes('admin')
+  );
 }
 
 // ============================================================================

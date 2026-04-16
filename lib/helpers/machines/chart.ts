@@ -489,28 +489,19 @@ function fillMissingIntervals(
 
   const filledData: dashboardData[] = [];
 
-  // Hourly filling logic (only for Today/Yesterday/Custom single-day)
+  // Hourly data: return as-is without zero-filling.
+  //
+  // Previous logic filled 24 slots based on data[0].day (the first UTC calendar
+  // day).  For gaming-day ranges that straddle midnight (e.g. "Feb 1 12:00 UTC →
+  // Feb 2 11:00 UTC" = "Feb 1 8 AM → Feb 2 7 AM Trinidad"), the second calendar
+  // day's entries (UTC 00:00–11:00 of day 2) were silently dropped and replaced
+  // with zeros for day 1 — making the chart show "No Metrics Data" whenever all
+  // the machine's activity happened in that window.
+  //
+  // The DashboardChart already filters and trims zero-value points, so zero-
+  // filling here adds no value and only hides real data.
   if (isHourly) {
-    // Hourly filling for predefined periods
-    const baseDay = data[0]?.day || formatISODate(new Date());
-    for (let hour = 0; hour < 24; hour++) {
-      const timeKey = `${hour.toString().padStart(2, '0')}:00`;
-      const existingData = data.find(
-        item => item.time === timeKey && item.day === baseDay
-      );
-      if (existingData) {
-        filledData.push(existingData);
-      } else {
-        filledData.push({
-          xValue: timeKey,
-          day: baseDay,
-          time: timeKey,
-          moneyIn: 0,
-          moneyOut: 0,
-          gross: 0,
-        });
-      }
-    }
+    return data;
   } else {
     // Daily filling for shorter periods (Today, Yesterday, Custom single-day)
     // For longer periods, we already returned data as-is above

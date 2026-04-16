@@ -200,6 +200,7 @@ export type MachineMetric = {
   sasEndTime?: string;
   hasIssue?: boolean;
   ramClear?: boolean;
+  notes?: string;
 };
 
 export type LocationMetric = {

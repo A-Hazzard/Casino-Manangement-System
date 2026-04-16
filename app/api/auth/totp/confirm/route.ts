@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     let user;
 
     if (session && session._id) {
-      user = await UserModel.findById(session._id);
+      user = await UserModel.findOne({ _id: session._id });
     } else if (recoveryToken) {
       // Allow confirmation via recovery token if no session exists
       user = await UserModel.findOne({

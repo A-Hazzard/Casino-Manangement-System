@@ -2,6 +2,7 @@
  * Payout Detail API Route
  */
 
+import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import {
   getPayoutById,
@@ -49,7 +50,7 @@ export async function PUT(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const payoutId = pathname.split('/').pop();
 
-  return withApiAuth(req, async () => {
+  return withApiAuth(req, async ({ user: userPayload }) => {
     try {
       if (!payoutId)
         return NextResponse.json(
@@ -58,6 +59,8 @@ export async function PUT(req: NextRequest) {
         );
 
       const body = (await req.json()) as UpdatePayoutRequest;
+      console.log(`[Payout PUT] Request — payoutId: ${payoutId}, fields: ${Object.keys(body).join(', ')}`);
+
       const payout = await getPayoutById(payoutId);
       if (!payout)
         return NextResponse.json(
@@ -71,6 +74,29 @@ export async function PUT(req: NextRequest) {
           { success: false, error: 'Failed to update payout' },
           { status: 500 }
         );
+
+      console.log(`[Payout PUT] Updated payout ${payoutId}`);
+      logActivity({
+        action: 'update',
+        details: `Payout ${payoutId} updated`,
+        userId: String(userPayload._id),
+        username: String(
+          (userPayload as Record<string, unknown>).username ||
+          (userPayload as Record<string, unknown>).emailAddress ||
+          userPayload._id
+        ),
+        metadata: {
+          resource: 'payout',
+          resourceId: payoutId,
+          resourceName: `Payout ${payoutId}`,
+          changes: calculateChanges(
+            payout as unknown as Record<string, unknown>,
+            body as unknown as Record<string, unknown>
+          ),
+          previousData: payout,
+          newData: updated,
+        },
+      }).catch(err => console.error('[Payout PUT] Activity log failed:', err));
 
       return NextResponse.json({
         success: true,

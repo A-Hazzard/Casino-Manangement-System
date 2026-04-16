@@ -1,5 +1,11 @@
 /**
- * Vault Float Request List API
+ * Vault Float Request API Route
+ *
+ * Handles listing and creating float requests for cashier-to-vault cash operations.
+ * Vault managers see all requests; cashiers only see their own.
+ *
+ * GET  /api/vault/float-request  - List float requests with filtering, pagination
+ * POST /api/vault/float-request  - Submit a new float request from a cashier
  */
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
@@ -300,7 +306,7 @@ export async function DELETE(request: NextRequest) {
           { status: 400 }
         );
 
-      const requestDoc = await FloatRequestModel.findById(requestId);
+      const requestDoc = await FloatRequestModel.findOne({ _id: requestId });
       if (!requestDoc)
         return NextResponse.json(
           { success: false, error: 'Request not found' },

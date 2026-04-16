@@ -31,6 +31,7 @@ import {
   validatePhoneNumber,
   validateUsername,
 } from '@/lib/utils/validation';
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 type ProfileUpdatePayload = {
@@ -505,9 +506,32 @@ export async function PUT(request: NextRequest) {
     delete updatedObject.password;
 
     const duration = Date.now() - startTime;
+    console.log(`[Profile PUT] User ${userId} profile updated — passwordChanged: ${passwordChangeRequested}, sessionIncremented: ${incrementSession}, ${duration}ms`);
     if (duration > 2000) {
-      console.warn(`[Profile API] PUT completed in ${duration}ms`);
+      console.warn(`[Profile PUT] Slow response — ${duration}ms`);
     }
+
+    // Fire-and-forget activity log — never fail the response for a logging error
+    logActivity({
+      action: 'update',
+      details: passwordChangeRequested
+        ? `User ${user.username} changed their password and updated profile`
+        : `User ${user.username} updated their profile`,
+      userId: String(userId),
+      username: user.username || user.emailAddress || String(userId),
+      metadata: {
+        resource: 'profile',
+        resourceId: String(userId),
+        resourceName: user.username || String(userId),
+        // Log only the non-sensitive changed fields (never log password values)
+        changes: [
+          user.username !== username ? { field: 'username', oldValue: user.username, newValue: username } : null,
+          user.emailAddress !== emailAddress ? { field: 'emailAddress', oldValue: user.emailAddress, newValue: emailAddress } : null,
+          passwordChangeRequested ? { field: 'password', oldValue: '[redacted]', newValue: '[redacted]' } : null,
+          incrementSession ? { field: 'sessionVersion', oldValue: 'previous', newValue: 'incremented' } : null,
+        ].filter(Boolean),
+      },
+    }).catch(err => console.error('[Profile PUT] Activity log failed:', err));
 
     return NextResponse.json({
       success: true,

@@ -5,29 +5,13 @@
  * Features:
  * - Desktop-only display (hidden on mobile)
  * - Manager schedule filters
- * - Manager schedule table
+ * - Manager schedule table with edit/delete actions
  * - Loading states
- *
- * @param locations - Available locations list
- * @param collectors - Available collectors list
- * @param selectedSchedulerLocation - Currently selected location
- * @param onSchedulerLocationChange - Callback when location changes
- * @param selectedCollector - Currently selected collector
- * @param onCollectorChange - Callback when collector changes
- * @param selectedStatus - Currently selected status
- * @param onStatusChange - Callback when status changes
- * @param onResetSchedulerFilters - Callback to reset all filters
- * @param paginatedSchedulers - Paginated manager schedule data
- * @param loadingSchedulers - Whether data is loading
  */
 import ManagerScheduleFilters from '@/components/CMS/collectionReport/tabs/manager/CollectionReportManagerScheduleFilters';
 import ManagerScheduleTable from '@/components/CMS/collectionReport/tabs/manager/CollectionReportManagerScheduleTable';
 import type { CollectionReportManagerDesktopUIProps } from '@/lib/types/components';
 
-/**
- * CollectionReportManagerDesktop Component
- * Desktop layout wrapper for manager schedules page.
- */
 export default function CollectionReportManagerDesktop({
   locations,
   collectors,
@@ -40,6 +24,9 @@ export default function CollectionReportManagerDesktop({
   onResetSchedulerFilters,
   paginatedSchedulers,
   loadingSchedulers,
+  onEdit,
+  onDelete,
+  showActions,
 }: CollectionReportManagerDesktopUIProps) {
   return (
     <div className="hidden space-y-4 lg:block">
@@ -57,11 +44,15 @@ export default function CollectionReportManagerDesktop({
       />
       <div className="rounded-lg bg-white shadow-md">
         <div className="px-4 py-4">
-          <ManagerScheduleTable data={paginatedSchedulers} loading={loadingSchedulers} />
+          <ManagerScheduleTable
+            data={paginatedSchedulers}
+            loading={loadingSchedulers}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            showActions={showActions}
+          />
         </div>
       </div>
     </div>
   );
 }
-
-

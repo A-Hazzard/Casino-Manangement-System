@@ -2,6 +2,7 @@
  * Float Request Detail API Route
  */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import {
   getFloatRequestById,
@@ -80,12 +81,29 @@ export async function PUT(req: NextRequest) {
       if (!canEdit)
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
+      const previousDenom = floatRequest.requestedDenom;
       const updated = await editFloatRequest(requestId, body.requestedDenom);
       if (!updated)
         return NextResponse.json(
           { error: 'Failed to update' },
           { status: 500 }
         );
+
+      console.log(`[Float Request PUT] Updated float request ${requestId} — denom: ${previousDenom} → ${body.requestedDenom}`);
+      logActivity({
+        action: 'update',
+        details: `Float request ${requestId} denomination updated`,
+        userId: String(userPayload._id),
+        username: String((userPayload as Record<string, unknown>).username || (userPayload as Record<string, unknown>).emailAddress || userPayload._id),
+        metadata: {
+          resource: 'float-request',
+          resourceId: requestId,
+          resourceName: `Float Request ${requestId}`,
+          changes: [{ field: 'requestedDenom', oldValue: previousDenom, newValue: body.requestedDenom }],
+          previousData: { requestedDenom: previousDenom },
+          newData: { requestedDenom: body.requestedDenom },
+        },
+      }).catch(err => console.error('[Float Request PUT] Activity log failed:', err));
 
       return NextResponse.json({
         success: true,

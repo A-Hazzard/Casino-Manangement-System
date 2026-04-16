@@ -86,6 +86,11 @@ export type SchedulerTableRow = {
   visitTime: string;
   createdAt: string;
   status: string;
+  // Raw ISO strings preserved for the edit modal
+  rawStartTime: string;
+  rawEndTime: string;
+  collectorName: string;
+  locationName: string;
 };
 
 // Monthly report summary type
@@ -261,6 +266,9 @@ export type CollectionReportManagerDesktopUIProps = {
   currentPage: number;
   totalPages: number;
   setCurrentPage: (page: number) => void;
+  onEdit?: (row: SchedulerTableRow) => void;
+  onDelete?: (row: SchedulerTableRow) => void;
+  showActions?: boolean;
 };
 
 export type CollectionReportManagerMobileUIProps = {
@@ -278,16 +286,25 @@ export type CollectionReportManagerMobileUIProps = {
   currentPage: number;
   totalPages: number;
   setCurrentPage: (page: number) => void;
+  onEdit?: (row: SchedulerTableRow) => void;
+  onDelete?: (row: SchedulerTableRow) => void;
+  showActions?: boolean;
 };
 
 export type CollectionReportManagerScheduleTableProps = {
   data: SchedulerTableRow[];
   loading: boolean;
+  onEdit?: (row: SchedulerTableRow) => void;
+  onDelete?: (row: SchedulerTableRow) => void;
+  showActions?: boolean;
 };
 
 export type CollectionReportManagerScheduleCardsProps = {
   data: SchedulerTableRow[];
   loading: boolean;
+  onEdit?: (row: SchedulerTableRow) => void;
+  onDelete?: (row: SchedulerTableRow) => void;
+  showActions?: boolean;
 };
 
 export type CollectionReportManagerScheduleFiltersProps = {
@@ -320,6 +337,9 @@ export type CollectionReportCollectorDesktopUIProps = {
   currentPage: number;
   totalPages: number;
   setCurrentPage: (page: number) => void;
+  onEdit?: (schedule: CollectorSchedule) => void;
+  onDelete?: (schedule: CollectorSchedule) => void;
+  showActions?: boolean;
 };
 
 export type CollectionReportCollectorMobileUIProps = {
@@ -338,6 +358,9 @@ export type CollectionReportCollectorMobileUIProps = {
   currentPage: number;
   totalPages: number;
   setCurrentPage: (page: number) => void;
+  onEdit?: (schedule: CollectorSchedule) => void;
+  onDelete?: (schedule: CollectorSchedule) => void;
+  showActions?: boolean;
 };
 
 export type CollectionReportCollectorScheduleFiltersProps = {
@@ -373,6 +396,9 @@ export type CollectionReportFiltersProps = {
 export type CollectionReportCollectorScheduleTableProps = {
   data: CollectorSchedule[];
   loading?: boolean;
+  onEdit?: (schedule: CollectorSchedule) => void;
+  onDelete?: (schedule: CollectorSchedule) => void;
+  showActions?: boolean;
 };
 
 export type CollectorScheduleTableProps = CollectionReportCollectorScheduleTableProps;
@@ -380,6 +406,9 @@ export type CollectorScheduleTableProps = CollectionReportCollectorScheduleTable
 export type CollectionReportCollectorScheduleCardsProps = {
   data: CollectorSchedule[];
   loading?: boolean;
+  onEdit?: (schedule: CollectorSchedule) => void;
+  onDelete?: (schedule: CollectorSchedule) => void;
+  showActions?: boolean;
 };
 
 export type CollectorScheduleCardsProps = CollectionReportCollectorScheduleCardsProps;

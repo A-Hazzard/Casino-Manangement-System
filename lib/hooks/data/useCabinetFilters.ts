@@ -18,6 +18,7 @@ export function useCabinetFilters({
   const [selectedGameType, setSelectedGameType] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedMembership, setSelectedMembership] = useState<string>('all');
+  const [selectedSmibStatus, setSelectedSmibStatus] = useState<string>('all');
 
   // Clear all filters
   const clearFilters = useCallback(() => {
@@ -26,6 +27,7 @@ export function useCabinetFilters({
     setSelectedGameType([]);
     setSelectedStatus('All');
     setSelectedMembership('all');
+    setSelectedSmibStatus('all');
   }, []);
 
   // Check if any filters are active
@@ -34,7 +36,8 @@ export function useCabinetFilters({
     selectedLocation.length > 0 ||
     selectedGameType.length > 0 ||
     selectedStatus !== 'All' ||
-    selectedMembership !== 'all';
+    selectedMembership !== 'all' ||
+    selectedSmibStatus !== 'all';
 
   // Handle search term changes
   const handleSearchTermChange = useCallback((term: string) => {
@@ -60,6 +63,11 @@ export function useCabinetFilters({
   const handleMembershipChange = useCallback((membership: string) => {
     setSelectedMembership(membership);
   }, []);
+ 
+  // Handle SMIB status filter changes
+  const handleSmibStatusChange = useCallback((status: string) => {
+    setSelectedSmibStatus(status);
+  }, []);
 
   // Notify parent of filter changes
   useEffect(() => {
@@ -69,7 +77,8 @@ export function useCabinetFilters({
         selectedLocation,
         selectedGameType,
         selectedStatus,
-        selectedMembership
+        selectedMembership,
+        selectedSmibStatus
       );
     }
   }, [
@@ -78,6 +87,7 @@ export function useCabinetFilters({
     selectedGameType,
     selectedStatus,
     selectedMembership,
+    selectedSmibStatus,
     onFiltersChange,
   ]);
 
@@ -87,11 +97,13 @@ export function useCabinetFilters({
     selectedGameType,
     selectedStatus,
     selectedMembership,
+    selectedSmibStatus,
     setSearchTerm: handleSearchTermChange,
     setSelectedLocation: handleLocationChange,
     setSelectedGameType: handleGameTypeChange,
     setSelectedStatus: handleStatusChange,
     setSelectedMembership: handleMembershipChange,
+    setSelectedSmibStatus: handleSmibStatusChange,
     clearFilters,
     hasActiveFilters,
   };

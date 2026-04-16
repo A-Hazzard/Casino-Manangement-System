@@ -129,6 +129,8 @@ export async function GET(req: NextRequest) {
     const onlineStatus = params.onlineStatus;
     const searchTerm = params.search;
 
+    console.log(`[Metrics Meters] Request — timePeriod: ${timePeriod}, licencee: ${licencee || 'all'}, startDate: ${startDate ?? 'none'}, endDate: ${endDate ?? 'none'}, granularity: ${granularity ?? 'auto'}, currency: ${displayCurrency}, locations: ${locationIds?.join(',') ?? 'all'}`);
+
     if (!timePeriod) {
       return NextResponse.json(
         { error: 'timePeriod parameter is required' },
@@ -213,14 +215,16 @@ export async function GET(req: NextRequest) {
     // STEP 7: Return aggregated metrics
     // ============================================================================
     const duration = Date.now() - startTime;
+    const resultCount = Array.isArray(aggregatedMetrics) ? aggregatedMetrics.length : 0;
+    console.log(`[Metrics Meters] Response — ${resultCount} data point(s), ${duration}ms`);
     if (duration > 1000) {
-      console.warn(`[Metrics Meters API] Completed in ${duration}ms`);
+      console.warn(`[Metrics Meters] Slow response — ${duration}ms`);
     }
     return NextResponse.json(aggregatedMetrics);
   } catch (error) {
     const duration = Date.now() - startTime;
     console.error(
-      `[Meter Trends Metrics GET API] Error after ${duration}ms:`,
+      `[Metrics Meters] Error after ${duration}ms:`,
       error
     );
 

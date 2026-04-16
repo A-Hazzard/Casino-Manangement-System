@@ -11,14 +11,17 @@
 
 import CollectionReportPageContent from '@/components/CMS/collectionReport/CollectionReportPageContent';
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
+import MaintenanceWrapper from '@/components/shared/maintenance/MaintenanceWrapper';
 import { Suspense } from 'react';
 
 export default function CollectionReportPage() {
   return (
     <ProtectedRoute requiredPage="collection-report">
-      <Suspense fallback={null}>
-        <CollectionReportPageContent />
-      </Suspense>
+      <MaintenanceWrapper pageKey="collection-report">
+        <Suspense fallback={null}>
+          <CollectionReportPageContent />
+        </Suspense>
+      </MaintenanceWrapper>
     </ProtectedRoute>
   );
 }

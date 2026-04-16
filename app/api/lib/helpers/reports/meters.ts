@@ -408,58 +408,68 @@ export async function fetchMachinesData(
  */
 export async function getLastMeterPerMachine(
   machineIds: string[],
-  queryStartDate: Date,
-  queryEndDate: Date
+  gamingDayRanges: Map<string, { rangeStart: Date; rangeEnd: Date }>
 ): Promise<Map<string, MeterAggregationResult>> {
-  // Use cursor for Meters aggregation
-  const metersAggregation: Array<Record<string, unknown>> = [];
-  const metersCursor = Meters.aggregate([
-    {
-      $match: {
-        machine: { $in: machineIds },
-        // Use $lt (not $lte) for end date because queryEndDate is the start of the next gaming day
-        // and we want to exclude it (only include up to but not including that time)
-        readAt: { $gte: queryStartDate, $lt: queryEndDate },
-      },
-    },
-    // Sort by readAt descending to get the latest meter first
-    // This ensures $first in the $group stage gets the most recent meter document
-    {
-      $sort: { readAt: -1 },
-    },
-    // Group by machine and take the first (latest) document's absolute values
-    // CRITICAL: We use $first (NOT $sum) to get the absolute values from the LAST meter document
-    // These are cumulative totals from the meter, not deltas - we want the final state
-    // at the end of the gaming day
-    {
-      $group: {
-        _id: '$machine',
-        // Use top-level absolute values from the last meter document (NOT summing)
-        drop: { $first: { $ifNull: ['$drop', 0] } },
-        totalCancelledCredits: {
-          $first: { $ifNull: ['$totalCancelledCredits', 0] },
-        },
-        totalHandPaidCancelledCredits: {
-          $first: { $ifNull: ['$totalHandPaidCancelledCredits', 0] },
-        },
-        coinIn: { $first: { $ifNull: ['$coinIn', 0] } },
-        coinOut: { $first: { $ifNull: ['$coinOut', 0] } },
-        totalWonCredits: {
-          $first: { $ifNull: ['$totalWonCredits', 0] },
-        },
-        gamesPlayed: { $first: { $ifNull: ['$gamesPlayed', 0] } },
-        jackpot: { $first: { $ifNull: ['$jackpot', 0] } },
-        lastReadAt: { $first: '$readAt' },
-      },
-    },
-  ]).cursor({ batchSize: 1000 });
-
-  for await (const doc of metersCursor) {
-    metersAggregation.push(doc);
+  // Use a map to accumulate results
+  const metersMap = new Map<string, MeterAggregationResult>();
+  
+  if (machineIds.length === 0 || gamingDayRanges.size === 0) {
+    return metersMap;
   }
 
-  // Create a map for meter data lookup
-  const metersMap = new Map<string, MeterAggregationResult>();
+  // To ensure we firmly hit the `{ machine: 1, readAt: 1 }` index without triggering
+  // a massive unindexed full collection scan from `$or`, we will run independent
+  // optimally indexed queries per location range concurrently! 
+  const promises = Array.from(gamingDayRanges.entries()).map(async ([locationId, range]) => {
+    const locResults: Array<Record<string, unknown>> = [];
+    const metersCursor = Meters.aggregate([
+      {
+        $match: {
+          machine: { $in: machineIds },
+          location: locationId,
+          readAt: { $gte: range.rangeStart, $lt: range.rangeEnd },
+        },
+      },
+      // Sort by createdAt descending to get the genuinely latest recorded meter first
+      // Since the match phase strictly limits results using compound indexes, sorting
+      // dynamically efficiently scales!
+      {
+        $sort: { createdAt: -1 },
+      },
+      // Group by machine and take the first (latest) document's absolute values
+      // CRITICAL: We use $first (NOT $sum) to get the absolute values from the LAST meter document
+      {
+        $group: {
+          _id: '$machine',
+          drop: { $first: { $ifNull: ['$drop', 0] } },
+          totalCancelledCredits: {
+            $first: { $ifNull: ['$totalCancelledCredits', 0] },
+          },
+          totalHandPaidCancelledCredits: {
+            $first: { $ifNull: ['$totalHandPaidCancelledCredits', 0] },
+          },
+          coinIn: { $first: { $ifNull: ['$coinIn', 0] } },
+          coinOut: { $first: { $ifNull: ['$coinOut', 0] } },
+          totalWonCredits: {
+            $first: { $ifNull: ['$totalWonCredits', 0] },
+          },
+          gamesPlayed: { $first: { $ifNull: ['$gamesPlayed', 0] } },
+          jackpot: { $first: { $ifNull: ['$jackpot', 0] } },
+          lastReadAt: { $first: '$readAt' },
+        },
+      },
+    ]).cursor({ batchSize: 1000 });
+
+    for await (const doc of metersCursor) {
+      locResults.push(doc);
+    }
+    return locResults;
+  });
+
+  const resolvedArrays = await Promise.all(promises);
+  const metersAggregation = resolvedArrays.flat();
+
+  // Populate the map for meter data lookup
   metersAggregation.forEach((meter: Record<string, unknown>) => {
     metersMap.set(meter._id as string, {
       _id: meter._id as string,
@@ -676,28 +686,29 @@ export function transformMeterData(
       lastReadAt: new Date(),
     };
 
-    // Extract, validate, and SCALE meter values
-    const metersIn = validateMeterValue(meterData.coinIn);
-    const metersOut = validateMeterValue(meterData.totalWonCredits);
+    // Extract, validate, and SCALE meter values (Using top-level fields outside movement)
+    // Terminology Alignment:
+    // Meters In (Display Name) = Coin In (Total Wagered)
+    // Meters Out (Display Name) = Total Won Credits (Money Won)
+    // Bill In (Display Name) = Drop (Cash In Stacker)
+    // Voucher Out (Display Name) = Total Cancelled Credits
+    const coinIn = validateMeterValue(meterData.coinIn);
+    const drop = validateMeterValue(meterData.drop);
+    const totalCancelledCredits = validateMeterValue(meterData.totalCancelledCredits);
+    const handPaidCredits = validateMeterValue(meterData.totalHandPaidCancelledCredits);
     const jackpot = validateMeterValue(meterData.jackpot);
-    const billIn = validateMeterValue(meterData.drop);
-    const totalCancelledCredits = validateMeterValue(
-      meterData.totalCancelledCredits
-    );
-    const handPaidCredits = validateMeterValue(
-      meterData.totalHandPaidCancelledCredits
-    );
-    const gamesPlayed = validateMeterValue(meterData.gamesPlayed); // gamesPlayed is not monetary
+    const gamesPlayed = validateMeterValue(meterData.gamesPlayed);
+    const totalWonCredits = validateMeterValue(meterData.totalWonCredits);
 
-    // Calculate voucher out (net cancelled credits)
-    const voucherOut = validateMeterValue(
-      totalCancelledCredits - handPaidCredits
-    );
-
-    // Logic: TRUE = Low Gross (include jackpot in money out), FALSE = High Gross (do not include)
+    const metersIn = coinIn; 
+    const metersOut = totalWonCredits;
+    const billIn = drop;
+    // const voucherOut = totalCancelledCredits + jackpot; DEPRICATED
+    const voucherOut = validateMeterValue(totalCancelledCredits - handPaidCredits);
+    // netGross: Bill In - Meters Out (Total Won) - Jackpots
     const netGross = includeJackpot
-      ? validateMeterValue(metersIn - metersOut - jackpot)
-      : validateMeterValue(metersIn - metersOut);
+      ? validateMeterValue(billIn - metersOut - jackpot)
+      : validateMeterValue(billIn - metersOut);
 
     return {
       machineId,

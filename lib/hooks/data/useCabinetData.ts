@@ -29,6 +29,7 @@ type UseCabinetDataProps = {
   selectedGameType: string[];
   selectedStatus: string;
   selectedMembership: string;
+  selectedSmibStatus: string;
   displayCurrency?: string;
 };
 
@@ -75,6 +76,7 @@ export const useCabinetData = ({
   selectedGameType,
   selectedStatus,
   selectedMembership,
+  selectedSmibStatus,
   displayCurrency,
 }: UseCabinetDataProps): UseCabinetDataReturn => {
   // Debounce search term to reduce API calls
@@ -254,6 +256,7 @@ export const useCabinetData = ({
           selectedGameType,
           selectedStatus,
           selectedMembership,
+          selectedSmibStatus,
         });
 
         const dateRangeForFetch =
@@ -300,7 +303,8 @@ export const useCabinetData = ({
           signal,
           sortBy,
           sortOrder,
-          selectedMembership
+          selectedMembership,
+          selectedSmibStatus
         );
 
         return result;
@@ -440,6 +444,7 @@ export const useCabinetData = ({
       debouncedSearchTerm,
       selectedLocation,
       selectedStatus,
+      selectedSmibStatus,
       makeRequest,
     ]
   );
@@ -525,7 +530,7 @@ export const useCabinetData = ({
     }
 
     // Create a dependency key to detect actual changes
-    const depsKey = `${activeMetricsFilter}-${selectedLicencee || 'all'}-${displayCurrency || 'default'}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${selectedLocation.join(',')}-${selectedGameType.join(',')}-${selectedStatus}-${searchTerm}`;
+    const depsKey = `${activeMetricsFilter}-${selectedLicencee || 'all'}-${displayCurrency || 'default'}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${selectedLocation.join(',')}-${selectedGameType.join(',')}-${selectedStatus}-${selectedSmibStatus}-${searchTerm}`;
 
     // On initial mount, don't abort anything (there's nothing to abort)
     // Only abort if dependencies actually changed (not on initial mount)
@@ -566,7 +571,8 @@ export const useCabinetData = ({
                       ? 'archived'
                       : selectedStatus.toLowerCase(),
               searchTerm,
-              selectedMembership
+              selectedMembership,
+              selectedSmibStatus
             ),
           'totals'
         );
@@ -599,6 +605,7 @@ export const useCabinetData = ({
     selectedLocation,
     selectedGameType,
     selectedStatus,
+    selectedSmibStatus,
     searchTerm,
     makeRequest,
   ]);

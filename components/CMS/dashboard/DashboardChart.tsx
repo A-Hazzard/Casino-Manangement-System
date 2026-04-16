@@ -97,6 +97,15 @@ export default function Chart({
       return false;
     }
 
+    // Trust an explicit hourly/minute granularity from the parent so the
+    // chart always uses a time-axis for these cases — including custom ranges
+    // where the data may straddle midnight (gaming day boundary) and therefore
+    // contain more than one unique calendar day.
+    if (granularity === 'hourly' || granularity === 'minute') {
+      return true;
+    }
+
+    // Legacy fallbacks for callers that don't pass a granularity prop
     if (
       activeMetricsFilter === 'Today' ||
       activeMetricsFilter === 'Yesterday'
@@ -105,14 +114,9 @@ export default function Chart({
     }
 
     if (activeMetricsFilter === 'Custom') {
-      // Check if custom range spans only one day
+      // Fallback: infer from data when no granularity prop is provided
       const uniqueDays = new Set(chartData.map(d => d.day).filter(Boolean));
-      if (uniqueDays.size === 1) {
-        // Return true for hourly format if we have time data (hourly or minute)
-        // The aggregation logic below will detect minute data and skip hourly aggregation
-        return true;
-      }
-      return false;
+      return uniqueDays.size === 1;
     }
 
     // All other values (7d, 30d, last7days, last30days, etc.) use daily format
@@ -138,8 +142,10 @@ export default function Chart({
   // For hourly charts, filter to only the most common day
   // BUT: For minute-level data, don't filter by day - show all data points
   // This ensures minute data for Today shows all waves, even if gaming day spans calendar days
+  // For Custom periods, skip day-filtering entirely — gaming day ranges straddle two calendar days
+  // (e.g. Feb 1 8 AM → Feb 2 7:59 AM) and filtering to the most-common day drops half the data.
   let dayFilteredChartData = chartData;
-  if (isHourlyChart && !isMinuteLevel) {
+  if (isHourlyChart && !isMinuteLevel && activeMetricsFilter !== 'Custom') {
     const dayCounts: Record<string, number> = {};
     chartData.forEach(d => {
       if (d.day) dayCounts[d.day] = (dayCounts[d.day] || 0) + 1;

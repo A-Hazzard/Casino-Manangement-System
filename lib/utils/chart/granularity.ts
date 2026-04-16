@@ -75,10 +75,34 @@ export function getDefaultChartGranularity(
 
     const diffMs = end.getTime() - start.getTime();
     const hoursDiff = diffMs / (1000 * 60 * 60);
-    const daysDiff = diffMs / (1000 * 60 * 60 * 24);
 
+    // Distinguish between pure date-ranges (both dates at local midnight, from the
+    // calendar picker) and time-aware ranges (e.g. a gaming day "8:00 AM → 7:59 AM
+    // next day").  For midnight-to-midnight ranges the old `daysDiff <= 1` check
+    // collapsed Jan 1 00:00 → Jan 2 00:00 (exactly 24 h, daysDiff = 1.0) into
+    // 'hourly' instead of 'daily'.  Fix that with a calendar-day count.
+    // Time-aware ranges keep the original hours-based logic.
+    const startIsMidnight =
+      start.getHours() === 0 && start.getMinutes() === 0 && start.getSeconds() === 0;
+    const endIsMidnight =
+      end.getHours() === 0 && end.getMinutes() === 0 && end.getSeconds() === 0;
+
+    if (startIsMidnight && endIsMidnight) {
+      const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+      const calendarDays = Math.round(
+        (endDay.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (calendarDays === 0) return hoursDiff <= HOURS_THRESHOLD ? 'minute' : 'hourly';
+      if (calendarDays <= 31) return 'daily';
+      if (calendarDays <= 90) return 'weekly';
+      return 'monthly';
+    }
+
+    // Time-aware custom range (gaming day "8:00 AM → 7:59 AM next day", etc.)
+    const daysDiff = diffMs / (1000 * 60 * 60 * 24);
     if (hoursDiff <= HOURS_THRESHOLD) return 'minute';
-    if (daysDiff <= 1) return 'hourly';
+    if (daysDiff <= 1)  return 'hourly';
     if (daysDiff <= 31) return 'daily';
     if (daysDiff <= 90) return 'weekly';
     return 'monthly';

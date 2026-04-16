@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
 
-      const session = await VaultCollectionSession.findById(sessionId);
+      const session = await VaultCollectionSession.findOne({ _id: sessionId });
       if (!session || session.status !== 'active')
         return NextResponse.json(
           { success: false, error: 'Session not active' },
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       await VaultTransactionModel.insertMany(txs);
       if (scs.length > 0) await SoftCountModel.insertMany(scs);
 
-      const activeVaultShift = await VaultShiftModel.findById(vaultShiftId);
+      const activeVaultShift = await VaultShiftModel.findOne({ _id: vaultShiftId });
       if (!activeVaultShift || activeVaultShift.status !== 'active')
         return NextResponse.json(
           { success: false, error: 'Active vault shift not found' },

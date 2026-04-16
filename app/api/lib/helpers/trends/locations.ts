@@ -537,45 +537,6 @@ function convertDailyTrendItems(
   });
 }
 
-/**
- * Format trends data for hourly aggregation
- */
-function formatHourlyTrends(
-  convertedData: DailyTrendItem[],
-  targetLocations: string[],
-  dayKey: string
-): LocationTrendData[] {
-  const trends: LocationTrendData[] = [];
-  for (let hour = 0; hour < 24; hour++) {
-    const timeKey = `${hour.toString().padStart(2, '0')}:00`;
-    const trendItem: LocationTrendData = {
-      day: dayKey,
-      time: timeKey,
-    };
-
-    targetLocations.forEach(locationId => {
-      const locationData = convertedData.find(
-        item =>
-          item.location === locationId &&
-          item.day === dayKey &&
-          item.time === timeKey
-      );
-      trendItem[locationId] = {
-        handle: locationData?.handle || 0,
-        winLoss: locationData?.winLoss || 0,
-        jackpot: locationData?.jackpot || 0,
-        plays: locationData?.plays || 0,
-        drop: locationData?.drop || 0,
-        totalCancelledCredits: locationData?.totalCancelledCredits || 0,
-        gross: locationData?.gross || 0,
-        netGross: locationData?.netGross || 0,
-      };
-    });
-
-    trends.push(trendItem);
-  }
-  return trends;
-}
 
 /**
  * Convert daily trend items to location trends format (for minute-level data)
@@ -1070,6 +1031,8 @@ export async function getLocationTrends(
   const matchingMachines = await Machine.find(machineQuery).select('_id').lean();
   const matchingMachineIds = matchingMachines.map(m => String(m._id));
 
+  console.log(`[Location Trends] Query — period: ${timePeriod}, locations: ${validLocationIds.length}, granularity: ${granularity ?? 'auto'}, window: ${queryStartDate.toISOString()} → ${queryEndDate.toISOString()}`);
+
   // Build and execute pipeline
   const pipeline = buildLocationTrendsPipeline(
     targetLocations,
@@ -1095,6 +1058,8 @@ export async function getLocationTrends(
     dailyData.push(doc as DailyTrendItem);
   }
 
+  console.log(`[Location Trends] Meters aggregation returned ${dailyData.length} bucket(s)`);
+
   // Create location names mapping
   const locationNames: Record<string, string> = {};
   locationsData.forEach(loc => {
@@ -1113,16 +1078,14 @@ export async function getLocationTrends(
   }
 
   // Format trends data based on granularity
-  const trends = useMinute
-    ? // For minute-level, use data as-is (already has minute-level grouping from pipeline)
+  const trends = useMinute || useHourly
+    ? // For minute/hourly data: group by day+time without zero-filling a single calendar day.
+      // formatHourlyTrends only handled one calendar day; gaming day ranges span two UTC
+      // calendar days (e.g. Feb 1 12:00 UTC → Feb 2 11:59 UTC) so data from the second
+      // day was silently dropped.  convertDailyTrendsToLocationTrends handles any number
+      // of calendar days correctly and is already used for minute data.
     convertDailyTrendsToLocationTrends(convertedData, targetLocations)
-    : useHourly
-      ? formatHourlyTrends(
-        convertedData,
-        targetLocations,
-        convertedData[0]?.day || new Date().toISOString().split('T')[0]
-      )
-      : useMonthly
+    : useMonthly
         ? formatMonthlyTrends(
           convertedData,
           targetLocations,
@@ -1145,6 +1108,8 @@ export async function getLocationTrends(
 
   // Calculate totals
   const totals = calculateLocationTotals(convertedData, targetLocations);
+
+  console.log(`[Location Trends] Response — ${trends.length} trend point(s), converted: ${shouldApplyCurrencyConversion(licencee)}`);
 
   return {
     locationIds: targetLocations,

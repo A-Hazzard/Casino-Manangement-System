@@ -15,12 +15,16 @@ const SchedulerSchema: Schema = new Schema(
     endTime: { type: Date, required: true },
     status: {
       type: String,
-      enum: ['pending', 'completed', 'canceled'], // Use enum validator
-      default: 'pending', // Set a default status
+      enum: ['pending', 'completed', 'canceled'],
+      default: 'pending',
       required: true,
     },
+    deletedAt: {
+      type: Date,
+      default: undefined,
+    },
   },
-  { timestamps: true } // Automatically add createdAt and updatedAt
+  { timestamps: true }
 );
 
 // Create and export the Mongoose model

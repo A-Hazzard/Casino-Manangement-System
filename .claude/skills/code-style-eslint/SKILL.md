@@ -13,10 +13,10 @@ Use when **writing code** to maintain consistent style and pass linting.
 
 ```bash
 # Run linting
-pnpm run lint
+bun run lint
 
 # Auto-fix violations
-pnpm run lint --fix
+bun run lint --fix
 ```
 
 **If ESLint complains:**
@@ -28,10 +28,10 @@ pnpm run lint --fix
 
 ```bash
 # Check for type errors
-pnpm run type-check
+bun run type-check
 
 # Run before committing
-pnpm run type-check && pnpm run lint
+bun run type-check && bun run lint
 ```
 
 **Type checking is strict mode:**
@@ -321,16 +321,16 @@ grep -r "myFunction" .
 
 ```bash
 # 1. Type check
-pnpm run type-check
+bun run type-check
 
 # 2. Lint & auto-fix
-pnpm run lint --fix
+bun run lint --fix
 
 # 3. Check for remaining lint errors
-pnpm run lint
+bun run lint
 
 # 4. Verify no regressions
-pnpm run test
+bun run test
 
 # 5. Commit only after all pass
 git add .
@@ -339,8 +339,8 @@ git commit -m "..."
 
 ## Code Review Checklist
 
-- ✅ No ESLint violations (`pnpm run lint` passes)
-- ✅ No TypeScript errors (`pnpm run type-check` passes)
+- ✅ No ESLint violations (`bun run lint` passes)
+- ✅ No TypeScript errors (`bun run type-check` passes)
 - ✅ File-level documentation present
 - ✅ No redundant comments removed
 - ✅ Complex logic has explanatory comments

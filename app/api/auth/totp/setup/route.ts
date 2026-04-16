@@ -22,7 +22,7 @@ export async function POST() {
     }
 
     await connectDB();
-    const user = await UserModel.findById(session._id);
+    const user = await UserModel.findOne({ _id: session._id });
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }

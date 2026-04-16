@@ -27,6 +27,7 @@ import {
 import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReport/service';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
+import { getReviewerScale } from '@/app/api/lib/utils/reviewerScale';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { resolveLicenceeId } from '@/lib/utils/licencee';
@@ -144,6 +145,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Reviewer scale — non-reviewers always get 1 (no transformation).
+    const reviewerScale = getReviewerScale(userPayload as { multiplier?: number | null; roles?: string[] });
+
     const userRoles = (userPayload?.roles as string[]) || [];
     // Use only new field
     let userLicencees: string[] = [];
@@ -191,7 +195,8 @@ export async function GET(req: NextRequest) {
       startDate,
       endDate,
       page,
-      limit
+      limit,
+      reviewerScale
     );
 
     // Filter reports by allowed locations if needed
@@ -335,6 +340,18 @@ export async function POST(req: NextRequest) {
             newValue: body.machines?.length || 0,
           },
         ];
+
+        // Add granular machine data to changes for better traceability
+        if (body.machines && Array.isArray(body.machines)) {
+          body.machines.forEach((m: Record<string, unknown>, index: number) => {
+            const machineName = m.machineCustomName || m.machineName || m.serialNumber || `Machine ${index + 1}`;
+            createChanges.push({
+              field: `machine_${index}_details`,
+              oldValue: null,
+              newValue: `${machineName}: In: ${m.metersIn}, Out: ${m.metersOut}${m.prevIn !== undefined ? ` (Prev: ${m.prevIn} In, ${m.prevOut} Out)` : ''}${m.ramClear ? ', RAM Cleared' : ''}${m.notes ? `, Notes: ${m.notes}` : ''}`,
+            });
+          });
+        }
 
         const userId = (currentUser._id ||
           currentUser.id ||

@@ -26,6 +26,8 @@ import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { useUserStore } from '@/lib/store/userStore';
 import { useMemo } from 'react';
 import { Toaster } from 'sonner';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
 type LayoutWrapperProps = {
   children: ReactNode;
@@ -44,12 +46,14 @@ export default function LayoutWrapper({
   return (
     <QueryProvider>
       <CurrencyProvider>
-        <SidebarProvider>
-          <GlobalSidebarWrapper navConfig={navConfig} />
-          <TempPasswordGate />
-          <ProfileValidationGate context="CMS" />
-          <SidebarInset>{children}</SidebarInset>
-        </SidebarProvider>
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <SidebarProvider>
+            <GlobalSidebarWrapper navConfig={navConfig} />
+            <TempPasswordGate />
+            <ProfileValidationGate context="CMS" />
+            <SidebarInset>{children}</SidebarInset>
+          </SidebarProvider>
+        </LocalizationProvider>
         <Toaster position="top-right" />
       </CurrencyProvider>
     </QueryProvider>

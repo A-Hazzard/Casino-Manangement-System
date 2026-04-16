@@ -19,7 +19,7 @@ globs: **/*
 ### Technology Stack
 - **Frontend:** Next.js 16.0.7, React 18.3.1, TypeScript, Tailwind CSS, Zustand, Radix UI.
 - **Backend:** Next.js API Routes, MongoDB with Mongoose ODM (v8.18+).
-- **Infrastructure:** `bun` / `pnpm` for package management, JWT (jose) for auth.
+- **Infrastructure:** `bun` / `bun` for package management, JWT (jose) for auth.
 
 ### Project Structure (Key Directories)
 - `app/api/lib/models`: Mongoose schemas.

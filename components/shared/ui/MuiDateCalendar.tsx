@@ -11,11 +11,18 @@ import { isWithinInterval, isSameDay, startOfDay, endOfDay } from 'date-fns';
 // === Types ===
 type MuiDateCalendarProps = {
   date?: Date | null;
+  endDate?: Date | null;
   onSelect?: (date?: { from: Date; to: Date }) => void;
   className?: string;
   gameDayOffset?: number;
-  /** Label for the apply/go button. Defaults to "Get Meters". */
+  /** Label for the apply/go button. Defaults to "Generate Report". */
   buttonLabel?: string;
+  /** Selection mode: 'single' for a single date, 'range' for a start/end range. */
+  mode?: 'single' | 'range';
+  /** Whether to hide the section labels (e.g. "Select Date & Time"). */
+  hideLabels?: boolean;
+  /** Whether to show the time input fields. Defaults to true. */
+  showTime?: boolean;
 };
 
 // === Styled Components for Range Highlighting ===
@@ -55,12 +62,13 @@ const CustomPickersDay = styled(PickersDay, {
 /**
  * Time input component with 12-hour format display and AM/PM selector.
  */
-const TimeInput = ({ hours, minutes, onChange, label, color = 'primary.main' }: { 
+const TimeInput = ({ hours, minutes, onChange, label, color = 'primary.main', hideLabel = false }: { 
   hours: number; 
   minutes: number; 
   onChange: (h: number, m: number) => void;
   label: string;
   color?: string;
+  hideLabel?: boolean;
 }) => {
   const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
   const isPM = hours >= 12;
@@ -101,9 +109,11 @@ const TimeInput = ({ hours, minutes, onChange, label, color = 'primary.main' }: 
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-      <Typography variant="caption" sx={{ fontWeight: 700, color: color, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-        {label}
-      </Typography>
+      {!hideLabel && (
+        <Typography variant="caption" sx={{ fontWeight: 700, color: color, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          {label}
+        </Typography>
+      )}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
         <input
           type="text"
@@ -140,9 +150,19 @@ const TimeInput = ({ hours, minutes, onChange, label, color = 'primary.main' }: 
 };
 
 // === Main Component ===
-export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8, buttonLabel = 'Get Meters' }: MuiDateCalendarProps) {
+export function MuiDateCalendar({ 
+  date, 
+  endDate: propEndDate,
+  onSelect, 
+  className, 
+  gameDayOffset = 8, 
+  buttonLabel = 'Generate Report',
+  mode = 'range',
+  hideLabels = false,
+  showTime = true
+}: MuiDateCalendarProps) {
   const [fromDate, setFromDate] = useState<Date>(date || new Date());
-  const [toDate, setToDate] = useState<Date>(date || new Date());
+  const [toDate, setToDate] = useState<Date>(propEndDate || date || new Date());
   
   const [fromTime, setFromTime] = useState({ hours: gameDayOffset, minutes: 0 });
   const [toTime, setToTime] = useState({ 
@@ -154,8 +174,8 @@ export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8, 
   const Day = (props: PickersDayProps) => {
     const { day, ...other } = props;
     const isFirst = isSameDay(day, fromDate);
-    const isLast = isSameDay(day, toDate);
-    const isBetween = fromDate < toDate && isWithinInterval(day, { start: startOfDay(fromDate), end: endOfDay(toDate) });
+    const isLast = mode === 'range' ? isSameDay(day, toDate) : false;
+    const isBetween = mode === 'range' && fromDate < toDate && isWithinInterval(day, { start: startOfDay(fromDate), end: endOfDay(toDate) });
 
     return (
       <CustomPickersDay 
@@ -172,10 +192,13 @@ export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8, 
   useEffect(() => {
     if (date) {
       setFromDate(date);
-      // If toDate is before new fromDate, sync it too
-      if (toDate < date) setToDate(date);
+      if (mode === 'range' && propEndDate) {
+        setToDate(propEndDate);
+      } else if (mode === 'range' && toDate < date) {
+        setToDate(date);
+      }
     }
-  }, [date]);
+  }, [date, propEndDate, mode]);
 
   const theme = useMemo(() => createTheme({
     palette: {
@@ -187,10 +210,24 @@ export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8, 
 
   const handleApply = () => {
     const finalStart = new Date(fromDate);
-    finalStart.setHours(fromTime.hours, fromTime.minutes, 0, 0);
+    if (showTime) {
+      finalStart.setHours(fromTime.hours, fromTime.minutes, 0, 0);
+    } else {
+      finalStart.setHours(0, 0, 0, 0);
+    }
 
-    const finalEnd = new Date(toDate);
-    finalEnd.setHours(toTime.hours, toTime.minutes, 59, 999);
+    let finalEnd: Date;
+    if (mode === 'range') {
+      finalEnd = new Date(toDate);
+    } else {
+      finalEnd = new Date(fromDate);
+    }
+
+    if (showTime) {
+      finalEnd.setHours(toTime.hours, toTime.minutes, 59, 999);
+    } else {
+      finalEnd.setHours(0, 0, 0, 0);
+    }
 
     if (onSelect) {
       onSelect({ from: finalStart, to: finalEnd });
@@ -221,21 +258,24 @@ export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8, 
           >
             {/* Start Section */}
             <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <Box sx={{ p: 1, mb: 1, bgcolor: 'primary.light', borderRadius: 2, width: '100%' }}>
-                <TimeInput 
-                  label="Start Date & Time" 
-                  hours={fromTime.hours} 
-                  minutes={fromTime.minutes} 
-                  onChange={(h, m) => setFromTime({ hours: h, minutes: m })} 
-                  color="primary.main"
-                />
-              </Box>
+              {showTime && (
+                <Box sx={{ p: 1, mb: 1, bgcolor: 'primary.light', borderRadius: 2, width: '100%' }}>
+                  <TimeInput 
+                    label={mode === 'range' ? "Start Date & Time" : "Select Date & Time"}
+                    hideLabel={hideLabels}
+                    hours={fromTime.hours} 
+                    minutes={fromTime.minutes} 
+                    onChange={(h, m) => setFromTime({ hours: h, minutes: m })} 
+                    color="primary.main"
+                  />
+                </Box>
+              )}
               <DateCalendar
                 value={fromDate}
                 onChange={(newDate) => { 
                   if (newDate) {
                     setFromDate(newDate);
-                    if (newDate > toDate) setToDate(newDate);
+                    if (mode === 'range' && newDate > toDate) setToDate(newDate);
                   } 
                 }}
                 slots={{ day: Day }}
@@ -252,39 +292,43 @@ export function MuiDateCalendar({ date, onSelect, className, gameDayOffset = 8, 
             </Box>
  
             {/* End Section */}
-            <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', bgcolor: { xs: 'grey.50', lg: 'white' } }}>
-              <Box sx={{ p: 1, mb: 1, bgcolor: 'grey.100', borderRadius: 2, width: '100%' }}>
-                <TimeInput 
-                  label="End Date & Time" 
-                  hours={toTime.hours} 
-                  minutes={toTime.minutes} 
-                  onChange={(h, m) => setToTime({ hours: h, minutes: m })} 
-                  color="text.secondary"
+            {mode === 'range' && (
+              <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', bgcolor: { xs: 'grey.50', lg: 'white' } }}>
+                {showTime && (
+                  <Box sx={{ p: 1, mb: 1, bgcolor: 'grey.100', borderRadius: 2, width: '100%' }}>
+                    <TimeInput 
+                      label="End Date & Time" 
+                      hideLabel={hideLabels}
+                      hours={toTime.hours} 
+                      minutes={toTime.minutes} 
+                      onChange={(h, m) => setToTime({ hours: h, minutes: m })} 
+                      color="text.secondary"
+                    />
+                  </Box>
+                )}
+                <DateCalendar
+                  value={toDate}
+                  onChange={(newDate) => { 
+                    if (newDate) {
+                      if (newDate < fromDate) {
+                        setFromDate(newDate);
+                      }
+                      setToDate(newDate);
+                    } 
+                  }}
+                  slots={{ day: Day }}
+                  views={['year', 'month', 'day']}
+                  sx={{
+                    margin: 0,
+                    width: '320px',
+                    '& .MuiPickersDay-root.Mui-selected': { 
+                      backgroundColor: 'secondary.main !important',
+                      color: 'white !important'
+                    },
+                  }}
                 />
               </Box>
-              <DateCalendar
-                value={toDate}
-                onChange={(newDate) => { 
-                  if (newDate) {
-                    if (newDate < fromDate) {
-                      // Prevent selecting end date before start date
-                      setFromDate(newDate);
-                    }
-                    setToDate(newDate);
-                  } 
-                }}
-                slots={{ day: Day }}
-                views={['year', 'month', 'day']}
-                sx={{
-                  margin: 0,
-                  width: '320px',
-                  '& .MuiPickersDay-root.Mui-selected': { 
-                    backgroundColor: 'secondary.main !important',
-                    color: 'white !important'
-                  },
-                }}
-              />
-            </Box>
+            )}
  
             {/* Action Section (Only on Desktop/Large screens) */}
             <Box sx={{ 

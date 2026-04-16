@@ -36,6 +36,8 @@ export const CabinetsCabinetSearchFilters = ({
   onStatusChange,
   selectedMembership,
   onMembershipChange,
+  selectedSmibStatus,
+  onSmibStatusChange,
   sortOption,
   sortOrder,
   onSortChange,
@@ -179,6 +181,22 @@ export const CabinetsCabinetSearchFilters = ({
                 emptyMessage="No options found"
               />
             </div>
+            <div className="w-48 flex-shrink-0 relative">
+              <CustomSelect
+                value={selectedSmibStatus}
+                onValueChange={onSmibStatusChange}
+                options={[
+                  { value: 'all', label: 'All SMIB' },
+                  { value: 'smib', label: 'Only SMIB' },
+                  { value: 'no-smib', label: 'No SMIB' },
+                ]}
+                placeholder="All SMIB"
+                className="w-full"
+                triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={false}
+                emptyMessage="No options found"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -256,6 +274,24 @@ export const CabinetsCabinetSearchFilters = ({
                   { value: 'disabled', label: 'Membership Disabled' },
                 ]}
                 placeholder="All Membership"
+                className="w-full"
+                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={false}
+                emptyMessage="No options found"
+              />
+            </div>
+
+            {/* SMIB Filter */}
+            <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
+              <CustomSelect
+                value={selectedSmibStatus}
+                onValueChange={onSmibStatusChange}
+                options={[
+                  { value: 'all', label: 'All SMIB' },
+                  { value: 'smib', label: 'Only SMIB' },
+                  { value: 'no-smib', label: 'No SMIB' },
+                ]}
+                placeholder="All SMIB"
                 className="w-full"
                 triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
                 searchable={false}

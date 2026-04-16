@@ -13,14 +13,17 @@ export const dynamic = 'force-dynamic';
 import CabinetsCabinetTableSkeleton from '@/components/CMS/cabinets/CabinetsCabinetTableSkeleton';
 import CabinetsPageContent from '@/components/CMS/cabinets/CabinetsPageContent';
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
+import MaintenanceWrapper from '@/components/shared/maintenance/MaintenanceWrapper';
 import { Suspense } from 'react';
 
 export default function CabinetsPage() {
   return (
     <ProtectedRoute requiredPage="machines">
-      <Suspense fallback={<CabinetsCabinetTableSkeleton />}>
-        <CabinetsPageContent />
-      </Suspense>
+      <MaintenanceWrapper pageKey="cabinets">
+        <Suspense fallback={<CabinetsCabinetTableSkeleton />}>
+          <CabinetsPageContent />
+        </Suspense>
+      </MaintenanceWrapper>
     </ProtectedRoute>
   );
 }

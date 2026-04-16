@@ -76,6 +76,8 @@ export async function GET(req: NextRequest) {
     const displayCurrency = (searchParams.get('currency') as CurrencyCode) || 'USD';
     const rawOnlineStatus = searchParams.get('onlineStatus') || 'all';
     const onlineStatus = rawOnlineStatus.toLowerCase();
+    const rawSmibStatus = searchParams.get('smibStatus') || 'all';
+    const smibStatus = rawSmibStatus.toLowerCase();
     const membership = searchParams.get('membership')?.toLowerCase() || 'all';
 
     // Pagination parameters
@@ -235,27 +237,28 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ success: true, data: [] });
       }
 
-      console.warn('[API] Filtered location IDs after permissions:', filteredLocationIds);
-      matchStage._id = { $in: filteredLocationIds };
-    } else if (allowedLocationIds !== 'all') {
-      // Apply allowed locations filter
-      matchStage._id = { $in: allowedLocationIds };
-    }
+    console.warn('[API] Filtered location IDs after permissions:', filteredLocationIds);
+    matchStage._id = { $in: filteredLocationIds };
+  } else if (allowedLocationIds !== 'all') {
+    // Apply allowed locations filter
+    matchStage._id = { $in: allowedLocationIds };
+  }
 
-    // Apply membership filter
-    if (membership === 'enabled') {
-      matchStage.membershipEnabled = true;
-    } else if (membership === 'disabled') {
-      matchStage.membershipEnabled = false;
-    }
+  // Apply membership filter
+  if (membership === 'enabled') {
+    matchStage.membershipEnabled = true;
+  } else if (membership === 'disabled') {
+    matchStage.membershipEnabled = false;
+  }
 
-    // Get all locations with their gameDayOffset
-    const locations = (await GamingLocations.find(matchStage).lean()) as unknown as LocationDocument[];
+  // Get all locations with their gameDayOffset
+  const locations = (await GamingLocations.find(matchStage).lean()) as unknown as LocationDocument[];
+  console.warn(`[API] Found ${locations.length} locations`);
 
-    if (locations.length === 0) {
-      console.warn('[API] No locations found in database');
-      return NextResponse.json({ success: true, data: [] });
-    }
+  if (locations.length === 0) {
+    console.warn('[API] No locations found in database');
+    return NextResponse.json({ success: true, data: [] });
+  }
 
     // Fetch licencee settings for all locations in the query.
     // rel?.licencee is string[] per the schema — flatten to individual IDs.
@@ -385,19 +388,29 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const allLocationMachines = await Machine.find(machineMatchQuery).lean();
-
-      if (onlineStatus !== 'all') {
-        console.warn('🔍 [API DEBUG] Filtering by onlineStatus:', onlineStatus);
-        console.warn('🔍 [API DEBUG] threeMinutesAgo:', new Date(Date.now() - 3 * 60 * 1000).toISOString());
-        console.warn('🔍 [API DEBUG] Query lastActivity constraint:', JSON.stringify(machineMatchQuery.lastActivity));
-        console.warn('🔍 [API DEBUG] Found machines count:', allLocationMachines.length);
-        if (allLocationMachines.length > 0) {
-          const firstMachine = allLocationMachines[0];
-          console.warn('🔍 [API DEBUG] First machine lastActivity:', firstMachine.lastActivity);
-          console.warn('🔍 [API DEBUG] Is valid?', new Date(firstMachine.lastActivity as Date) >= new Date(Date.now() - 3 * 60 * 1000));
+      // Apply smibStatus filter at database level
+      if (smibStatus !== 'all') {
+        const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
+        if (smibStatus === 'smib') {
+          andArray.push({
+            $or: [
+              { relayId: { $ne: '', $exists: true, $not: /^\s*$/ } },
+              { smibBoard: { $ne: '', $exists: true, $not: /^\s*$/ } }
+            ]
+          });
+        } else if (smibStatus === 'no-smib') {
+          andArray.push({
+            $and: [
+              { $or: [{ relayId: '' }, { relayId: null }, { relayId: { $exists: false } }, { relayId: /^\s*$/ }] },
+              { $or: [{ smibBoard: '' }, { smibBoard: null }, { smibBoard: { $exists: false } }, { smibBoard: /^\s*$/ }] }
+            ]
+          });
         }
       }
+
+      console.warn(`[API] Finding machines with smibStatus: ${smibStatus}`);
+      const allLocationMachines = await Machine.find(machineMatchQuery).lean();
+      console.warn(`[API] Found ${allLocationMachines.length} machines matching SMIB/GameType filters`);
 
       if (allLocationMachines.length > 0) {
         // Create machine-to-location map
@@ -703,9 +716,34 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        const batchAllMachines = await Machine.find(batchMachineMatchQuery).lean();
+        // Apply smibStatus filter at database level
+        if (smibStatus !== 'all') {
+          const andArray = batchMachineMatchQuery.$and as Array<Record<string, unknown>>;
+          if (smibStatus === 'smib') {
+            andArray.push({
+              $or: [
+                { relayId: { $ne: '', $exists: true, $not: /^\s*$/ } },
+                { smibBoard: { $ne: '', $exists: true, $not: /^\s*$/ } }
+              ]
+            });
+          } else if (smibStatus === 'no-smib') {
+            andArray.push({
+              $and: [
+                { $or: [{ relayId: '' }, { relayId: null }, { relayId: { $exists: false } }, { relayId: /^\s*$/ }] },
+                { $or: [{ smibBoard: '' }, { smibBoard: null }, { smibBoard: { $exists: false } }, { smibBoard: /^\s*$/ }] }
+              ]
+            });
+          }
+        }
 
-        if (batchAllMachines.length === 0) continue;
+        console.warn(`[API] [Batch] Finding machines for ${batchLocationIds.length} locations with smibStatus: ${smibStatus}`);
+        const batchAllMachines = await Machine.find(batchMachineMatchQuery).lean();
+        console.warn(`[API] [Batch] Found ${batchAllMachines.length} machines`);
+
+        if (batchAllMachines.length === 0) {
+          console.warn(`[API] [Batch] No machines found for these locations, skipping metrics aggregation`);
+          continue;
+        }
 
         // Step 3: Group machines by location
         const batchMachinesByLocation = new Map<
@@ -741,6 +779,15 @@ export async function GET(req: NextRequest) {
 
         // Step 5: Get ALL meters for ALL machines in batch, grouped by machine (1 query)
         const allBatchMachineIds = batchAllMachines.map(m => String(m._id));
+        // 🚀 OPTIMIZED: No $lookup — we already have machine→location mapping in batchMachinesByLocation.
+        // Doing the join in JS is far cheaper than a $lookup across two large collections.
+        const machineToLocationMap = new Map<string, string>();
+        batchAllMachines.forEach(machine => {
+          const machineId = String(machine._id);
+          const locId = machine.gamingLocation ? String(machine.gamingLocation) : null;
+          if (locId) machineToLocationMap.set(machineId, locId);
+        });
+
         const batchMetersPipeline: PipelineStage[] = [
           {
             $match: {
@@ -756,32 +803,8 @@ export async function GET(req: NextRequest) {
             },
           },
           {
-            $lookup: {
-              from: 'machines',
-              localField: 'machine',
-              foreignField: '_id',
-              as: 'machineDetails',
-            },
-          },
-          {
-            $unwind: {
-              path: '$machineDetails',
-              preserveNullAndEmptyArrays: false,
-            },
-          },
-          {
-            $addFields: {
-              locationId: {
-                $toString: '$machineDetails.gamingLocation',
-              },
-            },
-          },
-          {
             $group: {
-              _id: {
-                machine: '$machine',
-                locationId: '$locationId',
-              },
+              _id: '$machine',
               moneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
               moneyOut: {
                 $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
@@ -802,7 +825,7 @@ export async function GET(req: NextRequest) {
         ];
 
         const batchMetricsAggregation =
-          await Meters.aggregate(batchMetersPipeline).exec();
+          await Meters.aggregate(batchMetersPipeline, { maxTimeMS: 90000 }).exec();
 
         // Step 6: Filter by gaming day ranges and group by machine
         const metricsByMachine = new Map<
@@ -821,9 +844,9 @@ export async function GET(req: NextRequest) {
         >();
 
         batchMetricsAggregation.forEach(agg => {
-          const machineId = String(agg._id.machine);
-          const locationId = String(agg._id.locationId);
-          const gameDayRange = gamingDayRanges.get(locationId);
+          const machineId = String(agg._id);
+          const locationId = machineToLocationMap.get(machineId);
+          const gameDayRange = locationId ? gamingDayRanges.get(locationId) : undefined;
           if (!gameDayRange || timePeriod === 'All Time') {
             // Include all data if no date range or All Time
             metricsByMachine.set(machineId, {

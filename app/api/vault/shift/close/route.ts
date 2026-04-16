@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
 
-      const vaultShift = await VaultShiftModel.findById(vaultShiftId);
+      const vaultShift = await VaultShiftModel.findOne({ _id: vaultShiftId });
       if (!vaultShift)
         return NextResponse.json(
           { success: false, error: 'Vault shift not found' },

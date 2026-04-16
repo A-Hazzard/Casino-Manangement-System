@@ -73,25 +73,31 @@ export function useMembersSummaryData({
     
     try {
       // Build query params
+      // "licencee=9a5db2cb29ffd2d962fd1d91&page=1&limit=10"
       const params = new URLSearchParams({
         licencee: selectedLicencee,
         page: page.toString(),
         limit: limit.toString(),
       });
-      
+
       if (search) {
         params.append('search', search);
+        // "licencee=9a5db2cb29ffd2d962fd1d91&page=1&limit=10&search=John"
       }
-      
+
       if (locationFilter && locationFilter !== 'all') {
         params.append('location', locationFilter);
+        // "licencee=9a5db2cb29ffd2d962fd1d91&page=1&limit=10&search=John&location=6801f2a3b4c5d6e7f8901234"
       }
 
       const locationQuery = locationFilter && locationFilter !== 'all' ? `&location=${locationFilter}` : '';
 
       const [summaryRes, demographicsRes, trendsRes] = await Promise.allSettled([
+        // GET /api/members/summary?licencee=9a5db2cb29ffd2d962fd1d91&page=1&limit=10&search=John&location=6801f2a3b4c5d6e7f8901234
         axios.get(`/api/members/summary?${params.toString()}`),
+        // GET /api/members/demographics?licencee=9a5db2cb29ffd2d962fd1d91&location=6801f2a3b4c5d6e7f8901234
         axios.get(`/api/members/demographics?licencee=${selectedLicencee}${locationQuery}`),
+        // GET /api/members/trends?licencee=9a5db2cb29ffd2d962fd1d91&location=6801f2a3b4c5d6e7f8901234
         axios.get(`/api/members/trends?licencee=${selectedLicencee}${locationQuery}`),
       ]);
 

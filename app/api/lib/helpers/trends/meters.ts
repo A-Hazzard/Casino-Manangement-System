@@ -993,6 +993,7 @@ export async function getMeterTrends(
   }
 
   if (locations.length === 0) {
+    console.log(`[Meters Trends] No accessible locations found — licencee: ${licencee || 'all'}, timePeriod: ${timePeriod}`);
     return [];
   }
 
@@ -1018,6 +1019,8 @@ export async function getMeterTrends(
     endDate,
     granularity // Pass manual granularity to override defaults
   );
+
+  console.log(`[Meters Trends] Query — period: ${timePeriod}, locations: ${locations.length}, granularity: ${granularity ?? 'auto'} → useHourly: ${useHourly}, useMinute: ${useMinute}`);
 
   const locationIdStrings = locations.map(location => String(location._id));
 
@@ -1149,7 +1152,7 @@ export async function getMeterTrends(
     countryIdToName = metadata.countryIdToName;
   }
 
-  return aggregateMetricsWithConversion(
+  const aggregatedMetrics = aggregateMetricsWithConversion(
     metricsPerLocation,
     shouldConvert,
     displayCurrency,
@@ -1157,4 +1160,8 @@ export async function getMeterTrends(
     countryIdToName,
     userMultiplier
   );
+
+  console.log(`[Meters Trends] Response — ${aggregatedMetrics.length} data point(s)`);
+
+  return aggregatedMetrics;
 }

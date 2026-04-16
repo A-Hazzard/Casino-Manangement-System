@@ -49,6 +49,7 @@ const baseCmsNavigationItems: NavigationItem[] = [
     label: 'Sessions',
     href: '/sessions',
     icon: Clock,
+    permissionCheck: (roles: string[]) => roles.includes('developer'),
   },
   {
     label: 'Members',

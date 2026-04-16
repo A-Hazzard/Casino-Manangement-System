@@ -1,8 +1,8 @@
 # MQTT & Real-Time Logistics Architecture
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** March 2026  
-**Version:** 4.0.0
+**Last Updated:** April 2026  
+**Version:** 4.3.0
 
 ---
 

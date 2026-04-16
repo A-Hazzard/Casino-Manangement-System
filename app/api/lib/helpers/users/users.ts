@@ -243,8 +243,14 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         jwtPayload.assignedLicencees = [];
       }
 
-      // ALWAYS use database value for multiplier (source of truth — may have changed since login)
+      // ALWAYS use database value for multiplier if available (source of truth — may have changed since login)
+      // This ensures that when an owner updates a reviewer's multiplier, it takes effect immediately
+      // on the NEXT request without requiring a re-login.
       (jwtPayload as Record<string, unknown>).multiplier = dbUser.multiplier ?? null;
+    } else {
+      // If dbUser lookup failed for some reason, ensure multiplier is null to be safe
+      // (Never use the multiplier potentially baked into the JWT asset)
+      (jwtPayload as Record<string, unknown>).multiplier = null;
     }
 
     return jwtPayload;
@@ -667,8 +673,19 @@ export async function updateUser(
     isDeveloper = true;
   }
 
+  // ============================================================================
+  // AUTHORIZATION CHECK
+  // ============================================================================
+  const requestingUserId = requestingUser ? String(requestingUser._id) : null;
+  const isSelfUpdate = requestingUserId === String(_id);
+
+  // If not self-update and not an administrative role, block everything
+  if (!isSelfUpdate && !isOwner && !isDeveloper && !isAdmin && !isManager && !isVaultManager && !isLocationAdmin) {
+    throw new Error('Insufficient permissions to update this user');
+  }
+
   // Location admins cannot edit owners, managers, developers, or admins
-  if (isLocationAdmin) {
+  if (isLocationAdmin && !isSelfUpdate) {
     const isTargetOwner = user.roles.includes('owner');
     const isTargetDeveloper = user.roles.includes('developer');
     const isTargetAdmin = user.roles.includes('admin');
@@ -681,22 +698,32 @@ export async function updateUser(
     }
   }
 
-  // ENFORCEMENT: Only owners, admins and developers can edit assigned locations and licencees
-  // This applies to both self-editing and editing others
+  // ENFORCEMENT: Only owners, admins and developers can edit assigned locations, licencees, and multiplier
+  // This applies to both self-editing and editing others.
+  // For self-updates by non-admins, silently strip restricted fields so that
+  // the profile modal (which may send back system fields) doesn't throw an error.
   const isAssignmentEditingAllowed = isDeveloper || isAdmin || isOwner;
 
   if (!isAssignmentEditingAllowed) {
-    if (updateFields.assignedLocations !== undefined || updateFields.assignedLicencees !== undefined) {
-      console.warn(`[updateUser] Unauthorized attempt by user ${requestingUser?._id} to edit assignments for user ${_id}`);
-
-      // Specifically for assignments, we silently remove them if unauthorized
-      // to allow other profile updates to proceed
+    // Silently remove sensitive fields that non-admin users cannot touch
+    if (updateFields.assignedLocations !== undefined) {
+      console.warn(`[updateUser] Stripping assignedLocations from update by non-admin user ${requestingUser?._id}`);
       delete updateFields.assignedLocations;
+    }
+    if (updateFields.assignedLicencees !== undefined) {
+      console.warn(`[updateUser] Stripping assignedLicencees from update by non-admin user ${requestingUser?._id}`);
       delete updateFields.assignedLicencees;
-
-      // Also block legacy fields
-      if (updateFields.rel !== undefined) delete updateFields.rel;
-      if (updateFields.resourcePermissions !== undefined) delete updateFields.resourcePermissions;
+    }
+    if (updateFields.multiplier !== undefined) {
+      console.warn(`[updateUser] Stripping multiplier from update by non-admin user ${requestingUser?._id}`);
+      delete updateFields.multiplier;
+    }
+    // Block legacy fields
+    if (updateFields.rel !== undefined) delete updateFields.rel;
+    if (updateFields.resourcePermissions !== undefined) delete updateFields.resourcePermissions;
+    // Non-admins cannot change isEnabled on other accounts
+    if (!isSelfUpdate && updateFields.isEnabled !== undefined) {
+      delete updateFields.isEnabled;
     }
   }
 
@@ -728,8 +755,15 @@ export async function updateUser(
       );
     }
 
-    // Check role assignment permissions
-      const isOwner = requestingUserRoles.includes('owner');
+    // Check if roles are actually being changed
+    const currentRoles = (user.roles || []) as string[];
+    const prospectiveRoles = rolesToUpdate;
+    const sortedCurrent = [...currentRoles].sort().join(',');
+    const sortedProspective = [...prospectiveRoles].sort().join(',');
+    const isChangingRoles = sortedCurrent !== sortedProspective;
+
+    if (isChangingRoles) {
+      // Check role assignment permissions
       if (isManager) {
         // Manager can only assign: location admin, technician, collector
         const managerAllowedRoles = ['location admin', 'technician', 'collector'];
@@ -750,26 +784,30 @@ export async function updateUser(
           throw new Error('Only Developers can assign the owner role');
         }
       } else if (isVaultManager) {
-      // Vault manager can only assign 'cashier' role
-      const vaultManagerAllowedRoles = ['cashier'];
-      const unauthorizedRoles = rolesToUpdate.filter(
-        r => !vaultManagerAllowedRoles.includes(r)
-      );
-      if (unauthorizedRoles.length > 0) {
-        throw new Error(`Vault managers can only assign the cashier role`);
+        // Vault manager can only assign 'cashier' role
+        const vaultManagerAllowedRoles = ['cashier'];
+        const unauthorizedRoles = rolesToUpdate.filter(
+          r => !vaultManagerAllowedRoles.includes(r)
+        );
+        if (unauthorizedRoles.length > 0) {
+          throw new Error(`Vault managers can only assign the cashier role`);
+        }
+      } else if (isAdmin) {
+        // Admin cannot assign 'cashier' role
+        if (rolesToUpdate.includes('cashier')) {
+          throw new Error('Only Vault Managers can assign the cashier role');
+        }
+      } else if (!isDeveloper && !isAdmin && !isOwner && !isVaultManager && !isManager) {
+        // Only owner/developer/admin/manager/vault-manager can update roles
+        throw new Error('Insufficient permissions to update user roles');
       }
-    } else if (isAdmin) {
-      // Admin cannot assign 'cashier' role
-      if (rolesToUpdate.includes('cashier')) {
-        throw new Error('Only Vault Managers can assign the cashier role');
-      }
-    } else if (!isDeveloper && !isAdmin && !isOwner && !isVaultManager) {
-      // Only owner/developer/admin/manager/vault-manager can update roles
-      throw new Error('Insufficient permissions to update user roles');
-    }
 
-    // Normalize roles before saving
-    updateFields.roles = rolesToUpdate;
+      // Normalize roles before saving
+      updateFields.roles = rolesToUpdate;
+    } else {
+      // Roles are not changing, silently remove from update to avoid permission errors for non-admins
+      delete updateFields.roles;
+    }
 
     // ENFORCEMENT: Vault Managers must have exactly 1 licencee and 1 location
     if (rolesToUpdate.includes('vault-manager')) {
@@ -1098,7 +1136,12 @@ export async function updateUser(
       const uniquePrevious = Array.from(new Set(previousPasswords)).slice(-2);
       updateFields.previousPasswords = uniquePrevious;
     } else if (typeof updateFields.password === 'string') {
-      // Legacy support or Admin password reset: if password is a string, validate and hash it
+      // Legacy support or Admin password reset
+      // SECURITY: Only owners, admins, and developers can reset passswords directly
+      if (!isDeveloper && !isAdmin && !isOwner) {
+        throw new Error('Insufficient permissions to reset password');
+      }
+
       const { validatePasswordStrength } =
         await import('@/lib/utils/validation');
       const passwordValidation = validatePasswordStrength(

@@ -21,6 +21,7 @@ type CabinetTab = {
   id: CabinetSection;
   label: string;
   icon: string;
+  available?: boolean;
 };
 
 type Props = {
@@ -34,11 +35,14 @@ export default function CabinetsNavigation({
   activeSection,
   onChange,
 }: Props) {
+  // Filter out tabs that are under maintenance
+  const visibleTabs = tabs.filter(tab => tab.available !== false);
+
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">
       {/* Desktop: Horizontal Tab Navigation */}
       <nav className="hidden space-x-2 px-4 md:flex lg:space-x-4">
-        {tabs.map(tab => (
+        {visibleTabs.map(tab => (
           <motion.button
             key={tab.id}
             onClick={() => onChange(tab.id)}
@@ -64,7 +68,7 @@ export default function CabinetsNavigation({
           onChange={e => onChange(e.target.value as CabinetSection)}
           className="navigation-button w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
         >
-          {tabs.map(t => (
+          {visibleTabs.map(t => (
             <option key={t.id} value={t.id}>
               {t.label}
             </option>

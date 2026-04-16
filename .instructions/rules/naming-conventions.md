@@ -185,6 +185,7 @@ components/collectionReport/
 **CRITICAL**: File names should reflect what the code **does** or **is used for**, not where it runs or technical implementation details.
 
 **Good Examples:**
+
 - ✅ `machine.ts` - For machine movement calculations (not `frontendCalculation.ts`)
 - ✅ `mapping.ts` - For data transformation/mapping utilities
 - ✅ `normalization.ts` - For form value normalization
@@ -193,11 +194,13 @@ components/collectionReport/
 - ✅ `colors.ts` - For color coding utilities
 
 **Bad Examples:**
+
 - ❌ `frontendCalculation.ts` - Too generic, doesn't indicate use case
 - ❌ `clientUtils.ts` - Technical detail, not use case
 - ❌ `backendHelpers.ts` - Technical detail, not use case
 
 **Rules:**
+
 - Name files based on **actual usage patterns** and **business purpose**
 - Avoid prefixes like "frontend", "client", "server" unless necessary for disambiguation
 - Use descriptive names that indicate the file's primary purpose
@@ -206,16 +209,19 @@ components/collectionReport/
 ### 5.2. Grouping Related Files
 
 **When to Group in Subfolders:**
+
 - Multiple files (3+) related to the same domain/feature
 - Files serve distinct but related purposes
 - Files are substantial (>100 lines) and warrant separation
 
 **When to Merge Files:**
+
 - Files are small (<100 lines each) and serve similar purposes
 - Files are tightly related (e.g., normalization and formatting)
 - Merging improves code discoverability without creating bloat
 
 **Grouping Structure:**
+
 ```
 lib/utils/[domain]/
 ├── [purpose].ts (e.g., mapping.ts, normalization.ts, validation.ts)
@@ -224,6 +230,7 @@ lib/utils/[domain]/
 ```
 
 **Examples:**
+
 - `lib/utils/movement/` - movement/calculation.ts, movement/requests.ts, movement/machine.ts
 - `lib/utils/financial/` - financial/totals.ts, financial/colors.ts
 - `lib/utils/cabinet/` - cabinet/mapping.ts, cabinet/normalization.ts, cabinet/validation.ts
@@ -253,9 +260,52 @@ import * as React from 'react';
 React.useState(); // Never do this
 ```
 
+## 7. Component Section Comments (Internal)
+
+To ensure code maintainability and consistent structure, all components MUST use descriptive section headers instead of generic ones.
+
+### Header Pattern
+
+Use the standardized separator: `// ============================================================================`
+
+### Rule 1: Descriptive Headers
+
+Headers must be specific to the component's domain logic.
+
+- ❌ `// Hooks & State`
+- ✅ `// Router & Component State`
+- ✅ `// Navigation & Persistence Hooks`
+- ❌ `// Computed Values`
+- ✅ `// Metric Summary & Variations`
+- ✅ `// Performance Calculations`
+- ❌ `// Event Handlers`
+- ✅ `// Machine Interaction Handlers`
+- ✅ `// Form Submission & Validation`
+
+### Rule 2: Remove "Render Logic" Header
+
+The `// Render Logic` header is prohibited. Transitions from logic to the `return` statement should be clean or use a specific domain header if the component is exceptionally large.
+
+- ❌ `// Render Logic`
+- ✅ `// Machine Table Composition` (if needed)
+- ✅ (No header before `return`)
+
 ---
 
-## 7. Summary of Best Practices
+---
+
+## 8. Hook Organization
+
+See [nextjs-rules.md](../rules/nextjs-rules.md) section **4.4. Custom Hook Structure** for the mandatory hook organization pattern. Key points:
+
+- **Section order**: External Dependencies → Type Definitions → Helper Functions → Main Hook → Store State → Local State (grouped) → Form Data Bindings → Computed Values → Debounced Values → Refs → Effects → Event Handlers → Return
+- **State grouping**: Group related state by concern (e.g., "Selection State", "Processing State", "Form State")
+- **Event handlers**: Group by category (e.g., "Location Selection", "Machine Entry", "Form Submission")
+- **Reference**: `lib/hooks/collectionReport/useNewCollectionModal.ts`
+
+---
+
+## 9. Summary of Best Practices
 
 - **Lean Wrappers**: Keep `page.tsx` files minimal, delegating logic to a `PageContent` component.
 - **Specific Loading States**: Create content-specific skeletons in `components/ui/skeletons/`.
@@ -264,3 +314,5 @@ React.useState(); // Never do this
 - **Use Case-Based Naming**: File names should reflect what the code does, not where it runs.
 - **Logical Grouping**: Group related files in subfolders when they serve distinct purposes.
 - **Merge When Appropriate**: Consider merging small related files instead of grouping if it improves organization.
+- **Descriptive Sections**: Replace generic engineering comments with domain-specific summaries.
+- **Hook Structure**: Follow the hook organization pattern documented in nextjs-rules.md

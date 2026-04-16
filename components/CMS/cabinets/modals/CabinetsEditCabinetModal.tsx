@@ -500,6 +500,16 @@ export default function CabinetsEditCabinetModal({
                         )
                       ? cabinetDetails.gameType || prevData.gameType
                       : '',
+                  // Ensure SMIB board fields are updated from detail fetch
+                  smbId: userModifiedFieldsRef.current.has('smbId') || userModifiedFieldsRef.current.has('relayId')
+                    ? prevData.smbId
+                    : cabinetDetails.smbId || prevData.smbId,
+                  relayId: userModifiedFieldsRef.current.has('relayId') || userModifiedFieldsRef.current.has('smbId')
+                    ? prevData.relayId
+                    : cabinetDetails.relayId || prevData.relayId,
+                  smibBoard: userModifiedFieldsRef.current.has('smbId') || userModifiedFieldsRef.current.has('relayId')
+                    ? prevData.smibBoard
+                    : cabinetDetails.relayId || prevData.smibBoard,
                 };
                 // console.log(
                 //   "Updated form data with gameType:",
@@ -974,7 +984,7 @@ export default function CabinetsEditCabinetModal({
                     !!formData.assetNumber && formData.assetNumber.length >= 3
                   }
                   onFormDataChange={updates => {
-                    if (updates.smbId && relayIdError) {
+                    if ('smbId' in updates && relayIdError) {
                       setRelayIdError('');
                     }
                     if (updates.custom && customNameError) {
@@ -982,13 +992,14 @@ export default function CabinetsEditCabinetModal({
                     }
 
                     // Map smbId back to relayId and smibBoard for formData
+                    // We also ensure smbId itself is updated so detectChanges works correctly
                     const formDataUpdates: Partial<ExtendedCabinetFormData> = {};
-                    if (updates.smbId) {
-                      formDataUpdates.relayId = updates.smbId;
-                      formDataUpdates.smibBoard = updates.smbId;
-                    } else if ('smbId' in updates && !updates.smbId) {
-                      formDataUpdates.relayId = '';
-                      formDataUpdates.smibBoard = '';
+                    
+                    if ('smbId' in updates) {
+                      const smibValue = updates.smbId || '';
+                      formDataUpdates.relayId = smibValue;
+                      formDataUpdates.smibBoard = smibValue;
+                      formDataUpdates.smbId = smibValue;
                     }
 
                     if (updates.status) {

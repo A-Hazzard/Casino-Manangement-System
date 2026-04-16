@@ -11,8 +11,8 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
-    "check": "pnpm run type-check && pnpm run lint",
-    "analyze": "cross-env ANALYZE=true pnpm run build",
+    "check": "bun run type-check && bun run lint",
+    "analyze": "cross-env ANALYZE=true bun run build",
     "test": "playwright test e2e/tests/dashboard.spec.ts -c e2e/playwright.config.ts --project=chromium"
   },
   "dependencies": {
@@ -106,12 +106,7 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "sharp"
-    ],
-    "overrides": {
-      "mongodb": "6.17.0"
-    }
+  "overrides": {
+    "mongodb": "6.17.0"
   }
 }

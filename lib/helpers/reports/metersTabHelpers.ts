@@ -278,16 +278,14 @@ export async function handleExportMeters({
         customDateRange &&
         (customDateRange.startDate || customDateRange.start) &&
         (customDateRange.endDate || customDateRange.end) && {
-          startDate: (
-            customDateRange.startDate || customDateRange.start
-          )!
-            .toISOString()
-            .split('T')[0],
-          endDate: (
-            customDateRange.endDate || customDateRange.end
-          )!
-            .toISOString()
-            .split('T')[0],
+          startDate: (() => {
+            const d = (customDateRange.startDate || customDateRange.start)!;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          })(),
+          endDate: (() => {
+            const d = (customDateRange.endDate || customDateRange.end)!;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          })(),
         }),
     });
 

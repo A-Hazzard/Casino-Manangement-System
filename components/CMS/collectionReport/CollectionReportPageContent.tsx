@@ -4,88 +4,65 @@
  * Main content component that orchestrates all data fetching, state management,
  * and renders the collection report management interface.
  *
- * @module components/collectionReport/CollectionReportPageContent
+ * Features:
+ * - Multi-tab interface (Collection, Monthly, Collector Schedule, Manager Schedule)
+ * - Animated tab transitions
+ * - Responsive layout management
+ * - Centralized modal management
+ *
+ * @module components/CMS/collectionReport/CollectionReportPageContent
  */
+
 'use client';
 
+import { FC, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { AnimatePresence, motion } from 'framer-motion';
+
+// === Internal Components ===
 import CollectionReportHeader from '@/components/CMS/collectionReport/CollectionReportHeader';
 import CollectionReportNavigation from '@/components/CMS/collectionReport/CollectionReportNavigation';
 import CollectionReportModals from '@/components/CMS/collectionReport/modals/CollectionReportModals';
+import ScheduleDeleteDialog from '@/components/CMS/collectionReport/modals/ScheduleDeleteDialog';
+import ScheduleEditModal from '@/components/CMS/collectionReport/modals/ScheduleEditModal';
 import CollectionReportDesktopLayout from '@/components/CMS/collectionReport/tabs/collection/CollectionReportDesktopLayout';
 import CollectionReportMobileLayout from '@/components/CMS/collectionReport/tabs/collection/CollectionReportMobileLayout';
+
+// === Shared Components ===
 import PageLayout from '@/components/shared/layout/PageLayout';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
+
+// === Hooks & Store ===
 import { COLLECTION_TABS_CONFIG, UserRole } from '@/lib/constants';
 import { useCollectionReportPageData } from '@/lib/hooks/collectionReport/useCollectionReportPageData';
 import { useCollectorScheduleData } from '@/lib/hooks/collectionReport/useCollectorScheduleData';
 import { useManagerScheduleData } from '@/lib/hooks/collectionReport/useManagerScheduleData';
 import { useMonthlyReportData } from '@/lib/hooks/collectionReport/useMonthlyReportData';
-
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
+
+// === Utilities ===
 import {
     shouldShowLicenceeFilter,
     shouldShowNoLicenceeMessage,
 } from '@/lib/utils/licencee';
 import { hasManagerAccess } from '@/lib/utils/permissions';
-import dynamic from 'next/dynamic';
-import { useRef, useState } from 'react';
 
-// Specialized Tab UI Components (Dynamically Imported)
-const MonthlyDesktop = dynamic(
-  () =>
-    import(
-      '@/components/CMS/collectionReport/tabs/monthly/CollectionReportMonthlyDesktop'
-    ),
-  { ssr: false }
-);
-const MonthlyMobile = dynamic(
-  () =>
-    import(
-      '@/components/CMS/collectionReport/tabs/monthly/CollectionReportMonthlyMobile'
-    ),
-  { ssr: false }
-);
-const CollectorDesktop = dynamic(
-  () =>
-    import(
-      '@/components/CMS/collectionReport/tabs/collector/CollectionReportCollectorDesktop'
-    ),
-  { ssr: false }
-);
-const CollectorMobile = dynamic(
-  () =>
-    import(
-      '@/components/CMS/collectionReport/tabs/collector/CollectionReportCollectorMobile'
-    ),
-  { ssr: false }
-);
-const ManagerDesktop = dynamic(
-  () =>
-    import(
-      '@/components/CMS/collectionReport/tabs/manager/CollectionReportManagerDesktop'
-    ),
-  { ssr: false }
-);
-const ManagerMobile = dynamic(
-  () =>
-    import(
-      '@/components/CMS/collectionReport/tabs/manager/CollectionReportManagerMobile'
-    ),
-  { ssr: false }
-);
+// === Specialized Tab UI Components (Dynamically Imported) ===
+const MonthlyDesktop = dynamic(() => import('@/components/CMS/collectionReport/tabs/monthly/CollectionReportMonthlyDesktop'), { ssr: false });
+const MonthlyMobile = dynamic(() => import('@/components/CMS/collectionReport/tabs/monthly/CollectionReportMonthlyMobile'), { ssr: false });
+const CollectorDesktop = dynamic(() => import('@/components/CMS/collectionReport/tabs/collector/CollectionReportCollectorDesktop'), { ssr: false });
+const CollectorMobile = dynamic(() => import('@/components/CMS/collectionReport/tabs/collector/CollectionReportCollectorMobile'), { ssr: false });
+const ManagerDesktop = dynamic(() => import('@/components/CMS/collectionReport/tabs/manager/CollectionReportManagerDesktop'), { ssr: false });
+const ManagerMobile = dynamic(() => import('@/components/CMS/collectionReport/tabs/manager/CollectionReportManagerMobile'), { ssr: false });
 
-// Animation Components
-// Note: framer-motion v12+ supports SSR, so we can use regular imports
-// If you encounter hydration issues, revert to dynamic imports with ssr: false
-import { AnimatePresence, motion } from 'framer-motion';
 const MotionDiv = motion.div;
 
-export default function CollectionReportPageContent() {
+const CollectionReportPageContent: FC = () => {
   // ============================================================================
-  // Hooks & State
+  // Global Page State & Navigation
   // ============================================================================
   const hook = useCollectionReportPageData();
   const { user } = useUserStore();
@@ -95,6 +72,7 @@ export default function CollectionReportPageContent() {
   const mobileCardsRef = useRef<HTMLDivElement | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
+  // Destructure hook for better readability
   const {
     activeTab,
     loading,
@@ -134,20 +112,23 @@ export default function CollectionReportPageContent() {
   );
 
   // ============================================================================
-  // Permission Checks
+  // Role-Based Visibility Computations
   // ============================================================================
-
-  // Hide Monthly Report and Manager Schedule tabs from non-management roles (e.g. collector)
+  
+  // Hide Monthly Report and Manager Schedule tabs from non-management roles
   const canSeeManagerTabs = hasManagerAccess((user?.roles || []) as UserRole[]);
   const visibleTabs = COLLECTION_TABS_CONFIG.filter(
     tab => tab.id === 'monthly' || tab.id === 'manager' ? canSeeManagerTabs : true
   );
-  // If the active tab is restricted for this user, fall back to the default tab
+
+  // Role-based active tab fallback
   const effectiveTab = (activeTab === 'monthly' || activeTab === 'manager') && !canSeeManagerTabs
     ? 'collection' as const
     : activeTab;
 
-  // If user has no licencee assigned, show the "No Licencee Assigned" message
+  // ============================================================================
+  // Early Returns: Authentication & Tenancy Checks
+  // ============================================================================
   if (shouldShowNoLicenceeMessage(user)) {
     return (
       <PageLayout
@@ -164,10 +145,8 @@ export default function CollectionReportPageContent() {
     );
   }
 
-  // Removed page-level skeleton - each section shows its own skeleton while loading
-
   // ============================================================================
-  // Render
+  // Main App Filter Coordination
   // ============================================================================
   return (
     <>
@@ -180,7 +159,7 @@ export default function CollectionReportPageContent() {
         onRefresh={handleRefresh}
         refreshing={refreshing}
       >
-        {/* Page Header: Title and primary action buttons */}
+        {/* Header Section */}
         <CollectionReportHeader
           activeTab={effectiveTab}
           refreshing={refreshing}
@@ -189,7 +168,7 @@ export default function CollectionReportPageContent() {
           onCreateMobile={handleCreate}
         />
 
-        {/* Multi-Tab Navigation Section */}
+        {/* Navigation Section */}
         <div className="mb-8 mt-8">
           <CollectionReportNavigation
             tabs={visibleTabs}
@@ -199,17 +178,14 @@ export default function CollectionReportPageContent() {
           />
         </div>
 
-        {/* Date Filter Integration (applicable to main collections tab) */}
+        {/* Global Filters Section */}
         {effectiveTab === 'collection' && (
           <div className="mb-6">
             <DateFilters hideAllTime={false} customRangeGoLabel="Get Reports" />
           </div>
         )}
 
-
-        {/* ============================================================================
-           Tab Content Area: Animated transition between views
-           ============================================================================ */}
+        {/* Main Tab Content Section */}
         <div className="mt-6 flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
             <MotionDiv
@@ -220,10 +196,9 @@ export default function CollectionReportPageContent() {
               transition={{ duration: 0.2 }}
               className="h-full"
             >
-              {/* 1. Main Collection Reports Tab */}
+              {/* === COLLECTION TAB === */}
               {effectiveTab === 'collection' && (
                 <div className="tab-content-wrapper">
-                  {/* Desktop Data Grid View */}
                   <div className="hidden md:block">
                     <CollectionReportDesktopLayout
                       loading={loading}
@@ -239,9 +214,7 @@ export default function CollectionReportPageContent() {
                       }}
                       onSearchSubmit={() => {}}
                       showUncollectedOnly={filters.showUncollectedOnly}
-                      onShowUncollectedOnlyChange={
-                        filters.setShowUncollectedOnly
-                      }
+                      onShowUncollectedOnlyChange={filters.setShowUncollectedOnly}
                       selectedFilters={filters.selectedFilters}
                       onFilterChange={filters.handleFilterChange}
                       onClearFilters={filters.clearFilters}
@@ -257,7 +230,6 @@ export default function CollectionReportPageContent() {
                     />
                   </div>
 
-                  {/* Mobile Cards View */}
                   <div className="md:hidden">
                     <CollectionReportMobileLayout
                       loading={loading}
@@ -274,9 +246,7 @@ export default function CollectionReportPageContent() {
                       }}
                       onSearchSubmit={() => {}}
                       showUncollectedOnly={filters.showUncollectedOnly}
-                      onShowUncollectedOnlyChange={
-                        filters.setShowUncollectedOnly
-                      }
+                      onShowUncollectedOnlyChange={filters.setShowUncollectedOnly}
                       selectedFilters={filters.selectedFilters}
                       onFilterChange={filters.handleFilterChange}
                       onClearFilters={filters.clearFilters}
@@ -288,12 +258,10 @@ export default function CollectionReportPageContent() {
                     />
                   </div>
 
-                  {/* Shared Pagination Controls */}
-                  {!loading &&
-                    (hook.paginatedReports?.length > 0 ||
-                      filters.filteredReports.length > 0) && (
-                      <div className="mb-8 mt-4 flex w-full justify-center">
-                        <PaginationControls
+                  {/* Pagination Section */}
+                  {(hook.paginatedReports?.length > 0 || filters.filteredReports.length > 0) && (
+                    <div className="mb-8 mt-4 flex w-full justify-center">
+                      <PaginationControls
                           currentPage={hook.currentPage}
                           totalPages={hook.totalPages || 1}
                           totalCount={hook.totalReports}
@@ -304,7 +272,7 @@ export default function CollectionReportPageContent() {
                 </div>
               )}
 
-              {/* 2. Monthly Roll-up Reports Tab */}
+              {/* === MONTHLY TAB === */}
               {effectiveTab === 'monthly' && (
                 <div className="tab-content-wrapper">
                   <MonthlyDesktop {...monthlyHook} />
@@ -314,19 +282,27 @@ export default function CollectionReportPageContent() {
                 </div>
               )}
 
-              {/* 3. Collector Schedule Management Tab */}
+              {/* === COLLECTOR TAB === */}
               {effectiveTab === 'collector' && (
                 <div className="tab-content-wrapper">
-                  <CollectorDesktop {...collectorHook} />
+                  <CollectorDesktop
+                    {...collectorHook}
+                    onEdit={collectorHook.onEdit}
+                    onDelete={collectorHook.onDelete}
+                    showActions={collectorHook.canManage}
+                  />
                   <div className="lg:hidden">
-                    <CollectorMobile {...collectorHook} />
+                    <CollectorMobile
+                      {...collectorHook}
+                      onEdit={collectorHook.onEdit}
+                      onDelete={collectorHook.onDelete}
+                      showActions={collectorHook.canManage}
+                    />
                   </div>
 
-                  {/* Pagination Controls */}
-                  {!collectorHook.loadingCollectorSchedules &&
-                    collectorHook.collectorSchedules.length > 0 && (
-                      <div className="flex justify-center">
-                        <PaginationControls
+                  {collectorHook.collectorSchedules.length > 0 && (
+                    <div className="mt-6 flex justify-center">
+                      <PaginationControls
                           currentPage={collectorHook.currentPage}
                           totalPages={collectorHook.totalPages}
                           setCurrentPage={collectorHook.setCurrentPage}
@@ -336,19 +312,27 @@ export default function CollectionReportPageContent() {
                 </div>
               )}
 
-              {/* 4. Manager Oversight Tab */}
+              {/* === MANAGER TAB === */}
               {effectiveTab === 'manager' && (
                 <div className="tab-content-wrapper">
-                  <ManagerDesktop {...managerHook} />
+                  <ManagerDesktop
+                    {...managerHook}
+                    onEdit={managerHook.onEdit}
+                    onDelete={managerHook.onDelete}
+                    showActions={managerHook.canManage}
+                  />
                   <div className="lg:hidden">
-                    <ManagerMobile {...managerHook} />
+                    <ManagerMobile
+                      {...managerHook}
+                      onEdit={managerHook.onEdit}
+                      onDelete={managerHook.onDelete}
+                      showActions={managerHook.canManage}
+                    />
                   </div>
                   
-                  {/* Pagination Controls */}
-                  {!managerHook.loadingSchedulers &&
-                    managerHook.schedulers.length > 0 && (
-                      <div className="flex justify-center">
-                        <PaginationControls
+                  {managerHook.schedulers.length > 0 && (
+                    <div className="mt-6 flex justify-center">
+                      <PaginationControls
                           currentPage={managerHook.currentPage}
                           totalPages={managerHook.totalPages}
                           setCurrentPage={managerHook.setCurrentPage}
@@ -362,7 +346,74 @@ export default function CollectionReportPageContent() {
         </div>
       </PageLayout>
 
-      {/* Global Modals for create/edit/delete operations */}
+      {/* Modal Section: Manager & Collector Dialogs */}
+      <ScheduleEditModal
+        open={!!managerHook.editingRow}
+        onClose={managerHook.onEditClose}
+        onSave={managerHook.onEditSave}
+        initialData={
+          managerHook.editingRow
+            ? {
+                collectorName: managerHook.editingRow.collectorName,
+                locationName: managerHook.editingRow.locationName,
+                startTime: managerHook.editingRow.rawStartTime,
+                endTime: managerHook.editingRow.rawEndTime,
+                status: managerHook.editingRow.status,
+              }
+            : null
+        }
+        saving={managerHook.saving}
+      />
+
+      <ScheduleDeleteDialog
+        open={!!managerHook.deletingRow}
+        onClose={managerHook.onDeleteClose}
+        onConfirm={managerHook.onDeleteConfirm}
+        collectorName={managerHook.deletingRow?.collectorName ?? ''}
+        locationName={managerHook.deletingRow?.locationName ?? ''}
+        deleting={managerHook.deleting}
+      />
+
+      <ScheduleEditModal
+        open={!!collectorHook.editingSchedule}
+        onClose={collectorHook.onEditClose}
+        onSave={collectorHook.onEditSave}
+        initialData={
+          collectorHook.editingSchedule
+            ? {
+                collectorName:
+                  collectorHook.editingSchedule.collectorName ||
+                  collectorHook.editingSchedule.collector ||
+                  '',
+                locationName:
+                  collectorHook.editingSchedule.locationName ||
+                  String(collectorHook.editingSchedule.location ?? ''),
+                startTime: String(collectorHook.editingSchedule.startTime),
+                endTime: String(collectorHook.editingSchedule.endTime),
+                status: collectorHook.editingSchedule.status,
+              }
+            : null
+        }
+        saving={collectorHook.saving}
+      />
+
+      <ScheduleDeleteDialog
+        open={!!collectorHook.deletingSchedule}
+        onClose={collectorHook.onDeleteClose}
+        onConfirm={collectorHook.onDeleteConfirm}
+        collectorName={
+          collectorHook.deletingSchedule?.collectorName ||
+          collectorHook.deletingSchedule?.collector ||
+          ''
+        }
+        locationName={
+          collectorHook.deletingSchedule?.locationName ||
+          String(collectorHook.deletingSchedule?.location ?? '')
+        }
+        deleting={collectorHook.deleting}
+      />
+
+      {/* Global Modals: Collection Operations */}
       <CollectionReportModals
         showNewCollectionMobile={showNewCollectionMobile}
         showNewCollectionDesktop={showNewCollectionDesktop}
@@ -385,5 +436,7 @@ export default function CollectionReportPageContent() {
       />
     </>
   );
-}
+};
+
+export default CollectionReportPageContent;
 

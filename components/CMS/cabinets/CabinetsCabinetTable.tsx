@@ -298,7 +298,7 @@ export default function CabinetsCabinetTable({
                         title={smbId ? 'Click to copy SMIB' : 'No SMIB'}
                         disabled={!smbId}
                       >
-                        SMIB: {smbId || 'N/A'}
+                        SMIB: {smbId || <span className="font-bold text-red-600">NO SMIB</span>}
                       </button>
                       {!isArchived && (
                         <Badge

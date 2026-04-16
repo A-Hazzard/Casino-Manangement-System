@@ -10,11 +10,14 @@
 
 import SessionsPageContent from '@/components/CMS/sessions/SessionsPageContent';
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
+import MaintenanceWrapper from '@/components/shared/maintenance/MaintenanceWrapper';
 
 export default function SessionsPage() {
   return (
     <ProtectedRoute requiredPage="sessions">
-      <SessionsPageContent />
+      <MaintenanceWrapper pageKey="sessions">
+        <SessionsPageContent />
+      </MaintenanceWrapper>
     </ProtectedRoute>
   );
 }

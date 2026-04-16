@@ -85,9 +85,9 @@ export default function ReportsMetersTab() {
   const [topMachinesLoading, setTopMachinesLoading] = useState(false);
 
   // ============================================================================
-  // Constants
+  // Constants Used for API Requests
   // ============================================================================
-  const itemsPerPage = 10;
+  const itemsPerPage = 20;
   const itemsPerBatch = 50;
   const pagesPerBatch = itemsPerBatch / itemsPerPage;
 

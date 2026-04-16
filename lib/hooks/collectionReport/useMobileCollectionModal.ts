@@ -17,6 +17,7 @@
 
 import { createCollectionReport as createCollectionReportAPI, validateMachineEntry } from '@/lib/helpers/collectionReport';
 import { sortMachinesAlphabetically } from '@/lib/helpers/collectionReport/editCollectionModalHelpers';
+import { logActivity } from '@/lib/helpers/collectionReport/newCollectionModalHelpers';
 import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
@@ -761,6 +762,46 @@ export function useMobileCollectionModal({
       setStoreSelectedMachineData(null);
 
       toast.success(`Machine ${isEditing ? 'updated' : 'added'} successfully!`);
+
+      // Log the add/update with meter details
+      if (selectedLocationName) {
+        const machineName = selectedMachineData?.name || selectedMachineData?.serialNumber || String(selectedMachineData?._id || '');
+        const metersIn = Number(modalState.formData.metersIn);
+        const metersOut = Number(modalState.formData.metersOut);
+        const ramClear = modalState.formData.ramClear;
+        const notes = modalState.formData.notes;
+        if (isEditing) {
+          const prevEntry = modalState.collectedMachines.find(m => m._id === modalState.editingEntryId);
+          const changes: string[] = [];
+          if (prevEntry && prevEntry.metersIn !== metersIn) changes.push(`MIn: ${prevEntry.metersIn} → ${metersIn}`);
+          if (prevEntry && prevEntry.metersOut !== metersOut) changes.push(`MOut: ${prevEntry.metersOut} → ${metersOut}`);
+          if (prevEntry && prevEntry.ramClear !== ramClear) changes.push(`RAM Clear: ${prevEntry.ramClear ? 'Yes' : 'No'} → ${ramClear ? 'Yes' : 'No'}`);
+          if (prevEntry && (prevEntry.notes || '') !== (notes || '')) changes.push(`Notes: "${prevEntry.notes || ''}" → "${notes || ''}"`);
+          const detailStr = changes.length > 0 ? changes.join(', ') : 'No meter changes';
+          await logActivity(
+            'update', 'collection',
+            modalState.editingEntryId || String(createdCollection._id),
+            `${machineName} at ${selectedLocationName}`,
+            `Updated machine ${machineName} at ${selectedLocationName} — ${detailStr}`,
+            user?._id as string, user?.username || 'unknown',
+            prevEntry ? { metersIn: prevEntry.metersIn, metersOut: prevEntry.metersOut, ramClear: prevEntry.ramClear, notes: prevEntry.notes } : null,
+            { metersIn, metersOut, ramClear, notes: notes || undefined }
+          );
+        } else {
+          const detailParts = [`MIn: ${metersIn}`, `MOut: ${metersOut}`, `PrevIn: ${validationPrevIn}`, `PrevOut: ${validationPrevOut}`, `RAM Clear: ${ramClear ? 'Yes' : 'No'}`];
+          if (ramClear) detailParts.push(`RC MIn: ${Number(modalState.formData.ramClearMetersIn) || 0}`, `RC MOut: ${Number(modalState.formData.ramClearMetersOut) || 0}`);
+          if (notes) detailParts.push(`Notes: ${notes}`);
+          await logActivity(
+            'create', 'collection',
+            String(createdCollection._id),
+            `${machineName} at ${selectedLocationName}`,
+            `Added machine ${machineName} to collection at ${selectedLocationName} — ${detailParts.join(', ')}`,
+            user?._id as string, user?.username || 'unknown',
+            null,
+            { metersIn, metersOut, prevIn: validationPrevIn, prevOut: validationPrevOut, ramClear, notes: notes || undefined }
+          );
+        }
+      }
     } catch (error: unknown) {
       // Handle validation errors from backend
       const axiosError = error as AxiosError<{

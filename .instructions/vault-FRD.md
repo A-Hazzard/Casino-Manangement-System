@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 
-The **VAULT** application is a dedicated interface for secure cash desk operations, float management, and vault balancing. It is a secondary application mode within the Dynamic1 ecosystem, toggled via environment variables.
+The **Vault** interface is the cash desk operations section of Evolution One CMS, covering float management and vault balancing. It is accessible to users with the `vault-manager` or `cashier` role.
 
 **Core Business Logic:**
 - The system tracks the flow of cash between:

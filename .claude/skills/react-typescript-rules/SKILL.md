@@ -217,7 +217,7 @@ const Button: FC<ButtonProps> = ({ variant = 'primary', ...props }) => {
 Run type check before committing:
 
 ```bash
-pnpm run type-check
+bun run type-check
 ```
 
 Strict mode enabled with:

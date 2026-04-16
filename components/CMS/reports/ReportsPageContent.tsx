@@ -68,23 +68,31 @@ export default function ReportsPageContent() {
     return userRoles.includes('location admin');
   }, [userRoles]);
 
-  // Filter tabs based on user role
-  // Developers: all tabs
-  // Admins and Location Admins: meters and locations tabs
-  // Others: only meters tab
+  const isOwner = useMemo(() => {
+    return userRoles.includes('owner');
+  }, [userRoles]);
+
+  // Filter tabs based on maintenance state and user role
+  // Developers: all tabs (minus maintenance)
+  // Admins, Owners, and Location Admins: meters and locations tabs (minus maintenance)
+  // Others: only meters tab (minus maintenance)
   const availableTabs = useMemo(() => {
+    const notUnderMaintenance = (tab: (typeof REPORTS_TABS_CONFIG)[number]) =>
+      tab.available !== false;
+
     if (isDeveloper) {
-      return REPORTS_TABS_CONFIG; // Developers see all tabs
+      return REPORTS_TABS_CONFIG.filter(notUnderMaintenance);
     }
-    if (isAdmin || isLocationAdmin) {
-      // Admins and Location Admins see meters and locations tabs
+    if (isAdmin || isLocationAdmin || isOwner) {
       return REPORTS_TABS_CONFIG.filter(
-        tab => tab.id === 'meters' || tab.id === 'locations'
+        tab => notUnderMaintenance(tab) && (tab.id === 'meters' || tab.id === 'locations')
       );
     }
     // Others only see meters tab
-    return REPORTS_TABS_CONFIG.filter(tab => tab.id === 'meters');
-  }, [isDeveloper, isAdmin, isLocationAdmin]);
+    return REPORTS_TABS_CONFIG.filter(
+      tab => notUnderMaintenance(tab) && tab.id === 'meters'
+    );
+  }, [isDeveloper, isAdmin, isLocationAdmin, isOwner]);
 
   // All authenticated users have access to reports
   const hasAccess = true;
