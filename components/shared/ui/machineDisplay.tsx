@@ -9,7 +9,7 @@
  * - Game information display
  */
 
-import React from 'react';
+import { JSX } from 'react';
 
 // ============================================================================
 // Type Definitions
@@ -78,7 +78,7 @@ export function formatMachineDisplayName(machine: MachineLike): string {
  */
 export function formatMachineDisplayNameWithBold(
   machine: MachineLike
-): React.JSX.Element {
+): JSX.Element {
   // Get raw values
   const serialNumberRaw = machine.serialNumber?.trim() || '';
   const customName = machine.custom?.name?.trim() || '';

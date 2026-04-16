@@ -17,7 +17,6 @@ import { Meters } from '@/app/api/lib/models/meters';
 import { LocationResponse, MeterMatchStage } from '@/lib/types/location';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * Main GET handler for searching locations
  *
@@ -159,14 +158,20 @@ export async function GET(request: NextRequest) {
           },
           // Machine statistics (count unique machines and online status)
           machineIds: { $addToSet: '$machineDetails._id' },
+          aceEnabled: { $first: '$locationDetails.aceEnabled' },
           onlineMachineIds: {
             $addToSet: {
               $cond: [
                 {
-                  $and: [
-                    { $ne: ['$machineDetails.lastActivity', null] },
+                  $or: [
+                    { $eq: ['$locationDetails.aceEnabled', true] },
                     {
-                      $gte: ['$machineDetails.lastActivity', threeMinutesAgo],
+                      $and: [
+                        { $ne: ['$machineDetails.lastActivity', null] },
+                        {
+                          $gte: ['$machineDetails.lastActivity', threeMinutesAgo],
+                        },
+                      ],
                     },
                   ],
                 },

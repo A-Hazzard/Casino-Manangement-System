@@ -21,11 +21,17 @@ type VaultOverviewHealthGridProps = {
   refreshing: boolean;
 };
 
-export default function VaultOverviewHealthGrid({ metrics, refreshing: _refreshing }: VaultOverviewHealthGridProps) {
-  const [breakdown, setBreakdown] = useState<{ open: boolean; type: 'in' | 'out' | 'payout'; title: string }>({
+export default function VaultOverviewHealthGrid({
+  metrics,
+}: VaultOverviewHealthGridProps) {
+  const [breakdown, setBreakdown] = useState<{
+    open: boolean;
+    type: 'in' | 'out' | 'payout';
+    title: string;
+  }>({
     open: false,
     type: 'in',
-    title: ''
+    title: '',
   });
 
   const { user } = useUserStore();
@@ -37,11 +43,13 @@ export default function VaultOverviewHealthGrid({ metrics, refreshing: _refreshi
 
   return (
     <>
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Vault Health</h3>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+          Vault Health
+        </h3>
         <DebugSection title="Vault Metrics" data={metrics} />
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 animate-in fade-in duration-500">
+      <div className="grid grid-cols-1 gap-4 duration-500 animate-in fade-in sm:grid-cols-2 lg:grid-cols-2">
         <VaultOverviewMetricCard
           title="Total Cash In"
           value={metrics.totalCashIn}
@@ -83,7 +91,7 @@ export default function VaultOverviewHealthGrid({ metrics, refreshing: _refreshi
 
       <VaultOverviewMetricBreakdownModal
         open={breakdown.open}
-        onOpenChange={(open) => setBreakdown(prev => ({ ...prev, open }))}
+        onOpenChange={open => setBreakdown(prev => ({ ...prev, open }))}
         locationId={locationId || ''}
         type={breakdown.type}
         title={breakdown.title}

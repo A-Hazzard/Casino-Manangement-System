@@ -15,7 +15,7 @@ export default function DeleteMovementRequestModal({
   const { isDeleteModalOpen, selectedMovementRequest, closeDeleteModal } =
     useMovementRequestActionsStore();
   const { user: currentUser } = useUserStore();
-  const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
+  const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
   const isDeveloper = userRoles.includes('developer');
   
   const [loading, setLoading] = useState(false);

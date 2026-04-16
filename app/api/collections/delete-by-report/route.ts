@@ -15,26 +15,19 @@
 import { Collections } from '@/app/api/lib/models/collections';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Machine } from '@/app/api/lib/models/machines';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main DELETE handler for deleting collections by report
- *
- * Flow:
- * 1. Parse request body
- * 2. Validate locationReportId
- * 3. Connect to database
- * 4. Find all collections with this locationReportId
- * 5. Get machine IDs from collections
- * 6. Revert machine collectionMeters and remove history entries
- * 7. Delete all collections
- * 8. Delete the collection report
- * 9. Verify deletion completed
- * 10. Return success response
  */
 export async function DELETE(request: NextRequest) {
-  const startTime = Date.now();
+  return withApiAuth(request, async ({ isAdminOrDev }) => {
+    if (!isAdminOrDev) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
+    }
+    const startTime = Date.now();
 
   try {
     // ============================================================================
@@ -160,6 +153,7 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }
 
 

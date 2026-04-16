@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 4: Find and validate transfer
     // ============================================================================
-    const transfer = await InterLocationTransferModel.findById(transferId);
+    const transfer = await InterLocationTransferModel.findOne({ _id: transferId });
     if (!transfer) {
       return NextResponse.json(
         { success: false, error: 'Transfer not found' },

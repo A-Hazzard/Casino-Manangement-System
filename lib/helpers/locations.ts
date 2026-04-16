@@ -14,7 +14,7 @@
 
 import { locations } from '@/lib/types';
 import { getAuthHeaders } from '@/lib/utils/auth';
-import { getLicenceeObjectId } from '@/lib/utils/licencee';
+import { resolveLicenceeId } from '@/lib/utils/licencee';
 import axios from 'axios';
 import { TimePeriod } from '../types/api';
 import { AggregatedLocation } from '../types/location';
@@ -31,22 +31,12 @@ export default async function getAllGamingLocations(
   try {
     const params: Record<string, string> = {};
     if (licencee && licencee !== 'all') {
-      // Convert licencee name to ObjectId for API compatibility
-      const licenceeObjectId = getLicenceeObjectId(licencee);
-      console.log('[getAllGamingLocations] Input licencee:', licencee);
-      console.log(
-        '[getAllGamingLocations] Converted ObjectId:',
-        licenceeObjectId
-      );
-      if (licenceeObjectId) {
-        params.licencee = licenceeObjectId;
+      const licenceeId = resolveLicenceeId(licencee);
+      if (licenceeId) {
+        params.licencee = licenceeId;
       }
     }
 
-    console.log(
-      '[getAllGamingLocations] Calling /api/locations with params:',
-      params
-    );
     const response = await axios.get<{ locations: locations }>(
       '/api/locations',
       {
@@ -55,10 +45,6 @@ export default async function getAllGamingLocations(
       }
     );
     const fetchedLocations = response.data.locations;
-    console.log(
-      '[getAllGamingLocations] Received locations:',
-      fetchedLocations?.length || 0
-    );
 
     return Array.isArray(fetchedLocations) ? fetchedLocations : [];
   } catch {
@@ -81,9 +67,7 @@ export async function fetchAllGamingLocations(licencee?: string) {
         const rel = locObj.rel as Record<string, unknown> | undefined;
         return {
           id:
-            (locObj._id as string)?.toString() ||
-            (locObj._id as string) ||
-            '',
+            (locObj._id as string)?.toString() || (locObj._id as string) || '',
           name:
             (locObj.name as string) ||
             (locObj.locationName as string) ||
@@ -204,7 +188,8 @@ export async function fetchAggregatedLocationsData(
     if (onlineStatus)
       queryParams.push(`onlineStatus=${encodeURIComponent(onlineStatus)}`);
     if (sortBy) queryParams.push(`sortBy=${encodeURIComponent(sortBy)}`);
-    if (sortOrder) queryParams.push(`sortOrder=${encodeURIComponent(sortOrder)}`);
+    if (sortOrder)
+      queryParams.push(`sortOrder=${encodeURIComponent(sortOrder)}`);
     if (archived) queryParams.push('archived=true');
 
     // Add specific locations filter
@@ -267,15 +252,11 @@ export async function fetchAggregatedLocationsData(
   } catch (error) {
     // Check if this is an axios cancellation using axios.isCancel()
     if (axios.isCancel(error)) {
-      console.log(
-        '[fetchAggregatedLocationsData] Request canceled (filter/page change)'
-      );
       throw error; // Re-throw so caller (useAbortableRequest) can handle it silently
     }
 
     // Check for AbortError (fetch API)
     if (error instanceof Error && error.name === 'AbortError') {
-      console.log('[fetchAggregatedLocationsData] Request aborted');
       throw error; // Re-throw so caller can handle it silently
     }
 
@@ -284,4 +265,3 @@ export async function fetchAggregatedLocationsData(
     return { data: [] };
   }
 }
-

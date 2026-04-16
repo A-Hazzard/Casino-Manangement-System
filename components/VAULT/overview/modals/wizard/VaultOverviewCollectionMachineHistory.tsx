@@ -7,6 +7,7 @@
  */
 'use client';
 
+import { ReactNode } from 'react';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import type { MachineCollectionActivity } from '@/shared/types/vault';
@@ -130,7 +131,7 @@ export default function VaultOverviewCollectionMachineHistory({
 }
 
 // Internal Badge Component for simplified usage
-function Badge({ icon, name }: { icon: React.ReactNode, name: string }) {
+function Badge({ icon, name }: { icon: ReactNode, name: string }) {
   return (
     <div className="flex items-center gap-1 text-[9px] font-black text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">
       {icon}

@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import {  useState, useCallback  } from 'react';
+import { ReactNode } from 'react';
+import { ErrorInfo } from 'react';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
 import ConnectionError from './ConnectionError';
 
 type PageErrorBoundaryProps = {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
+  children: ReactNode;
+  fallback?: ReactNode;
   onError?: (error: unknown) => void;
 };
 
@@ -40,7 +42,7 @@ export default function PageErrorBoundary({
   }, [error]);
 
   const handleErrorBoundary = useCallback(
-    (error: Error, _errorInfo: React.ErrorInfo) => {
+    (error: Error) => {
       // For ChunkLoadError, automatically reload the page
       if (error.name === 'ChunkLoadError' || error.message?.includes('chunk')) {
         // Small delay to show error message, then reload
@@ -88,8 +90,8 @@ function ErrorBoundaryWrapper({
   children,
   onError,
 }: {
-  children: React.ReactNode;
-  onError: (error: Error, errorInfo: React.ErrorInfo) => void;
+  children: ReactNode;
+  onError: (error: Error, errorInfo: ErrorInfo) => void;
 }) {
   const [hasError, setHasError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -109,5 +111,3 @@ function ErrorBoundaryWrapper({
     return null;
   }
 }
-
-

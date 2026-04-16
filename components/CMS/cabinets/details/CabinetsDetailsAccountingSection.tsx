@@ -36,8 +36,7 @@ export default function CabinetsDetailsAccountingSection({
   onRefresh,
 }: CabinetsDetailsAccountingSectionProps) {
   const { user } = useUserStore();
-  const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
-  const isTechnicianOnly = userRoles.includes('technician') && !userRoles.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
+  const isTechnicianOnly = user?.roles?.[0] == "technician"
 
   return (
     <div className="mt-8 w-full max-w-full space-y-6 overflow-x-hidden">
@@ -51,8 +50,8 @@ export default function CabinetsDetailsAccountingSection({
           ) : (
             <DateFilters
               hideAllTime={false}
-              onCustomRangeGo={onRefresh}
               showQuarterly={true}
+              onCustomRangeGo={onRefresh}
               enableTimeInputs={true}
             />
           )}

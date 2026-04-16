@@ -47,20 +47,15 @@ function getWeekNumber(date: Date): number {
  * 7. Return paginated results
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
   try {
-    // ============================================================================
-    // STEP 1: Parse route parameters and query parameters
-    // ============================================================================
-    const { id } = await params;
+    const { pathname } = request.nextUrl;
+    const parts = pathname.split('/');
+    const id = parts[parts.length - 2]; // Extract [id] from /api/members/[id]/sessions
 
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
     await connectDB();
 
     // ============================================================================

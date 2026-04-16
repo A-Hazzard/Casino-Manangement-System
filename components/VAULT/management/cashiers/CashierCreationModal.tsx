@@ -17,6 +17,7 @@
  */
 'use client';
 
+import { FormEvent, useEffect, useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
     Dialog,
@@ -30,7 +31,6 @@ import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, Key, Loader2, Mail, User } from 'lucide-react';
-import * as React from 'react';
 
 type CashierCreationModalProps = {
   open: boolean;
@@ -50,7 +50,7 @@ export default function CashierCreationModal({
   assignedLicencees = [],
   assignedLocations = [],
 }: CashierCreationModalProps) {
-  const [formData, setFormData] = React.useState({
+  const [formData, setFormData] = useState({
     username: '',
     firstName: '',
     lastName: '',
@@ -59,9 +59,9 @@ export default function CashierCreationModal({
     assignedLocations: [] as string[],
   });
 
-  const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [createdTempPassword, setCreatedTempPassword] = React.useState<
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [createdTempPassword, setCreatedTempPassword] = useState<
     string | null
   >(null);
 
@@ -110,7 +110,7 @@ export default function CashierCreationModal({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -160,7 +160,7 @@ export default function CashierCreationModal({
     onClose();
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       setFormData({
         username: '',

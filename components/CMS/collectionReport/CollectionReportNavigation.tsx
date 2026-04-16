@@ -34,9 +34,9 @@ export default function CollectionReportNavigation({
   onChange,
   isLoading = false,
 }: Props) {
-  // Show all tabs - no filtering based on permissions
+  // Filter out tabs that are under maintenance
   // Page-level access is already checked by ProtectedRoute and useUrlProtection
-  const accessibleTabs = tabs;
+  const accessibleTabs = tabs.filter(tab => tab.available !== false);
 
   return (
     <div className="rounded-lg border-b border-gray-200 bg-white shadow-sm">

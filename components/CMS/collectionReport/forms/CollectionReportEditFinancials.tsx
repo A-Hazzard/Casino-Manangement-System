@@ -10,6 +10,12 @@ import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { Input } from '@/components/shared/ui/input';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { Info } from 'lucide-react';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/shared/ui/tooltip';
 
 type FinancialsData = {
   taxes: string;
@@ -47,7 +53,7 @@ export default function CollectionReportEditFinancials({
 
   return (
     <div className="mt-6 border-t border-gray-300 pt-6">
-      <p className="mb-4 text-lg font-semibold text-gray-700">Financials</p>
+      <p className="mb-4 text-center text-lg font-semibold text-gray-700">Report Financials</p>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {/* Taxes */}
@@ -162,38 +168,57 @@ export default function CollectionReportEditFinancials({
               description="Enter the EXACT total amount of physical cash retrieving from all machines. The system compares this to the 'Amount to Collect' to determine the shortage or overage for the next report."
             />
           </label>
-          <Input
-            type="text"
-            value={financials.collectedAmount}
-            onChange={e => {
-              if (
-                /^-?\d*\.?\d*$/.test(e.target.value) ||
-                e.target.value === ''
-              ) {
-                if (onCollectedAmountChange) {
-                    onCollectedAmountChange(e.target.value);
-                } else {
-                    const val = e.target.value;
-                    const amountToCollect = Number(financials.amountToCollect) || 0;
-                    const collected = Number(val) || 0;
-                    const correction = Number(baseBalanceCorrection) || 0;
-                    const previousBalance =
-                      collected - amountToCollect - correction;
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Input
+                    type="text"
+                    value={financials.collectedAmount}
+                    onChange={e => {
+                      if (
+                        /^-?\d*\.?\d*$/.test(e.target.value) ||
+                        e.target.value === ''
+                      ) {
+                        if (onCollectedAmountChange) {
+                            onCollectedAmountChange(e.target.value);
+                        } else {
+                            const val = e.target.value;
+                            const amountToCollect = Number(financials.amountToCollect) || 0;
+                            const collected = Number(val) || 0;
+                            const correction = Number(baseBalanceCorrection) || 0;
+                            const previousBalance =
+                              collected - amountToCollect - correction;
 
-                    onFinancialsChange({
-                      collectedAmount: val,
-                      previousBalance: previousBalance.toFixed(2),
-                      balanceCorrection: (correction + previousBalance).toFixed(2),
-                    });
-                }
-              }
-            }}
-            disabled={
-              isProcessing ||
+                            onFinancialsChange({
+                              collectedAmount: val,
+                              previousBalance: previousBalance.toFixed(2),
+                              balanceCorrection: (correction + previousBalance).toFixed(2),
+                            });
+                        }
+                      }
+                    }}
+                    disabled={
+                      isProcessing ||
+                      (baseBalanceCorrection === '' &&
+                        financials.balanceCorrection === '')
+                    }
+                  />
+                </div>
+              </TooltipTrigger>
+              {isProcessing ||
               (baseBalanceCorrection === '' &&
-                financials.balanceCorrection === '')
-            }
-          />
+                financials.balanceCorrection === '') ? (
+                <TooltipContent>
+                  <p>
+                    {isProcessing
+                      ? 'Please wait until processing completes.'
+                      : 'Enter a Balance Correction first, then the Collected Amount will unlock.'}
+                  </p>
+                </TooltipContent>
+              ) : null}
+            </Tooltip>
+          </TooltipProvider>
           <p className="mt-1.5 text-xs leading-tight font-medium">
             {(baseBalanceCorrection === '' && financials.balanceCorrection === '') 
               ? <span className="text-amber-600 flex items-center gap-1.5 bg-amber-50 p-2 rounded border border-amber-200">
@@ -216,20 +241,37 @@ export default function CollectionReportEditFinancials({
               description="This field shows the final balance for the current location. It's calculated by taking the manual correction and adding the current collection difference (Shortage/Overage). You must set a manual value here first to unlock the 'Collected Amount' field."
             />
           </label>
-          <Input
-            type="text"
-            value={financials.balanceCorrection}
-            onChange={e => {
-              if (
-                /^-?\d*\.?\d*$/.test(e.target.value) ||
-                e.target.value === ''
-              ) {
-                onFinancialsChange({ balanceCorrection: e.target.value });
-                setBaseBalanceCorrection(e.target.value);
-              }
-            }}
-            disabled={isProcessing || financials.collectedAmount !== ''}
-          />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Input
+                    type="text"
+                    value={financials.balanceCorrection}
+                    onChange={e => {
+                      if (
+                        /^-?\d*\.?\d*$/.test(e.target.value) ||
+                        e.target.value === ''
+                      ) {
+                        onFinancialsChange({ balanceCorrection: e.target.value });
+                        setBaseBalanceCorrection(e.target.value);
+                      }
+                    }}
+                    disabled={isProcessing || financials.collectedAmount !== ''}
+                  />
+                </div>
+              </TooltipTrigger>
+              {isProcessing || financials.collectedAmount !== '' ? (
+                <TooltipContent>
+                  <p>
+                    {isProcessing
+                      ? 'Please wait until processing completes.'
+                      : 'Clear the Collected Amount to edit the Balance Correction.'}
+                  </p>
+                </TooltipContent>
+              ) : null}
+            </Tooltip>
+          </TooltipProvider>
           <p className="mt-1.5 text-xs leading-tight font-medium">
             {financials.collectedAmount !== '' 
               ? <span className="text-amber-600 flex items-center gap-1.5 bg-amber-50 p-2 rounded border border-amber-200">
@@ -299,7 +341,7 @@ export default function CollectionReportEditFinancials({
       <div className="mt-8 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/40 p-5 shadow-sm">
         <h5 className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-900">
           <Info className="h-4 w-4 text-blue-600" />
-          Reconciliation Summary Breakdown
+          Report Financial Reconciliation Summary
         </h5>
         
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">

@@ -26,8 +26,7 @@ import { syncReportMeters } from '@/app/api/lib/helpers/meterSync';
  * 6. Return success with statistics
  */
 export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ reportId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
@@ -40,7 +39,9 @@ export async function POST(
     // ============================================================================
     // STEP 2: Extract and validate reportId from URL params
     // ============================================================================
-    const { reportId } = await params;
+    const { pathname } = request.nextUrl;
+    const parts = pathname.split('/');
+    const reportId = parts[parts.length - 2];
 
     if (!reportId) {
       const duration = Date.now() - startTime;

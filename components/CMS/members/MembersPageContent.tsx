@@ -1,7 +1,7 @@
 'use client';
 
+import { ReactElement, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import React, { Suspense } from 'react';
 import { Toaster } from 'sonner';
 
 // Layout components
@@ -9,6 +9,7 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 
 // Store
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useUserStore } from '@/lib/store/userStore';
 
 // Hooks
 import { useMembersTabContent } from '@/lib/hooks/data';
@@ -25,6 +26,7 @@ import {
 // Tab Components
 import MembersListTab from '@/components/CMS/members/tabs/MembersListTab';
 import MembersSummaryTab from '@/components/CMS/members/tabs/MembersSummaryTab';
+import MembersActivityLogTab from '@/components/CMS/members/tabs/MembersActivityLogTab';
 
 // Constants
 import {
@@ -38,15 +40,6 @@ import type { MembersView } from '@/shared/types/entities';
 /**
  * Members Content Component
  * Main content component for the members page with tab navigation and layout.
- *
- * Features:
- * - Tab-based navigation (Members List, Summary)
- * - Licencee selection integration
- * - Tab content rendering with suspense
- * - Loading skeletons
- * - Framer Motion animations
- * - Access control
- * - Responsive layout
  */
 function MembersPageContentInner() {
   // ============================================================================
@@ -54,19 +47,27 @@ function MembersPageContentInner() {
   // ============================================================================
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
   const { onRefresh, onNewMember, refreshing } = useMembersHandlers();
+  const { user } = useUserStore();
 
-  // All authenticated users have access to members
-  const hasAccess = true;
-  const availableTabs = MEMBERS_TABS_CONFIG;
-  const accessDeniedMessage = null;
+  const isManagement = !!(
+    user?.roles &&
+    (user.roles.includes('developer') || user.roles.includes('admin') || user.roles.includes('owner'))
+  );
 
-  const { activeTab, handleTabClick } =
-    useMembersNavigation(MEMBERS_TABS_CONFIG);
+  // Filter tabs - apply maintenance state first, then role-based access
+  const availableTabs = MEMBERS_TABS_CONFIG.filter(tab => {
+    if (tab.available === false) return false;
+    if (tab.id === 'activity-log') return isManagement;
+    return true;
+  });
+
+  const { activeTab, handleTabClick } = useMembersNavigation(availableTabs);
 
   // Tab content rendering
-  const tabComponents: Record<MembersView, React.ReactElement> = {
+  const tabComponents: Record<MembersView, ReactElement> = {
     members: <MembersListTab />,
     'summary-report': <MembersSummaryTab selectedLicencee={selectedLicencee} />,
+    'activity-log': <MembersActivityLogTab />,
   };
 
   const { getTabAnimationProps, currentTabComponent } = useMembersTabContent({
@@ -74,35 +75,6 @@ function MembersPageContentInner() {
     animations: MEMBERS_ANIMATIONS,
     tabComponents,
   });
-
-  // Show access denied message if user doesn't have access
-  if (!hasAccess) {
-    return (
-      <>
-        <PageLayout
-          headerProps={{
-            selectedLicencee,
-            setSelectedLicencee,
-            disabled: false,
-          }}
-          hideLicenceeFilter={true}
-          showToaster={false}
-        >
-          <div className="flex min-h-[400px] items-center justify-center">
-            <div className="text-center">
-              <h2 className="mb-2 text-xl font-semibold text-gray-900">
-                Access Restricted
-              </h2>
-              <p className="text-gray-600">
-                {accessDeniedMessage ||
-                  "You don't have permission to access member data."}
-              </p>
-            </div>
-          </div>
-        </PageLayout>
-      </>
-    );
-  }
 
   /**
    * Render the content for the active tab
@@ -119,8 +91,12 @@ function MembersPageContentInner() {
               /* Show appropriate skeleton based on active tab */
               activeTab === 'members' ? (
                 <MembersListTabSkeleton />
-              ) : (
+              ) : activeTab === 'summary-report' ? (
                 <MembersSummaryTabSkeleton />
+              ) : (
+                <div className="flex h-64 items-center justify-center bg-white/50 animate-pulse rounded-lg mt-6">
+                  <span className="text-gray-500 font-medium">Loading Activity Log...</span>
+                </div>
               )
             }
           >
@@ -173,4 +149,3 @@ export default function MembersPageContent() {
     </MembersHandlersProvider>
   );
 }
-

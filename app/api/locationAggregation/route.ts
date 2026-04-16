@@ -339,7 +339,8 @@ export async function GET(req: NextRequest) {
     const currentUserRoles = (currentUser?.roles as string[]) || [];
     const isAdminOrDev =
       currentUserRoles.includes('admin') ||
-      currentUserRoles.includes('developer');
+      currentUserRoles.includes('developer') ||
+      currentUserRoles.includes('owner');
 
     let convertedRows = sortedRows;
     if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
@@ -348,6 +349,21 @@ export async function GET(req: NextRequest) {
         displayCurrency,
         licencee
       );
+    }
+
+    // ============================================================================
+    // STEP 10.5: Apply Reviewer Multiplier Scaling
+    // ============================================================================
+    const reviewerMult = (currentUser as { multiplier?: number | null })?.multiplier ?? null;
+    if (reviewerMult !== null) {
+      const scale = 1 - reviewerMult;
+      convertedRows = convertedRows.map((row) => ({
+        ...row,
+        moneyIn: typeof row.moneyIn === 'number' ? row.moneyIn * scale : row.moneyIn,
+        moneyOut: typeof row.moneyOut === 'number' ? row.moneyOut * scale : row.moneyOut,
+        jackpot: typeof row.jackpot === 'number' ? row.jackpot * scale : row.jackpot,
+        gross: typeof row.gross === 'number' ? row.gross * scale : row.gross,
+      }));
     }
 
     // ============================================================================

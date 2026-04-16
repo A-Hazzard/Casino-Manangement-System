@@ -15,9 +15,11 @@
 
 'use client';
 
+import { ReactNode } from 'react';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
+import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
@@ -33,7 +35,6 @@ import { AggregatedLocation } from '@/lib/types/location';
 import {
   getGrossColorClass,
   getMoneyInColorClass,
-  getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import {
   ArrowUpDown,
@@ -42,7 +43,7 @@ import {
   Monitor,
   Search,
 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import {  useMemo, useState  } from 'react';
 
 /**
  * Main ReportsLocationsRevenueTable Component
@@ -51,8 +52,9 @@ export default function ReportsLocationsRevenueTable({
   locations,
   loading = false,
   error = null,
-  currentPage = 1,
+  currentPage = 0,
   totalPages = 1,
+  totalCount,
   onPageChange,
   onLocationClick,
 }: ReportsLocationsRevenueTableProps) {
@@ -144,7 +146,7 @@ export default function ReportsLocationsRevenueTable({
     children,
   }: {
     field: keyof AggregatedLocation | 'name';
-    children: React.ReactNode;
+    children: ReactNode;
   }) => (
     <Button
       variant="ghost"
@@ -290,12 +292,15 @@ export default function ReportsLocationsRevenueTable({
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-gray-500">Cancelled Credits</p>
-            <p
-              className={`text-sm font-medium ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
-            >
-              ${location.moneyOut.toLocaleString()}
-            </p>
+            <p className="text-xs text-gray-500">Money Out</p>
+            <MoneyOutCell
+              moneyOut={location.moneyOut || 0}
+              moneyIn={location.moneyIn || 0}
+              jackpot={location.jackpot || 0}
+              displayValue={`$${location.moneyOut.toLocaleString()}`}
+              includeJackpot={!!location.includeJackpot}
+              showInfoIcon={true}
+            />
           </div>
           <div className="col-span-2 space-y-1">
             <p className="text-xs text-gray-500">Gross Revenue</p>
@@ -389,7 +394,7 @@ export default function ReportsLocationsRevenueTable({
                     <SortButton field="moneyIn">Drop</SortButton>
                   </TableHead>
                   <TableHead className="text-right font-semibold">
-                    <SortButton field="moneyOut">Cancelled Credits</SortButton>
+                    <SortButton field="moneyOut">Money Out</SortButton>
                   </TableHead>
                   <TableHead className="text-right font-semibold">
                     <SortButton field="gross">Gross Revenue</SortButton>
@@ -496,10 +501,14 @@ export default function ReportsLocationsRevenueTable({
                         >
                           ${location.moneyIn.toLocaleString()}
                         </TableCell>
-                        <TableCell
-                          className={`text-right font-mono ${getMoneyOutColorClass(location.moneyOut, location.moneyIn)}`}
-                        >
-                          ${location.moneyOut.toLocaleString()}
+                        <TableCell className="text-right font-mono">
+                          <MoneyOutCell
+                            moneyOut={location.moneyOut || 0}
+                            moneyIn={location.moneyIn || 0}
+                            jackpot={location.jackpot || 0}
+                            displayValue={`$${location.moneyOut.toLocaleString()}`}
+                            includeJackpot={!!location.includeJackpot}
+                          />
                         </TableCell>
                         <TableCell
                           className={`text-right font-mono font-semibold ${getGrossColorClass(location.gross)}`}
@@ -557,14 +566,14 @@ export default function ReportsLocationsRevenueTable({
         </div>
 
         {/* Pagination - Use standard PaginationControls */}
-        {onPageChange && totalPages > 1 && (
-          <div className="mt-8 border-t border-gray-200 pt-6">
-            <PaginationControls
-              currentPage={currentPage - 1}
-              totalPages={totalPages}
-              setCurrentPage={page => onPageChange(page + 1)}
-            />
-          </div>
+        {onPageChange && (
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            setCurrentPage={onPageChange}
+            showTotalCount
+          />
         )}
       </CardContent>
     </Card>

@@ -36,7 +36,7 @@ export function useCurrencyFormat() {
   /**
    * Format amount with currency symbol only (no number formatting)
    */
-  const formatAmountSimple = (amount: number, _currency?: CurrencyCode) => {
+  const formatAmountSimple = (amount: number) => {
     return `$${amount.toFixed(2)}`;
   };
 
@@ -68,4 +68,3 @@ export function useCurrencyFormat() {
     isAllLicencee,
   };
 }
-

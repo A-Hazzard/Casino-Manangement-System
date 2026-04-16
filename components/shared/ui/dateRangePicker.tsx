@@ -13,7 +13,9 @@
  * @param onChange - Callback to update selected date range
  * @param disabled - Whether the picker is disabled
  */
-import * as React from 'react';
+
+import { Component, FC, ReactNode, useCallback, useMemo, useState } from 'react';
+import { ErrorInfo } from 'react';
 import { format } from 'date-fns';
 import {
   DayPicker,
@@ -35,11 +37,11 @@ import { cn } from '@/lib/utils'; // For conditional class names
 // ============================================================================
 
 // Simple Error Boundary for DayPicker
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
+class ErrorBoundary extends Component<
+  { children: ReactNode },
   { hasError: boolean }
 > {
-  constructor(props: { children: React.ReactNode }) {
+  constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -49,7 +51,7 @@ class ErrorBoundary extends React.Component<
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.warn('DayPicker Error Boundary error details:', error, errorInfo);
   }
 
@@ -85,7 +87,7 @@ type DateRangePickerProps = {
   numberOfMonths?: 1 | 2;
 };
 
-export const DateRangePicker: React.FC<DateRangePickerProps> = ({
+export const DateRangePicker: FC<DateRangePickerProps> = ({
   value,
   onChange,
   className,
@@ -94,9 +96,9 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   placeholder = 'Pick a date range',
   numberOfMonths = 1,
 }) => {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const safeValue: RDPDateRange = React.useMemo(() => {
+  const safeValue: RDPDateRange = useMemo(() => {
     if (!value) {
       return { from: undefined, to: undefined };
     }
@@ -124,7 +126,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     return { from: undefined, to: undefined };
   }, [value]);
 
-  const handleSelect: SelectRangeEventHandler = React.useCallback(
+  const handleSelect: SelectRangeEventHandler = useCallback(
     (range: RDPDateRange | undefined) => {
       if (onChange) {
         onChange(range);
@@ -138,7 +140,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     [onChange]
   );
 
-  const displayValue = React.useMemo(() => {
+  const displayValue = useMemo(() => {
     try {
       if (safeValue.from && safeValue.to) {
         // Validate dates before formatting

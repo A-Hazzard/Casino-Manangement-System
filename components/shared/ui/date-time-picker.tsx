@@ -16,7 +16,7 @@
  */
 'use client';
 
-import * as React from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format, set } from 'date-fns';
 import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { DayPicker, SelectSingleEventHandler } from 'react-day-picker';
@@ -45,7 +45,7 @@ export function DateTimePicker({
   dateOnly = false,
 }: DateTimePickerProps) {
   // Store hours and minutes separately for UI handling
-  const [time, setTime] = React.useState(() => {
+  const [time, setTime] = useState(() => {
     if (!date) return { hours: '12', minutes: '00', period: 'AM' };
     const hours = date.getHours();
     return {
@@ -57,7 +57,7 @@ export function DateTimePicker({
   });
 
   // When the date changes (from calendar), update the time state to match the new date
-  React.useEffect(() => {
+  useEffect(() => {
     if (!date) return;
     const hours = date.getHours();
     setTime({
@@ -90,7 +90,7 @@ export function DateTimePicker({
   };
 
   // Update the date with the selected time
-  React.useEffect(() => {
+  useEffect(() => {
     if (!date) return;
     let hours = parseInt(time.hours);
     if (time.period === 'PM' && hours < 12) hours += 12;
@@ -104,7 +104,7 @@ export function DateTimePicker({
   }, [time, date, setDate]);
 
   // Format display string
-  const formattedDate = React.useMemo(() => {
+  const formattedDate = useMemo(() => {
     if (!date) return dateOnly ? 'Pick a date' : 'Pick a date and time';
     return format(date, dateOnly ? 'PPP' : 'PPP p');
   }, [date, dateOnly]);

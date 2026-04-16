@@ -35,6 +35,11 @@ type UseCabinetSortingProps = {
    * If provided, used to calculate totalPages for global pagination.
    */
   totalCount?: number;
+  /**
+   * Controlled current page. When provided, this overrides the internal
+   * page state so the parent can drive pagination.
+   */
+  currentPage?: number;
 };
 
 type UseCabinetSortingReturn = {
@@ -58,11 +63,16 @@ export const useCabinetSorting = ({
   useBatchPagination = true,
   totalCount,
   searchTerm = '',
+  currentPage: controlledCurrentPage,
 }: UseCabinetSortingProps & { searchTerm?: string }): UseCabinetSortingReturn => {
   // Sort state management
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
-  const [currentPage, setCurrentPage] = useState(0);
+  const [internalCurrentPage, setInternalCurrentPage] = useState(0);
+
+  // Use controlled page if provided, otherwise fall back to internal state
+  const currentPage = controlledCurrentPage ?? internalCurrentPage;
+  const setCurrentPage = (page: number) => setInternalCurrentPage(page);
 
   // Sort toggle handler
   const handleSortToggle = useCallback(() => {

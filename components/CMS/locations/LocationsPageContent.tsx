@@ -7,8 +7,8 @@
  */
 'use client';
 
-import LocationsDetailsFilterSection from '@/components/CMS/locations/details/LocationsDetailsFilterSection';
-import LocationsDetailsHeaderSection from '@/components/CMS/locations/details/LocationsDetailsHeaderSection';
+import LocationsPageFilterSection from '@/components/CMS/locations/LocationsPageFilterSection';
+import LocationsPageHeaderSection from '@/components/CMS/locations/LocationsPageHeaderSection';
 import LocationsCabinetTableSkeleton from '@/components/CMS/locations/LocationsCabinetTableSkeleton';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import ClientOnly from '@/components/shared/ui/common/ClientOnly';
@@ -22,10 +22,13 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
+import type { AggregatedLocation } from '@/shared/types';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
+import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import LocationsLocationCard from './LocationsLocationCard';
 import LocationsLocationSkeleton from './LocationsLocationSkeleton';
 import LocationsLocationTable from './LocationsLocationTable';
@@ -51,7 +54,7 @@ export default function LocationsPageContent() {
   const {
     loading,
     refreshing,
-    filteredLocationData,
+    locationData,
     financialTotals,
     metricsTotals,
     metricsTotalsLoading,
@@ -81,8 +84,8 @@ export default function LocationsPageContent() {
    */
   const canManageLocations = useMemo(() => {
     const roles = user?.roles || [];
-    return ['developer', 'admin', 'manager', 'location admin'].some(r =>
-      roles.includes(r)
+    return ['developer', 'owner', 'admin', 'manager', 'location admin'].some(
+      r => roles.includes(r)
     );
   }, [user]);
 
@@ -95,6 +98,24 @@ export default function LocationsPageContent() {
   const handleLocationClick = (locationId: string) => {
     if (locationId) {
       router.push(`/locations/${locationId}`);
+    }
+  };
+
+  /**
+   * Restore an archived location back to active status.
+   */
+  const handleRestore = async (location: Partial<AggregatedLocation>) => {
+    const loc = location as Record<string, unknown>;
+    const locationId = loc.location as string;
+    const locationName = loc.locationName as string;
+    if (!locationId) return;
+
+    try {
+      await axios.patch('/api/locations', { id: locationId, action: 'restore' });
+      toast.success(`${locationName || 'Location'} restored successfully`);
+      handleRefresh();
+    } catch {
+      toast.error('Failed to restore location');
     }
   };
 
@@ -132,7 +153,7 @@ export default function LocationsPageContent() {
         refreshing={refreshing}
       >
         {/* Page Header: Title and primary actions */}
-        <LocationsDetailsHeaderSection
+        <LocationsPageHeaderSection
           loading={loading}
           refreshing={refreshing}
           canManage={canManageLocations}
@@ -160,7 +181,7 @@ export default function LocationsPageContent() {
             <div className="order-1 w-auto flex-shrink-0">
               <DateFilters hideAllTime />
             </div>
-            <div className="order-2 w-auto flex-shrink-0">
+            <div className="order-2 w-auto">
               <MachineStatusWidget
                 isLoading={
                   machineStatsLoading ||
@@ -181,7 +202,7 @@ export default function LocationsPageContent() {
           </div>
 
           {/* Search bar and multi-filter dropdowns */}
-          <LocationsDetailsFilterSection
+          <LocationsPageFilterSection
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             selectedFilters={selectedFilters}
@@ -213,7 +234,7 @@ export default function LocationsPageContent() {
               </ClientOnly>
             </div>
           ) : /* Show empty state message if no locations match the filters */
-          filteredLocationData.length === 0 ? (
+          locationData.length === 0 ? (
             <div className="py-12 text-center text-gray-500">
               No locations found matching your criteria.
             </div>
@@ -222,12 +243,15 @@ export default function LocationsPageContent() {
             <div>
               {/* Mobile View: Cards display */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
-                {filteredLocationData.map(loc => (
+                {locationData.map(loc => (
                   <LocationsLocationCard
                     key={String(loc._id || loc.location || Math.random())}
                     location={loc}
                     onLocationClick={handleLocationClick}
                     onEdit={location => openEditModal(location)}
+                    onDelete={location => openDeleteModal(location)}
+                    onRestore={location => handleRestore(location)}
+                    showArchived={locationsPageData.selectedStatus === 'Archived'}
                   />
                 ))}
               </div>
@@ -235,12 +259,13 @@ export default function LocationsPageContent() {
               {/* Desktop View: Interactive data table */}
               <div className="hidden overflow-x-auto border border-gray-200 bg-white shadow-sm lg:block">
                 <LocationsLocationTable
-                  locations={filteredLocationData}
+                  locations={locationData}
                   onLocationClick={handleLocationClick}
                   showArchived={locationsPageData.selectedStatus === 'Archived'}
                   onAction={(action, loc) => {
                     if (action === 'edit') openEditModal(loc);
                     if (action === 'delete') openDeleteModal(loc);
+                    if (action === 'restore') handleRestore(loc);
                   }}
                   onSort={locationsPageData.handleSort}
                   sortOption={locationsPageData.sortOption}
@@ -250,17 +275,13 @@ export default function LocationsPageContent() {
               </div>
 
               {/* Data Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="my-4 flex w-full justify-center">
-                  <PaginationControls
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalCount={totalCount}
-                    limit={10}
-                    setCurrentPage={setCurrentPage}
-                  />
-                </div>
-              )}
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalCount={totalCount}
+                setCurrentPage={setCurrentPage}
+                showTotalCount
+              />
             </div>
           )}
         </div>

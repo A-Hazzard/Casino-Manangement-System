@@ -26,7 +26,7 @@ import { MovementRequest } from '@/lib/types/movement';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { useCallback, useEffect, useState } from 'react';
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 20;
 
 type CabinetsMovementRequestsProps = {
   locations: { _id: string; name: string }[];
@@ -85,13 +85,13 @@ export default function CabinetsMovementRequests({
   }, [refreshTrigger, loadRequests]);
 
   const filteredRequests = requests.filter(req => {
-    const searchLower = searchTerm.toLowerCase();
+    const searchLower = (searchTerm || '').toLowerCase();
     const matchesSearch =
-      req.createdBy.toLowerCase().includes(searchLower) ||
-      req.locationFrom.toLowerCase().includes(searchLower) ||
-      req.locationTo.toLowerCase().includes(searchLower) ||
-      req.cabinetIn.toLowerCase().includes(searchLower) ||
-      req.status.toLowerCase().includes(searchLower);
+      (req.createdBy || '').toLowerCase().includes(searchLower) ||
+      (req.locationFrom || '').toLowerCase().includes(searchLower) ||
+      (req.locationTo || '').toLowerCase().includes(searchLower) ||
+      (req.cabinetIn || '').toLowerCase().includes(searchLower) ||
+      (req.status || '').toLowerCase().includes(searchLower);
     
     const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
     
@@ -232,15 +232,13 @@ export default function CabinetsMovementRequests({
       </div>
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="mt-8 flex justify-center pb-4">
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            setCurrentPage={setCurrentPage}
-          />
-        </div>
-      )}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={filteredRequests.length}
+        setCurrentPage={setCurrentPage}
+        showTotalCount
+      />
     </div>
   );
 }

@@ -86,6 +86,7 @@ type LocationsDetailsCabinetsSectionProps = {
   selectedGameType: string;
   sortOption: CabinetSortOption;
   sortOrder: 'asc' | 'desc';
+  selectedSmibStatus: string;
   // Pagination
   currentPage: number;
   effectiveTotalPages: number;
@@ -104,6 +105,7 @@ type LocationsDetailsCabinetsSectionProps = {
   setSearchTerm: (value: string) => void;
   setSelectedStatus: (status: string) => void;
   setSelectedGameType: (type: string) => void;
+  setSelectedSmibStatus: (status: string) => void;
   setSortOption: (option: CabinetSortOption) => void;
   setSortOrder: (order: 'asc' | 'desc') => void;
   setCurrentPage: (page: number) => void;
@@ -114,8 +116,15 @@ type LocationsDetailsCabinetsSectionProps = {
   // Handlers
   handleRefresh: () => Promise<void>;
   handleFilterChange: (status: string) => void;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
   handleLocationChangeInPlace: (newLocationId: string) => void;
+  onRestore?: (cabinet: Cabinet) => void;
+  onPermanentDelete?: (cabinet: Cabinet) => void;
+  // Archived machine management
+  showArchived: boolean;
+  setShowArchived: (value: boolean) => void;
+  canViewArchived: boolean;
+  canPermanentlyDeleteMachines?: boolean;
 };
 
 export default function LocationsDetailsCabinetsSection({
@@ -123,7 +132,6 @@ export default function LocationsDetailsCabinetsSection({
   chartData,
   filteredCabinets,
   gameTypes,
-  locationName,
   locationId,
   selectedLocationId,
   locations,
@@ -140,6 +148,7 @@ export default function LocationsDetailsCabinetsSection({
   searchTerm,
   selectedStatus,
   selectedGameType,
+  selectedSmibStatus,
   sortOption,
   sortOrder,
   currentPage,
@@ -150,14 +159,20 @@ export default function LocationsDetailsCabinetsSection({
   membershipStats,
   setSearchTerm,
   setSelectedGameType,
+  setSelectedSmibStatus,
   setSortOption,
   setSortOrder,
   setCurrentPage,
   setChartGranularity,
-  subtractJackpot = false,
+  includeJackpot = false,
   handleRefresh,
   handleFilterChange,
   handleLocationChangeInPlace,
+  onRestore,
+  onPermanentDelete,
+  showArchived,
+  setShowArchived,
+  canViewArchived,
 }: LocationsDetailsCabinetsSectionProps) {
   const router = useRouter();
   const tableRef = useRef<HTMLDivElement>(null);
@@ -219,6 +234,7 @@ export default function LocationsDetailsCabinetsSection({
     filteredCabinets,
     selectedStatus,
     selectedGameType,
+    selectedSmibStatus,
     searchTerm,
     sortOption,
     sortOrder,
@@ -276,28 +292,36 @@ export default function LocationsDetailsCabinetsSection({
   return (
     <>
       {/* Financial Metrics Section: Location-specific financial overview */}
-      <div className="mt-6">
+      <div>
+        {/* Jackpot badge — above heading on mobile/md, inline on lg+ */}
+        {includeJackpot && (
+          <div className="mb-2 lg:hidden">
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+              <Info className="h-3 w-3" />
+              This location adds Jackpot to Money Out
+            </span>
+          </div>
+        )}
         <div className="mb-2 flex items-center gap-2">
-          <h2 className="text-base font-semibold text-gray-800 sm:text-lg">
-            Financial Metrics for {locationName || 'Location'}
-          </h2>
-          {subtractJackpot && (
-            <div className="group relative inline-flex flex-shrink-0">
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 sm:px-2.5 sm:py-1 sm:text-xs">
-                <Info className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                Subtracts Jackpot
+          {includeJackpot && (
+            <div className="group relative hidden flex-shrink-0 lg:inline-flex">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                <Info className="h-3.5 w-3.5" />
+                This location adds Jackpot to Money Out
               </span>
               <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                Money Out includes Jackpot — Gross = Money In - (Money Out incl. Jackpot)
+                Jackpot is added to Money Out: Money Out = Total Cancelled Credits + Jackpot
               </div>
             </div>
           )}
         </div>
+
         <FinancialMetricsCards
           totals={financialTotals}
           loading={loading || cabinetsLoading}
           disableCurrencyConversion={true}
           locationFiltered={true}
+          includeJackpot={includeJackpot}
         />
       </div>
 
@@ -336,7 +360,7 @@ export default function LocationsDetailsCabinetsSection({
       </div>
 
       {/* Search and Location Selection Section: Desktop search bar with location dropdown */}
-      <div className="mt-4 hidden w-full bg-buttonActive p-4 md:block rounded-lg shadow-sm">
+      <div className="mt-4 hidden w-full bg-buttonActive p-4 md:block rounded-lg rounded-b-none shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full flex-1 md:max-w-none lg:max-w-2xl xl:max-w-3xl">
             <Input
@@ -408,6 +432,40 @@ export default function LocationsDetailsCabinetsSection({
                 emptyMessage="No status options found"
               />
             </div>
+
+            {/* SMIB Status Filter */}
+            <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[150px] lg:min-w-[180px]">
+              <CustomSelect
+                value={selectedSmibStatus}
+                onValueChange={setSelectedSmibStatus}
+                options={[
+                  { value: 'all', label: 'All SMIB Status' },
+                  { value: 'smib', label: 'Only SMIB' },
+                  { value: 'no-smib', label: 'No SMIB' },
+                ]}
+                placeholder="SMIB Status"
+                className="w-full"
+                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={false}
+                emptyMessage="No SMIB options found"
+              />
+            </div>
+
+            {/* Show Archived Toggle */}
+            {canViewArchived && (
+              <div className="flex items-center gap-2 px-2">
+                <input
+                  type="checkbox"
+                  id="showArchivedDesktop"
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-buttonActive focus:ring-buttonActive"
+                />
+                <label htmlFor="showArchivedDesktop" className="text-sm font-medium text-white cursor-pointer select-none">
+                  View Archived
+                </label>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -480,6 +538,23 @@ export default function LocationsDetailsCabinetsSection({
                 triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
                 searchable={false}
                 emptyMessage="No status options found"
+              />
+            </div>
+
+            <div className="relative w-44 flex-shrink-0">
+              <CustomSelect
+                value={selectedSmibStatus}
+                onValueChange={setSelectedSmibStatus}
+                options={[
+                  { value: 'all', label: 'All SMIB Status' },
+                  { value: 'smib', label: 'Only SMIB' },
+                  { value: 'no-smib', label: 'No SMIB' },
+                ]}
+                placeholder="SMIB Status"
+                className="w-full"
+                triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={false}
+                emptyMessage="No SMIB options found"
               />
             </div>
             <div className="relative w-40 flex-shrink-0">
@@ -563,12 +638,28 @@ export default function LocationsDetailsCabinetsSection({
                 emptyMessage="No sort options found"
               />
             </div>
+            
+            {/* Show Archived Toggle - Mobile */}
+            {canViewArchived && (
+              <div className="flex h-10 items-center gap-2 rounded-full border border-gray-300 bg-white px-4">
+                <input
+                  type="checkbox"
+                  id="showArchivedMobile"
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-buttonActive focus:ring-buttonActive"
+                />
+                <label htmlFor="showArchivedMobile" className="text-sm font-medium text-gray-700 cursor-pointer select-none whitespace-nowrap">
+                  View Archived
+                </label>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Content Section: Main cabinet data display with responsive layouts */}
-      <div className="mt-4 w-full flex-1">
+      <div className="mt-4 lg:mt-0 w-full flex-1">
         {loading || cabinetsLoading ? (
           <>
             {/* Use CabinetTableSkeleton for lg+ only */}
@@ -612,7 +703,10 @@ export default function LocationsDetailsCabinetsSection({
                   setSortOption(option);
                   setSortOrder(order);
                 }}
-                subtractJackpot={subtractJackpot}
+                onRestore={onRestore}
+                onPermanentDelete={onPermanentDelete}
+                showArchived={showArchived}
+                includeJackpot={includeJackpot}
               />
             </div>
 
@@ -623,7 +717,6 @@ export default function LocationsDetailsCabinetsSection({
                   currentPage={currentPage}
                   totalPages={effectiveTotalPages}
                   totalCount={totalCount}
-                  limit={10}
                   setCurrentPage={setCurrentPage}
                 />
               </div>
@@ -634,4 +727,3 @@ export default function LocationsDetailsCabinetsSection({
     </>
   );
 }
-

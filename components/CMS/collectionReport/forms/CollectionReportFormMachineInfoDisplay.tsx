@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+
+import { ReactElement } from 'react';
 import { ExternalLink } from 'lucide-react';
 
 type MachineInfoDisplayProps = {
-  machineName?: string | React.ReactElement;
+  machineName?: string | ReactElement;
   smibId?: string;
   currentMetersIn?: number | null;
   currentMetersOut?: number | null;

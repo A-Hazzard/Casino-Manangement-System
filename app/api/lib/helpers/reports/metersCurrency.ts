@@ -47,7 +47,7 @@ export async function buildCurrencyMaps(
 
   const licenceeMap = new Map<string, string>();
   allLicencees.forEach((lic: Record<string, unknown>) => {
-    licenceeMap.set(lic.name as string, lic.country as string);
+    licenceeMap.set(String(lic._id), String(lic.country));
   });
 
   // Fetch country names from country IDs
@@ -90,7 +90,7 @@ export async function buildCurrencyMaps(
  * Determine the native currency for a location
  *
  * @param locationDetails - Location details with licencee and country info
- * @param licenceeMap - Map of licencee name to country ID
+ * @param licenceeMap - Map of licencee ID to country ID
  * @returns Native currency code for the location
  */
 function getNativeCurrencyForLocation(
@@ -143,6 +143,7 @@ function convertMeterDataCurrency(
     'jackpot',
     'voucherOut',
     'attPaidCredits',
+    'netGross',
   ];
 
   financialFields.forEach(field => {

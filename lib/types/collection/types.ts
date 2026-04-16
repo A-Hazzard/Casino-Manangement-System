@@ -134,4 +134,6 @@ export type CollectionTab = {
   label: string;
   icon: string;
   description?: string;
+  /** false when this tab is under maintenance */
+  available?: boolean;
 };

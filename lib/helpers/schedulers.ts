@@ -1,17 +1,53 @@
 /**
  * Schedulers Helper Functions
  *
- * Provides helper functions for fetching scheduler data with various filtering options.
+ * Provides helper functions for fetching, editing, and soft-deleting scheduler records.
  * Schedulers manage collection schedules for collectors and locations.
  *
  * Features:
- * - Fetches all scheduler data with optional licencee filtering.
- * - Fetches schedulers with multiple filter options (licencee, location, collector, status, date range).
- * - Handles errors gracefully with empty array fallback.
+ * - Fetches scheduler data with filtering options.
+ * - Edit a schedule's startTime, endTime, or status.
+ * - Soft-delete a schedule (sets deletedAt on the server).
+ * - Handles errors gracefully with fallback values.
  */
 
 import type { SchedulerData } from '../types/api';
 import axios from 'axios';
+
+// ============================================================================
+// Scheduler Mutations
+// ============================================================================
+
+/**
+ * Edits a scheduler's startTime, endTime, and/or status.
+ * Allowed roles: manager, admin, location admin, owner, developer.
+ */
+export async function editScheduler(
+  schedulerId: string,
+  data: { startTime?: string; endTime?: string; status?: string }
+): Promise<boolean> {
+  try {
+    await axios.patch(`/api/schedulers/${schedulerId}`, data);
+    return true;
+  } catch (error) {
+    console.error('Error editing scheduler:', error);
+    return false;
+  }
+}
+
+/**
+ * Soft-deletes a scheduler (sets deletedAt on the server).
+ * Allowed roles: manager, admin, location admin, owner, developer.
+ */
+export async function deleteScheduler(schedulerId: string): Promise<boolean> {
+  try {
+    await axios.delete(`/api/schedulers/${schedulerId}`);
+    return true;
+  } catch (error) {
+    console.error('Error deleting scheduler:', error);
+    return false;
+  }
+}
 
 // ============================================================================
 // Scheduler Data Fetching

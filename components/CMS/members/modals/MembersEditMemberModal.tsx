@@ -276,7 +276,7 @@ export default function MembersEditMemberModal({
       <div className="pointer-events-none fixed inset-0 z-[110] flex items-end justify-center lg:items-center">
         <div
           ref={modalRef}
-          className="pointer-events-auto relative flex h-full w-full max-w-full flex-col overflow-y-auto bg-gray-50 animate-in md:max-w-2xl lg:max-h-[95vh] lg:max-w-4xl lg:rounded-xl"
+          className="pointer-events-auto relative flex h-auto max-h-[90vh] w-full max-w-full flex-col overflow-y-auto bg-gray-50 animate-in md:max-w-2xl lg:max-w-4xl lg:rounded-xl shadow-2xl"
           style={{ opacity: 1 }}
         >
           {/* Modern Header - Sticky */}
@@ -305,14 +305,14 @@ export default function MembersEditMemberModal({
           <div className="flex-1 space-y-6 p-6">
             {/* Profile Overview Card */}
             <Card>
-              <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Profile Information</CardTitle>
                 <CardDescription>
-                  Basic account information and contact details
+                  Update account and contact details
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
+                <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
                   {/* Left: Profile Picture */}
                   <MembersEditMemberProfileHeader
                     firstName={selectedMember?.profile?.firstName}

@@ -21,19 +21,21 @@
  */
 'use client';
 
+import { FC, memo } from 'react';
 import { CustomSelect } from '@/components/shared/ui/custom-select';
 import {
     DateRangePicker,
     type DateRange,
 } from '@/components/shared/ui/dateRangePicker';
 import { Label } from '@/components/shared/ui/label';
-import React, {
+import { 
     useCallback,
     useEffect,
     useMemo,
     useRef,
     useState,
-} from 'react';
+ } from 'react';
+
 
 // ============================================================================
 // Types & Helper Components
@@ -48,10 +50,11 @@ type ModernDateRangePickerProps = {
   enableTimeInputs?: boolean;
   hideGoButton?: boolean;
   hideCancelButton?: boolean;
+  goLabel?: string;
 };
 
 // Custom Time Picker Component - Optimized for mobile performance
-const TimePicker = React.memo<{
+const TimePicker = memo<{
   value: string;
   onChange: (time: string) => void;
   label: string;
@@ -161,7 +164,7 @@ const TimePicker = React.memo<{
 
 TimePicker.displayName = 'TimePicker';
 
-export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
+export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
   value,
   onChange,
   onGo,
@@ -170,6 +173,7 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
   enableTimeInputs = false,
   hideGoButton = false,
   hideCancelButton = false,
+  goLabel = 'Go',
 }) => {
   // Time input states - Default to 8 AM for both start and end time
   const [startTime, setStartTime] = useState('08:00');
@@ -359,7 +363,7 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
               onClick={onGo}
               disabled={!value?.from || !value?.to}
             >
-              Go
+              {goLabel}
             </button>
           )}
           {!hideCancelButton && (
@@ -375,4 +379,3 @@ export const ModernDateRangePicker: React.FC<ModernDateRangePickerProps> = ({
     </div>
   );
 };
-

@@ -178,8 +178,8 @@ export async function getMachineChartData(
         // Send local time with timezone offset to preserve user's time selection
         url += `&startDate=${formatLocalDateTimeString(sd, -4)}&endDate=${formatLocalDateTimeString(ed, -4)}`;
       } else {
-        // Date-only: send ISO date format for gaming day offset to apply
-        url += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
+        // Date-only: always include time component so backend doesn't need format detection
+        url += `&startDate=${sd.toISOString().split('T')[0]}T00:00:00.000Z&endDate=${ed.toISOString().split('T')[0]}T00:00:00.000Z`;
       }
     }
 
@@ -197,28 +197,35 @@ export async function getMachineChartData(
       url += `&granularity=${granularity}`;
     }
 
-    // Use deduplication to prevent duplicate requests for the same machine chart
-    const response = await deduplicateRequest(url, async abortSignal => {
-      return axios.get<{
-        success: boolean;
-        data: Array<{
-          day: string;
-          time?: string;
-          drop: number;
-          totalCancelledCredits: number;
-          gross: number;
-        }>;
-        dataSpan?: {
-          minDate: string;
-          maxDate: string;
-        };
-      }>(url, {
-        headers: {
-          'Cache-Control': 'no-cache',
-        },
-        signal: abortSignal || signal,
-      });
-    });
+    // When an external abort signal is provided (e.g. from useAbortableRequest),
+    // use it directly so the caller can properly cancel previous requests and
+    // prevent race conditions. Only use deduplication when no external signal.
+    type ChartResponse = {
+      success: boolean;
+      data: Array<{
+        day: string;
+        time?: string;
+        drop: number;
+        totalCancelledCredits: number;
+        gross: number;
+      }>;
+      dataSpan?: {
+        minDate: string;
+        maxDate: string;
+      };
+    };
+
+    const response = signal
+      ? await axios.get<ChartResponse>(url, {
+          headers: { 'Cache-Control': 'no-cache' },
+          signal,
+        })
+      : await deduplicateRequest(url, async abortSignal => {
+          return axios.get<ChartResponse>(url, {
+            headers: { 'Cache-Control': 'no-cache' },
+            signal: abortSignal,
+          });
+        });
 
     const responseData = response.data;
 
@@ -266,7 +273,11 @@ export async function getMachineChartData(
         if (defaultGranularity === 'minute') {
           useMinute = true;
           useHourly = false;
-        } else if (defaultGranularity === 'daily' || defaultGranularity === 'weekly' || defaultGranularity === 'monthly') {
+        } else if (
+          defaultGranularity === 'daily' ||
+          defaultGranularity === 'weekly' ||
+          defaultGranularity === 'monthly'
+        ) {
           // Multi-day Custom ranges: use daily aggregation (not hourly)
           useHourly = false;
           useMinute = false;
@@ -478,28 +489,19 @@ function fillMissingIntervals(
 
   const filledData: dashboardData[] = [];
 
-  // Hourly filling logic (only for Today/Yesterday/Custom single-day)
+  // Hourly data: return as-is without zero-filling.
+  //
+  // Previous logic filled 24 slots based on data[0].day (the first UTC calendar
+  // day).  For gaming-day ranges that straddle midnight (e.g. "Feb 1 12:00 UTC →
+  // Feb 2 11:00 UTC" = "Feb 1 8 AM → Feb 2 7 AM Trinidad"), the second calendar
+  // day's entries (UTC 00:00–11:00 of day 2) were silently dropped and replaced
+  // with zeros for day 1 — making the chart show "No Metrics Data" whenever all
+  // the machine's activity happened in that window.
+  //
+  // The DashboardChart already filters and trims zero-value points, so zero-
+  // filling here adds no value and only hides real data.
   if (isHourly) {
-    // Hourly filling for predefined periods
-    const baseDay = data[0]?.day || formatISODate(new Date());
-    for (let hour = 0; hour < 24; hour++) {
-      const timeKey = `${hour.toString().padStart(2, '0')}:00`;
-      const existingData = data.find(
-        item => item.time === timeKey && item.day === baseDay
-      );
-      if (existingData) {
-        filledData.push(existingData);
-      } else {
-        filledData.push({
-          xValue: timeKey,
-          day: baseDay,
-          time: timeKey,
-          moneyIn: 0,
-          moneyOut: 0,
-          gross: 0,
-        });
-      }
-    }
+    return data;
   } else {
     // Daily filling for shorter periods (Today, Yesterday, Custom single-day)
     // For longer periods, we already returned data as-is above
@@ -561,4 +563,3 @@ function fillMissingIntervals(
 
   return filledData;
 }
-

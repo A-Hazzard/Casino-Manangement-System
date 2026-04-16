@@ -17,6 +17,8 @@ export function useCabinetFilters({
   const [selectedLocation, setSelectedLocation] = useState<string[]>([]);
   const [selectedGameType, setSelectedGameType] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
+  const [selectedMembership, setSelectedMembership] = useState<string>('all');
+  const [selectedSmibStatus, setSelectedSmibStatus] = useState<string>('all');
 
   // Clear all filters
   const clearFilters = useCallback(() => {
@@ -24,6 +26,8 @@ export function useCabinetFilters({
     setSelectedLocation([]);
     setSelectedGameType([]);
     setSelectedStatus('All');
+    setSelectedMembership('all');
+    setSelectedSmibStatus('all');
   }, []);
 
   // Check if any filters are active
@@ -31,7 +35,9 @@ export function useCabinetFilters({
     searchTerm.trim() !== '' ||
     selectedLocation.length > 0 ||
     selectedGameType.length > 0 ||
-    selectedStatus !== 'All';
+    selectedStatus !== 'All' ||
+    selectedMembership !== 'all' ||
+    selectedSmibStatus !== 'all';
 
   // Handle search term changes
   const handleSearchTermChange = useCallback((term: string) => {
@@ -53,6 +59,16 @@ export function useCabinetFilters({
     setSelectedStatus(status);
   }, []);
 
+  // Handle membership filter changes
+  const handleMembershipChange = useCallback((membership: string) => {
+    setSelectedMembership(membership);
+  }, []);
+ 
+  // Handle SMIB status filter changes
+  const handleSmibStatusChange = useCallback((status: string) => {
+    setSelectedSmibStatus(status);
+  }, []);
+
   // Notify parent of filter changes
   useEffect(() => {
     if (onFiltersChange) {
@@ -60,7 +76,9 @@ export function useCabinetFilters({
         searchTerm,
         selectedLocation,
         selectedGameType,
-        selectedStatus
+        selectedStatus,
+        selectedMembership,
+        selectedSmibStatus
       );
     }
   }, [
@@ -68,6 +86,8 @@ export function useCabinetFilters({
     selectedLocation,
     selectedGameType,
     selectedStatus,
+    selectedMembership,
+    selectedSmibStatus,
     onFiltersChange,
   ]);
 
@@ -76,12 +96,15 @@ export function useCabinetFilters({
     selectedLocation,
     selectedGameType,
     selectedStatus,
+    selectedMembership,
+    selectedSmibStatus,
     setSearchTerm: handleSearchTermChange,
     setSelectedLocation: handleLocationChange,
     setSelectedGameType: handleGameTypeChange,
     setSelectedStatus: handleStatusChange,
+    setSelectedMembership: handleMembershipChange,
+    setSelectedSmibStatus: handleSmibStatusChange,
     clearFilters,
     hasActiveFilters,
   };
 }
-

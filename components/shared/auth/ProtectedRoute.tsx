@@ -31,14 +31,13 @@ import {
     isVaultManagerOnly,
 } from '@/lib/utils/permissions/client';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 
 import { UserRole } from '@/lib/constants';
-import type React from 'react';
 import { UserAuthPayload } from '../../../shared/types';
 
 type ProtectedRouteProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   requireAdminAccess?: boolean;
   requiredPage?: PageName;
 };
@@ -87,7 +86,8 @@ export default function ProtectedRoute({
       }
 
       // Check if user is cashier-only (has ONLY cashier role, no other roles)
-      if (isCashierOnly(user.roles as UserRole[])) {
+      const roles = user.roles as UserRole[];
+      if (isCashierOnly(roles)) {
         // Allow access only to cashier routes
         const isCashierRoute =
           pathname === '/vault/cashier' ||
@@ -99,7 +99,7 @@ export default function ProtectedRoute({
       }
 
       // Check if user is vault-manager-only (has ONLY vault-manager role, no other roles)
-      if (isVaultManagerOnly(user.roles as UserRole[])) {
+      if (isVaultManagerOnly(roles)) {
         // Allow access only to vault management routes
         const isVaultRoute =
           pathname === '/vault/management' ||
@@ -138,29 +138,34 @@ export default function ProtectedRoute({
 
       // Check local permissions first (faster)
       const userRoles = (user?.roles || []) as string[];
-      const isAdminOrDeveloper =
-        userRoles.includes('developer') || userRoles.includes('admin');
-
       // STEP 1: Authorization Bypass for Developers and Admins
-      // Developers and Admins have unrestricted access to all pages and locations
-      if (isAdminOrDeveloper) {
-        // console.log(`[ProtectedRoute] Developer/Admin bypass granted for roles: ${userRoles.join(', ')}`);
+      // Developers have unrestricted access to all pages. 
+      // Admins and Owners have unrestricted access to all pages EXCEPT sessions.
+      const isDeveloper = userRoles.includes('developer');
+      const isAdminOrOwner = userRoles.includes('owner') || userRoles.includes('admin');
+      
+      const isBypassAuthorized = isDeveloper || (isAdminOrOwner && requiredPage !== 'sessions');
+
+      if (isBypassAuthorized) {
         setIsChecking(false);
         return;
       }
 
       // STEP 2: Standard Authorization Check
-      if (requireAdminAccess && user.roles) {
+      if (requireAdminAccess) {
         const hasAdminLocal =
-          user.roles.includes('admin') || user.roles.includes('developer');
+          user.roles.includes('admin') || user.roles.includes('owner') || user.roles.includes('developer');
         if (!hasAdminLocal) {
           router.push('/'); // Redirect to dashboard if not admin
           return;
         }
       }
 
-      if (requiredPage && user.roles) {
-        const hasPageLocal = hasPageAccess(user.roles as UserRole[], requiredPage);
+      if (requiredPage) {
+        const hasPageLocal = hasPageAccess(
+          user.roles as UserRole[],
+          requiredPage
+        );
         if (!hasPageLocal) {
           router.push('/unauthorized'); // Redirect to unauthorized page
           return;
@@ -174,6 +179,7 @@ export default function ProtectedRoute({
           requireAdminAccess &&
           (!user.roles ||
             (!user.roles.includes('admin') &&
+              !user.roles.includes('owner') &&
               !user.roles.includes('developer')))
         ) {
           const hasAdmin = await hasAdminAccessDb();
@@ -186,7 +192,8 @@ export default function ProtectedRoute({
         // Check page access if required (only if local check didn't pass)
         if (
           requiredPage &&
-          (!user.roles || !hasPageAccess(user.roles as UserRole[], requiredPage))
+          (!user.roles ||
+            !hasPageAccess(user.roles as UserRole[], requiredPage))
         ) {
           const hasPage = await hasPageAccessDb(requiredPage);
           if (!hasPage) {
@@ -204,6 +211,7 @@ export default function ProtectedRoute({
           requireAdminAccess &&
           user.roles &&
           !user.roles.includes('admin') &&
+          !user.roles.includes('owner') &&
           !user.roles.includes('developer')
         ) {
           router.push('/');
@@ -244,7 +252,7 @@ export default function ProtectedRoute({
           setSelectedLicencee: () => {},
           disabled: false,
         }}
-        pageTitle=""
+        
         hideOptions={true}
         hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"

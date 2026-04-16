@@ -9,8 +9,8 @@
 import { useCabinetDetailsData, useSmibConfiguration } from '@/lib/hooks/data';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
-import { useMemo, useState, useCallback, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export function useMachinePageData() {
   const router = useRouter();
@@ -52,7 +52,7 @@ export function useMachinePageData() {
     if (section === 'collection-history') return 'Collection History';
     if (section === 'collection-settings') return 'Collection Settings';
     if (section === 'configurations') return 'Configurations';
-    return 'Range Metrics';
+    return 'Movement Metrics';
   });
 
   const [refreshing, setRefreshing] = useState(false);
@@ -66,7 +66,7 @@ export function useMachinePageData() {
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
     const sectionMap: Record<string, string> = {
-      'Range Metrics': '',
+      'Movement Metrics': '',
       'Live Metrics': 'live-metrics',
       'Bill Validator': 'bill-validator',
       'Activity Log': 'activity-log',

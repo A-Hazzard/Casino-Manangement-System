@@ -15,7 +15,6 @@ import { SoftCountModel } from '@/app/api/lib/models/softCount';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRange } from '@/lib/utils/gamingDayRange';
-import mongoose from 'mongoose';
 import { Machine } from '../../models/machines';
 import { Meters } from '../../models/meters';
 
@@ -83,7 +82,7 @@ export async function generateEndOfDayReport(
   date: Date
 ): Promise<EndOfDayReport> {
   // Fetch location to get gameDayOffset
-  const location = await GamingLocations.findById(locationId).select('gameDayOffset').lean();
+  const location = await GamingLocations.findOne({ _id: locationId }).select('gameDayOffset').lean();
   const gameDayOffset = (location as Record<string, unknown> | null)?.gameDayOffset as number ?? 8; // Default to 8 AM if not set
 
   // Calculate start and end of day using gaming day logic
@@ -185,18 +184,11 @@ export async function generateEndOfDayReport(
   // ============================================================================
   // 3. Machine Counts (Drops)
   // ============================================================================
-  // Robust machine query matching both string and ObjectId
-  const locationIdObj = mongoose.Types.ObjectId.isValid(locationId)
-    ? new mongoose.Types.ObjectId(locationId)
-    : locationId;
-
-  const allMachines = await Machine.find({
-    $or: [
-      { gamingLocation: locationId },
-      { gamingLocation: locationIdObj }
-    ],
+  const machinesMatchQuery = {
+    gamingLocation: locationId,
     deletedAt: { $exists: false }
-  }).select('_id assetNumber custom.name').lean();
+  };
+  const allMachines = await Machine.find(machinesMatchQuery).select('_id assetNumber custom.name').lean();
 
   const machineIds = allMachines.map(m => String(m._id));
 

@@ -35,6 +35,7 @@ import { getDefaultChartGranularity } from '@/lib/utils/chart';
 
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
 import { TimePeriod, type ChartGranularity } from '@/shared/types/common';
+import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /**
@@ -116,6 +117,53 @@ export default function DashboardPageContent() {
     activeTab,
     displayCurrency,
   });
+
+  const [machineStats, setMachineStats] = useState<{
+    totalMachines: number;
+    onlineMachines: number;
+    offlineMachines: number;
+  } | null>(null);
+  const [machineStatsLoading, setMachineStatsLoading] = useState(true);
+
+  /**
+   * Fetches machine stats for online/offline counts.
+   */
+  useEffect(() => {
+    let aborted = false;
+    const fetchMachineStats = async () => {
+      setMachineStatsLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.append('licencee', selectedLicencee || 'all');
+
+        const res = await axios.get(
+          `/api/analytics/machines/stats?${params.toString()}`
+        );
+        const data = res.data;
+        if (!aborted) {
+          setMachineStats({
+            totalMachines: data.totalMachines || 0,
+            onlineMachines: data.onlineMachines || 0,
+            offlineMachines: data.offlineMachines || 0,
+          });
+        }
+      } catch {
+        if (!aborted) {
+          setMachineStats({
+            totalMachines: 0,
+            onlineMachines: 0,
+            offlineMachines: 0,
+          });
+        }
+      } finally {
+        if (!aborted) setMachineStatsLoading(false);
+      }
+    };
+    fetchMachineStats();
+    return () => {
+      aborted = true;
+    };
+  }, [selectedLicencee]);
 
   // ============================================================================
   // Computed Values & Memoization
@@ -457,6 +505,8 @@ export default function DashboardPageContent() {
           showGranularitySelector={showGranularitySelector}
           sortBy={sortBy}
           setSortBy={setSortBy}
+          machineStats={machineStats}
+          machineStatsLoading={machineStatsLoading}
         />
       </div>
 
@@ -497,6 +547,8 @@ export default function DashboardPageContent() {
           showGranularitySelector={showGranularitySelector}
           sortBy={sortBy}
           setSortBy={setSortBy}
+          machineStats={machineStats}
+          machineStatsLoading={machineStatsLoading}
         />
       </div>
     </PageLayout>

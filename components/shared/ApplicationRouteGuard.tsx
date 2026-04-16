@@ -15,11 +15,12 @@
  */
 'use client';
 
+import { ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 type ApplicationRouteGuardProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   applicationMode?: 'CMS' | 'VAULT';
 };
 
@@ -38,7 +39,7 @@ function isVaultRoute(pathname: string): boolean {
  * Redirects users to the appropriate overview page if they try to access routes from the other application mode.
  *
  * @param {object} props - The component props.
- * @param {React.ReactNode} props.children - The JSX elements to render if access is permitted.
+ * @param {ReactNode} props.children - The JSX elements to render if access is permitted.
  * @param {'CMS'|'VAULT'} [props.applicationMode] - The current application mode, either 'CMS' or 'VAULT'.
  *
  * @returns {JSX.Element} - Returns the children if access is valid, otherwise redirects to the appropriate overview page.

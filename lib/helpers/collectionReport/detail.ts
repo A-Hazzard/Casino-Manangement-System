@@ -13,6 +13,7 @@
  * - Generates machine metrics content data for tables.
  */
 
+import { RefObject } from 'react';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { gsap } from 'gsap';
 
@@ -25,7 +26,7 @@ import { gsap } from 'gsap';
  * @param tabContentRef - React ref to the tab content element
  */
 export function animateDesktopTabTransition(
-  tabContentRef: React.RefObject<HTMLDivElement | null>
+  tabContentRef: RefObject<HTMLDivElement | null>
 ) {
   if (tabContentRef.current && window.innerWidth >= 1024) {
     gsap.fromTo(
@@ -47,9 +48,7 @@ export function animateDesktopTabTransition(
  * @param collections - Array of collection documents
  * @returns Total location value (sum of movement.gross from all collections)
  */
-export function calculateLocationTotal(
-  collections: CollectionDocument[]
-): number {
+export function calculateLocationTotal(collections: CollectionDocument[]): number {
   if (!collections || collections.length === 0) return 0;
   return collections.reduce((total, collection) => {
     // Sum the meter gross (movement.gross) from each collection

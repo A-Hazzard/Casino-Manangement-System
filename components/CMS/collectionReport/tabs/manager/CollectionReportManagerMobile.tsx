@@ -5,29 +5,13 @@
  * Features:
  * - Mobile-only display (hidden on desktop)
  * - Manager schedule filters
- * - Manager schedule cards
+ * - Manager schedule cards with edit/delete actions
  * - Loading states
- *
- * @param locations - Available locations list
- * @param collectors - Available collectors list
- * @param selectedSchedulerLocation - Currently selected location
- * @param onSchedulerLocationChange - Callback when location changes
- * @param selectedCollector - Currently selected collector
- * @param onCollectorChange - Callback when collector changes
- * @param selectedStatus - Currently selected status
- * @param onStatusChange - Callback when status changes
- * @param onResetSchedulerFilters - Callback to reset all filters
- * @param paginatedSchedulers - Paginated manager schedule data
- * @param loadingSchedulers - Whether data is loading
  */
 import ManagerScheduleCards from '@/components/CMS/collectionReport/tabs/manager/CollectionReportManagerScheduleCards';
 import ManagerScheduleFilters from '@/components/CMS/collectionReport/tabs/manager/CollectionReportManagerScheduleFilters';
 import type { CollectionReportManagerMobileUIProps } from '@/lib/types/components';
 
-/**
- * CollectionReportManagerMobile Component
- * Mobile layout wrapper for manager schedules page.
- */
 export default function CollectionReportManagerMobile({
   locations,
   collectors,
@@ -40,6 +24,9 @@ export default function CollectionReportManagerMobile({
   onResetSchedulerFilters,
   paginatedSchedulers,
   loadingSchedulers,
+  onEdit,
+  onDelete,
+  showActions,
 }: CollectionReportManagerMobileUIProps) {
   return (
     <div className="w-full lg:hidden">
@@ -56,10 +43,14 @@ export default function CollectionReportManagerMobile({
           onReset={onResetSchedulerFilters}
           loading={loadingSchedulers}
         />
-        <ManagerScheduleCards data={paginatedSchedulers} loading={loadingSchedulers} />
+        <ManagerScheduleCards
+          data={paginatedSchedulers}
+          loading={loadingSchedulers}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          showActions={showActions}
+        />
       </div>
     </div>
   );
 }
-
-

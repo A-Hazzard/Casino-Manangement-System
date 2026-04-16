@@ -5,29 +5,13 @@
  * Features:
  * - Mobile-only display (hidden on desktop)
  * - Collector schedule filters
- * - Collector schedule cards
+ * - Collector schedule cards with edit/delete actions
  * - Loading states
- *
- * @param locations - Available locations list
- * @param collectors - Available collectors list
- * @param selectedLocation - Currently selected location
- * @param onLocationChange - Callback when location changes
- * @param selectedCollector - Currently selected collector
- * @param onCollectorChange - Callback when collector changes
- * @param selectedStatus - Currently selected status
- * @param onStatusChange - Callback when status changes
- * @param onResetFilters - Callback to reset all filters
- * @param collectorSchedules - Collector schedule data
- * @param loadingCollectorSchedules - Whether data is loading
  */
 import CollectorScheduleCards from '@/components/CMS/collectionReport/tabs/collector/CollectionReportCollectorScheduleCards';
 import CollectorScheduleFilters from '@/components/CMS/collectionReport/tabs/collector/CollectionReportCollectorScheduleFilters';
 import { CollectionReportCollectorMobileUIProps } from '@/lib/types/components';
 
-/**
- * CollectionReportCollectorMobile Component
- * Mobile layout wrapper for collector schedules page.
- */
 export default function CollectionReportCollectorMobile({
   selectedLocation,
   onLocationChange,
@@ -40,6 +24,9 @@ export default function CollectionReportCollectorMobile({
   onResetFilters,
   paginatedSchedules,
   loadingCollectorSchedules,
+  onEdit,
+  onDelete,
+  showActions,
 }: CollectionReportCollectorMobileUIProps) {
   return (
     <div className="w-full lg:hidden">
@@ -59,9 +46,11 @@ export default function CollectionReportCollectorMobile({
         <CollectorScheduleCards
           data={paginatedSchedules}
           loading={loadingCollectorSchedules}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          showActions={showActions}
         />
       </div>
     </div>
   );
 }
-

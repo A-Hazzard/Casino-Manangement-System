@@ -6,6 +6,7 @@
  * @param props - Hook props
  */
 
+import { ChangeEvent } from 'react';
 import {
   detectChanges,
   filterMeaningfulChanges,
@@ -93,7 +94,7 @@ export function useMembersEditMemberForm({
     }
   }, [selectedMember]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,

@@ -55,13 +55,16 @@ async function closeConnection() {
   }
 }
 
+import { mongo } from 'mongoose';
+
 /**
  * Connects to MongoDB with caching and explicitly returns a native MongoDB Db instance.
  * Automatically detects connection string changes and reconnects.
  *
  * @returns Promise resolving to a MongoDB database instance (native MongoDB driver).
  */
-export async function connectDB() {
+export async function connectDB(): Promise<mongo.Db> {
+
   // Only run on server-side
   if (typeof window !== 'undefined') {
     throw new Error('connectDB can only be called on the server-side');
@@ -82,7 +85,7 @@ export async function connectDB() {
     await closeConnection();
   }
 
-  if (mongooseCache.conn) {
+  if (mongooseCache.conn && mongooseCache.conn.db) {
     return mongooseCache.conn.db;
   }
 
@@ -130,7 +133,12 @@ export async function connectDB() {
     });
   }
 
+  if (!mongooseCache.conn.db) {
+    throw new Error('Database instance is unavailable');
+  }
+
   return mongooseCache.conn.db;
+
 }
 
 /**

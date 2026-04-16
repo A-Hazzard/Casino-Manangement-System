@@ -11,7 +11,7 @@ export type MetersReportData = {
   location: string;
   locationId: string;
   createdAt: string;
-  machineDocumentId: string; // MongoDB document ID for the machine
+  machineDocumentId: string;
   // Optional fields for export logic
   customName?: string;
   serialNumber?: string;

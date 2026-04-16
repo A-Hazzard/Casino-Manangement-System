@@ -413,11 +413,12 @@ export default function MembersDetailsPageContent() {
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
-               <DateFilters 
-                 onCustomRangeGo={handleRefresh} 
+               <DateFilters
+                 onCustomRangeGo={handleRefresh}
                  hideAllTime={false}
                  mode="auto"
                  hideIndicator
+                 customRangeGoLabel="Get Activity"
                />
             </div>
 

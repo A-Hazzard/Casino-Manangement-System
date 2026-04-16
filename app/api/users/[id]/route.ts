@@ -30,14 +30,14 @@ import { apiLogger } from '../../lib/services/loggerService';
  * 6. Return user data
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ): Promise<Response> {
   const startTime = Date.now();
-  const resolvedParams = await params;
+  const { pathname } = request.nextUrl;
+  const userId = pathname.split('/').pop();
   const context = apiLogger.createContext(
     request,
-    `/api/users/${resolvedParams.id}`
+    `/api/users/${userId}`
   );
   apiLogger.startLogging();
 
@@ -50,7 +50,6 @@ export async function GET(
     // ============================================================================
     // STEP 2: Validate user ID
     // ============================================================================
-    const userId = resolvedParams.id;
 
     if (!userId) {
       apiLogger.logError(context, 'User fetch failed', 'User ID is required');
@@ -122,14 +121,14 @@ export async function GET(
  * 7. Return updated user data
  */
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ): Promise<Response> {
   const startTime = Date.now();
-  const resolvedParams = await params;
+  const { pathname } = request.nextUrl;
+  const userId = pathname.split('/').pop();
   const context = apiLogger.createContext(
     request,
-    `/api/users/${resolvedParams.id}`
+    `/api/users/${userId}`
   );
   apiLogger.startLogging();
 
@@ -149,7 +148,6 @@ export async function PUT(
     // STEP 3: Validate user ID
     // ============================================================================
     // Use the ID from the URL parameter
-    const userId = resolvedParams.id;
 
     if (!userId) {
       apiLogger.logError(context, 'User update failed', 'User ID is required');
@@ -214,14 +212,14 @@ export async function PUT(
  * 7. Return updated user data
  */
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ): Promise<Response> {
   const startTime = Date.now();
-  const resolvedParams = await params;
+  const { pathname } = request.nextUrl;
+  const userId = pathname.split('/').pop();
   const context = apiLogger.createContext(
     request,
-    `/api/users/${resolvedParams.id}`
+    `/api/users/${userId}`
   );
   apiLogger.startLogging();
 
@@ -241,7 +239,6 @@ export async function PATCH(
     // STEP 3: Validate user ID
     // ============================================================================
     // Use the ID from the URL parameter
-    const userId = resolvedParams.id;
 
     if (!userId) {
       apiLogger.logError(context, 'User update failed', 'User ID is required');

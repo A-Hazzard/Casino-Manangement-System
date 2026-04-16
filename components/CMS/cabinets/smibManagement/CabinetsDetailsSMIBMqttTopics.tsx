@@ -1,15 +1,20 @@
 /**
  * CabinetsDetailsSMIBMqttTopics Component
- * 
+ *
  * Handles MQTT topics configuration for SMIB devices.
- * 
+ *
  * @param props - Component props
  */
 
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import editIcon from '@/public/editIcon.svg';
@@ -58,7 +63,6 @@ export function CabinetsDetailsSMIBMqttTopics({
   onUpdate,
   disabled = false,
   isLoading = false,
-  isConnectedToMqtt: _isConnectedToMqtt = false,
 }: CabinetsDetailsSMIBMqttTopicsProps) {
   const [formData, setFormData] = useState({
     mqttPubTopic: mqttPubTopic || '',
@@ -311,4 +315,3 @@ export function CabinetsDetailsSMIBMqttTopics({
     </Card>
   );
 }
-

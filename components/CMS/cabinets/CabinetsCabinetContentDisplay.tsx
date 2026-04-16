@@ -23,7 +23,6 @@ import { fetchLicencees } from '@/lib/helpers/client';
 import type { CabinetSortOption } from '@/lib/hooks/data';
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
-import { getLicenceeName } from '@/lib/utils/licencee';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { animateCards, animateTableRows } from '@/lib/utils/ui';
 import type { GamingMachine as Machine } from '@/shared/types/entities';
@@ -66,9 +65,9 @@ type CabinetsCabinetContentDisplayProps = {
    */
   showArchived?: boolean;
   /**
-   * Whether to show subtract jackpot column.
+   * Whether to show include jackpot column.
    */
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
 };
 
 export const CabinetsCabinetContentDisplay = ({
@@ -90,7 +89,7 @@ export const CabinetsCabinetContentDisplay = ({
   enableHeaderSorting = true,
   showSortIcons = true,
   totalCount,
-  subtractJackpot = true,
+  includeJackpot = true,
   showArchived = false,
 }: CabinetsCabinetContentDisplayProps) => {
   const tableRef = useRef<HTMLDivElement>(null);
@@ -98,7 +97,9 @@ export const CabinetsCabinetContentDisplay = ({
   const { openEditModal, openDeleteModal } = useCabinetsActionsStore();
   const user = useUserStore(state => state.user);
   const licenceeName =
-    getLicenceeName(selectedLicencee) || selectedLicencee || 'any licencee';
+    selectedLicencee && selectedLicencee !== 'all'
+      ? selectedLicencee
+      : 'any licencee';
 
   /**
    * Determines if the user can edit machines.
@@ -111,9 +112,10 @@ export const CabinetsCabinetContentDisplay = ({
     if (userRoles.includes('collector')) {
       return false;
     }
-    // Technicians, managers, admins, developers, and location admins can edit
+    // Technicians, managers, admins, developers, owners, and location admins can edit
     return [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
@@ -123,7 +125,7 @@ export const CabinetsCabinetContentDisplay = ({
 
   /**
    * Determines if the user can delete machines.
-   * Only managers, admins, developers, and location admins can delete.
+   * Only managers, admins, developers, owners, and location admins can delete.
    * Only collectors cannot delete.
    */
   const canDeleteMachines = useMemo(() => {
@@ -133,10 +135,15 @@ export const CabinetsCabinetContentDisplay = ({
     if (userRoles.includes('collector')) {
       return false;
     }
-    // Admins, developers, managers, location admins, and technicians can delete
-    return ['developer', 'admin', 'manager', 'location admin', 'technician'].some(role =>
-      userRoles.includes(role)
-    );
+    // Owners, admins, developers, managers, location admins, and technicians can delete
+    return [
+      'developer',
+      'owner',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
+    ].some(role => userRoles.includes(role));
   }, [user]);
 
   const shouldHideFinancials = useMemo(() => {
@@ -332,7 +339,7 @@ export const CabinetsCabinetContentDisplay = ({
           enableHeaderSorting={enableHeaderSorting}
           showSortIcons={showSortIcons}
           hideFinancials={shouldHideFinancials}
-          subtractJackpot={subtractJackpot}
+          includeJackpot={includeJackpot} // Table handles per-row override internally now
           showArchived={showArchived}
         />
       </div>
@@ -377,7 +384,7 @@ export const CabinetsCabinetContentDisplay = ({
                 canEditMachines={canEditMachines}
                 canDeleteMachines={canDeleteMachines}
                 hideFinancials={shouldHideFinancials}
-                subtractJackpot={subtractJackpot}
+                includeJackpot={machine.includeJackpot ?? includeJackpot}
               />
             ))}
           </ClientOnly>
@@ -385,18 +392,13 @@ export const CabinetsCabinetContentDisplay = ({
       </div>
 
       {/* Pagination */}
-      {!loading && paginatedCabinets.length > 0 && totalPages > 1 && (
-        <div className="my-4 flex w-full justify-center">
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalCount={totalCount}
-            limit={10}
-            showTotalCount={false}
-            setCurrentPage={onPageChange}
-          />
-        </div>
-      )}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        setCurrentPage={onPageChange}
+        showTotalCount
+      />
     </>
   );
 };

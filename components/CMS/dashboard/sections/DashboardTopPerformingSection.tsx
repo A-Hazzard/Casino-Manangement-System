@@ -7,6 +7,7 @@
 
 'use client';
 
+import { ReactNode } from 'react';
 import { DashboardTopPerformingSkeleton } from '@/components/shared/ui/skeletons/DashboardSkeletons';
 import type { ActiveTab, TopPerformingItem } from '@/lib/types';
 import type { CustomizedLabelProps } from '@/lib/types/components/props';
@@ -21,8 +22,8 @@ export type DashboardTopPerformingSectionProps = {
   setActiveTab: (tab: 'locations' | 'Cabinets') => void;
   selectedLicencee?: string;
   licenceeName: string;
-  renderCustomizedLabel: (props: CustomizedLabelProps) => React.ReactNode;
-  onViewMachine?: (item: TopPerformingItem) => void;
+  renderCustomizedLabel: (props: CustomizedLabelProps) => ReactNode;
+  onViewCabinet?: (item: TopPerformingItem) => void;
   onViewLocation?: (item: TopPerformingItem) => void;
 };
 
@@ -38,7 +39,7 @@ export function DashboardTopPerformingSection({
   selectedLicencee,
   licenceeName,
   renderCustomizedLabel,
-  onViewMachine,
+  onViewCabinet,
   onViewLocation,
 }: DashboardTopPerformingSectionProps) {
   const NoDataMessage = ({ message }: { message: string }) => (
@@ -137,7 +138,7 @@ export function DashboardTopPerformingSection({
                         <button
                           onClick={e => {
                             e.stopPropagation();
-                            onViewMachine?.(item);
+                            onViewCabinet?.(item);
                           }}
                           className="flex-shrink-0"
                           title="View machine preview"

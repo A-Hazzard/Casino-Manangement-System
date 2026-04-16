@@ -23,13 +23,17 @@ import { NextRequest, NextResponse } from 'next/server';
  * Main GET handler for downloading firmware by ID
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const id = pathname.split('/').pop();
+
+  if (!id) {
+    return NextResponse.json({ error: 'Firmware ID is required' }, { status: 400 });
+  }
 
   try {
-    const { id } = await params;
 
     const firmware = await findFirmwareById(id);
     if (!firmware) {
@@ -78,14 +82,12 @@ export async function GET(
  * 6. Return success response
  */
 export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
+  const { pathname } = request.nextUrl;
+  const id = pathname.split('/').pop();
+
   try {
-    // ============================================================================
-    // STEP 1: Parse and validate request parameters
-    // ============================================================================
-    const { id } = await params;
 
     if (!id) {
       return NextResponse.json(
@@ -157,8 +159,8 @@ export async function DELETE(
         await logActivity({
           action: 'DELETE',
           details: `Deleted firmware "${firmwareToDelete.product} v${firmwareToDelete.version}" (${firmwareToDelete.fileName})`,
-          ipAddress: getClientIP(req) || undefined,
-          userAgent: req.headers.get('user-agent') || undefined,
+          ipAddress: getClientIP(request) || undefined,
+          userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,

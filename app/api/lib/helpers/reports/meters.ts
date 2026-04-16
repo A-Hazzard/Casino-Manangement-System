@@ -9,7 +9,6 @@
  */
 
 import type { TimePeriod } from '@/app/api/lib/types';
-import { getLicenceeCurrency } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
@@ -56,6 +55,8 @@ export type MachineData = {
   sasMeters?: unknown;
   lastActivity?: Date;
   game?: string;
+  collectorDenomination?: number;
+  gameConfig?: { accountingDenomination?: number | string };
 };
 
 /**
@@ -87,7 +88,7 @@ export type TransformedMeterData = {
   attPaidCredits: number;
   gamesPlayed: number;
   netGross: number;
-  subtractJackpot: boolean;
+  includeJackpot: boolean;
   location: string;
   locationId: string;
   createdAt: Date | undefined;
@@ -125,7 +126,7 @@ export function parseMetersReportParams(
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '10', 10);
   const search = searchParams.get('search') || '';
-  const licencee = (searchParams.get('licencee'));
+  const licencee = searchParams.get('licencee');
   const includeHourlyData = searchParams.get('includeHourlyData') === 'true';
 
   // Validate required parameters
@@ -142,16 +143,11 @@ export function parseMetersReportParams(
 
   // Determine display currency
   // - If currency param is provided, use it (for "All Licencees" mode)
-  // - If viewing a specific licencee, use that licencee's native currency
   // - Otherwise default to USD
-  let displayCurrency =
-    (searchParams.get('currency') as CurrencyCode) || undefined;
-
-  if (!displayCurrency && licencee && licencee !== 'all') {
-    displayCurrency = getLicenceeCurrency(licencee);
-  }
-
-  displayCurrency = displayCurrency || 'USD';
+  // NOTE: Currency resolution for specific licencee must be done in the API route
+  // after DB connection, since we need to resolve licencee ID to name
+  const displayCurrency =
+    (searchParams.get('currency') as CurrencyCode) || 'USD';
 
   // Parse custom dates if provided
   let parsedCustomStart: Date | undefined;
@@ -171,9 +167,9 @@ export function parseMetersReportParams(
   const hourlyDataMachineIdsParam = searchParams.get('hourlyDataMachineIds');
   const hourlyDataMachineIds = hourlyDataMachineIdsParam
     ? hourlyDataMachineIdsParam
-      .split(',')
-      .map(id => id.trim())
-      .filter(id => id !== '')
+        .split(',')
+        .map(id => id.trim())
+        .filter(id => id !== '')
     : undefined;
 
   // Parse granularity parameter
@@ -352,6 +348,8 @@ export async function fetchMachinesData(
     sasMeters: 1,
     lastActivity: 1,
     game: 1, // Include game field for display
+    collectorDenomination: 1,
+    'gameConfig.accountingDenomination': 1,
   })
     .sort({ lastActivity: -1 })
     .lean()
@@ -361,9 +359,7 @@ export async function fetchMachinesData(
   if (licencee && licencee !== 'all') {
     const licenceeLocations = await GamingLocations.find(
       {
-        $or: [
-          { 'rel.licencee': licencee  }
-        ]
+        $or: [{ 'rel.licencee': licencee }],
       },
       { _id: 1 }
     )
@@ -386,6 +382,10 @@ export async function fetchMachinesData(
     gamingLocation: (machine.gamingLocation as string) || '',
     sasMeters: machine.sasMeters,
     lastActivity: (machine.lastActivity as Date) || undefined,
+    collectorDenomination: machine.collectorDenomination as number | undefined,
+    gameConfig: machine.gameConfig as
+      | { accountingDenomination?: number | string }
+      | undefined,
   }));
 }
 
@@ -408,58 +408,68 @@ export async function fetchMachinesData(
  */
 export async function getLastMeterPerMachine(
   machineIds: string[],
-  queryStartDate: Date,
-  queryEndDate: Date
+  gamingDayRanges: Map<string, { rangeStart: Date; rangeEnd: Date }>
 ): Promise<Map<string, MeterAggregationResult>> {
-  // Use cursor for Meters aggregation
-  const metersAggregation: Array<Record<string, unknown>> = [];
-  const metersCursor = Meters.aggregate([
-    {
-      $match: {
-        machine: { $in: machineIds },
-        // Use $lt (not $lte) for end date because queryEndDate is the start of the next gaming day
-        // and we want to exclude it (only include up to but not including that time)
-        readAt: { $gte: queryStartDate, $lt: queryEndDate },
-      },
-    },
-    // Sort by readAt descending to get the latest meter first
-    // This ensures $first in the $group stage gets the most recent meter document
-    {
-      $sort: { readAt: -1 },
-    },
-    // Group by machine and take the first (latest) document's absolute values
-    // CRITICAL: We use $first (NOT $sum) to get the absolute values from the LAST meter document
-    // These are cumulative totals from the meter, not deltas - we want the final state
-    // at the end of the gaming day
-    {
-      $group: {
-        _id: '$machine',
-        // Use top-level absolute values from the last meter document (NOT summing)
-        drop: { $first: { $ifNull: ['$drop', 0] } },
-        totalCancelledCredits: {
-          $first: { $ifNull: ['$totalCancelledCredits', 0] },
-        },
-        totalHandPaidCancelledCredits: {
-          $first: { $ifNull: ['$totalHandPaidCancelledCredits', 0] },
-        },
-        coinIn: { $first: { $ifNull: ['$coinIn', 0] } },
-        coinOut: { $first: { $ifNull: ['$coinOut', 0] } },
-        totalWonCredits: {
-          $first: { $ifNull: ['$totalWonCredits', 0] },
-        },
-        gamesPlayed: { $first: { $ifNull: ['$gamesPlayed', 0] } },
-        jackpot: { $first: { $ifNull: ['$jackpot', 0] } },
-        lastReadAt: { $first: '$readAt' },
-      },
-    },
-  ]).cursor({ batchSize: 1000 });
-
-  for await (const doc of metersCursor) {
-    metersAggregation.push(doc);
+  // Use a map to accumulate results
+  const metersMap = new Map<string, MeterAggregationResult>();
+  
+  if (machineIds.length === 0 || gamingDayRanges.size === 0) {
+    return metersMap;
   }
 
-  // Create a map for meter data lookup
-  const metersMap = new Map<string, MeterAggregationResult>();
+  // To ensure we firmly hit the `{ machine: 1, readAt: 1 }` index without triggering
+  // a massive unindexed full collection scan from `$or`, we will run independent
+  // optimally indexed queries per location range concurrently! 
+  const promises = Array.from(gamingDayRanges.entries()).map(async ([locationId, range]) => {
+    const locResults: Array<Record<string, unknown>> = [];
+    const metersCursor = Meters.aggregate([
+      {
+        $match: {
+          machine: { $in: machineIds },
+          location: locationId,
+          readAt: { $gte: range.rangeStart, $lt: range.rangeEnd },
+        },
+      },
+      // Sort by createdAt descending to get the genuinely latest recorded meter first
+      // Since the match phase strictly limits results using compound indexes, sorting
+      // dynamically efficiently scales!
+      {
+        $sort: { createdAt: -1 },
+      },
+      // Group by machine and take the first (latest) document's absolute values
+      // CRITICAL: We use $first (NOT $sum) to get the absolute values from the LAST meter document
+      {
+        $group: {
+          _id: '$machine',
+          drop: { $first: { $ifNull: ['$drop', 0] } },
+          totalCancelledCredits: {
+            $first: { $ifNull: ['$totalCancelledCredits', 0] },
+          },
+          totalHandPaidCancelledCredits: {
+            $first: { $ifNull: ['$totalHandPaidCancelledCredits', 0] },
+          },
+          coinIn: { $first: { $ifNull: ['$coinIn', 0] } },
+          coinOut: { $first: { $ifNull: ['$coinOut', 0] } },
+          totalWonCredits: {
+            $first: { $ifNull: ['$totalWonCredits', 0] },
+          },
+          gamesPlayed: { $first: { $ifNull: ['$gamesPlayed', 0] } },
+          jackpot: { $first: { $ifNull: ['$jackpot', 0] } },
+          lastReadAt: { $first: '$readAt' },
+        },
+      },
+    ]).cursor({ batchSize: 1000 });
+
+    for await (const doc of metersCursor) {
+      locResults.push(doc);
+    }
+    return locResults;
+  });
+
+  const resolvedArrays = await Promise.all(promises);
+  const metersAggregation = resolvedArrays.flat();
+
+  // Populate the map for meter data lookup
   metersAggregation.forEach((meter: Record<string, unknown>) => {
     metersMap.set(meter._id as string, {
       _id: meter._id as string,
@@ -605,9 +615,9 @@ export async function getHourlyChartData(
  * @returns Formatted machine ID string
  */
 function formatMachineId(machine: MachineData): string {
-  const serialNumber = machine.serialNumber?.trim() || '';
+  const serialNumber = String(machine.serialNumber || '').trim();
   const hasValidSerialNumber = serialNumber.length > 0;
-  const customName = machine.custom?.name?.trim() || '';
+  const customName = String(machine.custom?.name || '').trim();
 
   if (customName && hasValidSerialNumber && customName !== serialNumber) {
     return `${customName} (${serialNumber})`;
@@ -642,7 +652,7 @@ function validateMeterValue(value: unknown): number {
  * @param machinesData - Array of machine data
  * @param metersMap - Map of machine ID to meter aggregation result
  * @param locationMap - Map of location ID to location name
- * @param licenceeSettingsMap - Map of licencee ID to subtractJackpot setting
+ * @param licenceeSettingsMap - Map of licencee ID to includeJackpot setting
  * @param locationLicenceeMap - Map of location ID to licencee ID
  * @returns Array of transformed meter report data
  */
@@ -657,8 +667,8 @@ export function transformMeterData(
     const locationName =
       locationMap.get(machine.gamingLocation) || 'Unknown Location';
     const licenceeId = locationLicenceeMap.get(machine.gamingLocation) || '';
-    const subtractJackpot = licenceeSettingsMap.get(licenceeId) || false;
-    
+    const includeJackpot = licenceeSettingsMap.get(licenceeId) || false;
+
     const machineId = formatMachineId(machine);
     const machineDocumentId = machine._id;
 
@@ -676,28 +686,29 @@ export function transformMeterData(
       lastReadAt: new Date(),
     };
 
-    // Extract and validate meter values
-    const metersIn = validateMeterValue(meterData.coinIn);
-    const metersOut = validateMeterValue(meterData.totalWonCredits);
+    // Extract, validate, and SCALE meter values (Using top-level fields outside movement)
+    // Terminology Alignment:
+    // Meters In (Display Name) = Coin In (Total Wagered)
+    // Meters Out (Display Name) = Total Won Credits (Money Won)
+    // Bill In (Display Name) = Drop (Cash In Stacker)
+    // Voucher Out (Display Name) = Total Cancelled Credits
+    const coinIn = validateMeterValue(meterData.coinIn);
+    const drop = validateMeterValue(meterData.drop);
+    const totalCancelledCredits = validateMeterValue(meterData.totalCancelledCredits);
+    const handPaidCredits = validateMeterValue(meterData.totalHandPaidCancelledCredits);
     const jackpot = validateMeterValue(meterData.jackpot);
-    const billIn = validateMeterValue(meterData.drop);
-    const totalCancelledCredits = validateMeterValue(
-      meterData.totalCancelledCredits
-    );
-    const handPaidCredits = validateMeterValue(
-      meterData.totalHandPaidCancelledCredits
-    );
     const gamesPlayed = validateMeterValue(meterData.gamesPlayed);
+    const totalWonCredits = validateMeterValue(meterData.totalWonCredits);
 
-    // Calculate voucher out (net cancelled credits)
-    const voucherOut = validateMeterValue(
-      totalCancelledCredits - handPaidCredits
-    );
-
-    // Logic: TRUE = Low Gross (subtract jackpot), FALSE = High Gross (do not subtract)
-    const netGross = subtractJackpot 
-      ? validateMeterValue(metersIn - metersOut - jackpot)
-      : validateMeterValue(metersIn - metersOut);
+    const metersIn = coinIn; 
+    const metersOut = totalWonCredits;
+    const billIn = drop;
+    // const voucherOut = totalCancelledCredits + jackpot; DEPRICATED
+    const voucherOut = validateMeterValue(totalCancelledCredits - handPaidCredits);
+    // netGross: Bill In - Meters Out (Total Won) - Jackpots
+    const netGross = includeJackpot
+      ? validateMeterValue(billIn - metersOut - jackpot)
+      : validateMeterValue(billIn - metersOut);
 
     return {
       machineId,
@@ -709,15 +720,15 @@ export function transformMeterData(
       attPaidCredits: handPaidCredits,
       gamesPlayed,
       netGross,
-      subtractJackpot,
+      includeJackpot,
       location: locationName,
       locationId: machine.gamingLocation,
       createdAt: meterData.lastReadAt || machine.lastActivity,
       machineDocumentId,
       game: machine.game || undefined,
       // Include raw fields for export logic
-      customName: machine.custom?.name || undefined,
-      serialNumber: machine.serialNumber?.trim() || undefined,
+      customName: String(machine.custom?.name || '').trim() || undefined,
+      serialNumber: String(machine.serialNumber || '').trim() || undefined,
     };
   });
 }
@@ -745,20 +756,19 @@ export function filterMeterDataBySearch(
     return transformedData;
   }
 
-  const searchLower = search.toLowerCase();
-
   return transformedData.filter(item => {
     // Get the original machine data for additional search fields
     const machineData = machinesData.find(
       m => m._id === item.machineDocumentId
     );
 
-    const serialNumber = machineData?.serialNumber || '';
-    const customName = machineData?.custom?.name?.trim() || '';
+    const serialNumber = String(machineData?.serialNumber || '').trim();
+    const customName = String(machineData?.custom?.name || '').trim();
+    const searchLower = (search || '').toLowerCase();
 
     return (
-      item.machineId.toLowerCase().includes(searchLower) ||
-      item.location.toLowerCase().includes(searchLower) ||
+      (item.machineId || '').toLowerCase().includes(searchLower) ||
+      (item.location || '').toLowerCase().includes(searchLower) ||
       serialNumber.toLowerCase().includes(searchLower) ||
       customName.toLowerCase().includes(searchLower)
     );

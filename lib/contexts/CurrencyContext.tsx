@@ -1,5 +1,6 @@
 'use client';
 
+import { ReactNode } from 'react';
 import { fetchLicenceeById } from '@/lib/helpers/client';
 import {
   convertCurrency,
@@ -12,17 +13,18 @@ import type {
   CurrencyCode,
   CurrencyContextType,
 } from '@/shared/types/currency';
-import React, {
+import { 
   createContext,
   useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
-} from 'react';
+ } from 'react';
+
 
 type CurrencyProviderProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   initialCurrency?: CurrencyCode;
 };
 
@@ -163,10 +165,6 @@ export function CurrencyProvider({
         handleSetDisplayCurrency(mappedLicenceeCurrency);
         lastAutoSetUserId.current = userId;
         lastAutoSetLicenceeId.current = singleLicenceeId;
-
-        console.log(
-          `💰 [CurrencyContext] Auto-set currency to ${mappedLicenceeCurrency} for single licencee user (${singleLicenceeId}, userId: ${userId}) - was ${displayCurrency} (using immediate mapping)`
-        );
       } else if (alreadySetCorrectly) {
         // Currency already correctly set, just ensure tracking is up to date
         lastAutoSetUserId.current = userId;
@@ -179,20 +177,12 @@ export function CurrencyProvider({
         .then(licencee => {
           if (licencee?.name) {
             const apiLicenceeCurrency = getLicenceeCurrency(licencee.name);
-
-            console.log(
-              `💰 [CurrencyContext] Verified licencee: ${licencee.name} (${singleLicenceeId}) -> Currency: ${apiLicenceeCurrency}`
-            );
-
             // Update if API returns different currency than mapping
             if (
               apiLicenceeCurrency !== mappedLicenceeCurrency &&
               apiLicenceeCurrency !== 'USD'
             ) {
               handleSetDisplayCurrency(apiLicenceeCurrency);
-              console.log(
-                `💰 [CurrencyContext] Updated currency to ${apiLicenceeCurrency} based on API (was ${mappedLicenceeCurrency})`
-              );
             }
           }
         })
@@ -246,9 +236,6 @@ export function CurrencyProvider({
         // This ensures if the user manually chose GYD, it persists even when switching licencees
         if (mappedCurrency && mappedCurrency !== displayCurrency && displayCurrency === 'USD') {
           handleSetDisplayCurrency(mappedCurrency);
-          console.log(
-            `💰 [CurrencyContext] Auto-switched currency to ${mappedCurrency} for new licencee: ${selectedLicencee}`
-          );
         }
 
         // Verify with API for accuracy

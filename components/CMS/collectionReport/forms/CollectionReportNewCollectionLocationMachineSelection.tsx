@@ -54,7 +54,7 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
   onMachineSelect,
 }: NewCollectionLocationMachineSelectionProps) {
   return (
-    <div className="flex min-h-0 w-1/5 flex-col space-y-3 overflow-y-auto border-r border-gray-300 p-3 md:p-4">
+    <div className="flex min-h-0 w-full flex-col space-y-3 overflow-y-auto p-3 md:p-4">
       <div
         className={
           isProcessing ||
@@ -65,7 +65,7 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
         }
       >
         <LocationSingleSelect
-          locations={locations.map(loc => ({
+          locations={locations.filter(loc => loc.name).map(loc => ({
             id: String(loc._id),
             name: loc.name,
             sasEnabled: false,

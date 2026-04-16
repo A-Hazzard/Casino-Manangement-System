@@ -34,8 +34,7 @@ import {
   buildCurrencyMaps,
 } from '@/app/api/lib/helpers/reports/metersCurrency';
 import { Licencee } from '@/app/api/lib/models/licencee';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -94,51 +93,21 @@ function createEmptyResponse(
  * 10. Paginate and return results
  */
 export async function GET(req: NextRequest) {
-  const startTime = Date.now();
+  return withApiAuth(req, async ({ user: userPayload, userRoles, isAdminOrDev }) => {
+    const startTime = Date.now();
 
-  try {
     // ============================================================================
     // STEP 1: Parse and validate request parameters
     // ============================================================================
+    // Example: GET /api/reports/meters?locations=Mapau,Stabroek&timePeriod=Yesterday&page=1&limit=50&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&includeHourlyData=true&granularity=hourly
+    console.log('[Meters Report API] STEP 1: Parsing parameters...');
     const { searchParams } = new URL(req.url);
     const params = parseMetersReportParams(searchParams);
 
     // ============================================================================
-    // STEP 2: Connect to database and authenticate user
-    // ============================================================================
-    const db = await connectDB();
-    if (!db) {
-      return NextResponse.json(
-        { error: 'DB connection failed' },
-        {
-          status: 500,
-          headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate',
-          },
-        }
-      );
-    }
-
-    const userPayload = await getUserFromServer();
-    if (!userPayload) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        {
-          status: 401,
-          headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate',
-          },
-        }
-      );
-    }
-
-    const userRoles = (userPayload?.roles as string[]) || [];
-    const isAdminOrDev =
-      userRoles.includes('admin') || userRoles.includes('developer');
-
-    // ============================================================================
     // STEP 3: Get user permissions and determine accessible locations
     // ============================================================================
+    console.log('[Meters Report API] STEP 3: Determining accessible locations...');
     const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     let userLocationPermissions: string[] = [];
     if (
@@ -158,10 +127,7 @@ export async function GET(req: NextRequest) {
     );
 
     // Determine if user is a location admin
-    const normalizedRoles = userRoles.map(role =>
-      typeof role === 'string' ? role.toLowerCase() : role
-    );
-    const isLocationAdmin = normalizedRoles.includes('location admin');
+    const isLocationAdmin = userRoles.includes('location admin');
 
     // Determine final location list to query
     const locationList = determineLocationList(
@@ -183,6 +149,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 4: Fetch location data and calculate gaming day ranges
     // ============================================================================
+    console.log('[Meters Report API] STEP 4: Fetch location data and calculate gaming day ranges...');
     const locationsToQuery =
       locationList.length > 0
         ? locationList
@@ -202,15 +169,15 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    // Fetch licencee subtractJackpot settings
-    const licencees = await Licencee.find({}, { _id: 1, subtractJackpot: 1 }).lean().exec();
+    // Fetch licencee includeJackpot settings
+    const licencees = await Licencee.find({}, { _id: 1, includeJackpot: 1 }).lean().exec();
     const licenceeSettingsMap = new Map<string, boolean>();
-    licencees.forEach((l: Record<string, unknown>) => {
-      licenceeSettingsMap.set(String(l._id), Boolean(l.subtractJackpot));
+    licencees.forEach((l) => {
+      licenceeSettingsMap.set(String(l._id), Boolean(l.includeJackpot));
     });
 
     // Calculate gaming day ranges for all locations
-    const { queryStartDate, queryEndDate } = calculateGamingDayRanges(
+    const { gamingDayRanges, queryStartDate, queryEndDate } = calculateGamingDayRanges(
       locationsData,
       params.timePeriod,
       params.customStartDate,
@@ -220,6 +187,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 5: Fetch machines data
     // ============================================================================
+    console.log(`[Meters Report API] STEP 5: Fetching machines for ${locationList.length} defined locations...`);
     const machinesData = await fetchMachinesData(
       locationList,
       params.licencee
@@ -234,6 +202,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 6: Get last meter document per machine
     // ============================================================================
+    console.log(`[Meters Report API] STEP 6: Fetching last meter for ${machineIds.length} machines...`);
     /**
      * CRITICAL: We get the LAST meter document for each machine, not a sum.
      * The aggregation sorts by readAt descending and uses $first to get
@@ -243,13 +212,13 @@ export async function GET(req: NextRequest) {
      */
     const metersMap = await getLastMeterPerMachine(
       machineIds,
-      queryStartDate,
-      queryEndDate
+      gamingDayRanges
     );
 
     // ============================================================================
     // STEP 7: Optionally aggregate hourly chart data
     // ============================================================================
+    console.log(`[Meters Report API] STEP 7: Optionally aggregate hourly chart data (includeHourlyData: ${params.includeHourlyData})...`);
     /**
      * Hourly chart data uses movement fields (deltas) and sums them by hour.
      * This is different from the main meter aggregation which uses absolute values.
@@ -275,6 +244,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 8: Transform machine and meter data into report format
     // ============================================================================
+    console.log(`[Meters Report API] STEP 8: Transforming meter data for ${machinesData.length} machines...`);
     let transformedData = transformMeterData(
       machinesData,
       metersMap,
@@ -286,20 +256,42 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 9: Apply search filter if provided
     // ============================================================================
+    console.log(`[Meters Report API] STEP 9: Applying search filter ('${params.search}') if provided...`);
     transformedData = filterMeterDataBySearch(
       transformedData,
       machinesData,
       params.search
     );
 
-    console.log('[Meters Report API] After search filter:', {
+    // ============================================================================
+    // STEP 9.5: Apply reviewer multiplier scaling
+    // ============================================================================
+    console.log('[Meters Report API] STEP 9.5: Applying reviewer multiplier if present...');
+    const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+    if (reviewerMult !== null) {
+      const mult = 1 - reviewerMult;
+      transformedData = transformedData.map(item => ({
+        ...item,
+        metersIn: item.metersIn * mult,
+        metersOut: item.metersOut * mult,
+        jackpot: item.jackpot * mult,
+        billIn: item.billIn * mult,
+        voucherOut: item.voucherOut * mult,
+        attPaidCredits: item.attPaidCredits * mult,
+        netGross: item.netGross * mult,
+      }));
+    }
+
+    console.log('[Meters Report API] After search and multiplier:', {
       filteredCount: transformedData.length,
       searchTerm: params.search,
+      hasMultiplier: reviewerMult !== null,
     });
 
     // ============================================================================
     // STEP 10: Paginate data
     // ============================================================================
+    console.log(`[Meters Report API] STEP 10: Paginating data (Page: ${params.page}, Limit: ${params.limit})...`);
     const { paginatedData, totalCount, totalPages } = paginateMeterData(
       transformedData,
       params.page,
@@ -309,6 +301,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 11: Apply currency conversion if needed
     // ============================================================================
+    console.log('[Meters Report API] STEP 11: Applying currency conversion if necessary...');
     /**
      * Currency conversion is ONLY applied when:
      * 1. User is Admin/Developer
@@ -355,6 +348,7 @@ export async function GET(req: NextRequest) {
       locationList.length > 0 ? locationList : actualLocationIds;
 
     const duration = Date.now() - startTime;
+    console.log(`[Meters Report API] STEP 12: Building response. Processed total items: ${totalCount}. Duration: ${duration}ms`);
     if (duration > 2000) {
       console.warn(
         `[Meters Report API] Slow response: ${duration}ms for ${totalCount} machines`
@@ -401,34 +395,6 @@ export async function GET(req: NextRequest) {
         'X-Content-Type-Options': 'nosniff',
       },
     });
-  } catch (err) {
-    const duration = Date.now() - startTime;
-    const errorMessage = err instanceof Error ? err.message : 'Server Error';
-
-    console.error(`Meters report failed after ${duration}ms:`, errorMessage);
-
-    // Handle validation errors with 400 status
-    if (err instanceof Error && err.message.includes('required')) {
-      return NextResponse.json(
-        { error: errorMessage },
-        {
-          status: 400,
-          headers: {
-            'Cache-Control': 'no-store, no-cache, must-revalidate',
-          },
-        }
-      );
-    }
-
-    return NextResponse.json(
-      { error: errorMessage },
-      {
-        status: 500,
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-        },
-      }
-    );
-  }
+  });
 }
 

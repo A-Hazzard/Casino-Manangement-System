@@ -90,6 +90,7 @@ export async function GET() {
         updatedAt: dbUser.updatedAt || new Date(),
         tempPasswordChanged: dbUser.tempPasswordChanged ?? true,
         tempPassword: dbUser.tempPassword ?? null,
+        multiplier: dbUser.multiplier ?? null,
         requiresProfileUpdate,
         requiresPasswordUpdate: !!invalidFields.password,
         invalidProfileFields: invalidFields,

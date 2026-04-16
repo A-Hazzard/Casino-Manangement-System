@@ -48,10 +48,12 @@ import {
   MachineHourlyChartsSkeleton,
   SummaryCardsSkeleton,
 } from '@/components/shared/ui/skeletons/ReportsSkeletons';
+import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import ReportsLocationsRevenueTable from '@/components/CMS/reports/tabs/locations/ReportsLocationsRevenueTable';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
 import { ReportsLocationTrendChart } from '@/components/CMS/reports/tabs/locations/ReportsLocationTrendChart';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { DashboardTotals } from '@/lib/types';
 import { TimePeriod } from '@/lib/types/api';
@@ -59,7 +61,6 @@ import { AggregatedLocation } from '@/lib/types/location';
 import {
   getGrossColorClass,
   getMoneyInColorClass,
-  getMoneyOutColorClass,
 } from '@/lib/utils/financial';
 import { MachineData } from '@/shared/types/machines';
 import { useRouter } from 'next/navigation';
@@ -148,7 +149,8 @@ export default function ReportsLocationsRevenueAnalysis({
   showGranularitySelector,
 }: ReportsLocationsRevenueAnalysisProps) {
   const router = useRouter();
-  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
+  const { displayCurrency } = useCurrencyFormat();
+  const formatCurrency = (val: number | null | undefined) => formatCurrencyWithCodeString(val, displayCurrency);
   const { activeMetricsFilter } = useDashBoardStore();
 
   // Calculate display totals from selected locations
@@ -174,8 +176,17 @@ export default function ReportsLocationsRevenueAnalysis({
         (sum, loc) => sum + ((loc.moneyOut as number) || 0),
         0
       ),
+      jackpot: filteredLocations.reduce(
+        (sum, loc) => sum + ((loc.jackpot as number) || 0),
+        0
+      ),
     };
   }, [selectedRevenueLocations, paginatedLocations, metricsTotals]);
+
+  // Check if any displayed location has includeJackpot
+  const anyIncludeJackpot = useMemo(() => {
+    return paginatedLocations.some(loc => loc.includeJackpot);
+  }, [paginatedLocations]);
 
   // All locations for dropdown (SAS and non-SAS)
   const allLocations = useMemo(() => {
@@ -333,10 +344,10 @@ export default function ReportsLocationsRevenueAnalysis({
             key={`revenue-table-${paginatedLocations.length}`}
             locations={paginatedLocations}
             loading={paginationLoading}
-            currentPage={currentPage + 1}
+            currentPage={currentPage}
             totalPages={totalPages}
             totalCount={totalCount}
-            onPageChange={page => onPageChange(page - 1)}
+            onPageChange={onPageChange}
             onLocationClick={(location: AggregatedLocation) => {
               console.warn(`Location clicked: ${JSON.stringify(location)}`);
             }}
@@ -362,10 +373,8 @@ export default function ReportsLocationsRevenueAnalysis({
                     >
                       {metricsTotalsLoading ? (
                         <Skeleton className="h-8 w-24" />
-                      ) : shouldShowCurrency() ? (
-                        formatAmount(displayTotals?.gross || 0)
                       ) : (
-                        `$${(displayTotals?.gross || 0).toLocaleString()}`
+                        formatCurrency(displayTotals?.gross || 0)
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -383,10 +392,8 @@ export default function ReportsLocationsRevenueAnalysis({
                     >
                       {metricsTotalsLoading ? (
                         <Skeleton className="h-8 w-24" />
-                      ) : shouldShowCurrency() ? (
-                        formatAmount(displayTotals?.moneyIn || 0)
                       ) : (
-                        `$${(displayTotals?.moneyIn || 0).toLocaleString()}`
+                        formatCurrency(displayTotals?.moneyIn || 0)
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -399,18 +406,18 @@ export default function ReportsLocationsRevenueAnalysis({
                     <CardTitle className="text-sm font-medium">Money Out</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div
-                      className={`text-2xl font-bold ${getMoneyOutColorClass(
-                        displayTotals?.moneyOut || 0,
-                        displayTotals?.moneyIn || 0
-                      )}`}
-                    >
+                    <div className="text-2xl font-bold">
                       {metricsTotalsLoading ? (
                         <Skeleton className="h-8 w-24" />
-                      ) : shouldShowCurrency() ? (
-                        formatAmount(displayTotals?.moneyOut || 0)
                       ) : (
-                        `$${(displayTotals?.moneyOut || 0).toLocaleString()}`
+                        <MoneyOutCell
+                          moneyOut={displayTotals?.moneyOut || 0}
+                          moneyIn={displayTotals?.moneyIn || 0}
+                          jackpot={displayTotals?.jackpot || 0}
+                          displayValue={formatCurrency(displayTotals?.moneyOut || 0)}
+                          includeJackpot={anyIncludeJackpot}
+                          showInfoIcon={true}
+                        />
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -743,7 +750,7 @@ export default function ReportsLocationsRevenueAnalysis({
                                   {machine.manufacturer}
                                 </td>
                                 <td className="p-3 text-sm font-medium">
-                                  ${(machine.drop || 0).toLocaleString()}
+                                  {formatCurrency(machine.drop || 0)}
                                 </td>
                                 <td
                                   className={`p-3 text-sm font-medium ${
@@ -752,16 +759,13 @@ export default function ReportsLocationsRevenueAnalysis({
                                       : 'text-red-600'
                                   }`}
                                 >
-                                  ${(machine.netWin || 0).toLocaleString()}
+                                  {formatCurrency(machine.netWin || 0)}
                                 </td>
                                 <td className="p-3 text-sm">
-                                  ${(machine.jackpot || 0).toLocaleString()}
+                                  {formatCurrency(machine.jackpot || 0)}
                                 </td>
                                 <td className="p-3 text-sm">
-                                  $
-                                  {machine.avgBet
-                                    ? machine.avgBet.toFixed(2)
-                                    : '0.00'}
+                                  {formatCurrency(machine.avgBet || 0)}
                                 </td>
                                 <td className="p-3 text-sm font-medium text-gray-600">
                                   {machine.actualHold != null &&
@@ -782,7 +786,7 @@ export default function ReportsLocationsRevenueAnalysis({
                                   {floorPosition.toFixed(2)}%
                                 </td>
                                 <td className="p-3 text-sm font-medium">
-                                  ${(machine.coinIn || 0).toLocaleString()}
+                                  {formatCurrency(machine.coinIn || 0)}
                                 </td>
                               </tr>
                               );
@@ -827,7 +831,7 @@ export default function ReportsLocationsRevenueAnalysis({
                                   Money In:
                                 </span>
                                 <span className="font-medium">
-                                  ${(machine.drop || 0).toLocaleString()}
+                                  {formatCurrency(machine.drop || 0)}
                                 </span>
                               </div>
                               <div className="flex justify-between">
@@ -841,7 +845,7 @@ export default function ReportsLocationsRevenueAnalysis({
                                       : 'text-red-600'
                                   }`}
                                 >
-                                  ${(machine.netWin || 0).toLocaleString()}
+                                  {formatCurrency(machine.netWin || 0)}
                                 </span>
                               </div>
                               <div className="flex justify-between">
@@ -849,10 +853,7 @@ export default function ReportsLocationsRevenueAnalysis({
                                   Avg. Wag. per Game:
                                 </span>
                                 <span className="font-medium">
-                                  $
-                                  {machine.avgBet
-                                    ? machine.avgBet.toFixed(2)
-                                    : '0.00'}
+                                  {formatCurrency(machine.avgBet || 0)}
                                 </span>
                               </div>
                               <div className="flex justify-between">

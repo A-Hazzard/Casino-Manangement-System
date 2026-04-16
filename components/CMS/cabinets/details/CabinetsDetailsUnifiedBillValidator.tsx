@@ -22,7 +22,9 @@ import { isAbortError } from '@/lib/utils/errors';
 import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Banknote, RefreshCw } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {  useCallback, useEffect, useRef, useState  } from 'react';
+import { TimePeriod } from '@/shared/types/common';
+
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -45,8 +47,6 @@ type BillValidatorData = {
   totalUnknownAmount?: number;
 };
 
-type TimePeriod = 'Today' | 'Yesterday' | '7d' | '30d' | 'All Time' | 'Custom';
-
 type CabinetsDetailsUnifiedBillValidatorProps = {
   machineId: string;
   timePeriod: TimePeriod;
@@ -54,9 +54,7 @@ type CabinetsDetailsUnifiedBillValidatorProps = {
   gameDayOffset?: number;
 };
 
-const CabinetsDetailsUnifiedBillValidator: React.FC<
-  CabinetsDetailsUnifiedBillValidatorProps
-> = ({ machineId, timePeriod, onTimePeriodChange, gameDayOffset = 0 }) => {
+const CabinetsDetailsUnifiedBillValidator = ({ machineId, timePeriod, onTimePeriodChange, gameDayOffset = 0 }: CabinetsDetailsUnifiedBillValidatorProps) => {
   const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
 
   const { getBillValidatorState, setBillValidatorDateRange } =

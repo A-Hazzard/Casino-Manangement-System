@@ -15,7 +15,8 @@
  */
 
 'use client';
-
+ 
+import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { formatMachineIdForDisplay } from '@/lib/helpers/reports/metersTabHelpers';
@@ -30,8 +31,8 @@ type ReportsMetersTableProps = {
   onSearchChange: (value: string) => void;
   currentPage: number;
   totalPages: number;
+  totalCount: number;
   onPageChange: (page: number) => void;
-  loading: boolean;
   hasData: boolean;
 };
 
@@ -44,8 +45,8 @@ export default function ReportsMetersTable({
   onSearchChange,
   currentPage,
   totalPages,
+  totalCount,
   onPageChange,
-  loading,
   hasData,
 }: ReportsMetersTableProps) {
   const router = useRouter();
@@ -54,15 +55,15 @@ export default function ReportsMetersTable({
     return (
       <>
         {/* Search bar - Always visible, even when no data */}
-        <div className="mb-4 bg-buttonActive p-4 rounded-lg">
+        <div className="mb-4 bg-white p-4 rounded-lg border border-gray-200">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-black z-10" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400 z-10" />
             <Input
               type="text"
               placeholder="Search by Serial Number, Custom Name, or Location..."
               value={searchTerm}
               onChange={e => onSearchChange(e.target.value)}
-              className="pl-10"
+              className="pl-10 text-gray-900 placeholder:text-gray-500"
             />
           </div>
         </div>
@@ -80,15 +81,15 @@ export default function ReportsMetersTable({
   return (
     <div className="flex flex-col">
       {/* Search bar - Right above the table */}
-      <div className="mb-4 bg-buttonActive p-4 rounded-lg">
+      <div className="mb-4 bg-white p-4 rounded-lg border border-gray-200">
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-black z-10" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400 z-10" />
           <Input
             type="text"
             placeholder="Search by Serial Number, Custom Name, or Location..."
             value={searchTerm}
             onChange={e => onSearchChange(e.target.value)}
-            className="pl-10"
+            className="pl-10 text-gray-900 placeholder:text-gray-500"
           />
         </div>
       </div>
@@ -106,25 +107,74 @@ export default function ReportsMetersTable({
                   Location
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Meters In
+                  <div className="flex items-center">
+                    Meters In
+                    <CalculationHelp 
+                      title="Meters In" 
+                      formula="SAS: coinIn" 
+                      description="The lifetime total of all money wagered/played on the machine." 
+                    />
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Money Won
+                  <div className="flex items-center">
+                    Meters Out
+                    <CalculationHelp 
+                      title="Meters Out" 
+                      formula="SAS: totalWonCredits" 
+                      description="The lifetime total of all credits won by players." 
+                    />
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Jackpot
+                  <div className="flex items-center">
+                    Jackpot
+                    <CalculationHelp 
+                      title="Jackpot" 
+                      formula="SAS: jackpot" 
+                      description="The lifetime total of all hand-paid jackpot events." 
+                    />
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Bill In
+                  <div className="flex items-center">
+                    Bill In
+                    <CalculationHelp 
+                      title="Bill In" 
+                      formula="SAS: drop (stacker)" 
+                      description="The lifetime total of all physical cash inserted into the machine." 
+                    />
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Voucher Out
+                  <div className="flex items-center">
+                    Voucher Out
+                    <CalculationHelp 
+                      title="Voucher Out" 
+                      formula="SAS: totalCancelledCredits + jackpot" 
+                      description="The total of all winning tickets printed plus hand-paid jackpots." 
+                    />
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Hand Paid Cancelled Credits
+                  <div className="flex items-center whitespace-nowrap">
+                    Hand Paid 
+                    <CalculationHelp 
+                      title="Att. Paid Credits" 
+                      formula="SAS: totalHandPaidCancelledCredits" 
+                      description="Credits that were paid out manually by an attendant." 
+                    />
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Games Played
+                  <div className="flex items-center whitespace-nowrap">
+                    Games Played
+                    <CalculationHelp 
+                      title="Games Played" 
+                      formula="SAS: gamesPlayed" 
+                      description="The total number of games initiated on the machine." 
+                    />
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Date
@@ -289,9 +339,16 @@ export default function ReportsMetersTable({
               {/* Metrics Grid */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-lg bg-white p-3 shadow-sm">
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Meters In
-                  </p>
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Meters In
+                    </p>
+                    <CalculationHelp 
+                      title="Meters In" 
+                      formula="SAS: coinIn" 
+                      className="ml-0"
+                    />
+                  </div>
                   <p
                     className={`text-base font-bold ${getFinancialColorClass(item.metersIn)}`}
                   >
@@ -299,9 +356,16 @@ export default function ReportsMetersTable({
                   </p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm">
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Money Won
-                  </p>
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Meters Out
+                    </p>
+                    <CalculationHelp 
+                      title="Meters Out" 
+                      formula="SAS: totalWonCredits" 
+                      className="ml-0"
+                    />
+                  </div>
                   <p
                     className={`text-base font-bold ${getFinancialColorClass(item.metersOut)}`}
                   >
@@ -309,9 +373,16 @@ export default function ReportsMetersTable({
                   </p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm">
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Jackpot
-                  </p>
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Jackpot
+                    </p>
+                    <CalculationHelp 
+                      title="Jackpot" 
+                      formula="SAS: jackpot" 
+                      className="ml-0"
+                    />
+                  </div>
                   <p
                     className={`text-base font-bold ${getFinancialColorClass(item.jackpot)}`}
                   >
@@ -319,9 +390,16 @@ export default function ReportsMetersTable({
                   </p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm">
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Bill In
-                  </p>
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Bill In
+                    </p>
+                    <CalculationHelp 
+                      title="Bill In" 
+                      formula="SAS: drop" 
+                      className="ml-0"
+                    />
+                  </div>
                   <p
                     className={`text-base font-bold ${getFinancialColorClass(item.billIn)}`}
                   >
@@ -329,9 +407,16 @@ export default function ReportsMetersTable({
                   </p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm">
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Voucher Out
-                  </p>
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Voucher Out
+                    </p>
+                    <CalculationHelp 
+                      title="Voucher Out" 
+                      formula="SAS: totalCancelledCredits + jackpot" 
+                      className="ml-0"
+                    />
+                  </div>
                   <p
                     className={`text-base font-bold ${getFinancialColorClass(item.voucherOut)}`}
                   >
@@ -339,9 +424,16 @@ export default function ReportsMetersTable({
                   </p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm">
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
-                    Hand Paid
-                  </p>
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                      Hand Paid
+                    </p>
+                    <CalculationHelp 
+                      title="Hand Paid" 
+                      formula="SAS: totalHandPaidCancelledCredits" 
+                      className="ml-0"
+                    />
+                  </div>
                   <p
                     className={`text-base font-bold ${getFinancialColorClass(item.attPaidCredits)}`}
                   >
@@ -349,9 +441,16 @@ export default function ReportsMetersTable({
                   </p>
                 </div>
                 <div className="col-span-2 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-3 shadow-sm">
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-600">
-                    Games Played
-                  </p>
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-600">
+                      Games Played
+                    </p>
+                    <CalculationHelp 
+                      title="Games Played" 
+                      formula="SAS: gamesPlayed" 
+                      className="ml-0"
+                    />
+                  </div>
                   <p className="text-lg font-bold text-gray-900">
                     {item.gamesPlayed.toLocaleString()}
                   </p>
@@ -378,13 +477,13 @@ export default function ReportsMetersTable({
       </div>
 
       {/* Pagination Controls - Mobile Responsive */}
-      {!loading && totalPages > 1 && (
-        <PaginationControls
-          currentPage={currentPage}
-          totalPages={totalPages}
-          setCurrentPage={onPageChange}
-        />
-      )}
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        setCurrentPage={onPageChange}
+        showTotalCount
+      />
     </div>
   );
 }

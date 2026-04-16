@@ -20,26 +20,22 @@
 
 import DashboardChart from '@/components/CMS/dashboard/DashboardChart';
 import TopPerformingLocationModal from '@/components/CMS/dashboard/modals/TopPerformingLocationModal';
-import TopPerformingMachineModal from '@/components/CMS/dashboard/modals/TopPerformingMachineModal';
+import TopPerformingCabinetModal from '@/components/CMS/dashboard/modals/TopPerformingCabinetModal';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards';
 import MachineStatusWidget from '@/components/shared/ui/MachineStatusWidget';
 import MapPreview from '@/components/shared/ui/MapPreview';
 import { RefreshButtonSkeleton } from '@/components/shared/ui/skeletons/ButtonSkeletons';
-import {
-    DashboardChartSkeleton,
-} from '@/components/shared/ui/skeletons/DashboardSkeletons';
-import type {
-    DashboardMobileLayoutProps,
-} from '@/lib/types/components';
-import { getLicenceeName } from '@/lib/utils/licencee';
-import axios from 'axios';
+import { DashboardChartSkeleton } from '@/components/shared/ui/skeletons/DashboardSkeletons';
+import type { DashboardMobileLayoutProps } from '@/lib/types/components';
 import { RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { DashboardTopPerformingSection } from './sections/DashboardTopPerformingSection';
 
-export default function DashboardMobileLayout(props: DashboardMobileLayoutProps) {
+export default function DashboardMobileLayout(
+  props: DashboardMobileLayoutProps
+) {
   const router = useRouter();
   const [selectedMachine, setSelectedMachine] = useState<{
     machineId?: string;
@@ -57,66 +53,16 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const licenceeName =
-    getLicenceeName(props.selectedLicencee) ||
-    props.selectedLicencee ||
-    'any licencee';
+    props.selectedLicencee && props.selectedLicencee !== 'all'
+      ? props.selectedLicencee
+      : 'any licencee';
 
-
-  const [machineStats, setMachineStats] = useState<{
-    totalMachines: number;
-    onlineMachines: number;
-    offlineMachines: number;
-  } | null>(null);
-  const [machineStatsLoading, setMachineStatsLoading] = useState(true);
-
-  /**
-   * Fetches machine stats for online/offline counts.
-   * Used to display machine status widget on mobile dashboard.
-   */
-  useEffect(() => {
-    let aborted = false;
-    const fetchMachineStats = async () => {
-      setMachineStatsLoading(true);
-      try {
-        const params = new URLSearchParams();
-        params.append('licencee', 'all');
-
-        const res = await axios.get(
-          `/api/analytics/machines/stats?${params.toString()}`
-        );
-        const data = res.data;
-        // Only update state if request wasn't aborted
-        if (!aborted) {
-          setMachineStats({
-            totalMachines: data.totalMachines || 0,
-            onlineMachines: data.onlineMachines || 0,
-            offlineMachines: data.offlineMachines || 0,
-          });
-        }
-      } catch {
-        // On error, set zero counts if request wasn't aborted
-        if (!aborted) {
-          setMachineStats({
-            totalMachines: 0,
-            onlineMachines: 0,
-            offlineMachines: 0,
-          });
-        }
-      } finally {
-        if (!aborted) setMachineStatsLoading(false);
-      }
-    };
-    fetchMachineStats();
-    return () => {
-      aborted = true;
-    };
-  }, []);
-
-  const onlineCount = machineStats?.onlineMachines || 0;
-  const offlineCount = machineStats?.offlineMachines || 0;
+  const onlineCount = props.machineStats?.onlineMachines || 0;
+  const offlineCount = props.machineStats?.offlineMachines || 0;
+  const totalCount = props.machineStats?.totalMachines || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       {/* Date Filter Controls (mobile) */}
       <div className="flex flex-wrap items-center gap-2">
         <DateFilters hideAllTime={false} />
@@ -125,9 +71,11 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
       {/* Machine Status Widget */}
       <div className="mb-4">
         <MachineStatusWidget
-          isLoading={machineStatsLoading}
+          isLoading={props.machineStatsLoading}
           onlineCount={onlineCount}
           offlineCount={offlineCount}
+          totalCount={totalCount}
+          showTotal
         />
       </div>
 
@@ -167,6 +115,9 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
         loading={props.loadingTotals ?? props.loadingChartData}
         title="Total for all Locations and Machines"
         locationFiltered={false}
+        includeJackpot={props.gamingLocations?.some(
+          (loc: Record<string, unknown>) => loc.includeJackpot
+        )}
       />
 
       {/* Chart Section */}
@@ -194,7 +145,8 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
                 }
                 className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
               >
-                {(props.activeMetricsFilter === '30d' || props.activeMetricsFilter === 'last30days') ? (
+                {props.activeMetricsFilter === '30d' ||
+                props.activeMetricsFilter === 'last30days' ? (
                   <>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
@@ -213,14 +165,22 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
             chartData={props.chartData}
             activeMetricsFilter={props.activeMetricsFilter}
             totals={props.totals}
-            granularity={props.chartGranularity as 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly' | undefined}
+            granularity={
+              props.chartGranularity as
+                | 'hourly'
+                | 'minute'
+                | 'daily'
+                | 'weekly'
+                | 'monthly'
+                | undefined
+            }
           />
         </>
       )}
 
       {/* Map Preview Section */}
       {/* Show skeleton while loading, otherwise show map preview */}
-      {props.loadingLocations ?? props.loadingChartData ? (
+      {(props.loadingLocations ?? props.loadingChartData) ? (
         <div className="relative w-full rounded-lg bg-container p-4 shadow-md">
           <div className="skeleton-bg mt-2 h-48 w-full animate-pulse rounded-lg"></div>
         </div>
@@ -238,7 +198,7 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
         selectedLicencee={props.selectedLicencee}
         licenceeName={licenceeName}
         renderCustomizedLabel={props.renderCustomizedLabel}
-        onViewMachine={item => {
+        onViewCabinet={item => {
           if (item.machineId) {
             setSelectedMachine({
               machineId: item.machineId,
@@ -262,31 +222,29 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
         }}
       />
 
-      {/* Machine Preview Modal - Show only when machine is selected and not a location */}
-      {selectedMachine &&
-        selectedMachine.machineId &&
-        !selectedMachine.isLocation && (
-          <TopPerformingMachineModal
-            open={isModalOpen}
-            machineId={selectedMachine.machineId}
-            machineName={selectedMachine.machineName || ''}
-            game={selectedMachine.game}
-            locationName={selectedMachine.locationName}
-            locationId={selectedMachine.locationId}
-            onClose={() => {
-              setIsModalOpen(false);
-              setSelectedMachine(null);
-            }}
-            onNavigate={() => {
-              if (selectedMachine.machineId) {
-                router.push(`/cabinets/${selectedMachine.machineId}`);
-              }
-            }}
-          />
-        )}
+      {/* Cabinet Preview Modal - Show only when cabinet is selected and not a location */}
+      {selectedMachine?.machineId && !selectedMachine.isLocation && (
+        <TopPerformingCabinetModal
+          open={isModalOpen}
+          machineId={selectedMachine.machineId}
+          machineName={selectedMachine.machineName || ''}
+          game={selectedMachine.game}
+          locationName={selectedMachine.locationName}
+          locationId={selectedMachine.locationId}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedMachine(null);
+          }}
+          onNavigate={() => {
+            if (selectedMachine.machineId) {
+              router.push(`/cabinets/${selectedMachine.machineId}`);
+            }
+          }}
+        />
+      )}
 
       {/* Location Preview Modal - Show only when location is selected */}
-      {selectedLocation && selectedLocation.locationId && (
+      {selectedLocation?.locationId && (
         <TopPerformingLocationModal
           open={isLocationModalOpen}
           locationId={selectedLocation.locationId}
@@ -305,4 +263,3 @@ export default function DashboardMobileLayout(props: DashboardMobileLayoutProps)
     </div>
   );
 }
-

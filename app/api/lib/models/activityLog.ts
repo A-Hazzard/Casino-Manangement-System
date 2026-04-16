@@ -29,6 +29,8 @@ const ActivityLogSchema = new Schema(
         'account_locked',
         'account_unlocked',
         'cancel',
+        'sms_success',
+        'sms_failed',
       ],
     },
     resource: {
@@ -52,10 +54,12 @@ const ActivityLogSchema = new Schema(
         'cashier_shift',
         'smib',
         'movement_request',
+        'sms',
       ],
     },
     resourceId: { type: String, required: true },
     resourceName: { type: String },
+    membershipLog: { type: Boolean, default: false },
     // Detailed information
     details: { type: String },
     previousData: { type: Schema.Types.Mixed },

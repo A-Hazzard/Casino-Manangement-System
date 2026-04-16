@@ -5,27 +5,30 @@
  * Features:
  * - Manager schedule data display
  * - Status badges
+ * - Edit and soft-delete actions (manager, admin, location admin, owner, developer)
  * - Loading states
  * - Empty state handling
  * - Responsive design (desktop only)
- *
- * @param data - Array of scheduler table rows
- * @param loading - Whether data is loading
  */
 import { Badge } from '@/components/shared/ui/badge';
+import { Button } from '@/components/shared/ui/button';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import type { CollectionReportManagerScheduleTableProps, SchedulerTableRow } from '@/lib/types/components';
+import { Pencil, Trash2 } from 'lucide-react';
 
 export default function CollectionReportManagerScheduleTable({
   data,
   loading,
+  onEdit,
+  onDelete,
+  showActions = false,
 }: CollectionReportManagerScheduleTableProps) {
   if (loading) {
     return (
@@ -53,18 +56,15 @@ export default function CollectionReportManagerScheduleTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
-            <TableHead className="font-semibold text-white">
-              COLLECTOR
-            </TableHead>
+            <TableHead className="font-semibold text-white">COLLECTOR</TableHead>
             <TableHead className="font-semibold text-white">LOCATION</TableHead>
             <TableHead className="font-semibold text-white">MANAGER</TableHead>
-            <TableHead className="font-semibold text-white">
-              VISIT TIME
-            </TableHead>
-            <TableHead className="font-semibold text-white">
-              CREATED AT
-            </TableHead>
+            <TableHead className="font-semibold text-white">VISIT TIME</TableHead>
+            <TableHead className="font-semibold text-white">CREATED AT</TableHead>
             <TableHead className="font-semibold text-white">STATUS</TableHead>
+            {showActions && (
+              <TableHead className="font-semibold text-white">ACTIONS</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -77,13 +77,6 @@ export default function CollectionReportManagerScheduleTable({
               <TableCell>{row.createdAt}</TableCell>
               <TableCell>
                 <Badge
-                  variant={
-                    row.status === 'pending'
-                      ? 'secondary'
-                      : row.status === 'completed'
-                        ? 'default'
-                        : 'destructive'
-                  }
                   className={
                     row.status === 'pending'
                       ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
@@ -95,6 +88,30 @@ export default function CollectionReportManagerScheduleTable({
                   {row.status}
                 </Badge>
               </TableCell>
+              {showActions && (
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-gray-500 hover:text-button"
+                      onClick={() => onEdit?.(row)}
+                      title="Edit schedule"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-gray-500 hover:text-red-600"
+                      onClick={() => onDelete?.(row)}
+                      title="Delete schedule"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
@@ -102,4 +119,3 @@ export default function CollectionReportManagerScheduleTable({
     </div>
   );
 }
-

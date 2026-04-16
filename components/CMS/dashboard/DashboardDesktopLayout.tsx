@@ -21,18 +21,18 @@
 
 import DashboardChart from '@/components/CMS/dashboard/DashboardChart';
 import TopPerformingLocationModal from '@/components/CMS/dashboard/modals/TopPerformingLocationModal';
-import TopPerformingMachineModal from '@/components/CMS/dashboard/modals/TopPerformingMachineModal';
+import TopPerformingCabinetModal from '@/components/CMS/dashboard/modals/TopPerformingCabinetModal';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import FinancialMetricsCards from '@/components/shared/ui/FinancialMetricsCards';
+import MachineStatusWidget from '@/components/shared/ui/MachineStatusWidget';
 import MapPreview from '@/components/shared/ui/MapPreview';
 import { RefreshButtonSkeleton } from '@/components/shared/ui/skeletons/ButtonSkeletons';
 import {
-    DashboardChartSkeleton,
-    DashboardTopPerformingSkeleton,
+  DashboardChartSkeleton,
+  DashboardTopPerformingSkeleton,
 } from '@/components/shared/ui/skeletons/DashboardSkeletons';
 import type { TopPerformingItem } from '@/lib/types';
 import type { DashboardDesktopLayoutProps } from '@/lib/types/components';
-import { getLicenceeName } from '@/lib/utils/licencee';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -58,9 +58,9 @@ export default function DashboardDesktopLayout(
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
   const licenceeName =
-    getLicenceeName(props.selectedLicencee) ||
-    props.selectedLicencee ||
-    'any licencee';
+    props.selectedLicencee && props.selectedLicencee !== 'all'
+      ? props.selectedLicencee
+      : 'any licencee';
 
   const NoDataMessage = ({ message }: { message: string }) => (
     <div
@@ -77,17 +77,25 @@ export default function DashboardDesktopLayout(
       {/* ============================================================================
          Left Section (Dashboard Content) - 60% Width (3/5 columns)
          ============================================================================ */}
-      <div className="col-span-3 space-y-6">
-        {/* Date Filter Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          <DateFilters hideAllTime={true} />
+      <div className="col-span-3 space-y-10">
+        {/* Date Filter Controls & Machine Status Widget */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex-shrink-0">
+            <DateFilters hideAllTime={true} />
+          </div>
+          <div className="flex-shrink-0">
+            <MachineStatusWidget
+              isLoading={props.machineStatsLoading}
+              onlineCount={props.machineStats?.onlineMachines ?? 0}
+              offlineCount={props.machineStats?.offlineMachines ?? 0}
+              totalCount={props.machineStats?.totalMachines ?? 0}
+              showTotal
+            />
+          </div>
         </div>
 
         {/* Metrics Description Text with Refresh Button */}
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg text-gray-700">
-            Total for all Locations and Machines
-          </h2>
           {/* Refresh Button with Loading State */}
           {props.loadingChartData ? (
             <RefreshButtonSkeleton />
@@ -119,8 +127,11 @@ export default function DashboardDesktopLayout(
         <FinancialMetricsCards
           totals={props.totals}
           loading={props.loadingTotals ?? props.loadingChartData}
-          title="Total for all Locations and Machines"
+          title="Total for all Locations and Cabinets"
           locationFiltered={false}
+          includeJackpot={props.gamingLocations?.some(
+            (loc: Record<string, unknown>) => loc.includeJackpot
+          )}
         />
 
         {/* Trend Chart Section */}
@@ -144,7 +155,8 @@ export default function DashboardDesktopLayout(
                 }
                 className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
               >
-                {(props.activeMetricsFilter === '30d' || props.activeMetricsFilter === 'last30days') ? (
+                {props.activeMetricsFilter === '30d' ||
+                props.activeMetricsFilter === 'last30days' ? (
                   <>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
@@ -167,7 +179,15 @@ export default function DashboardDesktopLayout(
               chartData={props.chartData}
               activeMetricsFilter={props.activeMetricsFilter}
               totals={props.totals}
-              granularity={props.chartGranularity as 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly' | undefined}
+              granularity={
+                props.chartGranularity as
+                  | 'hourly'
+                  | 'minute'
+                  | 'daily'
+                  | 'weekly'
+                  | 'monthly'
+                  | undefined
+              }
             />
           )}
         </div>
@@ -176,13 +196,13 @@ export default function DashboardDesktopLayout(
       {/* ============================================================================
          Right Section (Map & Status) - 40% Width (2/5 columns)
          ============================================================================ */}
-      <div className="col-span-2 space-y-6">
+      <div className="col-span-2 space-y-10">
         {/* Map Preview Section */}
         <div className="rounded-lg bg-container p-6 shadow-md">
           <div className="mb-4 flex items-center justify-between">
             <h3 className="text-lg font-semibold">Location Map</h3>
           </div>
-          {props.loadingLocations ?? props.loadingChartData ? (
+          {(props.loadingLocations ?? props.loadingChartData) ? (
             <div className="relative h-56 w-full rounded-lg bg-container p-4">
               <div className="skeleton-bg mt-2 h-full w-full animate-pulse rounded-lg"></div>
             </div>
@@ -273,7 +293,7 @@ export default function DashboardDesktopLayout(
                   ) : (
                     <div className="flex flex-col items-center gap-6 xl:flex-row xl:justify-between">
                       {/* Items List */}
-                      <ul className="w-full flex-1 min-w-0 space-y-2">
+                      <ul className="w-full min-w-0 flex-1 space-y-2">
                         {props.topPerformingData.map(
                           (item: TopPerformingItem, index: number) => (
                             <li
@@ -290,7 +310,10 @@ export default function DashboardDesktopLayout(
                               {props.activeTab === 'Cabinets' &&
                               item.machineId ? (
                                 <>
-                                  <span className="flex-1 truncate text-gray-700" title={item.name}>
+                                  <span
+                                    className="flex-1 truncate text-gray-700"
+                                    title={item.name}
+                                  >
                                     {item.name}
                                   </span>
                                   <button
@@ -309,7 +332,7 @@ export default function DashboardDesktopLayout(
                                       }
                                     }}
                                     className="flex-shrink-0"
-                                    title="View machine preview"
+                                    title="View cabinet preview"
                                   >
                                     <ExternalLink className="h-3.5 w-3.5 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
                                   </button>
@@ -392,31 +415,29 @@ export default function DashboardDesktopLayout(
         </div>
       </div>
 
-      {/* Machine Preview Modal */}
-      {selectedMachine &&
-        selectedMachine.machineId &&
-        !selectedMachine.isLocation && (
-          <TopPerformingMachineModal
-            open={isModalOpen}
-            machineId={selectedMachine.machineId}
-            machineName={selectedMachine.machineName || ''}
-            game={selectedMachine.game}
-            locationName={selectedMachine.locationName}
-            locationId={selectedMachine.locationId}
-            onClose={() => {
-              setIsModalOpen(false);
-              setSelectedMachine(null);
-            }}
-            onNavigate={() => {
-              if (selectedMachine.machineId) {
-                router.push(`/cabinets/${selectedMachine.machineId}`);
-              }
-            }}
-          />
-        )}
+      {/* Cabinet Preview Modal */}
+      {selectedMachine?.machineId && !selectedMachine.isLocation && (
+        <TopPerformingCabinetModal
+          open={isModalOpen}
+          machineId={selectedMachine.machineId}
+          machineName={selectedMachine.machineName || ''}
+          game={selectedMachine.game}
+          locationName={selectedMachine.locationName}
+          locationId={selectedMachine.locationId}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedMachine(null);
+          }}
+          onNavigate={() => {
+            if (selectedMachine.machineId) {
+              router.push(`/cabinets/${selectedMachine.machineId}`);
+            }
+          }}
+        />
+      )}
 
       {/* Location Preview Modal */}
-      {selectedLocation && selectedLocation.locationId && (
+      {selectedLocation?.locationId && (
         <TopPerformingLocationModal
           open={isLocationModalOpen}
           locationId={selectedLocation.locationId}
@@ -435,4 +456,3 @@ export default function DashboardDesktopLayout(
     </div>
   );
 }
-

@@ -17,13 +17,15 @@
  */
 export type UserRole =
   | 'developer'
+  | 'owner'
   | 'admin'
   | 'manager'
   | 'location admin'
   | 'vault-manager'
   | 'cashier'
   | 'technician'
-  | 'collector';
+  | 'collector'
+  | 'reviewer';
 
 /**
  * Role priority order (highest to lowest)
@@ -31,6 +33,7 @@ export type UserRole =
  */
 export const ROLE_PRIORITY: UserRole[] = [
   'developer',
+  'owner',
   'admin',
   'manager',
   'location admin',
@@ -38,6 +41,7 @@ export const ROLE_PRIORITY: UserRole[] = [
   'cashier',
   'technician',
   'collector',
+  'reviewer',
 ];
 
 /**
@@ -45,10 +49,12 @@ export const ROLE_PRIORITY: UserRole[] = [
  * Users with these roles are redirected to dashboard on login
  */
 export const HIGH_PRIORITY_ROLES: UserRole[] = [
-  'admin',
   'developer',
+  'owner',
+  'admin',
   'manager',
   'location admin',
+  'reviewer',
 ];
 
 /**
@@ -57,7 +63,9 @@ export const HIGH_PRIORITY_ROLES: UserRole[] = [
  */
 export const CMS_ACCESS_ROLES: UserRole[] = [
   'developer',
+  'owner',
   'admin',
   'manager',
   'location admin',
+  'reviewer',
 ];

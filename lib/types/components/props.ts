@@ -1,3 +1,4 @@
+import { ReactNode, RefObject } from 'react';
 import { dashboardData, DashboardTotals } from '@/lib/types';
 import type { CollectorSchedule } from '@/lib/types/components';
 import { TimePeriod } from '@/shared/types';
@@ -28,6 +29,8 @@ export type CustomizedLabelProps = {
 export type DateFiltersProps = {
   disabled?: boolean;
   onCustomRangeGo?: () => void;
+  /** Label for the calendar's apply button. Defaults to "Get Meters". Use context-specific labels e.g. "Get Reports", "Get Sessions", "Get Activity". */
+  customRangeGoLabel?: string;
   hideAllTime: boolean;
   showQuarterly?: boolean;
   mode?: 'auto' | 'mobile' | 'desktop';
@@ -83,6 +86,11 @@ export type SchedulerTableRow = {
   visitTime: string;
   createdAt: string;
   status: string;
+  // Raw ISO strings preserved for the edit modal
+  rawStartTime: string;
+  rawEndTime: string;
+  collectorName: string;
+  locationName: string;
 };
 
 // Monthly report summary type
@@ -149,7 +157,7 @@ export type CollectionReportCardsProps = {
 export type CollectionReportDesktopUIProps = {
   loading: boolean;
   filteredReports: CollectionReportRow[];
-  desktopTableRef: React.RefObject<HTMLDivElement | null>;
+  desktopTableRef: RefObject<HTMLDivElement | null>;
   locations: LocationSelectItem[];
   selectedLocation: string;
   onLocationChange: (value: string) => void;
@@ -175,7 +183,7 @@ export type CollectionReportDesktopUIProps = {
 export type CollectionReportMobileUIProps = {
   loading: boolean;
   filteredReports: CollectionReportRow[];
-  mobileCardsRef: React.RefObject<HTMLDivElement | null>;
+  mobileCardsRef: RefObject<HTMLDivElement | null>;
   disabled?: boolean;
   locations: LocationSelectItem[];
   selectedLocation: string;
@@ -211,7 +219,7 @@ export type CollectionReportMonthlyDesktopUIProps = {
   monthlyTotalPages: number;
   monthlyPage: number;
   onPaginateMonthly: (page: number) => void;
-  monthlyPaginationRef: React.RefObject<HTMLDivElement | null>;
+  monthlyPaginationRef: RefObject<HTMLDivElement | null>;
   monthlyFirstItemIndex: number;
   monthlyLastItemIndex: number;
 };
@@ -258,6 +266,9 @@ export type CollectionReportManagerDesktopUIProps = {
   currentPage: number;
   totalPages: number;
   setCurrentPage: (page: number) => void;
+  onEdit?: (row: SchedulerTableRow) => void;
+  onDelete?: (row: SchedulerTableRow) => void;
+  showActions?: boolean;
 };
 
 export type CollectionReportManagerMobileUIProps = {
@@ -275,16 +286,25 @@ export type CollectionReportManagerMobileUIProps = {
   currentPage: number;
   totalPages: number;
   setCurrentPage: (page: number) => void;
+  onEdit?: (row: SchedulerTableRow) => void;
+  onDelete?: (row: SchedulerTableRow) => void;
+  showActions?: boolean;
 };
 
 export type CollectionReportManagerScheduleTableProps = {
   data: SchedulerTableRow[];
   loading: boolean;
+  onEdit?: (row: SchedulerTableRow) => void;
+  onDelete?: (row: SchedulerTableRow) => void;
+  showActions?: boolean;
 };
 
 export type CollectionReportManagerScheduleCardsProps = {
   data: SchedulerTableRow[];
   loading: boolean;
+  onEdit?: (row: SchedulerTableRow) => void;
+  onDelete?: (row: SchedulerTableRow) => void;
+  showActions?: boolean;
 };
 
 export type CollectionReportManagerScheduleFiltersProps = {
@@ -317,6 +337,9 @@ export type CollectionReportCollectorDesktopUIProps = {
   currentPage: number;
   totalPages: number;
   setCurrentPage: (page: number) => void;
+  onEdit?: (schedule: CollectorSchedule) => void;
+  onDelete?: (schedule: CollectorSchedule) => void;
+  showActions?: boolean;
 };
 
 export type CollectionReportCollectorMobileUIProps = {
@@ -335,6 +358,9 @@ export type CollectionReportCollectorMobileUIProps = {
   currentPage: number;
   totalPages: number;
   setCurrentPage: (page: number) => void;
+  onEdit?: (schedule: CollectorSchedule) => void;
+  onDelete?: (schedule: CollectorSchedule) => void;
+  showActions?: boolean;
 };
 
 export type CollectionReportCollectorScheduleFiltersProps = {
@@ -370,6 +396,9 @@ export type CollectionReportFiltersProps = {
 export type CollectionReportCollectorScheduleTableProps = {
   data: CollectorSchedule[];
   loading?: boolean;
+  onEdit?: (schedule: CollectorSchedule) => void;
+  onDelete?: (schedule: CollectorSchedule) => void;
+  showActions?: boolean;
 };
 
 export type CollectorScheduleTableProps = CollectionReportCollectorScheduleTableProps;
@@ -377,6 +406,9 @@ export type CollectorScheduleTableProps = CollectionReportCollectorScheduleTable
 export type CollectionReportCollectorScheduleCardsProps = {
   data: CollectorSchedule[];
   loading?: boolean;
+  onEdit?: (schedule: CollectorSchedule) => void;
+  onDelete?: (schedule: CollectorSchedule) => void;
+  showActions?: boolean;
 };
 
 export type CollectorScheduleCardsProps = CollectionReportCollectorScheduleCardsProps;
@@ -393,7 +425,7 @@ export type MapPreviewProps = {
 
 // Layout Props
 export type DashboardMobileLayoutProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
   activeFilters: import('@/lib/types').ActiveFilters;
   activeTab: import('@/lib/types').ActiveTab;
   totals: import('@/lib/types').DashboardTotals | null;
@@ -421,7 +453,7 @@ export type DashboardMobileLayoutProps = {
   setActivePieChartFilter: (
     filter: import('@shared/types').TimePeriod | ''
   ) => void;
-  renderCustomizedLabel: (props: CustomizedLabelProps) => React.ReactNode;
+  renderCustomizedLabel: (props: CustomizedLabelProps) => ReactNode;
   selectedLicencee?: string;
   setSelectedLicencee: (licencee: string) => void;
   loadingTopPerforming: boolean;
@@ -435,7 +467,12 @@ export type DashboardMobileLayoutProps = {
   showGranularitySelector: boolean;
   sortBy: 'totalDrop' | 'totalWin';
   setSortBy: (sortBy: 'totalDrop' | 'totalWin') => void;
+  machineStats?: {
+    totalMachines: number;
+    onlineMachines: number;
+    offlineMachines: number;
+  } | null;
+  machineStatsLoading?: boolean;
 };
 
 export type DashboardDesktopLayoutProps = DashboardMobileLayoutProps;
-

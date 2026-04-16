@@ -16,6 +16,7 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { generateMongoId } from '@/lib/utils/id';
+import type { LocationDocument } from '@/lib/types/common';
 import type { GamingMachine } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -81,13 +82,13 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 4: Verify location exists and is not deleted
     // ============================================================================
-    const location = await GamingLocations.findOne({
+    const location = (await GamingLocations.findOne({
       _id: locationId,
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    });
+    }).lean()) as unknown as LocationDocument | null;
     if (!location) {
       return NextResponse.json(
         { success: false, error: 'Location not found or has been deleted' },

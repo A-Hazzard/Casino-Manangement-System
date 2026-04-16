@@ -1,9 +1,9 @@
 'use client';
 
 import Header from '@/components/shared/layout/Header';
+import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { usePathname } from 'next/navigation';
-import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
 
 export default function LocationDetailNotFound() {
   const pathname = usePathname();
@@ -17,7 +17,7 @@ export default function LocationDetailNotFound() {
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
-            pageTitle=""
+            
             hideOptions={true}
             hideLicenceeFilter={false}
           />

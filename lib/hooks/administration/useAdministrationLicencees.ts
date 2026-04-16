@@ -7,6 +7,7 @@
 
 'use client';
 
+import { Dispatch, SetStateAction } from 'react';
 import { fetchLicencees } from '@/lib/helpers/client';
 import { fetchCountries } from '@/lib/helpers/countries';
 import { useUserStore } from '@/lib/store/userStore';
@@ -25,7 +26,7 @@ import { toast } from 'sonner';
 type UseAdministrationLicenceesProps = {
   activeSection: string;
   loadedSections: Set<string>;
-  setLoadedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
+  setLoadedSections: Dispatch<SetStateAction<Set<string>>>;
 };
 
 const licenceesItemsPerPage = 10;
@@ -301,7 +302,7 @@ export function useAdministrationLicencees({
       country: string;
       startDate?: Date | string;
       expiryDate?: Date | string;
-      subtractJackpot?: boolean;
+      includeJackpot?: boolean;
     } = {
       name: licenceeForm.name,
       country: licenceeForm.country,
@@ -313,8 +314,8 @@ export function useAdministrationLicencees({
     if (licenceeForm.expiryDate) {
       licenceeData.expiryDate = licenceeForm.expiryDate;
     }
-    if (licenceeForm.subtractJackpot !== undefined) {
-      licenceeData.subtractJackpot = licenceeForm.subtractJackpot;
+    if (licenceeForm.includeJackpot !== undefined) {
+      licenceeData.includeJackpot = licenceeForm.includeJackpot;
     }
 
     try {
@@ -427,7 +428,7 @@ export function useAdministrationLicencees({
         prevExpiryDate: licencee.prevExpiryDate
           ? new Date(licencee.prevExpiryDate)
           : undefined,
-        subtractJackpot: licencee.subtractJackpot ?? false,
+        includeJackpot: licencee.includeJackpot ?? false,
       });
       setIsEditLicenceeModalOpen(true);
     },
@@ -446,7 +447,7 @@ export function useAdministrationLicencees({
         prevStartDate: selectedLicencee.prevStartDate,
         prevExpiryDate: selectedLicencee.prevExpiryDate,
         isPaid: selectedLicencee.isPaid,
-        subtractJackpot: selectedLicencee.subtractJackpot ?? false,
+        includeJackpot: selectedLicencee.includeJackpot ?? false,
       };
 
       const formDataComparison = {
@@ -457,7 +458,7 @@ export function useAdministrationLicencees({
         prevStartDate: licenceeForm.prevStartDate,
         prevExpiryDate: licenceeForm.prevExpiryDate,
         isPaid: selectedLicencee.isPaid,
-        subtractJackpot: licenceeForm.subtractJackpot ?? false,
+        includeJackpot: licenceeForm.includeJackpot ?? false,
       };
 
       const changes = detectChanges(originalData, formDataComparison);

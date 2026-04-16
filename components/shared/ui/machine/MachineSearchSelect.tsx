@@ -1,9 +1,11 @@
 'use client';
 
+import { KeyboardEvent } from 'react';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
 import { Check, ChevronDown, Search } from 'lucide-react';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {  useEffect, useMemo, useRef, useState  } from 'react';
+
 
 type MachineSearchSelectProps = {
   value: string; // Selected machineId
@@ -81,7 +83,7 @@ export function MachineSearchSelect({
   }, [isOpen]);
 
   // Handle keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (!isOpen) {
       if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
         e.preventDefault();

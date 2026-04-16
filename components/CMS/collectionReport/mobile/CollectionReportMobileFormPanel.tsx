@@ -1,9 +1,9 @@
 'use client';
 
+import { ReactElement } from 'react';
 import CollectionReportFormMachineDataEntry from '@/components/CMS/collectionReport/forms/CollectionReportFormMachineDataEntry';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import { ArrowLeft } from 'lucide-react';
-import React from 'react';
 
 type MobileFormPanelProps = {
   isVisible: boolean;
@@ -26,6 +26,8 @@ type MobileFormPanelProps = {
     sasStartTime: Date | null;
     sasEndTime: Date | null;
     showAdvancedSas: boolean;
+    prevIn: string;
+    prevOut: string;
   };
 
   // Financials
@@ -50,9 +52,12 @@ type MobileFormPanelProps = {
   // Callbacks
   formatMachineDisplay: (
     machine: CollectionReportMachineSummary
-  ) => string | React.ReactElement;
+  ) => string | ReactElement;
   onViewMachine: () => void;
-  onFormDataChange: (field: string, value: string | boolean | Date | null) => void;
+  onFormDataChange: (
+    field: string,
+    value: string | boolean | Date | null
+  ) => void;
   onFinancialDataChange: (field: string, value: string) => void;
   onAddMachine: () => void;
 
@@ -77,7 +82,6 @@ export default function CollectionReportMobileFormPanel({
   selectedMachineData,
   editingEntryId,
   formData,
-  financials: _financials,
   collectedMachinesCount,
   isProcessing,
   inputsEnabled,
@@ -85,20 +89,14 @@ export default function CollectionReportMobileFormPanel({
   formatMachineDisplay,
   onViewMachine,
   onFormDataChange,
-  onFinancialDataChange: _onFinancialDataChange,
   onAddMachine,
   autoFillRamClearMeters,
-  onCollectedAmountChange: _onCollectedAmountChange,
-  baseBalanceCorrection: _baseBalanceCorrection,
-  onBaseBalanceCorrectionChange: _onBaseBalanceCorrectionChange,
   isManager = false,
 }: MobileFormPanelProps) {
   return (
     <div
-      className={`fixed inset-0 z-[110] flex h-full w-full transform flex-col bg-white shadow-xl transition-all duration-300 ease-in-out md:relative md:inset-auto md:flex md:h-full md:flex-1 md:w-full md:rounded-xl md:shadow-none ${
-        isVisible
-          ? 'translate-y-0 opacity-100'
-          : 'translate-y-full opacity-0'
+      className={`fixed inset-0 z-[110] flex h-full w-full transform flex-col bg-white shadow-xl transition-all duration-300 ease-in-out md:relative md:inset-auto md:flex md:h-full md:w-full md:flex-1 md:rounded-xl md:shadow-none ${
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
       } `}
     >
       {isVisible && (
@@ -112,12 +110,12 @@ export default function CollectionReportMobileFormPanel({
               >
                 <ArrowLeft className="h-6 w-6" />
               </button>
-              <h3 className="text-lg font-bold text-gray-900">
-                {isManager 
+              <h3 className="text-lg font-bold text-gray-900 line-clamp-1 pr-2">
+                {isManager
                   ? 'Financial Summary'
-                  : editingEntryId
-                    ? `Edit ${selectedMachineData?.name || 'Machine'}`
-                    : selectedMachineData?.name || 'Machine'}
+                  : selectedMachineData
+                    ? formatMachineDisplay(selectedMachineData)
+                    : 'Machine'}
               </h3>
             </div>
             {!isManager && !editingEntryId && (
@@ -131,7 +129,7 @@ export default function CollectionReportMobileFormPanel({
           </div>
 
           {/* Scrollable Form Content */}
-          <div className="flex-1 flex flex-col overflow-y-auto min-h-0">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             {/* Form Content */}
             {!isManager && (
               <CollectionReportFormMachineDataEntry
@@ -145,7 +143,9 @@ export default function CollectionReportMobileFormPanel({
                   selectedMachineData?.smbId ||
                   'N/A'
                 }
-                currentMetersIn={selectedMachineData?.collectionMeters?.metersIn}
+                currentMetersIn={
+                  selectedMachineData?.collectionMeters?.metersIn
+                }
                 currentMetersOut={
                   selectedMachineData?.collectionMeters?.metersOut
                 }
@@ -159,8 +159,10 @@ export default function CollectionReportMobileFormPanel({
                 ramClear={formData.ramClear}
                 ramClearMetersIn={formData.ramClearMetersIn}
                 ramClearMetersOut={formData.ramClearMetersOut}
-                prevIn={selectedMachineData?.collectionMeters?.metersIn}
-                prevOut={selectedMachineData?.collectionMeters?.metersOut}
+                prevIn={formData.prevIn}
+                prevOut={formData.prevOut}
+                onPrevInChange={val => onFormDataChange('prevIn', val)}
+                onPrevOutChange={val => onFormDataChange('prevOut', val)}
                 onMetersInChange={val => onFormDataChange('metersIn', val)}
                 onMetersOutChange={val => onFormDataChange('metersOut', val)}
                 onRamClearChange={autoFillRamClearMeters}
@@ -175,11 +177,17 @@ export default function CollectionReportMobileFormPanel({
                 disabled={!inputsEnabled}
                 isProcessing={isProcessing}
                 showAdvancedSas={formData.showAdvancedSas}
-                onAdvancedSasToggle={() => onFormDataChange('showAdvancedSas', !formData.showAdvancedSas)}
+                onAdvancedSasToggle={() =>
+                  onFormDataChange('showAdvancedSas', !formData.showAdvancedSas)
+                }
                 sasStartTime={formData.sasStartTime}
-                onSasStartTimeChange={val => onFormDataChange('sasStartTime', val || null)}
+                onSasStartTimeChange={val =>
+                  onFormDataChange('sasStartTime', val || null)
+                }
                 sasEndTime={formData.sasEndTime}
-                onSasEndTimeChange={val => onFormDataChange('sasEndTime', val || null)}
+                onSasEndTimeChange={val =>
+                  onFormDataChange('sasEndTime', val || null)
+                }
               />
             )}
           </div>
@@ -200,7 +208,9 @@ export default function CollectionReportMobileFormPanel({
             {!isManager && (
               <button
                 onClick={onAddMachine}
-                disabled={isProcessing || !inputsEnabled || !isAddMachineEnabled}
+                disabled={
+                  isProcessing || !inputsEnabled || !isAddMachineEnabled
+                }
                 className={`w-full rounded-lg py-3 font-semibold transition-colors active:scale-95 ${
                   isAddMachineEnabled && inputsEnabled && !isProcessing
                     ? 'bg-green-600 text-white hover:bg-green-700'
@@ -216,7 +226,7 @@ export default function CollectionReportMobileFormPanel({
                     : 'Add Machine to List'}
               </button>
             )}
-            
+
             {isManager && (
               <button
                 onClick={onViewCollectedList}
@@ -226,10 +236,8 @@ export default function CollectionReportMobileFormPanel({
               </button>
             )}
           </div>
-
         </div>
       )}
     </div>
   );
-};
-
+}

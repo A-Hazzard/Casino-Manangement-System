@@ -25,11 +25,11 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { TimePeriod } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chart';
 import { useDebounce } from '@/lib/utils/hooks';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-const ITEMS_PER_PAGE = 10;
-const ITEMS_PER_BATCH = 50;
-const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 5
+const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_BATCH = 40;
+const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 2
 
 export function useCabinetsPageData() {
   const activeMetricsFilter = useDashBoardStore(state => state.activeMetricsFilter);
@@ -53,6 +53,8 @@ export function useCabinetsPageData() {
   const [selectedLocation, setSelectedLocation] = useState<string[]>([]);
   const [selectedGameType, setSelectedGameType] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedMembership, setSelectedMembership] = useState<string>('all');
+  const [selectedSmibStatus, setSelectedSmibStatus] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   // Local loading state to bridge the gap between clearing data and fetch start
   const [isFilterResetting, setIsFilterResetting] = useState(false);
@@ -64,7 +66,11 @@ export function useCabinetsPageData() {
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(0);
-  const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
+  // Use ref instead of state for synchronous clearing when filters change
+  // This prevents the race condition where the data fetch effect sees stale loadedBatches
+  const loadedBatchesRef = useRef<Set<number>>(new Set());
+  // Counter to force effect re-evaluation when batches are cleared
+  const [batchResetCounter, setBatchResetCounter] = useState(0);
 
   // Helper to calculate which batch a page belongs to
   const calculateBatchNumber = useCallback(
@@ -95,6 +101,8 @@ export function useCabinetsPageData() {
     selectedLocation,
     selectedGameType,
     selectedStatus,
+    selectedMembership,
+    selectedSmibStatus,
     searchTerm,
   });
 
@@ -110,6 +118,7 @@ export function useCabinetsPageData() {
     useBatchPagination: false, // Using simple slicing on accumulated data
     totalCount: totalCount,
     searchTerm: debouncedSearchTerm,
+    currentPage: currentPage,
   });
 
   const isDataMissingForPage = useMemo(() => {
@@ -122,10 +131,10 @@ export function useCabinetsPageData() {
     return !debouncedSearchTerm?.trim() && startIndex >= allCabinets.length && allCabinets.length < totalCount;
   }, [allCabinets.length, currentPage, totalCount, debouncedSearchTerm]);
 
-  // effectiveTotalPages is based on the actual loaded count from API.
-  // Adds +1 trigger page only if server has more data not yet fetched.
+  // effectiveTotalPages is based on the client-visible filtered count.
+  // Adds +1 trigger page only if server has more raw data not yet fetched.
   const effectiveTotalPages = useMemo(() => {
-    const displayedPages = Math.ceil(allCabinets.length / ITEMS_PER_PAGE) || 1;
+    const displayedPages = Math.ceil(filteredCabinets.length / ITEMS_PER_PAGE) || 1;
 
     if (allCabinets.length < totalCount && totalCount > 0) {
       const serverTotalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
@@ -133,7 +142,7 @@ export function useCabinetsPageData() {
     }
 
     return displayedPages;
-  }, [allCabinets.length, totalCount]);
+  }, [filteredCabinets.length, allCabinets.length, totalCount]);
 
   // Custom column sort handler that triggers fresh fetch
   const handleColumnSort = useCallback((column: CabinetSortOption) => {
@@ -175,10 +184,11 @@ export function useCabinetsPageData() {
       let offlineCount = 0;
 
       filteredCabinets.forEach(cab => {
+        const aceEnabled = (cab as Record<string, unknown>).aceEnabled === true;
         const lastActivity = cab.lastActivity
           ? new Date(cab.lastActivity as string | number | Date)
           : null;
-        if (lastActivity && lastActivity >= threeMinutesAgo) {
+        if (aceEnabled || (lastActivity && lastActivity >= threeMinutesAgo)) {
           onlineCount++;
         } else {
           offlineCount++;
@@ -195,11 +205,11 @@ export function useCabinetsPageData() {
     return apiMachineStats;
   }, [apiMachineStats, filteredCabinets, machineStatsLoading]);
   
-  // subtractJackpot is configured at the Licencee level
-  const [subtractJackpot, setSubtractJackpot] = useState(false);
+  // includeJackpot is configured at the Licencee level
+  const [includeJackpot, setIncludeJackpot] = useState(false);
   useEffect(() => {
     if (!selectedLicencee || selectedLicencee === 'all') {
-      setSubtractJackpot(false);
+      setIncludeJackpot(false);
       return;
     }
     let cancelled = false;
@@ -209,9 +219,9 @@ export function useCabinetsPageData() {
         if (cancelled) return;
         const data = await res.json();
         const lic = data?.licencees?.[0];
-        setSubtractJackpot(Boolean(lic?.subtractJackpot));
+        setIncludeJackpot(Boolean(lic?.includeJackpot));
       } catch {
-        if (!cancelled) setSubtractJackpot(false);
+        if (!cancelled) setIncludeJackpot(false);
       }
     })();
     return () => { cancelled = true; };
@@ -278,10 +288,10 @@ export function useCabinetsPageData() {
             ? 'all'
             : selectedStatus === 'Archived'
               ? 'archived'
-              : selectedStatus.toLowerCase(),
+              : selectedStatus,
           debouncedSearchTerm
         );
-        if (data)
+        if (data) {
           setChartData(
             data.map(d => ({
               xValue: d.time || d.day,
@@ -293,6 +303,7 @@ export function useCabinetsPageData() {
               netGross: d.netGross,
             }))
           );
+        }
       }, 'chart');
     } finally {
       setLoadingChart(false);
@@ -343,13 +354,28 @@ export function useCabinetsPageData() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(0);
-    setLoadedBatches(new Set());
-  }, [selectedLocation, selectedGameType, searchTerm, debouncedSearchTerm, selectedLicencee, activeMetricsFilter, customDateRange, sortOption, sortOrder, displayCurrency]);
+    // Clear synchronously via ref so the data fetch effect in the same render sees the empty set
+    loadedBatchesRef.current = new Set();
+    // Bump counter to trigger the data fetch effect
+    setBatchResetCounter(c => c + 1);
+  }, [selectedLocation, selectedGameType, searchTerm, debouncedSearchTerm, selectedLicencee, activeMetricsFilter, customDateRange, sortOption, sortOrder, displayCurrency, selectedMembership, selectedSmibStatus]);
 
   // Wrapped setters
   const handleSetSelectedStatus = useCallback((status: string) => {
     setIsFilterResetting(true);
     setSelectedStatus(status);
+    setCurrentPage(0);
+  }, []);
+
+  const handleSetSelectedMembership = useCallback((membership: string) => {
+    setIsFilterResetting(true);
+    setSelectedMembership(membership);
+    setCurrentPage(0);
+  }, []);
+
+  const handleSetSelectedSmibStatus = useCallback((smibStatus: string) => {
+    setIsFilterResetting(true);
+    setSelectedSmibStatus(smibStatus);
     setCurrentPage(0);
   }, []);
 
@@ -390,10 +416,10 @@ export function useCabinetsPageData() {
 
       const currentBatch = calculateBatchNumber(currentPage);
 
-      // Fetch next batch if needed
-      if (!loadedBatches.has(currentBatch)) {
+      // Fetch next batch if needed (using ref for synchronous check)
+      if (!loadedBatchesRef.current.has(currentBatch)) {
         console.warn(`[useCabinetsPageData] Fetching batch ${currentBatch} for page ${currentPage + 1}`);
-        setLoadedBatches(prev => new Set([...prev, currentBatch]));
+        loadedBatchesRef.current.add(currentBatch);
         void loadCabinets(currentBatch, ITEMS_PER_BATCH, sortOption, sortOrder);
       }
 
@@ -404,6 +430,8 @@ export function useCabinetsPageData() {
     sortOption,
     sortOrder,
     selectedStatus,
+    selectedMembership,
+    selectedSmibStatus,
     selectedLocation,
     selectedGameType,
     activeSection,
@@ -413,7 +441,7 @@ export function useCabinetsPageData() {
     loadCabinets,
     fetchChartData,
     debouncedSearchTerm,
-    loadedBatches,
+    batchResetCounter,
     calculateBatchNumber,
   ]);
 
@@ -446,6 +474,8 @@ export function useCabinetsPageData() {
     selectedLocation,
     selectedGameType,
     selectedStatus,
+    selectedMembership,
+    selectedSmibStatus,
     chartGranularity,
     isNewMovementOpen,
     isUploadSmibOpen,
@@ -454,13 +484,15 @@ export function useCabinetsPageData() {
     chartData,
     loadingChart,
     totalPages: effectiveTotalPages,
-    subtractJackpot,
+    includeJackpot,
     // Setters & Handlers
     setActiveSection,
     setSearchTerm: handleSetSearchTerm,
     setSelectedLocation: handleSetSelectedLocation,
     setSelectedGameType: handleSetSelectedGameType,
     setSelectedStatus: handleSetSelectedStatus,
+    setSelectedMembership: handleSetSelectedMembership,
+    setSelectedSmibStatus: handleSetSelectedSmibStatus,
     setChartGranularity,
     setCurrentPage,
     handleColumnSort,

@@ -25,7 +25,7 @@ export default function MovementRequestCard({
   const prevPropsRef = useRef<MovementRequest | null>(null);
   
   const { user: currentUser } = useUserStore();
-  const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
+  const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
   const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role));
   const userEmail = currentUser?.emailAddress;
 

@@ -23,7 +23,6 @@ import type { CollectionReportMonthlySummaryTableProps } from '@/lib/types/compo
 
 export default function CollectionReportMonthlySummaryTable({
   summary,
-  loading: _loading,
 }: CollectionReportMonthlySummaryTableProps) {
   // Copy to clipboard function
   const copyToClipboard = async (text: string, label: string) => {
@@ -59,7 +58,7 @@ export default function CollectionReportMonthlySummaryTable({
             <TableCell className="font-medium">
               <button
                 onClick={() => copyToClipboard(summary.drop, 'Drop')}
-                className="hover:text-blue-600 hover:underline cursor-pointer"
+                className="cursor-pointer hover:text-blue-600 hover:underline"
                 title="Click to copy"
               >
                 {summary.drop}
@@ -67,8 +66,10 @@ export default function CollectionReportMonthlySummaryTable({
             </TableCell>
             <TableCell className="font-medium">
               <button
-                onClick={() => copyToClipboard(summary.cancelledCredits, 'Cancelled Credits')}
-                className="hover:text-blue-600 hover:underline cursor-pointer"
+                onClick={() =>
+                  copyToClipboard(summary.cancelledCredits, 'Cancelled Credits')
+                }
+                className="cursor-pointer hover:text-blue-600 hover:underline"
                 title="Click to copy"
               >
                 {summary.cancelledCredits}
@@ -77,7 +78,7 @@ export default function CollectionReportMonthlySummaryTable({
             <TableCell className="font-medium">
               <button
                 onClick={() => copyToClipboard(summary.gross, 'Gross')}
-                className="hover:text-blue-600 hover:underline cursor-pointer"
+                className="cursor-pointer hover:text-blue-600 hover:underline"
                 title="Click to copy"
               >
                 {summary.gross}
@@ -86,7 +87,7 @@ export default function CollectionReportMonthlySummaryTable({
             <TableCell className="font-medium">
               <button
                 onClick={() => copyToClipboard(summary.sasGross, 'SAS Gross')}
-                className="hover:text-blue-600 hover:underline cursor-pointer"
+                className="cursor-pointer hover:text-blue-600 hover:underline"
                 title="Click to copy"
               >
                 {summary.sasGross}
@@ -98,4 +99,3 @@ export default function CollectionReportMonthlySummaryTable({
     </div>
   );
 }
-

@@ -7,6 +7,7 @@
 
 'use client';
 
+import { FormEvent } from 'react';
 import { loginUser, logoutUser } from '@/lib/helpers/client';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useAuthSessionStore } from '@/lib/store/authSessionStore';
@@ -57,7 +58,7 @@ export function useLoginPageData() {
 
   // === Login Handler ===
   const handleLogin = useCallback(
-    async (e?: React.FormEvent) => {
+    async (e?: FormEvent) => {
       if (e) e.preventDefault();
       if (!identifier)
         return setErrors({ identifier: 'Enter email or username.' });

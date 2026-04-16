@@ -221,13 +221,7 @@ export type VaultTransaction = {
   toName?: string;
 };
 
-// Soft count creation
-export type CreateSoftCountRequest = {
-  amount: number;
-  denominations: Denomination[];
-  notes?: string;
-  isEndOfDay?: boolean;
-};
+
 
 // Inter-location transfer creation
 export type CreateInterLocationTransferRequest = {
@@ -323,29 +317,11 @@ export type InterLocationTransfer = {
   updatedAt: Date;
 };
 
-// Vault initialization
-export type InitializeVaultRequest = {
-  locationId: string;
-  openingBalance: number;
-  denominations: Denomination[];
-  notes?: string;
-};
 
-// Vault shift close
-export type CloseVaultShiftRequest = {
-  vaultShiftId: string;
-  closingBalance: number;
-  denominations: Denomination[];
-};
 
-// Vault reconciliation
-export type ReconcileVaultRequest = {
-  vaultShiftId: string;
-  newBalance: number;
-  denominations: Denomination[];
-  reason: string;
-  comment: string; // Mandatory
-};
+
+
+
 
 // Cashier shift open
 export type OpenCashierShiftRequest = {
@@ -502,18 +478,7 @@ export type CollectionSessionEntry = {
   };
 };
 
-export type CollectionSession = {
-  _id: string;
-  locationId: string;
-  vaultShiftId: string;
-  status: 'active' | 'finalized';
-  entries: CollectionSessionEntry[];
-  startedBy: string;
-  startedAt: Date;
-  finalizedBy?: string;
-  finalizedAt?: Date;
-  totalCollected?: number;
-};
+
 
 export type MachineCollectionActivity = {
   _id: string;

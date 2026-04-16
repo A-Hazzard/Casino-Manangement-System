@@ -2,9 +2,19 @@
  * useCollectionReportPageData Hook
  *
  * Coordinates all data, filtering, and UI state for the collection report dashboard.
+ *
+ * Architecture:
+ * - Uses dashboard store for licencee and filter state
+ * - Uses user store for role-based permissions
+ * - Batched loading for efficient pagination
+ * - Debounced search to reduce API calls
  */
 
 'use client';
+
+// ============================================================================
+// External Dependencies
+// ============================================================================
 
 import { COLLECTION_TABS_CONFIG } from '@/lib/constants';
 import {
@@ -21,64 +31,69 @@ import type { CollectionView } from '@/lib/types/collection';
 import type { CollectionReportRow } from '@/lib/types/components';
 import type { LocationSelectItem } from '@/lib/types/location';
 import axios from 'axios';
-
 import { parse } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
 import { toast } from 'sonner';
 import { useCollectionReportFilters } from './useCollectionReportFilters';
 
+// ============================================================================
+// Constants
+// ============================================================================
+
+const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_BATCH = 40;
+const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 2
+
+// ============================================================================
+// Main Hook
+// ============================================================================
+
 export function useCollectionReportPageData() {
+  // ==========================================================================
+  // Navigation & URL State
+  // ==========================================================================
   const searchParams = useSearchParams();
+  const { pushToUrl } = useCollectionNavigation(COLLECTION_TABS_CONFIG);
+
+  // ==========================================================================
+  // Store State
+  // ==========================================================================
   const { selectedLicencee, activeMetricsFilter, customDateRange } =
     useDashBoardStore();
   const { user } = useUserStore();
 
-  // ============================================================================
-  // Tab & View State
-  // ============================================================================
+  // ==========================================================================
+  // Local State - Tab & View
+  // ==========================================================================
   const [activeTab, setActiveTab] = useState<CollectionView>(() => {
     const section = searchParams?.get('section');
     return (section as CollectionView) || 'collection';
   });
 
-  const { pushToUrl } = useCollectionNavigation(COLLECTION_TABS_CONFIG);
-
-  // ============================================================================
-  // Collection Reports State
-  // ============================================================================
+  // ==========================================================================
+  // Local State - Loading & Data
+  // ==========================================================================
   const [initialLoading, setInitialLoading] = useState(true);
-  const [loading, setLoading] = useState(false); // Start as false, will be set to true when fetchReports is called
+  const [loading, setLoading] = useState(false);
   const [refreshing] = useState(false);
   const [allReports, setAllReports] = useState<CollectionReportRow[]>([]);
-  const hasReceivedFirstResponseRef = useRef(false);
-  const hasStartedFirstLoadRef = useRef(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalReports, setTotalReports] = useState(0);
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
+
+  // ==========================================================================
+  // Local State - Search & Filter
+  // ==========================================================================
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearch = useDebounce(searchTerm, 300);
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [locationsWithMachines, setLocationsWithMachines] = useState<
     CollectionReportLocationWithMachines[]
   >([]);
 
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
-
-  const filters = useCollectionReportFilters(
-    allReports,
-    locations,
-    debouncedSearch,
-    activeMetricsFilter,
-    customDateRange
-  );
-
-  // ============================================================================
-  // Modal State
-  // ============================================================================
+  // ==========================================================================
+  // Local State - Modal Visibility
+  // ==========================================================================
   const [showNewCollectionMobile, setShowNewCollectionMobile] = useState(false);
   const [showNewCollectionDesktop, setShowNewCollectionDesktop] =
     useState(false);
@@ -88,14 +103,141 @@ export function useCollectionReportPageData() {
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<string | null>(null);
 
-  // ============================================================================
-  // Abort Controller for Fetching
-  // ============================================================================
+  // ==========================================================================
+  // Debounced Values
+  // ==========================================================================
+  const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // ==========================================================================
+  // Refs
+  // ==========================================================================
+  const hasReceivedFirstResponseRef = useRef(false);
+  const hasStartedFirstLoadRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // ============================================================================
-  // Handlers
-  // ============================================================================
+  // ==========================================================================
+  // Computed Values - Filters
+  // ==========================================================================
+  const filters = useCollectionReportFilters({
+    allReports,
+    locations,
+    searchTerm: debouncedSearch,
+    timePeriod: activeMetricsFilter,
+    dateRange: customDateRange,
+  });
+
+  const filteredReports = useMemo(() => {
+    return filters.filteredReports;
+  }, [filters.filteredReports]);
+
+  // ==========================================================================
+  // Computed Values - Pagination
+  // ==========================================================================
+
+  /**
+   * Paginated reports from filtered results
+   */
+  const paginatedReports = useMemo(() => {
+    const start = currentPage * ITEMS_PER_PAGE;
+    return filteredReports.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredReports, currentPage]);
+
+  /**
+   * Whether we need to fetch more data for current page
+   */
+  const isDataMissingForPage = useMemo(() => {
+    const startIndex = currentPage * ITEMS_PER_PAGE;
+    return (
+      filteredReports.length <= startIndex && allReports.length < totalReports
+    );
+  }, [filteredReports.length, allReports.length, currentPage, totalReports]);
+
+  /**
+   * Total pages based on displayed (client-side filtered) reports
+   * Prevents empty pages when date/location filters reduce visible count
+   */
+  const totalPages = useMemo(() => {
+    const displayedCount = filteredReports.length;
+    const displayedPages = Math.ceil(displayedCount / ITEMS_PER_PAGE) || 1;
+
+    if (allReports.length < totalReports && totalReports > 0) {
+      const serverTotalPages = Math.ceil(totalReports / ITEMS_PER_PAGE) || 1;
+      return Math.min(displayedPages + 1, serverTotalPages);
+    }
+
+    return displayedPages;
+  }, [filteredReports.length, allReports.length, totalReports]);
+
+  // ==========================================================================
+  // Computed Values - Permissions
+  // ==========================================================================
+
+  /**
+   * Calculate which reports are editable based on user role and recency
+   * - Developers can edit everything
+   * - Owners, Admins, Managers can edit only the two most recent reports per location
+   */
+  const editableReportIds = useMemo(() => {
+    if (!user || !user.roles) return new Set<string>();
+
+    const userRoles = (user.roles || []) as string[];
+    const isOwner = userRoles.includes('owner');
+    const isDeveloper = userRoles.includes('developer');
+    const isAdmin = userRoles.includes('admin');
+    const isManager = userRoles.includes('manager');
+
+    if (isDeveloper) {
+      return new Set(allReports.map(r => r.locationReportId));
+    }
+
+    if (isOwner || isAdmin || isManager) {
+      const reportsByLocation: Record<string, CollectionReportRow[]> = {};
+
+      allReports.forEach(report => {
+        const loc = report.location || 'unknown';
+        if (!reportsByLocation[loc]) {
+          reportsByLocation[loc] = [];
+        }
+        reportsByLocation[loc].push(report);
+      });
+
+      const editableIds = new Set<string>();
+
+      Object.keys(reportsByLocation).forEach(loc => {
+        const sorted = [...reportsByLocation[loc]].sort((a, b) => {
+          const aTime = parse(
+            a.time || '',
+            'dd LLL yyyy, hh:mm:ss a',
+            new Date()
+          ).getTime();
+          const bTime = parse(
+            b.time || '',
+            'dd LLL yyyy, hh:mm:ss a',
+            new Date()
+          ).getTime();
+          return bTime - aTime;
+        });
+
+        sorted.slice(0, 2).forEach(report => {
+          if (report.locationReportId) {
+            editableIds.add(report.locationReportId);
+          }
+        });
+      });
+
+      return editableIds;
+    }
+
+    return new Set<string>();
+  }, [allReports, user]);
+
+  // ==========================================================================
+  // Event Handlers - Tab Navigation
+  // ==========================================================================
+
+  /**
+   * Handle tab change and sync with URL
+   */
   const handleTabChange = useCallback(
     (tab: string) => {
       const newTab = tab as CollectionView;
@@ -105,14 +247,20 @@ export function useCollectionReportPageData() {
     [pushToUrl]
   );
 
-  // Calculate which batch we need based on current page
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / pagesPerBatch) + 1;
-    },
-    [pagesPerBatch]
-  );
+  // ==========================================================================
+  // Event Handlers - Data Fetching
+  // ==========================================================================
 
+  /**
+   * Calculate batch number for pagination
+   */
+  const calculateBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / PAGES_PER_BATCH) + 1;
+  }, []);
+
+  /**
+   * Fetch reports batch from API
+   */
   const fetchReports = useCallback(
     async (batch: number = 1) => {
       if (activeTab !== 'collection') {
@@ -124,16 +272,13 @@ export function useCollectionReportPageData() {
         return;
       }
 
-      // Abort previous request if it exists
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
       abortControllerRef.current = new AbortController();
 
-      // Mark that we've started the first load
       if (!hasStartedFirstLoadRef.current) {
         hasStartedFirstLoadRef.current = true;
-        // Ensure initialLoading is true when we start the first load
         setInitialLoading(true);
       }
 
@@ -144,9 +289,9 @@ export function useCollectionReportPageData() {
           activeMetricsFilter === 'Custom'
             ? { from: customDateRange.startDate, to: customDateRange.endDate }
             : undefined,
-          activeMetricsFilter === 'Custom' ? 'Custom' : activeMetricsFilter,
+          activeMetricsFilter === 'Custom' ? 'Custom' : undefined,
           batch,
-          itemsPerBatch,
+          ITEMS_PER_BATCH,
           0,
           undefined,
           debouncedSearch,
@@ -154,7 +299,6 @@ export function useCollectionReportPageData() {
         );
 
         if (result) {
-          // Merge new reports into allReports, avoiding duplicates
           setAllReports(prev => {
             const existingIds = new Set(prev.map(r => r._id));
             const uniqueNewReports = result.data.filter(
@@ -162,21 +306,19 @@ export function useCollectionReportPageData() {
             );
             return [...prev, ...uniqueNewReports];
           });
-          // Update total count from pagination
+
           if (result.pagination?.total !== undefined) {
             setTotalReports(result.pagination.total);
           }
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'CanceledError') {
-          // Ignore canceled requests
           return;
         }
         console.error('[fetchReports] error:', err);
       } finally {
         if (!abortControllerRef.current?.signal.aborted) {
           setLoading(false);
-          // Only set initialLoading to false after first response (success or error)
           if (!hasReceivedFirstResponseRef.current) {
             hasReceivedFirstResponseRef.current = true;
             setInitialLoading(false);
@@ -190,18 +332,41 @@ export function useCollectionReportPageData() {
       activeMetricsFilter,
       customDateRange,
       debouncedSearch,
-      itemsPerBatch,
     ]
   );
 
-
+  /**
+   * Refresh reports by resetting state and fetching first batch
+   */
   const refreshReports = useCallback(async () => {
     setAllReports([]);
+    setTotalReports(0);
     setLoadedBatches(new Set([1]));
     setCurrentPage(0);
     await fetchReports(1);
   }, [fetchReports]);
 
+  // ==========================================================================
+  // Event Handlers - CRUD Operations
+  // ==========================================================================
+
+  /**
+   * Open create modal based on screen size
+   */
+  const handleCreate = () => {
+    const isMobile = window.innerWidth < 1280;
+    if (isMobile) {
+      setShowNewCollectionMobile(true);
+      setShowNewCollectionDesktop(false);
+    } else {
+      setShowNewCollectionDesktop(true);
+      setShowNewCollectionMobile(false);
+    }
+  };
+
+  /**
+   * Open edit modal for a report based on screen size
+   */
   const handleEdit = (id: string) => {
     if (!id) {
       console.warn('[handleEdit] No ID provided');
@@ -218,22 +383,17 @@ export function useCollectionReportPageData() {
     }
   };
 
-  const handleCreate = () => {
-    const isMobile = window.innerWidth < 1280;
-    if (isMobile) {
-      setShowNewCollectionMobile(true);
-      setShowNewCollectionDesktop(false);
-    } else {
-      setShowNewCollectionDesktop(true);
-      setShowNewCollectionMobile(false);
-    }
-  };
-
+  /**
+   * Start delete confirmation for a report
+   */
   const handleDelete = (id: string) => {
     setReportToDelete(id);
     setShowDeleteConfirmation(true);
   };
 
+  /**
+   * Execute report deletion
+   */
   const confirmDelete = async () => {
     if (!reportToDelete) return;
     try {
@@ -248,7 +408,93 @@ export function useCollectionReportPageData() {
     }
   };
 
-  // Resize handler
+  // ==========================================================================
+  // Event Handlers - Search
+  // ==========================================================================
+
+  /**
+   * Handle search term change with state reset
+   */
+  const handleSetSearchTerm = useCallback(
+    (term: string) => {
+      if (term.trim() !== searchTerm.trim()) {
+        setSearchTerm(term);
+        setAllReports([]);
+        setTotalReports(0);
+        setLoadedBatches(new Set());
+        setCurrentPage(0);
+      }
+    },
+    [searchTerm]
+  );
+
+  // ==========================================================================
+  // Effects
+  // ==========================================================================
+
+  /**
+   * Fetch locations on licencee change
+   */
+  useEffect(() => {
+    fetchAllGamingLocations(selectedLicencee || undefined).then(locs => {
+      setLocations(locs.map(l => ({ _id: l.id, name: l.name })));
+    });
+    getLocationsWithMachines(selectedLicencee || undefined).then(
+      setLocationsWithMachines
+    );
+  }, [selectedLicencee]);
+
+  /**
+   * Initial data fetch and reset on tab/filter change
+   */
+  useEffect(() => {
+    if (activeTab === 'collection') {
+      setAllReports([]);
+      setTotalReports(0);
+      setLoadedBatches(new Set());
+      setCurrentPage(0);
+      setLoading(true);
+      setInitialLoading(true);
+      fetchReports(1);
+    } else {
+      setLoading(false);
+    }
+  }, [fetchReports, activeTab]);
+
+  /**
+   * Fetch next batch when crossing batch boundaries
+   */
+  useEffect(() => {
+    if (loading) return;
+
+    const currentBatch = calculateBatchNumber(currentPage);
+    const isLastPageOfBatch = (currentPage + 1) % PAGES_PER_BATCH === 0;
+    const nextBatch = currentBatch + 1;
+
+    const hasMoreData = totalReports === 0 || allReports.length < totalReports;
+
+    if (isLastPageOfBatch && !loadedBatches.has(nextBatch) && hasMoreData) {
+      setLoadedBatches(prev => new Set([...prev, nextBatch]));
+      fetchReports(nextBatch);
+    }
+
+    if (!loadedBatches.has(currentBatch) && hasMoreData) {
+      setLoadedBatches(prev => new Set([...prev, currentBatch]));
+      fetchReports(currentBatch);
+    }
+  }, [
+    currentPage,
+    loading,
+    fetchReports,
+    loadedBatches,
+    calculateBatchNumber,
+    totalReports,
+    allReports.length,
+  ]);
+
+  /**
+   * Sync modal visibility with screen size
+   */
   useEffect(() => {
     const handleResize = () => {
       const isMobile = window.innerWidth < 1280;
@@ -278,173 +524,18 @@ export function useCollectionReportPageData() {
     showEditDesktop,
   ]);
 
-  // ============================================================================
-  // Effects
-  // ============================================================================
-  useEffect(() => {
-    fetchAllGamingLocations(selectedLicencee || undefined).then(locs => {
-      setLocations(locs.map(l => ({ _id: l.id, name: l.name })));
-    });
-    getLocationsWithMachines(selectedLicencee || undefined).then(
-      setLocationsWithMachines
-    );
-  }, [selectedLicencee]);
-
-  // Load initial batch on mount and when filters change
-  useEffect(() => {
-    // Only fetch if we're on the collection tab
-    if (activeTab === 'collection') {
-      setAllReports([]);
-      setLoadedBatches(new Set());
-      setCurrentPage(0);
-      setLoading(true);
-      fetchReports(1);
-    } else {
-      // If not on collection tab, ensure loading is false
-      setLoading(false);
-    }
-  }, [fetchReports, activeTab]);
-
-  // Fetch next batch when crossing batch boundaries
-  useEffect(() => {
-    if (loading) return;
-
-    const currentBatch = calculateBatchNumber(currentPage);
-    const isLastPageOfBatch = (currentPage + 1) % pagesPerBatch === 0;
-    const nextBatch = currentBatch + 1;
-
-    // Check if we have more data to load
-    // If totalReports is 0, we haven't received the total yet, so continue fetching
-    // If totalReports > 0, only fetch if we haven't loaded all items yet
-    const hasMoreData = totalReports === 0 || allReports.length < totalReports;
-
-    // Fetch next batch if we're on the last page of current batch and haven't loaded it yet
-    if (isLastPageOfBatch && !loadedBatches.has(nextBatch) && hasMoreData) {
-      setLoadedBatches(prev => new Set([...prev, nextBatch]));
-      fetchReports(nextBatch);
-    }
-
-    // Also ensure current batch is loaded
-    if (!loadedBatches.has(currentBatch) && hasMoreData) {
-      setLoadedBatches(prev => new Set([...prev, currentBatch]));
-      fetchReports(currentBatch);
-    }
-  }, [
-    currentPage,
-    loading,
-    fetchReports,
-    itemsPerBatch,
-    pagesPerBatch,
-    loadedBatches,
-    calculateBatchNumber,
-    totalReports,
-    allReports.length,
-  ]);
-
-  // Apply filters to all reports (client-side filtering after server-side search)
-  const filteredReports = useMemo(() => {
-    return filters.filteredReports;
-  }, [filters.filteredReports]);
-
-  // Calculate paginated reports from filtered results
-  const paginatedReports = useMemo(() => {
-    const start = currentPage * itemsPerPage;
-    return filteredReports.slice(start, start + itemsPerPage);
-  }, [filteredReports, currentPage, itemsPerPage]);
-
-  const isDataMissingForPage = useMemo(() => {
-    const startIndex = currentPage * itemsPerPage;
-    // A page is "missing" if we'd render beyond the filtered items AND server has more raw data
-    return filteredReports.length <= startIndex && allReports.length < totalReports;
-  }, [filteredReports.length, allReports.length, currentPage, itemsPerPage, totalReports]);
-
-  // Calculate total pages based on DISPLAYED (client-side filtered) reports.
-  // This prevents empty pages when date/location filters reduce visible count.
-  const totalPages = useMemo(() => {
-    const displayedCount = filteredReports.length;
-    const displayedPages = Math.ceil(displayedCount / itemsPerPage) || 1;
-
-    // If server has more raw reports not yet fetched, allow +1 trigger page
-    if (allReports.length < totalReports && totalReports > 0) {
-      const serverTotalPages = Math.ceil(totalReports / itemsPerPage) || 1;
-      return Math.min(displayedPages + 1, serverTotalPages);
-    }
-
-    return displayedPages;
-  }, [filteredReports.length, allReports.length, totalReports, itemsPerPage]);
-
-  const handleSetSearchTerm = useCallback((term: string) => {
-    if (term.trim() !== searchTerm.trim()) {
-      setSearchTerm(term);
-      setAllReports([]);
-      setLoadedBatches(new Set());
-      setCurrentPage(0);
-    }
-  }, [searchTerm]);
-
-  // Calculate which reports are editable based on user role and recency
-  const editableReportIds = useMemo(() => {
-    if (!user || !user.roles) return new Set<string>();
-
-    const userRoles = (user.roles || []) as string[];
-    const isDeveloper = userRoles.includes('developer');
-    const isAdmin = userRoles.includes('admin');
-    const isManager = userRoles.includes('manager');
-
-    // Developers can edit everything
-    if (isDeveloper) {
-      return new Set(allReports.map(r => r.locationReportId));
-    }
-
-    // Admins and Managers can only edit the two most recent reports per location
-    if (isAdmin || isManager) {
-      const reportsByLocation: Record<string, CollectionReportRow[]> = {};
-
-      // Group reports by location
-      allReports.forEach(report => {
-        const loc = report.location || 'unknown';
-        if (!reportsByLocation[loc]) {
-          reportsByLocation[loc] = [];
-        }
-        reportsByLocation[loc].push(report);
-      });
-
-      const editableIds = new Set<string>();
-
-      // For each location, sort by time and take the top 2
-      Object.keys(reportsByLocation).forEach(loc => {
-        const sorted = [...reportsByLocation[loc]].sort((a, b) => {
-          const aTime = parse(
-            a.time || '',
-            'dd LLL yyyy, hh:mm:ss a',
-            new Date()
-          ).getTime();
-          const bTime = parse(
-            b.time || '',
-            'dd LLL yyyy, hh:mm:ss a',
-            new Date()
-          ).getTime();
-          return bTime - aTime;
-        });
-
-
-        sorted.slice(0, 2).forEach(report => {
-          if (report.locationReportId) {
-            editableIds.add(report.locationReportId);
-          }
-        });
-      });
-
-      return editableIds;
-    }
-
-    // Other roles can't edit anything (handled by canEditDelete in table component as well)
-    return new Set<string>();
-  }, [allReports, user]);
+  // ==========================================================================
+  // Return
+  // ==========================================================================
 
   return {
+    // State
     activeTab,
-    loading: loading || initialLoading || isDataMissingForPage || (searchTerm !== debouncedSearch), // Combine both loading states, including debounce interval
+    loading:
+      loading ||
+      initialLoading ||
+      isDataMissingForPage ||
+      searchTerm !== debouncedSearch,
     initialLoading,
     refreshing,
     allReports,
@@ -463,15 +554,18 @@ export function useCollectionReportPageData() {
     showEditDesktop,
     editingReportId,
     showDeleteConfirmation,
-    editableReportIds, // Export the calculated set
+    editableReportIds,
+    // Tab Handlers
     handleTabChange,
     handleRefresh: useCallback(async () => {
       await refreshReports();
     }, [refreshReports]),
+    // CRUD Handlers
     handleCreate,
     handleEdit,
     handleDelete,
     confirmDelete,
+    // Setters
     setSearchTerm: handleSetSearchTerm,
     setCurrentPage,
     setShowNewCollectionMobile,
@@ -480,6 +574,7 @@ export function useCollectionReportPageData() {
     setShowEditDesktop,
     setShowDeleteConfirmation,
     setEditingReportId,
+    // Data Refresh
     onRefreshLocations: useCallback(async () => {
       const locs = await fetchAllGamingLocations(selectedLicencee || undefined);
       setLocations(locs.map(l => ({ _id: l.id, name: l.name })));
@@ -490,4 +585,3 @@ export function useCollectionReportPageData() {
     }, [selectedLicencee]),
   };
 }
-

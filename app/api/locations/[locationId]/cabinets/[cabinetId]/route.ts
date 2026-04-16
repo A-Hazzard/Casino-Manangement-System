@@ -12,16 +12,20 @@
  * @module app/api/locations/[locationId]/cabinets/[cabinetId]/route
  */
 
+import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
+import { getReviewerScale } from '@/app/api/lib/utils/reviewerScale';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import mongoose from 'mongoose';
+import type { LocationDocument, MachineDocument } from '@/lib/types/common';
+import type { TimePeriod } from '@/shared/types/common';
 import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * Main GET handler for fetching a specific cabinet
  *
@@ -34,8 +38,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 6. Return cabinet data
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ locationId: string; cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
@@ -43,7 +46,10 @@ export async function GET(
     // ============================================================================
     // STEP 1: Parse route parameters and query params
     // ============================================================================
-    const { locationId, cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const parts = pathname.split('/');
+    const cabinetId = parts[parts.length - 1];
+    const locationId = parts[parts.length - 3];
     const { searchParams } = new URL(request.url);
     const timePeriod = searchParams.get('timePeriod');
     const startDateParam = searchParams.get('startDate');
@@ -70,15 +76,16 @@ export async function GET(
     }
 
     // ============================================================================
-    // STEP 4: Verify location exists and get gameDayOffset
+    // STEP 4: Verify location exists and get settings
     // ============================================================================
-    const location = await GamingLocations.findOne({
+    const location = (await GamingLocations.findOne({
       _id: locationId,
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    }).lean<{ gameDayOffset?: number } | null>();
+    }).lean()) as unknown as LocationDocument | null;
+
     if (!location) {
       return NextResponse.json(
         { success: false, error: 'Location not found or has been deleted' },
@@ -87,35 +94,48 @@ export async function GET(
     }
     const gameDayOffset = location.gameDayOffset ?? 8;
 
+    // Fetch licencee's includeJackpot setting
+    let includeJackpot = false;
+    const licId = location.rel?.licencee;
+    const firstLicId = Array.isArray(licId) ? licId[0] : licId;
+    if (firstLicId) {
+      const licDoc = await Licencee.findOne(
+        { _id: firstLicId },
+        { includeJackpot: 1 }
+      ).lean() as { includeJackpot?: boolean } | null;
+      includeJackpot = Boolean(licDoc?.includeJackpot);
+    }
+
     // ============================================================================
     // STEP 5: Fetch cabinet from database
     // ============================================================================
-    const cabinet = await Machine.findOne({
+    const cabinet = (await Machine.findOne({
       _id: cabinetId,
       gamingLocation: locationId,
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    }).lean<Record<string, unknown>>();
+    }).lean()) as MachineDocument | null;
 
     if (!cabinet) {
       return NextResponse.json(
-        { success: false, error: 'Cabinet not found' },
+        { success: false, error: 'Cabinet not found in this location' },
         { status: 404 }
       );
     }
 
-    // ============================================================================
-    // STEP 6: Compute date-filtered metrics from Meters if a time period is given
-    // ============================================================================
-    const hasDateFilter =
-      timePeriod && timePeriod !== 'All Time';
+    // Attach includeJackpot to the cabinet document for consistent data across routes
+    (cabinet as Record<string, unknown>).includeJackpot = includeJackpot;
+    (cabinet as Record<string, unknown>).aceEnabled = location.aceEnabled === true;
 
-    if (hasDateFilter) {
+    // ============================================================================
+    // STEP 6: Aggregate and calculate financial metrics if a time period is provided
+    // ============================================================================
+    if (timePeriod) {
       try {
-        let startDate: Date | undefined;
-        let endDate: Date | undefined;
+        let startDate: Date;
+        let endDate: Date;
 
         if (timePeriod === 'Custom' && startDateParam && endDateParam) {
           // Parse dates from parameters
@@ -133,22 +153,22 @@ export async function GET(
             );
             startDate = range.rangeStart;
             endDate = range.rangeEnd;
+          } else {
+            throw new Error('Invalid custom date parameters');
           }
-        } else if (timePeriod && timePeriod !== 'All Time') {
-          const range = getGamingDayRangeForPeriod(timePeriod, gameDayOffset);
+        } else {
+          const range = getGamingDayRangeForPeriod(timePeriod as TimePeriod, gameDayOffset);
           startDate = range.rangeStart;
           endDate = range.rangeEnd;
         }
 
-        if (startDate && endDate) {
+        if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
           const metricsResult = await Meters.aggregate([
             {
               $match: {
-                $or: [
+                $and: [
+                  { location: locationId },
                   { machine: cabinetId },
-                  ...(mongoose.Types.ObjectId.isValid(cabinetId)
-                    ? [{ machine: new mongoose.Types.ObjectId(cabinetId) }]
-                    : []),
                 ],
                 readAt: { $gte: startDate, $lte: endDate },
               },
@@ -171,12 +191,17 @@ export async function GET(
               totalCancelledCredits: number;
               jackpot: number;
             };
-            const multiplier =
-              Number((cabinet as Record<string, unknown>).collectionMultiplier) || 1;
 
-            const moneyIn = raw.drop * multiplier;
-            const moneyOut = raw.totalCancelledCredits * multiplier;
-            const jackpot = raw.jackpot * multiplier;
+            // Apply reviewer scale (role-aware: only scales for reviewer role)
+            const currentUser = await getUserFromServer();
+            const mult = getReviewerScale(currentUser as { multiplier?: number | null; roles?: string[] });
+
+            const moneyIn = raw.drop * mult;
+            const rawCancelled = raw.totalCancelledCredits * mult;
+            const jackpot = raw.jackpot * mult;
+
+            // Apply includeJackpot logic: if true, Money Out = Cancelled + Jackpot
+            const moneyOut = rawCancelled + (includeJackpot ? jackpot : 0);
             const gross = moneyIn - moneyOut;
             const netGross = gross - jackpot;
 
@@ -204,9 +229,6 @@ export async function GET(
       }
     }
 
-    // ============================================================================
-    // STEP 7: Return cabinet data
-    // ============================================================================
     return NextResponse.json({
       success: true,
       data: cabinet,
@@ -241,13 +263,17 @@ export async function GET(
  * 9. Return updated cabinet
  */
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ locationId: string; cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
   try {
-    const { locationId, cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const parts = pathname.split('/');
+    const cabinetId = parts[parts.length - 1];
+    const locationId = parts[parts.length - 3];
+
+    console.log(`[Cabinet PUT] Request — cabinet: ${cabinetId}, location: ${locationId}`);
 
     await connectDB();
 
@@ -264,7 +290,6 @@ export async function PUT(
     }
 
     // Check if user has permission to edit machines (admin, technician, developer)
-    const { getUserFromServer } = await import('@/app/api/lib/helpers/users');
     const user = await getUserFromServer();
     if (!user) {
       return NextResponse.json(
@@ -280,7 +305,9 @@ export async function PUT(
     const canEditMachines =
       userRoles.includes('admin') ||
       userRoles.includes('technician') ||
-      userRoles.includes('developer');
+      userRoles.includes('developer') ||
+      userRoles.includes('owner') ||
+      userRoles.includes('location admin');
 
     if (!canEditMachines) {
       return NextResponse.json(
@@ -294,13 +321,13 @@ export async function PUT(
     }
 
     // Verify location exists and is not deleted
-    const location = await GamingLocations.findOne({
+    const location = (await GamingLocations.findOne({
       _id: locationId,
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    });
+    }).lean()) as unknown as LocationDocument | null;
     if (!location) {
       return NextResponse.json(
         { success: false, error: 'Location not found or has been deleted' },
@@ -356,7 +383,8 @@ export async function PUT(
     }
 
     // Handle SMIB board fields consistently
-    const smibValue = data.smbId || data.smibBoard || data.relayId;
+    // Use nullish coalescing to preserve empty strings (for clearing the field)
+    const smibValue = data.smbId ?? data.smibBoard ?? data.relayId;
     if (smibValue !== undefined) {
       updateFields.relayId = smibValue;
       updateFields.smibBoard = smibValue;
@@ -376,49 +404,62 @@ export async function PUT(
         data.accountingDenomination
       );
     }
-    if (
-      data.collectionMultiplier !== undefined &&
-      data.collectionMultiplier !== ''
-    ) {
-      updateFields.collectionMultiplier = data.collectionMultiplier;
+    
+    // Handle collectionMultiplier and collectorDenomination consistently
+    const multValue = data.collectionMultiplier ?? data.collectorDenomination;
+    if (multValue !== undefined && multValue !== '') {
+      updateFields.collectionMultiplier = String(multValue);
+      updateFields.collectorDenomination = Number(multValue) || 1;
     }
+
     if (data.isCronosMachine !== undefined) {
-      updateFields.isCronosMachine = data.isCronosMachine;
+      updateFields.isSasMachine = !data.isCronosMachine;
     }
-    if (data.location !== undefined && data.location !== '') {
-      updateFields.gamingLocation = data.location;
+
+    // Handle location and locationId fallbacks
+    const locationValue = data.location ?? data.locationId;
+    if (locationValue !== undefined && locationValue !== '') {
+      updateFields.gamingLocation = locationValue;
     }
-    if (data.collectionMeters !== undefined) {
+
+    // Handle collection meters from either direct or nested collectionSettings format
+    const colMeters = data.collectionMeters ?? data.collectionSettings;
+    if (colMeters !== undefined) {
       const metersUpdate: Record<string, number> = {};
-      if (
-        data.collectionMeters.metersIn !== undefined &&
-        data.collectionMeters.metersIn !== ''
-      ) {
-        metersUpdate.metersIn = Number(data.collectionMeters.metersIn) || 0;
+      const metersIn = colMeters.metersIn ?? colMeters.lastMetersIn;
+      const metersOut = colMeters.metersOut ?? colMeters.lastMetersOut;
+
+      if (metersIn !== undefined && metersIn !== '') {
+        metersUpdate.metersIn = Number(metersIn) || 0;
       }
-      if (
-        data.collectionMeters.metersOut !== undefined &&
-        data.collectionMeters.metersOut !== ''
-      ) {
-        metersUpdate.metersOut = Number(data.collectionMeters.metersOut) || 0;
+      if (metersOut !== undefined && metersOut !== '') {
+        metersUpdate.metersOut = Number(metersOut) || 0;
       }
+
       if (Object.keys(metersUpdate).length > 0) {
         updateFields.collectionMeters = metersUpdate;
+        // Mirror metrics to sasMeters for collection baseline
+        if (metersUpdate.metersIn !== undefined) {
+          updateFields['sasMeters.drop'] = metersUpdate.metersIn;
+        }
+        if (metersUpdate.metersOut !== undefined) {
+          updateFields['sasMeters.totalCancelledCredits'] = metersUpdate.metersOut;
+        }
       }
     }
-    if (data.collectionTime !== undefined && data.collectionTime !== '') {
-      const collectionTime = new Date(data.collectionTime);
-      updateFields.collectionTime = collectionTime;
-      if (originalCabinet.collectionTime) {
-        updateFields.previousCollectionTime = originalCabinet.collectionTime;
+
+    // Handle collection time from either direct or nested collectionSettings format
+    const colTimeValue = data.collectionTime ?? data.collectionSettings?.lastCollectionTime;
+    if (colTimeValue !== undefined && colTimeValue !== '') {
+      const collectionTime = new Date(colTimeValue);
+      if (!isNaN(collectionTime.getTime())) {
+        updateFields.collectionTime = collectionTime;
+        if (originalCabinet.collectionTime) {
+          updateFields.previousCollectionTime = originalCabinet.collectionTime;
+        }
       }
     }
-    if (
-      data.collectorDenomination !== undefined &&
-      data.collectorDenomination !== ''
-    ) {
-      updateFields.collectorDenomination = Number(data.collectorDenomination);
-    }
+
     if (data.custom !== undefined) {
       if (data.custom && typeof data.custom === 'object' && data.custom.name !== undefined) {
         updateFields['custom.name'] = data.custom.name;
@@ -486,8 +527,30 @@ export async function PUT(
     }
 
     // ============================================================================
-    // STEP 9: Return updated cabinet
+    // STEP 9: Activity log + return updated cabinet
     // ============================================================================
+    const duration = Date.now() - startTime;
+    console.log(`[Cabinet PUT] Updated cabinet ${cabinetId} at location ${locationId} — ${duration}ms`);
+
+    // Fire-and-forget activity log — don't fail the response if logging fails
+    logActivity({
+      action: 'update',
+      details: `Cabinet ${originalCabinet.serialNumber || cabinetId} updated at location ${locationId}`,
+      userId: String(user._id),
+      username: String(user.username || user.email || user._id),
+      metadata: {
+        resource: 'cabinet',
+        resourceId: cabinetId,
+        resourceName: originalCabinet.serialNumber || cabinetId,
+        changes: calculateChanges(
+          originalCabinet.toObject(),
+          updateFields as Record<string, unknown>
+        ),
+        previousData: originalCabinet.toObject(),
+        newData: updatedMachine.toObject(),
+      },
+    }).catch(err => console.error('[Cabinet PUT] Activity log failed:', err));
+
     return NextResponse.json({
       success: true,
       data: updatedMachine,
@@ -521,13 +584,17 @@ export async function PUT(
  * 8. Return updated cabinet
  */
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ locationId: string; cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
   try {
-    const { locationId, cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const parts = pathname.split('/');
+    const cabinetId = parts[parts.length - 1];
+    const locationId = parts[parts.length - 3];
+
+    console.log(`[Cabinet PATCH] Request — cabinet: ${cabinetId}, location: ${locationId}`);
 
     await connectDB();
 
@@ -542,13 +609,13 @@ export async function PATCH(
       );
     }
 
-    const location = await GamingLocations.findOne({
+    const location = (await GamingLocations.findOne({
       _id: locationId,
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    });
+    }).lean()) as unknown as LocationDocument | null;
     if (!location) {
       return NextResponse.json(
         { success: false, error: 'Location not found or has been deleted' },
@@ -557,6 +624,28 @@ export async function PATCH(
     }
 
     const data = await request.json();
+
+    // Handle restore action
+    if (data.action === 'restore') {
+      const restoredMachine = await Machine.findOneAndUpdate(
+        { _id: cabinetId },
+        { $unset: { deletedAt: 1 }, updatedAt: new Date() },
+        { new: true }
+      );
+
+      if (!restoredMachine) {
+        return NextResponse.json(
+          { success: false, error: 'Machine not found' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Machine restored successfully',
+        data: restoredMachine,
+      });
+    }
 
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const originalCabinet = await Machine.findOne({ _id: cabinetId });
@@ -610,6 +699,30 @@ export async function PATCH(
       );
     }
 
+    const patchDuration = Date.now() - startTime;
+    console.log(`[Cabinet PATCH] Updated cabinet ${cabinetId} — ${patchDuration}ms`);
+
+    const patchUser = await getUserFromServer();
+    if (patchUser) {
+      logActivity({
+        action: 'patch',
+        details: `Cabinet ${originalCabinet.serialNumber || cabinetId} settings updated`,
+        userId: String(patchUser._id),
+        username: String(patchUser.username || patchUser.email || patchUser._id),
+        metadata: {
+          resource: 'cabinet',
+          resourceId: cabinetId,
+          resourceName: originalCabinet.serialNumber || cabinetId,
+          changes: calculateChanges(
+            originalCabinet.toObject(),
+            updateFields as Record<string, unknown>
+          ),
+          previousData: originalCabinet.toObject(),
+          newData: updatedMachine.toObject(),
+        },
+      }).catch(err => console.error('[Cabinet PATCH] Activity log failed:', err));
+    }
+
     return NextResponse.json({
       success: true,
       data: updatedMachine,
@@ -621,7 +734,7 @@ export async function PATCH(
         ? error.message
         : 'Failed to update cabinet collection settings';
     console.error(
-      `[Location Cabinet API PATCH] Error after ${duration}ms:`,
+      `[Cabinet PATCH] Error after ${duration}ms:`,
       errorMessage
     );
     return NextResponse.json(
@@ -644,13 +757,15 @@ export async function PATCH(
  * 7. Return success response
  */
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ locationId: string; cabinetId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
   try {
-    const { locationId, cabinetId } = await params;
+    const { pathname } = request.nextUrl;
+    const parts = pathname.split('/');
+    const cabinetId = parts[parts.length - 1];
+    const locationId = parts[parts.length - 3];
 
     await connectDB();
 
@@ -666,7 +781,6 @@ export async function DELETE(
     }
 
     // Check if user has permission to delete machines (admin, technician, developer)
-    const { getUserFromServer } = await import('@/app/api/lib/helpers/users');
     const user = await getUserFromServer();
     if (!user) {
       return NextResponse.json(
@@ -682,7 +796,8 @@ export async function DELETE(
     const canDeleteMachines =
       userRoles.includes('admin') ||
       userRoles.includes('technician') ||
-      userRoles.includes('developer');
+      userRoles.includes('developer') ||
+      userRoles.includes('owner');
 
     if (!canDeleteMachines) {
       return NextResponse.json(
@@ -695,17 +810,32 @@ export async function DELETE(
       );
     }
 
-    const location = await GamingLocations.findOne({
+    const location = (await GamingLocations.findOne({
       _id: locationId,
       $or: [
         { deletedAt: null },
         { deletedAt: { $lt: new Date('2025-01-01') } },
       ],
-    });
+    }).lean()) as unknown as LocationDocument | null;
     if (!location) {
       return NextResponse.json(
         { success: false, error: 'Location not found or has been deleted' },
         { status: 404 }
+      );
+    }
+
+    // Check for hard delete (permanent)
+    const { searchParams } = new URL(request.url);
+    const hardDelete = searchParams.get('hardDelete') === 'true';
+
+    // Permanent delete restricted to admin/developer
+    if (hardDelete && !userRoles.includes('admin') && !userRoles.includes('developer') && !userRoles.includes('owner')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Forbidden: Only admins and developers can permanently delete machines',
+        },
+        { status: 403 }
       );
     }
 
@@ -718,15 +848,19 @@ export async function DELETE(
       );
     }
 
-    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-    await Machine.findOneAndUpdate(
-      { _id: cabinetId },
-      {
-        deletedAt: new Date(),
-        updatedAt: new Date(),
-      },
-      { new: true }
-    );
+    if (hardDelete) {
+      await Machine.deleteOne({ _id: cabinetId });
+    } else {
+      // Soft delete
+      await Machine.findOneAndUpdate(
+        { _id: cabinetId },
+        {
+          deletedAt: new Date(),
+          updatedAt: new Date(),
+        },
+        { new: true }
+      );
+    }
 
     return NextResponse.json({
       success: true,

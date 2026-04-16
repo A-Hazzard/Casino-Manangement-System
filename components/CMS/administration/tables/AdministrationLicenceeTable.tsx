@@ -89,7 +89,7 @@ function AdministrationLicenceeTable({
               PAYMENT STATUS
             </TableHead>
             <TableHead centered className="font-semibold text-white">
-              SUBTRACT JACKPOT
+              INCLUDE JACKPOT
             </TableHead>
             <TableHead centered className="font-semibold text-white">
               LAST EDITED
@@ -209,12 +209,12 @@ function AdministrationLicenceeTable({
                   <TableCell centered>
                     <span
                       className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
-                        licencee.subtractJackpot
+                        licencee.includeJackpot
                           ? 'bg-blue-100 text-blue-800'
                           : 'bg-gray-100 text-gray-500'
                       }`}
                     >
-                      {licencee.subtractJackpot ? 'Yes' : 'No'}
+                      {licencee.includeJackpot ? 'Yes' : 'No'}
                     </span>
                   </TableCell>
                   <TableCell centered className="text-gray-700">

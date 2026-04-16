@@ -30,7 +30,6 @@ import dynamic from 'next/dynamic';
 import CabinetsDeleteCabinetModal from './modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from './modals/CabinetsEditCabinetModal';
 import CabinetsNewCabinetModal from './modals/CabinetsNewCabinetModal';
-
 const CabinetsMovementRequests = dynamic(
   () => import('@/components/CMS/cabinets/CabinetsMovementRequests'),
   { ssr: false }
@@ -59,10 +58,7 @@ export default function CabinetsPageContent() {
   // ============================================================================
   const cabinetsPageData = useCabinetsPageData();
   const { user } = useUserStore();
-  const {
-    setSelectedLicencee,
-    activeMetricsFilter,
-  } = useDashBoardStore();
+  const { setSelectedLicencee, activeMetricsFilter } = useDashBoardStore();
 
   const {
     activeSection,
@@ -86,6 +82,8 @@ export default function CabinetsPageContent() {
     selectedLocation,
     selectedGameType,
     selectedStatus,
+    selectedMembership,
+    selectedSmibStatus,
     isNewMovementOpen,
     isUploadSmibOpen,
     refreshTrigger,
@@ -98,6 +96,8 @@ export default function CabinetsPageContent() {
     setSelectedLocation,
     setSelectedGameType,
     setSelectedStatus,
+    setSelectedMembership,
+    setSelectedSmibStatus,
     setCurrentPage,
     handleColumnSort,
     handleRefresh,
@@ -107,13 +107,14 @@ export default function CabinetsPageContent() {
     transformCabinet,
   } = cabinetsPageData;
 
-  const userRoles = user?.roles?.map(r => r.toLowerCase()) || [];
-  const isTechnicianOnly = userRoles.includes('technician') && !userRoles.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
-
-  const shouldHideFinancials = (_u: { roles?: string[] } | null | undefined) => {
-    return false;
-  };
-
+  const userRoles = (user?.roles || []).filter(
+    (r): r is string => typeof r === 'string'
+  );
+  const isTechnicianOnly =
+    userRoles.includes('technician') &&
+    !userRoles.some(r =>
+      ['admin', 'developer', 'manager', 'location admin'].includes(r)
+    );
   // ============================================================================
   // Permission Checks
   // ============================================================================
@@ -138,7 +139,10 @@ export default function CabinetsPageContent() {
       {/* Modal Components */}
       <CabinetsEditCabinetModal onCabinetUpdated={handleRefresh} />
       <CabinetsDeleteCabinetModal onCabinetDeleted={handleRefresh} />
-      <CabinetsNewCabinetModal locations={locations} onCreated={handleRefresh} />
+      <CabinetsNewCabinetModal
+        locations={locations}
+        onCreated={handleRefresh}
+      />
       <NewMovementRequestModal
         isOpen={isNewMovementOpen}
         onClose={() => setIsNewMovementOpen(false)}
@@ -194,8 +198,12 @@ export default function CabinetsPageContent() {
         <CabinetsNavigation
           tabs={CABINET_TABS_CONFIG.filter(tab => {
             if (tab.id === 'movement') {
-              const userRoles = user?.roles?.map((r: string) => r.toLowerCase()) || [];
-              return !userRoles.some((role: string) => EXCLUDED_MOVEMENT_ROLES.includes(role));
+              const userRoles = (user?.roles || []).filter(
+                (r): r is string => typeof r === 'string'
+              );
+              return !userRoles.some((role: string) =>
+                EXCLUDED_MOVEMENT_ROLES.includes(role)
+              );
             }
             return true;
           })}
@@ -203,12 +211,12 @@ export default function CabinetsPageContent() {
           onChange={setActiveSection}
         />
 
-        {/* Subtract Jackpot Indicator */}
-        {cabinetsPageData.subtractJackpot && (
+        {/* Include Jackpot Indicator */}
+        {cabinetsPageData.includeJackpot && (
           <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
             <Info className="h-4 w-4 flex-shrink-0 text-amber-600" />
             <p className="text-xs font-medium text-amber-800">
-              Jackpot is subtracted from Money Out for this licencee
+              Jackpot is included in Money Out for this licencee
             </p>
           </div>
         )}
@@ -219,52 +227,56 @@ export default function CabinetsPageContent() {
         {activeSection === 'cabinets' && (
           <div className="mt-6 w-full max-w-full overflow-x-hidden">
             {/* Financial Metrics Summary Cards */}
-            {!shouldHideFinancials(user) && (
+            {false && (
               <div className="mb-6 w-full max-w-full">
                 <FinancialMetricsCards
                   totals={metricsTotals || financialTotals}
                   loading={loading || metricsTotalsLoading}
                   title="Total for all Machines"
+                  includeJackpot={cabinetsPageData.includeJackpot}
                 />
               </div>
             )}
 
             {/* Performance Visualization Chart */}
-            {!shouldHideFinancials(user) && (
+            {false && (
               <div className="mb-6 w-full max-w-full">
                 {/* Granularity Selector for Last 30 Days and Quarterly */}
-                {((activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days' || activeMetricsFilter === 'Quarterly') && !loadingChart) && (
-                  <div className="mb-3 flex items-center justify-end gap-2">
-                    <label
-                      htmlFor="chart-granularity-cabinets"
-                      className="text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                      Granularity:
-                    </label>
-                    <select
-                      id="chart-granularity-cabinets"
-                      value={cabinetsPageData.chartGranularity}
-                      onChange={e =>
-                        cabinetsPageData.setChartGranularity(
-                          e.target.value as 'daily' | 'weekly' | 'monthly'
-                        )
-                      }
-                      className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
-                    >
-                      {activeMetricsFilter === 'Quarterly' ? (
-                        <>
-                          <option value="monthly">Monthly</option>
-                          <option value="weekly">Weekly</option>
-                        </>
-                      ) : (
-                        <>
-                          <option value="daily">Daily</option>
-                          <option value="weekly">Weekly</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
-                )}
+                {(activeMetricsFilter === '30d' ||
+                  activeMetricsFilter === 'last30days' ||
+                  activeMetricsFilter === 'Quarterly') &&
+                  !loadingChart && (
+                    <div className="mb-3 flex items-center justify-end gap-2">
+                      <label
+                        htmlFor="chart-granularity-cabinets"
+                        className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        Granularity:
+                      </label>
+                      <select
+                        id="chart-granularity-cabinets"
+                        value={cabinetsPageData.chartGranularity}
+                        onChange={e =>
+                          cabinetsPageData.setChartGranularity(
+                            e.target.value as 'daily' | 'weekly' | 'monthly'
+                          )
+                        }
+                        className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+                      >
+                        {activeMetricsFilter === 'Quarterly' ? (
+                          <>
+                            <option value="monthly">Monthly</option>
+                            <option value="weekly">Weekly</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+                  )}
                 <DashboardChart
                   loadingChartData={loadingChart}
                   chartData={chartData}
@@ -279,7 +291,9 @@ export default function CabinetsPageContent() {
               <div className="order-1">
                 {isTechnicianOnly ? (
                   <div className="flex h-10 items-center rounded-lg bg-blue-50 px-4 text-sm font-medium text-blue-700">
-                    <span className="mr-2 italic">Showing data within the last hour</span>
+                    <span className="mr-2 italic">
+                      Showing data within the last hour
+                    </span>
                   </div>
                 ) : (
                   <DateFilters
@@ -314,6 +328,10 @@ export default function CabinetsPageContent() {
                 onGameTypeChange={setSelectedGameType}
                 selectedStatus={selectedStatus}
                 onStatusChange={setSelectedStatus}
+                selectedMembership={selectedMembership}
+                onMembershipChange={setSelectedMembership}
+                selectedSmibStatus={selectedSmibStatus}
+                onSmibStatusChange={setSelectedSmibStatus}
                 sortOption={sortOption}
                 sortOrder={sortOrder}
                 onSortChange={handleColumnSort}
@@ -323,7 +341,7 @@ export default function CabinetsPageContent() {
             </div>
 
             {/* Cabinet Listing: Table and Mobile Card Views */}
-            <div className="mt-4 w-full max-w-full overflow-x-hidden">
+            <div className="w-full max-w-full overflow-x-hidden">
               <CabinetsCabinetContentDisplay
                 paginatedCabinets={paginatedCabinets}
                 filteredCabinets={filteredCabinets || paginatedCabinets}
@@ -342,7 +360,7 @@ export default function CabinetsPageContent() {
                 onDelete={() => {}}
                 onRetry={loadCabinets}
                 transformCabinet={transformCabinet}
-                subtractJackpot={cabinetsPageData.subtractJackpot}
+                includeJackpot={cabinetsPageData.includeJackpot}
                 showArchived={selectedStatus === 'Archived'}
               />
             </div>
@@ -359,23 +377,27 @@ export default function CabinetsPageContent() {
         {/* ============================================================================
            Tab Content: Movement Requests
            ============================================================================ */}
-        {activeSection === 'movement' && (
+        {activeSection === 'movement' &&
           (() => {
-            const userRoles = user?.roles?.map((r: string) => r.toLowerCase()) || [];
-            const isAuthorized = !userRoles.some((role: string) => EXCLUDED_MOVEMENT_ROLES.includes(role));
-            
+            const userRoles = (user?.roles || []).filter(
+              (r): r is string => typeof r === 'string'
+            );
+            const isAuthorized =
+              !userRoles.some((role: string) =>
+                EXCLUDED_MOVEMENT_ROLES.includes(role)
+              );
+
             if (!isAuthorized) {
               return <AccessRestricted sectionName="Movement Requests" />;
             }
-            
+
             return (
               <CabinetsMovementRequests
                 locations={locations}
                 refreshTrigger={refreshTrigger}
               />
             );
-          })()
-        )}
+          })()}
 
         {/* ============================================================================
            Tab Content: Firmware Management

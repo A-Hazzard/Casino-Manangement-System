@@ -10,9 +10,6 @@
  */
 
 export default function CollectionReportTableSkeleton() {
-  // ============================================================================
-  // Render - Table Skeleton
-  // ============================================================================
   return (
     <div className="hidden w-full min-w-0 overflow-x-auto bg-white shadow lg:block">
       <table className="w-full min-w-0 text-left text-sm">

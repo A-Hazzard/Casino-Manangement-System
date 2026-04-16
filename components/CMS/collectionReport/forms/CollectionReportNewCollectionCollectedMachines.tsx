@@ -18,7 +18,7 @@ import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
-import { Edit3, Trash2, Search } from 'lucide-react';
+import { Edit3, Trash2, Search, Info } from 'lucide-react';
 
 type NewCollectionCollectedMachinesProps = {
   collectedMachineEntries: CollectionDocument[];
@@ -30,6 +30,7 @@ type NewCollectionCollectedMachinesProps = {
   updateAllSasEndDate?: Date | undefined;
   setUpdateAllSasEndDate?: (date: Date | undefined) => void;
   onApplyAllDates?: () => void;
+  variationMachineIds?: string[];
 };
 
 export default function CollectionReportNewCollectionCollectedMachines({
@@ -42,6 +43,7 @@ export default function CollectionReportNewCollectionCollectedMachines({
   updateAllSasEndDate,
   setUpdateAllSasEndDate,
   onApplyAllDates,
+  variationMachineIds = [],
 }: NewCollectionCollectedMachinesProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -58,9 +60,9 @@ export default function CollectionReportNewCollectionCollectedMachines({
   }, [collectedMachineEntries, searchQuery]);
 
   return (
-    <div className="flex min-h-0 w-1/5 flex-col border-l border-gray-300 bg-gray-50">
+    <div className="flex min-h-0 w-full flex-col bg-gray-50">
       <div className="border-b border-gray-300 bg-gray-100 p-3">
-        <h3 className="text-sm font-semibold text-gray-700">
+        <h3 className="text-sm font-bold text-gray-700">
           Collected Machines ({collectedMachineEntries.length})
         </h3>
       </div>
@@ -75,7 +77,7 @@ export default function CollectionReportNewCollectionCollectedMachines({
           {/* SAS Start Time */}
           <div>
             <label className="mb-1 block text-[10px] font-medium text-gray-600">
-              SAS Start Time
+              Start Time
             </label>
             <div className="w-full min-w-0">
               <ModernCalendar
@@ -98,10 +100,10 @@ export default function CollectionReportNewCollectionCollectedMachines({
             </div>
           </div>
 
-          {/* SAS End Time */}
+          {/* Start Time */}
           <div>
             <label className="mb-1 block text-[10px] font-medium text-gray-600">
-              SAS End Time
+              End Time
             </label>
             <div className="w-full min-w-0">
               <ModernCalendar
@@ -130,7 +132,7 @@ export default function CollectionReportNewCollectionCollectedMachines({
             className="mt-1 w-full bg-blue-600 text-xs hover:bg-blue-700"
             size="sm"
           >
-            {isProcessing ? 'Updating...' : 'Update All SAS Times'}
+            {isProcessing ? 'Updating...' : 'Update All Times'}
           </Button>
         </div>
       )}
@@ -161,7 +163,9 @@ export default function CollectionReportNewCollectionCollectedMachines({
             No machines match your search.
           </p>
         ) : (
-          filteredEntries.map((entry, index) => (
+          filteredEntries.map((entry, index) => {
+            const hasVariation = variationMachineIds.some(vid => String(vid) === String(entry.machineId));
+            return (
               <div
                 key={
                   entry._id
@@ -170,26 +174,38 @@ export default function CollectionReportNewCollectionCollectedMachines({
                         entry.machineCustomName || entry.machineId || 'unknown'
                       }`
                 }
-                className="space-y-1 rounded-md border border-gray-200 bg-white p-3 shadow"
+                className={`space-y-1 rounded-md border p-3 shadow transition-colors ${
+                  hasVariation 
+                    ? 'border-amber-400 bg-amber-50 shadow-amber-100 ring-1 ring-amber-400' 
+                    : 'border-gray-200 bg-white'
+                }`}
               >
-                <p className="break-words text-sm font-semibold text-primary">
-                  {formatMachineDisplayNameWithBold({
-                    serialNumber: entry.serialNumber,
-                    custom: { name: entry.machineCustomName },
-                    game: entry.game,
-                  })}
-                </p>
+                <div className="flex items-start justify-between gap-1">
+                  <p className={`break-words text-sm font-bold ${hasVariation ? 'text-amber-900' : 'text-primary'}`}>
+                    {formatMachineDisplayNameWithBold({
+                      serialNumber: entry.serialNumber,
+                      custom: { name: entry.machineCustomName },
+                      game: entry.game,
+                    })}
+                  </p>
+                  {hasVariation && (
+                    <div className="shrink-0 flex items-center gap-0.5 rounded bg-amber-500 px-1 py-0.5 text-[8px] font-black uppercase text-white shadow-sm">
+                      <Info className="h-2 w-2" />
+                      Variation
+                    </div>
+                  )}
+                </div>
                 {entry.sasMeters?.sasStartTime && entry.sasMeters?.sasEndTime ? (
-                  <p className="text-xs text-gray-600">
-                    SAS: {formatDateWithOrdinal(entry.sasMeters.sasStartTime)} →{' '}
+                  <p className={`text-xs ${hasVariation ? 'text-amber-700 font-medium' : 'text-gray-600'}`}>
+                    Time: {formatDateWithOrdinal(entry.sasMeters.sasStartTime)} →{' '}
                     {formatDateWithOrdinal(entry.sasMeters.sasEndTime)}
                   </p>
                 ) : (
                   <p className="text-xs text-gray-500 italic">
-                    SAS: Not Set
+                    Time: Not Set
                   </p>
                 )}
-                <p className="text-xs text-gray-600">
+                <p className={`text-xs ${hasVariation ? 'text-amber-800' : 'text-gray-600'}`}>
                   Meters In:{' '}
                   {entry.ramClear
                     ? entry.movement?.metersIn || entry.metersIn
@@ -200,7 +216,7 @@ export default function CollectionReportNewCollectionCollectedMachines({
                     : entry.metersOut}
                 </p>
                 {entry.notes && (
-                  <p className="text-xs italic text-gray-600">
+                  <p className={`text-xs italic ${hasVariation ? 'text-amber-700' : 'text-gray-600'}`}>
                     Notes: {entry.notes}
                   </p>
                 )}
@@ -213,16 +229,16 @@ export default function CollectionReportNewCollectionCollectedMachines({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 p-0 hover:bg-gray-200"
+                    className={`h-6 w-6 p-0 ${hasVariation ? 'hover:bg-amber-200' : 'hover:bg-gray-200'}`}
                     onClick={() => onEditEntry(String(entry._id))}
                     disabled={isProcessing}
                   >
-                    <Edit3 className="h-3.5 w-3.5 text-blue-600" />
+                    <Edit3 className={`h-3.5 w-3.5 ${hasVariation ? 'text-amber-700' : 'text-blue-600'}`} />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 p-0 hover:bg-gray-200"
+                    className={`h-6 w-6 p-0 ${hasVariation ? 'hover:bg-amber-200' : 'hover:bg-gray-200'}`}
                     onClick={() => onDeleteEntry(String(entry._id))}
                     disabled={isProcessing}
                   >
@@ -230,7 +246,8 @@ export default function CollectionReportNewCollectionCollectedMachines({
                   </Button>
                 </div>
               </div>
-            ))
+            );
+          })
         )}
       </div>
     </div>

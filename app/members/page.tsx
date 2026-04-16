@@ -6,6 +6,7 @@ import { Suspense } from 'react';
 import MembersPageContent from '@/components/CMS/members/MembersPageContent';
 import { MembersPageSkeleton } from '@/components/shared/ui/skeletons/MembersSkeletons';
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
+import MaintenanceWrapper from '@/components/shared/maintenance/MaintenanceWrapper';
 
 /**
  * Members Page
@@ -21,9 +22,11 @@ import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 export default function MembersPage() {
   return (
     <ProtectedRoute requiredPage="members">
-      <Suspense fallback={<MembersPageSkeleton />}>
-        <MembersPageContent />
-      </Suspense>
+      <MaintenanceWrapper pageKey="members">
+        <Suspense fallback={<MembersPageSkeleton />}>
+          <MembersPageContent />
+        </Suspense>
+      </MaintenanceWrapper>
     </ProtectedRoute>
   );
 }

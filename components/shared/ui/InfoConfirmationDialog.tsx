@@ -61,28 +61,14 @@ export const InfoConfirmationDialog = ({
     if (isOpen) {
       gsap.fromTo(
         modalRef.current,
-        { opacity: 0, y: -20 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.3,
-          ease: 'power2.out',
-          overwrite: true,
-          onComplete: () => {
-            if (modalRef.current) {
-              modalRef.current.style.pointerEvents = 'auto';
-              modalRef.current.style.opacity = '1';
-              modalRef.current.style.transform = 'translateY(0px)';
-            }
-          },
-        }
+        { y: 100, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
       );
-      gsap.to(backdropRef.current, {
-        opacity: 1,
-        duration: 0.2,
-        ease: 'power2.out',
-        overwrite: true,
-      });
+      gsap.fromTo(
+        backdropRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3, ease: 'power2.out' }
+      );
     }
   }, [isOpen]);
 
@@ -91,7 +77,7 @@ export const InfoConfirmationDialog = ({
 
     gsap.to(modalRef.current, {
       opacity: 0,
-      y: -20,
+      y: 100,
       duration: 0.3,
       ease: 'power2.in',
       overwrite: true,
@@ -112,7 +98,7 @@ export const InfoConfirmationDialog = ({
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[999999]">
+    <div className="fixed inset-0 z-[100000] pointer-events-auto">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"
@@ -123,19 +109,18 @@ export const InfoConfirmationDialog = ({
         }}
       />
 
-      {/* Modal Content */}
-      <div className="pointer-events-none fixed inset-0 flex items-center justify-center p-4">
+      <div className="fixed inset-0 flex items-center justify-center p-4 h-screen">
         <div
           ref={modalRef}
-          className="pointer-events-auto relative z-50 w-full max-w-md rounded-md bg-container shadow-lg"
+          className="w-full max-w-md rounded-md bg-container shadow-lg"
           style={{ opacity: 0, transform: 'translateY(-20px)' }}
           onClick={e => {
             e.stopPropagation();
           }}
         >
-          <div className="border-b border-border p-6">
+          <div className="border-b border-border p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-foreground">{title}</h2>
+              <h2 className="text-xl font-bold text-buttonActive">{title}</h2>
               <Button
                 onClick={e => {
                   e.preventDefault();
@@ -143,6 +128,7 @@ export const InfoConfirmationDialog = ({
                   handleClose();
                 }}
                 variant="ghost"
+                className="h-8 w-8 p-0 text-grayHighlight hover:bg-buttonInactive/10"
                 disabled={isLoading}
               >
                 <Cross2Icon className="h-5 w-5" />
@@ -151,19 +137,19 @@ export const InfoConfirmationDialog = ({
           </div>
 
           <div className="p-6">
-            <div className="space-y-4 text-center text-foreground">
+            <div className="space-y-4 text-center">
               <div className="mb-4 flex justify-center">
-                <div className="rounded-full bg-blue-100 p-4 dark:bg-blue-900">
+                <div className="rounded-full bg-blue-100 p-4 dark:bg-blue-900/30">
                   <InfoCircledIcon className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
-              <p className="text-base">{message}</p>
+              <p className="text-lg font-semibold text-grayHighlight">
+                {message}
+              </p>
             </div>
-            {/* Hidden description for accessibility */}
-            <div className="sr-only">{message}</div>
           </div>
 
-          <div className="border-t border-border p-6">
+          <div className="border-t border-border p-4">
             <div className="flex justify-center gap-4">
               <Button
                 onClick={e => {
@@ -182,7 +168,7 @@ export const InfoConfirmationDialog = ({
                   e.stopPropagation();
                   handleClose();
                 }}
-                className="bg-muted text-muted-foreground hover:bg-accent"
+                className="bg-buttonInactive text-primary-foreground hover:bg-buttonInactive/90"
                 disabled={isLoading}
               >
                 {cancelText}

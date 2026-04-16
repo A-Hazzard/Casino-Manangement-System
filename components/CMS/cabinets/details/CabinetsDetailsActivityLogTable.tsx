@@ -12,6 +12,7 @@
  * - Success/failure indicators
  */
 
+import { FC } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
   Select,
@@ -33,6 +34,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { CheckIcon, MinusIcon, PlusIcon } from '@radix-ui/react-icons';
 import { Fragment, useMemo, useState } from 'react';
+import PaginationControls from '@/components/shared/ui/PaginationControls';
 
 // ============================================================================
 // Types
@@ -88,7 +90,7 @@ type CabinetsDetailsActivityLogTableProps = {
  * @param data - Array of MachineEvent objects.
  * @returns Activity log table component.
  */
-export const CabinetsDetailsActivityLogTable: React.FC<CabinetsDetailsActivityLogTableProps> = ({
+export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTableProps> = ({
   data,
   onFilterChange,
 }) => {
@@ -101,8 +103,8 @@ export const CabinetsDetailsActivityLogTable: React.FC<CabinetsDetailsActivityLo
     eventType: '',
     type: '',
   });
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [currentPage, setCurrentPage] = useState(0);
+  const itemsPerPage = 20;
 
   const formatDate = (dateString: string | Date) => {
     if (!dateString) return '';
@@ -133,7 +135,7 @@ export const CabinetsDetailsActivityLogTable: React.FC<CabinetsDetailsActivityLo
     const filterValue = value === 'all' ? '' : value;
     const newFilters = { ...filters, [key]: filterValue };
     setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(0); // Reset to first page when filters change
     onFilterChange?.(newFilters);
   };
 
@@ -145,7 +147,7 @@ export const CabinetsDetailsActivityLogTable: React.FC<CabinetsDetailsActivityLo
       type: '',
     };
     setFilters(clearedFilters);
-    setCurrentPage(1);
+    setCurrentPage(0);
     onFilterChange?.(clearedFilters);
   };
 
@@ -191,18 +193,19 @@ export const CabinetsDetailsActivityLogTable: React.FC<CabinetsDetailsActivityLo
         }
       }
 
-      // Event type filtering - case insensitive
+      // Event type filtering
       if (filters.eventType && filters.eventType !== 'all') {
-        const itemEventType = item.eventType || '';
-        if (itemEventType.toLowerCase() !== filters.eventType.toLowerCase()) {
+        const itemEventType = (item.eventType || '').toLowerCase();
+        const filterTypeTerm = (filters.eventType || '').toLowerCase();
+        if (itemEventType !== filterTypeTerm) {
           return false;
         }
       }
 
-      // Type filtering - robust matching
+      // Type filtering
       if (filters.type && filters.type !== 'all') {
         const itemType = (item.eventLogLevel || 'General').toLowerCase();
-        const filterType = filters.type.toLowerCase();
+        const filterType = (filters.type || '').toLowerCase();
         
         // Handle common mappings
         if (filterType === 'warning' || filterType === 'warn') {
@@ -217,7 +220,7 @@ export const CabinetsDetailsActivityLogTable: React.FC<CabinetsDetailsActivityLo
 
     // Calculate pagination
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
+    const startIndex = currentPage * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const paginatedData = filtered.slice(startIndex, endIndex);
 
@@ -427,10 +430,10 @@ export const CabinetsDetailsActivityLogTable: React.FC<CabinetsDetailsActivityLo
             </TableHeader>
             <TableBody>
                 {filteredAndPaginatedData.data.map((row, idx) => {
-                  const logLevel = (row.eventLogLevel || 'General').toLowerCase();
+                  const logLevel = row.eventLogLevel || 'General';
                   const rowBgClass = 
-                    logLevel === 'critical' ? 'bg-red-50 hover:bg-red-100' :
-                    logLevel === 'warning' || logLevel === 'warn' ? 'bg-orange-50 hover:bg-orange-100' :
+                    logLevel === 'Critical' ? 'bg-red-50 hover:bg-red-100' :
+                    logLevel === 'Warning' || logLevel === 'Warn' ? 'bg-orange-50 hover:bg-orange-100' :
                     'hover:bg-muted';
                   
                   return (
@@ -595,80 +598,13 @@ export const CabinetsDetailsActivityLogTable: React.FC<CabinetsDetailsActivityLo
         </div>
 
         {/* Pagination controls */}
-        {filteredAndPaginatedData.totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-            >
-              {'<<'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              {'<'}
-            </Button>
-            <span className="px-3 py-2 text-sm">Page</span>
-            <input
-              type="number"
-              min={1}
-              max={filteredAndPaginatedData.totalPages}
-              value={currentPage}
-              onChange={e => {
-                let val = Number(e.target.value);
-                if (isNaN(val)) val = 1;
-                if (val < 1) val = 1;
-                if (val > filteredAndPaginatedData.totalPages)
-                  val = filteredAndPaginatedData.totalPages;
-                setCurrentPage(val);
-              }}
-              className="w-16 rounded-md border border-border px-2 py-2 text-center text-sm"
-              aria-label="Page number"
-            />
-            <span className="px-3 py-2 text-sm">
-              of {Math.max(1, filteredAndPaginatedData.totalPages)}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setCurrentPage(p =>
-                  Math.min(filteredAndPaginatedData.totalPages, p + 1)
-                )
-              }
-              disabled={
-                currentPage === filteredAndPaginatedData.totalPages ||
-                filteredAndPaginatedData.totalPages === 0
-              }
-            >
-              {'>'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setCurrentPage(filteredAndPaginatedData.totalPages)
-              }
-              disabled={
-                currentPage === filteredAndPaginatedData.totalPages ||
-                filteredAndPaginatedData.totalPages === 0
-              }
-            >
-              {'>>'}
-            </Button>
-          </div>
-        )}
-
-        {/* Results summary */}
-        <div className="mt-4 text-center text-sm text-gray-600">
-          Showing {filteredAndPaginatedData.data.length} of{' '}
-          {filteredAndPaginatedData.totalItems} results
-        </div>
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={filteredAndPaginatedData.totalPages}
+          totalCount={filteredAndPaginatedData.totalItems}
+          setCurrentPage={setCurrentPage}
+          showTotalCount
+        />
       </div>
     </LocalizationProvider>
   );

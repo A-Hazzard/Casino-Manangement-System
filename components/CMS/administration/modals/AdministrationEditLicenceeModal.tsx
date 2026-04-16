@@ -16,6 +16,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { ChangeEvent, FormEvent } from 'react';
 import { gsap } from 'gsap';
 import { DateTimePicker } from '@/components/shared/ui/date-time-picker';
 import { Info } from 'lucide-react';
@@ -35,7 +36,7 @@ type AdministrationEditLicenceeModalProps = {
     expiryDate?: Date | string;
     prevStartDate?: Date | string;
     prevExpiryDate?: Date | string;
-    subtractJackpot?: boolean;
+    includeJackpot?: boolean;
   };
   setFormState: (data: {
     _id?: string;
@@ -46,7 +47,7 @@ type AdministrationEditLicenceeModalProps = {
     expiryDate?: Date | string;
     prevStartDate?: Date | string;
     prevExpiryDate?: Date | string;
-    subtractJackpot?: boolean;
+    includeJackpot?: boolean;
   }) => void;
   countries: Country[];
   countriesLoading?: boolean;
@@ -74,7 +75,7 @@ function AdministrationEditLicenceeModal({
   }, [open]);
 
   const handleChange = (
-    e: React.ChangeEvent<
+    e: ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
@@ -89,7 +90,7 @@ function AdministrationEditLicenceeModal({
     setFormState({ expiryDate: date });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!formState.name || !formState.country) {
       alert('Name and country are required');
@@ -229,18 +230,18 @@ function AdministrationEditLicenceeModal({
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
-              id="editSubtractJackpot"
-              checked={formState.subtractJackpot || false}
+              id="editIncludeJackpot"
+              checked={formState.includeJackpot || false}
               onChange={e =>
-                setFormState({ subtractJackpot: e.target.checked })
+                setFormState({ includeJackpot: e.target.checked })
               }
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label
-              htmlFor="editSubtractJackpot"
+              htmlFor="editIncludeJackpot"
               className="text-sm font-semibold text-gray-700"
             >
-              Subtract Jackpot
+              Include jackpot in money out
             </label>
           </div>
 

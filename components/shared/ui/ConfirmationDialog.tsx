@@ -1,23 +1,6 @@
 /**
  * Confirmation Dialog Component
- * Modal dialog for confirming destructive actions with GSAP animations.
- *
- * Features:
- * - Confirmation dialog with title and message
- * - Confirm and cancel buttons
- * - Loading state support
- * - GSAP animations
- * - Customizable button text
- * - Close button
- *
- * @param isOpen - Whether the dialog is visible
- * @param onClose - Callback to close the dialog
- * @param onConfirm - Callback when confirm is clicked
- * @param title - Dialog title
- * @param message - Dialog message
- * @param confirmText - Text for confirm button
- * @param cancelText - Text for cancel button
- * @param isLoading - Whether action is in progress
+ * Modal dialog for confirming actions with GSAP animations.
  */
 "use client";
 
@@ -29,10 +12,6 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import Image from "next/image";
 import { IMAGES } from '@/lib/constants';
 
-// ============================================================================
-// Types
-// ============================================================================
-
 type ConfirmationDialogProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -42,6 +21,9 @@ type ConfirmationDialogProps = {
   confirmText?: string;
   cancelText?: string;
   isLoading?: boolean;
+  footerMessage?: string;
+  showFooterWarning?: boolean;
+  confirmButtonVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 };
 
 export const ConfirmationDialog = ({
@@ -50,9 +32,12 @@ export const ConfirmationDialog = ({
   onConfirm,
   title,
   message,
-  confirmText = "Yes, Delete",
+  confirmText = "Confirm",
   cancelText = "Cancel",
   isLoading = false,
+  footerMessage = "This action cannot be undone. Please ensure you want to proceed.",
+  showFooterWarning = true,
+  confirmButtonVariant = 'destructive',
 }: ConfirmationDialogProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -61,39 +46,23 @@ export const ConfirmationDialog = ({
     if (isOpen) {
       gsap.fromTo(
         modalRef.current,
-        { opacity: 0, y: -20 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.3,
-          ease: "power2.out",
-          overwrite: true,
-          onComplete: () => {
-            // Ensure the modal is fully visible and clickable
-            if (modalRef.current) {
-              modalRef.current.style.pointerEvents = "auto";
-              modalRef.current.style.opacity = "1";
-              modalRef.current.style.transform = "translateY(0px)";
-            }
-          },
-        }
+        { y: 100, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
       );
-      gsap.to(backdropRef.current, {
-        opacity: 1,
-        duration: 0.2,
-        ease: "power2.out",
-        overwrite: true,
-      });
+      gsap.fromTo(
+        backdropRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3, ease: 'power2.out' }
+      );
     }
   }, [isOpen]);
 
   const handleClose = () => {
-    console.warn("ConfirmationDialog: handleClose called");
-    if (isLoading) return; // Prevent closing while loading
+    if (isLoading) return;
 
     gsap.to(modalRef.current, {
       opacity: 0,
-      y: -20,
+      y: 100,
       duration: 0.3,
       ease: "power2.in",
       overwrite: true,
@@ -108,110 +77,93 @@ export const ConfirmationDialog = ({
   };
 
   const handleConfirm = () => {
-    console.warn("ConfirmationDialog: handleConfirm called");
     onConfirm();
   };
 
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[999999]">
+    <div className="fixed inset-0 z-[100000] pointer-events-auto">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"
         onClick={(e) => {
-          console.warn("Backdrop clicked");
           if (e.target === e.currentTarget) {
             handleClose();
           }
         }}
       />
 
-      {/* Modal Content */}
-      <div className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 flex items-center justify-center p-4">
         <div
           ref={modalRef}
-          className="bg-container rounded-md shadow-lg max-w-md w-full pointer-events-auto relative z-10"
-          style={{ opacity: 0, transform: "translateY(-20px)" }}
+          className="w-full max-w-md rounded-md bg-container shadow-lg"
+          style={{ opacity: 0, transform: 'translateY(-20px)' }}
           onClick={(e) => {
-            console.warn("Modal content clicked");
             e.stopPropagation();
           }}
         >
-          <div
-            className="p-6 border-b border-border"
-            onClick={() => console.warn("Header area clicked")}
-          >
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-destructive">{title}</h2>
+          <div className="border-b border-border p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-buttonActive">
+                {title}
+              </h2>
               <Button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.warn("Header close button clicked");
-                  handleClose();
-                }}
                 variant="ghost"
-                disabled={isLoading}
+                onClick={handleClose}
+                className="h-8 w-8 p-0 text-grayHighlight hover:bg-buttonInactive/10"
               >
-                <Cross2Icon className="w-5 h-5" />
+                <Cross2Icon className="h-5 w-5" />
               </Button>
             </div>
           </div>
 
-          <div
-            className="p-6"
-            onClick={() => console.warn("Content area clicked")}
-          >
-            <div className="text-center text-foreground space-y-4">
-              <div className="flex justify-center mb-4">
+          <div className="p-6">
+            <div className="text-center">
+              <div className="mb-4 flex justify-center">
                 <Image
-                  src={IMAGES.deleteIcon}
-                  alt="Delete"
+                  src={confirmButtonVariant === 'destructive' ? IMAGES.deleteIcon : IMAGES.details}
+                  alt="Status Icon"
                   width={64}
                   height={64}
                 />
               </div>
-              <div className="text-xs text-gray-500">
-                Modal is clickable - check console for click events
-              </div>
-              <p className="text-lg font-semibold">{message}</p>
+              <p className="mb-4 text-lg font-semibold text-grayHighlight">
+                {message}
+              </p>
+              {showFooterWarning && (
+                <p className="text-sm text-grayHighlight">
+                  {footerMessage}
+                </p>
+              )}
             </div>
-            {/* Hidden description for accessibility */}
-            <div className="sr-only">{message}</div>
           </div>
 
-          <div
-            className="p-6 border-t border-border"
-            onClick={() => console.warn("Button area clicked")}
-          >
-            <div className="flex justify-center gap-4">
+          <div className="border-t border-border p-4">
+            <div className="flex justify-center space-x-4">
               <Button
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.warn("Confirm button clicked");
                   handleConfirm();
                 }}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                variant={confirmButtonVariant}
+                className={confirmButtonVariant === 'destructive' ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
                 disabled={isLoading}
               >
-                {isLoading ? "Deleting..." : confirmText}
+                {isLoading ? (confirmButtonVariant === 'destructive' ? "Deleting..." : "Processing...") : confirmText}
               </Button>
-              {cancelText && (
-                <Button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.warn("Cancel button clicked");
-                    handleClose();
-                  }}
-                  className="bg-muted text-muted-foreground hover:bg-accent"
-                  disabled={isLoading}
-                >
-                  {cancelText}
-                </Button>
-              )}
+              <Button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleClose();
+                }}
+                className="bg-buttonInactive text-primary-foreground hover:bg-buttonInactive/90"
+                disabled={isLoading}
+              >
+                {cancelText}
+              </Button>
             </div>
           </div>
         </div>
@@ -220,4 +172,3 @@ export const ConfirmationDialog = ({
     document.body
   );
 };
-

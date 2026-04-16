@@ -1,3 +1,4 @@
+import { FormEvent } from 'react';
 import { Document } from 'mongoose';
 
 export type InvalidProfileFields = {
@@ -32,6 +33,7 @@ export type UserDocument = Document & {
   emailAddress: string;
   assignedLocations?: string[];
   assignedLicencees?: string[];
+  multiplier?: number | null;
   profile?: {
     firstName?: string;
     lastName?: string;
@@ -113,6 +115,7 @@ export type UserAuthPayload = {
   requiresProfileUpdate?: boolean;
   invalidProfileFields?: InvalidProfileFields;
   invalidProfileReasons?: ProfileValidationReasons;
+  multiplier?: number | null;
 };
 
 export type AuthResult = {
@@ -136,7 +139,7 @@ export type JwtPayload = {
   roles?: string[];
   assignedLocations?: string[];
   assignedLicencees?: string[];
-  // Enhanced security
+  // multiplier removed from JWT to ensure live DB lookup
   sessionId: string;
   sessionVersion?: number;
   dbContext: {
@@ -170,5 +173,5 @@ export type LoginFormProps = {
   messageType?: 'success' | 'error' | 'info';
   loading: boolean;
   redirecting: boolean;
-  handleLogin: (e: React.FormEvent) => void;
+  handleLogin: (e: FormEvent) => void;
 };

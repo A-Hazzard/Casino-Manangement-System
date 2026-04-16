@@ -26,10 +26,12 @@
  */
 'use client';
 
+import { KeyboardEvent } from 'react';
 import type { CustomSelectProps, SelectOption } from '@/lib/types/components';
 import { cn } from '@/lib/utils';
 import { Check, ChevronDown } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {  useCallback, useEffect, useRef, useState  } from 'react';
+
 import { createPortal } from 'react-dom';
 
 export function CustomSelect({
@@ -62,7 +64,8 @@ export function CustomSelect({
   // Filter options based on search term
   const filteredOptions = searchable
     ? options.filter(option =>
-        option.label.toLowerCase().includes(searchTerm.toLowerCase())
+        (option.label || '').toLowerCase().includes((searchTerm || '').toLowerCase()) || 
+        (option.value || '').toLowerCase().includes((searchTerm || '').toLowerCase())
       )
     : options;
 
@@ -171,7 +174,7 @@ export function CustomSelect({
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent) => {
+    (event: KeyboardEvent) => {
       if (!isOpen) {
         if (
           event.key === 'Enter' ||

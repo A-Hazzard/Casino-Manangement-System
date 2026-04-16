@@ -140,14 +140,14 @@ export async function POST(request: NextRequest) {
 
     if (locationId) {
       try {
-        const loc = await GamingLocationsModel.findById(locationId).select('name').lean() as { name?: string } | null;
+        const loc = await GamingLocationsModel.findOne({ _id: locationId }).select('name').lean() as { name?: string } | null;
         resolvedLocationName = loc?.name || null;
       } catch { /* ignore lookup errors */ }
     }
 
     if (licenceeId) {
       try {
-        const lic = await LicenceeModel.findById(licenceeId).select('name').lean() as { name?: string } | null;
+        const lic = await LicenceeModel.findOne({ _id: licenceeId }).select('name').lean() as { name?: string } | null;
         resolvedLicenceeName = lic?.name || null;
       } catch { /* ignore lookup errors */ }
     }
@@ -291,7 +291,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
     if (!isAdmin) {
       return NextResponse.json(
@@ -373,7 +373,7 @@ export async function GET(request: NextRequest) {
         pagination: {
           page,
           limit,
-          total: totalCount,
+          totalCount,
           totalPages: Math.ceil(totalCount / limit),
         },
       },
@@ -416,7 +416,7 @@ export async function PATCH(request: NextRequest) {
 
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
     if (!isAdmin) {
       return NextResponse.json(
@@ -463,6 +463,15 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // Pre-fetch for before-state
+    const existingFeedbackDoc = await FeedbackModel.findOne({ _id }).lean();
+    if (!existingFeedbackDoc) {
+      return NextResponse.json(
+        { success: false, error: 'Feedback not found' },
+        { status: 404 }
+      );
+    }
+
     // Use updateOne for a direct MongoDB update, bypassing Mongoose document middleware if any
     const result = await FeedbackModel.collection.updateOne(
       { _id },
@@ -495,6 +504,11 @@ export async function PATCH(request: NextRequest) {
           ? `${profile.firstName} ${profile.lastName}`
           : username;
 
+      const patchChanges = calculateChanges(
+        existingFeedbackDoc as Record<string, unknown>,
+        updateData
+      );
+
       const activityLog = new ActivityLog({
         _id: activityLogId,
         timestamp: new Date(),
@@ -512,7 +526,9 @@ export async function PATCH(request: NextRequest) {
         },
         ipAddress: formattedIP,
         userAgent: ipInfo.userAgent,
+        previousData: existingFeedbackDoc,
         newData: updateData,
+        changes: patchChanges,
       });
 
       await activityLog.save();
@@ -555,7 +571,7 @@ export async function PUT(request: NextRequest) {
 
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer');
+      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
 
     if (!isAdmin) {
       return NextResponse.json(

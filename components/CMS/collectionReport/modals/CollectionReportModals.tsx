@@ -15,7 +15,6 @@
 import CollectionReportEditCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportEditCollectionModal';
 import CollectionReportNewCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportNewCollectionModal';
 import CollectionReportMobileNewCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportMobileNewCollectionModal';
-import CollectionReportMobileEditCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportMobileEditCollectionModal';
 import { ConfirmationDialog } from '@/components/shared/ui/ConfirmationDialog';
 import ErrorBoundary from '@/components/shared/ui/errors/ErrorBoundary';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
@@ -72,19 +71,9 @@ export default function CollectionReportModals({
       />
 
       {editingReportId && (
-        <CollectionReportMobileEditCollectionModal
-          show={showEditMobile}
-          onClose={onCloseEdit}
-          locations={locationsWithMachines}
-          onRefresh={onRefresh}
-          reportId={editingReportId}
-        />
-      )}
-
-      {editingReportId && (
         <ErrorBoundary>
           <CollectionReportEditCollectionModal
-            show={showEditDesktop}
+            show={showEditMobile || showEditDesktop}
             onClose={onCloseEdit}
             reportId={editingReportId}
             locations={locationsWithMachines}

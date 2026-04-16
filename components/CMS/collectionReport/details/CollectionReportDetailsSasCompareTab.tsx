@@ -1,15 +1,3 @@
-/**
- * LocationReportSasCompareTab Component
- *
- * Displays SAS system totals for comparison.
- *
- * Features:
- * - SAS Drop Total
- * - SAS Cancelled Total
- * - SAS Gross Total
- * - Responsive layout for mobile and desktop
- */
-
 'use client';
 
 import {
@@ -22,135 +10,97 @@ import {
 } from '@/components/shared/ui/table';
 import type { CollectionReportData } from '@/lib/types/api';
 import { getFinancialColorClass } from '@/lib/utils/financial';
+import { FC } from 'react';
 
 type CollectionReportDetailsSasCompareTabProps = {
   reportData: CollectionReportData;
 };
 
-export default function CollectionReportDetailsSasCompareTab({
+/**
+ * CollectionReportDetailsSasCompareTab Component
+ *
+ * Displays SAS system totals for comparison against manual meter data.
+ * Helps identifying discrepancies between electronic system and physical collection.
+ */
+const CollectionReportDetailsSasCompareTab: FC<CollectionReportDetailsSasCompareTabProps> = ({
   reportData,
-}: CollectionReportDetailsSasCompareTabProps) {
-  // Use the sasMetrics from reportData if available, otherwise calculate from collections
+}) => {
+  // ============================================================================
+  // SAS System Metric Computations
+  // ============================================================================
   const sasMetrics = reportData?.sasMetrics || {
     dropped: 0,
     cancelled: 0,
     gross: 0,
   };
 
-  // If sasMetrics is available, use it; otherwise we'd need collections to calculate
-  // For now, we'll use sasMetrics from reportData
-  const { totalSasDrop, totalSasCancelled, totalSasGross } = reportData?.sasMetrics
-    ? {
-        totalSasDrop: sasMetrics.dropped,
-        totalSasCancelled: sasMetrics.cancelled,
-        totalSasGross: sasMetrics.gross,
-      }
-    : {
-        totalSasDrop: 0,
-        totalSasCancelled: 0,
-        totalSasGross: 0,
-      };
+  const { totalSasDrop, totalSasCancelled, totalSasGross } = {
+    totalSasDrop: sasMetrics.dropped || 0,
+    totalSasCancelled: sasMetrics.cancelled || 0,
+    totalSasGross: sasMetrics.gross || 0,
+  };
+
+  const metrics = [
+    { label: 'SAS Drop Total', value: totalSasDrop },
+    { label: 'SAS Cancelled Total', value: totalSasCancelled },
+    { label: 'SAS Gross Total', value: totalSasGross },
+  ];
 
   return (
-    <div>
-      {/* Mobile layout */}
+    <div className="space-y-6">
+      <h2 className="my-4 text-center text-xl font-bold lg:hidden">
+        SAS Metrics Compare
+      </h2>
+
+      {/* Mobile Card Layout */}
       <div className="space-y-4 lg:hidden">
-        <h2 className="my-4 text-center text-xl font-bold">
-          SAS Metrics Compare
-        </h2>
         <div className="overflow-hidden rounded-lg bg-white shadow-md">
-          <div className="bg-lighterBlueHighlight p-3 text-white">
-            <h3 className="font-semibold">SAS Totals</h3>
+          <div className="bg-lighterBlueHighlight p-3 text-white font-semibold">
+            SAS Totals
           </div>
-          <div className="space-y-2 p-4 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-600">SAS Drop Total</span>
-              <span
-                className={`font-medium ${getFinancialColorClass(
-                  totalSasDrop
-                )}`}
-              >
-                {totalSasDrop.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">SAS Cancelled Total</span>
-              <span
-                className={`font-medium ${getFinancialColorClass(
-                  totalSasCancelled
-                )}`}
-              >
-                {totalSasCancelled.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">SAS Gross Total</span>
-              <span
-                className={`font-medium ${getFinancialColorClass(
-                  totalSasGross
-                )}`}
-              >
-                {totalSasGross.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </span>
-            </div>
+          <div className="space-y-3 p-4 text-sm">
+            {metrics.map((m, i) => (
+              <div key={i} className="flex justify-between items-center">
+                <span className="text-gray-600 font-medium">{m.label}</span>
+                <span className={`font-bold ${getFinancialColorClass(m.value)}`}>
+                  {m.value.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Desktop layout */}
-      <div className="hidden overflow-x-auto rounded-lg bg-white shadow-md lg:block">
+      {/* Desktop Table Layout */}
+      <div className="hidden overflow-hidden rounded-lg bg-white shadow-md lg:block">
         <Table>
           <TableHeader>
-            <TableRow className="bg-button hover:bg-button">
+            <TableRow className="bg-button hover:bg-button border-b-0">
               <TableHead className="font-semibold text-white">METRIC</TableHead>
-              <TableHead className="font-semibold text-white">VALUE</TableHead>
+              <TableHead className="font-semibold text-white text-right">VALUE</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow className="hover:bg-gray-50">
-              <TableCell className="font-medium">SAS Drop Total</TableCell>
-              <TableCell className={getFinancialColorClass(totalSasDrop)}>
-                {totalSasDrop.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </TableCell>
-            </TableRow>
-            <TableRow className="hover:bg-gray-50">
-              <TableCell className="font-medium">
-                SAS Cancelled Total
-              </TableCell>
-              <TableCell
-                className={getFinancialColorClass(totalSasCancelled)}
-              >
-                {totalSasCancelled.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </TableCell>
-            </TableRow>
-            <TableRow className="hover:bg-gray-50">
-              <TableCell className="font-medium">SAS Gross Total</TableCell>
-              <TableCell className={getFinancialColorClass(totalSasGross)}>
-                {totalSasGross.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </TableCell>
-            </TableRow>
+            {metrics.map((m, i) => (
+              <TableRow key={i} className="hover:bg-gray-50/50">
+                <TableCell className="font-medium text-gray-700">{m.label}</TableCell>
+                <TableCell className={`text-right font-bold ${getFinancialColorClass(m.value)}`}>
+                  {m.value.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>
     </div>
   );
-}
+};
+
+export default CollectionReportDetailsSasCompareTab;
 

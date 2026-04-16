@@ -6,6 +6,7 @@
 
 'use client';
 
+import { Dispatch, SetStateAction } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import { DateTimePicker } from '@/components/shared/ui/date-time-picker';
 import { Input } from '@/components/shared/ui/input';
@@ -20,8 +21,8 @@ type ProfileAddressIdentityProps = {
   countriesLoading: boolean;
   onInputChange: (field: string, value: string, section?: 'address' | 'identification') => void;
   validationErrors: Record<string, string>;
-  setValidationErrors: React.Dispatch<
-    React.SetStateAction<Record<string, string>>
+  setValidationErrors: Dispatch<
+    SetStateAction<Record<string, string>>
   >;
 };
 

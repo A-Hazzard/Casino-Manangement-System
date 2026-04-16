@@ -1,11 +1,11 @@
 'use client';
 
+import { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import type React from 'react';
 
 type ClientOnlyProps = {
-  children: React.ReactNode;
-  fallback?: React.ReactNode;
+  children: ReactNode;
+  fallback?: ReactNode;
 };
 
 /**
@@ -37,4 +37,3 @@ export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
 
   return <>{children}</>;
 }
-

@@ -11,6 +11,7 @@
  */
 'use client';
 
+import { FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
   Dialog,
@@ -24,7 +25,14 @@ import { Label } from '@/components/shared/ui/label';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { cn } from '@/lib/utils';
 import { validatePasswordStrength } from '@/lib/utils/validation';
-import { CheckCircle, Eye, EyeOff, KeyRound, ShieldAlert, XCircle } from 'lucide-react';
+import {
+  CheckCircle,
+  Eye,
+  EyeOff,
+  KeyRound,
+  ShieldAlert,
+  XCircle,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 // ============================================================================
@@ -35,7 +43,11 @@ type PasswordUpdateModalProps = {
   open: boolean;
   onClose?: () => void;
   /** Called with (currentPassword, newPassword, phone?). Return error string or null. */
-  onUpdate: (currentPassword: string, newPassword: string, phone?: string) => Promise<string | null>;
+  onUpdate: (
+    currentPassword: string,
+    newPassword: string,
+    phone?: string
+  ) => Promise<string | null>;
   loading?: boolean;
   /** If true, the modal cannot be dismissed — cashier must change their temp password. */
   isForced?: boolean;
@@ -57,6 +69,15 @@ const PASSWORD_REQUIREMENTS = [
     test: (p: string) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p),
   },
 ];
+
+function omitProperty<T extends Record<string, unknown>, K extends keyof T>(
+  obj: T,
+  key: K
+): Omit<T, K> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([k]) => k !== key)
+  ) as Omit<T, K>;
+}
 
 // ============================================================================
 // Component
@@ -82,7 +103,10 @@ const PasswordInput = ({
   error?: string;
 }) => (
   <div className="space-y-1.5">
-    <Label htmlFor={id} className={cn(error ? 'text-red-600' : 'text-slate-700')}>
+    <Label
+      htmlFor={id}
+      className={cn(error ? 'text-red-600' : 'text-slate-700')}
+    >
       {label}
     </Label>
     <div className="relative">
@@ -108,8 +132,8 @@ const PasswordInput = ({
       </button>
     </div>
     {error && (
-      <p className="text-xs font-medium text-red-600 flex items-center gap-1">
-        <XCircle className="w-3 h-3" /> {error}
+      <p className="flex items-center gap-1 text-xs font-medium text-red-600">
+        <XCircle className="h-3 w-3" /> {error}
       </p>
     )}
   </div>
@@ -151,16 +175,15 @@ export default function PasswordUpdateModal({
   }, [open, initialPhone]);
 
   // === Computed ===
-  const passwordStrength = newPassword ? validatePasswordStrength(newPassword) : null;
+  const passwordStrength = newPassword
+    ? validatePasswordStrength(newPassword)
+    : null;
 
   // === Real-time Validation Effects ===
   // Phone validation
   useEffect(() => {
     if (!debouncedPhone.trim()) {
-      setErrors(prev => {
-        const { phone: _, ...rest } = prev;
-        return rest;
-      });
+      setErrors(prev => omitProperty(prev, 'phone'));
       return;
     }
 
@@ -170,35 +193,33 @@ export default function PasswordUpdateModal({
     const openCount = (trimmedPhone.match(/\(/g) || []).length;
     const closeCount = (trimmedPhone.match(/\)/g) || []).length;
     const dashCount = (trimmedPhone.match(/-/g) || []).length;
-    const plusAtStart = !trimmedPhone.includes('+') || trimmedPhone.indexOf('+') === 0;
+    const plusAtStart =
+      !trimmedPhone.includes('+') || trimmedPhone.indexOf('+') === 0;
     const digits = trimmedPhone.replace(/\D/g, '').length;
     const phoneOk =
       onlyAllowed &&
-      plusCount <= 1 && plusAtStart &&
-      openCount <= 1 && closeCount <= 1 &&
+      plusCount <= 1 &&
+      plusAtStart &&
+      openCount <= 1 &&
+      closeCount <= 1 &&
       dashCount <= 1 &&
-      digits >= 7 && digits <= 15;
+      digits >= 7 &&
+      digits <= 15;
 
     if (!phoneOk) {
       setErrors(prev => ({
         ...prev,
-        phone: 'Enter a valid phone number (e.g. +1 868 000-0000 or (868) 000-0000).',
+        phone:
+          'Enter a valid phone number (e.g. +1 868 000-0000 or (868) 000-0000).',
       }));
     } else {
-      setErrors(prev => {
-        const { phone: _, ...rest } = prev;
-        return rest;
-      });
+      setErrors(prev => omitProperty(prev, 'phone'));
     }
   }, [debouncedPhone]);
 
-  // New password validation
   useEffect(() => {
     if (!debouncedNewPassword) {
-      setErrors(prev => {
-        const { newPassword: _, ...rest } = prev;
-        return rest;
-      });
+      setErrors(prev => omitProperty(prev, 'newPassword'));
       return;
     }
 
@@ -209,20 +230,13 @@ export default function PasswordUpdateModal({
         newPassword: strength.feedback[0] || 'Password is too weak.',
       }));
     } else {
-      setErrors(prev => {
-        const { newPassword: _, ...rest } = prev;
-        return rest;
-      });
+      setErrors(prev => omitProperty(prev, 'newPassword'));
     }
   }, [debouncedNewPassword]);
 
-  // Confirm password validation
   useEffect(() => {
     if (!debouncedConfirmPassword) {
-      setErrors(prev => {
-        const { confirmPassword: _, ...rest } = prev;
-        return rest;
-      });
+      setErrors(prev => omitProperty(prev, 'confirmPassword'));
       return;
     }
 
@@ -232,10 +246,7 @@ export default function PasswordUpdateModal({
         confirmPassword: 'Passwords do not match.',
       }));
     } else {
-      setErrors(prev => {
-        const { confirmPassword: _, ...rest } = prev;
-        return rest;
-      });
+      setErrors(prev => omitProperty(prev, 'confirmPassword'));
     }
   }, [debouncedConfirmPassword, newPassword]);
 
@@ -258,7 +269,7 @@ export default function PasswordUpdateModal({
     onClose?.();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrors({});
     setServerError(null);
@@ -273,7 +284,8 @@ export default function PasswordUpdateModal({
     if (!newPassword) {
       newErrors.newPassword = 'New password is required.';
     } else if (passwordStrength && !passwordStrength.isValid) {
-      newErrors.newPassword = passwordStrength.feedback[0] || 'Password is too weak.';
+      newErrors.newPassword =
+        passwordStrength.feedback[0] || 'Password is too weak.';
     }
     if (!confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your new password.';
@@ -289,14 +301,18 @@ export default function PasswordUpdateModal({
       const openCount = (trimmedPhone.match(/\(/g) || []).length;
       const closeCount = (trimmedPhone.match(/\)/g) || []).length;
       const dashCount = (trimmedPhone.match(/-/g) || []).length;
-      const plusAtStart = !trimmedPhone.includes('+') || trimmedPhone.indexOf('+') === 0;
+      const plusAtStart =
+        !trimmedPhone.includes('+') || trimmedPhone.indexOf('+') === 0;
       const digits = trimmedPhone.replace(/\D/g, '').length;
       const phoneOk =
         onlyAllowed &&
-        plusCount <= 1 && plusAtStart &&
-        openCount <= 1 && closeCount <= 1 &&
+        plusCount <= 1 &&
+        plusAtStart &&
+        openCount <= 1 &&
+        closeCount <= 1 &&
         dashCount <= 1 &&
-        digits >= 7 && digits <= 15;
+        digits >= 7 &&
+        digits <= 15;
       if (!phoneOk) {
         newErrors.phone =
           'Enter a valid phone number (e.g. +1 868 000-0000 or (868) 000-0000).';
@@ -308,7 +324,11 @@ export default function PasswordUpdateModal({
       return;
     }
 
-    const error = await onUpdate(currentPassword, newPassword, phone.trim() || undefined);
+    const error = await onUpdate(
+      currentPassword,
+      newPassword,
+      phone.trim() || undefined
+    );
     if (error) {
       setServerError(error);
     } else {
@@ -321,38 +341,40 @@ export default function PasswordUpdateModal({
     }
   };
 
-
   // ============================================================================
   // Render
   // ============================================================================
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="md:max-w-md md:max-h-[90vh] p-0 overflow-hidden bg-slate-50 border-slate-200 shadow-xl [&>button]:hidden flex flex-col"
-        onInteractOutside={isForced ? (e) => e.preventDefault() : undefined}
-        onEscapeKeyDown={isForced ? (e) => e.preventDefault() : undefined}
+        className="flex h-fit flex-col overflow-hidden border-slate-200 bg-slate-50 p-0 shadow-xl md:max-h-[90vh] md:max-w-md [&>button]:hidden"
+        onInteractOutside={isForced ? e => e.preventDefault() : undefined}
+        onEscapeKeyDown={isForced ? e => e.preventDefault() : undefined}
+        isMobileFullScreen={false}
       >
         {/* Header */}
-        <div className="bg-white border-b px-6 py-4 shrink-0">
+        <div className="shrink-0 border-b bg-white px-6 py-4">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-slate-800">
               <span
                 className={cn(
-                  'flex items-center justify-center w-8 h-8 rounded-full',
+                  'flex h-8 w-8 items-center justify-center rounded-full',
                   isCashierTempChange
                     ? 'bg-amber-100 text-amber-600'
                     : 'bg-blue-100 text-blue-600'
                 )}
               >
                 {isCashierTempChange ? (
-                  <KeyRound className="w-5 h-5" />
+                  <KeyRound className="h-5 w-5" />
                 ) : (
-                  <ShieldAlert className="w-5 h-5" />
+                  <ShieldAlert className="h-5 w-5" />
                 )}
               </span>
-              {isCashierTempChange ? 'Set Your Password' : 'Update Your Password'}
+              {isCashierTempChange
+                ? 'Set Your Password'
+                : 'Update Your Password'}
             </DialogTitle>
-            <DialogDescription className="text-slate-500 mt-1.5">
+            <DialogDescription className="mt-1.5 text-slate-500">
               {isCashierTempChange
                 ? 'You are using a temporary password assigned by your vault manager. For your security, you must set a personal password before continuing.'
                 : 'Your current password does not meet security requirements. Please update it to continue.'}
@@ -361,40 +383,51 @@ export default function PasswordUpdateModal({
         </div>
 
         {/* Form */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="custom-scrollbar flex-1 overflow-y-auto">
           {isSuccess ? (
-            <div className="flex flex-col items-center justify-center h-full px-6 py-12 text-center space-y-4 animate-in fade-in zoom-in duration-300">
-              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-10 h-10" />
+            <div className="flex h-full flex-col items-center justify-center space-y-4 px-6 py-12 text-center duration-300 animate-in fade-in zoom-in">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
+                <CheckCircle className="h-10 w-10" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-bold text-slate-800">Password Updated!</h3>
-                <p className="text-slate-500 max-w-xs mx-auto">
-                  Your new password has been saved. Redirecting you to the dashboard...
+                <h3 className="text-xl font-bold text-slate-800">
+                  Password Updated!
+                </h3>
+                <p className="mx-auto max-w-xs text-slate-500">
+                  Your new password has been saved. Redirecting you to the
+                  dashboard...
                 </p>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
               {serverError && (
-                <div className="bg-red-50 text-red-600 px-4 py-3 rounded-md text-sm font-medium border border-red-100 flex items-center gap-2">
-                  <XCircle className="w-4 h-4 shrink-0" />
+                <div className="flex items-center gap-2 rounded-md border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+                  <XCircle className="h-4 w-4 shrink-0" />
                   {serverError}
                 </div>
               )}
 
               <PasswordInput
                 id="currentPassword"
-                label={isCashierTempChange ? 'Temporary Password' : 'Current Password'}
+                label={
+                  isCashierTempChange
+                    ? 'Temporary Password'
+                    : 'Current Password'
+                }
                 value={currentPassword}
                 onChange={setCurrentPassword}
                 show={showCurrent}
                 onToggle={() => setShowCurrent(v => !v)}
-                placeholder={isCashierTempChange ? 'Enter the password given to you' : 'Enter current password'}
+                placeholder={
+                  isCashierTempChange
+                    ? 'Enter the password given to you'
+                    : 'Enter current password'
+                }
                 error={errors.currentPassword}
               />
 
-              <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div className="space-y-3 border-t border-slate-100 pt-2">
                 <PasswordInput
                   id="newPassword"
                   label="New Password"
@@ -408,12 +441,14 @@ export default function PasswordUpdateModal({
 
                 {/* Strength Requirements */}
                 {newPassword && passwordStrength && (
-                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
-                    <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden mb-2">
+                  <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                    <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                       <div
                         className={cn(
                           'h-full transition-all duration-500',
-                          passwordStrength.isValid ? 'bg-green-500 w-full' : 'bg-red-400 w-1/3'
+                          passwordStrength.isValid
+                            ? 'w-full bg-green-500'
+                            : 'w-1/3 bg-red-400'
                         )}
                       />
                     </div>
@@ -424,14 +459,14 @@ export default function PasswordUpdateModal({
                           <li
                             key={req.label}
                             className={cn(
-                              'text-[10px] flex items-center gap-1',
+                              'flex items-center gap-1 text-[10px]',
                               met ? 'text-green-600' : 'text-slate-400'
                             )}
                           >
                             {met ? (
-                              <CheckCircle className="w-3 h-3" />
+                              <CheckCircle className="h-3 w-3" />
                             ) : (
-                              <div className="w-3 h-3 rounded-full border border-slate-300" />
+                              <div className="h-3 w-3 rounded-full border border-slate-300" />
                             )}
                             {req.label}
                           </li>
@@ -454,16 +489,16 @@ export default function PasswordUpdateModal({
               </div>
 
               {/* Phone: Optional */}
-              <div className="pt-2 border-t border-slate-100 space-y-1.5">
+              <div className="space-y-1.5 border-t border-slate-100 pt-2">
                 <Label
                   htmlFor="phone"
                   className={cn(
-                    'text-slate-700 flex items-center gap-1.5',
+                    'flex items-center gap-1.5 text-slate-700',
                     errors.phone && 'text-red-600'
                   )}
                 >
                   Phone Number
-                  <span className="text-[10px] font-normal text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-normal text-slate-400">
                     Optional
                   </span>
                 </Label>
@@ -474,14 +509,14 @@ export default function PasswordUpdateModal({
                   onChange={e => setPhone(e.target.value)}
                   placeholder={initialPhone || '+1 868 000-0000'}
                   className={cn(
-                    'border-slate-200 bg-white focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0 placeholder:text-slate-400',
+                    'border-slate-200 bg-white placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0',
                     errors.phone && 'border-red-300'
                   )}
                   autoComplete="tel"
                 />
                 {errors.phone ? (
-                  <p className="text-xs font-medium text-red-600 flex items-center gap-1">
-                    <XCircle className="w-3 h-3 shrink-0" /> {errors.phone}
+                  <p className="flex items-center gap-1 text-xs font-medium text-red-600">
+                    <XCircle className="h-3 w-3 shrink-0" /> {errors.phone}
                   </p>
                 ) : (
                   <p className="text-[10px] text-slate-400">
@@ -493,10 +528,9 @@ export default function PasswordUpdateModal({
           )}
         </div>
 
-
         {/* Footer */}
         {!isSuccess && (
-          <div className="bg-slate-50 border-t px-6 py-4 flex gap-3">
+          <div className="flex gap-3 border-t bg-slate-50 px-6 py-4">
             {!isForced && (
               <Button
                 type="button"
@@ -522,7 +556,7 @@ export default function PasswordUpdateModal({
               onClick={handleSubmit}
               disabled={loading}
               className={cn(
-                'text-white font-semibold',
+                'font-semibold text-white',
                 isForced ? 'flex-[2]' : 'flex-[2]',
                 isCashierTempChange
                   ? 'bg-amber-500 hover:bg-amber-600'

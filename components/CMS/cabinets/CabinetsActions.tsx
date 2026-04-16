@@ -68,19 +68,15 @@ export const CabinetsActions = ({
       if (!canCreateCabinet) return null;
       return (
         <div className="flex items-center gap-2 flex-shrink-0">
-          {loading ? (
-            <ActionButtonSkeleton width="w-28 sm:w-36" showIcon={true} />
-          ) : (
-            <Button
-              onClick={handleNewCabinet}
-              className="bg-button hover:bg-buttonActive text-white rounded-md items-center gap-1 flex-shrink-0 px-2 py-1 text-xs font-medium sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
-              title="Create new cabinet"
-            >
-              <PlusCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">Create new cabinet</span>
-              <span className="sm:hidden">Create</span>
-            </Button>
-          )}
+          <Button
+            onClick={handleNewCabinet}
+            className="bg-button hover:bg-buttonActive text-white rounded-md items-center gap-1 flex-shrink-0 px-2 py-1 text-xs font-medium sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+            title="Create new cabinet"
+          >
+            <PlusCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">Create new cabinet</span>
+            <span className="sm:hidden">Create</span>
+          </Button>
         </div>
       );
     }

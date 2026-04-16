@@ -14,8 +14,7 @@
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -26,13 +25,16 @@ import {
   getCountryCurrency,
   getLicenceeCurrency,
 } from '@/lib/helpers/rates';
-import type { MachineDocument } from '@/lib/types/common';
+import type {
+  LicenceeDocument,
+  LocationDocument,
+  MachineDocument,
+} from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
-import mongoose from 'mongoose';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
-
+import { TimePeriod } from '../../lib/types';
 
 /**
  * Main GET handler for fetching a single machine by ID
@@ -50,40 +52,36 @@ import { NextRequest, NextResponse } from 'next/server';
  * 10. Transform and return machine data
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ machineId: string }> }
+  request: NextRequest
 ) {
-  const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const machineId = pathname.split('/')[3];
 
-  try {
-    // ============================================================================
-    // STEP 1: Parse route parameters and query parameters
-    // ============================================================================
-    const { machineId } = await params;
+  return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
+    const startTime = Date.now();
+
+    try {
     const { searchParams } = new URL(request.url);
-    let timePeriod = searchParams.get('timePeriod');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
+    let timePeriod = searchParams.get('timePeriod') as TimePeriod;
+
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
+
     // ============================================================================
     // STEP 2: Validate timePeriod or date range parameters
     // ============================================================================
-    // Only proceed if timePeriod or custom date range is provided
-    if (!timePeriod && !startDateParam && !endDateParam) {
+    if (!timePeriod && (!startDateParam || !endDateParam)) {
       return NextResponse.json(
-        { error: 'timePeriod or startDate/endDate parameters are required' },
+        {
+          error:
+            "Ensure that you've passed the timeperiod, or startDate and endDate parameters",
+        },
         { status: 400 }
       );
     }
 
-    // ============================================================================
-    // STEP 3: Connect to database and authenticate user
-    // ============================================================================
-    await connectDB();
-
-    const userPayload = await getUserFromServer();
-    const userRoles = (userPayload?.roles as string[]) || [];
     const isCashier = userRoles.includes('cashier');
     const isVaultManager = userRoles.includes('vault-manager');
     const isStaff = isCashier || isVaultManager;
@@ -91,86 +89,49 @@ export async function GET(
     // ============================================================================
     // STEP 3.5: Technician Restriction - Force last hour meter data
     // ============================================================================
-    const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer');
-    const userRolesLower = userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase());
-    const isOnlyTechnician = userRolesLower.includes('technician') && !userRolesLower.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
-    if (isOnlyTechnician && !isAdmin) {
-      console.warn('[API Machine Detail] Applying technician restriction: forcing LastHour timePeriod');
-      timePeriod = 'LastHour';
-    }
+    const isOnlyTechnician =
+      userRoles.includes('technician') && userRoles.length === 1;
+    if (isOnlyTechnician) timePeriod = 'LastHour';
 
     // ============================================================================
     // STEP 4: Fetch machine by ID
     // ============================================================================
-    // Fetch machine with all necessary fields - INCLUDING soft-deleted ones
-    // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    // Handle both String _id (from schema) and ObjectId _id (legacy data)
-    // Since aggregation endpoint converts _id to string, but DB might have ObjectId,
-    // we need to try both formats
-    let machine: MachineDocument | null = null;
-
-    // First try as string (schema says String type)
-    machine = (await Machine.findOne({
+    const machine = (await Machine.findOne({
       _id: machineId,
-      // Removed: deletedAt: { $exists: false } because i want deleted docs,
-    }).lean()) as MachineDocument | null;
+    }).lean()) as MachineDocument;
 
-    // If not found and ID looks like ObjectId hex string, try as ObjectId
-    if (
-      !machine &&
-      machineId.length === 24 &&
-      /^[0-9a-fA-F]{24}$/.test(machineId)
-    ) {
-      try {
-        const { default: mongoose } = await import('mongoose');
-        const objectId = new mongoose.Types.ObjectId(machineId);
-        // Use Mongoose model with ObjectId for legacy data
-        const machineDoc = await Machine.findOne({
-          _id: objectId as unknown as string,
-        }).lean();
-        if (machineDoc) {
-          machine = machineDoc as MachineDocument;
-        }
-      } catch (objectIdError) {
-        // Invalid ObjectId format or DB error, continue with 404
-        console.warn(
-          `[Machines API GET] Failed to query as ObjectId:`,
-          objectIdError
-        );
-      }
-    }
-
-    if (!machine) {
+    if (!machine)
       return NextResponse.json(
         { success: false, error: 'Machine not found' },
         { status: 404 }
       );
-    }
 
     // ============================================================================
     // STEP 5: Fetch location details and gameDayOffset
     // ============================================================================
-    let locationName = 'No Location Assigned';
+    let locationName = '';
     let gameDayOffset = 0;
+    let includeJackpotSetting = false;
+    let aceEnabled = false;
+
     if (machine.gamingLocation) {
       try {
         const location = (await GamingLocations.findOne({
           _id: machine.gamingLocation,
         })
-          .select('name locationName gameDayOffset rel')
-          .lean()) as {
-            name?: string;
-            locationName?: string;
-            gameDayOffset?: number;
-            rel?: { licencee?: string };
-          } | null;
+          .select('name gameDayOffset rel aceEnabled')
+          .lean()) as Pick<
+          LocationDocument,
+          'name' | 'gameDayOffset' | 'rel'
+        > & { aceEnabled?: boolean } | null;
 
         if (location) {
           // Check if user has access to this location (includes both licencee and location permissions)
           const hasAccess = await checkUserLocationAccess(
-            String(machine.gamingLocation)
+            machine.gamingLocation
           );
-          if (!hasAccess) {
+
+          if (!hasAccess)
             return NextResponse.json(
               {
                 success: false,
@@ -178,26 +139,27 @@ export async function GET(
               },
               { status: 403 }
             );
-          }
 
-          locationName =
-            location.name || location.locationName || 'Unknown Location';
+          locationName = location.name || 'Unknown Location';
           gameDayOffset = location.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
-          
-          // STEP 6: Fetch licensee-level subtractJackpot setting
-          let subtractJackpot = false;
-          const licenceeId = location.rel?.licencee;
+
+          // STEP 6: Fetch licensee-level includeJackpot setting to see if we should append jackpot to moneyIn
+          let includeJackpot = false;
+          // rel?.licencee is string[] per the schema — use the first one.
+          const licenceeIdRel = location.rel?.licencee;
+          const licenceeId = Array.isArray(licenceeIdRel)
+            ? licenceeIdRel[0]
+            : licenceeIdRel;
+
           if (licenceeId) {
-            const licenceeDoc = await Licencee.findOne({
-              $or: [{ _id: licenceeId }, { name: licenceeId }]
-            }).select('subtractJackpot').lean() as { subtractJackpot?: boolean } | null;
-            subtractJackpot = !!licenceeDoc?.subtractJackpot;
+            const licencee = (await Licencee.findOne({
+              _id: licenceeId,
+            }).lean()) as Record<string, unknown> | null;
+            if (licencee) includeJackpot = !!licencee.includeJackpot;
           }
-          
-          (machine as Record<string, unknown>).subtractJackpot = subtractJackpot; // Store for transform
-        } else {
-          locationName = 'Location Not Found';
-        }
+          includeJackpotSetting = includeJackpot;
+          aceEnabled = location.aceEnabled === true;
+        } else locationName = 'Location Not Found';
       } catch (error) {
         console.warn('Failed to fetch location name for machine:', error);
         locationName = 'Location Error';
@@ -210,11 +172,21 @@ export async function GET(
     let startDate: Date | undefined;
     let endDate: Date | undefined;
 
-    if (timePeriod === 'Custom' && startDateParam && endDateParam) {
+    if (timePeriod === 'Custom') {
+      if (!startDateParam || !endDateParam) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'Custom time period requires startDate and endDate parameters',
+          },
+          { status: 400 }
+        );
+      }
       // Parse dates from parameters
-      // If they don't contain 'T', they are date-only strings from the picker
-      const customStart = new Date(startDateParam.includes('T') ? startDateParam : startDateParam + 'T00:00:00.000Z');
-      const customEnd = new Date(endDateParam.includes('T') ? endDateParam : endDateParam + 'T00:00:00.000Z');
+      // Frontend always sends dates with time component (e.g., "2025-12-07T11:45:00-04:00" or "2025-12-07T00:00:00.000Z")
+      const customStart = new Date(startDateParam);
+      const customEnd = new Date(endDateParam);
 
       if (isNaN(customStart.getTime()) || isNaN(customEnd.getTime())) {
         return NextResponse.json(
@@ -250,23 +222,11 @@ export async function GET(
     // ============================================================================
     // STEP 8: Aggregate meter data for the time period
     // ============================================================================
-    // Use aggregation to sum deltas (movement.* fields contain deltas, not cumulative values)
     const pipeline: PipelineStage[] = [];
-
-    // Support both String and ObjectId matching for machine ID in Meters collection
-    // This ensures data is found regardless of how the machine ID was stored
-    const machineMatch: Record<string, unknown>[] = [{ machine: machineId }];
-    if (mongoose.Types.ObjectId.isValid(machineId)) {
-      machineMatch.push({ machine: new mongoose.Types.ObjectId(machineId) });
-    }
-
-    // Add match stage with date filtering (only if dates are provided)
-    const matchStage: Record<string, unknown> = {
-      $or: machineMatch
+    const matchStage = {
+      machine: machineId,
+      readAt: { $gte: startDate, $lte: endDate },
     };
-    if (startDate && endDate) {
-      matchStage.readAt = { $gte: startDate, $lte: endDate };
-    }
     pipeline.push({ $match: matchStage });
 
     pipeline.push({
@@ -275,7 +235,6 @@ export async function GET(
         moneyIn: { $sum: '$movement.drop' },
         moneyOut: { $sum: '$movement.totalCancelledCredits' },
         jackpot: { $sum: '$movement.jackpot' },
-        // Use movement fields for all metrics to get period-based totals
         coinIn: { $sum: { $ifNull: ['$movement.coinIn', 0] } },
         coinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
         gamesPlayed: { $sum: { $ifNull: ['$movement.gamesPlayed', 0] } },
@@ -301,63 +260,41 @@ export async function GET(
       meterCount: 0,
     };
 
-    // Apply collectorDenomination multiplier to monetary metrics
-    const multiplier = Number(machine.collectorDenomination) || 1;
-    const rawMoneyIn = (metrics.moneyIn || 0);
-    const rawMoneyOut = (metrics.moneyOut || 0);
-    const rawJackpot = (metrics.jackpot || 0);
+    let moneyIn = metrics.moneyIn;
+    const rawMoneyOut = metrics.moneyOut; // movement.totalCancelledCredits — base cancelled credits (no jackpot)
+    let jackpot = metrics.jackpot;
 
-    const subtractJackpotSetting = (machine as Record<string, unknown>).subtractJackpot || false;
+    // rawMoneyOut is the base cancelled credits without jackpot.
+    // Add jackpot only when includeJackpot=true for this licencee.
+    let moneyOut = rawMoneyOut + (includeJackpotSetting ? jackpot : 0);
 
-    // Apply new Money Out logic: if subtractJackpot is ENABLED (Low Gross), 
-    // moneyOut = Net Cancelled + Jackpot (Total payout)
-    const moneyOutValue = rawMoneyOut + (subtractJackpotSetting ? rawJackpot : 0);
+    let coinIn = metrics.coinIn;
+    let coinOut = metrics.coinOut;
+    const gamesPlayed = metrics.gamesPlayed;
+    const gamesWon = metrics.gamesWon;
+    const handPaidCancelledCredits = metrics.handPaidCancelledCredits;
 
-    const moneyIn = rawMoneyIn * multiplier;
-    const moneyOut = moneyOutValue * multiplier;
-    const jackpot = rawJackpot * multiplier;
-    const coinIn = (metrics.coinIn || 0) * multiplier;
-    const coinOut = (metrics.coinOut || 0) * multiplier;
-    const gamesPlayed = metrics.gamesPlayed || 0;
-    const gamesWon = metrics.gamesWon || 0;
-    const handPaidCancelledCredits =
-      (metrics.handPaidCancelledCredits || 0) * multiplier;
-
-    const gross = moneyIn - moneyOut;
+    let gross = moneyIn - moneyOut;
 
     // ============================================================================
     // STEP 9: Apply currency conversion if needed
     // ============================================================================
-    // Currency conversion logic (similar to aggregation endpoint)
-    let finalMoneyIn = moneyIn;
-    let finalMoneyOut = moneyOut;
-    let finalCancelledCredits = moneyOut;
-    let finalJackpot = jackpot;
-    let finalGross = gross;
-    let finalCoinIn = coinIn;
-    let finalCoinOut = coinOut;
-
     // For cabinet detail pages we ALWAYS convert from the machine's native currency
-    // into the selected display currency (including USD), regardless of licencee filter or role.
+    // into the selected display currency, regardless of licencee filter.
     // EXCEPT for cashiers and vault managers who should always see raw values.
     const shouldConvert = Boolean(displayCurrency) && !isStaff;
 
     if (shouldConvert) {
       // Get location details to determine native currency
-      let locationData: {
-        rel?: { licencee?: string };
-        country?: string;
-      } | null = null;
+      let locationData: Pick<LocationDocument, 'rel' | 'country'> | null = null;
+
       if (machine.gamingLocation) {
         try {
           locationData = (await GamingLocations.findOne({
             _id: machine.gamingLocation,
           })
             .select('rel country')
-            .lean()) as {
-              rel?: { licencee?: string };
-              country?: string;
-            } | null;
+            .lean()) as Pick<LocationDocument, 'rel' | 'country'> | null;
         } catch (error) {
           console.warn(
             'Failed to fetch location for currency conversion:',
@@ -368,29 +305,28 @@ export async function GET(
 
       // Determine native currency from licencee or country
       let nativeCurrency: CurrencyCode = 'USD';
-      const licenceeId = locationData?.rel?.licencee || (locationData?.rel as unknown as Record<string, unknown>)?.licencee as string | undefined;
+      const licenceeId = locationData?.rel?.licencee;
+
       if (licenceeId) {
         try {
-          // Licencee _id is stored as a String in this project, not ObjectId
-          const licenceeDoc = await Licencee.findOne({
+          const licenceeDoc = (await Licencee.findOne({
             _id: licenceeId,
           })
             .select('name')
-            .lean();
+            .lean()) as Pick<LicenceeDocument, 'name'> | null;
 
-          if (licenceeDoc && !Array.isArray(licenceeDoc) && licenceeDoc.name) {
-            // Map licencee name/id to its native currency (TTD, GYD, BBD, etc.)
+          if (licenceeDoc && licenceeDoc.name)
             nativeCurrency = getLicenceeCurrency(licenceeDoc.name);
-          }
         } catch (licenceeError: unknown) {
           console.warn(
             'Failed to resolve licencee for currency conversion:',
-            licenceeError instanceof Error ? licenceeError.message : licenceeError
+            licenceeError instanceof Error
+              ? licenceeError.message
+              : licenceeError
           );
         }
       } else if (locationData?.country) {
         try {
-          // location.country already stores the country name in most cases
           nativeCurrency = getCountryCurrency(locationData.country);
         } catch (countryError: unknown) {
           console.warn(
@@ -407,13 +343,27 @@ export async function GET(
       const coinInUSD = convertToUSD(coinIn, nativeCurrency);
       const coinOutUSD = convertToUSD(coinOut, nativeCurrency);
 
-      finalMoneyIn = convertFromUSD(moneyInUSD, displayCurrency);
-      finalMoneyOut = convertFromUSD(moneyOutUSD, displayCurrency);
-      finalCancelledCredits = finalMoneyOut;
-      finalJackpot = convertFromUSD(jackpotUSD, displayCurrency);
-      finalGross = finalMoneyIn - finalMoneyOut;
-      finalCoinIn = convertFromUSD(coinInUSD, displayCurrency);
-      finalCoinOut = convertFromUSD(coinOutUSD, displayCurrency);
+      moneyIn = convertFromUSD(moneyInUSD, displayCurrency);
+      moneyOut = convertFromUSD(moneyOutUSD, displayCurrency);
+      jackpot = convertFromUSD(jackpotUSD, displayCurrency);
+      coinIn = convertFromUSD(coinInUSD, displayCurrency);
+      coinOut = convertFromUSD(coinOutUSD, displayCurrency);
+      gross = moneyIn - moneyOut;
+    } else {
+      // When not converting, recalculate moneyOut with raw values
+      moneyOut = rawMoneyOut + (includeJackpotSetting ? jackpot : 0);
+    }
+
+    // ============================================================================
+    // STEP 9.5: Apply reviewer multiplier
+    // ============================================================================
+    const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+    if (reviewerMult !== null) {
+      const mult = 1 - reviewerMult;
+      moneyIn *= mult;
+      moneyOut *= mult;
+      jackpot *= mult;
+      gross = moneyIn - moneyOut;
     }
 
     // ============================================================================
@@ -422,8 +372,7 @@ export async function GET(
     // Get serialNumber with fallback to custom.name
     const serialNumber = (machine.serialNumber as string)?.trim() || '';
     const customName =
-      ((machine.custom as Record<string, unknown>)?.name as string)?.trim() ||
-      '';
+      (machine.custom as { name?: string })?.name?.trim() || '';
     const finalSerialNumber = serialNumber || customName || '';
 
     // Transform the data to match frontend expectations
@@ -450,16 +399,16 @@ export async function GET(
       updatedAt: machine.updatedAt,
       deletedAt: machine.deletedAt, // Include deletedAt field
       // Financial metrics from meters collection according to financial-metrics-guide.md
-      moneyIn: finalMoneyIn,
-      moneyOut: finalMoneyOut,
-      cancelledCredits: finalCancelledCredits, // Same as moneyOut (totalCancelledCredits)
-      jackpot: finalJackpot,
-      gross: finalGross,
-      subtractJackpot: (machine as Record<string, unknown>).subtractJackpot || false,
-      netGross: (machine as Record<string, unknown>).subtractJackpot ? (finalGross - (finalJackpot || 0)) : undefined,
+      moneyIn,
+      moneyOut,
+      cancelledCredits: moneyOut, // Same as moneyOut (totalCancelledCredits)
+      jackpot,
+      gross,
+      includeJackpot: includeJackpotSetting,
+      netGross: includeJackpotSetting ? gross : gross - (jackpot || 0),
       // Additional metrics for comprehensive financial tracking
-      coinIn: finalCoinIn,
-      coinOut: finalCoinOut,
+      coinIn,
+      coinOut,
       gamesPlayed,
       gamesWon,
       handPaidCancelledCredits,
@@ -476,6 +425,7 @@ export async function GET(
       smibVersion: machine.smibVersion || {},
       billMeters: machine.billMeters || {},
       lastActivity: machine.lastActivity,
+      aceEnabled,
       sessionHistory: machine.sessionHistory || [],
       balances: machine.balances || {},
       tasks: machine.tasks || {},
@@ -519,19 +469,18 @@ export async function GET(
       success: true,
       data: transformedMachine,
     });
-  } catch (error: unknown) {
+  } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to fetch machine';
-    console.error(
-      `[Machines API GET] Error after ${duration}ms:`,
-      errorMessage
-    );
+    console.error(`[Machines API GET] Error after ${duration}ms:`, error);
     return NextResponse.json(
-      { success: false, error: errorMessage },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Internal Server Error',
+      },
       { status: 500 }
     );
   }
+  });
 }
 
 /**

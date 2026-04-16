@@ -9,11 +9,11 @@ import { MachineSession } from '@/app/api/lib/models/machineSessions';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ sessionId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
-  const { sessionId } = await params;
+  const { pathname } = request.nextUrl;
+  const sessionId = pathname.split('/').pop();
 
   try {
     await connectDB();

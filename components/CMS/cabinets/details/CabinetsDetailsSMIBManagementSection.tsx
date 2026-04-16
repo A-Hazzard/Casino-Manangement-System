@@ -25,7 +25,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDownIcon, Copy } from 'lucide-react';
 
 type SSEMessage = {
-  type: 'connected' | 'callback_ready' | 'heartbeat' | 'keepalive' | 'config_update' | 'error';
+  type:
+    | 'connected'
+    | 'callback_ready'
+    | 'heartbeat'
+    | 'keepalive'
+    | 'config_update'
+    | 'error';
   relayId?: string;
   timestamp?: string;
   message?: string;
@@ -86,7 +92,9 @@ type CabinetsDetailsSMIBManagementSectionProps = {
   isEditMode?: boolean;
   editingSection: string | null;
   smibConfig?: {
-    subscribeToMessages: (callback: (message: SSEMessage) => void) => () => void;
+    subscribeToMessages: (
+      callback: (message: SSEMessage) => void
+    ) => () => void;
     isSSEConnected: boolean;
   };
   onToggleExpand: () => void;
@@ -98,11 +106,22 @@ type CabinetsDetailsSMIBManagementSectionProps = {
   onResetFormData?: () => void;
   onSaveAll?: () => Promise<void>;
   smibHook?: {
-    updateNetworkConfig?: (relayId: string, data: Record<string, unknown>) => Promise<void>;
-    updateComsConfig?: (relayId: string, data: Record<string, unknown>) => Promise<void>;
-    updateMqttConfig?: (relayId: string, data: Record<string, unknown>) => Promise<void>;
+    updateNetworkConfig?: (
+      relayId: string,
+      data: Record<string, unknown>
+    ) => Promise<void>;
+    updateComsConfig?: (
+      relayId: string,
+      data: Record<string, unknown>
+    ) => Promise<void>;
+    updateMqttConfig?: (
+      relayId: string,
+      data: Record<string, unknown>
+    ) => Promise<void>;
     requestLiveConfig?: (relayId: string, section: string) => Promise<void>;
-    subscribeToMessages: (callback: (message: SSEMessage) => void) => () => void;
+    subscribeToMessages: (
+      callback: (message: SSEMessage) => void
+    ) => () => void;
     isSSEConnected: boolean;
   };
 };
@@ -118,11 +137,8 @@ export default function CabinetsDetailsSMIBManagementSection({
   isManuallyFetching,
   isEditMode = false,
   editingSection,
-  smibConfig: _smibConfig,
   onToggleExpand,
   onFetchConfig,
-  onSaveConfig: _onSaveConfig,
-  onUpdateFormData: _onUpdateFormData,
   onSetEditingSection,
   onCopyToClipboard,
   onResetFormData,
@@ -134,18 +150,18 @@ export default function CabinetsDetailsSMIBManagementSection({
 
   return (
     <motion.div
-      className="mt-4 w-full max-w-full rounded-lg bg-container shadow-md shadow-purple-200 overflow-x-hidden"
+      className="mt-4 w-full max-w-full overflow-x-hidden rounded-lg bg-container shadow-md shadow-purple-200"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.1 }}
     >
       {/* Header */}
-      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 w-full max-w-full min-w-0 overflow-x-hidden">
-        <div className="flex flex-wrap items-center gap-3 min-w-0 flex-1">
-          <h2 className="text-lg font-semibold sm:text-xl text-gray-900">
+      <div className="flex w-full min-w-0 max-w-full flex-col gap-3 overflow-x-hidden px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+          <h2 className="text-lg font-semibold text-gray-900 sm:text-xl">
             SMIB Configuration
           </h2>
-          
+
           {/* Connection Status - Show only after config has been fetched */}
           {hasConfigBeenFetched && (
             <>
@@ -156,21 +172,25 @@ export default function CabinetsDetailsSMIBManagementSection({
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <div className={`h-2.5 w-2.5 rounded-full ${
-                    isConnectedToMqtt
-                      ? 'animate-pulse bg-green-500'
-                      : 'bg-red-500'
-                  }`}></div>
-                  <span className={`text-sm font-medium ${
-                    isConnectedToMqtt ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <div
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      isConnectedToMqtt
+                        ? 'animate-pulse bg-green-500'
+                        : 'bg-red-500'
+                    }`}
+                  ></div>
+                  <span
+                    className={`text-sm font-medium ${
+                      isConnectedToMqtt ? 'text-green-600' : 'text-red-600'
+                    }`}
+                  >
                     {isConnectedToMqtt ? 'SMIB Online' : 'SMIB Offline'}
                   </span>
                 </div>
               )}
             </>
           )}
-          
+
           {/* Edit Mode Buttons - Show only when section is expanded and in edit mode */}
           {smibConfigExpanded && isEditMode && (
             <motion.div
@@ -179,18 +199,18 @@ export default function CabinetsDetailsSMIBManagementSection({
               transition={{ duration: 0.2 }}
               className="flex gap-2"
             >
-              <Button 
-                onClick={onResetFormData} 
-                variant="outline" 
-                size="sm" 
+              <Button
+                onClick={onResetFormData}
+                variant="outline"
+                size="sm"
                 className="h-8 px-3 text-xs"
               >
                 Cancel
               </Button>
-              <Button 
-                onClick={onSaveAll} 
-                variant="outline" 
-                size="sm" 
+              <Button
+                onClick={onSaveAll}
+                variant="outline"
+                size="sm"
                 className="h-8 bg-button px-3 text-xs text-container hover:bg-buttonActive"
               >
                 Save All
@@ -225,7 +245,9 @@ export default function CabinetsDetailsSMIBManagementSection({
                   </>
                 ) : (
                   <>
-                    <span className="hidden sm:inline">Get SMIB Configuration</span>
+                    <span className="hidden sm:inline">
+                      Get SMIB Configuration
+                    </span>
                     <span className="sm:hidden">Get SMIB Config</span>
                   </>
                 )}
@@ -237,7 +259,7 @@ export default function CabinetsDetailsSMIBManagementSection({
 
       {/* SMIB Details Summary */}
       <motion.div
-        className="px-4 pb-2 sm:px-6 w-full max-w-full min-w-0 overflow-x-hidden"
+        className="w-full min-w-0 max-w-full overflow-x-hidden px-4 pb-2 sm:px-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
@@ -258,11 +280,14 @@ export default function CabinetsDetailsSMIBManagementSection({
               <p className="text-xs text-grayHighlight sm:text-sm">
                 <span className="font-medium">SMIB ID:</span>{' '}
                 <span className="flex items-center gap-1">
-                  {cabinet?.relayId || cabinet?.smibBoard || 'No Value Provided'}
+                  {cabinet?.relayId ||
+                    cabinet?.smibBoard ||
+                    'No Value Provided'}
                   {(cabinet?.relayId || cabinet?.smibBoard) && (
                     <button
                       onClick={() => {
-                        const smibId = cabinet?.relayId || cabinet?.smibBoard || '';
+                        const smibId =
+                          cabinet?.relayId || cabinet?.smibBoard || '';
                         onCopyToClipboard(smibId, 'SMIB ID');
                       }}
                       className="rounded p-0.5 transition-colors hover:bg-gray-100"
@@ -295,13 +320,13 @@ export default function CabinetsDetailsSMIBManagementSection({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden w-full max-w-full"
+            className="w-full max-w-full overflow-hidden"
           >
-            <div className="p-4 sm:p-6 space-y-6 sm:space-y-8 overflow-x-hidden w-full max-w-full min-w-0">
+            <div className="w-full min-w-0 max-w-full space-y-6 overflow-x-hidden p-4 sm:space-y-8 sm:p-6">
               {/* Network, COMS, and MQTT Configuration exactly like /cabinets?smib */}
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 border-t border-gray-100 pt-4 sm:pt-6 w-full max-w-full min-w-0">
+              <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-6 border-t border-gray-100 pt-4 sm:pt-6 lg:grid-cols-2">
                 {/* Left Column */}
-                <div className="flex flex-col gap-6 w-full min-w-0">
+                <div className="flex w-full min-w-0 flex-col gap-6">
                   {/* Network Config */}
                   <CabinetsDetailsSMIBNetworkConfig
                     networkSSID={
@@ -321,18 +346,27 @@ export default function CabinetsDetailsSMIBManagementSection({
                     }
                     updatedAt={cabinet?.smibConfig?.net?.updatedAt}
                     isEditMode={editingSection === 'network'}
-                    onToggleEdit={() => onSetEditingSection(editingSection === 'network' ? null : 'network')}
-                    onUpdate={async (data) => {
+                    onToggleEdit={() =>
+                      onSetEditingSection(
+                        editingSection === 'network' ? null : 'network'
+                      )
+                    }
+                    onUpdate={async data => {
                       const networkData = {
                         netStaSSID: data.networkSSID || undefined,
                         netStaPwd: data.networkPassword || undefined,
-                        netStaChan: data.networkChannel ? parseInt(data.networkChannel, 10) : undefined,
+                        netStaChan: data.networkChannel
+                          ? parseInt(data.networkChannel, 10)
+                          : undefined,
                       };
                       const relayId = cabinet.relayId || cabinet.smibBoard;
                       if (!relayId) return;
 
                       if (isConnectedToMqtt && smibHook?.updateNetworkConfig) {
-                        await smibHook.updateNetworkConfig(relayId, networkData);
+                        await smibHook.updateNetworkConfig(
+                          relayId,
+                          networkData
+                        );
                       }
 
                       await fetch('/api/mqtt/update-machine-config', {
@@ -378,7 +412,8 @@ export default function CabinetsDetailsSMIBManagementSection({
                     comsRateMs={
                       formData.comsRateMs !== 'No Value Provided'
                         ? formData.comsRateMs
-                        : cabinet?.smibConfig?.coms?.comsRateMs?.toString() || ''
+                        : cabinet?.smibConfig?.coms?.comsRateMs?.toString() ||
+                          ''
                     }
                     comsRTE={
                       formData.comsRTE !== 'No Value Provided'
@@ -392,22 +427,39 @@ export default function CabinetsDetailsSMIBManagementSection({
                     }
                     updatedAt={cabinet?.smibConfig?.coms?.updatedAt}
                     isEditMode={editingSection === 'coms'}
-                    onToggleEdit={() => onSetEditingSection(editingSection === 'coms' ? null : 'coms')}
-                    onUpdate={async (data) => {
+                    onToggleEdit={() =>
+                      onSetEditingSection(
+                        editingSection === 'coms' ? null : 'coms'
+                      )
+                    }
+                    onUpdate={async data => {
                       const comsConfigData = {
-                        comsMode: data.comsMode ? parseInt(data.comsMode, 10) : undefined,
-                        comsAddr: data.comsAddr ? parseInt(data.comsAddr, 10) : undefined,
-                        comsRateMs: data.comsRateMs ? parseInt(data.comsRateMs, 10) : undefined,
-                        comsRTE: data.comsRTE ? parseInt(data.comsRTE, 10) : undefined,
-                        comsGPC: data.comsGPC ? parseInt(data.comsGPC, 10) : undefined,
+                        comsMode: data.comsMode
+                          ? parseInt(data.comsMode, 10)
+                          : undefined,
+                        comsAddr: data.comsAddr
+                          ? parseInt(data.comsAddr, 10)
+                          : undefined,
+                        comsRateMs: data.comsRateMs
+                          ? parseInt(data.comsRateMs, 10)
+                          : undefined,
+                        comsRTE: data.comsRTE
+                          ? parseInt(data.comsRTE, 10)
+                          : undefined,
+                        comsGPC: data.comsGPC
+                          ? parseInt(data.comsGPC, 10)
+                          : undefined,
                       };
                       const relayId = cabinet.relayId || cabinet.smibBoard;
                       if (!relayId) return;
-                      
+
                       if (isConnectedToMqtt && smibHook?.updateComsConfig) {
-                        await smibHook.updateComsConfig(relayId, comsConfigData);
+                        await smibHook.updateComsConfig(
+                          relayId,
+                          comsConfigData
+                        );
                       }
-                      
+
                       await fetch('/api/mqtt/update-machine-config', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -416,20 +468,20 @@ export default function CabinetsDetailsSMIBManagementSection({
                           smibConfig: { coms: comsConfigData },
                         }),
                       });
-                      
+
                       const { toast } = await import('sonner');
                       toast.success(
                         isConnectedToMqtt
                           ? 'COMS configuration sent to SMIB and saved to database'
                           : 'COMS configuration saved to database (SMIB offline)'
                       );
-                      
+
                       setTimeout(async () => {
                         if (smibHook?.requestLiveConfig) {
                           await smibHook.requestLiveConfig(relayId, 'coms');
                         }
                       }, 3000);
-                      
+
                       onSetEditingSection(null);
                     }}
                     isLoading={isManuallyFetching}
@@ -437,7 +489,7 @@ export default function CabinetsDetailsSMIBManagementSection({
                 </div>
 
                 {/* Right Column */}
-                <div className="flex flex-col gap-6 w-full min-w-0">
+                <div className="flex w-full min-w-0 flex-col gap-6">
                   {/* MQTT Topics */}
                   <CabinetsDetailsSMIBMqttTopics
                     mqttPubTopic={
@@ -463,12 +515,17 @@ export default function CabinetsDetailsSMIBManagementSection({
                     mqttIdleTimeout={
                       formData.mqttIdleTimeout !== 'No Value Provided'
                         ? formData.mqttIdleTimeout
-                        : cabinet?.smibConfig?.mqtt?.mqttIdleTimeS?.toString() || ''
+                        : cabinet?.smibConfig?.mqtt?.mqttIdleTimeS?.toString() ||
+                          ''
                     }
                     updatedAt={cabinet?.smibConfig?.mqtt?.updatedAt}
                     isEditMode={editingSection === 'mqtt'}
-                    onToggleEdit={() => onSetEditingSection(editingSection === 'mqtt' ? null : 'mqtt')}
-                    onUpdate={async (data) => {
+                    onToggleEdit={() =>
+                      onSetEditingSection(
+                        editingSection === 'mqtt' ? null : 'mqtt'
+                      )
+                    }
+                    onUpdate={async data => {
                       const mqttConfigData = {
                         mqttPubTopic: data.mqttPubTopic || undefined,
                         mqttCfgTopic: data.mqttCfgTopic || undefined,
@@ -478,7 +535,10 @@ export default function CabinetsDetailsSMIBManagementSection({
                       if (!relayId) return;
 
                       if (isConnectedToMqtt && smibHook?.updateMqttConfig) {
-                        await smibHook.updateMqttConfig(relayId, mqttConfigData);
+                        await smibHook.updateMqttConfig(
+                          relayId,
+                          mqttConfigData
+                        );
                       }
 
                       await fetch('/api/mqtt/update-machine-config', {
@@ -511,29 +571,38 @@ export default function CabinetsDetailsSMIBManagementSection({
               </div>
 
               {/* SMIB Operations & Management */}
-              <div className="border-t border-gray-200 pt-6 sm:pt-8 w-full max-w-full overflow-x-hidden">
-                <h3 className="text-xl font-bold text-gray-800 mb-6">SMIB Operations & Management</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 w-full max-w-full min-w-0">
-                  <div className="min-w-0 w-full max-w-full overflow-x-hidden">
-                    <div className="w-full max-w-full min-w-0">
-                      <MeterDataSection 
-                        relayId={cabinet.relayId!} 
+              <div className="w-full max-w-full overflow-x-hidden border-t border-gray-200 pt-6 sm:pt-8">
+                <h3 className="mb-6 text-xl font-bold text-gray-800">
+                  SMIB Operations & Management
+                </h3>
+                <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
+                  <div className="w-full min-w-0 max-w-full overflow-x-hidden">
+                    <div className="w-full min-w-0 max-w-full">
+                      <MeterDataSection
+                        relayId={cabinet.relayId!}
                         isOnline={isConnectedToMqtt}
                         smibConfig={{
-                          subscribeToMessages: smibHook?.subscribeToMessages ?? (() => () => {}),
+                          subscribeToMessages:
+                            smibHook?.subscribeToMessages ?? (() => () => {}),
                           isSSEConnected: smibHook?.isSSEConnected ?? false,
                         }}
                       />
                     </div>
                   </div>
-                  <div className="min-w-0 w-full max-w-full overflow-x-hidden">
-                    <div className="w-full max-w-full min-w-0">
-                      <OTAUpdateSection relayId={cabinet.relayId!} isOnline={isConnectedToMqtt} />
+                  <div className="w-full min-w-0 max-w-full overflow-x-hidden">
+                    <div className="w-full min-w-0 max-w-full">
+                      <OTAUpdateSection
+                        relayId={cabinet.relayId!}
+                        isOnline={isConnectedToMqtt}
+                      />
                     </div>
                   </div>
-                  <div className="min-w-0 w-full max-w-full overflow-x-hidden">
-                    <div className="w-full max-w-full min-w-0">
-                      <RestartSection relayId={cabinet.relayId!} isOnline={isConnectedToMqtt} />
+                  <div className="w-full min-w-0 max-w-full overflow-x-hidden">
+                    <div className="w-full min-w-0 max-w-full">
+                      <RestartSection
+                        relayId={cabinet.relayId!}
+                        isOnline={isConnectedToMqtt}
+                      />
                     </div>
                   </div>
                 </div>
@@ -545,4 +614,3 @@ export default function CabinetsDetailsSMIBManagementSection({
     </motion.div>
   );
 }
-

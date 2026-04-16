@@ -25,8 +25,11 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportCardsProps } from '@/lib/types/components';
 import { getGrossColorClass } from '@/lib/utils/financial';
-import { getLicenceeName } from '@/lib/utils/licencee';
-import { hasAdminAccess, hasManagerAccess, UserRole } from '@/lib/utils/permissions';
+import {
+  hasAdminAccess,
+  hasManagerAccess,
+  UserRole,
+} from '@/lib/utils/permissions';
 import { AlertTriangle, Edit3, Trash2 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -52,7 +55,9 @@ export default function CollectionReportCards({
   const user = useUserStore(state => state.user);
 
   // Check if user has admin access to see issue highlights
-  const isAdminUser = user?.roles ? hasAdminAccess(user.roles as UserRole[]) : false;
+  const isAdminUser = user?.roles
+    ? hasAdminAccess(user.roles as UserRole[])
+    : false;
 
   // Check if user can edit/delete reports
   const canEditDelete = useMemo(() => {
@@ -72,9 +77,9 @@ export default function CollectionReportCards({
   // Only show "No Data Available" when NOT loading and data is empty
   if (!loading && (!data || data.length === 0)) {
     const licenceeName =
-      getLicenceeName(selectedLicencee || undefined) ||
-      selectedLicencee ||
-      'the selected period';
+      selectedLicencee && selectedLicencee !== 'all'
+        ? selectedLicencee
+        : 'the selected period';
     const emptyMessage = `No collection reports found for ${licenceeName}.`;
 
     return (
@@ -85,9 +90,7 @@ export default function CollectionReportCards({
     );
   }
   return (
-    <div
-      className={`mt-4 flex w-full min-w-0 flex-col gap-4 px-2 md:px-4`}
-    >
+    <div className={`mt-4 flex w-full min-w-0 flex-col gap-4 px-2 md:px-4`}>
       <div
         className={`${
           gridLayout ? 'grid grid-cols-2 gap-4' : 'flex flex-col gap-4'
@@ -268,7 +271,7 @@ export default function CollectionReportCards({
                     onClick={() =>
                       router.push(
                         `/collection-report/report/${
-                          row?.locationReportId || ''
+                          row?.locationReportId || row?._id || ''
                         }`
                       )
                     }
@@ -283,7 +286,8 @@ export default function CollectionReportCards({
                     />
                   </Button>
                   {canEditDelete &&
-                    (!editableReportIds || editableReportIds.has(row?.locationReportId || '')) && (
+                    (!editableReportIds ||
+                      editableReportIds.has(row?.locationReportId || '')) && (
                       <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
                         {onEdit && (
                           <Button
@@ -318,4 +322,3 @@ export default function CollectionReportCards({
     </div>
   );
 }
-

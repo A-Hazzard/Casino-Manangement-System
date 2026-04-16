@@ -39,10 +39,9 @@ function CurrencyFilter({
     onCurrencyChange?.(newCurrency);
   };
 
-  const normalizedRoles = (userRoles || []).map(r => r.toLowerCase());
   const canShowSelector =
-    !normalizedRoles.includes('vault-manager') &&
-    !normalizedRoles.includes('cashier');
+    !userRoles.includes('vault-manager') &&
+    !userRoles.includes('cashier');
 
   if (!canShowSelector) {
     return null;

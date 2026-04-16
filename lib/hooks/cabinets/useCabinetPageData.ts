@@ -95,7 +95,7 @@ export function useCabinetPageData() {
     if (section === 'collection-history') return 'Collection History';
     if (section === 'collection-settings') return 'Collection Settings';
     if (section === 'configurations') return 'Configurations';
-    return 'Range Metrics';
+    return 'Movement Metrics';
   });
 
   const [refreshing, setRefreshing] = useState(false);
@@ -108,7 +108,7 @@ export function useCabinetPageData() {
   const canAccessSmibConfig = useMemo(() => {
     return (
       user?.roles?.some(role =>
-        ['technician', 'admin', 'developer'].includes(role)
+        ['technician', 'owner', 'admin', 'developer'].includes(role)
       ) ?? false
     );
   }, [user]);
@@ -119,6 +119,7 @@ export function useCabinetPageData() {
       user?.roles?.some(role =>
         [
           'developer',
+          'owner',
           'admin',
           'manager',
           'location admin',
@@ -144,7 +145,7 @@ export function useCabinetPageData() {
       // Show minute/hourly selector only for same-day custom ranges
       const customStart = customDateRange?.startDate || customDateRange?.from || (customDateRange as Record<string, unknown>)?.start;
       const customEnd = customDateRange?.endDate || customDateRange?.to || (customDateRange as Record<string, unknown>)?.end;
-      
+
       const sd = customStart instanceof Date ? customStart : new Date(customStart as unknown as string);
       const ed = customEnd instanceof Date ? customEnd : new Date(customEnd as unknown as string);
       // Compare calendar dates (same year, month, day)
@@ -174,7 +175,7 @@ export function useCabinetPageData() {
     (tab: string) => {
       setActiveTab(tab);
       const sectionMap: Record<string, string> = {
-        'Range Metrics': '',
+        'Movement Metrics': '',
         'Live Metrics': 'live-metrics',
         'Bill Validator': 'bill-validator',
         'Activity Log': 'activity-log',
@@ -353,10 +354,10 @@ export function useCabinetPageData() {
     const customEnd = customDateRange?.endDate || customDateRange?.to || (customDateRange as Record<string, unknown>)?.end;
 
     if (activeMetricsFilter !== 'Custom' || !customStart || !customEnd) return false;
-    
+
     const sd = customStart instanceof Date ? customStart : new Date(customStart as unknown as string);
     const ed = customEnd instanceof Date ? customEnd : new Date(customEnd as unknown as string);
-    
+
     return sd.getFullYear() === ed.getFullYear() &&
       sd.getMonth() === ed.getMonth() &&
       sd.getDate() === ed.getDate();
@@ -378,8 +379,12 @@ export function useCabinetPageData() {
       return;
     }
 
+    // Set loading before making request so skeleton shows immediately
+    setLoadingChart(true);
+    // Set chartData to null so DashboardChart shows skeleton (not "No Metrics Data")
+    setChartData(null);
+
     makeChartRequest(async signal => {
-      setLoadingChart(true);
       try {
         // Pass granularity to API for all periods that support granularity selection
         const isShortPeriod =
@@ -392,14 +397,14 @@ export function useCabinetPageData() {
         const customStart = customDateRange?.startDate || customDateRange?.from || (customDateRange as Record<string, unknown>)?.start;
         const customEnd = customDateRange?.endDate || customDateRange?.to || (customDateRange as Record<string, unknown>)?.end;
 
-        const effectiveStartDate = customStart instanceof Date 
-            ? customStart 
-            : customStart ? new Date(customStart as unknown as string) 
+        const effectiveStartDate = customStart instanceof Date
+          ? customStart
+          : customStart ? new Date(customStart as unknown as string)
             : undefined;
 
-        const effectiveEndDate = customEnd instanceof Date 
-            ? customEnd 
-            : customEnd ? new Date(customEnd as unknown as string) 
+        const effectiveEndDate = customEnd instanceof Date
+          ? customEnd
+          : customEnd ? new Date(customEnd as unknown as string)
             : undefined;
 
         const result = await getMachineChartData(
@@ -418,7 +423,11 @@ export function useCabinetPageData() {
           // Store data span for granularity calculation
           setDataSpan(result.dataSpan || null);
         }
-      } catch {
+      } catch (err) {
+        // Don't clear chart data on abort — keep skeleton showing for the next request
+        if (err instanceof Error && (err.name === 'AbortError' || err.message === 'canceled')) {
+          return;
+        }
         setChartData([]);
       } finally {
         setLoadingChart(false);

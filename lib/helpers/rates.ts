@@ -15,11 +15,10 @@
  * - Handles currency conversion for financial data arrays.
  */
 
-import { getLicenceeName } from '@/lib/utils/licencee';
 import type {
-    CurrencyCode,
-    ExchangeRates,
-    LicenceeCurrencyMapping,
+  CurrencyCode,
+  ExchangeRates,
+  LicenceeCurrencyMapping,
 } from '@/shared/types/currency';
 
 // Fixed exchange rates (USD as base currency)
@@ -51,18 +50,13 @@ const COUNTRY_CURRENCY_MAP: Record<string, CurrencyCode> = {
 // ============================================================================
 
 /**
- * Get the currency for a specific licencee
+ * Get the currency for a specific licencee name
  */
-export function getLicenceeCurrency(licencee: string): CurrencyCode {
-  if (!licencee) {
-    return 'USD';
-  }
-
-  const normalized =
-    getLicenceeName(licencee) || (licencee as keyof LicenceeCurrencyMapping);
+export function getLicenceeCurrency(licenceeName: string): CurrencyCode {
+  if (!licenceeName) return 'USD';
 
   return (
-    LICENCEE_CURRENCY[normalized as keyof LicenceeCurrencyMapping] || 'USD'
+    LICENCEE_CURRENCY[licenceeName as keyof LicenceeCurrencyMapping] || 'USD'
   );
 }
 
@@ -223,5 +217,3 @@ export function formatAmount(
 
   return `${symbol}${formatted}`;
 }
-
-

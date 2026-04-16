@@ -29,5 +29,9 @@ export type OriginalUserType = {
       notes?: string;
     };
   };
+  profilePicture?: string;
+  multiplier?: number;
+  isEnabled?: boolean;
+  roles?: string[];
 };
 

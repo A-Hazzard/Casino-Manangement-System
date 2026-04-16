@@ -1,73 +1,103 @@
 'use client';
 
 import {
-    endOfMonth,
-    endOfWeek,
-    format,
-    isSameDay,
-    startOfDay,
-    startOfMonth,
-    startOfWeek,
-    subDays,
-    subMonths,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameDay,
+  startOfDay,
+  startOfMonth,
+  startOfWeek,
+  subDays,
+  subMonths,
 } from 'date-fns';
 import { Calendar as CalendarIcon, Check } from 'lucide-react';
-import * as React from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from '@/components/shared/ui/popover';
 import { cn } from '@/lib/utils';
+import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 
-// Helper function to format time for display
-const formatTimeDisplay = (hours: number, minutes: number): string => {
-  const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-  const ampm = hours < 12 ? 'AM' : 'PM';
-  const displayMinute = minutes.toString().padStart(2, '0');
-  return `${displayHour}:${displayMinute} ${ampm}`;
+/**
+ * Props for the ModernCalendar component.
+ * Provides a date/time picker with gaming day support and preset ranges.
+ */
+type ModernCalendarProps = {
+  date?: { from?: Date; to?: Date };
+  onSelect?: (date?: { from?: Date; to?: Date }) => void;
+  className?: string; //CSS classes for the container
+  enableTimeInputs?: boolean;   /** Enable hour/minute time inputs alongside date picker */
+  mode?: 'single' | 'range';
+  disabled?: boolean;
+  maxDate?: Date;
+  gameDayOffset?: number;
 };
 
-// Time Input Component - 12-hour format with AM/PM
+/**
+ * Props for the TimeInput component.
+ * 12-hour format with AM/PM selector, internally uses 24-hour format.
+ */
 type TimeInputProps = {
-  hours: number; // 24-hour format (0-23) internally
-  minutes: number;
-  onChange: (hours: number, minutes: number) => void; // Returns 24-hour format
+  hours: number;   /** Current hours in 24-hour format */
+  minutes: number; /** Current minutes */
+  onChange: (hours: number, minutes: number) => void; /** Callback fired when time changes, returns values in 24-hour format */
 };
 
-const TimeInput: React.FC<TimeInputProps> = ({ hours, minutes, onChange }) => {
+/**
+ * Formats hours and minutes for display in 12-hour format with AM/PM.
+ * Used for rendering time on the UI
+ * @note meridiem refers to the 12-hour clock system (AM/PM)
+ * @param hours - Hours in 24-hour format (0-23)
+ * @param minutes - Minutes (0-59)
+ * @returns Formatted string like "3:45 PM"
+ */
+const formatTimeDisplay = (hours: number, minutes: number): string => {
+  const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours; 
+  const meridiem = hours < 12 ? 'AM' : 'PM';
+  const displayMinute = minutes.toString().padStart(2, '0'); 
+  return `${displayHour}:${displayMinute} ${meridiem}`;
+};
+
+/**
+ * Time input component with 12-hour format display and AM/PM selector.
+ * Manages local state for hour/minute inputs with focus tracking
+ * to prevent prop syncing from overriding user typing.
+ */
+const TimeInput = ({ hours, minutes, onChange }:TimeInputProps) => {
   // Convert 24-hour to 12-hour format for display
   const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
   const isPM = hours >= 12;
 
   // Local state for string inputs
-  const [hourInput, setHourInput] = React.useState(displayHour.toString());
-  const [minuteInput, setMinuteInput] = React.useState(
+  const [hourInput, setHourInput] = useState(displayHour.toString());
+  const [minuteInput, setMinuteInput] = useState(
     minutes.toString().padStart(2, '0')
   );
 
   // Focus tracking to prevent props syncing from overriding user typing
-  const [isHourFocused, setIsHourFocused] = React.useState(false);
-  const [isMinuteFocused, setIsMinuteFocused] = React.useState(false);
+  const [isHourFocused, setIsHourFocused] = useState(false);
+  const [isMinuteFocused, setIsMinuteFocused] = useState(false);
 
   // Synchronize local state ONLY when NOT focused
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isHourFocused) {
       setHourInput(displayHour.toString());
     }
   }, [displayHour, isHourFocused]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isMinuteFocused) {
       setMinuteInput(minutes.toString().padStart(2, '0'));
     }
   }, [minutes, isMinuteFocused]);
 
-  const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHoursChange = (e: ChangeEvent<HTMLInputElement>) => {
     // Only allow digits 0-9
     const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
     setHourInput(value);
@@ -75,7 +105,7 @@ const TimeInput: React.FC<TimeInputProps> = ({ hours, minutes, onChange }) => {
     if (value === '') return;
 
     const parsedHour = parseInt(value);
-    
+
     // We only propagate to parent if it's a valid 12h value (1-12)
     // We handle 0 as a temporary state while typing "01", "02" etc.
     if (parsedHour > 0 && parsedHour <= 12) {
@@ -89,7 +119,7 @@ const TimeInput: React.FC<TimeInputProps> = ({ hours, minutes, onChange }) => {
     }
   };
 
-  const handleMinutesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMinutesChange = (e: ChangeEvent<HTMLInputElement>) => {
     // Only allow digits 0-9
     const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
     setMinuteInput(value);
@@ -105,7 +135,11 @@ const TimeInput: React.FC<TimeInputProps> = ({ hours, minutes, onChange }) => {
   const handleHourBlur = () => {
     setIsHourFocused(false);
     // On blur, if it's empty or invalid, reset to current valid prop
-    if (hourInput === '' || parseInt(hourInput) === 0 || parseInt(hourInput) > 12) {
+    if (
+      hourInput === '' ||
+      parseInt(hourInput) === 0 ||
+      parseInt(hourInput) > 12
+    ) {
       setHourInput(displayHour.toString());
     }
   };
@@ -120,7 +154,7 @@ const TimeInput: React.FC<TimeInputProps> = ({ hours, minutes, onChange }) => {
     }
   };
 
-  const handleAMPMChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleAMPMChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const newIsPM = e.target.value === 'PM';
     let newHours24: number;
 
@@ -173,17 +207,18 @@ const TimeInput: React.FC<TimeInputProps> = ({ hours, minutes, onChange }) => {
   );
 };
 
-type ModernCalendarProps = {
-  date?: { from?: Date; to?: Date };
-  onSelect?: (date?: { from?: Date; to?: Date }) => void;
-  className?: string;
-  enableTimeInputs?: boolean;
-  mode?: 'single' | 'range';
-  disabled?: boolean;
-  maxDate?: Date;
-  gameDayOffset?: number;
-}
-
+/**
+ * Modern calendar component with date range selection, preset ranges, and optional time inputs.
+ * Supports gaming day offset for casino-specific business day calculations.
+ *
+ * @example
+ * // Basic range picker
+ * <ModernCalendar onSelect={(date) => console.log(date)} />
+ *
+ * @example
+ * // Single date with time
+ * <ModernCalendar mode="single" enableTimeInputs onSelect={(date) => console.log(date)} />
+ */
 export function ModernCalendar({
   date,
   onSelect,
@@ -194,14 +229,14 @@ export function ModernCalendar({
   maxDate,
   gameDayOffset = 8,
 }: ModernCalendarProps) {
-  const [startDate, setStartDate] = React.useState<Date | null>(
+  const [startDate, setStartDate] = useState<Date | null>(
     date?.from || null
   );
-  const [endDate, setEndDate] = React.useState<Date | null>(date?.to || null);
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [endDate, setEndDate] = useState<Date | null>(date?.to || null);
+  const [isOpen, setIsOpen] = useState(false);
 
   // Track selected times separately for range mode, single time for single mode
-  const [selectedStartTime, setSelectedStartTime] = React.useState<{
+  const [selectedStartTime, setSelectedStartTime] = useState<{
     hours: number;
     minutes: number;
   } | null>(() => {
@@ -221,7 +256,7 @@ export function ModernCalendar({
     return null;
   });
 
-  const [selectedEndTime, setSelectedEndTime] = React.useState<{
+  const [selectedEndTime, setSelectedEndTime] = useState<{
     hours: number;
     minutes: number;
   } | null>(() => {
@@ -231,21 +266,18 @@ export function ModernCalendar({
         minutes: date.to.getMinutes(),
       };
     }
-    // For range mode, default end time to 1 minute before gameDayOffset
+    // For range mode, default end time to the same as start time (gameDayOffset:00)
     if (enableTimeInputs && mode === 'range') {
-      // If offset is 0, end time is 23:59
-      const endHours = gameDayOffset === 0 ? 23 : (gameDayOffset - 1 + 24) % 24;
       return {
-        hours: endHours,
-        minutes: 59,
+        hours: gameDayOffset,
+        minutes: 0,
       };
     }
     return null;
   });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
-      console.log('🔵 Calendar opened, current date:', date);
       setStartDate(date?.from || null);
       setEndDate(date?.to || null);
 
@@ -254,28 +286,14 @@ export function ModernCalendar({
         const startMinutes = date.from.getMinutes();
         setSelectedStartTime({ hours: startHours, minutes: startMinutes });
 
-        if (mode === 'range' && date?.to) {
-          const endHours = date.to.getHours();
-          const endMinutes = date.to.getMinutes();
-          const newEndTime = { hours: endHours, minutes: endMinutes };
-          setSelectedEndTime(newEndTime);
-          console.log('🕐 Initialized times:', {
-            start: { startHours, startMinutes },
-            end: newEndTime,
-          });
-        } else if (mode === 'range') {
-          // Default end time to same as start time
-          const newEndTime = { hours: startHours, minutes: startMinutes };
-          setSelectedEndTime(newEndTime);
-          console.log('🕐 Initialized times:', {
-            start: { startHours, startMinutes },
-            end: newEndTime,
-          });
-        } else {
-          console.log('🕐 Initialized times:', {
-            start: { startHours, startMinutes },
-            end: null,
-          });
+        if (mode === 'range') {
+          if (date?.to) {
+            const endHours = date.to.getHours();
+            const endMinutes = date.to.getMinutes();
+            setSelectedEndTime({ hours: endHours, minutes: endMinutes });
+          } else {
+            setSelectedEndTime({ hours: startHours, minutes: startMinutes });
+          }
         }
       }
     }
@@ -331,20 +349,17 @@ export function ModernCalendar({
       ? presets.filter(p => ['Today', 'Yesterday'].includes(p.label))
       : presets;
 
+  /**
+   * Handles the Apply button click.
+   * Combines selected dates with optional times and calls onSelect callback.
+   */
   const handleApply = () => {
-    console.log('🟢 Apply clicked');
-    console.log('📅 Current startDate:', startDate);
-    console.log('📅 Current endDate:', endDate);
-    console.log('🕐 Current selectedStartTime:', selectedStartTime);
-    console.log('🕐 Current selectedEndTime:', selectedEndTime);
-
     if (mode === 'range') {
       if (startDate && endDate) {
         let finalStart = startDate;
         let finalEnd = endDate;
 
         if (enableTimeInputs) {
-          // Apply start time to start date (using local time)
           if (selectedStartTime) {
             finalStart = new Date(startDate);
             finalStart.setHours(
@@ -355,7 +370,6 @@ export function ModernCalendar({
             );
           }
 
-          // Apply end time to end date (using local time)
           if (selectedEndTime) {
             finalEnd = new Date(endDate);
             finalEnd.setHours(
@@ -366,20 +380,12 @@ export function ModernCalendar({
             );
           }
 
-          // If same day and same time, ensure end is at least 1 minute after start
           if (
             isSameDay(finalStart, finalEnd) &&
             finalStart.getTime() === finalEnd.getTime()
           ) {
-            finalEnd = new Date(finalEnd.getTime() + 60 * 1000); // Add 1 minute
+            finalEnd = new Date(finalEnd.getTime() + 60 * 1000);
           }
-
-          console.log('🟡 Applied times to range:', {
-            finalStart: finalStart.toISOString(),
-            finalEnd: finalEnd.toISOString(),
-            localStart: finalStart.toString(),
-            localEnd: finalEnd.toString(),
-          });
         }
 
         onSelect?.({ from: finalStart, to: finalEnd });
@@ -397,10 +403,6 @@ export function ModernCalendar({
             0,
             0
           );
-          console.log('🟡 Applied time to single date:', {
-            iso: finalDate.toISOString(),
-            local: finalDate.toString(),
-          });
         }
 
         onSelect?.({ from: finalDate, to: finalDate });
@@ -409,12 +411,15 @@ export function ModernCalendar({
     }
   };
 
+  /**
+   * Handles preset button clicks (Today, Yesterday, This Week, etc.).
+   * Updates date selection and initializes time inputs when enabled.
+   */
   const handlePresetClick = (preset: {
     label: string;
     getValue: () => { from: Date; to: Date };
   }) => {
     const range = preset.getValue();
-    console.log('⏰ Preset clicked:', preset.label, range);
 
     if (mode === 'single') {
       setStartDate(range.from);
@@ -438,6 +443,10 @@ export function ModernCalendar({
     }
   };
 
+  /**
+   * Checks if a preset matches the current selection.
+   * @returns true if the preset's date range matches the selected dates
+   */
   const isPresetActive = (preset: {
     label: string;
     getValue: () => { from: Date; to: Date };
@@ -451,8 +460,11 @@ export function ModernCalendar({
     return isSameDay(range.from, startDate) && isSameDay(range.to, endDate!);
   };
 
+  /**
+   * Handles DatePicker change events.
+   * Updates internal state and initializes time inputs when enabled.
+   */
   const onChange = (date: Date | [Date | null, Date | null] | null) => {
-    console.log('📅 Date changed:', date);
     if (mode === 'range') {
       const [start, end] = date as [Date | null, Date | null];
       setStartDate(start);
@@ -477,16 +489,21 @@ export function ModernCalendar({
     }
   };
 
-  // Time input handlers
+  /** Updates the selected start time */
   const handleStartTimeChange = (hours: number, minutes: number) => {
     setSelectedStartTime({ hours, minutes });
   };
 
+  /** Updates the selected end time */
   const handleEndTimeChange = (hours: number, minutes: number) => {
     setSelectedEndTime({ hours, minutes });
   };
 
-  const headerText = React.useMemo(() => {
+  /**
+   * Computes the header text showing current selection.
+   * Includes time when enableTimeInputs is true.
+   */
+  const headerText = useMemo(() => {
     if (!date?.from)
       return mode === 'range' ? 'Pick a date range' : 'Pick a date';
 
@@ -704,4 +721,3 @@ export function ModernCalendar({
     </div>
   );
 }
-

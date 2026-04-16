@@ -15,6 +15,7 @@
  */
 'use client';
 
+import { ReactNode } from 'react';
 import GlobalSidebarWrapper from '@/components/shared/layout/GlobalSidebarWrapper';
 import ProfileValidationGate from '@/components/shared/providers/ProfileValidationGate';
 import TempPasswordGate from '@/components/shared/providers/TempPasswordGate';
@@ -25,9 +26,11 @@ import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { useUserStore } from '@/lib/store/userStore';
 import { useMemo } from 'react';
 import { Toaster } from 'sonner';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 
 type LayoutWrapperProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export default function LayoutWrapper({
@@ -43,12 +46,14 @@ export default function LayoutWrapper({
   return (
     <QueryProvider>
       <CurrencyProvider>
-        <SidebarProvider>
-          <GlobalSidebarWrapper navConfig={navConfig} />
-          <TempPasswordGate />
-          <ProfileValidationGate context="CMS" />
-          <SidebarInset>{children}</SidebarInset>
-        </SidebarProvider>
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <SidebarProvider>
+            <GlobalSidebarWrapper navConfig={navConfig} />
+            <TempPasswordGate />
+            <ProfileValidationGate context="CMS" />
+            <SidebarInset>{children}</SidebarInset>
+          </SidebarProvider>
+        </LocalizationProvider>
         <Toaster position="top-right" />
       </CurrencyProvider>
     </QueryProvider>

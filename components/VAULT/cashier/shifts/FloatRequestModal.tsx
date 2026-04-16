@@ -1,3 +1,4 @@
+import { FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import DenominationInputGrid from '@/components/shared/ui/DenominationInputGrid';
 import {
@@ -71,7 +72,7 @@ export default function FloatRequestModal({
   const isAllTouched = useMemo(() => denomsList.every(d => touchedDenominations.has(Number(d))), [denomsList, touchedDenominations]);
   const isFormValid = totalAmount > 0 || isAllTouched;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
 

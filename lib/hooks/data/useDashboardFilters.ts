@@ -15,6 +15,7 @@
  */
 
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { setTimeToGamingDayStart } from '@/shared/utils/dateFormat';
 import type { TimePeriod, dateRange } from '@/lib/types';
 import type {
   UseDashboardFiltersProps,
@@ -60,12 +61,12 @@ export function useDashboardFilters({
   // Reset all filters to default state
   const resetFilters = useCallback(() => {
     const { gameDayOffset } = useDashBoardStore.getState();
-    const startDate = new Date();
-    startDate.setHours(gameDayOffset, 0, 0, 0);
+    const today = new Date();
+    const startDate = setTimeToGamingDayStart(today, gameDayOffset);
 
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + 1);
-    endDate.setMinutes(endDate.getMinutes() - 1);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const endDate = setTimeToGamingDayStart(tomorrow, gameDayOffset);
 
     setActiveMetricsFilter('Today');
     setActivePieChartFilter('Today');
@@ -123,4 +124,3 @@ export function useDashboardFilters({
     resetFilters,
   };
 }
-

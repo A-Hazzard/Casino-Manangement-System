@@ -48,8 +48,8 @@ type NewCollectionFormFieldsProps = {
   currentRamClearMetersOut: string;
   currentMachineNotes: string;
   currentRamClear: boolean;
-  prevIn: number | null;
-  prevOut: number | null;
+  prevIn: string;
+  prevOut: string;
   debouncedCurrentMetersIn: string;
   debouncedCurrentMetersOut: string;
   debouncedCurrentRamClearMetersIn: string;
@@ -72,14 +72,16 @@ type NewCollectionFormFieldsProps = {
   onAddEntry: () => void;
   onCancelEdit: () => void;
   onAddOrUpdateEntry: () => void;
+  onPrevInChange: (val: string) => void;
+  onPrevOutChange: (val: string) => void;
   onViewMachine: () => void;
 };
 
 export default function CollectionReportNewCollectionFormFields({
   selectedLocationName,
+  currentCollectionTime,
   previousCollectionTime,
   machineForDataEntry,
-  currentCollectionTime,
   showAdvancedSas,
   sasStartTime,
   sasEndTime,
@@ -113,10 +115,13 @@ export default function CollectionReportNewCollectionFormFields({
   onAddEntry,
   onCancelEdit,
   onAddOrUpdateEntry,
+  onPrevInChange,
+  onPrevOutChange,
   onViewMachine,
 }: NewCollectionFormFieldsProps) {
   return (
     <>
+      {/* Location Info & Previous Collection Banner */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-grayHighlight">
           {selectedLocationName} (Prev. Collection:{' '}
@@ -124,6 +129,7 @@ export default function CollectionReportNewCollectionFormFields({
         </p>
       </div>
 
+      {/* Selected Machine Display & Quick-View Link */}
       <div className="flex w-full items-center justify-between rounded-md bg-lighterBlueHighlight px-4 py-2 text-primary-foreground">
         <span className="text-sm font-medium">
           {machineForDataEntry
@@ -145,7 +151,7 @@ export default function CollectionReportNewCollectionFormFields({
         )}
       </div>
 
-      {/* Advanced SAS Overrides */}
+      {/* Advanced SAS Time Override Toggle */}
       <div className="mb-4">
         <button
           type="button"
@@ -156,6 +162,7 @@ export default function CollectionReportNewCollectionFormFields({
         </button>
       </div>
 
+      {/* Collection Time Picker (simple) / Manual SAS Period Inputs (advanced) */}
       {!showAdvancedSas ? (
         <div className="mb-4">
           <label className="mb-2 block text-sm font-medium text-grayHighlight">
@@ -183,10 +190,10 @@ export default function CollectionReportNewCollectionFormFields({
           <p className="mb-4 text-[11px] font-bold text-blue-900 uppercase tracking-wide">
             Manual SAS Period:
           </p>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
-                SAS Start Time:
+                Start Time:
               </label>
               <ModernCalendar
                 date={
@@ -206,7 +213,7 @@ export default function CollectionReportNewCollectionFormFields({
             </div>
             <div>
               <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
-                SAS End Time:
+                End Time:
               </label>
               <ModernCalendar
                 date={
@@ -231,6 +238,7 @@ export default function CollectionReportNewCollectionFormFields({
         </div>
       )}
 
+      {/* Meters In / Out Inputs with Previous Meter Reference */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 flex items-center text-sm font-medium text-grayHighlight">
@@ -255,10 +263,26 @@ export default function CollectionReportNewCollectionFormFields({
               disabled={!inputsEnabled || isProcessing}
             />
           </div>
-          <p className="mt-1 text-xs text-grayHighlight">
-            Prev In: {prevIn !== null ? prevIn : 'N/A'}
+          <p className="mt-1 text-xs text-grayHighlight font-medium">
+            Prev In:
           </p>
-          {/* Regular Meters In Validation - Debounced */}
+          <div onClick={onDisabledFieldClick}>
+            <Input
+              type="text"
+              placeholder="0"
+              value={prevIn || ''}
+              onChange={e => {
+                const val = e.target.value;
+                if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                  onPrevInChange(val);
+                }
+              }}
+              disabled={!inputsEnabled || isProcessing}
+              className="h-7 text-xs"
+            />
+          </div>
+
+          {/* Meters In regression warning — shown after debounce */}
           {debouncedCurrentMetersIn &&
             prevIn &&
             Number(debouncedCurrentMetersIn) < Number(prevIn) && (
@@ -293,10 +317,26 @@ export default function CollectionReportNewCollectionFormFields({
               disabled={!inputsEnabled || isProcessing}
             />
           </div>
-          <p className="mt-1 text-xs text-grayHighlight">
-            Prev Out: {prevOut !== null ? prevOut : 'N/A'}
+          <p className="mt-1 text-xs text-grayHighlight font-medium">
+            Prev Out:
           </p>
-          {/* Regular Meters Out Validation - Debounced */}
+          <div onClick={onDisabledFieldClick}>
+            <Input
+              type="text"
+              placeholder="0"
+              value={prevOut || ''}
+              onChange={e => {
+                const val = e.target.value;
+                if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                  onPrevOutChange(val);
+                }
+              }}
+              disabled={!inputsEnabled || isProcessing}
+              className="h-7 text-xs"
+            />
+          </div>
+
+          {/* Meters Out regression warning — shown after debounce */}
           {debouncedCurrentMetersOut &&
             prevOut &&
             Number(debouncedCurrentMetersOut) < Number(prevOut) && (
@@ -310,7 +350,7 @@ export default function CollectionReportNewCollectionFormFields({
         </div>
       </div>
 
-      {/* RAM Clear Meter Inputs - Only show when RAM Clear is checked */}
+      {/* RAM Clear Pre-Reset Meters — only visible when RAM Clear is checked */}
       {currentRamClear && (
         <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4">
           <h4 className="mb-3 text-sm font-medium text-blue-800">
@@ -343,7 +383,7 @@ export default function CollectionReportNewCollectionFormFields({
                     : ''
                 }`}
               />
-              {/* RAM Clear Meters In Validation - Debounced */}
+              {/* RAM Clear Meters In upper-bound warning — shown after debounce */}
               {debouncedCurrentRamClearMetersIn &&
                 prevIn &&
                 Number(debouncedCurrentRamClearMetersIn) > Number(prevIn) && (
@@ -378,7 +418,7 @@ export default function CollectionReportNewCollectionFormFields({
                     : ''
                 }`}
               />
-              {/* RAM Clear Meters Out Validation - Debounced */}
+              {/* RAM Clear Meters Out upper-bound warning — shown after debounce */}
               {debouncedCurrentRamClearMetersOut &&
                 prevOut &&
                 Number(debouncedCurrentRamClearMetersOut) > Number(prevOut) && (
@@ -394,6 +434,7 @@ export default function CollectionReportNewCollectionFormFields({
         </div>
       )}
 
+      {/* RAM Clear Toggle Checkbox */}
       <div
         className="mt-2 flex items-center space-x-2"
         onClick={onDisabledFieldClick}
@@ -419,6 +460,7 @@ export default function CollectionReportNewCollectionFormFields({
         </label>
       </div>
 
+      {/* Machine-Specific Notes */}
       <div>
         <label className="mb-1 mt-2 block text-sm font-medium text-grayHighlight">
           Notes (for this machine):
@@ -434,6 +476,7 @@ export default function CollectionReportNewCollectionFormFields({
         </div>
       </div>
 
+      {/* Add / Update Entry Actions */}
       <div className="mt-3 flex gap-2">
         {editingEntryId ? (
           <>
@@ -490,5 +533,3 @@ export default function CollectionReportNewCollectionFormFields({
     </>
   );
 }
-
-

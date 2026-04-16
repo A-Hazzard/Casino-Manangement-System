@@ -10,8 +10,10 @@ type MachineMetersFormProps = {
   ramClear: boolean;
   ramClearMetersIn?: string;
   ramClearMetersOut?: string;
-  prevIn?: number | null;
-  prevOut?: number | null;
+  prevIn?: string | number | null;
+  prevOut?: string | number | null;
+  onPrevInChange?: (value: string) => void;
+  onPrevOutChange?: (value: string) => void;
   onMetersInChange: (value: string) => void;
   onMetersOutChange: (value: string) => void;
   onRamClearChange: (checked: boolean) => void;
@@ -41,6 +43,8 @@ export default function CollectionReportFormMachineMeters({
   onRamClearChange,
   onRamClearMetersInChange,
   onRamClearMetersOutChange,
+  onPrevInChange,
+  onPrevOutChange,
   disabled = false,
   showValidation = true,
   onDisabledClick,
@@ -54,14 +58,14 @@ export default function CollectionReportFormMachineMeters({
     metersIn &&
     prevIn !== null &&
     prevIn !== undefined &&
-    Number(metersIn) < prevIn;
+    Number(metersIn) < Number(prevIn);
 
   const metersOutTooLow =
     showValidation &&
     metersOut &&
     prevOut !== null &&
     prevOut !== undefined &&
-    Number(metersOut) < prevOut;
+    Number(metersOut) < Number(prevOut);
 
   const ramClearMetersInTooLow =
     showValidation &&
@@ -69,7 +73,7 @@ export default function CollectionReportFormMachineMeters({
     ramClearMetersIn &&
     prevIn !== null &&
     prevIn !== undefined &&
-    Number(ramClearMetersIn) < prevIn;
+    Number(ramClearMetersIn) < Number(prevIn);
 
   const ramClearMetersOutTooLow =
     showValidation &&
@@ -77,7 +81,7 @@ export default function CollectionReportFormMachineMeters({
     ramClearMetersOut &&
     prevOut !== null &&
     prevOut !== undefined &&
-    Number(ramClearMetersOut) < prevOut;
+    Number(ramClearMetersOut) < Number(prevOut);
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -107,9 +111,21 @@ export default function CollectionReportFormMachineMeters({
             disabled={disabled}
             className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Prev In: {prevIn !== null && prevIn !== undefined ? prevIn : 0}
-          </p>
+          <div className="mt-1 flex items-center gap-2">
+            <label className="text-xs text-gray-500 whitespace-nowrap">Prev In:</label>
+            <input
+              type="text"
+              value={prevIn || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                  onPrevInChange?.(val);
+                }
+              }}
+              disabled={disabled}
+              className="w-full text-[10px] p-1 border rounded bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
           {metersInTooLow && (
             <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
               <p className="text-red-600 text-xs">
@@ -144,9 +160,21 @@ export default function CollectionReportFormMachineMeters({
             disabled={disabled}
             className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Prev Out: {prevOut !== null && prevOut !== undefined ? prevOut : 0}
-          </p>
+          <div className="mt-1 flex items-center gap-2">
+            <label className="text-xs text-gray-500 whitespace-nowrap">Prev Out:</label>
+            <input
+              type="text"
+              value={prevOut || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+                  onPrevOutChange?.(val);
+                }
+              }}
+              disabled={disabled}
+              className="w-full text-[10px] p-1 border rounded bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
           {metersOutTooLow && (
             <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
               <p className="text-red-600 text-xs">

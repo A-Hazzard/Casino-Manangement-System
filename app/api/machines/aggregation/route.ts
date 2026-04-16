@@ -15,26 +15,23 @@
  * @module app/api/machines/aggregation/route
  */
 
-import {
-  getUserAccessibleLicenceesFromToken,
-  getUserLocationFilter,
-} from '@/app/api/lib/helpers/licenceeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import { getUserAccessibleLicenceesFromToken, getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
-import { Licencee } from '@/app/api/lib/models/licencee';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
+import type { LocationDocument } from '@/lib/types/common';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { MachineAggregationMatchStage } from '@/shared/types/mongo';
 import { formatDistanceToNow } from 'date-fns';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * Main GET handler for machine aggregation
  *
@@ -53,13 +50,8 @@ import { NextRequest, NextResponse } from 'next/server';
  * 12. Return aggregated machine data
  */
 export async function GET(req: NextRequest) {
-  const startTime = Date.now();
-
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
+  return withApiAuth(req, async ({ user: userPayload, userRoles, isAdminOrDev }) => {
+    const startTime = Date.now();
 
     // ============================================================================
     // STEP 2: Parse query parameters
@@ -72,7 +64,6 @@ export async function GET(req: NextRequest) {
       ? locationIdsParam.split(',').filter(id => id && id !== 'all' && id !== 'null')
       : [];
 
-
     // Support multiple game types
     const gameTypesParam = searchParams.get('gameType') || searchParams.get('gameTypes');
     const selectedGameTypes = gameTypesParam
@@ -80,27 +71,24 @@ export async function GET(req: NextRequest) {
       : [];
 
     const searchTerm = searchParams.get('search')?.trim() || '';
-    // Support both 'licencee' and 'licencee' spelling for backwards compatibility
-    const licencee =
-      searchParams.get('licencee');
+    const licencee = searchParams.get('licencee');
     let timePeriod = searchParams.get('timePeriod');
-    const displayCurrency =
-      (searchParams.get('currency') as CurrencyCode) || 'USD';
+    const displayCurrency = (searchParams.get('currency') as CurrencyCode) || 'USD';
     const rawOnlineStatus = searchParams.get('onlineStatus') || 'all';
     const onlineStatus = rawOnlineStatus.toLowerCase();
+    const rawSmibStatus = searchParams.get('smibStatus') || 'all';
+    const smibStatus = rawSmibStatus.toLowerCase();
+    const membership = searchParams.get('membership')?.toLowerCase() || 'all';
 
     // Pagination parameters
     const pageParam = searchParams.get('page');
     const limitParam = searchParams.get('limit');
     const page = pageParam ? Math.max(1, parseInt(pageParam, 10)) : 1;
-    const limit = limitParam
-      ? Math.max(1, parseInt(limitParam, 10))
-      : undefined;
+    const limit = limitParam ? Math.max(1, parseInt(limitParam, 10)) : undefined;
 
     // ============================================================================
     // STEP 3: Validate timePeriod parameter
     // ============================================================================
-    // Only proceed if timePeriod is provided - no fallback
     if (!timePeriod) {
       return NextResponse.json(
         { error: 'timePeriod parameter is required' },
@@ -114,16 +102,9 @@ export async function GET(req: NextRequest) {
     // STEP 4: Get user's accessible licencees and permissions
     // ============================================================================
     const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
-    const userPayload = await getUserFromServer();
-    const userRoles = (userPayload?.roles as string[]) || [];
     let userLocationPermissions: string[] = [];
-    if (
-      Array.isArray(
-        (userPayload as { assignedLocations?: string[] })?.assignedLocations
-      )
-    ) {
-      userLocationPermissions = (userPayload as { assignedLocations: string[] })
-        .assignedLocations;
+    if (Array.isArray((userPayload as { assignedLocations?: string[] })?.assignedLocations)) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] }).assignedLocations;
     }
 
     // Get allowed location IDs (intersection of licencee + location permissions, respecting roles)
@@ -137,7 +118,7 @@ export async function GET(req: NextRequest) {
     // CRITICAL: For Admins and Developers, if specific locations are requested,
     // we bypass the restrictive allowedLocationIds check (which might be filtered by a stale licencee UI tag)
     // to ensure they can see the data for the location they are specifically viewing.
-    const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer');
+    const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer' || r === 'owner');
     if (isAdmin && locationIdArray.length > 0) {
       allowedLocationIds = 'all';
     }
@@ -146,7 +127,7 @@ export async function GET(req: NextRequest) {
     // STEP 4.5: Technician Restriction - Force last hour meter data
     // ============================================================================
     const userRolesLower = userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase());
-    const isOnlyTechnician = userRolesLower.includes('technician') && !userRolesLower.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
+    const isOnlyTechnician = userRolesLower.includes('technician') && !userRolesLower.some(r => ['admin', 'developer', 'manager', 'location admin', 'owner'].includes(r));
     if (isOnlyTechnician && !isAdmin) {
       console.warn('[API Aggregation] Applying technician restriction: forcing LastHour timePeriod');
       timePeriod = 'LastHour';
@@ -256,25 +237,37 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ success: true, data: [] });
       }
 
-      console.warn('[API] Filtered location IDs after permissions:', filteredLocationIds);
-      matchStage._id = { $in: filteredLocationIds };
-    } else if (allowedLocationIds !== 'all') {
-      // Apply allowed locations filter
-      matchStage._id = { $in: allowedLocationIds };
-    }
+    console.warn('[API] Filtered location IDs after permissions:', filteredLocationIds);
+    matchStage._id = { $in: filteredLocationIds };
+  } else if (allowedLocationIds !== 'all') {
+    // Apply allowed locations filter
+    matchStage._id = { $in: allowedLocationIds };
+  }
 
-    // Get all locations with their gameDayOffset
-    const locations = await GamingLocations.find(matchStage).lean();
+  // Apply membership filter
+  if (membership === 'enabled') {
+    matchStage.membershipEnabled = true;
+  } else if (membership === 'disabled') {
+    matchStage.membershipEnabled = false;
+  }
 
-    if (locations.length === 0) {
-      console.warn('[API] No locations found in database');
-      return NextResponse.json({ success: true, data: [] });
-    }
+  // Get all locations with their gameDayOffset
+  const locations = (await GamingLocations.find(matchStage).lean()) as unknown as LocationDocument[];
+  console.warn(`[API] Found ${locations.length} locations`);
 
-    // Fetch licencee settings for all locations in the query
-    const licenceeIds = Array.from(new Set(locations.map(loc => (loc as Record<string, unknown>).rel as Record<string, unknown> | undefined).map(rel => rel?.licencee).filter(Boolean)));
+  if (locations.length === 0) {
+    console.warn('[API] No locations found in database');
+    return NextResponse.json({ success: true, data: [] });
+  }
+
+    // Fetch licencee settings for all locations in the query.
+    // rel?.licencee is string[] per the schema — flatten to individual IDs.
+    const rawLicenceeRels = locations.map(loc => loc.rel?.licencee).filter(Boolean);
+    const licenceeIds = Array.from(new Set(
+      rawLicenceeRels.flatMap(rel => Array.isArray(rel) ? rel : [rel as string])
+    ));
     const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean();
-    const licenceeSubtractJackpotMap = new Map(licencees.map(l => [String((l as Record<string, unknown>)._id), !!(l as Record<string, unknown>).subtractJackpot]));
+    const licenceeIncludeJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.includeJackpot]));
 
     // ============================================================================
     // STEP 7: Calculate gaming day ranges per location
@@ -288,7 +281,10 @@ export async function GET(req: NextRequest) {
         return {
           _id: String(locRecord._id),
           gameDayOffset: (locRecord.gameDayOffset as number) ?? 8, // Default to 8 AM Trinidad time
-          subtractJackpot: licenceeSubtractJackpotMap.get(String(rel?.licencee)) || false,
+          includeJackpot: (() => {
+            const licId = Array.isArray(rel?.licencee) ? rel?.licencee[0] : rel?.licencee;
+            return licId ? (licenceeIncludeJackpotMap.get(String(licId)) || false) : false;
+          })(),
         };
       }),
       timePeriodForGamingDay,
@@ -319,6 +315,21 @@ export async function GET(req: NextRequest) {
         ],
       };
 
+      // Apply search filter at database level if provided
+      if (searchTerm) {
+        const searchRegex = { $regex: searchTerm, $options: 'i' };
+        (machineMatchQuery.$and as Array<Record<string, unknown>>).push({
+          $or: [
+            { serialNumber: searchRegex },
+            { 'custom.name': searchRegex },
+            { 'Custom.name': searchRegex },
+            { relayId: searchRegex },
+            { smibBoard: searchRegex },
+            { _id: searchRegex }
+          ]
+        });
+      }
+
       // Apply game type filter if provided
       if (selectedGameTypes.length > 0) {
         console.warn(`[API] Filtering by game types: ${selectedGameTypes.join(', ')}`);
@@ -336,10 +347,21 @@ export async function GET(req: NextRequest) {
       }
 
       // Apply online/offline status filter at database level
+      // aceEnabled locations always count as online regardless of lastActivity
       if (onlineStatus !== 'all') {
         const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+        const aceEnabledLocIds = locations
+          .filter(loc => (loc as Record<string, unknown>).aceEnabled === true)
+          .map(loc => String(loc._id));
         if (onlineStatus === 'online') {
-          machineMatchQuery.lastActivity = { $gte: threeMinutesAgo };
+          const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
+          const onlineConds: Array<Record<string, unknown>> = [
+            { lastActivity: { $gte: threeMinutesAgo } },
+          ];
+          if (aceEnabledLocIds.length > 0) {
+            onlineConds.push({ gamingLocation: { $in: aceEnabledLocIds } });
+          }
+          andArray.push({ $or: onlineConds });
         } else if (onlineStatus === 'offline') {
           const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
           andArray.push({
@@ -349,6 +371,9 @@ export async function GET(req: NextRequest) {
               { lastActivity: null },
             ],
           });
+          if (aceEnabledLocIds.length > 0) {
+            andArray.push({ gamingLocation: { $nin: aceEnabledLocIds } });
+          }
         } else if (onlineStatus === 'never-online') {
           const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
           andArray.push({
@@ -357,22 +382,35 @@ export async function GET(req: NextRequest) {
               { lastActivity: null },
             ],
           });
+          if (aceEnabledLocIds.length > 0) {
+            andArray.push({ gamingLocation: { $nin: aceEnabledLocIds } });
+          }
         }
       }
 
+      // Apply smibStatus filter at database level
+      if (smibStatus !== 'all') {
+        const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
+        if (smibStatus === 'smib') {
+          andArray.push({
+            $or: [
+              { relayId: { $ne: '', $exists: true, $not: /^\s*$/ } },
+              { smibBoard: { $ne: '', $exists: true, $not: /^\s*$/ } }
+            ]
+          });
+        } else if (smibStatus === 'no-smib') {
+          andArray.push({
+            $and: [
+              { $or: [{ relayId: '' }, { relayId: null }, { relayId: { $exists: false } }, { relayId: /^\s*$/ }] },
+              { $or: [{ smibBoard: '' }, { smibBoard: null }, { smibBoard: { $exists: false } }, { smibBoard: /^\s*$/ }] }
+            ]
+          });
+        }
+      }
+
+      console.warn(`[API] Finding machines with smibStatus: ${smibStatus}`);
       const allLocationMachines = await Machine.find(machineMatchQuery).lean();
-
-      if (onlineStatus !== 'all') {
-        console.warn('🔍 [API DEBUG] Filtering by onlineStatus:', onlineStatus);
-        console.warn('🔍 [API DEBUG] threeMinutesAgo:', new Date(Date.now() - 3 * 60 * 1000).toISOString());
-        console.warn('🔍 [API DEBUG] Query lastActivity constraint:', JSON.stringify(machineMatchQuery.lastActivity));
-        console.warn('🔍 [API DEBUG] Found machines count:', allLocationMachines.length);
-        if (allLocationMachines.length > 0) {
-          const firstMachine = allLocationMachines[0];
-          console.warn('🔍 [API DEBUG] First machine lastActivity:', firstMachine.lastActivity);
-          console.warn('🔍 [API DEBUG] Is valid?', new Date(firstMachine.lastActivity as Date) >= new Date(Date.now() - 3 * 60 * 1000));
-        }
-      }
+      console.warn(`[API] Found ${allLocationMachines.length} machines matching SMIB/GameType filters`);
 
       if (allLocationMachines.length > 0) {
         // Create machine-to-location map
@@ -508,39 +546,35 @@ export async function GET(req: NextRequest) {
             gamesWon: 0,
             handPaidCancelledCredits: 0,
             meterCount: 0,
+            gross: 0, // Add gross to default metrics
           };
 
-          const subtractJackpot = licenceeSubtractJackpotMap.get(String(location.rel?.licencee)) || false;
-          const multiplier = Number(machine.collectorDenomination) || 1;
+          const licenceeId7d = Array.isArray(location.rel?.licencee) ? location.rel.licencee[0] : location.rel?.licencee;
+          const includeJackpot = licenceeId7d ? (licenceeIncludeJackpotMap.get(String(licenceeId7d)) || false) : false;
 
-          const rawMoneyIn = (metrics.moneyIn || 0);
+          const moneyIn = (metrics.moneyIn || 0);
           const rawMoneyOut = (metrics.moneyOut || 0);
-          const rawJackpot = (metrics.jackpot || 0);
+          const jackpot = (metrics.jackpot || 0);
 
-          // Apply new Money Out logic: if subtractJackpot is ENABLED (Low Gross), 
-          // moneyOut = Net Cancelled + Jackpot (Total payout)
-          // IF subtractJackpot is DISABLED (High Gross), we keep as Net Payout
-          const moneyOutValue = rawMoneyOut + (subtractJackpot ? rawJackpot : 0);
-
-          const moneyIn = rawMoneyIn * multiplier;
-          const moneyOut = moneyOutValue * multiplier;
-          const jackpot = rawJackpot * multiplier;
+          // rawMoneyOut (movement.totalCancelledCredits) is the base cancelled credits without jackpot.
+          // Add jackpot only when includeJackpot=true for this licencee.
+          const moneyOut = rawMoneyOut + (includeJackpot ? jackpot : 0);
           const gross = moneyIn - moneyOut;
+          const netGross = moneyIn - rawMoneyOut - jackpot;
 
           // Get serialNumber with fallback to custom.name
-          const machineRecord = machine as Record<string, unknown>;
-          const serialNumber = (machineRecord.serialNumber as string)?.trim() || '';
-          const customData = (machineRecord.custom || machineRecord.Custom || {}) as Record<string, unknown>;
-          const customName = (customData.name as string)?.trim() || '';
+          const machineData = machine as { serialNumber?: string | number; custom?: { name?: string | number }; Custom?: { name?: string | number } };
+          const serialNumber = String(machineData.serialNumber || '').trim();
+          const customName = String(machineData.custom?.name || machineData.Custom?.name || '').trim();
           const finalSerialNumber = serialNumber || customName || '';
-
+      
           allMachines.push({
             _id: machineId,
             locationId: locationId,
             locationName: (location.name as string) || '(No Location)',
             assetNumber: finalSerialNumber,
             serialNumber: finalSerialNumber,
-            custom: customData,
+            custom: machineData.custom || machineData.Custom || {},
             game: String(machine.game || machine.gameType || ''),
             installedGame: String(machine.game || machine.gameType || ''),
             denomination: machine.denomination || '',
@@ -548,6 +582,7 @@ export async function GET(req: NextRequest) {
             model: machine.model || '',
             status: machine.status || 'unknown',
             isSasMachine: machine.isSasMachine || false,
+            aceEnabled: location.aceEnabled === true,
             relayId: machine.relayId || '',
             smibBoard: machine.smibBoard || '',
             smbId: machine.relayId || machine.smibBoard || '',
@@ -562,21 +597,23 @@ export async function GET(req: NextRequest) {
             updatedAt: machine.updatedAt,
             lastOnline: (machine.lastActivity as Date | undefined) || null,
             lastActivity: (machine.lastActivity as Date | undefined) || null,
-            // Calculate online status: machine is online if lastActivity is within last 3 minutes
-            online: machine.lastActivity
+            // Calculate online status: machine is online if aceEnabled or lastActivity within last 3 minutes
+            online: location.aceEnabled === true || (machine.lastActivity
               ? new Date(machine.lastActivity as Date) >
               new Date(Date.now() - 3 * 60 * 1000)
-              : false,
+              : false),
             moneyIn,
             moneyOut,
+            cancelledCredits: rawMoneyOut, // raw base (no jackpot) — used by currency converter
             gross,
+            netGross,
             jackpot: jackpot || 0,
-            coinIn: (metrics.coinIn || 0) * multiplier,
-            coinOut: (metrics.coinOut || 0) * multiplier,
+            coinIn: metrics.coinIn || 0,
+            coinOut: metrics.coinOut || 0,
             gamesPlayed: metrics.gamesPlayed || 0,
             gamesWon: metrics.gamesWon || 0,
-            subtractJackpot,
-            handPaidCancelledCredits: (metrics.handPaidCancelledCredits || 0) * multiplier,
+            includeJackpot,
+            handPaidCancelledCredits: metrics.handPaidCancelledCredits || 0,
             meterCount: metrics.meterCount || 0,
             rel: location.rel,
             country: location.country,
@@ -606,6 +643,21 @@ export async function GET(req: NextRequest) {
           ],
         };
 
+        // Apply search filter at database level if provided
+        if (searchTerm) {
+          const searchRegex = { $regex: searchTerm, $options: 'i' };
+          (batchMachineMatchQuery.$and as Array<Record<string, unknown>>).push({
+            $or: [
+              { serialNumber: searchRegex },
+              { 'custom.name': searchRegex },
+              { 'Custom.name': searchRegex },
+              { relayId: searchRegex },
+              { smibBoard: searchRegex },
+              { _id: searchRegex }
+            ]
+          });
+        }
+
         // Apply game type filter if provided
         if (selectedGameTypes.length > 0) {
           console.warn(`[API Batch] Filtering by game types: ${selectedGameTypes.join(', ')}`);
@@ -623,10 +675,21 @@ export async function GET(req: NextRequest) {
         }
 
         // Apply online/offline status filter at database level
+        // aceEnabled locations always count as online regardless of lastActivity
         if (onlineStatus !== 'all') {
           const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+          const batchAceEnabledLocIds = batch
+            .filter(loc => (loc as Record<string, unknown>).aceEnabled === true)
+            .map(loc => String(loc._id));
           if (onlineStatus === 'online') {
-            batchMachineMatchQuery.lastActivity = { $gte: threeMinutesAgo };
+            const andArray = batchMachineMatchQuery.$and as Array<Record<string, unknown>>;
+            const onlineConds: Array<Record<string, unknown>> = [
+              { lastActivity: { $gte: threeMinutesAgo } },
+            ];
+            if (batchAceEnabledLocIds.length > 0) {
+              onlineConds.push({ gamingLocation: { $in: batchAceEnabledLocIds } });
+            }
+            andArray.push({ $or: onlineConds });
           } else if (onlineStatus === 'offline') {
             const andArray = batchMachineMatchQuery.$and as Array<Record<string, unknown>>;
             andArray.push({
@@ -636,6 +699,9 @@ export async function GET(req: NextRequest) {
                 { lastActivity: null },
               ],
             });
+            if (batchAceEnabledLocIds.length > 0) {
+              andArray.push({ gamingLocation: { $nin: batchAceEnabledLocIds } });
+            }
           } else if (onlineStatus === 'never-online') {
             const andArray = batchMachineMatchQuery.$and as Array<Record<string, unknown>>;
             andArray.push({
@@ -644,17 +710,45 @@ export async function GET(req: NextRequest) {
                 { lastActivity: null },
               ],
             });
+            if (batchAceEnabledLocIds.length > 0) {
+              andArray.push({ gamingLocation: { $nin: batchAceEnabledLocIds } });
+            }
           }
         }
 
-        const batchAllMachines = await Machine.find(batchMachineMatchQuery).lean();
+        // Apply smibStatus filter at database level
+        if (smibStatus !== 'all') {
+          const andArray = batchMachineMatchQuery.$and as Array<Record<string, unknown>>;
+          if (smibStatus === 'smib') {
+            andArray.push({
+              $or: [
+                { relayId: { $ne: '', $exists: true, $not: /^\s*$/ } },
+                { smibBoard: { $ne: '', $exists: true, $not: /^\s*$/ } }
+              ]
+            });
+          } else if (smibStatus === 'no-smib') {
+            andArray.push({
+              $and: [
+                { $or: [{ relayId: '' }, { relayId: null }, { relayId: { $exists: false } }, { relayId: /^\s*$/ }] },
+                { $or: [{ smibBoard: '' }, { smibBoard: null }, { smibBoard: { $exists: false } }, { smibBoard: /^\s*$/ }] }
+              ]
+            });
+          }
+        }
 
-        if (batchAllMachines.length === 0) continue;
+        console.warn(`[API] [Batch] Finding machines for ${batchLocationIds.length} locations with smibStatus: ${smibStatus}`);
+        const batchAllMachines = await Machine.find(batchMachineMatchQuery).lean();
+        console.warn(`[API] [Batch] Found ${batchAllMachines.length} machines`);
+
+        if (batchAllMachines.length === 0) {
+          console.warn(`[API] [Batch] No machines found for these locations, skipping metrics aggregation`);
+          continue;
+        }
 
         // Step 3: Group machines by location
         const batchMachinesByLocation = new Map<
           string,
-          Array<Record<string, unknown>>
+          typeof batchAllMachines
         >();
         batchAllMachines.forEach(machine => {
           const locationId = machine.gamingLocation
@@ -665,7 +759,7 @@ export async function GET(req: NextRequest) {
               batchMachinesByLocation.set(locationId, []);
             }
             batchMachinesByLocation.get(locationId)!.push(
-              machine as Record<string, unknown>
+              machine
             );
           }
         });
@@ -685,6 +779,15 @@ export async function GET(req: NextRequest) {
 
         // Step 5: Get ALL meters for ALL machines in batch, grouped by machine (1 query)
         const allBatchMachineIds = batchAllMachines.map(m => String(m._id));
+        // 🚀 OPTIMIZED: No $lookup — we already have machine→location mapping in batchMachinesByLocation.
+        // Doing the join in JS is far cheaper than a $lookup across two large collections.
+        const machineToLocationMap = new Map<string, string>();
+        batchAllMachines.forEach(machine => {
+          const machineId = String(machine._id);
+          const locId = machine.gamingLocation ? String(machine.gamingLocation) : null;
+          if (locId) machineToLocationMap.set(machineId, locId);
+        });
+
         const batchMetersPipeline: PipelineStage[] = [
           {
             $match: {
@@ -700,32 +803,8 @@ export async function GET(req: NextRequest) {
             },
           },
           {
-            $lookup: {
-              from: 'machines',
-              localField: 'machine',
-              foreignField: '_id',
-              as: 'machineDetails',
-            },
-          },
-          {
-            $unwind: {
-              path: '$machineDetails',
-              preserveNullAndEmptyArrays: false,
-            },
-          },
-          {
-            $addFields: {
-              locationId: {
-                $toString: '$machineDetails.gamingLocation',
-              },
-            },
-          },
-          {
             $group: {
-              _id: {
-                machine: '$machine',
-                locationId: '$locationId',
-              },
+              _id: '$machine',
               moneyIn: { $sum: { $ifNull: ['$movement.drop', 0] } },
               moneyOut: {
                 $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
@@ -746,7 +825,7 @@ export async function GET(req: NextRequest) {
         ];
 
         const batchMetricsAggregation =
-          await Meters.aggregate(batchMetersPipeline).exec();
+          await Meters.aggregate(batchMetersPipeline, { maxTimeMS: 90000 }).exec();
 
         // Step 6: Filter by gaming day ranges and group by machine
         const metricsByMachine = new Map<
@@ -765,9 +844,9 @@ export async function GET(req: NextRequest) {
         >();
 
         batchMetricsAggregation.forEach(agg => {
-          const machineId = String(agg._id.machine);
-          const locationId = String(agg._id.locationId);
-          const gameDayRange = gamingDayRanges.get(locationId);
+          const machineId = String(agg._id);
+          const locationId = machineToLocationMap.get(machineId);
+          const gameDayRange = locationId ? gamingDayRanges.get(locationId) : undefined;
           if (!gameDayRange || timePeriod === 'All Time') {
             // Include all data if no date range or All Time
             metricsByMachine.set(machineId, {
@@ -843,32 +922,29 @@ export async function GET(req: NextRequest) {
               meterCount: 0,
             };
 
-            const subtractJackpot = licenceeSubtractJackpotMap.get(String(location.rel?.licencee)) || false;
-            const multiplier = Number(machine.collectorDenomination) || 1;
+            const licenceeIdBatch = Array.isArray(location.rel?.licencee) ? location.rel.licencee[0] : location.rel?.licencee;
+            const includeJackpot = licenceeIdBatch ? (licenceeIncludeJackpotMap.get(String(licenceeIdBatch)) || false) : false;
 
-            const rawMoneyIn = (metrics.moneyIn || 0);
+            const moneyIn = (metrics.moneyIn || 0);
             const rawMoneyOut = (metrics.moneyOut || 0);
-            const rawJackpot = (metrics.jackpot || 0);
+            const jackpot = (metrics.jackpot || 0);
 
-            // Apply new Money Out logic: if subtractJackpot is ENABLED (Low Gross), 
-            // moneyOut = Net Cancelled + Jackpot (Total payout)
-            // IF subtractJackpot is DISABLED (High Gross), we keep as Net Payout
-            const moneyOutValue = rawMoneyOut + (subtractJackpot ? rawJackpot : 0);
+            // rawMoneyOut (movement.totalCancelledCredits) is the base cancelled credits without jackpot.
+            // Add jackpot only when includeJackpot=true for this licencee.
+            const moneyOut = rawMoneyOut + (includeJackpot ? jackpot : 0);
 
-            const moneyIn = rawMoneyIn * multiplier;
-            const moneyOut = moneyOutValue * multiplier;
-            const jackpot = rawJackpot * multiplier;
-            const coinIn = (metrics.coinIn || 0) * multiplier;
-            const coinOut = (metrics.coinOut || 0) * multiplier;
+            const coinIn = (metrics.coinIn || 0);
+            const coinOut = (metrics.coinOut || 0);
             const gamesPlayed = metrics.gamesPlayed || 0;
             const gamesWon = metrics.gamesWon || 0;
             const gross = moneyIn - moneyOut;
+            const netGross = moneyIn - rawMoneyOut - jackpot; // True profit (always subtracts jackpot)
 
             // Get serialNumber with fallback to custom.name
             const machineRecord = machine as Record<string, unknown>;
-            const serialNumber = (machineRecord.serialNumber as string)?.trim() || '';
-            const customData = (machineRecord.custom || machineRecord.Custom || {}) as Record<string, unknown>;
-            const customName = (customData.name as string)?.trim() || '';
+            const serialNumber = String(machineRecord.serialNumber || '').trim();
+            const customData = (machine.custom || machine.Custom || {}) as Record<string, unknown>;
+            const customName = String(customData.name || '').trim();
             const finalSerialNumber = serialNumber || customName || '';
 
             return {
@@ -896,23 +972,26 @@ export async function GET(req: NextRequest) {
               lastOnline: (machine.lastActivity as Date | undefined) || null,
               lastActivity: (machine.lastActivity as Date | undefined) || null,
               // Calculate online status: machine is online if lastActivity is within last 3 minutes
-              online: machine.lastActivity
+              // or if the location has aceEnabled: true
+              online: (location.aceEnabled === true) || (machine.lastActivity
                 ? new Date(machine.lastActivity as Date) >
                 new Date(Date.now() - 3 * 60 * 1000)
-                : false,
+                : false),
+              aceEnabled: location.aceEnabled === true,
               createdAt: machine.createdAt as Date | undefined,
               deletedAt: machine.deletedAt as Date | undefined,
               timePeriod: timePeriod,
               moneyIn,
               moneyOut,
-              cancelledCredits: moneyOut,
+              cancelledCredits: rawMoneyOut, // raw base (no jackpot) — used by currency converter
               gross,
+              netGross,
               jackpot,
               coinIn,
               coinOut,
               gamesPlayed,
               gamesWon,
-              subtractJackpot,
+              includeJackpot,
             };
           });
           batchResults.push(...locationResults);
@@ -932,7 +1011,8 @@ export async function GET(req: NextRequest) {
     let refinedMachines = allMachines.map(machine => {
       const lastActivityStr = (machine as Record<string, unknown>).lastActivity;
       const lastActivity = lastActivityStr ? new Date(lastActivityStr as string | Date) : null;
-      const isOnline = lastActivity && lastActivity > threeMinutesAgo;
+      const aceEnabled = (machine as Record<string, unknown>).aceEnabled === true;
+      const isOnline = aceEnabled || (lastActivity && lastActivity > threeMinutesAgo);
 
       let offlineTimeLabel: string | undefined = undefined;
       let actualOfflineTime: string | undefined = undefined;
@@ -979,7 +1059,9 @@ export async function GET(req: NextRequest) {
       refinedMachines = refinedMachines.filter(machine => {
         const lastActivityStr = (machine as Record<string, unknown>).lastActivity;
         const lastActivity = lastActivityStr ? new Date(lastActivityStr as string | Date) : null;
-        const isOnline = lastActivity && lastActivity > threeMinutesAgo;
+        const aceEnabled = (machine as Record<string, unknown>).aceEnabled === true;
+        const isOnline = aceEnabled || (lastActivity && lastActivity > threeMinutesAgo);
+        (machine as Record<string, unknown>).online = isOnline; // Sync the field for filtering below
 
         // 1. Must be currently offline
         if (isOnline) return false;
@@ -1004,60 +1086,14 @@ export async function GET(req: NextRequest) {
     allMachines = refinedMachines;
 
     // ============================================================================
-    // STEP 9: Apply search filter
+    // STEP 9: Search filter applied at DB level
     // ============================================================================
-    // Apply search filter if provided (search by serial number, custom.name, relay ID, smib ID, or machine _id)
+    // Search is now applied at the database level in Machine.find() for better performance
     let filteredMachines = allMachines;
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filteredMachines = allMachines.filter(machine => {
-        const machineRecord = machine as Record<string, unknown>;
-        // Search in serialNumber (which already includes custom.name fallback)
-        const matchesSerialNumber = (
-          machineRecord.serialNumber as string | undefined
-        )
-          ?.toLowerCase()
-          .includes(searchLower);
-        const matchesRelayId = (machineRecord.relayId as string | undefined)
-          ?.toLowerCase()
-          .includes(searchLower);
-        const matchesSmbId = (machineRecord.smbId as string | undefined)
-          ?.toLowerCase()
-          .includes(searchLower);
-        // Search by _id (case-insensitive)
-        const matchesId = (machineRecord._id as string | undefined)
-          ?.toLowerCase()
-          .includes(searchLower);
-        // Also check custom.name directly if available
-        const customName =
-          (
-            (machineRecord.custom as Record<string, unknown>)?.name ||
-            (machineRecord.Custom as Record<string, unknown>)?.name
-          )
-            ?.toString()
-            .toLowerCase() || '';
-        const matchesCustomName = customName.includes(searchLower);
-
-        return (
-          matchesSerialNumber ||
-          matchesRelayId ||
-          matchesSmbId ||
-          matchesId ||
-          matchesCustomName
-        );
-      });
-    }
 
     // ============================================================================
     // STEP 10: Apply currency conversion if needed
     // ============================================================================
-    // Get current user's role to determine if currency conversion should apply
-    const currentUser = await getUserFromServer();
-    const currentUserRoles = (currentUser?.roles as string[]) || [];
-    const isAdminOrDev =
-      currentUserRoles.includes('admin') ||
-      currentUserRoles.includes('developer');
-
     // Currency conversion ONLY for Admin/Developer when viewing "All Licencees"
     // Managers and other users ALWAYS see native currency (TTD for TTG, GYD for Cabana, etc.)
     if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
@@ -1078,18 +1114,18 @@ export async function GET(req: NextRequest) {
             { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
         },
-        { _id: 1, name: 1, subtractJackpot: 1 }
+        { _id: 1, name: 1, includeJackpot: 1 }
       )
         .lean()
         .exec();
 
-      // Create maps of licencee ID to name and subtractJackpot
+      // Create maps of licencee ID to name and includeJackpot
       const licenceeIdToName = new Map<string, string>();
-      const licenceeIdToSubtractJackpot = new Map<string, boolean>();
+      const licenceeIdToIncludeJackpot = new Map<string, boolean>();
       licenceesData.forEach(lic => {
         const licRecord = lic as Record<string, unknown>;
         licenceeIdToName.set(String(licRecord._id), licRecord.name as string);
-        licenceeIdToSubtractJackpot.set(String(licRecord._id), Boolean(licRecord.subtractJackpot));
+        licenceeIdToIncludeJackpot.set(String(licRecord._id), Boolean(licRecord.includeJackpot));
       });
 
       // Get country details for currency mapping
@@ -1145,20 +1181,14 @@ export async function GET(req: NextRequest) {
           (machineRecord.moneyIn as number) || 0,
           nativeCurrency
         );
-        const moneyOutUSD = convertToUSD(
-          (machineRecord.moneyOut as number) || 0,
-          nativeCurrency
-        );
+        // Use cancelledCredits (rawMoneyOut = base only, no jackpot) as the conversion base.
+        // moneyOut is re-derived below by conditionally adding jackpot.
         const cancelledCreditsUSD = convertToUSD(
           (machineRecord.cancelledCredits as number) || 0,
           nativeCurrency
         );
         const jackpotUSD = convertToUSD(
           (machineRecord.jackpot as number) || 0,
-          nativeCurrency
-        );
-        const grossUSD = convertToUSD(
-          (machineRecord.gross as number) || 0,
           nativeCurrency
         );
         const coinInUSD = convertToUSD(
@@ -1170,27 +1200,63 @@ export async function GET(req: NextRequest) {
           nativeCurrency
         );
 
+        const moneyIn = convertFromUSD(moneyInUSD, displayCurrency);
+        // machine.moneyOut coming in already conditionally includes jackpot (set in batch/sequential step).
+        // machine.cancelledCredits = rawMoneyOut (base only, no jackpot).
+        // Re-derive moneyOut from the base so we don't double-add jackpot.
+        const baseMoneyOut = convertFromUSD(cancelledCreditsUSD, displayCurrency); // raw base, no jackpot
+        const jackpot = convertFromUSD(jackpotUSD, displayCurrency);
+        const includeJackpot = (machineLicenceeId && licenceeIdToIncludeJackpot.get(machineLicenceeId.toString())) || false;
+
+        // moneyOut = base + jackpot (if includeJackpot) — same pattern as batch/sequential
+        const moneyOut = baseMoneyOut + (includeJackpot ? jackpot : 0);
+        const gross = moneyIn - moneyOut;
+        const netGross = moneyIn - baseMoneyOut - jackpot;
+
         return {
           ...machine,
-          moneyIn: convertFromUSD(moneyInUSD, displayCurrency),
-          moneyOut: convertFromUSD(moneyOutUSD, displayCurrency),
+          moneyIn,
+          moneyOut,
           cancelledCredits: convertFromUSD(
             cancelledCreditsUSD,
             displayCurrency
           ),
-          jackpot: convertFromUSD(jackpotUSD, displayCurrency),
-          gross: convertFromUSD(grossUSD, displayCurrency),
-          netGross: (machineLicenceeId && licenceeIdToSubtractJackpot.get(machineLicenceeId.toString()))
-            ? (convertFromUSD(grossUSD, displayCurrency) - convertFromUSD(jackpotUSD, displayCurrency))
-            : undefined,
+          jackpot,
+          gross,
+          netGross,
           coinIn: convertFromUSD(coinInUSD, displayCurrency),
           coinOut: convertFromUSD(coinOutUSD, displayCurrency),
+          includeJackpot,
         };
       });
     }
 
     // ============================================================================
-    // STEP 10.5: Dynamic machine sorting
+    // STEP 10.5: Apply reviewer multiplier
+    // ============================================================================
+    const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+    if (reviewerMult !== null) {
+      const mult = 1 - reviewerMult;
+      filteredMachines = filteredMachines.map(machine => {
+        const m = machine as Record<string, unknown>;
+        const moneyIn = ((m.moneyIn as number) || 0) * mult;
+        const moneyOut = ((m.moneyOut as number) || 0) * mult;
+        const jackpot = ((m.jackpot as number) || 0) * mult;
+        const cancelledCredits = ((m.cancelledCredits as number) || 0) * mult;
+        return {
+          ...machine,
+          moneyIn,
+          moneyOut,
+          jackpot,
+          cancelledCredits,
+          gross: moneyIn - moneyOut,
+          netGross: moneyIn - cancelledCredits - jackpot,
+        };
+      });
+    }
+
+    // ============================================================================
+    // STEP 10.6: Dynamic machine sorting
     // ============================================================================
     const sortBy = searchParams.get('sortBy') || 'moneyIn';
     const sortOrderRaw = searchParams.get('sortOrder') || 'desc';
@@ -1322,18 +1388,6 @@ export async function GET(req: NextRequest) {
       console.warn(`[Machines Aggregation API] Completed in ${duration}ms`);
     }
     return NextResponse.json(response);
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Aggregation failed';
-    console.error(
-      `[Machines Aggregation API] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      { success: false, error: errorMessage, details: String(error) },
-      { status: 500 }
-    );
-  }
+  });
 }
 

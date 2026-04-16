@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import { ReactElement } from 'react';
 import CollectionReportFormMachineInfoDisplay from '@/components/CMS/collectionReport/forms/CollectionReportFormMachineInfoDisplay';
 import CollectionReportFormTimeInput from '@/components/CMS/collectionReport/forms/CollectionReportFormTimeInput';
 import CollectionReportFormMachineMeters from '@/components/CMS/collectionReport/forms/CollectionReportFormMachineMeters';
@@ -9,7 +9,7 @@ import CollectionReportFormSharedFinancials from '@/components/CMS/collectionRep
 
 type MachineDataEntryFormProps = {
   // Machine display data
-  machineName?: string | React.ReactElement;
+  machineName?: string | ReactElement;
   smibId?: string;
   currentMetersIn?: number | null;
   currentMetersOut?: number | null;
@@ -25,8 +25,10 @@ type MachineDataEntryFormProps = {
   ramClear: boolean;
   ramClearMetersIn?: string;
   ramClearMetersOut?: string;
-  prevIn?: number | null;
-  prevOut?: number | null;
+  prevIn?: string | number | null;
+  prevOut?: string | number | null;
+  onPrevInChange?: (value: string) => void;
+  onPrevOutChange?: (value: string) => void;
   onMetersInChange: (value: string) => void;
   onMetersOutChange: (value: string) => void;
   onRamClearChange: (checked: boolean) => void;
@@ -97,6 +99,8 @@ export default function CollectionReportFormMachineDataEntry({
   onSasStartTimeChange,
   sasEndTime = null,
   onSasEndTimeChange,
+  onPrevInChange,
+  onPrevOutChange,
 }: MachineDataEntryFormProps) {
   const inputsEnabled = !disabled && !isProcessing;
 
@@ -188,6 +192,8 @@ export default function CollectionReportFormMachineDataEntry({
         onRamClearChange={onRamClearChange}
         onRamClearMetersInChange={onRamClearMetersInChange}
         onRamClearMetersOutChange={onRamClearMetersOutChange}
+        onPrevInChange={onPrevInChange}
+        onPrevOutChange={onPrevOutChange}
         disabled={!inputsEnabled}
       />
 

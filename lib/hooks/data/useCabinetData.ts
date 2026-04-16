@@ -11,9 +11,13 @@ import {
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { dateRange } from '@/lib/types/index';
 import { isAbortError } from '@/lib/utils/errors';
-import { calculateCabinetFinancialTotals } from '@/lib/utils/financial';
+import { 
+  calculateCabinetFinancialTotals,
+  type FinancialTotals 
+} from '@/lib/utils/financial/totals';
 import { useDebounce } from '@/lib/utils/hooks';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type UseCabinetDataProps = {
@@ -24,6 +28,8 @@ type UseCabinetDataProps = {
   selectedLocation: string[];
   selectedGameType: string[];
   selectedStatus: string;
+  selectedMembership: string;
+  selectedSmibStatus: string;
   displayCurrency?: string;
 };
 
@@ -31,10 +37,10 @@ type UseCabinetDataReturn = {
   // Data states
   allCabinets: Cabinet[];
   filteredCabinets: Cabinet[];
-  locations: { _id: string; name: string; subtractJackpot?: boolean }[];
+  locations: { _id: string; name: string; includeJackpot?: boolean }[];
   gameTypes: string[];
-  financialTotals: ReturnType<typeof calculateCabinetFinancialTotals>;
-  metricsTotals: { moneyIn: number; moneyOut: number; gross: number; jackpot: number; netGross: number } | null;
+  financialTotals: FinancialTotals;
+  metricsTotals: FinancialTotals | null;
   totalCount: number;
 
   // Loading states
@@ -69,6 +75,8 @@ export const useCabinetData = ({
   selectedLocation,
   selectedGameType,
   selectedStatus,
+  selectedMembership,
+  selectedSmibStatus,
   displayCurrency,
 }: UseCabinetDataProps): UseCabinetDataReturn => {
   // Debounce search term to reduce API calls
@@ -110,20 +118,14 @@ export const useCabinetData = ({
   }, [allCabinets.length, initialLoading, loading]);
 
   // Removed filteredCabinets state - now using memoized value for better performance
-  const [locations, setLocations] = useState<{ _id: string; name: string; subtractJackpot?: boolean }[]>(
+  const [locations, setLocations] = useState<{ _id: string; name: string; includeJackpot?: boolean }[]>(
     []
   );
   const [gameTypes, setGameTypes] = useState<string[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
 
   // Separate state for metrics totals (from dedicated API call)
-  const [metricsTotals, setMetricsTotals] = useState<{
-    moneyIn: number;
-    moneyOut: number;
-    gross: number;
-    jackpot: number;
-    netGross: number;
-  } | null>(null);
+  const [metricsTotals, setMetricsTotals] = useState<FinancialTotals | null>(null);
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
 
   // AbortController for canceling previous requests
@@ -233,29 +235,37 @@ export const useCabinetData = ({
       }
 
       const result = await makeRequest(async signal => {
+        // Read latest values from store at call time to avoid stale closures
+        // (e.g. when called via onCustomRangeGo setTimeout callback)
+        const storeState = useDashBoardStore.getState();
+        const currentCustomDateRange = storeState.customDateRange;
+        const currentActiveMetricsFilter = storeState.activeMetricsFilter || activeMetricsFilter;
+
         console.warn('[useCabinetData] Loading cabinets with filters:', {
           selectedLicencee,
-          activeMetricsFilter,
+          activeMetricsFilter: currentActiveMetricsFilter,
           page,
           limit,
-          customDateRange: customDateRange
+          customDateRange: currentCustomDateRange
             ? {
-              startDate: customDateRange.startDate?.toISOString(),
-              endDate: customDateRange.endDate?.toISOString(),
+              startDate: currentCustomDateRange.startDate?.toISOString(),
+              endDate: currentCustomDateRange.endDate?.toISOString(),
             }
             : undefined,
           selectedLocation,
           selectedGameType,
           selectedStatus,
+          selectedMembership,
+          selectedSmibStatus,
         });
 
         const dateRangeForFetch =
-          activeMetricsFilter === 'Custom' &&
-            customDateRange?.startDate &&
-            customDateRange?.endDate
+          currentActiveMetricsFilter === 'Custom' &&
+            currentCustomDateRange?.startDate &&
+            currentCustomDateRange?.endDate
             ? {
-              from: customDateRange.startDate,
-              to: customDateRange.endDate,
+              from: currentCustomDateRange.startDate,
+              to: currentCustomDateRange.endDate,
             }
             : undefined;
 
@@ -281,7 +291,7 @@ export const useCabinetData = ({
 
         const result = await fetchCabinets(
           selectedLicencee,
-          activeMetricsFilter,
+          currentActiveMetricsFilter,
           dateRangeForFetch,
           displayCurrency,
           effectivePage,
@@ -292,7 +302,9 @@ export const useCabinetData = ({
           onlineStatus,
           signal,
           sortBy,
-          sortOrder
+          sortOrder,
+          selectedMembership,
+          selectedSmibStatus
         );
 
         return result;
@@ -349,12 +361,15 @@ export const useCabinetData = ({
             };
           };
 
+          // NOTE: reviewer multiplier is applied server-side — no client-side scaling needed
+          const scaledCabinets = paginatedResponse.cabinets;
+
           if (page === 1 || !page) {
-            setAllCabinets(paginatedResponse.cabinets);
+            setAllCabinets(scaledCabinets);
           } else {
             setAllCabinets((prev: Cabinet[]) => {
               const existingIds = new Set(prev.map(c => c._id));
-              const uniqueNew = paginatedResponse.cabinets.filter(
+              const uniqueNew = scaledCabinets.filter(
                 (c: Cabinet) => !existingIds.has(c._id)
               );
               return [...prev, ...uniqueNew];
@@ -375,12 +390,14 @@ export const useCabinetData = ({
           setGameTypes(uniqueGameTypes);
         } else if (Array.isArray(result)) {
           // Backward compatibility: direct array response
-          setAllCabinets(result);
-          setTotalCount(result.length);
+          // NOTE: reviewer multiplier is applied server-side — no client-side scaling needed
+          const scaledResult = result;
+          setAllCabinets(scaledResult);
+          setTotalCount(scaledResult.length);
 
           const uniqueGameTypes = Array.from(
             new Set(
-              result
+              scaledResult
                 .map(cabinet => cabinet.game || cabinet.installedGame)
                 .filter(game => game && game.trim() !== '')
             )
@@ -427,6 +444,7 @@ export const useCabinetData = ({
       debouncedSearchTerm,
       selectedLocation,
       selectedStatus,
+      selectedSmibStatus,
       makeRequest,
     ]
   );
@@ -512,7 +530,7 @@ export const useCabinetData = ({
     }
 
     // Create a dependency key to detect actual changes
-    const depsKey = `${activeMetricsFilter}-${selectedLicencee || 'all'}-${displayCurrency || 'default'}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${selectedLocation.join(',')}-${selectedGameType.join(',')}-${selectedStatus}-${searchTerm}`;
+    const depsKey = `${activeMetricsFilter}-${selectedLicencee || 'all'}-${displayCurrency || 'default'}-${customDateRange?.startDate?.getTime() || ''}-${customDateRange?.endDate?.getTime() || ''}-${selectedLocation.join(',')}-${selectedGameType.join(',')}-${selectedStatus}-${selectedSmibStatus}-${searchTerm}`;
 
     // On initial mount, don't abort anything (there's nothing to abort)
     // Only abort if dependencies actually changed (not on initial mount)
@@ -552,11 +570,14 @@ export const useCabinetData = ({
                     : selectedStatus === 'Archived'
                       ? 'archived'
                       : selectedStatus.toLowerCase(),
-              searchTerm
+              searchTerm,
+              selectedMembership,
+              selectedSmibStatus
             ),
           'totals'
         );
         if (totals) {
+          // NOTE: reviewer multiplier is applied server-side — no client-side scaling needed
           setMetricsTotals(totals);
         } else {
           setMetricsTotals(null);
@@ -584,6 +605,7 @@ export const useCabinetData = ({
     selectedLocation,
     selectedGameType,
     selectedStatus,
+    selectedSmibStatus,
     searchTerm,
     makeRequest,
   ]);

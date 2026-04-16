@@ -82,10 +82,12 @@ export type AggregatedLocation = {
   totalDrop?: number; // Alias for moneyIn in some contexts
   enableMembership?: boolean; // Membership enabled flag
   membershipEnabled?: boolean; // Alias for enableMembership
+  aceEnabled?: boolean; // Ace Enabled implies location is fully online
   memberCount?: number; // Number of members at this location
   hasNoRecentCollectionReport?: boolean; // Flag indicating no collection report in past 3 months (for NON-SMIB locations)
   geoCoords?: GeoCoordinates; // Geographic coordinates for mapping
-  subtractJackpot?: boolean; // Setting from associated Licencee
+  includeJackpot?: boolean; // Setting from associated Licencee
+  latestActivity?: number; // Timestamp of latest machine activity
   machines?: Array<{
     _id: string;
     assetNumber?: string;
@@ -132,7 +134,7 @@ export type GamingMachine = {
   origSerialNumber?: string; // Original serial number from system
   assetNumber?: string;
   machineId?: string;
-  relayId: string;
+  relayId?: string;
   smbId?: string; // Alias for smibBoard for UI convenience
   smibBoard?: string;
   custom: { name: string }; // Custom name for machines - required field
@@ -176,7 +178,7 @@ export type GamingMachine = {
   gamesPlayed?: number;
   gamesWon?: number;
   handle?: number; // Same as coinIn for betting activity
-  subtractJackpot?: boolean; // Setting from associated Licencee
+  includeJackpot?: boolean; // Setting from associated Licencee
 
   // SAS and meter data
   sasMeters?: SasMeters;
@@ -562,13 +564,15 @@ export type MemberSession = {
 };
 
 // Members UI types
-export type MembersView = 'members' | 'summary-report';
+export type MembersView = 'members' | 'summary-report' | 'activity-log';
 
 export type MembersTab = {
   id: MembersView;
   label: string;
   icon: string;
   description: string;
+  /** false when this tab is under maintenance */
+  available?: boolean;
 };
 
 // Form data types for cabinet creation/editing
@@ -581,7 +585,7 @@ export type NewCabinetFormData = {
   cabinetType: string;
   assetStatus: string;
   gamingLocation: string;
-  relayId: string;
+  relayId?: string;
   smibBoard?: string;
   smbId?: string;
   manufacturer: string;

@@ -11,6 +11,8 @@
  * @module app/api/members/send-verification-sms/route
  */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { sendVerificationSMS } from '@/app/api/lib/helpers/sms';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
@@ -46,27 +48,82 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 3: Call SMS Helper Logic
+    // STEP 3: Send SMS and update member record
     // ============================================================================
-    // This helper performs both the SMS sending and the member record update.
-    const data = await sendVerificationSMS(memberId, phoneNumber);
+    const result = await sendVerificationSMS(memberId, phoneNumber);
 
     // ============================================================================
-    // STEP 4: Return Success Response
+    // STEP 4: Log Activity (Success)
+    // ============================================================================
+    const user = await getUserFromServer();
+    if (user) {
+      await logActivity({
+        action: 'sms_success',
+        details: `Successfully sent verification SMS to ${phoneNumber} (Member ID: ${memberId}). Status: ${result.statusName}`,
+        userId: String(user._id || user.id || user.sub),
+        username: (user.emailAddress as string) || (user.username as string) || 'unknown',
+        membershipLog: true,
+        metadata: {
+          resource: 'sms',
+          resourceId: memberId,
+          resourceName: phoneNumber,
+          phone: phoneNumber,
+          messageId: result.messageId,
+          status: result.statusName,
+          description: result.statusDescription,
+        }
+      });
+    }
+
+    // ============================================================================
+    // STEP 5: Return Success Response
     // ============================================================================
     return NextResponse.json({
       success: true,
-      message: 'Activation code sent successfully',
-      data
+      message: 'Verification code sent successfully',
+      data: {
+        messageId: result.messageId,
+        phone: result.phone,
+        status: result.statusName,
+        statusDescription: result.statusDescription,
+      },
     });
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown server error';
-    console.error('[SMS API] Verification failed:', errorMessage);
+    const { searchParams } = new URL(req.url);
+    const memberId = searchParams.get('memberId');
+    const phoneNumber = searchParams.get('phoneNumber');
 
+    console.error(`[SMS API] Failed to send verification SMS to memberId ${memberId}:`, errorMessage);
+
+    // Log Activity (Failure)
+    const user = await getUserFromServer();
+    if (user) {
+      try {
+        await logActivity({
+          action: 'sms_failed',
+          details: `Failed to send verification SMS to ${phoneNumber} (Member ID: ${memberId}). Error: ${errorMessage}`,
+          userId: String(user._id || user.id || user.sub),
+          username: (user.emailAddress as string) || (user.username as string) || 'unknown',
+          membershipLog: true,
+          metadata: {
+            resource: 'sms',
+            resourceId: memberId || 'unknown',
+            resourceName: phoneNumber || 'unknown',
+            error: errorMessage,
+          }
+        });
+      } catch (logErr) {
+        console.error('[SMS API] Failed to log failure activity:', logErr);
+      }
+    }
+
+    // Distinguish config errors (500) from request/carrier errors (400)
+    const isConfigError = errorMessage.includes('configuration missing');
     return NextResponse.json(
       { success: false, error: errorMessage },
-      { status: 400 }
+      { status: isConfigError ? 500 : 400 }
     );
   }
 }

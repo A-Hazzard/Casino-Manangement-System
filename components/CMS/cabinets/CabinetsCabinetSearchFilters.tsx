@@ -9,10 +9,12 @@
  * - Location filter dropdown
  * - Game type filter dropdown
  * - Status filter (All/Online/Offline)
+ * - Membership filter (All/Enabled/Disabled)
  * - Sort options dropdown
  * - Responsive design (mobile vs desktop layouts)
  */
 
+import { ChangeEvent } from 'react';
 import MultiSelectDropdown from '@/components/shared/ui/common/MultiSelectDropdown';
 import { CustomSelect } from '@/components/shared/ui/custom-select';
 import { Input } from '@/components/shared/ui/input';
@@ -32,6 +34,10 @@ export const CabinetsCabinetSearchFilters = ({
   onGameTypeChange,
   selectedStatus,
   onStatusChange,
+  selectedMembership,
+  onMembershipChange,
+  selectedSmibStatus,
+  onSmibStatusChange,
   sortOption,
   sortOrder,
   onSortChange,
@@ -85,7 +91,7 @@ export const CabinetsCabinetSearchFilters = ({
     onGameTypeChange(values);
   };
 
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     onSearchChange(event.target.value);
   };
 
@@ -159,6 +165,38 @@ export const CabinetsCabinetSearchFilters = ({
                 emptyMessage="No sort options found"
               />
             </div>
+            <div className="w-48 flex-shrink-0 relative">
+              <CustomSelect
+                value={selectedMembership}
+                onValueChange={onMembershipChange}
+                options={[
+                  { value: 'all', label: 'All Membership' },
+                  { value: 'enabled', label: 'Membership Enabled' },
+                  { value: 'disabled', label: 'Membership Disabled' },
+                ]}
+                placeholder="All Membership"
+                className="w-full"
+                triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={false}
+                emptyMessage="No options found"
+              />
+            </div>
+            <div className="w-48 flex-shrink-0 relative">
+              <CustomSelect
+                value={selectedSmibStatus}
+                onValueChange={onSmibStatusChange}
+                options={[
+                  { value: 'all', label: 'All SMIB' },
+                  { value: 'smib', label: 'Only SMIB' },
+                  { value: 'no-smib', label: 'No SMIB' },
+                ]}
+                placeholder="All SMIB"
+                className="w-full"
+                triggerClassName="h-10 bg-white border border-gray-300 rounded-full px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={false}
+                emptyMessage="No options found"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -179,7 +217,7 @@ export const CabinetsCabinetSearchFilters = ({
           </div>
 
           {/* Filter Dropdowns */}
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {showLocationFilter && (
               <div className="w-auto min-w-[200px] max-w-[250px] flex-shrink-0">
                 <MultiSelectDropdown
@@ -224,10 +262,45 @@ export const CabinetsCabinetSearchFilters = ({
                 emptyMessage="No status options found"
               />
             </div>
+
+            {/* Membership Filter */}
+            <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
+              <CustomSelect
+                value={selectedMembership}
+                onValueChange={onMembershipChange}
+                options={[
+                  { value: 'all', label: 'All Membership' },
+                  { value: 'enabled', label: 'Membership Enabled' },
+                  { value: 'disabled', label: 'Membership Disabled' },
+                ]}
+                placeholder="All Membership"
+                className="w-full"
+                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={false}
+                emptyMessage="No options found"
+              />
+            </div>
+
+            {/* SMIB Filter */}
+            <div className="w-auto min-w-[180px] max-w-[220px] flex-shrink-0">
+              <CustomSelect
+                value={selectedSmibStatus}
+                onValueChange={onSmibStatusChange}
+                options={[
+                  { value: 'all', label: 'All SMIB' },
+                  { value: 'smib', label: 'Only SMIB' },
+                  { value: 'no-smib', label: 'No SMIB' },
+                ]}
+                placeholder="All SMIB"
+                className="w-full"
+                triggerClassName="h-9 bg-white border border-gray-300 rounded-md px-3 text-gray-700 focus:ring-buttonActive focus:border-buttonActive text-sm"
+                searchable={false}
+                emptyMessage="No options found"
+              />
+            </div>
           </div>
         </div>
       </div>
     </>
   );
 };
-

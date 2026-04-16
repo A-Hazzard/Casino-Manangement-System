@@ -82,7 +82,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     if (report.location) {
       const hasAccess = await checkUserLocationAccess(report.location);
-      
+
       if (!hasAccess) {
         const duration = Date.now() - startTime;
         console.error(
@@ -96,13 +96,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           { status: 403 }
         );
       }
-
     }
 
     // ============================================================================
     // STEP 4: Fetch full report data
     // ============================================================================
-    const reportData = await getCollectionReportById(reportId);
+    const currentUser = await getUserFromServer();
+
+    if (!currentUser) {
+      const duration = Date.now() - startTime;
+      console.error(
+        `[Collection Report GET API] User not found after ${duration}ms.`
+      );
+      return NextResponse.json({ message: 'User not found' }, { status: 404 });
+    }
+    const reportData = await getCollectionReportById(
+      reportId,
+      currentUser as Parameters<typeof getCollectionReportById>[1]
+    );
     if (!reportData) {
       const duration = Date.now() - startTime;
       console.error(
@@ -184,7 +195,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     const body =
       (await request.json()) as Partial<CreateCollectionReportPayload>;
-    
+
     // CRITICAL: Do not update the collector field during edit
     delete body.collector;
     delete body.collectorName;
@@ -195,6 +206,11 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const existingReport = await CollectionReport.findOne({
       locationReportId: reportId,
     });
+
+    // Fetch associated collections to track machine list changes
+    const existingCollections = await Collections.find({
+      locationReportId: reportId,
+    }).lean();
     if (!existingReport) {
       const duration = Date.now() - startTime;
       console.error(
@@ -286,12 +302,53 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
             newValue: body.taxes,
           });
         }
-        if (body.machines !== undefined) {
-          updateChanges.push({
-            field: 'machines',
-            oldValue: body.machines?.length || 0, // No previous machines count available
-            newValue: body.machines?.length || 0,
-          });
+        if (body.machines !== undefined && Array.isArray(body.machines)) {
+          // Log specific machine additions/removals
+          const oldMachineIds =
+            existingCollections.map(
+              (c: Record<string, unknown>) => c.machineId as string
+            ) || [];
+          const newMachineIds = body.machines.map(
+            (m: Record<string, unknown>) => m.machineId as string
+          );
+
+          const added = body.machines.filter(
+            (m: Record<string, unknown>) =>
+              !oldMachineIds.includes(m.machineId as string)
+          );
+          const removed = existingCollections.filter(
+            (c: Record<string, unknown>) =>
+              !newMachineIds.includes(c.machineId as string)
+          );
+
+          if (added.length > 0) {
+            updateChanges.push({
+              field: 'machines_added',
+              oldValue: null,
+              newValue: added
+                .map(
+                  (m: Record<string, unknown>) =>
+                    (m.machineCustomName ||
+                      m.machineName ||
+                      m.machineId) as string
+                )
+                .join(', '),
+            });
+          }
+          if (removed.length > 0) {
+            updateChanges.push({
+              field: 'machines_removed',
+              oldValue: removed
+                .map(
+                  (c: Record<string, unknown>) =>
+                    (c.machineCustomName ||
+                      c.machineName ||
+                      c.machineId) as string
+                )
+                .join(', '),
+              newValue: null,
+            });
+          }
         }
 
         await logActivity({
@@ -299,13 +356,15 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
           details: `Updated collection report for ${existingReport.locationName} (${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''})`,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,
             userRole: (currentUser.roles as string[])?.[0] || 'user',
             resource: 'collection',
             resourceId: reportId,
-            resourceName: `${existingReport.locationName} - ${existingReport.collectorName || existingReport.collector || 'Unknown'}`, // Use collectorName for display only (legacy), fallback to collector ID
+            resourceName: `${existingReport.locationName} - ${existingReport.collectorName || existingReport.collector || 'Unknown'}`,
             changes: updateChanges,
           },
         });
@@ -419,6 +478,8 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
           details: `Deleted collection report for ${existingReport.locationName} with ${associatedCollections.length} associated collections. Collection meters reverted to previous values for all affected machines.`,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
+          userId: currentUser._id as string,
+          username: currentUser.emailAddress as string,
           metadata: {
             userId: currentUser._id as string,
             userEmail: currentUser.emailAddress as string,

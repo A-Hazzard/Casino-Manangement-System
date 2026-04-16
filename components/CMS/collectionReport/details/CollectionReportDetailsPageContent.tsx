@@ -15,13 +15,12 @@
 
 'use client';
 
-import CollectionReportDetailsCollectionsTable from '@/components/CMS/collectionReport/details/CollectionReportDetailsCollectionsTable';
+import { CollectionReportDetailsCollectionsTable } from '@/components/CMS/collectionReport/details/CollectionReportDetailsCollectionsTable';
 import CollectionReportDetailsLocationMetricsTab from '@/components/CMS/collectionReport/details/CollectionReportDetailsLocationMetricsTab';
 import CollectionReportDetailsSasCompareTab from '@/components/CMS/collectionReport/details/CollectionReportDetailsSasCompareTab';
+import CollectionReportEditCollectionModal from '@/components/CMS/collectionReport/modals/CollectionReportEditCollectionModal';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
-import {
-} from '@/components/shared/ui/dialog';
 import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
 import UnauthorizedError from '@/components/shared/ui/errors/UnauthorizedError';
 import { CollectionReportSkeleton } from '@/components/shared/ui/skeletons/CollectionReportDetailSkeletons';
@@ -29,17 +28,43 @@ import {
     animateDesktopTabTransition,
     calculateLocationTotal,
 } from '@/lib/helpers/collectionReport';
+import { getLocationsWithMachines } from '@/lib/helpers/collectionReport/fetching';
 import { useCollectionReportDetailsData } from '@/lib/hooks/collectionReport/useCollectionReportDetailsData';
+import { useUserStore } from '@/lib/store/userStore';
+import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import { formatCurrency } from '@/lib/utils/currency';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-/**
- * Collection Report Details Page Content Component
- */
 export default function CollectionReportDetailsPageContent() {
   const hook = useCollectionReportDetailsData();
+  const user = useUserStore(state => state.user);
+
+  // Only developer, owner and admin can edit
+  const canEdit = !!(user?.roles && (user.roles.includes('developer') || user.roles.includes('admin') || user.roles.includes('owner')));
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editLocations, setEditLocations] = useState<CollectionReportLocationWithMachines[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+
+  // ============================================================================
+  // Table Interaction & Edit Handlers
+  // ============================================================================
+  const handleOpenEdit = useCallback(async () => {
+    if (loadingLocations) return;
+    setLoadingLocations(true);
+    try {
+      const locs = await getLocationsWithMachines();
+      setEditLocations(locs);
+    } catch {
+      // fall back to empty — the modal will still load its own data
+      setEditLocations([]);
+    } finally {
+      setLoadingLocations(false);
+    }
+    setShowEditModal(true);
+  }, [loadingLocations]);
 
   const {
     reportData,
@@ -62,7 +87,7 @@ export default function CollectionReportDetailsPageContent() {
   } = hook;
 
   // ============================================================================
-  // Effects
+  // Tab Transition Effects
   // ============================================================================
   // Animate tab transitions on desktop
   useEffect(() => {
@@ -70,15 +95,11 @@ export default function CollectionReportDetailsPageContent() {
   }, [activeTab, tabContentRef]);
 
   // ============================================================================
-  // Computed Values
+  // Report Financial Calculations
   // ============================================================================
   const locationTotal = reportData ? calculateLocationTotal(collections) : 0;
-  const textColorClass = locationTotal < 0 ? 'text-red-600' : 'text-green-600';
-
-
-  // ============================================================================
-  // Render Logic
-  // ============================================================================
+  //red = negative values, green = positive values
+  const textColorClass = locationTotal < 0 ? 'text-red-600' : 'text-green-600'; 
   if (loading) return <CollectionReportSkeleton />;
 
   // Handle error states
@@ -130,12 +151,13 @@ export default function CollectionReportDetailsPageContent() {
   );
 
   return (
+    <>
     <PageLayout
       headerProps={{
         containerPaddingMobile: 'px-4 py-8 lg:px-0 lg:py-0',
         disabled: loading,
       }}
-      pageTitle=""
+      
       hideOptions={true}
       hideLicenceeFilter={true}
       mainClassName="flex flex-col flex-1 w-full max-w-full"
@@ -143,7 +165,7 @@ export default function CollectionReportDetailsPageContent() {
       onRefresh={handleRefresh}
       refreshing={loading}
     >
-      {/* Header Section (Desktop Only): Back button, title, and Fix Report button */}
+      {/* Header Section (Desktop Only): Back button, title */}
       <div className="hidden px-2 pt-6 lg:block lg:px-6">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -158,11 +180,35 @@ export default function CollectionReportDetailsPageContent() {
             <h1 className="text-2xl font-bold">Collection Report Details</h1>
           </div>
 
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={handleRefresh}
+              disabled={loading}
+              title="Refresh Report Data"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+
+            {canEdit && (
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={handleOpenEdit}
+                disabled={loadingLocations}
+              >
+                <Pencil size={16} />
+                {loadingLocations ? 'Loading…' : 'Edit Report'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Mobile Back Button */}
-      <div className="px-2 pt-4 lg:hidden">
+      {/* Mobile Back Button & Actions */}
+      <div className="flex items-center justify-between px-2 pt-4 lg:hidden">
         <Link href="/collection-report" className="inline-block">
           <Button
             variant="ghost"
@@ -171,6 +217,32 @@ export default function CollectionReportDetailsPageContent() {
             <ArrowLeft size={18} className="h-5 w-5" />
           </Button>
         </Link>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 w-9 p-0"
+            onClick={handleRefresh}
+            disabled={loading}
+            title="Refresh Report Data"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2 h-9 px-3"
+              onClick={handleOpenEdit}
+              disabled={loadingLocations}
+            >
+              <Pencil size={14} />
+              <span className="text-xs font-semibold">{loadingLocations ? 'Loading…' : 'Edit Report'}</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Report Header Section: Location name, report ID, and financial summary */}
@@ -184,7 +256,8 @@ export default function CollectionReportDetailsPageContent() {
               {reportData.locationName}
             </h1>
             <p className="mb-4 text-sm text-gray-600 lg:text-base">
-              Report ID: {reportData.reportId}
+              {/* TODO Change to Compound field later to a more understandable report ID rather than using _id*/}
+              Report ID: {reportData.reportId} 
             </p>
             <p className={`text-lg font-semibold`}>
               Collection Report Machine Total Gross:{' '}
@@ -202,6 +275,7 @@ export default function CollectionReportDetailsPageContent() {
 
       {/* Desktop Content Section: Sidebar navigation (1/4 width) and main content (3/4 width) */}
       <div className="hidden px-2 pb-6 lg:flex lg:flex-row lg:space-x-6 lg:px-6">
+        {/* Sidebar */}
         <div className="mb-6 lg:mb-0 lg:w-1/4">
           <div className="space-y-2 rounded-lg bg-white p-3 shadow">
             <h3 className="mb-4 text-lg font-semibold text-gray-800">
@@ -214,6 +288,8 @@ export default function CollectionReportDetailsPageContent() {
             </div>
           </div>
         </div>
+
+        {/* Main Content */}
         <div className="lg:w-3/4" ref={tabContentRef}>
           {activeTab === 'Machine Metrics' && (
             <CollectionReportDetailsCollectionsTable
@@ -293,6 +369,18 @@ export default function CollectionReportDetailsPageContent() {
 
 
     </PageLayout>
+
+    {/* Edit Collection Report Modal — developer / admin only */}
+    {canEdit && showEditModal && reportData && (
+      <CollectionReportEditCollectionModal
+        show={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        reportId={reportData.reportId}
+        locations={editLocations}
+        onRefresh={handleRefresh}
+      />
+    )}
+  </>
   );
 }
 

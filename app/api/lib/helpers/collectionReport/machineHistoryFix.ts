@@ -125,9 +125,12 @@ export async function fixMachineCollectionHistory(
 
         // Clear the collection history if no actual collections exist
         // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-        await Machine.findOneAndUpdate({ _id: machineId }, {
-          $unset: { collectionMetersHistory: 1 },
-        });
+        await Machine.findOneAndUpdate(
+          { _id: machineId },
+          {
+            $unset: { collectionMetersHistory: 1 },
+          }
+        );
 
         actions.push('Cleared empty collection history');
         detailedResults.push({
@@ -144,7 +147,9 @@ export async function fixMachineCollectionHistory(
       // Get current collection history
       const currentHistory =
         (machineData.collectionMetersHistory as Array<HistoryEntry>) || [];
-      console.warn(`   📋 Current history has ${currentHistory.length} entries`);
+      console.warn(
+        `   📋 Current history has ${currentHistory.length} entries`
+      );
 
       // Analyze the history for issues
       const historyAnalysis = analyzeCollectionHistory(
@@ -216,7 +221,9 @@ export async function fixMachineCollectionHistory(
 
         // Validate collection meters before update
         // CRITICAL: Use findOne with _id instead of findById (repo rule)
-        const currentMachineState = await Machine.findOne({ _id: machineId }).lean();
+        const currentMachineState = await Machine.findOne({
+          _id: machineId,
+        }).lean();
         const machineState = currentMachineState as CollectionRecord | null;
         const currentCollectionMeters = machineState?.collectionMeters as
           | { metersIn: number; metersOut: number }
@@ -240,21 +247,24 @@ export async function fixMachineCollectionHistory(
         }
 
         // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-        await Machine.findOneAndUpdate({ _id: machineId }, {
-          $set: {
-            collectionMetersHistory: newHistory,
-            collectionTime:
-              mostRecentCollection.collectionTime ||
-              mostRecentCollection.timestamp,
-            previousCollectionTime: previousCollection
-              ? previousCollection.collectionTime ||
-                previousCollection.timestamp
-              : undefined,
-            'collectionMeters.metersIn': expectedMetersIn,
-            'collectionMeters.metersOut': expectedMetersOut,
-            updatedAt: new Date(),
-          },
-        });
+        await Machine.findOneAndUpdate(
+          { _id: machineId },
+          {
+            $set: {
+              collectionMetersHistory: newHistory,
+              collectionTime:
+                mostRecentCollection.collectionTime ||
+                mostRecentCollection.timestamp,
+              previousCollectionTime: previousCollection
+                ? previousCollection.collectionTime ||
+                  previousCollection.timestamp
+                : undefined,
+              'collectionMeters.metersIn': expectedMetersIn,
+              'collectionMeters.metersOut': expectedMetersOut,
+              updatedAt: new Date(),
+            },
+          }
+        );
 
         actions.push(
           `Rebuilt ${newHistory.length} history entries from actual collections`
@@ -353,8 +363,8 @@ function analyzeCollectionHistory(
   });
 
   const duplicateTimestamps = Array.from(timestampCounts.entries())
-    .filter(([_, count]) => count > 1)
-    .map(([timestamp, _]) => timestamp);
+    .filter(([, count]) => count > 1)
+    .map(([timestamp]) => timestamp);
 
   if (duplicateTimestamps.length > 0) {
     hasIssues = true;
@@ -575,5 +585,3 @@ function rebuildHistoryFromCollections(
     };
   });
 }
-
-

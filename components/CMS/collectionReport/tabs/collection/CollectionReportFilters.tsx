@@ -26,7 +26,8 @@
  */
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import {  useRef, useEffect  } from 'react';
+import { KeyboardEvent } from 'react';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Button } from '@/components/shared/ui/button';
@@ -103,7 +104,7 @@ export default function CollectionReportFilters({
     }
   }, [showUncollectedOnly]);
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       onSearchSubmit();
     }

@@ -13,6 +13,7 @@
  */
 'use client';
 
+import { FC } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import {
@@ -36,6 +37,7 @@ import {
     HelpCircle,
     Home,
     MapPinOff,
+    RotateCcw,
     Server,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -45,9 +47,9 @@ import { useRef } from 'react';
 import deleteIcon from '@/public/deleteIcon.svg';
 import editIcon from '@/public/editIcon.svg';
 import { format, formatDistanceToNow } from 'date-fns';
-import React from 'react';
 
-const LocationsLocationTable: React.FC<LocationTableProps> = ({
+
+const LocationsLocationTable: FC<LocationTableProps> = ({
   locations,
   sortOption,
   sortOrder,
@@ -152,7 +154,7 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                             onLocationClick(locationId);
                           }
                         }}
-                        className="cursor-pointer text-left font-medium text-gray-900 hover:text-blue-600 hover:underline"
+                        className="cursor-pointer text-left text-lg font-bold text-gray-900 hover:text-blue-600 hover:underline"
                         title="Click to view location details"
                         disabled={!location.location}
                       >
@@ -339,7 +341,7 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                       moneyIn={loc.moneyIn || 0}
                       jackpot={loc.jackpot || 0}
                       displayValue={formatCurrency(loc.moneyOut || 0)}
-                      subtractJackpot={!!(loc).subtractJackpot}
+                      includeJackpot={!!(loc).includeJackpot}
                     />
                   </TableCell>
                   <TableCell centered>
@@ -359,7 +361,7 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                       <TableCell className="text-gray-600">
                         {loc.deletedAt ? (
                           <>
-                            {format(new Date(loc.deletedAt), 'dd/MM/yyyy HH:mm')}
+                            {format(new Date(loc.deletedAt), 'MMM d, yyyy • h:mm a')}
                             <span className="ml-1 text-xs opacity-70">
                               ({formatDistanceToNow(new Date(loc.deletedAt), { addSuffix: true })})
                             </span>
@@ -373,57 +375,97 @@ const LocationsLocationTable: React.FC<LocationTableProps> = ({
                   )}
                   <TableCell>
                     <div className="flex items-center justify-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={e => {
-                          e.stopPropagation();
-                          onLocationClick(location.location as string);
-                        }}
-                        className="h-8 w-8 p-1 hover:bg-accent"
-                        title="View details"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {/* Show Edit and Delete buttons only if user can manage locations */}
-                      {canManageLocations && (
+                      {showArchived ? (
+                        /* Archived view: show Restore and Delete */
+                        canManageLocations && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={e => {
+                                e.stopPropagation();
+                                onAction('restore', loc);
+                              }}
+                              className="h-8 w-8 p-1 text-green-600 hover:bg-green-50 hover:text-green-700"
+                              title="Restore location"
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={e => {
+                                e.stopPropagation();
+                                onAction('delete', loc);
+                              }}
+                              className="h-8 w-8 p-1 hover:bg-accent"
+                              title="Permanently delete"
+                            >
+                              <Image
+                                src={deleteIcon}
+                                alt="Delete"
+                                width={16}
+                                height={16}
+                                className="h-4 w-4"
+                              />
+                            </Button>
+                          </>
+                        )
+                      ) : (
+                        /* Active view: show View, Edit, Delete */
                         <>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={e => {
                               e.stopPropagation();
-                              onAction('edit', loc);
+                              onLocationClick(location.location as string);
                             }}
                             className="h-8 w-8 p-1 hover:bg-accent"
-                            title="Edit"
+                            title="View details"
                           >
-                            <Image
-                              src={editIcon}
-                              alt="Edit"
-                              width={16}
-                              height={16}
-                              className="h-4 w-4"
-                            />
+                            <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={e => {
-                              e.stopPropagation();
-                              onAction('delete', loc);
-                            }}
-                            className="h-8 w-8 p-1 hover:bg-accent"
-                            title="Delete"
-                          >
-                            <Image
-                              src={deleteIcon}
-                              alt="Delete"
-                              width={16}
-                              height={16}
-                              className="h-4 w-4"
-                            />
-                          </Button>
+                          {canManageLocations && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  onAction('edit', loc);
+                                }}
+                                className="h-8 w-8 p-1 hover:bg-accent"
+                                title="Edit"
+                              >
+                                <Image
+                                  src={editIcon}
+                                  alt="Edit"
+                                  width={16}
+                                  height={16}
+                                  className="h-4 w-4"
+                                />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  onAction('delete', loc);
+                                }}
+                                className="h-8 w-8 p-1 hover:bg-accent"
+                                title="Delete"
+                              >
+                                <Image
+                                  src={deleteIcon}
+                                  alt="Delete"
+                                  width={16}
+                                  height={16}
+                                  className="h-4 w-4"
+                                />
+                              </Button>
+                            </>
+                          )}
                         </>
                       )}
                     </div>

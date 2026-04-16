@@ -29,16 +29,13 @@ import { NextRequest, NextResponse } from 'next/server';
  * 7. Return collections
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ reportId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const reportId = pathname.split('/').pop();
 
   try {
-    // ============================================================================
-    // STEP 1: Parse route parameters
-    // ============================================================================
-    const { reportId } = await params;
 
     // ============================================================================
     // STEP 2: Validate report ID

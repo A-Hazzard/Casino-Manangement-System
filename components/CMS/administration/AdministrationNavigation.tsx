@@ -50,8 +50,9 @@ export default function AdministrationNavigation({
   // ============================================================================
   // Computed Values - Filtered Tabs
   // ============================================================================
-  // Filter tabs based on user permissions
+  // Filter tabs based on maintenance state and user permissions
   const accessibleTabs = tabs.filter(tab => {
+    if (tab.available === false) return false;
     switch (tab.id) {
       case 'users':
         return hasTabAccess(userRoles, 'administration', 'users');

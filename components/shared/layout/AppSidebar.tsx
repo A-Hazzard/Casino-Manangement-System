@@ -411,6 +411,16 @@ export default function AppSidebar({
               // Render items based on pre-loaded permissions
               items
                 .filter(item => {
+                  // Normalised user roles (defensive — filter null/undefined entries)
+                  const userRolesNorm = (user?.roles || [])
+                    .filter((r): r is string => typeof r === 'string');
+                  const isDeveloper = userRolesNorm.includes('developer');
+
+                  // Under-maintenance items are only shown to developers
+                  if (item.underMaintenance && !isDeveloper) {
+                    return false;
+                  }
+
                   // Use custom permission check if provided
                   if (item.permissionCheck && user?.roles) {
                     return item.permissionCheck(user.roles as string[]);
@@ -422,11 +432,8 @@ export default function AppSidebar({
                     user.roles.length === 1 &&
                     user.roles.includes('collector');
 
-                  // Hide Locations and Cabinets for collector-only users
-                  if (
-                    isCollectorOnly &&
-                    (item.href === '/locations' || item.href === '/cabinets')
-                  ) {
+                  // Hide Locations for collector-only users
+                  if (isCollectorOnly && item.href === '/locations') {
                     return false;
                   }
 
@@ -970,8 +977,13 @@ export default function AppSidebar({
                     collapsed ? 'md:hidden' : ''
                   )}
                 >
-                  <div className="truncate text-sm font-medium text-gray-900">
+                  <div className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900">
                     {displayName}
+                    {(user?.roles || []).includes('owner') && (
+                      <span className="flex-shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm animate-pulse">
+                        OWNER
+                      </span>
+                    )}
                   </div>
                   <div className="truncate text-xs text-gray-600">{email}</div>
                 </div>
@@ -1013,8 +1025,13 @@ export default function AppSidebar({
                       />
                     </div>
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-medium text-gray-900">
+                      <div className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900">
                         {displayName}
+                        {(user?.roles || []).includes('owner') && (
+                          <span className="flex-shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm animate-pulse">
+                            OWNER
+                          </span>
+                        )}
                       </div>
                       <div className="truncate text-xs text-gray-600">
                         {email}
@@ -1136,8 +1153,13 @@ export default function AppSidebar({
                 />
               </div>
               <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-gray-900">
+                <div className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900">
                   {displayName}
+                  {(user?.roles || []).includes('owner') && (
+                    <span className="flex-shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm animate-pulse">
+                      OWNER
+                    </span>
+                  )}
                 </div>
                 <div className="truncate text-xs text-gray-600">{email}</div>
               </div>

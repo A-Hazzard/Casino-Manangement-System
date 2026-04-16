@@ -49,6 +49,7 @@ const baseCmsNavigationItems: NavigationItem[] = [
     label: 'Sessions',
     href: '/sessions',
     icon: Clock,
+    permissionCheck: (roles: string[]) => roles.includes('developer'),
   },
   {
     label: 'Members',
@@ -114,21 +115,15 @@ const baseCmsNavigationItems: NavigationItem[] = [
  * @returns NavigationConfig with appropriate grouping
  */
 export function getCmsNavigationConfig(userRoles?: string[]): NavigationConfig {
-  // Normalize roles to lowercase for comparison
-  const normalizedRoles = (userRoles || []).map(role => role.toLowerCase());
-  const normalizedHighPriorityRoles = HIGH_PRIORITY_ROLES.map(role =>
-    role.toLowerCase()
-  );
-
   // Check if user has any high-priority CMS role (developer, admin, manager, location admin)
-  const hasHighPriorityRole = normalizedHighPriorityRoles.some(role =>
-    normalizedRoles.includes(role)
+  const hasHighPriorityRole = (userRoles || []).some(role =>
+    (HIGH_PRIORITY_ROLES as string[]).includes(role)
   );
   
   // Specific role checks
-  const isAdminOrDev = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
-  const isVaultManager = normalizedRoles.includes('vault-manager') || isAdminOrDev;
-  const isCashier = normalizedRoles.includes('cashier') || isAdminOrDev;
+  const isAdminOrDev = (userRoles || []).includes('admin') || (userRoles || []).includes('developer');
+  const isVaultManager = (userRoles || []).includes('vault-manager') || isAdminOrDev;
+  const isCashier = (userRoles || []).includes('cashier') || isAdminOrDev;
 
   // If user only has cashier or vault-manager roles, return flat structure
   if (!hasHighPriorityRole) {

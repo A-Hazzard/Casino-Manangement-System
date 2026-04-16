@@ -85,9 +85,9 @@ export default function ReportsMetersTab() {
   const [topMachinesLoading, setTopMachinesLoading] = useState(false);
 
   // ============================================================================
-  // Constants
+  // Constants Used for API Requests
   // ============================================================================
-  const itemsPerPage = 10;
+  const itemsPerPage = 20;
   const itemsPerBatch = 50;
   const pagesPerBatch = itemsPerBatch / itemsPerPage;
 
@@ -104,6 +104,7 @@ export default function ReportsMetersTab() {
     hourlyChartData,
     hourlyChartLoading,
     paginatedMetersData,
+    filteredMetersData,
     totalPages,
     setCurrentPage,
     setAllMetersData,
@@ -349,8 +350,8 @@ export default function ReportsMetersTab() {
               onSearchChange={handleSearch}
               currentPage={currentPage}
               totalPages={totalPages}
+              totalCount={0}
               onPageChange={setCurrentPage}
-              loading={true}
               hasData={false}
             />
           </CardContent>
@@ -379,8 +380,8 @@ export default function ReportsMetersTab() {
                   onSearchChange={handleSearch}
                   currentPage={currentPage}
                   totalPages={totalPages}
+                  totalCount={filteredMetersData.length}
                   onPageChange={setCurrentPage}
-                  loading={loading}
                   hasData={hasData}
                 />
               </div>

@@ -20,6 +20,7 @@
  * @module app/layout
  */
 
+import { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { Montserrat } from 'next/font/google';
 import GlobalErrorBoundary from '../components/shared/layout/GlobalErrorBoundary';
@@ -81,7 +82,7 @@ const montserrat = Montserrat({
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <html

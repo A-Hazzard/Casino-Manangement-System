@@ -256,7 +256,7 @@ function buildLocationTrendsPipeline(
     {
       $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
     },
-    // Lookup licencee to get subtractJackpot setting
+    // Lookup licencee to get includeJackpot setting
     {
       $lookup: {
         from: 'licencees',
@@ -425,7 +425,7 @@ function buildLocationTrendsPipeline(
         gross: 1,
         netGross: {
           $cond: [
-            { $eq: [{ $ifNull: ['$licenceeDetails.subtractJackpot', false] }, true] },
+            { $eq: [{ $ifNull: ['$licenceeDetails.includeJackpot', false] }, true] },
             { 
               $subtract: [
                 {
@@ -514,79 +514,29 @@ function convertDailyTrendItems(
 ): DailyTrendItem[] {
   return dailyData.map(item => {
     const nativeCurrency = locationCurrencies.get(item.location) || 'USD';
+    
+    // Step 1: Currency Conversion
+    const handle = convertFromUSD(convertToUSD(item.handle, nativeCurrency), displayCurrency);
+    const winLoss = convertFromUSD(convertToUSD(item.winLoss, nativeCurrency), displayCurrency);
+    const jackpot = convertFromUSD(convertToUSD(item.jackpot, nativeCurrency), displayCurrency);
+    const drop = convertFromUSD(convertToUSD(item.drop, nativeCurrency), displayCurrency);
+    const totalCancelledCredits = convertFromUSD(convertToUSD(item.totalCancelledCredits, nativeCurrency), displayCurrency);
+    const gross = convertFromUSD(convertToUSD(item.gross, nativeCurrency), displayCurrency);
+    const netGross = item.netGross !== undefined ? convertFromUSD(convertToUSD(item.netGross, nativeCurrency), displayCurrency) : undefined;
+
     return {
       ...item,
-      handle: convertFromUSD(
-        convertToUSD(item.handle, nativeCurrency),
-        displayCurrency
-      ),
-      winLoss: convertFromUSD(
-        convertToUSD(item.winLoss, nativeCurrency),
-        displayCurrency
-      ),
-      jackpot: convertFromUSD(
-        convertToUSD(item.jackpot, nativeCurrency),
-        displayCurrency
-      ),
-      drop: convertFromUSD(
-        convertToUSD(item.drop, nativeCurrency),
-        displayCurrency
-      ),
-      totalCancelledCredits: convertFromUSD(
-        convertToUSD(item.totalCancelledCredits, nativeCurrency),
-        displayCurrency
-      ),
-      gross: convertFromUSD(
-        convertToUSD(item.gross, nativeCurrency),
-        displayCurrency
-      ),
-      netGross: item.netGross !== undefined ? convertFromUSD(
-        convertToUSD(item.netGross, nativeCurrency),
-        displayCurrency
-      ) : undefined,
+      handle,
+      winLoss,
+      jackpot,
+      drop,
+      totalCancelledCredits,
+      gross,
+      netGross,
     };
   });
 }
 
-/**
- * Format trends data for hourly aggregation
- */
-function formatHourlyTrends(
-  convertedData: DailyTrendItem[],
-  targetLocations: string[],
-  dayKey: string
-): LocationTrendData[] {
-  const trends: LocationTrendData[] = [];
-  for (let hour = 0; hour < 24; hour++) {
-    const timeKey = `${hour.toString().padStart(2, '0')}:00`;
-    const trendItem: LocationTrendData = {
-      day: dayKey,
-      time: timeKey,
-    };
-
-    targetLocations.forEach(locationId => {
-      const locationData = convertedData.find(
-        item =>
-          item.location === locationId &&
-          item.day === dayKey &&
-          item.time === timeKey
-      );
-      trendItem[locationId] = {
-        handle: locationData?.handle || 0,
-        winLoss: locationData?.winLoss || 0,
-        jackpot: locationData?.jackpot || 0,
-        plays: locationData?.plays || 0,
-        drop: locationData?.drop || 0,
-        totalCancelledCredits: locationData?.totalCancelledCredits || 0,
-        gross: locationData?.gross || 0,
-        netGross: locationData?.netGross || 0,
-      };
-    });
-
-    trends.push(trendItem);
-  }
-  return trends;
-}
 
 /**
  * Convert daily trend items to location trends format (for minute-level data)
@@ -858,7 +808,9 @@ export async function getLocationTrends(
   displayCurrency: CurrencyCode,
   granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly',
   status?: 'Online' | 'Offline' | 'All' | null,
-  gameType?: string | null
+  gameType?: string | null,
+  searchTerm?: string,
+  includeArchived: boolean = false
 ): Promise<{
   locationIds: string[];
   timePeriod: TimePeriod;
@@ -907,14 +859,11 @@ export async function getLocationTrends(
   }
 
   // Fetch locations to get their gaming day offsets
-  // Handle case where targetLocations might be empty or invalid
   if (!targetLocations || targetLocations.length === 0) {
     throw new Error('No valid location IDs provided');
   }
 
-  // Filter out empty strings and invalid IDs
   const validLocationIds = targetLocations.filter(id => id && id.trim() !== '');
-
   if (validLocationIds.length === 0) {
     throw new Error('No valid location IDs provided after filtering');
   }
@@ -926,7 +875,6 @@ export async function getLocationTrends(
     .lean()
     .exec();
 
-  // If no locations found, return empty result instead of error
   if (!locationsData || locationsData.length === 0) {
     return {
       locationIds: validLocationIds,
@@ -967,7 +915,6 @@ export async function getLocationTrends(
       location: { $in: validLocationIds },
     };
 
-    // For Quarterly, only look for data within the 90-day range
     if (timePeriod === 'Quarterly') {
       matchStage.readAt = { $gte: queryStartDate, $lte: queryEndDate };
     }
@@ -994,7 +941,6 @@ export async function getLocationTrends(
         minDate,
         maxDate,
       };
-      // Update query dates ONLY for All Time to show full range
       if (timePeriod === 'All Time') {
         queryStartDate = minDate;
         queryEndDate = maxDate;
@@ -1002,7 +948,7 @@ export async function getLocationTrends(
     }
   }
 
-  // Determine aggregation granularity (hourly, minute, monthly, yearly, weekly, or daily)
+  // Determine aggregation granularity
   const { useHourly, useMinute, useMonthly, useYearly, useWeekly, useDaily } =
     determineAggregationGranularity(
       timePeriod,
@@ -1013,39 +959,79 @@ export async function getLocationTrends(
       granularity
     );
 
-  // Filter machines if status or gameType provided
-  let matchingMachineIds: string[] | undefined;
-  if ((status && status !== 'All') || (gameType && gameType !== 'all')) {
-    const machineQuery: Record<string, unknown> = { gamingLocation: { $in: targetLocations } };
+  // ALWAYS filter machines to ensure graph matches summary cards and visible machines
+  // Implement the same Archive logic as the Location Detail API
+  const machineQuery: Record<string, unknown> = { gamingLocation: { $in: targetLocations } };
 
-    if (gameType && gameType !== 'all') {
-      // Check both game and installedGame fields just in case, though schema says game
-      machineQuery.$or = [{ game: gameType }, { installedGame: gameType }];
-    }
+  if (!includeArchived) {
+    // Only Active machines (null or legacy date < 2025)
+    (machineQuery as { $or?: unknown[] }).$or = [
+      { deletedAt: null },
+      { deletedAt: { $lt: new Date('2025-01-01') } },
+    ];
+  } else {
+    // Show everything (Active AND Archived)
+    // Archived is >= 2025-01-01
+    (machineQuery as { $or?: unknown[] }).$or = [
+      { deletedAt: null },
+      { deletedAt: { $exists: true } },
+    ];
+  }
 
-    const normalizedStatus = status?.toLowerCase();
+  // Apply Search logic (matching logic from main location page)
+  const andClauses: Record<string, unknown>[] = [];
+  if (searchTerm && searchTerm.trim()) {
+    const searchRegex = new RegExp(searchTerm.trim(), 'i');
+    andClauses.push({
+      $or: [
+        { assetNumber: searchRegex },
+        { serialNumber: searchRegex },
+        { smbId: searchRegex },
+        { smibBoard: searchRegex },
+        { relayId: searchRegex },
+        { game: searchRegex },
+        { installedGame: searchRegex },
+        { 'custom.name': searchRegex },
+      ],
+    });
+  }
 
-    if (normalizedStatus === 'online') {
-      const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
-      machineQuery.lastActivity = { $gte: threeMinutesAgo };
-    } else if (normalizedStatus === 'offline') {
-      const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
-      machineQuery.$or = [
+  // Apply Game Type logic
+  if (gameType && gameType !== 'all') {
+    andClauses.push({ $or: [{ game: gameType }, { installedGame: gameType }] });
+  }
+
+  // Apply Status logic (Online/Offline/Never Online)
+  const normalizedStatus = status?.toLowerCase();
+  if (normalizedStatus === 'online') {
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+    andClauses.push({ lastActivity: { $gte: threeMinutesAgo } });
+  } else if (normalizedStatus === 'offline') {
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
+    andClauses.push({
+      $or: [
         { lastActivity: { $lt: threeMinutesAgo } },
         { lastActivity: { $exists: false } },
         { lastActivity: null }
-      ];
-    }
-
-    const matchingMachines = await Machine.find(machineQuery).select('_id').lean();
-    matchingMachineIds = matchingMachines.map((m: Record<string, unknown>) => (m._id as { toString: () => string }).toString());
-
-
-    // If filtering and no machines match, we still want to continue to the pipeline
-    // The pipeline will match nothing (machine: { $in: [] }) and return 0 results
-    // Then the formatting functions will fill in the zero-value intervals
-
+      ]
+    });
+  } else if (normalizedStatus === 'never-online') {
+    andClauses.push({
+      $or: [
+        { lastActivity: { $exists: false } },
+        { lastActivity: null }
+      ]
+    });
   }
+
+  if (andClauses.length > 0) {
+    machineQuery.$and = andClauses;
+  }
+
+  const matchingMachines = await Machine.find(machineQuery).select('_id').lean();
+  const matchingMachineIds = matchingMachines.map(m => String(m._id));
+
+  console.log(`[Location Trends] Query — period: ${timePeriod}, locations: ${validLocationIds.length}, granularity: ${granularity ?? 'auto'}, window: ${queryStartDate.toISOString()} → ${queryEndDate.toISOString()}`);
 
   // Build and execute pipeline
   const pipeline = buildLocationTrendsPipeline(
@@ -1072,6 +1058,8 @@ export async function getLocationTrends(
     dailyData.push(doc as DailyTrendItem);
   }
 
+  console.log(`[Location Trends] Meters aggregation returned ${dailyData.length} bucket(s)`);
+
   // Create location names mapping
   const locationNames: Record<string, string> = {};
   locationsData.forEach(loc => {
@@ -1090,16 +1078,14 @@ export async function getLocationTrends(
   }
 
   // Format trends data based on granularity
-  const trends = useMinute
-    ? // For minute-level, use data as-is (already has minute-level grouping from pipeline)
+  const trends = useMinute || useHourly
+    ? // For minute/hourly data: group by day+time without zero-filling a single calendar day.
+      // formatHourlyTrends only handled one calendar day; gaming day ranges span two UTC
+      // calendar days (e.g. Feb 1 12:00 UTC → Feb 2 11:59 UTC) so data from the second
+      // day was silently dropped.  convertDailyTrendsToLocationTrends handles any number
+      // of calendar days correctly and is already used for minute data.
     convertDailyTrendsToLocationTrends(convertedData, targetLocations)
-    : useHourly
-      ? formatHourlyTrends(
-        convertedData,
-        targetLocations,
-        convertedData[0]?.day || new Date().toISOString().split('T')[0]
-      )
-      : useMonthly
+    : useMonthly
         ? formatMonthlyTrends(
           convertedData,
           targetLocations,
@@ -1122,6 +1108,8 @@ export async function getLocationTrends(
 
   // Calculate totals
   const totals = calculateLocationTotals(convertedData, targetLocations);
+
+  console.log(`[Location Trends] Response — ${trends.length} trend point(s), converted: ${shouldApplyCurrencyConversion(licencee)}`);
 
   return {
     locationIds: targetLocations,

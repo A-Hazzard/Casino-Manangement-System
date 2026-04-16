@@ -15,6 +15,7 @@
  * - Filter change notifications
  */
 
+import { ReactNode } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 type UseSessionsFiltersProps = {
   onFiltersChange?: (filters: {
@@ -43,7 +44,7 @@ type UseSessionsFiltersReturn = {
     statusFilter: string;
   };
   hasActiveFilters: boolean;
-  getSortIcon: (field: string) => React.ReactNode;
+  getSortIcon: (field: string) => ReactNode;
 };
 
 export function useSessionsFilters({

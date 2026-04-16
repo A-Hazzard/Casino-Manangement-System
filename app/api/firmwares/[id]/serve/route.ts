@@ -32,10 +32,11 @@ import path from 'path';
  * 8. Return static URL
  */
 export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const id = pathname.split('/').at(-2); // Extract [id] from /api/firmwares/[id]/serve
 
   try {
     // ============================================================================
@@ -48,7 +49,6 @@ export async function GET(
     // ============================================================================
     // STEP 2: Parse and validate request parameters
     // ============================================================================
-    const { id } = await params;
 
     // ============================================================================
     // STEP 3: Find firmware document

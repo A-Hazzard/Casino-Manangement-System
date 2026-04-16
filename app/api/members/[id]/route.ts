@@ -10,6 +10,7 @@
  * @module app/api/members/[id]/route
  */
 
+import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
@@ -25,8 +26,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 4. Return member data
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
@@ -34,7 +34,8 @@ export async function GET(
     // ============================================================================
     // STEP 1: Parse route parameters
     // ============================================================================
-    const { id } = await params;
+    const { pathname } = request.nextUrl;
+    const id = pathname.split('/').pop();
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -121,8 +122,7 @@ export async function GET(
  * 7. Return updated member
  */
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
@@ -130,8 +130,11 @@ export async function PUT(
     // ============================================================================
     // STEP 1: Parse route parameters and request body
     // ============================================================================
-    const { id: memberId } = await params;
+    const { pathname } = request.nextUrl;
+    const memberId = pathname.split('/').pop();
     const body = await request.json();
+
+    console.log(`[Member PUT] Request — member: ${memberId}`);
 
     // ============================================================================
     // STEP 2: Validate member ID
@@ -178,6 +181,9 @@ export async function PUT(
     if (!member) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
+
+    // Snapshot original values for activity logging before any mutations
+    const originalMemberData = member.toObject();
 
     // ============================================================================
     // STEP 5: Update member fields
@@ -353,8 +359,29 @@ export async function PUT(
     await member.save();
 
     // ============================================================================
-    // STEP 7: Return updated member
+    // STEP 7: Activity log + return updated member
     // ============================================================================
+    const duration = Date.now() - startTime;
+    console.log(`[Member PUT] Member ${memberId} updated — ${duration}ms`);
+
+    logActivity({
+      action: 'update',
+      details: `Member ${member.username || memberId} profile updated`,
+      userId: String(userPayload._id),
+      username: String(userPayload.username || userPayload.email || userPayload._id),
+      metadata: {
+        resource: 'member',
+        resourceId: memberId,
+        resourceName: member.username || memberId,
+        changes: calculateChanges(
+          originalMemberData as unknown as Record<string, unknown>,
+          body as Record<string, unknown>
+        ),
+        previousData: originalMemberData,
+        newData: member.toObject(),
+      },
+    }).catch(err => console.error('[Member PUT] Activity log failed:', err));
+
     return NextResponse.json(member);
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -378,8 +405,7 @@ export async function PUT(
  * 7. Return success response
  */
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
 
@@ -387,7 +413,8 @@ export async function DELETE(
     // ============================================================================
     // STEP 1: Parse route parameters
     // ============================================================================
-    const { id: memberId } = await params;
+    const { pathname } = request.nextUrl;
+    const memberId = pathname.split('/').pop();
 
     // ============================================================================
     // STEP 2: Validate member ID

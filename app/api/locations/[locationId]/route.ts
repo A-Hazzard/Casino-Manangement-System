@@ -1,417 +1,239 @@
 /**
  * Location Detail API Route
- *
- * This route handles fetching machines for a specific location.
- * It supports:
- * - Basic location details (no query params)
- * - Machine listing with financial metrics
- * - Time period filtering
- * - Search functionality
- * - Pagination
- * - Gaming day offset calculations
- * - Location-based access control
- *
- * @module app/api/locations/[locationId]/route
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { Countries } from '@/app/api/lib/models/countries';
+import { getReviewerScale } from '@/app/api/lib/utils/reviewerScale';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
-import {
-  convertFromUSD,
-  convertToUSD,
-  getCountryCurrency,
-  getLicenceeCurrency,
-} from '@/lib/helpers/rates';
-import { TransformedCabinet } from '@/lib/types/common';
+import { LocationDocument, TransformedCabinet } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import type { CurrencyCode } from '@/shared/types/currency';
-import mongoose from 'mongoose';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserFromServer } from '../../lib/helpers/users';
 
 /**
- * Helper function to safely convert an ID to ObjectId if possible
- */
-function safeObjectId(id: string): string | mongoose.Types.ObjectId {
-  if (!id) return id;
-  try {
-    if (mongoose.Types.ObjectId.isValid(id)) {
-      return new mongoose.Types.ObjectId(id);
-    }
-  } catch (err) {
-    console.error(`Failed to convert ID to ObjectId: ${id}`, err);
-  }
-  return id;
-}
-
-/**
- * Main GET handler for fetching location details and machines
- *
- * Flow:
- * 1. Extract locationId from URL
- * 2. Check if basic location details requested (no query params)
- * 3. Connect to database
- * 4. Check user access to location
- * 5. Parse query parameters
- * 6. Validate timePeriod parameter
- * 7. Calculate gaming day range
- * 8. Build aggregation pipeline
- * 9. Execute aggregation with pagination
- * 10. Transform and return results
+ * Main GET handler
  */
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const locationId = pathname.split('/').pop();
 
-  try {
-    // ============================================================================
-    // STEP 1: Extract locationId from URL
-    // ============================================================================
-    const url = request.nextUrl;
-    const locationId = url.pathname.split('/')[3];
+  if (!locationId) {
+    return NextResponse.json({ success: false, message: 'Location ID required' }, { status: 400 });
+  }
 
-    // ============================================================================
-    // STEP 2: Check if basic location details requested (no query params or basicInfo/nameOnly)
-    // ============================================================================
-    const hasQueryParams = url.searchParams.toString().length > 0;
-    const nameOnly = url.searchParams.get('nameOnly') === 'true';
-    const basicInfo = url.searchParams.get('basicInfo') === 'true';
+  return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
 
-    // Handle nameOnly requests - returns just name and licencee for display purposes
-    // This bypasses access control since it only returns non-sensitive display data
-    if (nameOnly) {
-      await connectDB();
+    try {
+      const { searchParams } = new URL(request.url);
+      const nameOnly = searchParams.get('nameOnly') === 'true';
+      const basicInfo = searchParams.get('basicInfo') === 'true';
 
-      // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const location = await GamingLocations.findOne(
-        { _id: locationId },
-        {
-          _id: 1,
-          name: 1,
-          'rel.licencee': 1,
+      if (nameOnly) {
+        const location = (await GamingLocations.findOne(
+          { _id: locationId },
+          { _id: 1, name: 1, 'rel.licencee': 1 }
+        ).lean()) as unknown as Pick<
+          LocationDocument,
+          '_id' | 'name' | 'rel'
+        > | null;
+        if (!location)
+          return NextResponse.json(
+            { success: false, message: 'Not found' },
+            { status: 404 }
+          );
+
+        const licIdRaw = location.rel?.licencee || location.rel?.licencee;
+        const licIdArr = licIdRaw
+          ? Array.isArray(licIdRaw)
+            ? licIdRaw
+            : [licIdRaw]
+          : [];
+        let includeJackpot = false;
+        if (licIdArr.length > 0) {
+          const licDoc = await Licencee.findOne(
+            { _id: licIdArr[0] },
+            { includeJackpot: 1 }
+          ).lean();
+          includeJackpot = Boolean(
+            (licDoc as unknown as { includeJackpot?: boolean })?.includeJackpot
+          );
         }
-      );
 
-      if (!location) {
-        return NextResponse.json(
-          { success: false, message: 'Location not found' },
-          { status: 404 }
-        );
-      }
-
-      // Handle licencee field - it's stored as string | null in the database
-      // Convert to array format for consistent API response
-      const licenceeId = location.rel?.licencee || location.rel?.licencee;
-      const licenceeIdArray = licenceeId
-        ? Array.isArray(licenceeId)
-          ? licenceeId
-          : [licenceeId]
-        : [];
-
-      // Look up licencee's subtractJackpot setting
-      let subtractJackpot = false;
-      if (licenceeIdArray.length > 0) {
-        const { Licencee } = await import('@/app/api/lib/models/licencee');
-        const licenceeDoc = await Licencee.findOne(
-          { _id: licenceeIdArray[0] },
-          { subtractJackpot: 1 }
-        ).lean() as Record<string, unknown> | null;
-        subtractJackpot = Boolean(licenceeDoc?.subtractJackpot);
-      }
-
-      const locationData = location as { _id: unknown; name?: string };
-      return NextResponse.json({
-        success: true,
-        location: {
-          _id: locationData._id,
-          name: locationData.name,
-          licenceeId: licenceeIdArray,
-          subtractJackpot,
-        },
-      });
-    }
-
-    // Handle basicInfo requests - returns full location details but requires access control
-    // This is used when basicInfo=true is provided as a query parameter
-    if (basicInfo || !hasQueryParams) {
-      // Return basic location details for edit modal
-      await connectDB();
-
-      // ============================================================================
-      // STEP 4: Check user access to location
-      // ============================================================================
-      const user = await getUserFromServer();
-      const roles = (user?.roles as string[]) || [];
-      const normalizedRoles = roles.map(r => r?.toLowerCase?.() ?? r);
-      const isAdmin = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
-
-      let hasAccess = false;
-      if (isAdmin) {
-        hasAccess = true;
-      } else {
-        hasAccess = await checkUserLocationAccess(locationId);
-      }
-
-      if (!hasAccess) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: 'Unauthorized: You do not have access to this location',
+        return NextResponse.json({
+          success: true,
+          location: {
+            _id: location._id,
+            name: location.name,
+            licenceeId: licIdArr,
+            includeJackpot,
           },
+        });
+      }
+
+      const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
+      const isAdmin =
+        normalizedRoles.includes('admin') ||
+        normalizedRoles.includes('developer') ||
+        normalizedRoles.includes('owner');
+      if (!isAdmin && !(await checkUserLocationAccess(locationId))) {
+        return NextResponse.json(
+          { success: false, message: 'Unauthorized' },
           { status: 403 }
         );
       }
 
-      // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const location = await GamingLocations.findOne({ _id: locationId });
-
-      if (!location) {
+      const locationCheck = (await GamingLocations.findOne({
+        _id: locationId,
+      }).lean()) as unknown as LocationDocument | null;
+      if (!locationCheck)
         return NextResponse.json(
-          { success: false, message: 'Location not found' },
+          { success: false, message: 'Not found' },
           { status: 404 }
         );
+
+      if (basicInfo || !searchParams.toString().length) {
+        const licId = locationCheck.rel?.licencee;
+        const firstLicId = Array.isArray(licId) ? licId[0] : licId;
+        let includeJackpot = false;
+        if (firstLicId) {
+          const licDoc = await Licencee.findOne(
+            { _id: firstLicId },
+            { includeJackpot: 1 }
+          ).lean();
+          includeJackpot = Boolean(
+            (licDoc as unknown as { includeJackpot?: boolean })?.includeJackpot
+          );
+        }
+        return NextResponse.json({
+          success: true,
+          location: { ...locationCheck, includeJackpot },
+        });
       }
 
-      // Look up licencee's subtractJackpot setting
-      const locObj = location.toObject ? location.toObject() : location;
-      const licId = locObj.rel?.licencee;
-      const firstLicId = Array.isArray(licId) ? licId[0] : licId;
-      let subtractJackpot = false;
-      if (firstLicId) {
+      const licencee = searchParams.get('licencee');
+      const searchTerm = searchParams.get('search');
+      const timePeriod = searchParams.get('timePeriod') as TimePeriod;
+      const customStart = searchParams.get('startDate');
+      const customEnd = searchParams.get('endDate');
+      const onlineStatus = searchParams.get('onlineStatus') || 'all';
+      const smibStatus = (searchParams.get('smibStatus') || 'all').toLowerCase();
+      const limitParam = searchParams.get('limit');
+      const limit = limitParam ? parseInt(limitParam) : undefined;
+      const page = parseInt(searchParams.get('page') || '1');
+      const skip = limit ? (page - 1) * limit : 0;
+
+      if (!timePeriod)
+        return NextResponse.json(
+          { error: 'timePeriod required' },
+          { status: 400 }
+        );
+
+      if (!isAdmin && licencee && licencee !== 'all') {
+        const locLicId = locationCheck.rel?.licencee;
+        if (
+          locLicId !== licencee &&
+          (!Array.isArray(locLicId) || !locLicId.includes(licencee))
+        ) {
+          return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+        }
+      }
+
+      const gameDayOffset = locationCheck.gameDayOffset ?? 8;
+      const gdr = getGamingDayRangeForPeriod(
+        timePeriod,
+        gameDayOffset,
+        customStart ? new Date(customStart) : undefined,
+        customEnd ? new Date(customEnd) : undefined
+      );
+
+      const locLicId = locationCheck.rel?.licencee;
+      let includeJackpotSetting = false;
+      if (locLicId) {
         const licDoc = await Licencee.findOne(
-          { _id: firstLicId },
-          { subtractJackpot: 1 }
-        ).lean() as Record<string, unknown> | null;
-        subtractJackpot = Boolean(licDoc?.subtractJackpot);
+          { _id: Array.isArray(locLicId) ? locLicId[0] : locLicId },
+          { includeJackpot: 1 }
+        ).lean();
+        includeJackpotSetting = !!(
+          licDoc as unknown as { includeJackpot?: boolean }
+        )?.includeJackpot;
       }
 
-      return NextResponse.json({
-        success: true,
-        location: { ...locObj, subtractJackpot },
-      });
-    }
+      const reviewerScale = getReviewerScale(userPayload as { multiplier?: number | null; roles?: string[] });
 
-    // ============================================================================
-    // STEP 3: Connect to database
-    // ============================================================================
-    const db = await connectDB();
-    if (!db) {
-      return NextResponse.json(
-        { error: 'Failed to connect to database' },
-        { status: 500 }
-      );
-    }
+      const includeArchived = searchParams.get('includeArchived') === 'true';
+      const mMatch: Record<string, unknown> = {
+        $and: [
+          { gamingLocation: locationId },
+        ] as unknown[],
+      };
 
-    // ============================================================================
-    // STEP 5: Parse query parameters
-    // ============================================================================
-    const licencee = (url.searchParams.get('licencee'));
-    const searchTerm = url.searchParams.get('search');
-    const timePeriod = url.searchParams.get('timePeriod') as TimePeriod;
-    const customStartDate = url.searchParams.get('startDate');
-    const customEndDate = url.searchParams.get('endDate');
-    const displayCurrency =
-      (url.searchParams.get('currency') as CurrencyCode) || 'USD';
-
-    const onlineStatus = url.searchParams.get('onlineStatus') || 'all';
-
-    // Pagination parameters
-    // When searching, limit may be undefined to fetch all results
-    const limitParam = url.searchParams.get('limit');
-    const limit = limitParam ? parseInt(limitParam) : undefined;
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const skip = limit ? (page - 1) * limit : 0;
-
-    // ============================================================================
-    // STEP 6: Validate timePeriod parameter
-    // ============================================================================
-    // Only proceed if timePeriod is provided - no fallback
-    if (!timePeriod) {
-      return NextResponse.json(
-        { error: 'timePeriod parameter is required' },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 4: Check user access to location
-    // ============================================================================
-    // Re-check user for the main body of the handler if not already done
-    const user = await getUserFromServer();
-    const roles = (user?.roles as string[]) || [];
-    const normalizedRoles = roles.map(r => r?.toLowerCase?.() ?? r);
-    const isAdmin = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
-
-    let hasAccess = false;
-    if (isAdmin) {
-      hasAccess = true;
-    } else {
-      hasAccess = await checkUserLocationAccess(locationId);
-    }
-
-    if (!hasAccess) {
-      return NextResponse.json(
-        { error: 'Unauthorized: You do not have access to this location' },
-        { status: 403 }
-      );
-    }
-
-    // We'll calculate the gaming day range after we get the location's gameDayOffset
-    let timePeriodForGamingDay: string;
-    let customStartDateForGamingDay: Date | undefined;
-    let customEndDateForGamingDay: Date | undefined;
-
-    if (timePeriod === 'Custom' && customStartDate && customEndDate) {
-      timePeriodForGamingDay = 'Custom';
-      // Parse dates - check if they already include time components
-      // If date includes 'T', it's already a full ISO string; otherwise it's date-only
-      const startDateStr = customStartDate.includes('T')
-        ? customStartDate
-        : customStartDate + 'T00:00:00.000Z';
-      const endDateStr = customEndDate.includes('T')
-        ? customEndDate
-        : customEndDate + 'T00:00:00.000Z';
-
-      customStartDateForGamingDay = new Date(startDateStr);
-      customEndDateForGamingDay = new Date(endDateStr);
-
-      // Validate dates
-      if (isNaN(customStartDateForGamingDay.getTime())) {
-        return NextResponse.json(
-          {
-            error: `Invalid date values: startDate=${customStartDate}, endDate=${customEndDate}`,
-          },
-          { status: 400 }
-        );
-      }
-      if (isNaN(customEndDateForGamingDay.getTime())) {
-        return NextResponse.json(
-          {
-            error: `Invalid date values: startDate=${customStartDate}, endDate=${customEndDate}`,
-          },
-          { status: 400 }
-        );
-      }
-    } else {
-      timePeriodForGamingDay = timePeriod;
-    }
-
-    // Convert locationId to ObjectId for proper matching
-    const locationIdObj = safeObjectId(locationId);
-
-    // First verify the location exists
-    const locationCheck = await GamingLocations.findOne({
-      _id: { $in: [locationId, locationIdObj] },
-    });
-
-    if (!locationCheck) {
-      return NextResponse.json(
-        { error: 'Location not found' },
-        { status: 404 }
-      );
-    }
-
-    // CRITICAL SECURITY CHECK: Verify the location belongs to the selected licencee (if provided)
-    // Developers and Admins bypass this check to simplify cross-licencee navigation
-    const hasSpecificLicencee =
-      licencee && licencee !== '' && licencee !== 'all';
-
-    if (!isAdmin && hasSpecificLicencee) {
-      const locationLicenceeId = locationCheck.rel?.licencee || locationCheck.rel?.licencee;
-
-      if (locationLicenceeId !== licencee && (!Array.isArray(locationLicenceeId) || !locationLicenceeId.includes(licencee))) {
-        console.error(
-          `Access denied: Location ${locationId} does not belong to licencee ${licencee}`
-        );
-        return NextResponse.json(
-          { error: 'Access denied: Location not found for selected licencee' },
-          { status: 403 }
-        );
-      }
-    }
-
-    // ============================================================================
-    // STEP 7: Calculate gaming day range
-    // ============================================================================
-    // Calculate gaming day range for this location
-    // Always use gaming day offset logic (including for custom dates)
-    const gameDayOffset = locationCheck.gameDayOffset ?? 8; // Default to 8 AM Trinidad time
-    const gamingDayRange = getGamingDayRangeForPeriod(
-      timePeriodForGamingDay,
-      gameDayOffset,
-      customStartDateForGamingDay,
-      customEndDateForGamingDay
-    );
-
-    // Fetch licencee subtractJackpot setting
-    const locationLicenceeId = locationCheck.rel?.licencee;
-    let subtractJackpotSetting = false;
-    if (locationLicenceeId) {
-      const licenceeDoc = (await Licencee.findOne(
-        { _id: Array.isArray(locationLicenceeId) ? locationLicenceeId[0] : locationLicenceeId },
-        { subtractJackpot: 1 }
-      ).lean()) as Record<string, unknown> | null;
-      subtractJackpotSetting = !!licenceeDoc?.subtractJackpot;
-    }
-
-    // ============================================================================
-    // STEP 8: Build aggregation pipeline (OPTIMIZED)
-    // ============================================================================
-    // 🚀 OPTIMIZED: Fetch machines first, then do single aggregation for all meters
-    // This avoids N+1 query pattern from $lookup with nested pipeline
-
-    // Build machine match query with online/offline filter
-    const machineMatchQuery: Record<string, unknown> = {
-      $and: [
-        {
-          $or: [
-            { gamingLocation: locationId }, // String match
-            { gamingLocation: locationIdObj }, // ObjectId match
-          ],
-        },
-        {
-          // Include machines that are not deleted OR have sentinel deletedAt date
+      if (!includeArchived) {
+        // Active: null OR < 2025
+        (mMatch.$and as unknown[]).push({
           $or: [
             { deletedAt: null },
             { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
-        },
-      ],
-    };
-
-    // Apply online/offline status filter at database level
-    if (onlineStatus !== 'all') {
-      const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
-      if (onlineStatus === 'online') {
-        machineMatchQuery.lastActivity = { $gte: threeMinutesAgo };
-      } else if (onlineStatus === 'offline') {
-        const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
-        andArray.push({
-          $or: [
-            { lastActivity: { $lt: threeMinutesAgo } },
-            { lastActivity: { $exists: false } },
-            { lastActivity: null },
-          ],
         });
-      } else if (onlineStatus === 'never-online') {
-        const andArray = machineMatchQuery.$and as Array<Record<string, unknown>>;
-        andArray.push({
+      } else {
+        // Archived View: Show ALL machines
+        // (If there's a third state to hide, we'd add another filter here)
+        (mMatch.$and as unknown[]).push({
           $or: [
-            { lastActivity: { $exists: false } },
-            { lastActivity: null },
+            { deletedAt: null },
+            { deletedAt: { $exists: true } },
           ],
         });
       }
-    }
 
-    // First, fetch all machines for this location
-    const machines = await Machine.find(machineMatchQuery,
-      {
+      if (onlineStatus !== 'all') {
+        const threeMin = new Date(Date.now() - 3 * 60 * 1000);
+        if (locationCheck.aceEnabled) {
+          if (onlineStatus === 'online') {
+            // all active machines are online
+          } else if (onlineStatus === 'offline' || onlineStatus === 'never-online') {
+            (mMatch.$and as unknown[]).push({ _id: null });
+          }
+        } else {
+          if (onlineStatus === 'online') mMatch.lastActivity = { $gte: threeMin };
+          else if (onlineStatus === 'offline')
+            (mMatch.$and as unknown[]).push({
+              $or: [
+                { lastActivity: { $lt: threeMin } },
+                { lastActivity: { $exists: false } },
+                { lastActivity: null },
+              ],
+            });
+          else if (onlineStatus === 'never-online')
+            (mMatch.$and as unknown[]).push({
+              $or: [{ lastActivity: { $exists: false } }, { lastActivity: null }],
+            });
+        }
+      }
+
+      if (smibStatus !== 'all') {
+        if (smibStatus === 'smib') {
+          (mMatch.$and as unknown[]).push({
+            $or: [
+              { relayId: { $ne: '', $exists: true, $not: /^\s*$/ } },
+              { smibBoard: { $ne: '', $exists: true, $not: /^\s*$/ } },
+            ],
+          });
+        } else if (smibStatus === 'no-smib') {
+          (mMatch.$and as unknown[]).push({
+            $and: [
+              { $or: [{ relayId: '' }, { relayId: null }, { relayId: { $exists: false } }, { relayId: /^\s*$/ }] },
+              { $or: [{ smibBoard: '' }, { smibBoard: null }, { smibBoard: { $exists: false } }, { smibBoard: /^\s*$/ }] },
+            ],
+          });
+        }
+      }
+
+      const machines = await Machine.find(mMatch, {
         _id: 1,
         serialNumber: 1,
         relayId: 1,
@@ -425,91 +247,57 @@ export async function GET(request: NextRequest) {
         gameType: 1,
         isCronosMachine: 1,
         sasMeters: 1,
-        collectorDenomination: 1,
-      }
-    )
-      .lean()
-      .exec();
+        assetStatus: 1,
+        deletedAt: 1,
+      }).lean();
+      if (!machines.length)
+        return NextResponse.json({
+          success: true,
+          data: [],
+          pagination: {
+            page: 1,
+            limit: limit || 0,
+            total: 0,
+            totalPages: 0,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+        });
 
-    if (machines.length === 0) {
-      return NextResponse.json({
-        success: true,
-        data: [],
-        pagination: {
-          page: 1,
-          limit: limit || 0,
-          total: 0,
-          totalPages: 0,
-          hasNextPage: false,
-          hasPrevPage: false,
-        },
-      });
-    }
-
-    // Apply search filter if provided
-    let filteredMachines = machines;
-    if (searchTerm) {
-      filteredMachines = machines.filter(machine => {
-        const serialNumber = (machine.serialNumber as string) || '';
-        const relayId = (machine.relayId as string) || '';
-        const smibBoard = (machine.smibBoard as string) || '';
-        const customName =
-          ((machine.custom as Record<string, unknown>)?.name as string) || '';
-        const machineId = String(machine._id);
-
-        return (
-          serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          relayId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          smibBoard.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          customName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          machineId.toLowerCase().includes(searchTerm.toLowerCase())
+      let filteredMachines = machines;
+      if (searchTerm) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        filteredMachines = machines.filter(
+          machine =>
+            machine.serialNumber?.toLowerCase().includes(lowerSearchTerm) ||
+            machine.relayId?.toLowerCase().includes(lowerSearchTerm) ||
+            machine.smibBoard?.toLowerCase().includes(lowerSearchTerm) ||
+            (machine.custom as unknown as { name?: string })?.name
+              ?.toLowerCase()
+              .includes(lowerSearchTerm) ||
+            String(machine._id).toLowerCase().includes(lowerSearchTerm)
         );
-      });
-    }
+      }
 
-    // Get all machine IDs for meter aggregation
-    const machineIds = filteredMachines.map(m => String(m._id));
-
-    // 🚀 OPTIMIZED: Single aggregation for ALL meters (much faster than per-machine lookups)
-    // Use cursor for Meters aggregation (even though grouped, still use cursor for consistency)
-    const metersAggregation: Array<{
-      _id: string;
-      moneyIn: number;
-      moneyOut: number;
-      jackpot: number;
-      gamesPlayed: number;
-      gamesWon: number;
-      gross: number;
-    }> = [];
-    const metersCursor = Meters.aggregate(
-      [
+      const filteredMachineIds = filteredMachines.map(machine => String(machine._id));
+      const rawMachineMetrics: Array<{
+        _id: string;
+        moneyIn: number;
+        moneyOut: number;
+        jackpot: number;
+        gamesPlayed: number;
+        gamesWon: number;
+        gross: number;
+      }> = [];
+      const metricsCursor = Meters.aggregate([
         {
           $match: {
             $and: [
-              {
-                $or: [
-                  { location: locationId },
-                  { location: locationIdObj }
-                ]
-              },
-              {
-                $or: [
-                  { machine: { $in: machineIds } }, // String match
-                  {
-                    machine: {
-                      $in: filteredMachines.map(m => m._id),
-                    },
-                  }
-                ]
-              },
-              {
-                readAt: {
-                  $gte: gamingDayRange.rangeStart,
-                  $lte: gamingDayRange.rangeEnd,
-                }
-              }
-            ]
-          }
+              { location: locationId },
+              { machine: { $in: filteredMachineIds } },
+              { readAt: { $gte: gdr.rangeStart, $lte: gdr.rangeEnd } },
+            ],
+          },
         },
         {
           $group: {
@@ -521,277 +309,113 @@ export async function GET(request: NextRequest) {
             gamesWon: { $sum: '$movement.gamesWon' },
           },
         },
-        {
-          $addFields: {
-            gross: { $subtract: ['$moneyIn', '$moneyOut'] },
-          },
-        },
-      ],
-      {
-        allowDiskUse: true,
-        maxTimeMS: 60000,
-      }
-    ).cursor({ batchSize: 1000 });
+        { $addFields: { gross: { $subtract: ['$moneyIn', '$moneyOut'] } } },
+      ]).cursor({ batchSize: 1000 });
+      for await (const doc of metricsCursor) rawMachineMetrics.push(doc);
 
-    for await (const doc of metersCursor) {
-      metersAggregation.push(doc as (typeof metersAggregation)[0]);
-    }
-
-    // Create metrics map for fast lookup
-    const metricsMap = new Map();
-    metersAggregation.forEach(metrics => {
-      const machineId = String(metrics._id);
-      metricsMap.set(machineId, metrics);
-    });
-
-    // Get location name for response
-    const locationCheckData = locationCheck as { name?: string } | null;
-    const locationName = locationCheckData?.name || 'Location';
-
-    // ============================================================================
-    // STEP 9: Build cabinet results by joining machines with metrics
-    // ============================================================================
-    // Build cabinet objects by joining machine data with meter metrics
-    const cabinetsWithMeters = filteredMachines.map(machine => {
-      const machineId = String(machine._id);
-      const metrics = metricsMap.get(machineId) || {
-        moneyIn: 0,
-        moneyOut: 0,
-        gross: 0,
-        jackpot: 0,
-        gamesPlayed: 0,
-        gamesWon: 0,
-      };
-
-      const multiplier = Number(machine.collectorDenomination) || 1;
-
-      const serialNumber = (machine.serialNumber as string)?.trim() || '';
-      const customName =
-        ((machine.custom as Record<string, unknown>)?.name as string)?.trim() ||
-        '';
-      const assetNumber = serialNumber || customName || '';
-
-      const lastActivity = machine.lastActivity as Date | null;
-      const online =
-        lastActivity &&
-        new Date(lastActivity) > new Date(Date.now() - 3 * 60 * 1000); // 3 minutes threshold
-
-      const rawMoneyIn = Number(metrics.moneyIn) || 0;
-      const rawMoneyOut = Number(metrics.moneyOut) || 0;
-      const rawJackpot = Number(metrics.jackpot) || 0;
-
-      // Apply new Money Out logic: if subtractJackpot is ENABLED (Low Gross), 
-      // moneyOut = Net Cancelled + Jackpot (Total payout)
-      // IF subtractJackpot is DISABLED (High Gross), we keep as Net Payout
-      const moneyOutValue = rawMoneyOut + (subtractJackpotSetting ? rawJackpot : 0);
-
-      const moneyIn = rawMoneyIn * multiplier;
-      const moneyOut = moneyOutValue * multiplier;
-      const jackpot = rawJackpot * multiplier;
-      const gross = moneyIn - moneyOut;
-
-      return {
-        _id: machineId,
-        locationId: locationId,
-        locationName: locationName,
-        assetNumber: assetNumber,
-        serialNumber: assetNumber,
-        custom: machine.custom || {},
-        relayId: (machine.relayId as string) || '',
-        smibBoard: (machine.smibBoard as string) || '',
-        smbId:
-          (machine.smibBoard as string) || (machine.relayId as string) || '',
-        lastActivity: lastActivity,
-        lastOnline: lastActivity,
-        game: (machine.game as string) || '',
-        installedGame: (machine.game as string) || '',
-        manufacturer:
-          (machine.manufacturer as string) ||
-          (machine.manuf as string) ||
-          'Unknown Manufacturer',
-        cabinetType: (machine.cabinetType as string) || '',
-        assetStatus: (machine.assetStatus as string) || '',
-        status: (machine.assetStatus as string) || '',
-        gameType: (machine.gameType as string) || '',
-        isCronosMachine: Boolean(machine.isCronosMachine),
-        moneyIn,
-        moneyOut,
-        gross,
-        jackpot,
-        gamesPlayed: Number(metrics.gamesPlayed) || 0,
-        gamesWon: Number(metrics.gamesWon) || 0,
-        cancelledCredits: moneyOut,
-        sasMeters: (machine.sasMeters as Record<string, unknown>) || null,
-        online: Boolean(online),
-        subtractJackpot: subtractJackpotSetting,
-      };
-    });
-
-    // Apply relevance sorting if searching
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      cabinetsWithMeters.sort((a, b) => {
-        const aSerial = (a.serialNumber || '').toLowerCase();
-        const bSerial = (b.serialNumber || '').toLowerCase();
-
-        const aStarts = aSerial.startsWith(searchLower);
-        const bStarts = bSerial.startsWith(searchLower);
-
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
-
-        return 0;
-      });
-    }
-
-    // Apply pagination
-    const totalCount = cabinetsWithMeters.length;
-    const paginatedCabinets = limit
-      ? cabinetsWithMeters.slice(skip, skip + limit)
-      : cabinetsWithMeters;
-
-    // ============================================================================
-    // STEP 10: Transform and return results
-    // ============================================================================
-    // Get location info for currency conversion
-    // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
-    const location = await GamingLocations.findOne(
-      { _id: locationId },
-      { 'rel.licencee': 1, country: 1 }
-    )
-      .lean()
-      .exec();
-
-    // Get licencee and country info for currency conversion
-    let nativeCurrency: CurrencyCode = 'USD';
-    if (location) {
-      const locationData = location as {
-        rel?: { licencee?: string };
-        country?: string;
-      };
-      const locationLicenceeId = (locationData.rel?.licencee || locationData.rel?.licencee) as
-        | string
-        | undefined;
-      if (!locationLicenceeId) {
-        // Unassigned locations - determine currency from country
-        const countryId = locationData.country as string | undefined;
-        if (countryId) {
-          // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
-          const country = await Countries.findOne(
-            { _id: countryId },
-            { name: 1 }
-          )
-            .lean()
-            .exec();
-          const countryData = country as { name?: string } | null;
-          if (countryData?.name) {
-            nativeCurrency = getCountryCurrency(countryData.name);
-          }
-        }
-      } else {
-        // Get licencee's native currency
-        // CRITICAL: Use findOne with _id (String IDs, not ObjectId)
-        const licencee = await Licencee.findOne(
-          { _id: locationLicenceeId },
-          { name: 1 }
-        )
-          .lean()
-          .exec();
-        const licenceeData = licencee as { name?: string } | null;
-        if (licenceeData?.name) {
-          nativeCurrency = getLicenceeCurrency(licenceeData.name);
-        }
-      }
-    }
-
-    // Check if currency conversion should be applied
-    // For location details we ALWAYS convert cabinet-level financials into the
-    // currently selected display currency when a currency is provided, so that
-    // the cards, table rows, and cabinet drill‑downs all match.
-    const shouldConvert = Boolean(displayCurrency);
-
-    // Transform the results to ensure proper data types
-    const transformedCabinets: TransformedCabinet[] = paginatedCabinets.map(
-      (cabinet: Record<string, unknown>) => {
-        let moneyIn = Number(cabinet.moneyIn) || 0;
-        let moneyOut = Number(cabinet.moneyOut) || 0;
-        let gross = Number(cabinet.gross) || 0;
-        let jackpot = Number(cabinet.jackpot) || 0;
-
-        // Apply currency conversion if needed
-        if (shouldConvert && nativeCurrency !== displayCurrency) {
-          const moneyInUSD = convertToUSD(moneyIn, nativeCurrency);
-          const moneyOutUSD = convertToUSD(moneyOut, nativeCurrency);
-          const grossUSD = convertToUSD(gross, nativeCurrency);
-          const jackpotUSD = convertToUSD(jackpot, nativeCurrency);
-
-          moneyIn = convertFromUSD(moneyInUSD, displayCurrency);
-          moneyOut = convertFromUSD(moneyOutUSD, displayCurrency);
-          gross = convertFromUSD(grossUSD, displayCurrency);
-          jackpot = convertFromUSD(jackpotUSD, displayCurrency);
-        }
+      const machineMetricsMap = new Map(rawMachineMetrics.map(metric => [String(metric._id), metric]));
+      const machinesWithMeters = filteredMachines.map(machine => {
+        const currentMachineId = String(machine._id);
+        const machineMeters = machineMetricsMap.get(currentMachineId) || {
+          moneyIn: 0,
+          moneyOut: 0,
+          gross: 0,
+          jackpot: 0,
+          gamesPlayed: 0,
+          gamesWon: 0,
+        };
+        const serialNumber = (machine.serialNumber as string)?.trim() || '';
+        const customName =
+          (
+            (machine.custom as unknown as { name?: string })?.name as string
+          )?.trim() || '';
+        const assetNumber = serialNumber || customName || '';
+        const lastActivityDate = machine.lastActivity as Date | null;
+        const isOnline = locationCheck.aceEnabled || (lastActivityDate && new Date(lastActivityDate) > new Date(Date.now() - 3 * 60 * 1000));
+        const rawMoneyIn = (Number(machineMeters.moneyIn) || 0) * reviewerScale;
+        const rawMoneyOut = (Number(machineMeters.moneyOut) || 0) * reviewerScale;
+        const rawJackpot = (Number(machineMeters.jackpot) || 0) * reviewerScale;
+        const adjustedMoneyOut = rawMoneyOut + (includeJackpotSetting ? rawJackpot : 0);
+        const grossProfit = rawMoneyIn - adjustedMoneyOut;
 
         return {
-          _id: cabinet._id?.toString() || '',
-          locationId: cabinet.locationId?.toString() || '',
-          locationName: (cabinet.locationName as string) || '',
-          assetNumber: (cabinet.assetNumber as string) || '',
-          serialNumber: (cabinet.serialNumber as string) || '',
-          custom: (cabinet.custom as Record<string, unknown>) || {},
-          relayId: (cabinet.relayId as string) || '',
-          smibBoard: (cabinet.smibBoard as string) || '',
-          smbId: (cabinet.smbId as string) || '',
-          lastActivity: (cabinet.lastActivity as Date) || null,
-          lastOnline: (cabinet.lastOnline as Date) || null,
-          game: (cabinet.game as string) || '',
-          installedGame: (cabinet.installedGame as string) || '',
-          cabinetType: (cabinet.cabinetType as string) || '',
-          assetStatus: (cabinet.assetStatus as string) || '',
-          status: (cabinet.status as string) || '',
-          gameType: (cabinet.gameType as string) || '',
-          isCronosMachine: cabinet.isCronosMachine || false,
-          // Ensure all numeric fields are properly typed (with currency conversion applied)
-          moneyIn,
-          moneyOut,
-          jackpot,
-          gross,
-          netGross: cabinet.subtractJackpot ? (gross - (jackpot || 0)) : undefined,
-          gamesPlayed: Number(cabinet.gamesPlayed) || 0,
-          gamesWon: Number(cabinet.gamesWon) || 0,
-          cancelledCredits: moneyOut, // Use converted moneyOut
-          sasMeters: (cabinet.sasMeters as Record<string, unknown>) || null,
-          online: Boolean(cabinet.online),
-          subtractJackpot: cabinet.subtractJackpot,
-          // Add any missing fields that might be expected
-          metersData: null, // This was in the original structure
+          _id: currentMachineId,
+          locationId,
+          locationName: locationCheck.name || 'Location',
+          assetNumber: assetNumber,
+          serialNumber: assetNumber,
+          custom: machine.custom || {},
+          relayId: (machine.relayId as string) || '',
+          smibBoard: (machine.smibBoard as string) || '',
+          smbId: (machine.smibBoard as string) || (machine.relayId as string) || '',
+          lastActivity: lastActivityDate,
+          lastOnline: lastActivityDate,
+          game: (machine.game as string) || '',
+          installedGame: (machine.game as string) || '',
+          manufacturer:
+            (machine.manufacturer as string) || (machine.manuf as string) || 'Unknown',
+          cabinetType: (machine.cabinetType as string) || '',
+          status: (machine.assetStatus as string) || '',
+          gameType: (machine.gameType as string) || '',
+          isCronosMachine: !!machine.isCronosMachine,
+          moneyIn: rawMoneyIn,
+          moneyOut: adjustedMoneyOut,
+          gross: grossProfit,
+          jackpot: rawJackpot,
+          gamesPlayed: Number(machineMeters.gamesPlayed) || 0,
+          gamesWon: Number(machineMeters.gamesWon) || 0,
+          cancelledCredits: adjustedMoneyOut,
+          sasMeters: machine.sasMeters || null,
+          online: !!isOnline,
+          includeJackpot: includeJackpotSetting,
+          deletedAt: (machine as { deletedAt?: Date }).deletedAt || null,
         };
+      });
+
+      if (searchTerm) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        machinesWithMeters.sort((a, b) =>
+          a.serialNumber.toLowerCase().startsWith(lowerSearchTerm) &&
+          !b.serialNumber.toLowerCase().startsWith(lowerSearchTerm)
+            ? -1
+            : 0
+        );
       }
-    );
 
-    const totalPages = limit ? Math.ceil(totalCount / limit) : 1;
+      const total = machinesWithMeters.length;
+      const paginated = limit
+        ? machinesWithMeters.slice(skip, skip + limit)
+        : machinesWithMeters;
 
-    return NextResponse.json({
-      success: true,
-      data: transformedCabinets,
-      pagination: {
-        page,
-        limit: limit || totalCount, // Return totalCount as limit when fetching all
-        total: totalCount,
-        totalPages,
-        hasNextPage: limit ? page < totalPages : false,
-        hasPrevPage: page > 1,
-      },
-    });
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : 'Failed to fetch location cabinets data';
-    console.error(
-      `[Locations API GET] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
-  }
+      const transformed: TransformedCabinet[] = paginated.map(transformedMachine => {
+        const currentGross = Number(transformedMachine.gross) || 0;
+        const currentJackpot = Number(transformedMachine.jackpot) || 0;
+        const base: TransformedCabinet = {
+          ...transformedMachine,
+          netGross: transformedMachine.includeJackpot ? currentGross - currentJackpot : undefined,
+          metersData: null,
+        } as unknown as TransformedCabinet;
+
+        return base;
+      });
+
+      const totalPages = limit ? Math.ceil(total / limit) : 1;
+      return NextResponse.json({
+        success: true,
+        data: transformed,
+        pagination: {
+          page,
+          limit: limit || total,
+          total,
+          totalPages,
+          hasNextPage: limit ? page < totalPages : false,
+          hasPrevPage: page > 1,
+        },
+      });
+    } catch (error: unknown) {
+      console.error(`[Location Detail API] Error:`, error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+  });
 }

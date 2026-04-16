@@ -20,7 +20,7 @@ type CabinetFormData = Partial<GamingMachine>;
 
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { isAbortError } from '@/lib/utils/errors';
-import { getLicenceeObjectId } from '@/lib/utils/licencee';
+import { resolveLicenceeId } from '@/lib/utils/licencee';
 import { formatLocalDateTimeString } from '@/shared/utils/dateFormat';
 import { DateRange } from 'react-day-picker';
 // Activity logging removed - handled via API calls
@@ -46,7 +46,9 @@ export const fetchCabinets = async (
   onlineStatus?: string,
   signal?: AbortSignal,
   sortBy?: string,
-  sortOrder?: 'asc' | 'desc'
+  sortOrder?: 'asc' | 'desc',
+  membership?: string,
+  smibStatus?: string
 ) => {
   try {
     // Construct the URL with appropriate parameters
@@ -57,16 +59,27 @@ export const fetchCabinets = async (
     if (licencee) queryParams.push(`licencee=${encodeURIComponent(licencee)}`);
 
     if (sortBy) queryParams.push(`sortBy=${encodeURIComponent(sortBy)}`);
-    if (sortOrder) queryParams.push(`sortOrder=${encodeURIComponent(sortOrder)}`);
+    if (sortOrder)
+      queryParams.push(`sortOrder=${encodeURIComponent(sortOrder)}`);
 
     // Add locationId parameter if provided (filter at API level for better performance)
-    if (locationId && locationId !== 'all' && (Array.isArray(locationId) ? locationId.length > 0 : true)) {
-      const locIds = Array.isArray(locationId) ? locationId.join(',') : locationId;
+    if (
+      locationId &&
+      locationId !== 'all' &&
+      (Array.isArray(locationId) ? locationId.length > 0 : true)
+    ) {
+      const locIds = Array.isArray(locationId)
+        ? locationId.join(',')
+        : locationId;
       queryParams.push(`locationId=${encodeURIComponent(locIds)}`);
     }
 
     // Add gameType parameter if provided
-    if (gameType && gameType !== 'all' && (Array.isArray(gameType) ? gameType.length > 0 : true)) {
+    if (
+      gameType &&
+      gameType !== 'all' &&
+      (Array.isArray(gameType) ? gameType.length > 0 : true)
+    ) {
       const gTypes = Array.isArray(gameType) ? gameType.join(',') : gameType;
       queryParams.push(`gameType=${encodeURIComponent(gTypes)}`);
     }
@@ -92,9 +105,11 @@ export const fetchCabinets = async (
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       } else {
-        // Date-only: send ISO date format for gaming day offset to apply
-        const fromDate = customDateRange.from.toISOString().split('T')[0];
-        const toDate = customDateRange.to.toISOString().split('T')[0];
+        // Date-only: always include time component so backend doesn't need format detection
+        const fromDate =
+          customDateRange.from.toISOString().split('T')[0] + 'T00:00:00.000Z';
+        const toDate =
+          customDateRange.to.toISOString().split('T')[0] + 'T00:00:00.000Z';
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       }
@@ -115,6 +130,16 @@ export const fetchCabinets = async (
     // Add onlineStatus parameter if provided
     if (onlineStatus && onlineStatus !== 'all') {
       queryParams.push(`onlineStatus=${encodeURIComponent(onlineStatus)}`);
+    }
+
+    // Add membership parameter if provided
+    if (membership && membership !== 'all') {
+      queryParams.push(`membership=${encodeURIComponent(membership)}`);
+    }
+
+    // Add smibStatus parameter if provided
+    if (smibStatus && smibStatus !== 'all') {
+      queryParams.push(`smibStatus=${encodeURIComponent(smibStatus)}`);
     }
 
     // Add pagination parameters
@@ -240,15 +265,17 @@ export const fetchCabinetById = async (
 
       if (hasTime) {
         // Send local time with timezone offset to preserve user's time selection
-        // This ensures 11:45 AM AST stays as 11:45 AM, not converted to 15:45 UTC
+        // This ensures 11:45 AM local stays as 11:45 AM in the request
         const fromDate = formatLocalDateTimeString(customDateRange.from, -4);
         const toDate = formatLocalDateTimeString(customDateRange.to, -4);
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       } else {
-        // Date-only: send ISO date format for gaming day offset to apply
-        const fromDate = customDateRange.from.toISOString().split('T')[0];
-        const toDate = customDateRange.to.toISOString().split('T')[0];
+        // Date-only: always include time component so backend doesn't need format detection
+        const fromDate =
+          customDateRange.from.toISOString().split('T')[0] + 'T00:00:00.000Z';
+        const toDate =
+          customDateRange.to.toISOString().split('T')[0] + 'T00:00:00.000Z';
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       }
@@ -393,9 +420,11 @@ export const updateCabinet = async (
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       } else {
-        // Date-only: send ISO date format for gaming day offset to apply
-        const fromDate = customDateRange.from.toISOString().split('T')[0];
-        const toDate = customDateRange.to.toISOString().split('T')[0];
+        // Date-only: always include time component so backend doesn't need format detection
+        const fromDate =
+          customDateRange.from.toISOString().split('T')[0] + 'T00:00:00.000Z';
+        const toDate =
+          customDateRange.to.toISOString().split('T')[0] + 'T00:00:00.000Z';
         queryParams.push(`startDate=${fromDate}`);
         queryParams.push(`endDate=${toDate}`);
       }
@@ -511,6 +540,8 @@ export async function fetchCabinetsForLocation(
   limit?: number,
   currency?: string,
   onlineStatus?: string,
+  includeArchived?: boolean,
+  smibStatus?: string,
   signal?: AbortSignal
 ): Promise<{
   data: GamingMachine[];
@@ -535,10 +566,9 @@ export async function fetchCabinetsForLocation(
     };
 
     if (licencee) {
-      // Convert licencee name to ObjectId for API compatibility
-      const licenceeObjectId = getLicenceeObjectId(licencee);
-      if (licenceeObjectId) {
-        params.licencee = licenceeObjectId;
+      const licenceeId = resolveLicenceeId(licencee);
+      if (licenceeId) {
+        params.licencee = licenceeId;
       }
     }
 
@@ -563,6 +593,16 @@ export async function fetchCabinetsForLocation(
       params.onlineStatus = onlineStatus;
     }
 
+    // Add includeArchived parameter if provided
+    if (includeArchived) {
+      params.includeArchived = 'true';
+    }
+ 
+    // Add smibStatus parameter if provided
+    if (smibStatus && smibStatus !== 'all') {
+      params.smibStatus = smibStatus;
+    }
+
     // Handle custom date range
     if (
       timePeriod === 'Custom' &&
@@ -583,9 +623,11 @@ export async function fetchCabinetsForLocation(
         params.startDate = formatLocalDateTimeString(customDateRange.from, -4);
         params.endDate = formatLocalDateTimeString(customDateRange.to, -4);
       } else {
-        // Date-only: send ISO date format for gaming day offset to apply
-        params.startDate = customDateRange.from.toISOString().split('T')[0];
-        params.endDate = customDateRange.to.toISOString().split('T')[0];
+        // Date-only: always include time component so backend doesn't need format detection
+        params.startDate =
+          customDateRange.from.toISOString().split('T')[0] + 'T00:00:00.000Z';
+        params.endDate =
+          customDateRange.to.toISOString().split('T')[0] + 'T00:00:00.000Z';
       }
       params.timePeriod = 'Custom';
     }
@@ -630,14 +672,10 @@ export async function fetchCabinetsForLocation(
       return { data: [] };
     }
   } catch (error) {
-    // CRITICAL: Check for abort errors FIRST - aborting is NOT an error, it's expected when switching filters
-    // Abort errors should NEVER show error logs or throw errors
     if (isAbortError(error)) {
-      // Silently return empty data - aborting is expected behavior when switching filters
       return { data: [] };
     }
 
-    // Check if it's a 403 Unauthorized error
     if (axios.isAxiosError(error) && error.response?.status === 403) {
       const unauthorizedError = new Error(
         'Unauthorized: You do not have access to this location'
@@ -647,13 +685,68 @@ export async function fetchCabinetsForLocation(
       throw unauthorizedError;
     }
 
-    // Only log actual errors (not aborts)
     console.error('❌ Error in fetchCabinetsForLocation:', error);
-
-    // Always return an empty array for other errors instead of throwing
     return { data: [] };
   }
 }
+
+/**
+ * Restore a soft-deleted (archived) cabinet.
+ *
+ * @param locationId - The ID of the location the cabinet belongs to.
+ * @param cabinetId - The ID of the cabinet to restore.
+ * @returns Promise resolving to the restored cabinet data.
+ */
+export async function restoreCabinet(locationId: string, cabinetId: string) {
+  try {
+    const response = await axios.patch(
+      `/api/locations/${locationId}/cabinets/${cabinetId}`,
+      { action: 'restore' },
+      { headers: getAuthHeaders() }
+    );
+
+    if (response.data && response.data.success) {
+      return response.data.data;
+    }
+
+    throw new Error(response.data?.error || 'Failed to restore cabinet');
+  } catch (error) {
+    console.error(`Error restoring cabinet ${cabinetId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Permanently delete a cabinet (hard delete).
+ * Only accessible to admins and developers.
+ *
+ * @param locationId - The ID of the location the cabinet belongs to.
+ * @param cabinetId - The ID of the cabinet to permanently delete.
+ * @returns Promise resolving to the success response.
+ */
+export async function permanentlyDeleteCabinet(
+  locationId: string,
+  cabinetId: string
+) {
+  try {
+    const response = await axios.delete(
+      `/api/locations/${locationId}/cabinets/${cabinetId}?hardDelete=true`,
+      { headers: getAuthHeaders() }
+    );
+
+    if (response.data && response.data.success) {
+      return response.data;
+    }
+
+    throw new Error(
+      response.data?.error || 'Failed to permanently delete cabinet'
+    );
+  } catch (error) {
+    console.error(`Error permanently deleting cabinet ${cabinetId}:`, error);
+    throw error;
+  }
+}
+
 
 /**
  * Fetches cabinet/machine totals using the machines aggregation API
@@ -669,17 +762,26 @@ export async function fetchCabinetTotals(
   locationId?: string | string[],
   gameType?: string | string[],
   onlineStatus?: string,
-  searchTerm?: string
-): Promise<{ moneyIn: number; moneyOut: number; gross: number; jackpot: number; netGross: number } | null> {
+  searchTerm?: string,
+  membership?: string,
+  smibStatus?: string
+): Promise<{
+  moneyIn: number;
+  moneyOut: number;
+  gross: number;
+  jackpot: number;
+  netGross: number;
+} | null> {
   try {
     let url = `/api/machines/aggregation?timePeriod=${activeMetricsFilter}`;
 
-    if (
-      activeMetricsFilter === 'Custom' &&
-      customDateRange
-    ) {
-      const fromDate = (customDateRange.startDate || customDateRange.from || customDateRange.start);
-      const toDate = (customDateRange.endDate || customDateRange.to || customDateRange.end);
+    if (activeMetricsFilter === 'Custom' && customDateRange) {
+      const fromDate =
+        customDateRange.startDate ||
+        customDateRange.from ||
+        customDateRange.start;
+      const toDate =
+        customDateRange.endDate || customDateRange.to || customDateRange.end;
 
       if (fromDate && toDate) {
         // Convert to Date objects if they are strings or numbers
@@ -701,9 +803,9 @@ export async function fetchCabinetTotals(
           const toStr = formatLocalDateTimeString(tDate, -4);
           url += `&startDate=${fromStr}&endDate=${toStr}`;
         } else {
-          // Date-only: send ISO date format for gaming day offset to apply
-          const fromStr = fDate.toISOString().split('T')[0];
-          const toStr = tDate.toISOString().split('T')[0];
+          // Date-only: always include time component so backend doesn't need format detection
+          const fromStr = fDate.toISOString().split('T')[0] + 'T00:00:00.000Z';
+          const toStr = tDate.toISOString().split('T')[0] + 'T00:00:00.000Z';
           url += `&startDate=${fromStr}&endDate=${toStr}`;
         }
       }
@@ -717,14 +819,32 @@ export async function fetchCabinetTotals(
       url += `&currency=${displayCurrency}`;
     }
 
+    if (membership && membership !== 'all') {
+      url += `&membership=${encodeURIComponent(membership)}`;
+    }
+
+    if (smibStatus && smibStatus !== 'all') {
+      url += `&smibStatus=${encodeURIComponent(smibStatus)}`;
+    }
+
     // Add location filter if provided
-    if (locationId && locationId !== 'all' && (Array.isArray(locationId) ? locationId.length > 0 : true)) {
-      const locIds = Array.isArray(locationId) ? locationId.join(',') : locationId;
+    if (
+      locationId &&
+      locationId !== 'all' &&
+      (Array.isArray(locationId) ? locationId.length > 0 : true)
+    ) {
+      const locIds = Array.isArray(locationId)
+        ? locationId.join(',')
+        : locationId;
       url += `&locationId=${encodeURIComponent(locIds)}`;
     }
 
     // Add game type filter if provided
-    if (gameType && gameType !== 'all' && (Array.isArray(gameType) ? gameType.length > 0 : true)) {
+    if (
+      gameType &&
+      gameType !== 'all' &&
+      (Array.isArray(gameType) ? gameType.length > 0 : true)
+    ) {
       const gTypes = Array.isArray(gameType) ? gameType.join(',') : gameType;
       url += `&gameType=${encodeURIComponent(gTypes)}`;
     }
@@ -742,20 +862,54 @@ export async function fetchCabinetTotals(
     const response = await axios.get(url, { signal });
     const machineData = response.data.data || [];
 
+    // DEBUG: Log sample machine data to verify jackpot values
+    if (machineData.length > 0) {
+      const sample = machineData.slice(0, 3);
+      console.warn(
+        '[fetchCabinetTotals] Sample machine data:',
+        JSON.stringify(
+          sample.map((m: Record<string, unknown>) => ({
+            _id: m._id,
+            moneyOut: m.moneyOut,
+            jackpot: m.jackpot,
+            includeJackpot: m.includeJackpot,
+            gross: m.gross,
+          })),
+          null,
+          2
+        )
+      );
+    }
+
     // Sum up totals from all machines
     const totals = machineData.reduce(
       (
-        acc: { moneyIn: number; moneyOut: number; gross: number; jackpot: number; netGross: number },
-        machine: { moneyIn?: number; moneyOut?: number; gross?: number; jackpot?: number; netGross?: number }
+        acc: {
+          moneyIn: number;
+          moneyOut: number;
+          gross: number;
+          jackpot: number;
+          netGross: number;
+        },
+        machine: {
+          moneyIn?: number;
+          moneyOut?: number;
+          gross?: number;
+          jackpot?: number;
+          netGross?: number;
+          includeJackpot?: boolean;
+        }
       ) => {
         const moneyIn = Number(machine.moneyIn) || 0;
         const moneyOut = Number(machine.moneyOut) || 0;
-        const gross = machine.gross !== undefined ? Number(machine.gross) : (moneyIn - moneyOut);
+        const gross =
+          machine.gross !== undefined
+            ? Number(machine.gross)
+            : moneyIn - moneyOut;
         const jackpot = Number(machine.jackpot) || 0;
-        
-        // If netGross is missing from the API (due to jackpot=0 rule), 
-        // it should NOT be included in the netGross total.
-        const netGross = machine.netGross !== undefined ? Number(machine.netGross) : 0;
+
+        const netGross =
+          machine.netGross !== undefined ? Number(machine.netGross) : 0;
 
         return {
           moneyIn: acc.moneyIn + moneyIn,
@@ -766,6 +920,22 @@ export async function fetchCabinetTotals(
         };
       },
       { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0, netGross: 0 }
+    );
+
+    // DEBUG: Log final totals
+    console.warn(
+      '[fetchCabinetTotals] Final totals:',
+      JSON.stringify(
+        {
+          moneyIn: totals.moneyIn,
+          moneyOut: totals.moneyOut,
+          jackpot: totals.jackpot,
+          gross: totals.gross,
+          baseCancelledCredits: totals.moneyOut - totals.jackpot,
+        },
+        null,
+        2
+      )
     );
 
     return totals;
@@ -810,4 +980,3 @@ export const updateMachineCollectionHistory = async (
     throw error;
   }
 };
-

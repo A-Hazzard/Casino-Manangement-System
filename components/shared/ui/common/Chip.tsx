@@ -12,10 +12,11 @@
  * @param onRemove - Optional callback when remove is clicked
  * @param className - Additional CSS classes
  */
-import React from 'react';
+
+import { FC } from 'react';
 import type { ChipProps } from '@/lib/types/components';
 
-const Chip: React.FC<ChipProps> = ({ label, onRemove, className }) => (
+const Chip: FC<ChipProps> = ({ label, onRemove, className }) => (
   <span
     className={`mb-2 mr-2 inline-flex items-center rounded-full bg-blue-500 px-3 py-1 text-sm font-medium text-white ${
       className || ''

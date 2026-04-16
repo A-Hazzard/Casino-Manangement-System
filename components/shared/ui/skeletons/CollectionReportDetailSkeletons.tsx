@@ -10,7 +10,7 @@ export const CollectionReportSkeleton = () => (
       containerPaddingMobile: 'px-4 py-8 lg:px-0 lg:py-0',
       disabled: true,
     }}
-    pageTitle=""
+    
     hideOptions={true}
     hideLicenceeFilter={true}
     mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"

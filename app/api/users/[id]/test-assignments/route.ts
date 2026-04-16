@@ -22,8 +22,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * 5. Return updated user data
  */
 export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest
 ): Promise<Response> {
   // Only allow in development
   if (process.env.NODE_ENV !== 'development') {
@@ -42,8 +41,9 @@ export async function PATCH(
     // ============================================================================
     // STEP 2: Parse request body
     // ============================================================================
-    const resolvedParams = await params;
-    const userId = resolvedParams.id;
+    const { pathname } = request.nextUrl;
+    const parts = pathname.split('/');
+    const userId = parts[parts.length - 2]; // Extract [id] from /api/users/[id]/test-assignments
     const body = await request.json();
     const { assignedLocations, assignedLicencees } = body;
 

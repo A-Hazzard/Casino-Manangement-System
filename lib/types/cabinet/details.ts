@@ -11,6 +11,18 @@
 import type { CabinetSortOption } from '@/lib/hooks/data';
 import { GamingMachine } from '@/shared/types/entities';
 
+// Type for collection data from machine's embedded collectionMetersHistory
+export type CollectionData = {
+  _id: string;
+  timestamp: string | Date;
+  metersIn: number;
+  metersOut: number;
+  prevIn: number; // This maps to prevMetersIn from the embedded data
+  prevOut: number; // This maps to prevMetersOut from the embedded data
+  locationReportId: string;
+  machineId: string;
+};
+
 // Props for AccountingDetails component
 export type AccountingDetailsProps = {
   cabinet: GamingMachine;
@@ -40,6 +52,14 @@ export type CabinetsCabinetSearchFiltersProps = {
   // Status filter state
   selectedStatus: string;
   onStatusChange: (status: string) => void;
+
+  // Membership filter state
+  selectedMembership: string;
+  onMembershipChange: (membership: string) => void;
+
+  // SMIB filter state
+  selectedSmibStatus: string;
+  onSmibStatusChange: (status: string) => void;
 
   // Sort state
   sortOption: CabinetSortOption;

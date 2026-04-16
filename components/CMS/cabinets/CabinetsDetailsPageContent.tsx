@@ -31,7 +31,6 @@ import CabinetsDetailsAccountingSection from '@/components/CMS/cabinets/details/
 import CabinetsDetailsChartSection from '@/components/CMS/cabinets/details/CabinetsDetailsChartSection';
 import CabinetsDetailsSMIBManagementSection from '@/components/CMS/cabinets/details/CabinetsDetailsSMIBManagementSection';
 import CabinetsDetailsSummarySection from '@/components/CMS/cabinets/details/CabinetsDetailsSummarySection';
-
 /**
  * Cabinets Details Page Content Component
  */
@@ -40,7 +39,6 @@ export default function CabinetsDetailsPageContent() {
   const { user } = useUserStore();
   const { setSelectedLicencee, selectedLicencee } = useDashBoardStore();
   const { openEditModal } = useCabinetsActionsStore();
-
   const {
     cabinet,
     locationName,
@@ -65,7 +63,7 @@ export default function CabinetsDetailsPageContent() {
     onBack,
     onLocationClick,
   } = hook;
-
+  // TODO Review this component
   // ============================================================================
   // Early Returns
   // ============================================================================
@@ -73,7 +71,7 @@ export default function CabinetsDetailsPageContent() {
     return (
       <PageLayout
         headerProps={{ selectedLicencee, setSelectedLicencee }}
-        pageTitle=""
+        
         hideOptions
         hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
@@ -83,9 +81,9 @@ export default function CabinetsDetailsPageContent() {
     );
   }
 
-  // Show loading skeleton for initial load OR when moving between data states
-  // This provides visual feedback during filter changes
-  if ((!cabinet || hook.loading) && !error) {
+  // Show loading skeleton only for initial load (no cabinet data yet)
+  // During filter changes, keep showing the existing data with section-level loading indicators
+  if (!cabinet && !error) {
     return (
       <CabinetDetailsLoadingState
         selectedLicencee={selectedLicencee}
@@ -94,11 +92,8 @@ export default function CabinetsDetailsPageContent() {
       />
     );
   }
-
-  if (error || !cabinet) {
-    return null; // Error handling handled by hook/page skeleton
-  }
-
+  if (error || !cabinet) return null; // Error handling handled by hook/page skeleton
+  
   return (
     <>
       <CabinetsEditCabinetModal onCabinetUpdated={handleCabinetUpdated} />
@@ -106,7 +101,7 @@ export default function CabinetsDetailsPageContent() {
 
       <PageLayout
         headerProps={{ selectedLicencee, setSelectedLicencee }}
-        pageTitle=""
+        
         hideOptions
         hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"

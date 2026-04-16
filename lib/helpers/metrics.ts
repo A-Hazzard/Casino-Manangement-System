@@ -75,8 +75,8 @@ export async function getMetrics(
         // Send local time with timezone offset to preserve user's time selection
         url += `&startDate=${formatLocalDateTimeString(sd, -4)}&endDate=${formatLocalDateTimeString(ed, -4)}`;
       } else {
-        // Date-only: send ISO date format for gaming day offset to apply
-        url += `&startDate=${sd.toISOString().split('T')[0]}&endDate=${ed.toISOString().split('T')[0]}`;
+        // Date-only: always include time component so backend doesn't need format detection
+        url += `&startDate=${sd.toISOString().split('T')[0]}T00:00:00.000Z&endDate=${ed.toISOString().split('T')[0]}T00:00:00.000Z`;
       }
     }
     if (licencee && licencee !== 'all') {
@@ -90,13 +90,23 @@ export async function getMetrics(
     }
 
     // Add location filter if provided
-    if (locationId && locationId !== 'all' && (Array.isArray(locationId) ? locationId.length > 0 : true)) {
-      const locIds = Array.isArray(locationId) ? locationId.join(',') : locationId;
+    if (
+      locationId &&
+      locationId !== 'all' &&
+      (Array.isArray(locationId) ? locationId.length > 0 : true)
+    ) {
+      const locIds = Array.isArray(locationId)
+        ? locationId.join(',')
+        : locationId;
       url += `&locationId=${encodeURIComponent(locIds)}`;
     }
 
     // Add game type filter if provided
-    if (gameType && gameType !== 'all' && (Array.isArray(gameType) ? gameType.length > 0 : true)) {
+    if (
+      gameType &&
+      gameType !== 'all' &&
+      (Array.isArray(gameType) ? gameType.length > 0 : true)
+    ) {
       const gTypes = Array.isArray(gameType) ? gameType.join(',') : gameType;
       url += `&gameType=${encodeURIComponent(gTypes)}`;
     }
@@ -135,13 +145,15 @@ export async function getMetrics(
     // if (!Array.isArray(data) || data.length === 0) return [];
 
     // Check if API response contains minute-level data (time format is "HH:MM" with non-zero minutes)
-    const hasMinuteLevelData = Array.isArray(data) && data.some(item => {
-      if (!item.time) return false;
-      const timeParts = item.time.split(':');
-      if (timeParts.length !== 2) return false;
-      const minutes = parseInt(timeParts[1], 10);
-      return !isNaN(minutes) && minutes !== 0; // Has non-zero minutes
-    });
+    const hasMinuteLevelData =
+      Array.isArray(data) &&
+      data.some(item => {
+        if (!item.time) return false;
+        const timeParts = item.time.split(':');
+        if (timeParts.length !== 2) return false;
+        const minutes = parseInt(timeParts[1], 10);
+        return !isNaN(minutes) && minutes !== 0; // Has non-zero minutes
+      });
 
     // Determine if we should group by hour or minute
     // If granularity was manually specified (from selector), use it
@@ -698,4 +710,3 @@ function fillMissingIntervals(
 
   return filledData;
 }
-

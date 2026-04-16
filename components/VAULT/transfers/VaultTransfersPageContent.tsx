@@ -404,17 +404,13 @@ export default function VaultTransfersPageContent() {
           </div>
 
           {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="mt-4">
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                setCurrentPage={setCurrentPage}
-                totalCount={totalItems}
-                limit={20}
-              />
-            </div>
-          )}
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setCurrentPage={setCurrentPage}
+            totalCount={totalItems}
+            showTotalCount
+          />
         </div>
       </div>
 

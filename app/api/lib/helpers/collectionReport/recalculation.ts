@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
-import { calculateMovement } from '@/lib/utils/movement';
+
 
 type CollectionSnapshot = {
   _id: mongoose.Types.ObjectId | string;
@@ -42,7 +42,16 @@ function getObjectIdTime(collection: CollectionSnapshot): number {
   return 0;
 }
 
-export async function recalculateMachineCollections(machineId?: string | null) {
+/**
+ * Retrieves all collections of a machine in chronological order and updates machine collectionMetersHistory.
+ * No longer cascades/recalculates subsequent collections' meters — it only updates the Machine doc.
+ *
+ * @param machineId - The machine to update history for.
+ * @param anchorCollectionId - Unused (kept for compatibility with callers).
+ */
+export async function recalculateMachineCollections(
+  machineId?: string | null
+) {
   if (!machineId) {
     return;
   }
@@ -64,8 +73,6 @@ export async function recalculateMachineCollections(machineId?: string | null) {
     return getObjectIdTime(a) - getObjectIdTime(b);
   });
 
-  let prevMetersIn = 0;
-  let prevMetersOut = 0;
   const historyEntries: Array<{
     _id: mongoose.Types.ObjectId;
     metersIn: number;
@@ -76,73 +83,33 @@ export async function recalculateMachineCollections(machineId?: string | null) {
     locationReportId: string;
   }> = [];
 
-  for (const col of sorted) {
-    const currentIn = Number(col.metersIn ?? 0);
-    const currentOut = Number(col.metersOut ?? 0);
-    const movement = calculateMovement(
-      currentIn,
-      currentOut,
-      { metersIn: prevMetersIn, metersOut: prevMetersOut },
-      col.ramClear,
-      col.ramClearCoinIn as number | undefined,
-      col.ramClearCoinOut as number | undefined,
-      col.ramClearMetersIn as number | undefined,
-      col.ramClearMetersOut as number | undefined
-    );
-
-    const roundedMovement = {
-      metersIn: Number(movement.metersIn.toFixed(2)),
-      metersOut: Number(movement.metersOut.toFixed(2)),
-      gross: Number(movement.gross.toFixed(2)),
-    };
-
-    const softMetersIn =
-      col.ramClear && col.ramClearMetersIn !== undefined
-        ? Number(col.ramClearMetersIn)
-        : currentIn;
-    const softMetersOut =
-      col.ramClear && col.ramClearMetersOut !== undefined
-        ? Number(col.ramClearMetersOut)
-        : currentOut;
-
-    await Collections.updateOne(
-      { _id: col._id },
-      {
-        $set: {
-          prevIn: prevMetersIn,
-          prevOut: prevMetersOut,
-          movement: roundedMovement,
-          softMetersIn,
-          softMetersOut,
-          updatedAt: new Date(),
-        },
-      }
-    );
-
+  for (let i = 0; i < sorted.length; i++) {
+    const col = sorted[i];
     historyEntries.push({
       _id: new mongoose.Types.ObjectId(),
-      metersIn: currentIn,
-      metersOut: currentOut,
-      prevMetersIn: prevMetersIn,
-      prevMetersOut: prevMetersOut,
+      metersIn: Number(col.metersIn ?? 0),
+      metersOut: Number(col.metersOut ?? 0),
+      prevMetersIn: Number(col.prevIn ?? 0),
+      prevMetersOut: Number(col.prevOut ?? 0),
       timestamp:
         (col.collectionTime as Date | undefined) ??
         (col.timestamp as Date | undefined) ??
         new Date(),
       locationReportId: col.locationReportId ?? '',
     });
-
-    prevMetersIn = currentIn;
-    prevMetersOut = currentOut;
   }
+
+  const lastCol = sorted[sorted.length - 1];
+  const finalMetersIn = lastCol ? Number(lastCol.metersIn ?? 0) : 0;
+  const finalMetersOut = lastCol ? Number(lastCol.metersOut ?? 0) : 0;
 
   // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
   await Machine.findOneAndUpdate(
     { _id: machineId },
     {
       $set: {
-        'collectionMeters.metersIn': prevMetersIn,
-        'collectionMeters.metersOut': prevMetersOut,
+        'collectionMeters.metersIn': finalMetersIn,
+        'collectionMeters.metersOut': finalMetersOut,
         collectionMetersHistory: historyEntries,
         updatedAt: new Date(),
       },
@@ -150,6 +117,4 @@ export async function recalculateMachineCollections(machineId?: string | null) {
     { new: true }
   );
 }
-
-
 

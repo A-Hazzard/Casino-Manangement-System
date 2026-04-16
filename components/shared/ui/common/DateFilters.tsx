@@ -1,8 +1,8 @@
 /**
  * Date Filters Component
- * 
+ *
  * Reusable date filter component used across the application.
- * 
+ *
  * Features:
  * - Predefined time periods (Today, Yesterday, 7d, 30d, etc.)
  * - Custom date range selection with ModernCalendar
@@ -19,7 +19,16 @@ import { TimePeriod } from '@/app/api/lib/types';
 import { Button } from '@/components/shared/ui/button';
 import { CustomSelect } from '@/components/shared/ui/custom-select';
 import DateRangeIndicator from '@/components/shared/ui/DateRangeIndicator';
-import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
+import { MuiDateCalendar } from '@/components/shared/ui/MuiDateCalendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/shared/ui/popover';
+import {
+  createDateInTrinidadTime,
+  getGamingDayEndInTrinidad,
+} from '@/shared/utils/dateFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { DateFiltersProps } from '@/lib/types/components';
 import { useEffect, useMemo, useState } from 'react';
@@ -27,10 +36,10 @@ import { useEffect, useMemo, useState } from 'react';
 export default function DateFilters({
   disabled,
   onCustomRangeGo,
+  customRangeGoLabel = 'Get Meters',
   hideAllTime,
   showQuarterly = false,
   mode = 'auto',
-  enableTimeInputs = false,
   hideIndicator = false,
   showIndicatorOnly = false,
 }: DateFiltersProps & {
@@ -46,18 +55,92 @@ export default function DateFilters({
   } = useDashBoardStore();
 
   const [shouldTriggerCallback, setShouldTriggerCallback] = useState(false);
+  // Mobile-only: tracks whether to show the custom calendar picker.
+  // We don't set activeMetricsFilter='Custom' in the store until the user
+  // actually picks a range and clicks "Get Meters", so no premature queries fire.
+  const [showMobileCustomPicker, setShowMobileCustomPicker] = useState(
+    activeMetricsFilter === 'Custom'
+  );
+
   useEffect(() => {
     if (hideAllTime && activeMetricsFilter === 'All Time') {
       setActiveMetricsFilter('30d');
     }
   }, [activeMetricsFilter, hideAllTime, setActiveMetricsFilter]);
 
-  // Reset to "Today" if navigating to a page that doesn't support the Quarterly filter
   useEffect(() => {
     if (!showQuarterly && activeMetricsFilter === 'Quarterly') {
       setActiveMetricsFilter('Today');
     }
   }, [activeMetricsFilter, showQuarterly, setActiveMetricsFilter]);
+
+  useEffect(() => {
+    if (!activeMetricsFilter || activeMetricsFilter === 'Custom') return;
+
+    const today = new Date();
+    const gamingStartHour = gameDayOffset;
+
+    switch (activeMetricsFilter) {
+      case 'Today': {
+        const startDate = createDateInTrinidadTime(
+          today.getFullYear(),
+          today.getMonth() + 1,
+          today.getDate(),
+          gamingStartHour,
+          0,
+          0
+        );
+        const endDate = getGamingDayEndInTrinidad(today, gameDayOffset);
+        setCustomDateRange({ startDate, endDate });
+        break;
+      }
+      case 'Yesterday': {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const startDate = createDateInTrinidadTime(
+          yesterday.getFullYear(),
+          yesterday.getMonth() + 1,
+          yesterday.getDate(),
+          gamingStartHour,
+          0,
+          0
+        );
+        const endDate = getGamingDayEndInTrinidad(yesterday, gameDayOffset);
+        setCustomDateRange({ startDate, endDate });
+        break;
+      }
+      case '7d': {
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+        const startDate = createDateInTrinidadTime(
+          sevenDaysAgo.getFullYear(),
+          sevenDaysAgo.getMonth() + 1,
+          sevenDaysAgo.getDate(),
+          gamingStartHour,
+          0,
+          0
+        );
+        const endDate = getGamingDayEndInTrinidad(today, gameDayOffset);
+        setCustomDateRange({ startDate, endDate });
+        break;
+      }
+      case '30d': {
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+        const startDate = createDateInTrinidadTime(
+          thirtyDaysAgo.getFullYear(),
+          thirtyDaysAgo.getMonth() + 1,
+          thirtyDaysAgo.getDate(),
+          gamingStartHour,
+          0,
+          0
+        );
+        const endDate = getGamingDayEndInTrinidad(today, gameDayOffset);
+        setCustomDateRange({ startDate, endDate });
+        break;
+      }
+    }
+  }, [activeMetricsFilter, gameDayOffset, setCustomDateRange]);
 
   const timeFilterButtons: { label: string; value: TimePeriod }[] =
     useMemo(() => {
@@ -103,7 +186,13 @@ export default function DateFilters({
   };
 
   const handleSelectChange = (value: string) => {
-    handleFilterClick(value as TimePeriod);
+    if (value === 'Custom') {
+      // Don't update the store yet — show the picker and wait for "Get Meters"
+      setShowMobileCustomPicker(true);
+    } else {
+      setShowMobileCustomPicker(false);
+      handleFilterClick(value as TimePeriod);
+    }
   };
 
   // If only showing indicator, return early
@@ -133,7 +222,7 @@ export default function DateFilters({
           }
         >
           <CustomSelect
-            value={activeMetricsFilter}
+            value={showMobileCustomPicker ? 'Custom' : activeMetricsFilter}
             onValueChange={handleSelectChange}
             options={timeFilterButtons.map(filter => ({
               value: filter.value as string,
@@ -146,35 +235,30 @@ export default function DateFilters({
             contentClassName="text-gray-700"
           />
 
-          {/* ModernCalendar for mobile - shown only when Custom is selected */}
-          {activeMetricsFilter === 'Custom' && (
-            <ModernCalendar
-              date={
-                useDashBoardStore.getState().customDateRange
-                  ? {
-                      from: useDashBoardStore.getState().customDateRange
-                        ?.startDate,
-                      to: useDashBoardStore.getState().customDateRange?.endDate,
+          {/* MuiDateCalendar for mobile - shown when picker is open */}
+          {showMobileCustomPicker && (
+            <div className="w-full">
+              <MuiDateCalendar
+                date={useDashBoardStore.getState().customDateRange?.startDate}
+                gameDayOffset={gameDayOffset}
+                buttonLabel={customRangeGoLabel}
+                onSelect={range => {
+                  if (range) {
+                    setCustomDateRange({
+                      startDate: range.from,
+                      endDate: range.to,
+                    });
+                    setActiveMetricsFilter('Custom');
+                    setActivePieChartFilter('Custom');
+                    setShowMobileCustomPicker(false);
+                    if (onCustomRangeGo) {
+                      setTimeout(() => onCustomRangeGo(), 0);
                     }
-                  : undefined
-              }
-              onSelect={date => {
-                if (date?.from && date?.to) {
-                  setCustomDateRange({
-                    startDate: date.from,
-                    endDate: date.to,
-                  });
-                  setActiveMetricsFilter('Custom');
-                  setActivePieChartFilter('Custom'); // Sync pie chart filter
-                  if (onCustomRangeGo) {
-                    setTimeout(() => onCustomRangeGo(), 0);
                   }
-                }
-              }}
-              enableTimeInputs={enableTimeInputs}
-              gameDayOffset={gameDayOffset}
-              className="w-full"
-            />
+                }}
+                className="w-full"
+              />
+            </div>
           )}
         </div>
 
@@ -204,40 +288,44 @@ export default function DateFilters({
                 </Button>
               ))}
 
-            <ModernCalendar
-              date={
-                activeMetricsFilter === 'Custom' &&
-                useDashBoardStore.getState().customDateRange
-                  ? {
-                      from: useDashBoardStore.getState().customDateRange
-                        ?.startDate,
-                      to: useDashBoardStore.getState().customDateRange?.endDate,
+            {/* MUI Custom Date Picker for Desktop */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  className={`rounded-md px-3 py-1 text-sm transition-colors ${
+                    activeMetricsFilter === 'Custom'
+                      ? 'bg-buttonActive text-white'
+                      : 'bg-button text-white hover:bg-button/90'
+                  }`}
+                  disabled={disabled}
+                >
+                  Custom
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start" side="bottom">
+                <MuiDateCalendar
+                  date={useDashBoardStore.getState().customDateRange?.startDate}
+                  gameDayOffset={gameDayOffset}
+                  buttonLabel={customRangeGoLabel}
+                  onSelect={range => {
+                    if (range) {
+                      setCustomDateRange({
+                        startDate: range.from,
+                        endDate: range.to,
+                      });
+                      setActiveMetricsFilter('Custom');
+                      setActivePieChartFilter('Custom');
+                      if (onCustomRangeGo) {
+                        setTimeout(() => onCustomRangeGo(), 0);
+                      }
                     }
-                  : undefined
-              }
-              onSelect={date => {
-                if (date?.from && date?.to) {
-                  setCustomDateRange({
-                    startDate: date.from,
-                    endDate: date.to,
-                  });
-                  setActiveMetricsFilter('Custom');
-                  setActivePieChartFilter('Custom'); // Sync pie chart filter
-                  // Trigger callback
-                  if (onCustomRangeGo) {
-                    // Short timeout to ensure state updates propagate
-                    setTimeout(() => onCustomRangeGo(), 0);
-                  }
-                }
-              }}
-              enableTimeInputs={enableTimeInputs}
-              gameDayOffset={gameDayOffset}
-              className="w-auto"
-            />
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         )}
       </div>
     </div>
   );
 }
-

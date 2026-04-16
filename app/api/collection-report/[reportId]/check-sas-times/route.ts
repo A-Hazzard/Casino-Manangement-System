@@ -25,21 +25,15 @@ import { checkCollectionReportIssues } from '@/app/api/lib/helpers/collectionRep
  * 5. Return issue details
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ reportId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const parts = pathname.split('/');
+  const reportId = parts[parts.length - 2];
 
   try {
-    // ============================================================================
-    // STEP 1: Connect to the database
-    // ============================================================================
     await connectDB();
-
-    // ============================================================================
-    // STEP 2: Extract and validate reportId from URL params
-    // ============================================================================
-    const { reportId } = await params;
 
     if (!reportId) {
       const duration = Date.now() - startTime;

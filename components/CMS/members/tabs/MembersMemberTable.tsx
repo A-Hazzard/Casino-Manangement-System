@@ -14,6 +14,7 @@
  */
 'use client';
 
+import { FC } from 'react';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
@@ -36,7 +37,8 @@ import {
 } from '@radix-ui/react-icons';
 import { ExternalLink } from 'lucide-react';
 import Image from 'next/image';
-import React, { useRef } from 'react';
+import {  useRef  } from 'react';
+
 
 type MemberSortOption =
   | 'name'
@@ -64,7 +66,7 @@ type MembersMemberTableProps = {
   canEdit?: boolean;
 };
 
-const MembersMemberTable: React.FC<MembersMemberTableProps> = ({
+const MembersMemberTable: FC<MembersMemberTableProps> = ({
   members,
   sortOption,
   sortOrder,
@@ -327,7 +329,7 @@ const MembersMemberTable: React.FC<MembersMemberTableProps> = ({
       </div>
 
       {/* Pagination Controls */}
-      {members.length > 10 && (
+      {false && (
         <div className="mt-6 flex items-center justify-center space-x-2">
           <Button
             variant="ghost"

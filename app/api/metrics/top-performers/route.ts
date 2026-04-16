@@ -18,7 +18,6 @@ import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * Builds aggregation pipeline for top performer
  *
@@ -248,7 +247,7 @@ export async function GET(req: NextRequest) {
       console.warn(`[Top Performers API] Completed in ${duration}ms`);
     }
     return NextResponse.json({
-      locationId,
+      locationId: locationId || '',
       timePeriod,
       topPerformer,
     });

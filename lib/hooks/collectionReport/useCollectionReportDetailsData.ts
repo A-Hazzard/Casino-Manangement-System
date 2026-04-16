@@ -13,6 +13,10 @@
 
 'use client';
 
+// ============================================================================
+// External Dependencies
+// ============================================================================
+
 import { fetchCollectionReportById } from '@/lib/helpers/collectionReport';
 import { fetchCollectionsByLocationReportId } from '@/lib/helpers/collections';
 import type { CollectionReportData, MachineMetric } from '@/lib/types/api';
@@ -22,30 +26,89 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
 type TabType = 'Machine Metrics' | 'Location Metrics' | 'SAS Metrics Compare';
 
+// ============================================================================
+// Constants
+// ============================================================================
+
+const ITEMS_PER_PAGE = 20;
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Sorts machines alphabetically with numeric awareness
+ * Groups machines like "Machine 1, Machine 2, Machine 10" correctly
+ */
+function sortMachinesAlphabetically(
+  machines: MachineMetric[]
+): MachineMetric[] {
+  return [...machines].sort((a, b) => {
+    const nameA = (a.machineId || '').toString();
+    const nameB = (b.machineId || '').toString();
+
+    const matchA = nameA.match(/^(.+?)(\d+)?$/);
+    const matchB = nameB.match(/^(.+?)(\d+)?$/);
+
+    if (!matchA || !matchB) {
+      return nameA.localeCompare(nameB);
+    }
+
+    const [, baseA, numA] = matchA;
+    const [, baseB, numB] = matchB;
+
+    const baseCompare = baseA.localeCompare(baseB);
+    if (baseCompare !== 0) {
+      return baseCompare;
+    }
+
+    const numAInt = numA ? parseInt(numA, 10) : 0;
+    const numBInt = numB ? parseInt(numB, 10) : 0;
+
+    return numAInt - numBInt;
+  });
+}
+
+// ============================================================================
+// Main Hook
+// ============================================================================
+
 export function useCollectionReportDetailsData() {
+  // ==========================================================================
+  // Navigation & URL State
+  // ==========================================================================
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const reportId = params.reportId as string;
 
-  // ============================================================================
-  // State Management
-  // ============================================================================
+  // ==========================================================================
+  // Local State - Data & Loading
+  // ==========================================================================
   const [reportData, setReportData] = useState<CollectionReportData | null>(
     null
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [collections, setCollections] = useState<CollectionDocument[]>([]);
-  const [machinePage, setMachinePage] = useState(1);
 
+  // ==========================================================================
+  // Local State - Table Controls
+  // ==========================================================================
+  const [machinePage, setMachinePage] = useState(1);
   const [sortField, setSortField] = useState<keyof MachineMetric>('sasGross');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Initialize activeTab from URL or default to "Machine Metrics"
+  // ==========================================================================
+  // Local State - Tab Navigation
+  // ==========================================================================
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const section = searchParams?.get('section');
     if (section === 'location') return 'Location Metrics';
@@ -54,56 +117,19 @@ export function useCollectionReportDetailsData() {
     return 'Machine Metrics';
   });
 
-  // ============================================================================
+  // ==========================================================================
   // Refs
-  // ============================================================================
+  // ==========================================================================
   const hasRedirectedRef = useRef(false);
-
   const tabContentRef = useRef<HTMLDivElement>(null);
 
-  // ============================================================================
-  // Constants
-  // ============================================================================
-  const ITEMS_PER_PAGE = 10;
-
-  // ============================================================================
-  // Helper Functions
-  // ============================================================================
-  const sortMachinesAlphabetically = useCallback(
-    (machines: MachineMetric[]) => {
-      return machines.sort((a, b) => {
-        const nameA = (a.machineId || '').toString();
-        const nameB = (b.machineId || '').toString();
-
-        const matchA = nameA.match(/^(.+?)(\d+)?$/);
-        const matchB = nameB.match(/^(.+?)(\d+)?$/);
-
-        if (!matchA || !matchB) {
-          return nameA.localeCompare(nameB);
-        }
-
-        const [, baseA, numA] = matchA;
-        const [, baseB, numB] = matchB;
-
-        const baseCompare = baseA.localeCompare(baseB);
-        if (baseCompare !== 0) {
-          return baseCompare;
-        }
-
-        const numAInt = numA ? parseInt(numA, 10) : 0;
-        const numBInt = numB ? parseInt(numB, 10) : 0;
-
-        return numAInt - numBInt;
-      });
-    },
-    []
-  );
-
-
-
-  // ============================================================================
+  // ==========================================================================
   // Computed Values
-  // ============================================================================
+  // ==========================================================================
+
+  /**
+   * Data sorted by the selected field, with special handling for machine names
+   */
   const filteredAndSortedData = useMemo(() => {
     const metricsData = reportData?.machineMetrics || [];
     let sorted = [...metricsData];
@@ -133,13 +159,11 @@ export function useCollectionReportDetailsData() {
     }
 
     return sorted;
-  }, [
-    reportData?.machineMetrics,
-    sortField,
-    sortDirection,
-    sortMachinesAlphabetically,
-  ]);
+  }, [reportData?.machineMetrics, sortField, sortDirection]);
 
+  /**
+   * Data filtered by search term across multiple fields
+   */
   const filteredSortedAndSearchedData = useMemo(() => {
     let data = filteredAndSortedData;
 
@@ -159,6 +183,9 @@ export function useCollectionReportDetailsData() {
     return data;
   }, [filteredAndSortedData, searchTerm]);
 
+  /**
+   * Total pages for machine metrics pagination
+   */
   const machineTotalPages = useMemo(() => {
     const total = Math.ceil(
       filteredSortedAndSearchedData.length / ITEMS_PER_PAGE
@@ -166,15 +193,22 @@ export function useCollectionReportDetailsData() {
     return total > 0 ? total : 1;
   }, [filteredSortedAndSearchedData.length]);
 
+  /**
+   * Current page slice of machine metrics
+   */
   const paginatedMetricsData = useMemo(() => {
     const startIndex = (machinePage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
     return filteredSortedAndSearchedData.slice(startIndex, endIndex);
   }, [filteredSortedAndSearchedData, machinePage]);
 
-  // ============================================================================
-  // Event Handlers
-  // ============================================================================
+  // ==========================================================================
+  // Event Handlers - Table Controls
+  // ==========================================================================
+
+  /**
+   * Handle column header click for sorting
+   */
   const handleSort = (field: keyof MachineMetric) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -185,6 +219,13 @@ export function useCollectionReportDetailsData() {
     setMachinePage(1);
   };
 
+  // ==========================================================================
+  // Event Handlers - Tab Navigation
+  // ==========================================================================
+
+  /**
+   * Handle tab change and sync with URL
+   */
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
     const sectionMap: Record<string, string> = {
@@ -199,8 +240,13 @@ export function useCollectionReportDetailsData() {
     router.push(newUrl, { scroll: false });
   };
 
+  // ==========================================================================
+  // Event Handlers - Data Operations
+  // ==========================================================================
 
-
+  /**
+   * Refresh report and collections data
+   */
   const handleRefresh = useCallback(async () => {
     setLoading(true);
     try {
@@ -208,7 +254,8 @@ export function useCollectionReportDetailsData() {
       if (data) {
         setReportData(data);
       }
-      const collectionsData = await fetchCollectionsByLocationReportId(reportId);
+      const collectionsData =
+        await fetchCollectionsByLocationReportId(reportId);
       setCollections(collectionsData);
     } catch (error) {
       console.error('Error refreshing report data:', error);
@@ -218,11 +265,13 @@ export function useCollectionReportDetailsData() {
     }
   }, [reportId]);
 
-
-
-  // ============================================================================
+  // ==========================================================================
   // Effects
-  // ============================================================================
+  // ==========================================================================
+
+  /**
+   * Initial data fetch on mount
+   */
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -253,6 +302,16 @@ export function useCollectionReportDetailsData() {
       .catch(() => setCollections([]));
   }, [reportId]);
 
+  /**
+   * Reset pagination when search term changes
+   */
+  useEffect(() => {
+    setMachinePage(1);
+  }, [searchTerm]);
+
+  /**
+   * Redirect to collection list if report is in editing state
+   */
   useEffect(() => {
     if (reportData?.isEditing && !hasRedirectedRef.current) {
       hasRedirectedRef.current = true;
@@ -261,7 +320,9 @@ export function useCollectionReportDetailsData() {
     }
   }, [reportData?.isEditing, reportId, router]);
 
-  // Keep state in sync with URL changes (for browser back/forward)
+  /**
+   * Sync tab state with URL changes (browser back/forward)
+   */
   useEffect(() => {
     const section = searchParams?.get('section');
     if (section === 'location' && activeTab !== 'Location Metrics') {
@@ -275,7 +336,9 @@ export function useCollectionReportDetailsData() {
     }
   }, [searchParams, activeTab]);
 
-
+  // ==========================================================================
+  // Return
+  // ==========================================================================
 
   return {
     // State

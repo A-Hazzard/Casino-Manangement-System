@@ -17,127 +17,42 @@
 
 import PageLayout from '@/components/shared/layout/PageLayout';
 import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
 import CabinetsNewCabinetModal from '@/components/CMS/cabinets/modals/CabinetsNewCabinetModal';
 import LocationsDetailsCabinetsSection from '@/components/CMS/locations/sections/LocationsDetailsCabinetsSection';
-import { Button } from '@/components/shared/ui/button';
-import { ActionButtonSkeleton } from '@/components/shared/ui/skeletons/ButtonSkeletons';
 import { useLocationCabinetsData } from '@/lib/hooks/locations/useLocationCabinetsData';
 import { useLocationChartData } from '@/lib/hooks/locations/useLocationChartData';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
-import { MapPinOff, PlusCircle, RefreshCw, Server, Settings, Users } from 'lucide-react';
+import {
+    canEditMachines,
+    canManageLocations,
+    canViewArchivedMachines,
+    hasAdminAccess,
+    UserRole
+} from '@/lib/utils/permissions';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
 import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import { shouldShowNoLicenceeMessage } from '@/lib/utils/licencee';
-import { hasMissingCoordinates } from '@/lib/utils/location';
 import LocationsEditLocationModal from './modals/LocationsEditLocationModal';
 
-import MembersNavigation from '@/components/CMS/members/common/MembersNavigation';
-import {
-    MembersHandlersProvider,
-    useMembersHandlers,
-} from '@/components/CMS/members/context/MembersHandlersContext';
-import MembersListTab from '@/components/CMS/members/tabs/MembersListTab';
-import MembersSummaryTab from '@/components/CMS/members/tabs/MembersSummaryTab';
-import {
-    MembersListTabSkeleton,
-    MembersSummaryTabSkeleton,
-} from '@/components/shared/ui/skeletons/MembersSkeletons';
+import LocationsDetailsMembersSection from '@/components/CMS/locations/sections/LocationsDetailsMembersSection';
+import { MembersHandlersProvider } from '@/components/CMS/members/context/MembersHandlersContext';
 import { MEMBERS_TABS_CONFIG } from '@/lib/constants';
-import { useMembersNavigation } from '@/lib/hooks/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Suspense } from 'react';
-
-import { IMAGES } from '@/lib/constants';
 import {
-    useLocationMachineStats,
-    useLocationMembershipStats,
+  useLocationMachineStats,
+  useLocationMembershipStats,
 } from '@/lib/hooks/data';
-import { useUserStore } from '@/lib/store/userStore';
+import { useUserStore, type UserStore } from '@/lib/store/userStore';
+import { useMembersNavigation } from '@/lib/hooks/navigation';
 import type { AggregatedLocation } from '@/shared/types';
-import { ArrowLeftIcon } from '@radix-ui/react-icons';
-import Image from 'next/image';
-import Link from 'next/link';
-
-/**
- * Location Members Content Component
- * Wrapper component for members tabs in location details page
- */
-function LocationMembersContent({
-  locationId,
-  locationName,
-  selectedLicencee,
-  activeTab,
-  handleTabClick,
-  onRefreshReady,
-}: {
-  locationId: string;
-  locationName: string;
-  selectedLicencee: string | null;
-  activeTab: string;
-  handleTabClick: (tabId: string) => void;
-  onRefreshReady?: (refreshHandler: (() => void) | undefined) => void;
-}) {
-  const { onRefresh, onNewMember, refreshing } = useMembersHandlers();
-
-  // Expose refresh handler to parent component
-  useEffect(() => {
-    if (onRefreshReady) {
-      onRefreshReady(onRefresh);
-    }
-  }, [onRefresh, onRefreshReady]);
-
-  return (
-    <div className="w-full">
-      {/* Members Navigation */}
-      <MembersNavigation
-        availableTabs={MEMBERS_TABS_CONFIG}
-        activeTab={activeTab as 'members' | 'summary-report'}
-        onTabChange={handleTabClick}
-        selectedLicencee={selectedLicencee || undefined}
-        onRefresh={onRefresh}
-        onNewMember={onNewMember}
-        refreshing={refreshing}
-        locationName={locationName}
-      />
-
-      {/* Tab Content */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Suspense
-            fallback={
-              activeTab === 'members' ? (
-                <MembersListTabSkeleton />
-              ) : (
-                <MembersSummaryTabSkeleton />
-              )
-            }
-          >
-            {activeTab === 'members' ? (
-              <MembersListTab forcedLocationId={locationId} />
-            ) : (
-              <MembersSummaryTab 
-                selectedLicencee={selectedLicencee || ''} 
-                forcedLocationId={locationId}
-              />
-            )}
-          </Suspense>
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  );
-}
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
+import LocationsDetailsHeader from './details/LocationsDetailsHeader';
+import LocationsDetailsViewToggle from './details/LocationsDetailsViewToggle';
+import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 
 /**
  * Locations Details Page Content Component
@@ -159,7 +74,7 @@ export default function LocationsDetailsPageContent() {
     customDateRange,
   } = useDashBoardStore();
 
-  const user = useUserStore(state => state.user);
+  const user = useUserStore((state: UserStore) => state.user);
 
   // ============================================================================
   // State Management
@@ -170,25 +85,12 @@ export default function LocationsDetailsPageContent() {
   // ============================================================================
   // Computed Values - Permissions
   // ============================================================================
-  const isAdminUser = Boolean(
-    user?.roles?.some(role => role === 'admin' || role === 'developer')
-  );
-
-  // Check if user can create/edit machines
-  const canManageMachines = useMemo(() => {
-    if (!user || !user.roles) return false;
-    const userRoles = user.roles || [];
-    if (userRoles.includes('collector')) {
-      return false;
-    }
-    return [
-      'developer',
-      'admin',
-      'manager',
-      'location admin',
-      'technician',
-    ].some(role => userRoles.includes(role));
-  }, [user]);
+  const userRoles = (user?.roles || []) as UserRole[];
+  const isAdminUser = hasAdminAccess(userRoles);
+  const canManageMachines = canEditMachines(userRoles);
+  const canEditLocation = canManageLocations(userRoles);
+  const canViewArchived = canViewArchivedMachines(userRoles);
+  const canPermanentlyDelete = isAdminUser || userRoles.includes('developer');
 
   // View Toggle State - checks URL param first, defaults to machines
   const [activeView, setActiveView] = useState<'machines' | 'members'>(
@@ -218,6 +120,8 @@ export default function LocationsDetailsPageContent() {
     activeView,
     status: cabinetsData.selectedStatus,
     gameType: cabinetsData.selectedGameType,
+    searchTerm: cabinetsData.debouncedSearchTerm,
+    includeArchived: cabinetsData.showArchived,
   });
 
   // Machine status stats from dedicated API (location-specific)
@@ -352,6 +256,63 @@ export default function LocationsDetailsPageContent() {
   const { openCabinetModal } = useNewCabinetStore();
   const { openEditModal } = useLocationsActionsStore();
 
+  /**
+   * Restores a soft-deleted cabinet by clearing its deletedAt field.
+   */
+  const handleRestoreCabinet = async (cabinet: Cabinet) => {
+    if (!confirm(`Are you sure you want to restore machine ${cabinet.serialNumber || cabinet.custom?.name || 'N/A'}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/locations/${locationId}/cabinets/${cabinet._id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'restore' }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        import('sonner').then(({ toast }) => toast.success('Machine restored successfully'));
+        handleRefresh();
+      } else {
+        import('sonner').then(({ toast }) => toast.error(result.error || 'Failed to restore machine'));
+      }
+    } catch (error) {
+       console.error('Error restoring cabinet:', error);
+       import('sonner').then(({ toast }) => toast.error('An error occurred during restoration'));
+    }
+  };
+
+  /**
+   * Permanently deletes a cabinet from the database.
+   * This action is restricted to admins and developers.
+   */
+  const handlePermanentDeleteCabinet = async (cabinet: Cabinet) => {
+    if (!confirm(`CRITICAL: Are you sure you want to PERMANENTLY delete machine ${cabinet.serialNumber || cabinet.custom?.name || 'N/A'}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/locations/${locationId}/cabinets/${cabinet._id}?hardDelete=true`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        import('sonner').then(({ toast }) => toast.success('Machine permanently deleted'));
+        handleRefresh();
+      } else {
+        import('sonner').then(({ toast }) => toast.error(result.error || 'Failed to delete machine permanently'));
+      }
+    } catch (error) {
+      console.error('Error permanently deleting cabinet:', error);
+      import('sonner').then(({ toast }) => toast.error('An error occurred during permanent deletion'));
+    }
+  };
+
   // ============================================================================
   // Early Returns
   // ============================================================================
@@ -365,7 +326,7 @@ export default function LocationsDetailsPageContent() {
           setSelectedLicencee,
           disabled: false,
         }}
-        pageTitle=""
+        
         hideOptions={true}
         hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
@@ -378,10 +339,11 @@ export default function LocationsDetailsPageContent() {
 
   // Determine if Members tab should be shown
   // Show if feature enabled AND (has members OR stats are still loading)
-  const showMembersTab =
+  const showMembersTab = !!(
     cabinetsData.locationMembershipEnabled &&
     (membershipStatsLoading ||
-      (membershipStats && membershipStats.membershipCount > 0));
+      (membershipStats && membershipStats.membershipCount > 0))
+  );
 
   // ============================================================================
   // Render
@@ -397,7 +359,7 @@ export default function LocationsDetailsPageContent() {
             cabinetsData.cabinetsLoading ||
             cabinetsData.refreshing,
         }}
-        pageTitle=""
+        
         hideOptions={true}
         hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
@@ -406,212 +368,31 @@ export default function LocationsDetailsPageContent() {
         refreshing={cabinetsData.refreshing}
       >
         {/* Header Section: Title, back button, and action buttons */}
-        <div className="mt-4 w-full max-w-full">
-          {/* Mobile Layout (below sm) */}
-          <div className="sm:hidden">
-            {/* Back button, title, and action icons aligned */}
-            <div className="flex items-center gap-2">
-              <Link href="/locations">
-                <Button
-                  variant="ghost"
-                  className="h-8 w-8 flex-shrink-0 rounded-full border border-gray-200 p-1.5 hover:bg-gray-100"
-                >
-                  <ArrowLeftIcon className="h-4 w-4" />
-                </Button>
-              </Link>
-              <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-lg font-bold text-gray-800">
-                Location Details
-                {cabinetsData.locationData &&
-                hasMissingCoordinates(
-                  cabinetsData.locationData as AggregatedLocation
-                ) ? (
-                  <div className="group relative inline-flex flex-shrink-0">
-                    <MapPinOff className="h-4 w-4 flex-shrink-0 text-red-600" />
-                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                      This location&apos;s coordinates have not been set
-                    </div>
-                  </div>
-                ) : (
-                  <Image
-                    src={IMAGES.locationIcon}
-                    alt="Location Icon"
-                    width={32}
-                    height={32}
-                    className="h-4 w-4 flex-shrink-0"
-                  />
-                )}
-              </h1>
-              {/* Refresh icon - Hidden on members tab */}
-              {activeView !== 'members' && (
-                <button
-                  onClick={handleRefresh}
-                  disabled={cabinetsData.refreshing}
-                  className="flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Refresh"
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 ${cabinetsData.refreshing ? 'animate-spin' : ''}`}
-                  />
-                </button>
-              )}
-              {/* Create icon - Hidden for collectors and on members tab */}
-              {activeView === 'machines' && (
-                <>
-                  {cabinetsData.loading || cabinetsData.cabinetsLoading ? (
-                    <div className="h-4 w-4 flex-shrink-0" />
-                  ) : canManageMachines ? (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => {
-                          if (cabinetsData.locationData) {
-                            openEditModal(cabinetsData.locationData as AggregatedLocation);
-                          }
-                        }}
-                        className="flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900"
-                        aria-label="Location Settings"
-                      >
-                        <Settings className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => openCabinetModal(locationId)}
-                        disabled={cabinetsData.refreshing}
-                        className="flex-shrink-0 p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                        aria-label="Create Machine"
-                      >
-                        <PlusCircle className="h-5 w-5 text-green-600 hover:text-green-700" />
-                      </button>
-                    </div>
-                  ) : null}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Desktop Layout (sm and above) */}
-          <div className="hidden items-center justify-between sm:flex">
-            <div className="flex w-full items-center gap-3">
-              <Link href="/locations" className="mr-2">
-                <Button
-                  variant="ghost"
-                  className="rounded-full border border-gray-200 p-2 hover:bg-gray-100"
-                >
-                  <ArrowLeftIcon className="h-5 w-5" />
-                </Button>
-              </Link>
-              <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-2xl font-bold text-gray-800 sm:text-3xl">
-                Location Details
-                {cabinetsData.locationData &&
-                hasMissingCoordinates(
-                  cabinetsData.locationData as AggregatedLocation
-                ) ? (
-                  <div className="group relative inline-flex flex-shrink-0">
-                    <MapPinOff className="h-6 w-6 flex-shrink-0 text-red-600 sm:h-8 sm:w-8" />
-                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                      This location&apos;s coordinates have not been set
-                    </div>
-                  </div>
-                ) : (
-                  <Image
-                    src={IMAGES.locationIcon}
-                    alt="Location Icon"
-                    width={32}
-                    height={32}
-                    className="h-6 w-6 flex-shrink-0 sm:h-8 sm:w-8"
-                  />
-                )}
-              </h1>
-              {/* Mobile: Refresh icon - Hidden on members tab */}
-              {activeView !== 'members' && (
-                <button
-                  onClick={handleRefresh}
-                  disabled={cabinetsData.refreshing}
-                  className="flex-shrink-0 p-2 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 md:hidden"
-                  aria-label="Refresh"
-                >
-                  <RefreshCw
-                    className={`h-5 w-5 ${cabinetsData.refreshing ? 'animate-spin' : ''}`}
-                  />
-                </button>
-              )}
-            </div>
-            {/* Desktop: Refresh icon and Create button on far right - Only show on machines tab */}
-            {activeView === 'machines' && (
-              <div className="ml-4 hidden flex-shrink-0 items-center gap-2 md:flex">
-                {/* Refresh icon */}
-                <button
-                  onClick={handleRefresh}
-                  disabled={cabinetsData.refreshing}
-                  className="flex-shrink-0 p-2 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Refresh"
-                >
-                  <RefreshCw
-                    className={`h-5 w-5 ${cabinetsData.refreshing ? 'animate-spin' : ''}`}
-                  />
-                </button>
-                {cabinetsData.loading || cabinetsData.cabinetsLoading ? (
-                  <ActionButtonSkeleton width="w-36" showIcon={false} />
-                ) : canManageMachines ? (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      className="border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                      disabled={cabinetsData.refreshing}
-                      onClick={() => {
-                        if (cabinetsData.locationData) {
-                          openEditModal(cabinetsData.locationData as AggregatedLocation);
-                        }
-                      }}
-                    >
-                      <Settings className="mr-2 h-4 w-4" />
-                      Settings
-                    </Button>
-                    <Button
-                      variant="default"
-                      className="bg-button text-white"
-                      disabled={cabinetsData.refreshing}
-                      onClick={() => openCabinetModal(locationId)}
-                    >
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Create Machine
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </div>
-        </div>
+        <LocationsDetailsHeader
+          locationId={locationId}
+          locationData={cabinetsData.locationData as AggregatedLocation}
+          refreshing={cabinetsData.refreshing}
+          activeView={activeView}
+          canManageMachines={canManageMachines}
+          onRefresh={handleRefresh}
+          onEditLocation={(loc) => {
+            if (canEditLocation) {
+              openEditModal(loc);
+            }
+          }}
+          onNewMachine={openCabinetModal}
+        />
 
         {/* View Toggle */}
-        <div className="mb-6 flex w-full border-b border-gray-200">
-          <button
-            onClick={() => handleViewChange('machines')}
-            className={`flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
-              activeView === 'machines'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            <Server className="h-4 w-4" />
-            Machines
-          </button>
-          {showMembersTab && (
-            <button
-              onClick={() => handleViewChange('members')}
-              className={`flex items-center gap-2 border-b-2 px-6 py-3 text-sm font-medium transition-colors ${
-                activeView === 'members'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Users className="h-4 w-4" />
-              Members
-            </button>
-          )}
-        </div>
+        <LocationsDetailsViewToggle
+          activeView={activeView}
+          showMembersTab={showMembersTab}
+          onViewChange={handleViewChange}
+        />
 
         {activeView === 'members' ? (
           <MembersHandlersProvider>
-            <LocationMembersContent
+            <LocationsDetailsMembersSection
               locationId={locationId}
               locationName={cabinetsData.locationName}
               selectedLicencee={selectedLicencee}
@@ -647,6 +428,7 @@ export default function LocationsDetailsPageContent() {
             searchTerm={cabinetsData.searchTerm}
             selectedStatus={cabinetsData.selectedStatus}
             selectedGameType={cabinetsData.selectedGameType}
+            selectedSmibStatus={cabinetsData.selectedSmibStatus}
             sortOption={cabinetsData.sortOption}
             sortOrder={cabinetsData.sortOrder}
             currentPage={cabinetsData.currentPage}
@@ -658,14 +440,21 @@ export default function LocationsDetailsPageContent() {
             setSearchTerm={cabinetsData.setSearchTerm}
             setSelectedStatus={cabinetsData.setSelectedStatus}
             setSelectedGameType={cabinetsData.setSelectedGameType}
+            setSelectedSmibStatus={cabinetsData.setSelectedSmibStatus}
             setSortOption={cabinetsData.setSortOption}
             setSortOrder={cabinetsData.setSortOrder}
             setCurrentPage={cabinetsData.setCurrentPage}
             setChartGranularity={chartDataHook.setChartGranularity}
             setSelectedLocationId={cabinetsData.setSelectedLocationId}
             handleRefresh={handleRefresh}
-            subtractJackpot={cabinetsData.subtractJackpot}
+            includeJackpot={cabinetsData.includeJackpot}
             handleFilterChange={handleFilterChange}
+            showArchived={cabinetsData.showArchived}
+            setShowArchived={cabinetsData.setShowArchived}
+            canViewArchived={canViewArchived}
+            onRestore={handleRestoreCabinet}
+            onPermanentDelete={handlePermanentDeleteCabinet}
+            canPermanentlyDeleteMachines={canPermanentlyDelete}
             handleLocationChangeInPlace={(newLocationId: string) => {
               if (newLocationId === 'all') {
                 router.push('/locations');
@@ -691,4 +480,3 @@ export default function LocationsDetailsPageContent() {
     </>
   );
 }
-

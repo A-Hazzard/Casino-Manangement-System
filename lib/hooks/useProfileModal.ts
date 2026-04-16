@@ -7,15 +7,20 @@
 
 'use client';
 
-import type { MultiSelectOption } from '@/components/shared/ui/common/MultiSelectDropdown';
+import { ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import axios from 'axios';
+import { toast } from 'sonner';
+import { useUserStore } from '@/lib/store/userStore';
 import { fetchLicencees } from '@/lib/helpers/client';
 import { fetchCountries } from '@/lib/helpers/countries';
-import { useUserStore } from '@/lib/store/userStore';
+import type { MultiSelectOption } from '@/components/shared/ui/common/MultiSelectDropdown';
 import type { User as AdminUser } from '@/lib/types/administration';
 import type { Country, Licencee } from '@/lib/types/common';
-import axios from 'axios';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import {
+  validatePasswordStrength,
+  getPasswordStrengthLabel,
+} from '@/lib/utils/validation';
 
 const EMAIL_REGEX = /\S+@\S+\.\S+/;
 
@@ -86,7 +91,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [isCropOpen, setIsCropOpen] = useState(false);
   const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
-  const [passwordStrength] = useState({
+  const [passwordStrength, setPasswordStrength] = useState({
     score: 0,
     label: 'Very Weak',
     feedback: [] as string[],
@@ -101,7 +106,45 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
+  const [passwordReuseError, setPasswordReuseError] = useState<string | null>(null);
   const [emailAddress, setEmailAddress] = useState<string>('');
+  const [isCurrentPasswordVerified, setIsCurrentPasswordVerified] = useState<boolean | null>(null);
+
+  const validateCurrentPassword = async () => {
+    if (!passwordData.currentPassword) {
+      setIsCurrentPasswordVerified(null);
+      return;
+    }
+    try {
+      const { data } = await axios.post('/api/users/check-password', {
+        password: passwordData.currentPassword,
+        type: 'verify'
+      });
+      setIsCurrentPasswordVerified(data.isMatch);
+    } catch (err) {
+      console.error('Verify error:', err);
+    }
+  };
+
+  const validateNewPassword = async () => {
+    if (!passwordData.newPassword) {
+      setPasswordReuseError(null);
+      return;
+    }
+    try {
+      const { data } = await axios.post('/api/users/check-password', {
+        password: passwordData.newPassword,
+        type: 'reuse'
+      });
+      if (data.isReuse) {
+        setPasswordReuseError(data.reason);
+      } else {
+        setPasswordReuseError(null);
+      }
+    } catch (err) {
+      console.error('Reuse check error:', err);
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasAttemptedLicenceeFetchRef = useRef(false);
@@ -121,7 +164,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
             setProfilePicture(data.profilePicture || null);
             setSelectedRoles(data.roles || []);
 
-            // Set initial assignments (Support current API fields)
+            // Set initial assignments
             if (data.assignedLicencees) {
               const assigned = Array.isArray(data.assignedLicencees) ? data.assignedLicencees : [];
               if (assigned.includes('all')) {
@@ -130,17 +173,6 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
               } else {
                 setSelectedLicenceeIds(assigned);
               }
-            } else if (data.rel?.licencee) {
-              // Fallback for legacy data
-              const isAll = data.rel.licencee === 'all';
-              setAllLicenceesSelected(isAll);
-              setSelectedLicenceeIds(
-                isAll
-                  ? []
-                  : Array.isArray(data.rel.licencee)
-                    ? data.rel.licencee
-                    : [data.rel.licencee]
-              );
             }
 
             if (data.assignedLocations) {
@@ -151,15 +183,6 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
               } else {
                 setSelectedLocationIds(assigned);
               }
-            } else if (data.resourcePermissions?.['gaming-locations']?.resources) {
-              // Fallback for legacy data
-              const resources =
-                data.resourcePermissions['gaming-locations'].resources;
-              const isAll = resources === 'all';
-              setAllLocationsSelected(isAll);
-              setSelectedLocationIds(
-                isAll ? [] : Array.isArray(resources) ? resources : [resources]
-              );
             }
           } else {
             toast.error('Could not load user profile.');
@@ -170,7 +193,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     }
   }, [open, authUser?._id, onClose]);
 
-  // Fetch static lists (Countries, Licencees, Locations)
+  // Fetch static lists
   useEffect(() => {
     if (!open) {
       hasAttemptedLicenceeFetchRef.current = false;
@@ -178,108 +201,69 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       hasReconciledLicenceesRef.current = false;
       return;
     }
-    if (open) {
-      // Fetch Countries if empty
-      if (countries.length === 0 && !countriesLoading) {
-        setCountriesLoading(true);
-        fetchCountries()
-          .then(data => {
-            const unique = Array.from(
-              new Map(data.map((c: Country) => [c.name, c])).values()
-            );
-            setCountries(unique as Country[]);
-          })
-          .finally(() => setCountriesLoading(false));
-      }
-
-      // Fetch Licencees only once per modal open
-      if (!hasAttemptedLicenceeFetchRef.current) {
-        hasAttemptedLicenceeFetchRef.current = true;
-        setLicenceesLoading(true);
-        fetchLicencees(1, 1000)
-          .then(data => {
-            if (data && 'licencees' in data) {
-              setLicencees((data as { licencees: Licencee[] }).licencees);
-            } else {
-              setLicencees(Array.isArray(data) ? data : []);
-            }
-          })
-          .finally(() => setLicenceesLoading(false));
-      }
-
-      // Fetch Locations once per modal open
-      if (!hasAttemptedLocationsFetchRef.current) {
-        hasAttemptedLocationsFetchRef.current = true;
-        setLocationsLoading(true);
-        axios
-          .get('/api/gaming-locations')
-          .then(res => {
-            setLocations(res.data || []);
-          })
-          .finally(() => setLocationsLoading(false));
-      }
+    
+    // Fetch Countries
+    if (countries.length === 0 && !countriesLoading) {
+      setCountriesLoading(true);
+      fetchCountries()
+        .then(data => {
+          setCountries(data as Country[]);
+        })
+        .finally(() => setCountriesLoading(false));
     }
-  }, [open, countries.length, countriesLoading]);
 
-  // Reconcile stale licencee IDs once both userData and licencees are loaded
+    // Fetch Licencees
+    if (!hasAttemptedLicenceeFetchRef.current) {
+      hasAttemptedLicenceeFetchRef.current = true;
+      setLicenceesLoading(true);
+      fetchLicencees(1, 1000)
+        .then(data => {
+          if (data && 'licencees' in data) {
+            setLicencees((data as { licencees: Licencee[] }).licencees);
+          } else {
+            setLicencees(Array.isArray(data) ? data : []);
+          }
+        })
+        .finally(() => setLicenceesLoading(false));
+    }
+
+    // Fetch Locations
+    if (!hasAttemptedLocationsFetchRef.current) {
+      hasAttemptedLocationsFetchRef.current = true;
+      setLocationsLoading(true);
+      axios
+        .get('/api/gaming-locations')
+        .then(res => {
+          setLocations(res.data || []);
+        })
+        .finally(() => setLocationsLoading(false));
+    }
+  }, [open, countries.length]);
+  // Update password strength
   useEffect(() => {
-    if (hasReconciledLicenceesRef.current) return;
-    if (!licencees.length || !userData || licenceesLoading) return;
-
-    hasReconciledLicenceesRef.current = true;
-
-    const isAdminOrDev = userData.roles?.some(r =>
-      ['admin', 'developer'].includes(r.toLowerCase())
-    );
-
-    const validIds = selectedLicenceeIds.filter(id =>
-      id === 'all' || licencees.some(l => String(l._id) === id)
-    );
-
-    if (validIds.length < selectedLicenceeIds.length) {
-      if (isAdminOrDev && validIds.length === 0) {
-        // All stored IDs are orphaned — admin defaults to "All Licencees"
-        setAllLicenceesSelected(true);
-        setSelectedLicenceeIds([]);
-      } else {
-        // Remove only the orphaned IDs, keep valid ones
-        setSelectedLicenceeIds(validIds);
-      }
+    if (passwordData.newPassword) {
+      const validation = validatePasswordStrength(passwordData.newPassword);
+      setPasswordStrength({
+        score: validation.score,
+        label: getPasswordStrengthLabel(validation.score),
+        feedback: validation.feedback,
+        requirements: validation.requirements,
+      });
+    } else {
+      setPasswordStrength({
+        score: 0,
+        label: 'Very Weak',
+        feedback: [],
+        requirements: {
+          length: false,
+          uppercase: false,
+          lowercase: false,
+          number: false,
+          special: false,
+        },
+      });
     }
-  }, [licencees, licenceesLoading, userData, selectedLicenceeIds]);
-
-  const attemptedMissingIdsRef = useRef<string | null>(null);
-
-  // Handle missing location names specifically for the current user
-  useEffect(() => {
-    if (open && userData?.assignedLocations && locations.length > 0) {
-      const missingIds = userData.assignedLocations.filter(
-        id => id !== 'all' && !locations.find((l: typeof locations[0]) => String(l._id) === id)
-      );
-
-      if (missingIds.length > 0) {
-        // We only try to fetch missing locations if we haven't already tried for these specific IDs
-        const missingKey = missingIds.sort().join(',');
-
-        if (attemptedMissingIdsRef.current !== missingKey) {
-          attemptedMissingIdsRef.current = missingKey;
-          axios.get('/api/gaming-locations', {
-            params: { ids: missingKey, includeDeleted: true }
-          }).then(res => {
-            if (Array.isArray(res.data)) {
-              setLocations(prev => {
-                const existingIds = new Set(prev.map(p => String(p._id)));
-                const newOnly = res.data.filter((d: typeof locations[0]) => !existingIds.has(String(d._id)));
-                return [...prev, ...newOnly];
-              });
-            }
-          }).catch(err => {
-            console.error('Failed to fetch missing locations', err);
-          });
-        }
-      }
-    }
-  }, [open, userData?.assignedLocations, locations.length]);
+  }, [passwordData.newPassword]);
 
   // Options for multi-select
   const licenceeOptions: MultiSelectOption[] = useMemo(
@@ -290,8 +274,12 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   const availableLocations = useMemo(() => {
     if (allLicenceesSelected) return locations;
     return locations.filter(
-      loc =>
-        loc.licenceeId && selectedLicenceeIds.includes(String(loc.licenceeId))
+      loc => {
+        const licId = loc.rel?.licencee || loc.licenceeId || loc.licencee;
+        return Array.isArray(licId) 
+          ? licId.some(id => selectedLicenceeIds.includes(String(id)))
+          : selectedLicenceeIds.includes(String(licId));
+      }
     );
   }, [locations, allLicenceesSelected, selectedLicenceeIds]);
 
@@ -301,7 +289,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   );
 
   // Handle image upload
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -321,109 +309,12 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   // Validation function
   const validateFormData = (): boolean => {
     const errors: Record<string, string> = {};
-    const firstName = (formData?.firstName || '').trim();
-    const lastName = (formData?.lastName || '').trim();
-    const town = (formData?.address?.town || '').trim();
-    const region = (formData?.address?.region || '').trim();
-    const country = (formData?.address?.country || '').trim();
-    const idType = (formData?.identification?.idType || '').trim();
-    const idNumber = (formData?.identification?.idNumber || '').trim();
-
-    // First name validation
-    if (firstName && firstName.length > 0) {
-      if (firstName.length < 3) {
-        errors.firstName = 'First name must be at least 3 characters.';
-      } else if (EMAIL_REGEX.test(firstName)) {
-        errors.firstName = 'First name cannot look like an email address.';
-      } else if (!/^[A-Za-z\s]+$/.test(firstName)) {
-        errors.firstName = 'First name may only contain letters and spaces.';
-      }
-    }
-
-    // Last name validation
-    if (lastName && lastName.length > 0) {
-      if (lastName.length < 3) {
-        errors.lastName = 'Last name must be at least 3 characters.';
-      } else if (EMAIL_REGEX.test(lastName)) {
-        errors.lastName = 'Last name cannot look like an email address.';
-      } else if (!/^[A-Za-z\s]+$/.test(lastName)) {
-        errors.lastName = 'Last name may only contain letters and spaces.';
-      }
-    }
-
-    // Town validation
-    if (town && town.length > 0) {
-      if (town.length < 3) {
-        errors.town =
-          'Town must be at least 3 characters and may only contain letters, numbers, spaces, commas, and full stops.';
-      } else if (!/^[A-Za-z0-9\s,\.]+$/.test(town)) {
-        errors.town =
-          'Town may only contain letters, numbers, spaces, commas, and full stops.';
-      }
-    }
-
-    // Region validation
-    if (region && region.length > 0) {
-      if (region.length < 3) {
-        errors.region =
-          'Region must be at least 3 characters and may only contain letters, numbers, spaces, commas, and full stops.';
-      } else if (!/^[A-Za-z0-9\s,\.]+$/.test(region)) {
-        errors.region =
-          'Region may only contain letters, numbers, spaces, commas, and full stops.';
-      }
-    }
-
-    // Country validation (check if it's a country name, not ID)
-    if (country && country.length > 0) {
-      // Check if it's a country ID (MongoDB ObjectId-like) or name
-      const isCountryId = /^[0-9a-fA-F]{24}$/.test(country);
-      const countryName = isCountryId
-        ? countries.find(c => c._id === country)?.name || ''
-        : country;
-
-      if (countryName && countryName.length > 0) {
-        if (countryName.length < 3) {
-          errors.country =
-            'Country must be at least 3 characters and may only contain letters, spaces, and ampersands (&).';
-        } else if (!/^[A-Za-z\s&]+$/.test(countryName)) {
-          errors.country = 'Country may only contain letters, spaces, and ampersands (&).';
-        }
-      }
-    }
-
-    // ID Type validation
-    if (idType && idType.length > 0) {
-      if (idType.length < 3) {
-        errors.idType =
-          'ID type must be at least 3 characters and may only contain letters and spaces.';
-      } else if (!/^[A-Za-z\s]+$/.test(idType)) {
-        errors.idType = 'ID type may only contain letters and spaces.';
-      }
-    }
-
-    // ID Number validation
-    if (idNumber && idNumber.length > 0) {
-      if (idNumber.length < 3) {
-        errors.idNumber = 'ID number must be at least 3 characters.';
-      }
-    }
-
-    // Date of birth validation
-    if (formData?.identification?.dateOfBirth) {
-      const dob = new Date(formData.identification.dateOfBirth);
-      if (isNaN(dob.getTime()) || dob > new Date()) {
-        errors.dateOfBirth =
-          'Date of birth must be a valid date and cannot be in the future.';
-      }
-    }
-
-    // Email validation
     if (!emailAddress) {
       errors.emailAddress = 'Email address is required.';
     } else if (!EMAIL_REGEX.test(emailAddress)) {
       errors.emailAddress = 'Please enter a valid email address.';
     }
-
+    // Add more validation if needed
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -432,7 +323,6 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   const handleSave = async () => {
     if (!userData || !authUser?._id) return;
 
-    // Validate before saving
     if (!validateFormData()) {
       toast.error('Please fix the validation errors before saving.');
       return;
@@ -440,46 +330,14 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
 
     setIsLoading(true);
     try {
-      // Convert country ID to country name if needed
-      let countryName = formData?.address?.country || '';
-      if (countryName && /^[0-9a-fA-F]{24}$/.test(countryName)) {
-        const country = countries.find(c => c._id === countryName);
-        if (country) {
-          countryName = country.name;
-        }
-      }
-
       const updatedUser = {
         ...userData,
         emailAddress: emailAddress.trim(),
-        email: emailAddress.trim(),
-        profile: formData
-          ? {
-            ...formData,
-            address: formData.address
-              ? {
-                ...formData.address,
-                country: countryName,
-              }
-              : undefined,
-          }
-          : {},
+        profile: formData,
         profilePicture,
         roles: selectedRoles,
         assignedLocations: allLocationsSelected ? ['all'] : selectedLocationIds,
         assignedLicencees: allLicenceesSelected ? ['all'] : selectedLicenceeIds,
-        // Legacy fields for backward compatibility if needed by SMIB/other systems
-        rel: {
-          ...userData.rel,
-          licencee: allLicenceesSelected ? 'all' : selectedLicenceeIds,
-        },
-        resourcePermissions: {
-          ...userData.resourcePermissions,
-          'gaming-locations': {
-            ...userData.resourcePermissions?.['gaming-locations'],
-            resources: allLocationsSelected ? 'all' : selectedLocationIds,
-          },
-        },
       };
 
       const res = await axios.put(`/api/users/${authUser._id}`, updatedUser);
@@ -488,7 +346,6 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
         toast.success('Profile updated successfully!');
         setUserData(res.data.user);
         setIsEditMode(false);
-        setValidationErrors({});
       }
     } catch {
       toast.error('Failed to update profile.');
@@ -499,6 +356,8 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
 
   // Handle password change
   const handlePasswordChange = async () => {
+    if (!userData || !authUser?._id) return;
+
     if (!passwordData.currentPassword || !passwordData.newPassword) {
       toast.error('Please fill in all password fields.');
       return;
@@ -509,11 +368,22 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       return;
     }
 
+    if (passwordStrength.score < 4) {
+      toast.error('Password does not meet minimum security requirements.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await axios.post('/api/users/change-password', {
+      await axios.put('/api/profile', {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
+        confirmPassword: passwordData.confirmPassword,
+        // Include other required profile fields if necessary, or ensure route handles partial updates
+        username: userData.username,
+        firstName: formData?.firstName,
+        lastName: formData?.lastName,
+        emailAddress: emailAddress,
       });
       toast.success('Password changed successfully!');
       setPasswordData({
@@ -521,8 +391,9 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
         newPassword: '',
         confirmPassword: '',
       });
-    } catch {
-      toast.error('Failed to change password.');
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to change password.';
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -532,8 +403,6 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     userData,
     formData,
     setFormData,
-    emailAddress,
-    setEmailAddress,
     passwordData,
     setPasswordData,
     isLoading,
@@ -571,6 +440,11 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     passwordStrength,
     validationErrors,
     setValidationErrors,
+    emailAddress,
+    setEmailAddress,
+    isCurrentPasswordVerified,
+    passwordReuseError,
+    validateCurrentPassword,
+    validateNewPassword,
   };
 }
-

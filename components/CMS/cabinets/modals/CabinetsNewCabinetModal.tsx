@@ -49,6 +49,7 @@ export default function CabinetsNewCabinetModal({
 
   const [relayIdError, setRelayIdError] = useState<string>('');
   const [serialNumberError, setSerialNumberError] = useState<string>('');
+  const [customNameError, setCustomNameError] = useState<string>('');
   const [collectionTime, setCollectionTime] = useState<Date>(new Date());
   const [manufacturers, setManufacturers] = useState<string[]>([]);
   const [manufacturersLoading, setManufacturersLoading] = useState(false);
@@ -135,13 +136,13 @@ export default function CabinetsNewCabinetModal({
     }
 
     // Check if it's hexadecimal and lowercase
-    const hexPattern = /^[0-9a-f]+$/;
+    const hexPattern = /^[0-9a-fA-F]+$/;
     if (!hexPattern.test(value)) {
-      return 'SMIB Board must contain only lowercase hexadecimal characters (0-9, a-f)';
+      return 'SMIB Board must contain only hexadecimal characters (0-9, a-f, A-F)';
     }
 
     // Check if it ends with 0, 4, 8, or c
-    const lastChar = value.charAt(11);
+    const lastChar = value.charAt(11).toLowerCase();
     if (!['0', '4', '8', 'c'].includes(lastChar)) {
       return 'SMIB Board must end with 0, 4, 8, or c';
     }
@@ -263,7 +264,7 @@ export default function CabinetsNewCabinetModal({
       setLoading(true);
 
       // Validate SMIB Board before submission
-      const smibError = validateSmibBoard(formData.relayId);
+      const smibError = validateSmibBoard(formData.relayId || '');
       if (smibError) {
         setRelayIdError(smibError);
         toast.error('Please fix the SMIB Board validation errors');
@@ -353,6 +354,57 @@ export default function CabinetsNewCabinetModal({
     setSerialNumberError(''); // Clear any validation errors
   };
 
+  const checkSerialNumberAvailability = async (serialNumber: string) => {
+    if (!serialNumber || serialNumber.trim().length < 3) return;
+
+    try {
+      const response = await fetch(
+        `/api/machines?checkSerial=${encodeURIComponent(serialNumber.trim())}`
+      );
+      const result = await response.json();
+
+      if (result.success && !result.available) {
+        setSerialNumberError('Serial number already exists');
+      }
+    } catch (error) {
+      console.error('Failed to check serial number availability:', error);
+    }
+  };
+
+  const checkSmibAvailability = async (smib: string) => {
+    if (!smib || smib.trim().length !== 12) return;
+
+    try {
+      const response = await fetch(
+        `/api/machines?checkSmib=${encodeURIComponent(smib.trim())}`
+      );
+      const result = await response.json();
+
+      if (result.success && !result.available) {
+        setRelayIdError('SMIB board already exists');
+      }
+    } catch (error) {
+      console.error('Failed to check SMIB availability:', error);
+    }
+  };
+
+  const checkCustomNameAvailability = async (name: string) => {
+    if (!name || name.trim().length === 0) return;
+
+    try {
+      const response = await fetch(
+        `/api/machines?checkCustomName=${encodeURIComponent(name.trim())}`
+      );
+      const result = await response.json();
+
+      if (result.success && !result.available) {
+        setCustomNameError('Machine custom name already exists');
+      }
+    } catch (error) {
+      console.error('Failed to check custom name availability:', error);
+    }
+  };
+
   // Define a consistent change handler to fix the typing issues
   const handleInputChange = (
     field: keyof Omit<NewCabinetFormData, 'collectionSettings'>,
@@ -361,7 +413,7 @@ export default function CabinetsNewCabinetModal({
     // Special handling for SMIB Board with validation
     if (field === 'relayId') {
       // Convert to lowercase and remove any non-hex characters
-      const cleanValue = value.toLowerCase().replace(/[^0-9a-f]/g, '');
+      const cleanValue = value.replace(/[^0-9a-fA-F]/g, '');
 
       // Limit to 12 characters
       const limitedValue = cleanValue.slice(0, 12);
@@ -378,9 +430,10 @@ export default function CabinetsNewCabinetModal({
       // Auto-capitalize serial number letters
       const upperCaseValue = value.toUpperCase();
 
-      // Validate the serial number
-      const error = validateSerialNumber(upperCaseValue);
-      setSerialNumberError(error);
+      // Clear existing error while typing (will be re-validated on blur or submit)
+      if (serialNumberError) {
+        setSerialNumberError('');
+      }
 
       setFormData((prev: NewCabinetFormData) => ({
         ...prev,
@@ -485,6 +538,7 @@ export default function CabinetsNewCabinetModal({
                       onChange={e =>
                         handleInputChange('serialNumber', e.target.value)
                       }
+                      onBlur={e => checkSerialNumberAvailability(e.target.value)}
                       className={`h-10 border-border bg-container ${
                         serialNumberError ? 'border-red-500' : ''
                       }`}
@@ -522,17 +576,28 @@ export default function CabinetsNewCabinetModal({
                     id="customName"
                     placeholder="Enter Custom Name (Optional)"
                     value={formData.custom.name}
-                    onChange={e =>
+                    onChange={e => {
+                      if (customNameError) setCustomNameError('');
                       setFormData(prev => ({
                         ...prev,
                         custom: { name: e.target.value },
                       }))
                     }
-                    className="h-10 border-border bg-container"
+                    }
+                    onBlur={e => checkCustomNameAvailability(e.target.value)}
+                    className={`h-10 border-border bg-container ${
+                      customNameError ? 'border-red-500' : ''
+                    }`}
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    A friendly name for this machine to display in reports
-                  </p>
+                  {customNameError ? (
+                    <p className="mt-1 text-xs text-red-500">
+                      {customNameError}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-gray-500">
+                      A friendly name for this machine to display in reports
+                    </p>
+                  )}
                 </div>
 
                 {/* Game Type & Cabinet Type */}
@@ -736,7 +801,7 @@ export default function CabinetsNewCabinetModal({
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-buttonActive">
-                      SMIB Board <span className="text-red-500">*</span>
+                      SMIB Board
                     </label>
                     <Input
                       id="relayId"
@@ -745,6 +810,7 @@ export default function CabinetsNewCabinetModal({
                       onChange={e =>
                         handleInputChange('relayId', e.target.value)
                       }
+                      onBlur={e => checkSmibAvailability(e.target.value)}
                       className={`border-border bg-container ${
                         relayIdError ? 'border-red-500' : ''
                       }`}
@@ -756,8 +822,7 @@ export default function CabinetsNewCabinetModal({
                       </p>
                     )}
                     <p className="mt-1 text-xs text-gray-500">
-                      Must be 12 characters, lowercase hex, ending with 0, 4, 8,
-                      or c
+                      Must be 12 characters, hex, ending with 0, 4, 8, or c
                     </p>
                   </div>
                 </div>

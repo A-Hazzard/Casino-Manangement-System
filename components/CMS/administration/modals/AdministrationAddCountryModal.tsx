@@ -5,6 +5,7 @@
 
 'use client';
 
+import { ChangeEvent, FormEvent } from 'react';
 import { gsap } from 'gsap';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -39,12 +40,12 @@ export default function AdministrationAddCountryModal({
     }
   }, [open]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.alpha2 || !formData.alpha3 || !formData.isoNumeric) {
       toast.error('All fields are required');

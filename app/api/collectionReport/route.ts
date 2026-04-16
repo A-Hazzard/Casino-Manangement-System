@@ -27,9 +27,10 @@ import {
 import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReport/service';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
+import { getReviewerScale } from '@/app/api/lib/utils/reviewerScale';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
-import { getLicenceeObjectId } from '@/lib/utils/licencee';
+import { resolveLicenceeId } from '@/lib/utils/licencee';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../lib/helpers/users';
 
@@ -65,9 +66,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     if (searchParams.get('locationsWithMachines')) {
       try {
-        const rawLicenceeParam =
-          searchParams.get('licencee') ||
-          undefined;
+        const rawLicenceeParam = searchParams.get('licencee') || undefined;
 
         const result = await fetchLocationsWithMachines(rawLicenceeParam);
         return NextResponse.json(result);
@@ -101,26 +100,25 @@ export async function GET(req: NextRequest) {
     const endDateStr = searchParams.get('endDate');
     const locationName = searchParams.get('locationName') || undefined;
     const locationId = searchParams.get('locationId') || undefined;
-    const locationIds = searchParams.get('locationIds')?.split(',') || undefined;
-
-    const rawLicenceeParam =
-      searchParams.get('licencee') || undefined;
+    const locationIds =
+      searchParams.get('locationIds')?.split(',') || undefined;
+    const rawLicenceeParam = searchParams.get('licencee') || undefined;
     const licencee =
       rawLicenceeParam && rawLicenceeParam !== 'all'
-        ? getLicenceeObjectId(rawLicenceeParam) || rawLicenceeParam
+        ? resolveLicenceeId(rawLicenceeParam) || rawLicenceeParam
         : rawLicenceeParam;
 
     if (startDateStr && endDateStr && !timePeriod) {
       const summary = await getMonthlyCollectionReportSummary(
         new Date(startDateStr),
         new Date(endDateStr),
-        locationName || (locationIds || (locationId ? [locationId] : undefined)),
+        locationName || locationIds || (locationId ? [locationId] : undefined),
         licencee
       );
       const details = await getMonthlyCollectionReportByLocation(
         new Date(startDateStr),
         new Date(endDateStr),
-        locationName || (locationIds || (locationId ? [locationId] : undefined)),
+        locationName || locationIds || (locationId ? [locationId] : undefined),
         licencee
       );
       return NextResponse.json({ summary, details });
@@ -146,6 +144,9 @@ export async function GET(req: NextRequest) {
       );
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Reviewer scale — non-reviewers always get 1 (no transformation).
+    const reviewerScale = getReviewerScale(userPayload as { multiplier?: number | null; roles?: string[] });
 
     const userRoles = (userPayload?.roles as string[]) || [];
     // Use only new field
@@ -189,30 +190,27 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 8: Fetch and filter collection reports
     // ============================================================================
-    const reports = await getAllCollectionReportsWithMachineCounts(
+    const { reports, total } = await getAllCollectionReportsWithMachineCounts(
       licencee,
       startDate,
-      endDate
+      endDate,
+      page,
+      limit,
+      reviewerScale
     );
 
     // Filter reports by allowed locations if needed
     // Note: Collection reports store location NAME in the location field, not ID
-    let filteredReports = reports;
+    let paginatedReports = reports;
     if (allowedLocationIds !== 'all') {
       const allowedLocationNames =
         await getLocationNamesFromIds(allowedLocationIds);
-      filteredReports = reports.filter(report => {
+      paginatedReports = reports.filter(report => {
         const reportLocationName = String(report.location);
         return allowedLocationNames.includes(reportLocationName);
       });
     }
 
-    // ============================================================================
-    // STEP 9: Apply pagination
-    // ============================================================================
-    const total = filteredReports.length;
-    const skip = (page - 1) * limit;
-    const paginatedReports = filteredReports.slice(skip, skip + limit);
     const totalPages = Math.ceil(total / limit);
 
     // ============================================================================
@@ -343,6 +341,18 @@ export async function POST(req: NextRequest) {
           },
         ];
 
+        // Add granular machine data to changes for better traceability
+        if (body.machines && Array.isArray(body.machines)) {
+          body.machines.forEach((m: Record<string, unknown>, index: number) => {
+            const machineName = m.machineCustomName || m.machineName || m.serialNumber || `Machine ${index + 1}`;
+            createChanges.push({
+              field: `machine_${index}_details`,
+              oldValue: null,
+              newValue: `${machineName}: In: ${m.metersIn}, Out: ${m.metersOut}${m.prevIn !== undefined ? ` (Prev: ${m.prevIn} In, ${m.prevOut} Out)` : ''}${m.ramClear ? ', RAM Cleared' : ''}${m.notes ? `, Notes: ${m.notes}` : ''}`,
+            });
+          });
+        }
+
         const userId = (currentUser._id ||
           currentUser.id ||
           currentUser.sub) as string | undefined;
@@ -352,9 +362,11 @@ export async function POST(req: NextRequest) {
 
         await logActivity({
           action: 'CREATE',
-          details: `Created collection report for ${body.locationName} by ${body.collector || 'Unknown'
-            } (${body.machines?.length || 0} machines, $${body.amountCollected
-            } collected)`,
+          details: `Created collection report for ${body.locationName} by ${
+            body.collector || 'Unknown'
+          } (${body.machines?.length || 0} machines, $${
+            body.amountCollected
+          } collected)`,
           ipAddress: getClientIP(req) || undefined,
           userAgent: req.headers.get('user-agent') || undefined,
           userId,
@@ -400,4 +412,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

@@ -47,7 +47,7 @@ export async function calculateCollectionReportTotals(
   console.log(`🔄 [Calculations] Processing ${machines.length} machines...`, {
     hasCollectionIds: collectionIds.length > 0,
     collectionIdsCount: collectionIds.length,
-    subtractJackpot: payload.subtractJackpot,
+    includeJackpot: payload.includeJackpot,
   });
 
   // Helper function to query collection by machineId and meters (fallback method)
@@ -157,16 +157,15 @@ export async function calculateCollectionReportTotals(
     }
   }
 
-  // Apply subtractJackpot logic
-  // If enabled, totalCancelled is adjusted (Money Out = Cancelled Credits - Jackpots)
-  // Which makes totalGross = totalDrop - (totalCancelled - totalJackpot)
-  const useSubtractJackpot = !!payload.subtractJackpot;
-  const effectiveTotalCancelled = useSubtractJackpot 
-    ? Math.max(0, totalCancelled - totalJackpot)
+  // Apply includeJackpot logic
+  // If enabled, totalCancelled is adjusted (Money Out = Cancelled Credits + Jackpots)
+  const useIncludeJackpot = !!payload.includeJackpot;
+  const effectiveTotalCancelled = useIncludeJackpot 
+    ? totalCancelled + totalJackpot
     : totalCancelled;
   
   const totalGross = totalDrop - effectiveTotalCancelled;
-  const effectiveTotalSasGross = useSubtractJackpot
+  const effectiveTotalSasGross = useIncludeJackpot
     ? Math.max(0, totalSasGross - totalJackpot)
     : totalSasGross;
 
@@ -174,7 +173,7 @@ export async function calculateCollectionReportTotals(
     totalDrop,
     totalCancelled,
     totalJackpot,
-    useSubtractJackpot,
+    useIncludeJackpot,
     effectiveTotalCancelled,
     totalGross,
     totalSasGross,

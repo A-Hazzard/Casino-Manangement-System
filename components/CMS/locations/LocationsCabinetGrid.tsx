@@ -25,253 +25,17 @@
  * @param onSortChange - Callback when sort changes
  */
 import CabinetTable from '@/components/CMS/cabinets/CabinetsCabinetTable';
-import { Button } from '@/components/shared/ui/button';
-import CurrencyValueWithOverflow from '@/components/shared/ui/CurrencyValueWithOverflow';
-import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
-import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
-import type { CabinetSortOption } from '@/lib/hooks/data';
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { LocationsCabinetGridProps } from '@/lib/types/components';
-import type { ExtendedCabinetDetail } from '@/lib/types/pages';
-import { formatCurrency } from '@/lib/utils';
-import {
-  getGrossColorClass,
-  getMoneyInColorClass,
-} from '@/lib/utils/financial';
-import type { GamingMachine as Cabinet } from '@/shared/types/entities';
-import { formatDistanceToNow } from 'date-fns';
-import gsap from 'gsap';
-import { Clock, Copy, Eye, Pencil, Trash2 } from 'lucide-react';
-import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
+import { CabinetSortOption } from '@/lib/hooks/data';
+import { GamingMachine as Cabinet } from '@/shared/types/entities';
+import { ExtendedCabinetDetail } from '@/lib/types/pages';
+import { canDeleteMachines, canEditMachines, canViewArchivedMachines, canPermanentlyDeleteMachines, UserRole } from '@/lib/utils/permissions';
+import { copyToClipboard } from '@/lib/utils/common/clipboard';
 import Image from 'next/image';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
-
-// ============================================================================
-// Helper Components
-// ============================================================================
-
-function CabinetCardMobile({
-  cabinet,
-  router,
-  onEdit,
-  onDelete,
-  canEditMachines = true,
-  canDeleteMachines = true,
-  copyToClipboard,
-  subtractJackpot,
-}: {
-  cabinet: ExtendedCabinetDetail;
-  router: AppRouterInstance;
-  onEdit: (cabinet: ExtendedCabinetDetail) => void;
-  onDelete: (cabinet: ExtendedCabinetDetail) => void;
-  canEditMachines?: boolean;
-  canDeleteMachines?: boolean;
-  copyToClipboard: (text: string, label: string) => void;
-  subtractJackpot?: boolean;
-}) {
-  const statusRef = useRef<HTMLSpanElement>(null);
-  /**
-   * Animates online status indicator with pulsing effect.
-   * Only animates when cabinet is online.
-   */
-  useEffect(() => {
-    // Only animate if cabinet is online and ref is available
-    if (cabinet.isOnline && statusRef.current) {
-      const tl = gsap.timeline({ repeat: -1, yoyo: true });
-      tl.to(statusRef.current, {
-        scale: 1.3,
-        opacity: 0.7,
-        duration: 1,
-        ease: 'power1.inOut',
-      }).to(statusRef.current, {
-        scale: 1,
-        opacity: 1,
-        duration: 1,
-        ease: 'power1.inOut',
-      });
-      return () => {
-        tl.kill();
-      };
-    }
-    return undefined;
-  }, [cabinet.isOnline]);
-  return (
-    <div
-      key={cabinet._id}
-      className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-    >
-      <div className="mb-3 flex items-center justify-between">
-        <div className="max-w-[60%] truncate font-semibold">
-          {formatMachineDisplayNameWithBold(cabinet)}
-        </div>
-        <span
-          ref={statusRef}
-          className={`inline-flex h-3 w-3 items-center justify-center rounded-full ${
-            cabinet.isOnline ? 'bg-green-500' : 'bg-red-500'
-          }`}
-          title={cabinet.isOnline ? 'Online' : 'Offline'}
-        ></span>
-      </div>
-      
-      {/* Offline Status - Show when offline */}
-      {!cabinet.isOnline && (
-        <div className="mb-3 flex flex-col gap-1 text-xs text-red-600 font-medium">
-          <div className="flex items-center gap-1.5">
-            <Clock className="h-3 w-3" />
-            <span>
-              {cabinet.offlineTimeLabel 
-                ? (cabinet.offlineTimeLabel === 'Never' ? 'Never Online' : `Offline ${cabinet.offlineTimeLabel}`)
-                : (cabinet.lastOnline ? `Offline ${formatDistanceToNow(new Date(cabinet.lastOnline), { addSuffix: true })}` : 'Never Online')}
-            </span>
-          </div>
-          {cabinet.actualOfflineTime && cabinet.actualOfflineTime !== (cabinet.offlineTimeLabel || (cabinet.lastOnline ? formatDistanceToNow(new Date(cabinet.lastOnline), { addSuffix: true }) : 'Never')) && (
-            <div className="ml-[18px] text-[10px] opacity-70 italic text-gray-500">
-              (Actual Offline Time: {cabinet.actualOfflineTime})
-            </div>
-          )}
-        </div>
-      )}
-      <p className="mb-1 text-sm text-gray-600">
-        Game:{' '}
-        {/* Show game name or placeholder if not provided */}
-        {cabinet.game || cabinet.installedGame ? (
-          cabinet.game || cabinet.installedGame
-        ) : (
-          <span className="text-red-600">(game name not provided)</span>
-        )}
-      </p>
-      <div className="mb-1 flex items-center gap-1.5">
-        <span className="text-sm text-gray-600">SMIB:</span>
-        <button
-          onClick={e => {
-            e.stopPropagation();
-            const smibId =
-              cabinet.relayId || cabinet.smibBoard || cabinet.smbId;
-            // Copy SMIB ID to clipboard when clicked
-            if (smibId) {
-              copyToClipboard(smibId, 'SMIB');
-            }
-          }}
-          className={`flex items-center gap-1 whitespace-normal break-words text-sm ${
-            cabinet.relayId || cabinet.smibBoard || cabinet.smbId
-              ? 'cursor-pointer text-gray-600 hover:text-blue-600 hover:underline'
-              : 'text-gray-400'
-          }`}
-          title={
-            cabinet.relayId || cabinet.smibBoard || cabinet.smbId
-              ? 'Click to copy SMIB'
-              : 'No SMIB'
-          }
-          disabled={!cabinet.relayId && !cabinet.smibBoard && !cabinet.smbId}
-        >
-          <span>
-            {cabinet.relayId || cabinet.smibBoard || cabinet.smbId || 'N/A'}
-          </span>
-          {/* Show copy icon only if SMIB ID exists */}
-          {(cabinet.relayId || cabinet.smibBoard || cabinet.smbId) && (
-            <Copy className="h-3 w-3 flex-shrink-0" />
-          )}
-        </button>
-      </div>
-
-      {/* Network Badge */}
-      {cabinet.network && (
-        <div className="mb-1">
-          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 border border-gray-200">
-            {cabinet.network}
-          </span>
-        </div>
-      )}
-      <div className="mt-2 border-t border-gray-200 pt-2">
-        <div className="mb-1 flex justify-between">
-          <span className="text-xs text-gray-500">Money In:</span>
-          <CurrencyValueWithOverflow
-            value={cabinet.moneyIn || 0}
-            className={`text-xs font-medium ${getMoneyInColorClass()}`}
-            formatCurrencyFn={formatCurrency}
-          />
-        </div>
-        <div className="mb-1 flex justify-between">
-          <span className="text-xs text-gray-500">Money Out:</span>
-            <MoneyOutCell
-              moneyOut={cabinet.moneyOut || 0}
-              moneyIn={cabinet.moneyIn || 0}
-              jackpot={cabinet.jackpot || 0}
-              displayValue={formatCurrency(cabinet.moneyOut || 0)}
-              className="text-xs"
-              subtractJackpot={!!(cabinet).subtractJackpot}
-              showInfoIcon={true}
-            />
-        </div>
-        <div className="mb-1 flex justify-between">
-          <span className="text-xs text-gray-500">Jackpot:</span>
-          <CurrencyValueWithOverflow
-            value={cabinet.jackpot || 0}
-            className="text-xs font-medium"
-            formatCurrencyFn={formatCurrency}
-          />
-        </div>
-        <div className="mb-1 flex justify-between">
-          <span className="text-xs text-gray-500">Gross:</span>
-          <CurrencyValueWithOverflow
-            value={cabinet.gross || 0}
-            className={`text-xs font-medium ${getGrossColorClass(cabinet.gross)}`}
-            formatCurrencyFn={formatCurrency}
-          />
-        </div>
-        {subtractJackpot !== false && cabinet.netGross !== undefined && (
-          <div className="flex justify-between">
-            <span className="text-xs text-gray-500">Jackpot:</span>
-            <CurrencyValueWithOverflow
-              value={cabinet.netGross}
-              className={`text-xs font-medium ${getGrossColorClass(cabinet.netGross)}`}
-              formatCurrencyFn={formatCurrency}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Action Buttons */}
-      <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
-        <Button
-          onClick={() => router.push(`/cabinets/${cabinet._id}`)}
-          variant="outline"
-          size="sm"
-          className="flex flex-1 items-center justify-center gap-1.5 text-xs"
-        >
-          <Eye className="h-3.5 w-3.5" />
-          <span>View</span>
-        </Button>
-        {/* Show Edit button only if user can edit machines */}
-        {canEditMachines && (
-          <Button
-            onClick={() => onEdit(cabinet)}
-            variant="outline"
-            size="sm"
-            className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            <span>Edit</span>
-          </Button>
-        )}
-        {/* Show Delete button only if user can delete machines */}
-        {canDeleteMachines && (
-          <Button
-            onClick={() => onDelete(cabinet)}
-            variant="outline"
-            size="sm"
-            className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete</span>
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
+import { useState } from 'react';
+import LocationsCabinetCardMobile from './mobile/LocationsCabinetCardMobile';
 
 export default function LocationsCabinetGrid({
   filteredCabinets,
@@ -281,8 +45,11 @@ export default function LocationsCabinetGrid({
   sortOption: externalSortOption,
   sortOrder: externalSortOrder,
   onSortChange,
-  subtractJackpot = true,
-}: LocationsCabinetGridProps & { subtractJackpot?: boolean }) {
+  onRestore,
+  onPermanentDelete,
+  showArchived = false,
+  includeJackpot = true,
+}: LocationsCabinetGridProps & { includeJackpot?: boolean }) {
   // Use external sort state if provided, otherwise use local state
   const [internalSortOption, setInternalSortOption] =
     useState<CabinetSortOption>('moneyIn');
@@ -296,82 +63,12 @@ export default function LocationsCabinetGrid({
   // Use cabinet actions store for modal management
   const { openEditModal, openDeleteModal } = useCabinetsActionsStore();
   const user = useUserStore(state => state.user);
+  const userRoles = (user?.roles || []) as UserRole[];
 
-  /**
-   * Copies text to clipboard with fallback for older browsers.
-   * Shows toast notifications for success/error states.
-   */
-  const copyToClipboard = async (text: string, label: string) => {
-    // Don't copy if text is empty or N/A
-    if (!text || text.trim() === '' || text === 'N/A') {
-      toast.error(`No ${label} value to copy`);
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(text.trim());
-      toast.success(`${label} copied to clipboard`);
-    } catch {
-      // Use fallback method for older browsers that don't support clipboard API
-      try {
-        const textArea = document.createElement('textarea');
-        textArea.value = text.trim();
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        const successful = document.execCommand('copy');
-        document.body.removeChild(textArea);
-        if (successful) {
-          toast.success(`${label} copied to clipboard`);
-        } else {
-          throw new Error('execCommand failed');
-        }
-      } catch (fallbackError) {
-        console.error('Failed to copy to clipboard:', fallbackError);
-        toast.error(`Failed to copy ${label}. Please try again.`);
-      }
-    }
-  };
-
-  /**
-   * Determines if user can edit machines.
-   * Collectors cannot edit, but technicians, managers, admins, developers, and location admins can.
-   */
-  const canEditMachines = useMemo(() => {
-    if (!user || !user.roles) return false;
-    const userRoles = user.roles || [];
-    // Collectors cannot edit machines
-    if (userRoles.includes('collector')) {
-      return false;
-    }
-    // Check if user has a role that allows editing
-    return [
-      'developer',
-      'admin',
-      'manager',
-      'location admin',
-      'technician',
-    ].some(role => userRoles.includes(role));
-  }, [user]);
-
-  /**
-   * Determines if user can delete machines.
-   * Collectors and technicians cannot delete, only managers, admins, developers, and location admins can.
-   */
-  const canDeleteMachines = useMemo(() => {
-    if (!user || !user.roles) return false;
-    const userRoles = user.roles || [];
-    // Collectors and technicians cannot delete machines
-    if (userRoles.includes('collector') || userRoles.includes('technician')) {
-      return false;
-    }
-    // Check if user has a role that allows deletion
-    return ['developer', 'admin', 'manager', 'location admin'].some(role =>
-      userRoles.includes(role)
-    );
-  }, [user]);
+  const canEdit = canEditMachines(userRoles);
+  const canDelete = canDeleteMachines(userRoles);
+  const canViewArchived = canViewArchivedMachines(userRoles);
+  const canPermanentlyDelete = canPermanentlyDeleteMachines(userRoles);
 
   /**
    * Handles column sorting with toggle behavior.
@@ -422,17 +119,24 @@ export default function LocationsCabinetGrid({
                 cabinet.smbId ||
                 cabinet.smibBoard ||
                 '') as string,
-              onEdit: () => handleEdit(cabinet),
-              onDelete: () => handleDelete(cabinet),
+              onEdit: () => handleEdit(cabinet as ExtendedCabinetDetail),
+              onDelete: () => handleDelete(cabinet as ExtendedCabinetDetail),
+              onRestore: () => onRestore?.(cabinet),
+              onPermanentDelete: () => onPermanentDelete?.(cabinet),
             }))}
           sortOption={sortOption}
           sortOrder={sortOrder}
           onSort={column => handleColumnSort(column as CabinetSortOption)}
           onEdit={cabinet => handleEdit(cabinet as ExtendedCabinetDetail)}
           onDelete={cabinet => handleDelete(cabinet as ExtendedCabinetDetail)}
-          canEditMachines={canEditMachines}
-          canDeleteMachines={canDeleteMachines}
-          subtractJackpot={subtractJackpot}
+          onRestore={cabinet => onRestore?.(cabinet)}
+          onPermanentDelete={cabinet => onPermanentDelete?.(cabinet)}
+          canEditMachines={canEdit}
+          canDeleteMachines={canDelete}
+          canViewArchived={canViewArchived}
+          canPermanentlyDeleteMachines={canPermanentlyDelete}
+          showArchived={showArchived}
+          includeJackpot={includeJackpot}
         />
       </div>
 
@@ -442,16 +146,20 @@ export default function LocationsCabinetGrid({
           {filteredCabinets
             .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
             .map((cabinet: ExtendedCabinetDetail) => (
-              <CabinetCardMobile
+              <LocationsCabinetCardMobile
                 key={cabinet._id}
                 cabinet={cabinet}
                 router={router}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
-                canEditMachines={canEditMachines}
-                canDeleteMachines={canDeleteMachines}
+                onRestore={onRestore}
+                onPermanentDelete={onPermanentDelete}
+                canEditMachines={canEdit}
+                canDeleteMachines={canDelete}
+                canViewArchived={canViewArchived}
+                canPermanentlyDeleteMachines={canPermanentlyDelete}
+                showArchived={showArchived}
                 copyToClipboard={copyToClipboard}
-                subtractJackpot={subtractJackpot}
               />
             ))}
         </div>
@@ -480,4 +188,3 @@ export default function LocationsCabinetGrid({
     </div>
   );
 }
-

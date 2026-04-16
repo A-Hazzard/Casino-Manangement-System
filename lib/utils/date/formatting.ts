@@ -64,7 +64,6 @@ function formatProfileObject(profile: Record<string, unknown>): string {
   return parts.length > 0 ? parts.join('; ') : 'Empty profile';
 }
 
-
 // ============================================================================
 // Date Formatting Functions
 // ============================================================================
@@ -76,7 +75,9 @@ function formatProfileObject(profile: Record<string, unknown>): string {
 export function formatDate(date: Date | string | number | undefined): string {
   if (!date) return '-';
   const d =
-    typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
 
   if (!(d instanceof Date) || isNaN(d.getTime())) return '-';
 
@@ -123,7 +124,9 @@ export function formatDateWithOrdinal(
 ): string {
   if (!date) return 'Unknown';
   const d =
-    typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+    typeof date === 'string' || typeof date === 'number'
+      ? new Date(date)
+      : date;
 
   if (!(d instanceof Date) || isNaN(d.getTime())) return 'Unknown';
 
@@ -288,6 +291,18 @@ export function formatValue(value: unknown, fieldName?: string): string {
       const keys = Object.keys(value);
       if (keys.length === 0) return 'Empty object';
 
+      // Check for sasMeters object
+      if (fieldName === 'sasMeters' || ('drop' in value && 'gross' in value)) {
+        const sas = value as Record<string, unknown>;
+        return `Drop: ${sas.drop}, Gross: ${sas.gross}${sas.jackpot !== undefined ? `, JP: ${sas.jackpot}` : ''}${sas.gamesPlayed !== undefined ? `, GP: ${sas.gamesPlayed}` : ''}`;
+      }
+
+      // Check for movement object
+      if (fieldName === 'movement' || ('metersIn' in value && 'metersOut' in value && 'gross' in value)) {
+        const m = value as Record<string, unknown>;
+        return `In: ${m.metersIn}, Out: ${m.metersOut}, Gross: ${m.gross}`;
+      }
+
       // Check if it's a profile object (has profile-like properties)
       if (
         'firstName' in value ||
@@ -371,7 +386,7 @@ export function formatValue(value: unknown, fieldName?: string): string {
       // For other objects, try to show meaningful properties
       if (keys.length <= 5) {
         const entries = Object.entries(value)
-          .filter(([_, v]) => v !== null && v !== undefined && v !== '')
+          .filter(([, v]) => v !== null && v !== undefined && v !== '')
           .map(([k, v]) => {
             if (typeof v === 'object' && v !== null) {
               // For nested objects, show a summary
@@ -405,4 +420,3 @@ export function formatValue(value: unknown, fieldName?: string): string {
   // Default: convert to string
   return String(value);
 }
-

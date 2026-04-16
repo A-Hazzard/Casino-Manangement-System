@@ -10,7 +10,12 @@
 
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import type { CashierShift } from '@/shared/types/vault';
@@ -28,8 +33,6 @@ type ActiveShiftDashboardProps = {
 
 export default function ActiveShiftDashboard({
   shift,
-  currentBalance: _currentBalance,
-  refreshing: _refreshing,
   onTicketRedeem,
   onHandPay,
   onRequestFloat,
@@ -40,7 +43,7 @@ export default function ActiveShiftDashboard({
   return (
     <div className="space-y-6">
       {/* Shift Status Card */}
-      <Card className="rounded-lg bg-container shadow-md border-t-4 border-emerald-500 overflow-hidden relative animate-in slide-in-from-top-4 duration-500">
+      <Card className="relative overflow-hidden rounded-lg border-t-4 border-emerald-500 bg-container shadow-md duration-500 animate-in slide-in-from-top-4">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -54,22 +57,32 @@ export default function ActiveShiftDashboard({
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             <div>
               <p className="text-sm text-gray-600">Opening Float</p>
-              <p className={cn(
-                  "font-semibold leading-tight transition-all truncate",
-                  formatAmount(shift.openingBalance).length > 12 ? 'text-base' : 'text-lg'
-              )}>
+              <p
+                className={cn(
+                  'truncate font-semibold leading-tight transition-all',
+                  formatAmount(shift.openingBalance).length > 12
+                    ? 'text-base'
+                    : 'text-lg'
+                )}
+              >
                 {formatAmount(shift.openingBalance)}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Total Payouts</p>
-              <p className={cn(
-                  "font-semibold text-red-600 leading-tight transition-all truncate",
-                  formatAmount(shift.payoutsTotal).length > 12 ? 'text-base' : 'text-lg'
-              )}>
+              <p
+                className={cn(
+                  'truncate font-semibold leading-tight text-red-600 transition-all',
+                  formatAmount(shift.payoutsTotal).length > 12
+                    ? 'text-base'
+                    : 'text-lg'
+                )}
+              >
                 {formatAmount(shift.payoutsTotal)}
               </p>
-              <p className="text-xs text-gray-500">count: {shift.payoutsCount}</p>
+              <p className="text-xs text-gray-500">
+                count: {shift.payoutsCount}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Started At</p>
@@ -82,7 +95,7 @@ export default function ActiveShiftDashboard({
       </Card>
 
       {/* Quick Actions */}
-      <Card className="rounded-lg bg-container shadow-md border-t-4 border-button">
+      <Card className="rounded-lg border-t-4 border-button bg-container shadow-md">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
         </CardHeader>
@@ -90,7 +103,7 @@ export default function ActiveShiftDashboard({
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Button
               variant="outline"
-              className={`flex h-20 flex-col gap-2 ${!isVaultReconciled ? 'opacity-40 cursor-not-allowed' : ''}`}
+              className={`flex h-20 flex-col gap-2 ${!isVaultReconciled ? 'cursor-not-allowed opacity-40' : ''}`}
               onClick={onTicketRedeem}
             >
               <Receipt className="h-6 w-6" />
@@ -98,7 +111,7 @@ export default function ActiveShiftDashboard({
             </Button>
             <Button
               variant="outline"
-              className={`flex h-20 flex-col gap-2 ${!isVaultReconciled ? 'opacity-40 cursor-not-allowed' : ''}`}
+              className={`flex h-20 flex-col gap-2 ${!isVaultReconciled ? 'cursor-not-allowed opacity-40' : ''}`}
               onClick={onHandPay}
             >
               <HandCoins className="h-6 w-6" />
@@ -106,7 +119,7 @@ export default function ActiveShiftDashboard({
             </Button>
             <Button
               variant="outline"
-              className={`flex h-20 flex-col gap-2 ${!isVaultReconciled ? 'opacity-40 cursor-not-allowed' : ''}`}
+              className={`flex h-20 flex-col gap-2 ${!isVaultReconciled ? 'cursor-not-allowed opacity-40' : ''}`}
               onClick={() => {
                 if (!isVaultReconciled) {
                   return; // Toast handled by parent or just block
@@ -119,7 +132,7 @@ export default function ActiveShiftDashboard({
             </Button>
             <Button
               variant="outline"
-              className={`flex h-20 flex-col gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 ${!isVaultReconciled ? 'opacity-40 cursor-not-allowed' : ''}`}
+              className={`flex h-20 flex-col gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 ${!isVaultReconciled ? 'cursor-not-allowed opacity-40' : ''}`}
               onClick={() => {
                 if (!isVaultReconciled) {
                   return;

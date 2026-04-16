@@ -31,10 +31,9 @@ export async function POST(request: NextRequest) {
       );
     }
     const userRoles = (userPayload?.roles as string[]) || [];
-    const normalizedRoles = userRoles.map(role => String(role).toLowerCase().trim());
 
-    const hasAdminAccess = normalizedRoles.some(role =>
-      ['developer', 'admin', 'manager', 'vault-manager', 'vault manager', 'location admin'].includes(role)
+    const hasAdminAccess = userRoles.some(role =>
+      ['developer', 'admin', 'owner', 'manager', 'vault-manager', 'vault manager', 'location admin'].includes(role)
     );
 
     if (!hasAdminAccess) {
@@ -85,7 +84,7 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 4.5: Licencee Validation (Rule 9)
     // ============================================================================
-    const isAdmin = normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+    const isAdmin = userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
     if (!isAdmin) {
       const { getUserAccessibleLicenceesFromToken } = await import('../../../lib/helpers/licenceeFilter');
       const accessibleLicencees = await getUserAccessibleLicenceesFromToken(userPayload as Parameters<typeof getUserAccessibleLicenceesFromToken>[0]);

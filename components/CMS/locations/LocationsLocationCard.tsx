@@ -24,6 +24,7 @@ import {
 } from '@/lib/utils/financial';
 import { hasMissingCoordinates } from '@/lib/utils/location';
 import {
+  Archive,
   BadgeCheck,
   Eye,
   FileWarning,
@@ -31,8 +32,11 @@ import {
   Home,
   MapPinOff,
   Pencil,
+  RotateCcw,
   Server,
+  Trash2,
 } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 
@@ -40,14 +44,20 @@ export default function LocationsLocationCard({
   location,
   onLocationClick,
   onEdit,
+  onDelete,
+  onRestore,
   canManageLocations = true,
   selectedFilters = [],
+  showArchived = false,
 }: {
   location: LocationCardData['location'];
   onLocationClick: LocationCardData['onLocationClick'];
   onEdit: LocationCardData['onEdit'];
+  onDelete?: (location: LocationCardData['location']) => void;
+  onRestore?: (location: LocationCardData['location']) => void;
   canManageLocations?: boolean;
   selectedFilters?: Array<string | null | ''>;
+  showArchived?: boolean;
 }) {
   const router = useRouter();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -57,7 +67,7 @@ export default function LocationsLocationCard({
   return (
     <div
       ref={cardRef}
-      className="relative mx-auto w-full rounded-lg border border-border bg-container p-4 shadow-sm transition-shadow hover:shadow-md"
+      className={`relative mx-auto w-full rounded-lg border p-4 shadow-sm transition-shadow hover:shadow-md ${showArchived ? 'bg-gray-50 border-amber-100' : 'bg-white border-border'}`}
     >
       <div className="mb-3 flex flex-col gap-2">
         {/* Location Name with Membership Icon */}
@@ -70,7 +80,7 @@ export default function LocationsLocationCard({
               onLocationClick(locationId);
             }
           }}
-          className="inline-flex cursor-pointer items-start gap-1.5 text-left text-base font-semibold hover:text-blue-600 hover:underline"
+          className="inline-flex cursor-pointer items-start gap-1.5 text-left text-lg font-bold hover:text-blue-600 hover:underline"
           title="Click to view location details"
         >
           <span className="break-words">
@@ -252,20 +262,11 @@ export default function LocationsLocationCard({
             moneyIn={location.moneyIn ?? 0}
             jackpot={location.jackpot ?? 0}
             displayValue={formatCurrency(location.moneyOut ?? 0)}
-            subtractJackpot={!!(location).subtractJackpot}
+            includeJackpot={!!(location).includeJackpot}
             showInfoIcon={true}
           />
         </div>
-        {location.subtractJackpot && (
-          <div className="flex justify-between">
-            <span className="font-medium">Jackpot</span>
-            <CurrencyValueWithOverflow
-              value={location.netGross || (location.gross ?? 0)}
-              className={`break-words text-right font-semibold ${getGrossColorClass(location.netGross || location.gross)}`}
-              formatCurrencyFn={formatCurrency}
-            />
-          </div>
-        )}
+        {/* Jackpot info is shown via the info icon on Money Out — no duplicate row needed */}
       </div>
 
       <div className="mb-3 mt-1 flex justify-between">
@@ -277,34 +278,85 @@ export default function LocationsLocationCard({
         />
       </div>
 
+      {/* Archived Info */}
+      {showArchived && (location as { deletedAt?: string }).deletedAt && (
+        <div className="mb-3 flex flex-col gap-1 text-[11px] text-amber-700 bg-amber-50/50 p-2 rounded border border-amber-100/50">
+          <div className="flex items-center gap-1.5">
+            <Archive className="h-3.5 w-3.5" />
+            <span>Archived: {format(new Date((location as { deletedAt: string }).deletedAt), 'MMM d, yyyy • h:mm a')}</span>
+          </div>
+          <div className="ml-[18px] italic opacity-80">
+            ({formatDistanceToNow(new Date((location as { deletedAt: string }).deletedAt), { addSuffix: true })})
+          </div>
+        </div>
+      )}
+
       {/* Action Buttons */}
       <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
-        <Button
-          onClick={() => {
-            const locationId = (location.location as string) || location._id;
-            // Navigate to location details page
-            if (locationId) {
-              onLocationClick(locationId);
-            }
-          }}
-          variant="outline"
-          size="sm"
-          className="flex flex-1 items-center justify-center gap-1.5 text-xs"
-        >
-          <Eye className="h-3.5 w-3.5" />
-          <span>View</span>
-        </Button>
-        {/* Show Edit button only if user can manage locations */}
-        {canManageLocations && (
-          <Button
-            onClick={() => onEdit(location)}
-            variant="outline"
-            size="sm"
-            className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            <span>Edit</span>
-          </Button>
+        {showArchived ? (
+          /* Archived view: Restore and Delete */
+          canManageLocations && (
+            <>
+              <Button
+                onClick={() => onRestore?.(location)}
+                variant="outline"
+                size="sm"
+                className="flex flex-1 items-center justify-center gap-1.5 text-xs text-green-600 hover:bg-green-50 hover:text-green-700"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Restore</span>
+              </Button>
+              <Button
+                onClick={() => onDelete?.(location)}
+                variant="outline"
+                size="sm"
+                className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete</span>
+              </Button>
+            </>
+          )
+        ) : (
+          /* Active view: View, Edit, Delete */
+          <>
+            <Button
+              onClick={() => {
+                const locationId = (location.location as string) || location._id;
+                if (locationId) {
+                  onLocationClick(locationId);
+                }
+              }}
+              variant="outline"
+              size="sm"
+              className="flex flex-1 items-center justify-center gap-1.5 text-xs"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span>View</span>
+            </Button>
+            {canManageLocations && (
+              <>
+                <Button
+                  onClick={() => onEdit(location)}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  <span>Edit</span>
+                </Button>
+                <Button
+                  onClick={() => onDelete?.(location)}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                >
+                  <Archive className="h-3.5 w-3.5" />
+                  <span>Remove</span>
+                </Button>
+              </>
+            )}
+          </>
         )}
       </div>
     </div>

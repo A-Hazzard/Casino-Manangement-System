@@ -6,9 +6,11 @@
  * @module components/reports/tabs/machines/ReportsMachinesOverview
  */
 
+import { ReactNode } from 'react';
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
 import { Button } from '@/components/shared/ui/button';
+import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import {
     Card,
     CardContent,
@@ -58,7 +60,6 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import React from 'react';
 
 // ============================================================================
 // Internal Components
@@ -73,7 +74,7 @@ const SortableHeader = ({
   currentSort,
   onSort,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   sortKey: keyof MachineData;
   currentSort: {
     key: keyof MachineData;
@@ -357,6 +358,13 @@ export const ReportsMachinesOverview = ({
                       Handle
                     </SortableHeader>
                     <SortableHeader
+                      sortKey="totalCancelledCredits"
+                      currentSort={sortConfig}
+                      onSort={onSort}
+                    >
+                      Money Out
+                    </SortableHeader>
+                    <SortableHeader
                       sortKey="netWin"
                       currentSort={sortConfig}
                       onSort={onSort}
@@ -433,6 +441,15 @@ export const ReportsMachinesOverview = ({
                         </span>
                       </td>
                       <td className="p-3 text-left">
+                        <MoneyOutCell
+                          moneyOut={machine.totalCancelledCredits || 0}
+                          moneyIn={machine.drop || 0}
+                          jackpot={machine.jackpot || 0}
+                          displayValue={formatCurrency(machine.totalCancelledCredits)}
+                          includeJackpot={!!machine.includeJackpot}
+                        />
+                      </td>
+                      <td className="p-3 text-left">
                         <span
                           className={getFinancialColorClass(machine.netWin)}
                         >
@@ -476,30 +493,13 @@ export const ReportsMachinesOverview = ({
           )}
 
           {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm text-gray-500">
-                Showing{' '}
-                <span className="font-medium">
-                  {(pagination.page - 1) * pagination.limit + 1}
-                </span>{' '}
-                to{' '}
-                <span className="font-medium">
-                  {Math.min(
-                    pagination.page * pagination.limit,
-                    pagination.totalCount
-                  )}
-                </span>{' '}
-                of <span className="font-medium">{pagination.totalCount}</span>{' '}
-                results
-              </div>
-              <PaginationControls
-                currentPage={pagination.page - 1}
-                totalPages={pagination.totalPages}
-                setCurrentPage={(page: number) => onPageChange(page + 1)}
-              />
-            </div>
-          )}
+          <PaginationControls
+            currentPage={pagination.page - 1}
+            totalPages={pagination.totalPages}
+            totalCount={pagination.totalCount}
+            setCurrentPage={(page: number) => onPageChange(page + 1)}
+            showTotalCount
+          />
         </CardContent>
       </Card>
 

@@ -25,6 +25,14 @@ import { useMobileCollectionModal } from '@/lib/hooks/collectionReport/useMobile
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { Calculator, ClipboardList, Info, SendHorizontal, X } from 'lucide-react';
+import { VariationCheckPopover } from '@/components/CMS/collectionReport/variations/VariationCheckPopover';
+import { VariationsConfirmationDialog } from '@/components/CMS/collectionReport/variations/VariationsConfirmationDialog';
+import { useCollectionReportVariationCheck, type CheckVariationsMachine } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import axios from 'axios';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/shared/ui/button';
 
 type CollectionReportMobileNewCollectionModalProps = {
   show: boolean;
@@ -88,6 +96,42 @@ export default function CollectionReportMobileNewCollectionModal({
     onRefresh,
     onClose,
   });
+
+  // Variation checking state
+  const {
+    isChecking,
+    hasVariations,
+    variationsData,
+    error: variationError,
+    isMinimized,
+    checkVariations,
+    toggleMinimize,
+    reset: resetVariationCheck,
+  } = useCollectionReportVariationCheck();
+
+  const [showVariationCheckPopover, setShowVariationCheckPopover] = useState(false);
+  const [showVariationsConfirmation, setShowVariationsConfirmation] = useState(false);
+
+  const handleStartSubmit = () => {
+    if (collectedMachines.length === 0 || modalState.isProcessing) return;
+
+    // Trigger variation check
+    setShowVariationCheckPopover(true);
+
+    const machinesForCheck: CheckVariationsMachine[] = collectedMachines.map(entry => ({
+      machineId: entry.machineId,
+      machineName: entry.machineCustomName || entry.machineName || entry.serialNumber || entry.machineId,
+      metersIn: entry.metersIn || 0,
+      metersOut: entry.metersOut || 0,
+      sasStartTime: entry.sasMeters?.sasStartTime || undefined,
+      sasEndTime: entry.sasMeters?.sasEndTime || undefined,
+      prevMetersIn: entry.prevIn || 0,
+      prevMetersOut: entry.prevOut || 0,
+    }));
+
+    const locationIdToUse = lockedLocationId || selectedLocation || '';
+    checkVariations(locationIdToUse, machinesForCheck);
+  };
 
   return (
     <>
@@ -416,6 +460,18 @@ export default function CollectionReportMobileNewCollectionModal({
                                       // Select the machine
                                       setStoreSelectedMachine(String(machine._id));
                                       setStoreSelectedMachineData(machine);
+                                      // Auto-populate sasStartTime from the last completed collection
+                                      axios
+                                        .get(`/api/collections/last-collection-time?machineId=${String(machine._id)}`)
+                                        .then(res => {
+                                          const lastTime = res.data?.data?.collectionTime;
+                                          setStoreFormData({ sasStartTime: lastTime ? new Date(lastTime) : null });
+                                        })
+                                        .catch(() => {
+                                          // Fallback: use machine's own collectionTime if available
+                                          const fallback = machine.collectionTime ? new Date(machine.collectionTime) : null;
+                                          setStoreFormData({ sasStartTime: fallback });
+                                        });
                                       setStoreFormData({
                                         metersIn: '',
                                         metersOut: '',
@@ -427,6 +483,16 @@ export default function CollectionReportMobileNewCollectionModal({
                                         sasStartTime: null,
                                         sasEndTime: null,
                                         collectionTime: new Date(),
+                                        prevIn: (() => {
+                                          const s = machine.sasMeters?.drop ?? null;
+                                          const l = machine.collectionMeters?.metersIn;
+                                          return (l !== null && l !== undefined && l > 0) ? l.toString() : ((s !== null && s > 0) ? s.toString() : '');
+                                        })(),
+                                        prevOut: (() => {
+                                          const s = machine.sasMeters?.totalCancelledCredits ?? null;
+                                          const l = machine.collectionMeters?.metersOut;
+                                          return (l !== null && l !== undefined && l > 0) ? l.toString() : ((s !== null && s > 0) ? s.toString() : '');
+                                        })(),
                                       });
                                       pushNavigation('form');
                                       setModalState(prev => ({
@@ -464,7 +530,7 @@ export default function CollectionReportMobileNewCollectionModal({
               {collectedMachines.length > 0 && (
                 <div className="sticky bottom-0 mt-4 border-t bg-white/90 p-3 backdrop-blur-sm">
                   <button
-                    onClick={() => setShowCreateReportConfirmation(true)}
+                    onClick={handleStartSubmit}
                     disabled={!isCreateReportsEnabled || modalState.isProcessing}
                     className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold shadow-md transition-all active:scale-95 ${
                       isCreateReportsEnabled && !modalState.isProcessing
@@ -517,6 +583,8 @@ export default function CollectionReportMobileNewCollectionModal({
               ramClearMetersIn: modalState.formData.ramClearMetersIn,
               ramClearMetersOut: modalState.formData.ramClearMetersOut,
               notes: modalState.formData.notes,
+              prevIn: modalState.formData.prevIn,
+              prevOut: modalState.formData.prevOut,
               sasStartTime: modalState.formData.sasStartTime,
               sasEndTime: modalState.formData.sasEndTime,
               showAdvancedSas: modalState.formData.showAdvancedSas,
@@ -526,15 +594,13 @@ export default function CollectionReportMobileNewCollectionModal({
             isProcessing={modalState.isProcessing}
             inputsEnabled={inputsEnabled}
             isAddMachineEnabled={isAddMachineEnabled}
-            formatMachineDisplay={machine => {
-              return (
-                <span>
-                  {machine.custom?.name ||
-                    machine.serialNumber ||
-                    String(machine._id)}
-                </span>
-              );
-            }}
+            formatMachineDisplay={machine => 
+              formatMachineDisplayNameWithBold({
+                ...machine,
+                serialNumber: machine.serialNumber,
+                custom: machine.custom || { name: machine.name },
+              })
+            }
             onViewMachine={() => {
               setModalState(prev => ({
                 ...prev,
@@ -591,17 +657,14 @@ export default function CollectionReportMobileNewCollectionModal({
             updateAllSasEndDate={updateAllSasEndDate}
             onUpdateAllSasEndDate={setUpdateAllSasEndDate}
             onApplyAllDates={handleApplyAllDates}
+            variationMachineIds={variationsData?.machines.filter(m => typeof m.variation === 'number').map(m => m.machineId)}
             formatMachineDisplay={machine => {
-              // Type assertion needed because formatMachineDisplay type definition
-              // doesn't match CollectionDocument, but that's what we pass
               const doc = machine as unknown as CollectionDocument;
-              const displayName =
-                doc.machineCustomName ||
-                doc.machineName ||
-                doc.machineId ||
-                doc.serialNumber ||
-                String(doc._id);
-              return <span>{displayName}</span>;
+              return formatMachineDisplayNameWithBold({
+                serialNumber: doc.serialNumber,
+                custom: { name: doc.machineCustomName },
+                game: doc.game,
+              });
             }}
             formatDate={date => {
               return formatDateWithOrdinal(date);
@@ -625,9 +688,131 @@ export default function CollectionReportMobileNewCollectionModal({
             }}
             baseBalanceCorrection={baseBalanceCorrection}
             onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}
-            onCreateReport={() => setShowCreateReportConfirmation(true)}
+            onCreateReport={handleStartSubmit}
           />
         )}
+
+        {/* Variation Check Popover */}
+        <VariationCheckPopover
+          isOpen={showVariationCheckPopover && !isMinimized}
+          isChecking={isChecking}
+          hasVariations={hasVariations}
+          error={variationError}
+          variationsData={variationsData}
+          onMinimize={toggleMinimize}
+          onSubmit={() => {
+            setShowVariationCheckPopover(false);
+            if (hasVariations && variationsData) {
+              setShowVariationsConfirmation(true);
+            } else {
+              setShowCreateReportConfirmation(true);
+            }
+          }}
+          onRetry={() => {
+            const machinesForCheck: CheckVariationsMachine[] = collectedMachines.map(entry => ({
+              machineId: entry.machineId,
+              machineName: entry.machineCustomName || entry.machineName || entry.serialNumber || entry.machineId,
+              metersIn: entry.metersIn || 0,
+              metersOut: entry.metersOut || 0,
+              sasStartTime: entry.sasMeters?.sasStartTime || undefined,
+              sasEndTime: entry.sasMeters?.sasEndTime || undefined,
+              prevMetersIn: entry.prevIn || 0,
+              prevMetersOut: entry.prevOut || 0,
+            }));
+            const locationIdToUse = lockedLocationId || selectedLocation || '';
+            checkVariations(locationIdToUse, machinesForCheck);
+          }}
+          onClose={() => {
+            setShowVariationCheckPopover(false);
+            if (!hasVariations || variationError) {
+              resetVariationCheck();
+            }
+          }}
+        />
+        
+        {/* Variations with Detail Display */}
+        {showVariationCheckPopover && !isChecking && hasVariations && variationsData && isMinimized && (
+          createPortal(
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[100005] flex items-center justify-center bg-black/60 p-4 pointer-events-auto"
+            >
+              <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl max-h-[85vh] overflow-y-auto border-t-8 border-amber-500">
+                <div className="mb-6 flex items-center justify-between border-b pb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Machine Variation Analysis</h3>
+                    <p className="text-sm text-gray-500 mt-1">Detailed comparison between Sas data and manual meter entry</p>
+                  </div>
+                  <button 
+                    onClick={toggleMinimize}
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-900"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  {variationsData.machines.map((m, idx) => (
+                    <div key={idx} className={`p-4 rounded-xl border ${typeof m.variation === 'number' ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-100'}`}>
+                      <p className="text-xs font-bold text-gray-400 uppercase mb-1">{m.machineId}</p>
+                      <h4 className="font-bold text-gray-900 truncate mb-3">{m.machineName}</h4>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-gray-400 uppercase">Sas Movement</p>
+                          <p className="text-sm font-black text-blue-600">${Number(m.sasGross).toFixed(2)}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-bold text-gray-400 uppercase">Manual Movement</p>
+                          <p className="text-sm font-black text-gray-900">${Number(m.meterGross).toFixed(2)}</p>
+                        </div>
+                      </div>
+                      
+                      {typeof m.variation === 'number' && (
+                        <div className="mt-3 pt-3 border-t border-amber-200 flex justify-between items-center">
+                          <p className="text-[10px] font-bold text-amber-800 uppercase">Variation</p>
+                          <p className={`text-sm font-black ${m.variation < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {m.variation < 0 ? '-' : '+'}${Math.abs(m.variation).toFixed(2)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="mt-8">
+                  <Button 
+                    className="w-full bg-blue-600 hover:bg-blue-700 py-6 text-base font-bold shadow-lg"
+                    onClick={() => {
+                      setShowVariationCheckPopover(false);
+                      setShowVariationsConfirmation(true);
+                      toggleMinimize();
+                    }}
+                  >
+                    Continue to Submission
+                  </Button>
+                </div>
+              </div>
+            </motion.div>,
+            document.body
+          )
+        )}
+
+        {/* Variations Confirmation Dialog */}
+        <VariationsConfirmationDialog
+          isOpen={showVariationsConfirmation}
+          machineCount={variationsData?.machines.filter(m => typeof m.variation === 'number').length || 0}
+          totalVariation={variationsData?.totalVariation || 0}
+          isLoading={modalState.isProcessing}
+          onConfirm={() => {
+            createCollectionReport(variationsData || undefined);
+            setShowVariationsConfirmation(false);
+          }}
+          onCancel={() => setShowVariationsConfirmation(false)}
+        />
       </DialogContent>
     </Dialog>
 

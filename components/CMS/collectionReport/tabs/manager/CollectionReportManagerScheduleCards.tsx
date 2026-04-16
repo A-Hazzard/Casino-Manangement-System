@@ -5,16 +5,22 @@
  * Features:
  * - Manager schedule data display
  * - Status badges
+ * - Edit and soft-delete actions (manager, admin, location admin, owner, developer)
  * - Loading states
  * - Empty state handling
  * - Responsive design (mobile only)
- *
- * @param data - Array of scheduler table rows
- * @param loading - Whether data is loading
  */
+import { Button } from '@/components/shared/ui/button';
 import type { CollectionReportManagerScheduleCardsProps, SchedulerTableRow } from '@/lib/types/components';
+import { Pencil, Trash2 } from 'lucide-react';
 
-export default function CollectionReportManagerScheduleCards({ data, loading }: CollectionReportManagerScheduleCardsProps) {
+export default function CollectionReportManagerScheduleCards({
+  data,
+  loading,
+  onEdit,
+  onDelete,
+  showActions = false,
+}: CollectionReportManagerScheduleCardsProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8 lg:hidden">
@@ -38,24 +44,51 @@ export default function CollectionReportManagerScheduleCards({ data, loading }: 
           key={row.id}
           className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md"
         >
+          {/* Card Header */}
           <div className="border-b border-gray-100 bg-gray-50 px-3 py-2 sm:px-4 sm:py-3">
             <div className="flex items-center justify-between gap-2">
               <h3 className="truncate text-sm font-semibold text-gray-900 sm:text-base">
                 {row.location}
               </h3>
-              <span
-                className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium capitalize sm:px-2.5 sm:py-1 ${
-                  row.status === 'pending'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : row.status === 'completed'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-red-100 text-red-800'
-                }`}
-              >
-                {row.status}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium capitalize sm:px-2.5 sm:py-1 ${
+                    row.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : row.status === 'completed'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                  }`}
+                >
+                  {row.status}
+                </span>
+                {showActions && (
+                  <div className="flex items-center gap-0.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-gray-400 hover:text-button"
+                      onClick={() => onEdit?.(row)}
+                      title="Edit schedule"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-gray-400 hover:text-red-600"
+                      onClick={() => onDelete?.(row)}
+                      title="Delete schedule"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Card Body */}
           <div className="px-3 py-3 sm:px-4 sm:py-4">
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <div>
@@ -85,4 +118,3 @@ export default function CollectionReportManagerScheduleCards({ data, loading }: 
     </div>
   );
 }
-

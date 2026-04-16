@@ -13,6 +13,7 @@ export async function logActivity(params: {
   metadata?: Record<string, unknown>;
   userId?: string;
   username?: string;
+  membershipLog?: boolean;
 }): Promise<string> {
   try {
     // Extract resource info from metadata if available (ensure lowercase)
@@ -51,6 +52,7 @@ export async function logActivity(params: {
       resource: resource,
       resourceId: resourceId,
       resourceName: resourceName,
+      membershipLog: params.membershipLog || false,
       // Optional fields
       details: params.details,
       ipAddress: params.ipAddress || 'unknown',

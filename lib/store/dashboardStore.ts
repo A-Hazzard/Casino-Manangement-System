@@ -2,6 +2,41 @@ import { DashBoardStore } from '@/lib/types/store';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import {
+  createDateInTrinidadTime,
+  getGamingDayEndInTrinidad,
+} from '@/shared/utils/dateFormat';
+
+/**
+ * Get the current gaming day range in Trinidad timezone.
+ * Gaming day is gameDayOffset AM to (gameDayOffset - 1):59:59 next day (Trinidad time).
+ *
+ * @param gameDayOffset - Hour when gaming day starts (default: 8)
+ */
+function getInitialGamingDayRange(gameDayOffset: number = 8): {
+  startDate: Date;
+  endDate: Date;
+} {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+
+  // Start of gaming day: gameDayOffset AM Trinidad time
+  const startDate = createDateInTrinidadTime(
+    year,
+    month,
+    day,
+    gameDayOffset,
+    0,
+    0
+  );
+
+  // End of gaming day: (gameDayOffset - 1):59:59 next day Trinidad time
+  const endDate = getGamingDayEndInTrinidad(now, gameDayOffset);
+
+  return { startDate, endDate };
+}
 
 // Define a no-op version for SSR
 const dummyState: DashBoardStore = {
@@ -28,10 +63,7 @@ const dummyState: DashBoardStore = {
   gamingLocations: [],
   selectedLicencee: '',
   sortBy: 'totalDrop',
-  customDateRange: {
-    startDate: new Date(new Date().setHours(8, 0, 0, 0)),
-    endDate: new Date(new Date(new Date().setHours(8, 0, 0, 0)).getTime() + 24 * 60 * 60 * 1000 - 60000),
-  },
+  customDateRange: getInitialGamingDayRange(),
   // Currency support
   displayCurrency: 'USD' as CurrencyCode,
   isAllLicencee: false,
@@ -90,12 +122,9 @@ const createStore = () => {
         totals: null,
         chartData: null,
         gamingLocations: [],
-  selectedLicencee: '',
-  sortBy: 'totalDrop',
-        customDateRange: {
-          startDate: new Date(new Date().setHours(8, 0, 0, 0)),
-          endDate: new Date(new Date(new Date().setHours(8, 0, 0, 0)).getTime() + 24 * 60 * 60 * 1000 - 60000),
-        },
+        selectedLicencee: '',
+        sortBy: 'totalDrop',
+        customDateRange: getInitialGamingDayRange(),
         pendingCustomDateRange: undefined,
         topPerformingData: [],
         displayCurrency: 'USD' as CurrencyCode,
@@ -132,7 +161,11 @@ const createStore = () => {
         // Currency methods
         setDisplayCurrency: displayCurrency => set({ displayCurrency }),
         setIsAllLicencee: isAllLicencee => set({ isAllLicencee }),
-        setGameDayOffset: gameDayOffset => set({ gameDayOffset }),
+        setGameDayOffset: gameDayOffset =>
+          set({
+            gameDayOffset,
+            customDateRange: getInitialGamingDayRange(gameDayOffset),
+          }),
       }),
       {
         name: 'dashboard-store',
@@ -214,4 +247,3 @@ const getClientStore = () => {
 // Use this store only on client side
 export const useDashBoardStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);
-

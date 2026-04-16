@@ -6,7 +6,7 @@
  * Features:
  * - Payment status management (payment.ts)
  * - Access control and UI visibility (access.ts)
- * - Name/ObjectId conversion (mapping.ts)
+ * - Name/ID resolution (mapping.ts)
  */
 
 // ============================================================================
@@ -31,4 +31,4 @@ export {
 // ============================================================================
 // Mapping Utilities
 // ============================================================================
-export { getLicenceeName, getLicenceeObjectId } from './mapping';
+export { resolveLicenceeId } from './mapping';

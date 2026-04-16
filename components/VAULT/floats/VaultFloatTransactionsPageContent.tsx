@@ -71,6 +71,7 @@ export default function VaultFloatTransactionsPageContent() {
   const [floatTransactions, setFloatTransactions] = useState<FloatTransaction[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalTransactions, setTotalTransactions] = useState(0);
 
   // ============================================================================
   // Data Fetching
@@ -93,6 +94,7 @@ export default function VaultFloatTransactionsPageContent() {
       setCashierFloats(data.cashierFloats);
       setFloatTransactions(data.floatTransactions);
       setTotalPages(data.totalPages);
+      setTotalTransactions(data.totalTransactions);
     } catch (error) {
       console.error('Failed to fetch float data:', error);
       setError('Failed to load float data');
@@ -485,16 +487,13 @@ export default function VaultFloatTransactionsPageContent() {
           </Tabs>
         </div>
 
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="mt-4">
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={totalPages}
-              setCurrentPage={setCurrentPage}
-            />
-          </div>
-        )}
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          setCurrentPage={setCurrentPage}
+          totalCount={totalTransactions}
+          showTotalCount
+        />
       </div>
     </PageLayout>
   );

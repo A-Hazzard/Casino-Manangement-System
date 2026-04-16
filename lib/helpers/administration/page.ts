@@ -540,9 +540,9 @@ export const administrationUtils = {
   /**
    * Filters out test users unless the current user is a developer
    */
-  filterTestUsers: (users: User[], isDeveloper: boolean): User[] => {
-    if (isDeveloper) {
-      return users; // Developers can see all users including test accounts
+  filterTestUsers: (users: User[], isDeveloper: boolean, isOwner: boolean = false): User[] => {
+    if (isDeveloper || isOwner) {
+      return users; // Developers and Owners can see all users including test accounts
     }
     return users.filter(user => !administrationUtils.isTestUser(user));
   },
@@ -552,12 +552,14 @@ export const administrationUtils = {
     searchValue: string,
     searchMode: 'username' | 'email' | '_id',
     sortConfig: { key: SortKey; direction: 'ascending' | 'descending' } | null,
-    isDeveloper: boolean = false
+    isDeveloper: boolean = false,
+    isOwner: boolean = false
   ) => {
-    // First filter out test users (unless developer)
+    // First filter out test users (unless developer or owner)
     const filteredUsers = administrationUtils.filterTestUsers(
       allUsers,
-      isDeveloper
+      isDeveloper,
+      isOwner
     );
     // Then apply search and sort
     return filterAndSortUsers(

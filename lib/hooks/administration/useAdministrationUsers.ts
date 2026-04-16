@@ -7,6 +7,7 @@
 
 'use client';
 
+import { Dispatch, SetStateAction } from 'react';
 import { administrationUtils, fetchUsers } from '@/lib/helpers/administration';
 import { saveUserHelper } from '@/lib/helpers/administration/saveUserHelper';
 import { useUserStore } from '@/lib/store/userStore';
@@ -19,7 +20,7 @@ type UseAdministrationUsersProps = {
   selectedLicencee: string | null;
   activeSection: string;
   loadedSections: Set<string>;
-  setLoadedSections: React.Dispatch<React.SetStateAction<Set<string>>>;
+  setLoadedSections: Dispatch<SetStateAction<Set<string>>>;
   mounted: boolean;
 };
 
@@ -77,7 +78,14 @@ export function useAdministrationUsers({
   const isDeveloper = useMemo(() => {
     const userRoles = user?.roles || [];
     return userRoles.some(
-      role => typeof role === 'string' && role.toLowerCase() === 'developer'
+      role => typeof role === 'string' && role === 'developer'
+    );
+  }, [user?.roles]);
+
+  const isOwner = useMemo(() => {
+    const userRoles = user?.roles || [];
+    return userRoles.some(
+      role => typeof role === 'string' && role === 'owner'
     );
   }, [user?.roles]);
 
@@ -96,7 +104,7 @@ export function useAdministrationUsers({
       return userRoles.some(
         role =>
           typeof role === 'string' &&
-          role.toLowerCase() === selectedRole.toLowerCase()
+          role === selectedRole
       );
     });
   }, [allUsers, selectedRole]);
@@ -128,7 +136,8 @@ export function useAdministrationUsers({
       effectiveSearchValue,
       'username',
       sortConfig,
-      isDeveloper
+      isDeveloper,
+      isOwner
     );
   }, [
     paginatedUsers,

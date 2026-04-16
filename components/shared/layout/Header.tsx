@@ -49,7 +49,7 @@ import type { CurrencyCode } from '@/shared/types/currency';
 import { ExitIcon } from '@radix-ui/react-icons';
 import { AnimatePresence, motion } from 'framer-motion';
 import { PanelLeft } from 'lucide-react';
-import { useParams, usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export default function Header({
@@ -65,7 +65,6 @@ export default function Header({
   // Hooks & State
   // ============================================================================
   const pathname = usePathname();
-  const params = useParams();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isOpen } = useSidebar();
@@ -87,18 +86,16 @@ export default function Header({
 
   // Get user roles for permission checking
   const userRoles = user?.roles || [];
-  const normalizedRoles = userRoles.map(role =>
-    typeof role === 'string' ? role.toLowerCase() : role
-  );
 
   // Get user's licencee assignments (memoized to prevent unnecessary re-renders)
   const userLicencees = useMemo(() => {
     return Array.isArray(user?.assignedLicencees) ? user.assignedLicencees : [];
   }, [user?.assignedLicencees]);
 
+  const isOwner = userRoles.includes('owner');
   const isAdmin =
-    normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
-  const isManager = normalizedRoles.includes('manager');
+    userRoles.includes('admin') || userRoles.includes('developer');
+  const isManager = userRoles.includes('manager');
   const hasMultipleLicencees =
     Array.isArray(userLicencees) && userLicencees.length > 1;
   const hasSingleLicencee =
@@ -108,7 +105,7 @@ export default function Header({
   // Show if: admin OR user has multiple licencees (including location admins with multiple licencees)
   // Hide if: user has 0 or 1 licencee (and not admin/dev) OR location admin with single/no licencee
   const shouldShowLicenceeSelect =
-    isAdmin || (hasMultipleLicencees && !normalizedRoles.includes('cashier'));
+    isAdmin || (hasMultipleLicencees && !userRoles.includes('cashier'));
 
   // Determine if we should show licencee name next to "Evolution CMS"
   // Show if: user has exactly one licencee AND not admin/dev AND (not manager OR manager with single licencee)
@@ -128,8 +125,8 @@ export default function Header({
   const shouldRenderCurrencyFilter =
     !hideCurrencyFilter &&
     !shouldHideCurrency &&
-    !normalizedRoles.includes('vault-manager') &&
-    !normalizedRoles.includes('cashier');
+    !userRoles.includes('vault-manager') &&
+    !userRoles.includes('cashier');
 
   const [licenceeCurrencyMap, setLicenceeCurrencyMap] = useState<
     Record<string, CurrencyCode>
@@ -349,18 +346,11 @@ export default function Header({
   const isReportsPath =
     pathname === '/reports' || pathname.startsWith('/reports/');
 
-
-  // Check if the current path is the specific location details page
-  const isSpecificLocationPath =
-    pathname.startsWith('/locations/') &&
-    params.slug &&
-    !pathname.includes('/details');
-
   return (
     <ClientOnly fallback={<div className="h-16 animate-pulse bg-gray-100" />}>
       <div className={`flex flex-col gap-2 ${containerPaddingMobile || ''}`}>
         {/* Header Section: Main header with title and licencee selector */}
-        <header className="flex w-full flex-col p-0">
+        <header className="flex w-full flex-col p-2 mb-4">
           {/* Menu Button and Main Title Row: Mobile sidebar trigger and title */}
           <div className="flex w-full min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             {/* Left side: Menu button and title */}
@@ -376,8 +366,12 @@ export default function Header({
                 <PanelLeft className="h-6 w-6" suppressHydrationWarning />
               </SidebarTrigger>
               <div className="flex min-w-0 items-center gap-2">
-                <h1 className="shrink-0 whitespace-nowrap text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl">
-                  Evolution CMS
+                <h1 className="shrink-0 whitespace-nowrap text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl flex items-center gap-2">
+                  Evolution CMS {isOwner && (
+                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm animate-pulse">
+                      OWNER
+                    </span>
+                  )} {pageTitle && <span className="text-gray-400 font-normal"> — {pageTitle}</span>}
                 </h1>
                 {shouldShowLicenceeName && singleLicenceeName && (
                   <span className="inline-flex items-center rounded-full bg-buttonActive/10 px-3 py-1 text-xs font-medium text-buttonActive ring-1 ring-inset ring-buttonActive/20 sm:text-sm">
@@ -680,21 +674,7 @@ export default function Header({
             )}
           </AnimatePresence>
 
-          {/* Page Title Section: Dynamic page title and location information */}
-          {pageTitle && (
-            <div className="flex flex-col space-y-6 xl:flex-row">
-              <div className="flex flex-col space-y-2">
-                <h1 className="mb-2 text-2xl font-bold text-gray-800 sm:text-3xl">
-                  {pageTitle}
-                </h1>
-                {isSpecificLocationPath && (
-                  <p className="text-sm text-gray-600">
-                    Location ID: {params.slug}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+        
         </header>
       </div>
     </ClientOnly>

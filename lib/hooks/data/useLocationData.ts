@@ -220,9 +220,10 @@ export function useLocationData({
           limit || 50,
           signal,
           undefined,
-          selectedStatus,
+          selectedStatus === 'Archived' ? undefined : selectedStatus,
           sortBy,
-          sortOrder
+          sortOrder,
+          selectedStatus === 'Archived'
         );
 
         return result;
@@ -231,13 +232,17 @@ export function useLocationData({
       // Only process the result if this is still the latest request
       if (lastFetchRef.current === currentFetchId) {
         if (result) {
+          // NOTE: reviewer multiplier is applied server-side in /api/reports/locations
+          // DO NOT apply any additional scaling here
+          const scaledData = result.data;
+
           if (page === 1 || !page) {
-            setLocationData(result.data);
+            setLocationData(scaledData);
           } else {
             // Accumulate data, avoiding duplicates
             setLocationData(prev => {
               const existingIds = new Set(prev.map(loc => loc._id));
-              const uniqueNew = result.data.filter(
+              const uniqueNew = scaledData.filter(
                 loc => !existingIds.has(loc._id)
               );
               return [...prev, ...uniqueNew];

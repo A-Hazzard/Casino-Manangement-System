@@ -7,6 +7,7 @@
  */
 'use client';
 
+import { ChangeEvent, FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import {
@@ -71,6 +72,7 @@ export default function LocationsNewLocationModal({
     },
     // Membership settings
     membershipEnabled: false,
+    aceEnabled: false,
     locationMembershipSettings: {
       locationLimit: 0,
       freePlayAmount: 0,
@@ -182,6 +184,7 @@ export default function LocationsNewLocationModal({
         },
         // Membership settings
         membershipEnabled: false,
+        aceEnabled: false,
         locationMembershipSettings: {
           locationLimit: 0,
           freePlayAmount: 0,
@@ -236,7 +239,7 @@ export default function LocationsNewLocationModal({
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
     // Special handling for profit share to only allow numbers
@@ -362,7 +365,7 @@ export default function LocationsNewLocationModal({
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -397,6 +400,7 @@ export default function LocationsNewLocationModal({
         billValidatorOptions: formData.billValidatorOptions,
         // Membership data
         membershipEnabled: formData.membershipEnabled,
+        aceEnabled: formData.aceEnabled,
         locationMembershipSettings: formData.locationMembershipSettings,
       };
 
@@ -612,6 +616,23 @@ export default function LocationsNewLocationModal({
                 className="text-lg font-semibold text-gray-800"
               >
                 Membership Enabled
+              </Label>
+            </div>
+
+            <div className="mb-4 flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+              <Checkbox
+                id="aceEnabled"
+                checked={formData.aceEnabled}
+                onCheckedChange={checked =>
+                  handleCheckboxChange('aceEnabled', checked === true)
+                }
+                className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+              />
+              <Label
+                htmlFor="aceEnabled"
+                className="text-lg font-semibold text-gray-800"
+              >
+                Ace Enabled
               </Label>
             </div>
 

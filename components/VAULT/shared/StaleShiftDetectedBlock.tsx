@@ -1,5 +1,6 @@
 'use client';
 
+import { ReactNode } from 'react';
 import { format } from 'date-fns';
 import { AlertTriangle } from 'lucide-react';
 
@@ -7,7 +8,7 @@ interface StaleShiftDetectedBlockProps {
   isStale: boolean;
   openedAt: Date | string | null | undefined;
   type: 'cashier' | 'vault';
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 /**
@@ -17,49 +18,49 @@ interface StaleShiftDetectedBlockProps {
 export default function StaleShiftDetectedBlock({
   isStale,
   openedAt,
-  type: _type,
-  children
+  children,
 }: StaleShiftDetectedBlockProps) {
-
   if (!isStale) {
     return <>{children}</>;
   }
 
-  const shiftDate = openedAt 
-    ? format(typeof openedAt === 'string' ? new Date(openedAt) : openedAt, 'MMM do, yyyy')
+  const shiftDate = openedAt
+    ? format(
+        typeof openedAt === 'string' ? new Date(openedAt) : openedAt,
+        'MMM do, yyyy'
+      )
     : 'Unknown Date';
 
   return (
     <div className="flex flex-col gap-4">
       {/* Non-blocking Warning Banner */}
-      <div className="bg-amber-50 border-y border-amber-200 py-3 px-6 -mx-6 mb-2 animate-in slide-in-from-top duration-500">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      <div className="-mx-6 mb-2 border-y border-amber-200 bg-amber-50 px-6 py-3 duration-500 animate-in slide-in-from-top">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="bg-amber-100 p-2 rounded-full border border-amber-300">
+            <div className="rounded-full border border-amber-300 bg-amber-100 p-2">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <p className="text-sm font-bold text-amber-900 leading-none">
+              <p className="text-sm font-bold leading-none text-amber-900">
                 STALE SHIFT DETECTED
               </p>
-              <p className="text-xs text-amber-700 mt-1">
-                Started on {shiftDate}. Operations are restricted. Please <span className="font-bold">Close Day</span> to resolve.
+              <p className="mt-1 text-xs text-amber-700">
+                Started on {shiftDate}. Operations are restricted. Please{' '}
+                <span className="font-bold">Close Day</span> to resolve.
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
-            <div className="bg-amber-600/10 text-amber-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-600/20">
+            <div className="rounded-full border border-amber-600/20 bg-amber-600/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-600">
               Read-Only Mode Active
             </div>
           </div>
         </div>
       </div>
-      
+
       {/* Always render children normally */}
-      <div className="relative">
-        {children}
-      </div>
+      <div className="relative">{children}</div>
     </div>
   );
 }

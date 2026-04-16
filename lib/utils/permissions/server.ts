@@ -113,38 +113,65 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
 
   // Page permissions mapping
   const pagePermissions: Record<PageName, UserRole[]> = {
-    dashboard: ['developer', 'admin', 'manager', 'location admin'], // ✅ Location admin can access dashboard
+    dashboard: ['developer', 'owner', 'admin', 'manager', 'location admin'],
     machines: [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
       'technician',
       'collector',
+      'reviewer',
     ],
-    locations: ['developer', 'admin', 'manager', 'location admin', 'collector'],
+    locations: [
+      'developer',
+      'owner',
+      'admin',
+      'manager',
+      'location admin',
+      'collector',
+      'reviewer',
+    ],
     'location-details': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
       'technician',
       'collector',
+      'reviewer',
     ],
-    members: ['developer', 'admin'],
-    'member-details': ['developer', 'admin'],
+    members: ['developer', 'owner', 'admin'],
+    'member-details': ['developer', 'owner', 'admin'],
     'collection-report': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
       'collector',
+      'reviewer',
     ],
-    reports: ['developer', 'admin', 'manager', 'location admin'], // ✅ Restricted to developer, admin, manager, and location admin
-    sessions: ['developer', 'admin'],
-    administration: ['developer', 'admin', 'manager', 'location admin'],
+    reports: [
+      'developer',
+      'owner',
+      'admin',
+      'manager',
+      'location admin',
+    ],
+    sessions: ['developer'],
+    administration: [
+      'developer',
+      'owner',
+      'admin',
+      'manager',
+      'location admin',
+    ],
     'vault-management': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
@@ -152,6 +179,7 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
     ],
     'vault-cashier': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
@@ -159,6 +187,7 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
     ],
     'vault-role-selection': [
       'developer',
+      'owner',
       'admin',
       'manager',
       'location admin',
@@ -185,7 +214,11 @@ export async function hasAdminAccessDb(): Promise<boolean> {
   }
 
   const { roles } = userData;
-  return roles.includes('developer') || roles.includes('admin');
+  return (
+    roles.includes('developer') ||
+    roles.includes('owner') ||
+    roles.includes('admin')
+  );
 }
 
 // ============================================================================

@@ -11,7 +11,8 @@ export type TimePeriod =
   | '30d'
   | 'Quarterly'
   | 'All Time'
-  | 'Custom';
+  | 'Custom'
+  | 'LastHour';
 
 // Chart granularity type for time-based chart aggregation
 export type ChartGranularity =

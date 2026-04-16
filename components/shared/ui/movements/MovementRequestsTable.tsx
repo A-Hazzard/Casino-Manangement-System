@@ -39,7 +39,7 @@ export default function MovementRequestsTable({
 }: MovementRequestsTableProps) {
   const tableRef = useRef<HTMLTableElement>(null);
   const { user: currentUser } = useUserStore();
-  const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
+  const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
   const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role));
   const userEmail = currentUser?.emailAddress;
   const [viewMachinesReq, setViewMachinesReq] = useState<MovementRequest | null>(null);

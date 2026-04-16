@@ -15,6 +15,7 @@
  */
 'use client';
 
+import { ReactNode, RefObject } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import { formatTime12Hour } from '@/shared/utils/dateFormat';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -237,9 +238,9 @@ export function ReportsMetersHourlyCharts({
     legendItem,
     scrollRef,
   }: {
-    children: React.ReactNode;
+    children: ReactNode;
     legendItem: { label: string; color: string };
-    scrollRef: React.RefObject<HTMLDivElement | null>;
+    scrollRef: RefObject<HTMLDivElement | null>;
   }) => {
     return (
       <div className="flex flex-col">

@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
 
+    // Example: GET /api/members/summary?licencee=9a5db2cb29ffd2d962fd1d91&page=1&limit=10&search=John&location=6801f2a3b4c5d6e7f8901234
     const { searchParams } = new URL(request.url);
     // Licencee filtering removed - show all members regardless of licencee
     const dateFilter = searchParams.get('dateFilter') || 'all';

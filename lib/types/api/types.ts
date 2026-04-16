@@ -1,6 +1,7 @@
 import type { MongooseId, TimePeriod } from '@/shared/types';
 import type { SmibDevice } from '@/shared/types/entities';
 import type { QueryFilter } from '../common/mongo';
+import type { CollectionSasMeters } from '../collection/types';
 
 // Re-export types for convenience
 export type { QueryFilter, TimePeriod };
@@ -41,7 +42,7 @@ export type ICollectionReport = {
   balanceCorrectionReas?: string;
   machinesCollected?: string;
   isEditing?: boolean;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
   __v?: number;
@@ -135,7 +136,7 @@ export type CreateCollectionReportPayload = {
   totalGross: number;
   totalSasGross: number;
   timestamp: string | Date;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
   varianceReason?: string;
   previousCollectionTime?: string | Date;
   locationProfitPerc?: number;
@@ -169,6 +170,7 @@ export type CollectionReportMachineSummary = {
     metersIn: number;
     metersOut: number;
   };
+  sasMeters?: CollectionSasMeters | null;
   collectionTime?: string | Date;
 };
 
@@ -180,7 +182,7 @@ export type CollectionReportLocationWithMachines = {
   profitShare?: number;
   collectionBalance?: number;
   gameDayOffset?: number;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
 };
 
 // Types for Collection Report Page
@@ -198,6 +200,7 @@ export type MachineMetric = {
   sasEndTime?: string;
   hasIssue?: boolean;
   ramClear?: boolean;
+  notes?: string;
 };
 
 export type LocationMetric = {
@@ -237,6 +240,23 @@ export type CollectionReportData = {
   locationMetrics: LocationMetric;
   sasMetrics?: SASMetric;
   isEditing?: boolean;
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
   useNetGross?: boolean;
+};
+
+// Types for Collection Report Variation Checking (pre-submission)
+export type MachineVariationData = {
+  machineId: string;
+  machineName: string;
+  variation: number | string; // "No SAS Data" or numeric value
+  sasGross: number | string;
+  meterGross: number;
+  sasStartTime?: string | null;
+  sasEndTime?: string | null;
+};
+
+export type VariationsCheckResponse = {
+  hasVariations: boolean;
+  totalVariation: number;
+  machines: MachineVariationData[];
 };

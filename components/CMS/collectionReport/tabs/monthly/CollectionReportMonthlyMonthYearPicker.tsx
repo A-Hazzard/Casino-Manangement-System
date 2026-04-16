@@ -1,9 +1,11 @@
 'use client';
 
+import { FC } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { CustomSelect } from '@/components/shared/ui/custom-select';
 import { endOfMonth, setMonth, setYear, startOfMonth } from 'date-fns';
-import React, { useMemo } from 'react';
+import {  useMemo  } from 'react';
+
 import { DateRange as RDPDateRange } from 'react-day-picker';
 
 type MonthYearPickerProps = {
@@ -18,7 +20,7 @@ type MonthYearPickerProps = {
  * A specialized date picker that only allows selecting Month and Year.
  * Returns a date range covering the entire selected month.
  */
-export const CollectionReportMonthlyMonthYearPicker: React.FC<MonthYearPickerProps> = ({
+export const CollectionReportMonthlyMonthYearPicker: FC<MonthYearPickerProps> = ({
   value,
   onChange,
   onSetLastMonth,

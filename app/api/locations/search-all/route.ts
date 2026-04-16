@@ -31,7 +31,6 @@ import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { TimePeriod } from '@/shared/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
-
 type LocationAggregationResult = {
   _id: string;
   name: string;
@@ -45,7 +44,7 @@ type LocationAggregationResult = {
   moneyIn: number;
   moneyOut: number;
   jackpot: number;
-  subtractJackpot: boolean;
+  includeJackpot: boolean;
   gross: number;
   isLocalServer: boolean;
   hasSmib: boolean;
@@ -299,7 +298,7 @@ export async function GET(request: NextRequest) {
                 },
                 $or: [
                   { deletedAt: null },
-                  { deletedAt: { $lt: new Date('2025-01-01') } },
+                  { deletedAt: { $lte: new Date('1971-01-01') } },
                 ],
               },
             },
@@ -392,7 +391,7 @@ export async function GET(request: NextRequest) {
           {
             $or: [
               { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
+              { deletedAt: { $lte: new Date('1971-01-01') } },
             ],
           },
         ],
@@ -423,11 +422,13 @@ export async function GET(request: NextRequest) {
     >();
 
     if (allLocationIds.length > 0) {
+      const allMachineIds = allMachines.map(m => String(m._id));
       // Use aggregation to group by location AND hour to avoid inflation
       const cursor = Meters.aggregate([
         {
           $match: {
             location: { $in: allLocationIds },
+            machine: { $in: allMachineIds },
             readAt: {
               $gte: globalStart,
               $lte: globalEnd,
@@ -485,9 +486,14 @@ export async function GET(request: NextRequest) {
     // Fetch licencee settings for all locations
     const licenceeIds = Array.from(new Set(matchingLocations.map(loc => loc.rel?.licencee).filter(Boolean)));
     const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean();
-    const licenceeSubtractJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.subtractJackpot]));
+    const licenceeIncludeJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.includeJackpot]));
 
     // Step 8: Combine results and create the initial AggregatedLocation objects
+    const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+    const reviewerScale = reviewerMult !== null ? 1 - reviewerMult : 1;
+
+    console.log(`[locations/search-all] User ${userPayload?._id} (${userPayload?.username}) multiplier: ${reviewerMult}, scale: ${reviewerScale}`);
+
     const locations: LocationAggregationResult[] = matchingLocations.map(location => {
       const locationId = String(location._id);
       const financialData = metersByLocation.get(locationId) || {
@@ -501,13 +507,14 @@ export async function GET(request: NextRequest) {
         (location as { enableMembership?: boolean }).enableMembership
       );
 
-      const subtractJackpot = licenceeSubtractJackpotMap.get(String(location.rel?.licencee)) || false;
-      const rawMoneyOut = financialData.totalMoneyOut || 0;
-      const jackpot = financialData.totalJackpot || 0;
+      const includeJackpot = licenceeIncludeJackpotMap.get(String(location.rel?.licencee)) || false;
+      const rawMoneyIn = (financialData.totalMoneyIn || 0) * reviewerScale;
+      const rawMoneyOut = (financialData.totalMoneyOut || 0) * reviewerScale;
+      const jackpot = (financialData.totalJackpot || 0) * reviewerScale;
 
       // Logic: TRUE = Low Gross (Include jackpot in deduction), FALSE = High Gross (Exclude jackpot from deduction)
       // rawMoneyOut is totalCancelledCredits which is typically NET handpays.
-      const moneyOutValue = rawMoneyOut + (subtractJackpot ? jackpot : 0);
+      const moneyOutValue = rawMoneyOut + (includeJackpot ? jackpot : 0);
 
       return {
         _id: locationId,
@@ -518,12 +525,13 @@ export async function GET(request: NextRequest) {
         profitShare: location.profitShare,
         geoCoords: location.geoCoords,
         totalMachines: location.machineStats?.[0]?.totalMachines || 0,
-        onlineMachines: location.machineStats?.[0]?.onlineMachines || 0,
-        moneyIn: financialData.totalMoneyIn || 0,
+        onlineMachines: location.aceEnabled ? (location.machineStats?.[0]?.totalMachines || 0) : (location.machineStats?.[0]?.onlineMachines || 0),
+        aceEnabled: location.aceEnabled || false,
+        moneyIn: rawMoneyIn,
         moneyOut: moneyOutValue,
         jackpot: jackpot,
-        subtractJackpot: subtractJackpot,
-        gross: (financialData.totalMoneyIn || 0) - moneyOutValue,
+        includeJackpot: includeJackpot,
+        gross: rawMoneyIn - moneyOutValue,
         isLocalServer: location.isLocalServer || false,
         hasSmib: location.hasSmib || false,
         noSMIBLocation: !(location.hasSmib || false),
@@ -577,7 +585,8 @@ export async function GET(request: NextRequest) {
     const currentUserRoles = (currentUser?.roles as string[]) || [];
     const isAdminOrDev =
       currentUserRoles.includes('admin') ||
-      currentUserRoles.includes('developer');
+      currentUserRoles.includes('developer') ||
+      currentUserRoles.includes('owner');
 
     // Apply currency conversion ONLY for Admin/Developer viewing "All Licencees"
     let convertedLocations = finalFilteredLocations;
@@ -587,7 +596,7 @@ export async function GET(request: NextRequest) {
         {
           $or: [
             { deletedAt: null },
-            { deletedAt: { $lt: new Date('2025-01-01') } },
+            { deletedAt: { $lte: new Date('1971-01-01') } },
           ],
         },
         { _id: 1, name: 1 }
@@ -678,7 +687,7 @@ export async function GET(request: NextRequest) {
       moneyIn: loc.moneyIn,
       moneyOut: loc.moneyOut,
       jackpot: loc.jackpot,
-      subtractJackpot: (loc).subtractJackpot,
+      includeJackpot: (loc).includeJackpot,
       gross: loc.gross,
       isLocalServer: loc.isLocalServer,
       hasSmib: loc.hasSmib,
@@ -724,4 +733,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

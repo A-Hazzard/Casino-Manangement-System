@@ -35,6 +35,7 @@ export type User = {
   loginCount?: number;
   lastLoginAt?: Date | string;
   sessionVersion?: number;
+  multiplier?: number | null;
 };
 
 export type SortKey = keyof User | null;

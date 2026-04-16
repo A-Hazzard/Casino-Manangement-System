@@ -12,6 +12,7 @@
  * @module components/reports/tabs/machines/ReportsMachinesEvaluation
  */
 
+import { ReactNode } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
   Card,
@@ -50,7 +51,6 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import React from 'react';
 import ReportsGamesPerformanceChart from './GamesPerformanceChart/ReportsGamesPerformanceChart';
 import ReportsGamesPerformanceRevenueChart from './GamesPerformanceRevenueChart/ReportsGamesPerformanceRevenueChart';
 import ReportsManufacturerPerformanceChart from './ManufacturerPerformanceChart/ReportsManufacturerPerformanceChart';
@@ -70,7 +70,7 @@ const SortableTopMachinesHeader = ({
   currentSortDirection,
   onSort,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   sortKey: TopMachinesCriteria;
   currentSortKey: TopMachinesCriteria;
   currentSortDirection: 'asc' | 'desc';

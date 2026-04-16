@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Header from '@/components/shared/layout/Header';
-import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import NotFoundError from '@/components/shared/ui/errors/NotFoundError';
+import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useEffect, useState } from 'react';
 
 export default function CollectionReportNotFound() {
   // Add client-side initialization
@@ -45,7 +45,7 @@ function CollectionReportNotFoundContent() {
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
-            pageTitle=""
+            
             hideOptions={true}
             hideLicenceeFilter={false}
           />

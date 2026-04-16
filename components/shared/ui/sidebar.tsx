@@ -12,14 +12,15 @@
  */
 'use client';
 
+import { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import React, {
+import { 
   createContext,
   useContext,
   useEffect,
   useMemo,
   useState,
-} from 'react';
+ } from 'react';
 
 // ============================================================================
 // Types & Context
@@ -61,7 +62,7 @@ const SidebarContext = createContext<SidebarContextValue | null>(null);
  *
  * @param children - React children to wrap with sidebar context
  */
-export function SidebarProvider({ children }: { children: React.ReactNode }) {
+export function SidebarProvider({ children }: { children: ReactNode }) {
   // ============================================================================
   // State
   // ============================================================================
@@ -192,7 +193,7 @@ export function SidebarTrigger({
   className,
   children,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
   const { toggle } = useSidebar();
   return (
     <button
@@ -227,7 +228,7 @@ export function SidebarInset({
   children,
   className,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) {
   const { collapsed } = useSidebar();
@@ -292,7 +293,7 @@ export function SidebarOverlay() {
  *
  * @param children - Sidebar content (navigation items, etc.)
  */
-export function SidebarContainer({ children }: { children: React.ReactNode }) {
+export function SidebarContainer({ children }: { children: ReactNode }) {
   const { isOpen, collapsed } = useSidebar();
   return (
     <aside

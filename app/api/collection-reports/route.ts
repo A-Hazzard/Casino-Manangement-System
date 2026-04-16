@@ -19,6 +19,7 @@ import {
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
+import { getReviewerScale, scaleReportFinancials } from '@/app/api/lib/utils/reviewerScale';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -62,6 +63,9 @@ export async function GET(request: NextRequest) {
     if (!userPayload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Compute reviewer scale once — non-reviewers get 1 (no-op).
+    const reviewerScale = getReviewerScale(userPayload as { multiplier?: number | null; roles?: string[] });
 
     const userPermissions = extractUserPermissions(userPayload as {
       roles?: unknown;
@@ -129,13 +133,25 @@ export async function GET(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 7: Return collection reports
+    // STEP 7: Apply reviewer scale and return collection reports
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
       console.warn(`[Collection Reports GET API] Completed in ${duration}ms`);
     }
-    return NextResponse.json(collectionReports);
+
+    // For non-reviewers (scale === 1) no transformation occurs.
+    const scaledReports =
+      reviewerScale === 1
+        ? collectionReports
+        : collectionReports.map(r =>
+            scaleReportFinancials(
+              r.toObject() as Parameters<typeof scaleReportFinancials>[0],
+              reviewerScale
+            )
+          );
+
+    return NextResponse.json(scaledReports);
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =

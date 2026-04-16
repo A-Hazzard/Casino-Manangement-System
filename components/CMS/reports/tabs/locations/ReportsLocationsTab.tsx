@@ -41,7 +41,7 @@ import ReportsLocationsSASEvaluation from './ReportsLocationsSASEvaluation';
  */
 export default function ReportsLocationsTab() {
   // ============================================================================
-  // Hooks & Store
+  // Navigation & Persistence Hooks
   // ============================================================================
   const router = useRouter();
   const pathname = usePathname();
@@ -52,7 +52,7 @@ export default function ReportsLocationsTab() {
   const { selectedDateRange, setLoading } = useReportsStore();
 
   // ============================================================================
-  // Tab State
+  // URL-Synced Tab State
   // ============================================================================
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -63,7 +63,7 @@ export default function ReportsLocationsTab() {
   });
 
   // ============================================================================
-  // Location Selection State
+  // Domain-Specific Selection State
   // ============================================================================
   const [selectedSasLocations, setSelectedSasLocations] = useState<string[]>(
     []
@@ -73,7 +73,7 @@ export default function ReportsLocationsTab() {
   >([]);
 
   // ============================================================================
-  // Chart Granularity State
+  // Visual Granularity Management
   // ============================================================================
   const [chartGranularity, setChartGranularity] = useState<
     'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
@@ -153,14 +153,14 @@ export default function ReportsLocationsTab() {
   ]);
 
   // ============================================================================
-  // Pagination Constants
+  // Global Pagination Constants
   // ============================================================================
   const itemsPerPage = 20;
   const itemsPerBatch = 100;
   const pagesPerBatch = itemsPerBatch / itemsPerPage;
 
   // ============================================================================
-  // Data Fetching Hook
+  // Primary Data Orchestration Hook
   // ============================================================================
   const {
     gamingLocations,
@@ -213,7 +213,7 @@ export default function ReportsLocationsTab() {
   });
 
   // ============================================================================
-  // Tab Change Handler
+  // User Interaction & URL Sync Handlers
   // ============================================================================
   const handleLocationsTabChange = useCallback(
     (tab: string) => {
@@ -354,24 +354,24 @@ export default function ReportsLocationsTab() {
   ]);
 
   // ============================================================================
-  // Location Selection Helpers
+  // Tab-Specific Selection Orchestration
   // ============================================================================
   const setCurrentSelectedLocations = useCallback(
-    (locations: string[]) => {
+    (locs: string[]) => {
       if (
         activeTab === 'sas-evaluation' ||
         activeTab === 'location-evaluation'
       ) {
-        setSelectedSasLocations(locations);
+        setSelectedSasLocations(locs);
       } else {
-        setSelectedRevenueLocations(locations);
+        setSelectedRevenueLocations(locs);
       }
     },
     [activeTab]
   );
 
   // ============================================================================
-  // Refresh Handler
+  // Bulk Data Refresh & Invalidation
   // ============================================================================
   const handleRefresh = useCallback(async () => {
     const currentSelectedLocations =
@@ -453,7 +453,7 @@ export default function ReportsLocationsTab() {
   }, [handleRefresh]);
 
   // ============================================================================
-  // Export Handlers
+  // Multi-Format Export Pipelines
   // ============================================================================
   const handleExportLocationOverviewWrapper = useCallback(
     async (format: 'pdf' | 'excel') => {
@@ -541,7 +541,7 @@ export default function ReportsLocationsTab() {
   );
 
   // ============================================================================
-  // Granularity Change Handler
+  // Performance Analysis Granularity Handlers
   // ============================================================================
   const handleGranularityChange = useCallback(
     (granularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly') => {
@@ -552,10 +552,6 @@ export default function ReportsLocationsTab() {
     },
     [setLocationTrendData, setLocationTrendLoading]
   );
-
-  // ============================================================================
-  // Render
-  // ============================================================================
   return (
     <div className="space-y-6">
       {/* Header */}

@@ -14,20 +14,15 @@
  * @module app/api/machines/route
  */
 
-import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
-import { connectDB } from '@/app/api/lib/middleware/db';
-import { Collections } from '@/app/api/lib/models/collections';
+import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { Machine } from '@/app/api/lib/models/machines';
-import { Meters } from '@/app/api/lib/models/meters';
-import { convertResponseToTrinidadTime } from '@/app/api/lib/utils/timezone';
 import { generateMongoId } from '@/lib/utils/id';
-import { getClientIP } from '@/lib/utils/ipAddress';
 import type { GamingMachine } from '@/shared/types/entities';
 import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
-
 // TODO: Move these to shared types or create new ones
 type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
   collectionSettings?: {
@@ -36,7 +31,6 @@ type NewMachineData = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
     lastMetersOut?: string;
   };
 };
-type MachineUpdateData = Partial<GamingMachine>;
 
 // Validation helpers mirroring frontend rules
 function validateSerialNumber(value: unknown): string | null {
@@ -60,7 +54,7 @@ function validateSmibBoard(value: unknown): string | null {
   }
   const v = value.toLowerCase();
   if (v.length !== 12) {
-    return 'SMIB Board must be exactly 12 characters long';
+    return 'SMIB Board must exactly be 12 characters long';
   }
   if (!/^[0-9a-f]+$/.test(v)) {
     return 'SMIB Board must contain only lowercase hexadecimal characters (0-9, a-f)';
@@ -79,55 +73,54 @@ function normalizeSmibBoard(value: string | undefined): string | undefined {
 
 /**
  * Main GET handler for fetching machines
- *
- * Flow:
- * 1. Connect to database
- * 2. Parse query parameters (id, locationId, timePeriod)
- * 3. Validate parameters
- * 4. Route to appropriate fetch logic (single machine or location-based)
- * 5. Check location access if locationId provided
- * 6. Fetch machine(s) from database
- * 7. Aggregate meter data if timePeriod provided
- * 8. Return machine data with meter information
  */
 export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database and authenticate user
-    // ============================================================================
-    await connectDB();
-
-    // Get authenticated user and check permissions
-    const user = await getUserFromServer();
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Note: Collectors can access machine data via API for collection reports
-    // Page-level access is restricted in ProtectedRoute, but API access is allowed
-
-    // ============================================================================
-    // STEP 2: Parse query parameters
-    // ============================================================================
-    const id = request.nextUrl.searchParams.get('id');
-    const locationId = request.nextUrl.searchParams.get('locationId');
-    const timePeriod = request.nextUrl.searchParams.get('timePeriod');
-    const showArchived = request.nextUrl.searchParams.get('archived') === 'true';
+  return withApiAuth(request, async ({ userRoles }) => {
+    const { searchParams } = request.nextUrl;
+    const id = searchParams.get('id');
+    const locationId = searchParams.get('locationId');
+    const serialNumberToCheck = searchParams.get('checkSerial');
+    const smibToCheck = searchParams.get('checkSmib');
+    const customNameToCheck = searchParams.get('checkCustomName');
+    const excludeId = searchParams.get('excludeId');
+    const showArchived = searchParams.get('archived') === 'true';
 
     // ============================================================================
     // STEP 3: Validate parameters
     // ============================================================================
-    // Support both single machine fetch (id) and location-based fetch (locationId)
+    if (serialNumberToCheck || smibToCheck || customNameToCheck) {
+      // AVAILABILITY CHECKS
+      const query: Record<string, unknown> = {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      };
+
+      if (serialNumberToCheck) {
+        query.serialNumber = normalizeSerialNumber(serialNumberToCheck);
+      } else if (smibToCheck) {
+        query.relayId = normalizeSmibBoard(smibToCheck);
+      } else if (customNameToCheck) {
+        query['custom.name'] = customNameToCheck.trim();
+      }
+
+      if (excludeId) {
+        query._id = { $ne: excludeId };
+      }
+
+      const existing = await Machine.findOne(query).lean();
+      return NextResponse.json({
+        success: true,
+        available: !existing,
+      });
+    }
+
     if (!id && !locationId) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Either Cabinet ID or Location ID is required',
+          error: 'Either machine ID or location ID is required',
         },
         { status: 400 }
       );
@@ -136,1226 +129,417 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 4: Route to appropriate fetch logic
     // ============================================================================
-    // If locationId is provided, fetch all machines for that location
-    if (locationId && !id) {
-      // ============================================================================
-      // STEP 5: Check location access if locationId provided
-      // ============================================================================
-      const hasAccess = await checkUserLocationAccess(locationId);
-      if (!hasAccess) {
+    let result;
+    if (id) {
+      // SINGLE MACHINE LOGIC
+      const machine = (await Machine.findOne({
+        _id: id,
+      }).lean()) as GamingMachine | null;
+      if (!machine) {
         return NextResponse.json(
-          {
-            success: false,
-            error: 'Unauthorized: You do not have access to this location',
-          },
+          { success: false, error: 'Machine not found' },
+          { status: 404 }
+        );
+      }
+
+      // Check access
+      const hasAccess = await checkUserLocationAccess(
+        machine.gamingLocation as string
+      );
+      if (
+        !hasAccess &&
+        !userRoles.includes('developer') &&
+        !userRoles.includes('owner') &&
+        !userRoles.includes('admin')
+      ) {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden' },
           { status: 403 }
         );
       }
 
-      // ============================================================================
-      // STEP 6: Fetch machines from database
-      // ============================================================================
-      const deletionFilter = showArchived
-        ? { deletedAt: { $gte: new Date('2025-01-01') } }
-        : {
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lt: new Date('2025-01-01') } },
-            ],
-          };
-
-      const machines = await Machine.find({
-        gamingLocation: locationId,
-        ...deletionFilter,
-      }).sort({ serialNumber: 1 });
-
-      // ============================================================================
-      // STEP 8: Return machine data
-      // ============================================================================
-      return NextResponse.json({
-        success: true,
-        data: machines.map(machine =>
-          convertResponseToTrinidadTime(machine.toObject())
-        ),
-      });
-    }
-
-    // Original single machine fetch logic
-    if (!id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Cabinet ID is required for single machine fetch',
-        },
-        { status: 400 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 6: Fetch machine from database
-    // ============================================================================
-    const deletionFilter = showArchived
-      ? { deletedAt: { $gte: new Date('2025-01-01') } }
-      : {
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $lt: new Date('2025-01-01') } },
-          ],
-        };
-
-    const machine = await Machine.findOne({
-      _id: id,
-      ...deletionFilter,
-    });
-
-    if (!machine) {
-      return NextResponse.json(
-        { success: false, error: 'Cabinet not found' },
-        { status: 404 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 7: Aggregate meter data if timePeriod provided
-    // ============================================================================
-    // Implement timezone-aware date filtering using $facet aggregation
-    // This approach calculates all time periods in a single efficient query
-    let meterData;
-
-    if (timePeriod && timePeriod !== 'All Time') {
-      // Use $facet to calculate specific time period efficiently
-      const facetAggregation = await Meters.aggregate([
-        // Stage 1: Filter meter records to only this specific machine
-        { $match: { machine: id } },
-
-        // Stage 2: Set up timezone and current time for calculations
-        {
-          $set: {
-            tz: 'America/Port_of_Spain',
-            now: '$$NOW',
-          },
-        },
-
-        // Stage 3: Calculate time boundaries for different periods (today, last 7 days, last 30 days)
-        {
-          $set: {
-            todayStart: {
-              $dateTrunc: { date: '$now', unit: 'day', timezone: '$tz' },
-            },
-            tomorrowStart: {
-              $dateAdd: {
-                startDate: {
-                  $dateTrunc: { date: '$now', unit: 'day', timezone: '$tz' },
-                },
-                unit: 'day',
-                amount: 1,
-              },
-            },
-            last7Start: {
-              $dateSubtract: { startDate: '$now', unit: 'day', amount: 7 },
-            },
-            last30Start: {
-              $dateSubtract: { startDate: '$now', unit: 'day', amount: 30 },
-            },
-          },
-        },
-
-        // Stage 4: Use $facet to compute metrics for the requested time window
-        {
-          $facet: {
-            [timePeriod]: (() => {
-              switch (timePeriod) {
-                case 'Today':
-                  return [
-                    {
-                      $match: {
-                        $expr: {
-                          $and: [
-                            { $gte: ['$createdAt', '$todayStart'] },
-                            { $lt: ['$createdAt', '$tomorrowStart'] },
-                          ],
-                        },
-                      },
-                    },
-                    {
-                      $group: {
-                        _id: null,
-                        drop: { $sum: '$movement.drop' },
-                        totalCancelledCredits: {
-                          $sum: '$movement.totalCancelledCredits',
-                        },
-                        jackpot: { $sum: '$movement.jackpot' },
-                        coinIn: { $sum: '$movement.coinIn' },
-                        coinOut: { $sum: '$movement.coinOut' },
-                        gamesPlayed: { $sum: '$movement.gamesPlayed' },
-                        gamesWon: { $sum: '$movement.gamesWon' },
-                      },
-                    },
-                  ];
-                case 'Yesterday':
-                  return [
-                    {
-                      $match: {
-                        $expr: {
-                          $and: [
-                            {
-                              $gte: [
-                                '$createdAt',
-                                {
-                                  $dateSubtract: {
-                                    startDate: '$todayStart',
-                                    unit: 'day',
-                                    amount: 1,
-                                  },
-                                },
-                              ],
-                            },
-                            { $lt: ['$createdAt', '$todayStart'] },
-                          ],
-                        },
-                      },
-                    },
-                    {
-                      $group: {
-                        _id: null,
-                        drop: { $sum: '$movement.drop' },
-                        totalCancelledCredits: {
-                          $sum: '$movement.totalCancelledCredits',
-                        },
-                        jackpot: { $sum: '$movement.jackpot' },
-                        coinIn: { $sum: '$movement.coinIn' },
-                        coinOut: { $sum: '$movement.coinOut' },
-                        gamesPlayed: { $sum: '$movement.gamesPlayed' },
-                        gamesWon: { $sum: '$movement.gamesWon' },
-                      },
-                    },
-                  ];
-                case '7d':
-                  return [
-                    {
-                      $match: {
-                        $expr: {
-                          $and: [
-                            { $gte: ['$createdAt', '$last7Start'] },
-                            { $lt: ['$createdAt', '$now'] },
-                          ],
-                        },
-                      },
-                    },
-                    {
-                      $group: {
-                        _id: null,
-                        drop: { $sum: '$movement.drop' },
-                        totalCancelledCredits: {
-                          $sum: '$movement.totalCancelledCredits',
-                        },
-                        jackpot: { $sum: '$movement.jackpot' },
-                        coinIn: { $sum: '$movement.coinIn' },
-                        coinOut: { $sum: '$movement.coinOut' },
-                        gamesPlayed: { $sum: '$movement.gamesPlayed' },
-                        gamesWon: { $sum: '$movement.gamesWon' },
-                      },
-                    },
-                  ];
-                case '30d':
-                  return [
-                    {
-                      $match: {
-                        $expr: {
-                          $and: [
-                            { $gte: ['$createdAt', '$last30Start'] },
-                            { $lt: ['$createdAt', '$now'] },
-                          ],
-                        },
-                      },
-                    },
-                    {
-                      $group: {
-                        _id: null,
-                        drop: { $sum: '$movement.drop' },
-                        totalCancelledCredits: {
-                          $sum: '$movement.totalCancelledCredits',
-                        },
-                        jackpot: { $sum: '$movement.jackpot' },
-                        coinIn: { $sum: '$movement.coinIn' },
-                        coinOut: { $sum: '$movement.coinOut' },
-                        gamesPlayed: { $sum: '$movement.gamesPlayed' },
-                        gamesWon: { $sum: '$movement.gamesWon' },
-                      },
-                    },
-                  ];
-                default:
-                  return [{ $group: { _id: null, drop: { $literal: 0 } } }];
-              }
-            })(),
-          },
-        },
-
-        // 4) Coalesce empty results to 0
-        {
-          $project: {
-            machine: id,
-            drop: {
-              $ifNull: [{ $arrayElemAt: [`$${timePeriod}.drop`, 0] }, 0],
-            },
-            totalCancelledCredits: {
-              $ifNull: [
-                { $arrayElemAt: [`$${timePeriod}.totalCancelledCredits`, 0] },
-                0,
-              ],
-            },
-            jackpot: {
-              $ifNull: [{ $arrayElemAt: [`$${timePeriod}.jackpot`, 0] }, 0],
-            },
-            coinIn: {
-              $ifNull: [{ $arrayElemAt: [`$${timePeriod}.coinIn`, 0] }, 0],
-            },
-            coinOut: {
-              $ifNull: [{ $arrayElemAt: [`$${timePeriod}.coinOut`, 0] }, 0],
-            },
-            gamesPlayed: {
-              $ifNull: [{ $arrayElemAt: [`$${timePeriod}.gamesPlayed`, 0] }, 0],
-            },
-            gamesWon: {
-              $ifNull: [{ $arrayElemAt: [`$${timePeriod}.gamesWon`, 0] }, 0],
-            },
-          },
-        },
-      ]);
-
-      meterData = facetAggregation;
+      result = machine;
     } else {
-      // Fetch all meter data without filtering (All Time)
-      meterData = await Meters.aggregate([
-        // Stage 1: Filter meter records to only this specific machine
-        { $match: { machine: id } },
+      // LOCATION-BASED LOGIC
+      const hasAccess = await checkUserLocationAccess(locationId as string);
+      if (
+        !hasAccess &&
+        !userRoles.includes('developer') &&
+        !userRoles.includes('admin')
+      ) {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden' },
+          { status: 403 }
+        );
+      }
 
-        // Stage 2: Aggregate all financial metrics across all time periods
-        {
-          $group: {
-            _id: null,
-            // Financial metrics as per financial-metrics-guide.md
-            drop: { $sum: '$movement.drop' }, // Money In (Handle)
-            totalCancelledCredits: { $sum: '$movement.totalCancelledCredits' }, // Money Out
-            jackpot: { $sum: '$movement.jackpot' },
-            coinIn: { $sum: '$movement.coinIn' },
-            coinOut: { $sum: '$movement.coinOut' },
-            gamesPlayed: { $sum: '$movement.gamesPlayed' },
-            gamesWon: { $sum: '$movement.gamesWon' },
-          },
-        },
-      ]);
+      const query: Record<string, unknown> = { gamingLocation: locationId };
+      if (!showArchived) {
+        // Active machines use deletedAt sentinel new Date(-1) (Dec 31 1969) by convention,
+        // not null. Must also match null/missing for machines created without the sentinel.
+        query.$or = [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }];
+      }
+
+      result = await Machine.find(query).lean();
     }
 
-    // Integrate meter data with machine data
-    if (meterData.length > 0) {
-      const aggregatedMeters = meterData[0];
-      interface MachineWithDenom { collectorDenomination?: number }
-      const multiplier = Number((machine as unknown as MachineWithDenom).collectorDenomination) || 1;
-      machine.sasMeters = {
-        drop: (aggregatedMeters.drop || 0) * multiplier,
-        totalCancelledCredits:
-          (aggregatedMeters.totalCancelledCredits || 0) * multiplier,
-        jackpot: (aggregatedMeters.jackpot || 0) * multiplier,
-        coinIn: (aggregatedMeters.coinIn || 0) * multiplier,
-        coinOut: (aggregatedMeters.coinOut || 0) * multiplier,
-        gamesPlayed: aggregatedMeters.gamesPlayed || 0,
-        gamesWon: aggregatedMeters.gamesWon || 0,
-      };
-
-      // Also update meterData for compatibility
-      machine.meterData = {
-        movement: machine.sasMeters,
-      };
-    }
-
-    // ============================================================================
-    // STEP 8: Return machine data with meter information
-    // ============================================================================
     return NextResponse.json({
       success: true,
-      data: convertResponseToTrinidadTime(machine.toObject()),
+      data: result,
     });
-  } catch (error: unknown) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to fetch machine';
-    console.error(
-      `[Machines API GET] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
+  });
 }
 
 /**
  * Main POST handler for creating a new machine
- *
- * Flow:
- * 1. Connect to database
- * 2. Parse and validate request body
- * 3. Validate serial number and SMIB board
- * 4. Normalize fields
- * 5. Validate location ID
- * 6. Generate machine ID
- * 7. Create machine document
- * 8. Save machine to database
- * 9. Log activity
- * 10. Return created machine
  */
 export async function POST(request: NextRequest) {
-  const startTime = Date.now();
-
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    const db = await connectDB();
-
-    if (!db) {
-      console.error('Failed to connect to the database');
-      return NextResponse.json(
-        { success: false, error: 'Failed to connect to the database' },
-        { status: 500 }
-      );
-    }
-
-    // ============================================================================
-    // STEP 2: Parse and validate request body
-    // ============================================================================
+  return withApiAuth(request, async () => {
     const data = (await request.json()) as NewMachineData;
 
-    // ============================================================================
-    // STEP 3: Validate serial number and SMIB board
-    // ============================================================================
+    // Validation
     const serialNumberError = validateSerialNumber(data.serialNumber);
-    if (serialNumberError) {
+    if (serialNumberError)
       return NextResponse.json(
         { success: false, error: serialNumberError },
         { status: 400 }
       );
-    }
+
     const smibError = validateSmibBoard(data.smibBoard);
-    if (smibError) {
+    if (smibError)
       return NextResponse.json(
         { success: false, error: smibError },
         { status: 400 }
       );
-    }
 
-    // ============================================================================
-    // STEP 4: Normalize fields
-    // ============================================================================
     data.serialNumber = normalizeSerialNumber(data.serialNumber);
     data.smibBoard = normalizeSmibBoard(data.smibBoard) ?? '';
 
-    // ============================================================================
-    // STEP 5: Validate location ID
-    // ============================================================================
-    if (!data.gamingLocation) {
+    // Step 1: Duplicate checks
+    const activeCriteria = {
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
+      ],
+    };
+
+    const duplicateCheck = (await Machine.findOne({
+      $and: [
+        {
+          $or: [
+            { serialNumber: data.serialNumber },
+            { relayId: data.smibBoard },
+            ...(data.custom?.name
+              ? [{ 'custom.name': data.custom.name.trim() }]
+              : []),
+          ],
+        },
+        activeCriteria,
+      ],
+    }).lean()) as GamingMachine | null;
+
+    if (duplicateCheck) {
+      let error = 'Record already exists';
+      if (duplicateCheck.serialNumber === data.serialNumber)
+        error = 'Serial number already exists';
+      else if (duplicateCheck.relayId === data.smibBoard)
+        error = 'SMIB board already exists';
+      else if (duplicateCheck.custom?.name === data.custom?.name?.trim())
+        error = 'Machine custom name already exists';
+
+      return NextResponse.json({ success: false, error }, { status: 400 });
+    }
+
+    if (!data.gamingLocation)
       return NextResponse.json(
         { success: false, error: 'Location ID is required' },
         { status: 400 }
       );
-    }
 
-    // ============================================================================
-    // STEP 6: Generate machine ID
-    // ============================================================================
     const machineId = await generateMongoId();
-
-    // ============================================================================
-    // STEP 7: Create machine document
-    // ============================================================================
     const newMachine = new Machine({
       _id: machineId,
-      serialNumber: data.serialNumber,
-      game: data.game,
-      gameType: data.gameType || 'slot', // Default to "slot" if not provided
-      isCronosMachine: data.isCronosMachine || false,
-      // Handle isCronosMachine vs isSasMachine logic
-      isSasMachine: data.isCronosMachine ? false : true, // If Cronos, not SAS. If not given, default to SAS
-      loggedIn: false, // Default to not logged in
-      machineMembershipSettings: {
-        isPointsAllowed: true,
-        isFreePlayAllowed: true,
-        pointsAwardMethod: 'gamesPlayed',
-        freePlayAmount: 200,
-        freePlayCreditsTimeout: 86400,
-      },
-      nonRestricted: 0,
-      restricted: 0,
-      sasVersion: '',
-      uaccount: 0,
-      gameConfig: {
-        accountingDenomination:
-          parseFloat(data.accountingDenomination.toString()) || 0,
-        additionalId: '',
-        gameOptions: '',
-        maxBet: '',
-        payTableId: '',
-        progressiveGroup: '',
-        theoreticalRtp: 0,
-      },
-      cabinetType: data.cabinetType,
-      assetStatus: data.assetStatus,
-      gamingLocation: data.gamingLocation, // Set the location ID
-      relayId: data.smibBoard,
-      collectionTime: data.collectionSettings?.lastCollectionTime,
-      previousCollectionTime: null, // Default to null for new machines
-      collectionMeters: {
-        metersIn: parseFloat(data.collectionSettings?.lastMetersIn || '0') || 0,
-        metersOut:
-          parseFloat(data.collectionSettings?.lastMetersOut || '0') || 0,
-      },
-      // Add all missing fields with default values
-      billValidator: {
-        balance: 0,
-        notes: [],
-      },
-      config: {
-        enableRte: false,
-        lockMachine: false,
-        lockBvOnLogOut: false,
-      },
-      playableBalance: 0,
-      custom: { name: data.serialNumber },
-      balances: { cashable: 0 },
-      curProcess: { name: '', next: '' },
-      tasks: {
-        pendingHandpay: {
-          name: '',
-          steps: [],
-          currentStepIndex: 0,
-          retryAttempts: 0,
-        },
-      },
-      origSerialNumber: '',
-      machineId: '',
-      gamingBoard: '',
-
-      manuf: data.manufacturer || '',
-      smibBoard: data.smibBoard,
-      smibVersion: { firmware: '', version: '' },
-      smibConfig: {
-        mqtt: {
-          mqttSecure: 0,
-          mqttQOS: 0,
-          mqttURI: '',
-          mqttSubTopic: '',
-          mqttPubTopic: '',
-          mqttCfgTopic: '',
-          mqttIdleTimeS: 0,
-        },
-        net: {
-          netMode: 0,
-          netStaSSID: '',
-          netStaPwd: '',
-          netStaChan: 0,
-        },
-        coms: {
-          comsAddr: 0,
-          comsMode: 0,
-          comsRateMs: 0,
-          comsRTE: 0,
-          comsGPC: 0,
-        },
-        ota: {
-          otaURL: '',
-        },
-      },
-      sasMeters: {
-        drop: 0,
-        totalCancelledCredits: 0,
-        gamesPlayed: 0,
-        moneyOut: 0,
-        slotDoorOpened: 0,
-        powerReset: 0,
-        totalHandPaidCancelledCredits: 0,
-        coinIn: 0,
-        coinOut: 0,
-        totalWonCredits: 0,
-        jackpot: 0,
-        currentCredits: 0,
-        gamesWon: 0,
-      },
-      billMeters: {
-        dollar1: 0,
-        dollar2: 0,
-        dollar5: 0,
-        dollar10: 0,
-        dollar20: 0,
-        dollar50: 0,
-        dollar100: 0,
-        dollar500: 0,
-        dollar1000: 0,
-        dollar2000: 0,
-        dollar5000: 0,
-        dollarTotal: 0,
-        dollarTotalUnknown: 0,
-      },
-      operationsWhileIdle: { extendedMeters: new Date() },
-      collectionMetersHistory: [],
-
-      manufacturer: data.manufacturer || '',
-      gameNumber: '',
-      protocols: [],
-      numberOfEnabledGames: 0,
-      enabledGameNumbers: [],
-      noOfGames: 0,
-      viewingAccountDenomination: [],
-      isSunBoxDevice: false,
-      sessionHistory: [],
-      currentSession: '',
-      viewingAccountDenominationHistory: [],
-      selectedDenomination: { drop: 0, totalCancelledCredits: 0 },
-      lastBillMeterAt: new Date(),
-      lastSasMeterAt: new Date(),
-      machineType: '',
-      machineStatus: '',
-      lastMaintenanceDate: new Date(),
-      nextMaintenanceDate: new Date(),
-      maintenanceHistory: [],
-      lastActivity: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      deletedAt: new Date(-1), // SMIB boards require all fields to be present
-      // Add the new fields from the schema
-      collectorDenomination: 1, // Collection Report Multiplier as specified in prompt
+      ...data,
+      isSasMachine: !data.isCronosMachine,
+      loggedIn: false,
     });
 
-    // ============================================================================
-    // STEP 8: Save machine to database
-    // ============================================================================
     await newMachine.save();
 
-    // ============================================================================
-    // STEP 9: Log activity
-    // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        const createChanges = [
-          {
-            field: 'serialNumber',
-            oldValue: null,
-            newValue: data.serialNumber,
-          },
-          { field: 'game', oldValue: null, newValue: data.game },
-          {
-            field: 'gameType',
-            oldValue: null,
-            newValue: data.gameType || 'slot',
-          },
-          {
-            field: 'isCronosMachine',
-            oldValue: null,
-            newValue: data.isCronosMachine,
-          },
-          { field: 'cabinetType', oldValue: null, newValue: data.cabinetType },
-          { field: 'assetStatus', oldValue: null, newValue: data.assetStatus },
-          {
-            field: 'gamingLocation',
-            oldValue: null,
-            newValue: data.gamingLocation,
-          },
-          { field: 'smibBoard', oldValue: null, newValue: data.smibBoard },
-          {
-            field: 'accountingDenomination',
-            oldValue: null,
-            newValue: data.accountingDenomination,
-          },
-
-          {
-            field: 'serialNumber',
-            oldValue: null,
-            newValue: data.serialNumber,
-          },
-          { field: 'game', oldValue: null, newValue: data.game },
-          {
-            field: 'gameType',
-            oldValue: null,
-            newValue: data.gameType || 'slot',
-          },
-          {
-            field: 'isCronosMachine',
-            oldValue: null,
-            newValue: data.isCronosMachine,
-          },
-          { field: 'cabinetType', oldValue: null, newValue: data.cabinetType },
-          { field: 'assetStatus', oldValue: null, newValue: data.assetStatus },
-          {
-            field: 'gamingLocation',
-            oldValue: null,
-            newValue: data.gamingLocation,
-          },
-          { field: 'smibBoard', oldValue: null, newValue: data.smibBoard },
-          {
-            field: 'accountingDenomination',
-            oldValue: null,
-            newValue: data.accountingDenomination,
-          },
-        ];
-
-        await logActivity({
-          action: 'CREATE',
-          details: `Created new machine "${data.serialNumber}" with game "${data.game}"`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          userId: currentUser._id as string,
-          username: currentUser.emailAddress as string,
-          metadata: {
-            userId: currentUser._id as string,
-            userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'machine',
-            resourceId: machineId,
-            resourceName: data.serialNumber,
-            changes: createChanges,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
-    }
-
-    // ============================================================================
-    // STEP 10: Return created machine
-    // ============================================================================
-    // Force revalidation of the cabinets and machines pages
     revalidatePath('/cabinets');
     revalidatePath('/machines');
 
-    return NextResponse.json({
-      success: true,
-      data: convertResponseToTrinidadTime(newMachine),
-    });
-  } catch (error: unknown) {
-    const duration = Date.now() - startTime;
-    let errorMessage =
-      error instanceof Error ? error.message : 'Failed to create new machine';
-    let status = 500;
-
-    // Handle MongoDB duplicate key error (code 11000)
-    const mongoError = error as { code?: number; keyPattern?: Record<string, unknown>; message?: string };
-    if (mongoError && typeof mongoError === 'object' && mongoError.code === 11000) {
-      let fieldName = 'field';
-      if (mongoError.keyPattern) {
-        fieldName = Object.keys(mongoError.keyPattern)[0];
-      } else if (mongoError.message && mongoError.message.includes('index:')) {
-        const match = mongoError.message.match(/index: (.+?)_\d/);
-        if (match && match[1]) fieldName = match[1];
-      }
-
-      const friendlyFieldMap: Record<string, string> = {
-        serialNumber: 'Serial Number',
-        assetNumber: 'Asset Number',
-        relayId: 'Relay ID',
-      };
-
-      const displayField = friendlyFieldMap[fieldName] || fieldName;
-      errorMessage = `A machine with this ${displayField} already exists. Please use a unique value.`;
-      status = 400;
-    }
-
-    console.error(
-      `[Machines API POST] Error after ${duration}ms:`,
-      errorMessage
-    );
     return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status }
+      { success: true, data: newMachine },
+      { status: 201 }
     );
-  }
+  });
 }
 
 /**
- * Main PUT handler for updating an existing machine
- *
- * Flow:
- * 1. Connect to database
- * 2. Parse machine ID from query parameters
- * 3. Parse and validate request body
- * 4. Validate update fields
- * 5. Find original machine
- * 6. Update machine in database
- * 7. Update related Collections if serial number or game changed
- * 8. Return updated machine
+ * Main PUT handler for updating a machine
  */
 export async function PUT(request: NextRequest) {
-  const startTime = Date.now();
-
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 2: Parse machine ID from query parameters
-    // ============================================================================
-    const id = request.nextUrl.searchParams.get('id');
-
-    if (!id) {
+  return withApiAuth(request, async () => {
+    const { searchParams } = request.nextUrl;
+    const id = searchParams.get('id');
+    if (!id)
       return NextResponse.json(
-        { success: false, error: 'Cabinet ID is required' },
+        { success: false, error: 'Machine ID is required' },
         { status: 400 }
       );
-    }
 
-    // ID validation removed - _id is stored as String, not ObjectId
+    const data = await request.json();
+    const activeCriteria = {
+      $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
+    };
 
-    // ============================================================================
-    // STEP 3: Parse and validate request body
-    // ============================================================================
-    const data = (await request.json()) as MachineUpdateData;
+    if (data.serialNumber || data.relayId || data.smibBoard || data.custom?.name) {
+      const normalizedSerial = data.serialNumber
+        ? normalizeSerialNumber(data.serialNumber)
+        : undefined;
+      const normalizedSmib = (data.relayId ?? data.smibBoard ?? data.smbId) !== undefined
+        ? normalizeSmibBoard(data.relayId ?? data.smibBoard ?? data.smbId)
+        : undefined;
+      const trimmedCustomName = data.custom?.name?.trim();
 
-    // ============================================================================
-    // STEP 4: Validate update fields
-    // ============================================================================
-    // Backend validations mirroring frontend (only when provided)
-    if (data.serialNumber !== undefined) {
-      const serialNumberError = validateSerialNumber(data.serialNumber);
-      if (serialNumberError) {
-        return NextResponse.json(
-          { success: false, error: serialNumberError },
-          { status: 400 }
-        );
+      const duplicateCheck = (await Machine.findOne({
+        _id: { $ne: id },
+        $and: [
+          {
+            $or: [
+              ...(normalizedSerial ? [{ serialNumber: normalizedSerial }] : []),
+              ...(normalizedSmib ? [{ relayId: normalizedSmib }] : []),
+              ...(trimmedCustomName
+                ? [{ 'custom.name': trimmedCustomName }]
+                : []),
+            ],
+          },
+          activeCriteria,
+        ],
+      }).lean()) as GamingMachine | null;
+
+      if (duplicateCheck) {
+        let error = 'Record already exists';
+        if (
+          normalizedSerial &&
+          duplicateCheck.serialNumber === normalizedSerial
+        )
+          error = 'Serial number already exists';
+        else if (normalizedSmib && duplicateCheck.relayId === normalizedSmib)
+          error = 'SMIB board already exists';
+        else if (
+          trimmedCustomName &&
+          duplicateCheck.custom?.name === trimmedCustomName
+        )
+          error = 'Machine custom name already exists';
+
+        return NextResponse.json({ success: false, error }, { status: 400 });
       }
-      data.serialNumber = normalizeSerialNumber(data.serialNumber);
-    }
 
-    if (data.smibBoard !== undefined) {
-      const smibError = validateSmibBoard(data.smibBoard);
-      if (smibError) {
-        return NextResponse.json(
-          { success: false, error: smibError },
-          { status: 400 }
-        );
+      // Update values if normalized
+      if (normalizedSerial) data.serialNumber = normalizedSerial;
+      if (normalizedSmib) {
+        data.relayId = normalizedSmib;
+        data.smibBoard = normalizedSmib;
       }
-      data.smibBoard = normalizeSmibBoard(data.smibBoard) ?? '';
     }
 
-    // ============================================================================
-    // STEP 5: Find original machine
-    // ============================================================================
-    // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const originalMachine = await Machine.findOne({ _id: id });
+    // Fetch original document for activity logging (before/after diff)
+    const originalMachine = await Machine.findOne({ _id: id }).lean() as GamingMachine | null;
     if (!originalMachine) {
       return NextResponse.json(
-        { success: false, error: 'Cabinet not found' },
+        { success: false, error: 'Machine not found' },
         { status: 404 }
       );
     }
 
-    // ============================================================================
-    // STEP 6: Update machine in database
-    // ============================================================================
-    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-    const updatedMachine = await Machine.findOneAndUpdate({ _id: id }, data, {
-      new: true,
-      runValidators: true,
-    });
+    console.log(`[Machines PUT] Updating machine ${id}`);
 
     // ============================================================================
-    // STEP 7: Update related Collections if serial number or game changed
+    // STEP 6: Build update fields from request data
     // ============================================================================
-    // If serial number was updated, also update it in Collections
-    if (
-      data.serialNumber !== undefined &&
-      data.serialNumber !== '' &&
-      data.serialNumber !== originalMachine.serialNumber
-    ) {
-      try {
-        await Collections.updateMany(
-          { machineId: id },
-          { $set: { serialNumber: data.serialNumber } }
-        );
+    const updateFields: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
 
-        console.warn(
-          `Updated serial number in Collections for machine ${id} from "${originalMachine.serialNumber}" to "${data.serialNumber}"`
-        );
-      } catch (collectionsError) {
-        console.error(
-          'Failed to update serial number in Collections:',
-          collectionsError
-        );
-        // Don't fail the entire operation if Collections update fails
+    // Use robust mapping instead of naive $set to handle aliases and nested fields
+    if (data.assetNumber !== undefined && data.assetNumber !== '') {
+      updateFields.serialNumber = data.assetNumber;
+      updateFields.assetNumber = data.assetNumber;
+    } else if (data.serialNumber) {
+      updateFields.serialNumber = data.serialNumber;
+    }
+
+    if (data.installedGame !== undefined && data.installedGame !== '') {
+      updateFields.game = data.installedGame;
+    } else if (data.game) {
+      updateFields.game = data.game;
+    }
+
+    if (data.gameType !== undefined && data.gameType !== '') {
+      updateFields.gameType = data.gameType;
+    }
+
+    if (data.manufacturer !== undefined && data.manufacturer !== '') {
+      updateFields.manufacturer = data.manufacturer;
+      updateFields.manuf = data.manufacturer;
+    } else if (data.manuf) {
+      updateFields.manuf = data.manuf;
+      updateFields.manufacturer = data.manuf;
+    }
+
+    // Handle SMIB board fields consistently
+    const smibValue = data.smbId ?? data.smibBoard ?? data.relayId;
+    if (smibValue !== undefined) {
+      updateFields.relayId = smibValue;
+      updateFields.smibBoard = smibValue;
+      updateFields.smbId = smibValue;
+    }
+
+    if (data.status !== undefined && data.status !== '') {
+      updateFields.assetStatus = data.status;
+    } else if (data.assetStatus) {
+      updateFields.assetStatus = data.assetStatus;
+    }
+
+    if (data.cabinetType !== undefined && data.cabinetType !== '') {
+      updateFields.cabinetType = data.cabinetType;
+    }
+
+    if (data.accountingDenomination !== undefined && data.accountingDenomination !== '') {
+      updateFields['gameConfig.accountingDenomination'] = Number(data.accountingDenomination);
+    }
+
+    const multValue = data.collectionMultiplier ?? data.collectorDenomination;
+    if (multValue !== undefined && multValue !== '') {
+      updateFields.collectionMultiplier = String(multValue);
+      updateFields.collectorDenomination = Number(multValue) || 1;
+    }
+
+    if (data.isCronosMachine !== undefined) {
+      updateFields.isSasMachine = !data.isCronosMachine;
+    } else if (data.isSasMachine !== undefined) {
+       updateFields.isSasMachine = data.isSasMachine;
+    }
+
+    const locationValue = data.location ?? data.locationId ?? data.gamingLocation;
+    if (locationValue !== undefined && locationValue !== '') {
+      updateFields.gamingLocation = locationValue;
+    }
+
+    // Handle collection meters / settings
+    const colMeters = data.collectionMeters ?? data.collectionSettings;
+    if (colMeters !== undefined) {
+      const metersUpdate: Record<string, number> = {};
+      const metersIn = colMeters.metersIn ?? colMeters.lastMetersIn;
+      const metersOut = colMeters.metersOut ?? colMeters.lastMetersOut;
+
+      if (metersIn !== undefined && metersIn !== '') {
+        metersUpdate.metersIn = Number(metersIn) || 0;
+      }
+      if (metersOut !== undefined && metersOut !== '') {
+        metersUpdate.metersOut = Number(metersOut) || 0;
+      }
+
+      if (Object.keys(metersUpdate).length > 0) {
+        updateFields.collectionMeters = metersUpdate;
       }
     }
 
-    // If game name was updated, also update it in Collections
-    if (
-      data.game !== undefined &&
-      data.game !== '' &&
-      data.game !== originalMachine.game
-    ) {
-      try {
-        await Collections.updateMany(
-          { machineId: id },
-          { $set: { machineName: data.game } }
-        );
+    const colTimeValue = data.collectionTime ?? data.collectionSettings?.lastCollectionTime;
+    if (colTimeValue !== undefined && colTimeValue !== '') {
+      updateFields.collectionTime = new Date(colTimeValue);
+    }
 
-        console.warn(
-          `Updated machine name in Collections for machine ${id} from "${originalMachine.game}" to "${data.game}"`
-        );
-      } catch (collectionsError) {
-        console.error(
-          'Failed to update machine name in Collections:',
-          collectionsError
-        );
-        // Don't fail the entire operation if Collections update fails
+    if (data.custom !== undefined) {
+      if (data.custom && typeof data.custom === 'object' && data.custom.name !== undefined) {
+        updateFields['custom.name'] = data.custom.name;
       }
     }
 
-    // ============================================================================
-    // STEP 8: Log activity with accurate change tracking
-    // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        // Build changes array - ONLY for fields that were actually updated
-        const updateChanges: Array<{
-          field: string;
-          oldValue: unknown;
-          newValue: unknown;
-        }> = [];
+    const updatedMachine = await Machine.findOneAndUpdate(
+      { _id: id },
+      { $set: updateFields },
+      { new: true }
+    );
 
-        if (data.serialNumber !== undefined) {
-          updateChanges.push({
-            field: 'serialNumber',
-            oldValue: originalMachine.serialNumber,
-            newValue: data.serialNumber,
-          });
-        }
-        if (data.game !== undefined) {
-          updateChanges.push({
-            field: 'game',
-            oldValue: originalMachine.game,
-            newValue: data.game,
-          });
-        }
-        if (data.gameType !== undefined) {
-          updateChanges.push({
-            field: 'gameType',
-            oldValue: originalMachine.gameType,
-            newValue: data.gameType,
-          });
-        }
-        if (data.isCronosMachine !== undefined) {
-          updateChanges.push({
-            field: 'isCronosMachine',
-            oldValue: originalMachine.isCronosMachine,
-            newValue: data.isCronosMachine,
-          });
-        }
-        if (data.cabinetType !== undefined) {
-          updateChanges.push({
-            field: 'cabinetType',
-            oldValue: originalMachine.cabinetType,
-            newValue: data.cabinetType,
-          });
-        }
-        if (data.assetStatus !== undefined) {
-          updateChanges.push({
-            field: 'assetStatus',
-            oldValue: originalMachine.assetStatus,
-            newValue: data.assetStatus,
-          });
-        }
-        if (data.gamingLocation !== undefined) {
-          updateChanges.push({
-            field: 'gamingLocation',
-            oldValue: originalMachine.gamingLocation,
-            newValue: data.gamingLocation,
-          });
-        }
-        if (data.smibBoard !== undefined) {
-          updateChanges.push({
-            field: 'smibBoard',
-            oldValue: originalMachine.smibBoard,
-            newValue: data.smibBoard,
-          });
-        }
-        if (data.accountingDenomination !== undefined) {
-          updateChanges.push({
-            field: 'accountingDenomination',
-            oldValue: originalMachine.accountingDenomination,
-            newValue: data.accountingDenomination,
-          });
-        }
+    if (!updatedMachine)
+      return NextResponse.json(
+        { success: false, error: 'Machine not found' },
+        { status: 404 }
+      );
 
-        await logActivity({
-          action: 'UPDATE',
-          details: `Updated machine "${originalMachine.serialNumber}" (${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''})`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          userId: currentUser._id as string,
-          username: currentUser.emailAddress as string,
-          metadata: {
-            userId: currentUser._id as string,
-            userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'machine',
-            resourceId: id,
-            resourceName: originalMachine.serialNumber,
-            changes: updateChanges,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
-    }
-
-    // ============================================================================
-    // STEP 9: Return updated machine
-    // ============================================================================
-    // Force revalidation of the cabinets and machines pages
     revalidatePath('/cabinets');
     revalidatePath('/machines');
 
-    return NextResponse.json({
-      success: true,
-      data: convertResponseToTrinidadTime(updatedMachine),
-    });
-  } catch (error: unknown) {
-    const duration = Date.now() - startTime;
-    let errorMessage =
-      error instanceof Error ? error.message : 'Failed to update machine';
-    let status = 500;
+    console.log(`[Machines PUT] Machine ${id} updated successfully`);
 
-    // Handle MongoDB duplicate key error (code 11000)
-    const mongoError = error as { code?: number; keyPattern?: Record<string, unknown>; message?: string };
-    if (mongoError && typeof mongoError === 'object' && mongoError.code === 11000) {
-      let fieldName = 'field';
-      if (mongoError.keyPattern) {
-        fieldName = Object.keys(mongoError.keyPattern)[0];
-      } else if (mongoError.message && mongoError.message.includes('index:')) {
-        const match = mongoError.message.match(/index: (.+?)_\d/);
-        if (match && match[1]) fieldName = match[1];
-      }
-
-      const friendlyFieldMap: Record<string, string> = {
-        serialNumber: 'Serial Number',
-        assetNumber: 'Asset Number',
-        relayId: 'Relay ID',
-      };
-
-      const displayField = friendlyFieldMap[fieldName] || fieldName;
-      errorMessage = `A machine with this ${displayField} already exists. Please use a unique value.`;
-      status = 400;
+    // Fire-and-forget activity log
+    const machineUser = await getUserFromServer();
+    if (machineUser) {
+      logActivity({
+        action: 'update',
+        details: `Machine ${originalMachine.serialNumber || id} updated`,
+        userId: String(machineUser._id),
+        username: String(machineUser.username || machineUser.email || machineUser._id),
+        metadata: {
+          resource: 'machine',
+          resourceId: id,
+          resourceName: originalMachine.serialNumber || id,
+          changes: calculateChanges(
+            originalMachine as unknown as Record<string, unknown>,
+            data as Record<string, unknown>
+          ),
+          previousData: originalMachine,
+          newData: updatedMachine.toObject(),
+        },
+      }).catch(err => console.error('[Machines PUT] Activity log failed:', err));
     }
 
-    console.error(
-      `[Machines API PUT] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status }
-    );
-  }
+    return NextResponse.json({
+      success: true,
+      data: updatedMachine,
+    });
+  });
 }
 
 /**
  * Main DELETE handler for soft deleting a machine
- *
- * Flow:
- * 1. Connect to database
- * 2. Parse machine ID from query parameters
- * 3. Find machine to delete
- * 4. Perform soft delete
- * 5. Log activity
- * 6. Return deletion result
  */
 export async function DELETE(request: NextRequest) {
-  const startTime = Date.now();
-
-  try {
-    // ============================================================================
-    // STEP 1: Connect to database
-    // ============================================================================
-    await connectDB();
-
-    // ============================================================================
-    // STEP 2: Parse machine ID from query parameters
-    // ============================================================================
+  return withApiAuth(request, async ({ isAdminOrDev }) => {
     const id = request.nextUrl.searchParams.get('id');
-
-    if (!id) {
+    if (!id)
       return NextResponse.json(
-        { success: false, error: 'Cabinet ID is required' },
+        { success: false, error: 'Machine ID is required' },
         { status: 400 }
       );
-    }
 
-    // ============================================================================
-    // STEP 3: Find machine to delete
-    // ============================================================================
-    // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const machineToDelete = await Machine.findOne({ _id: id });
-    if (!machineToDelete) {
+    if (!machineToDelete)
       return NextResponse.json(
-        { success: false, error: 'Cabinet not found' },
+        { success: false, error: 'Machine not found' },
         { status: 404 }
       );
-    }
 
-    // ============================================================================
-    // STEP 4: Perform delete (Hard for Developers if requested, Soft for others)
-    // ============================================================================
-    const hardDelete = request.nextUrl.searchParams.get('hardDelete') === 'true';
-    const currentUser = await getUserFromServer();
-    const userRoles = (currentUser?.roles as string[]) || [];
-    const isDeveloper = userRoles.map(r => r?.toLowerCase()).includes('developer');
-
-    if (hardDelete && isDeveloper) {
-      // Permanent removal
+    const hardDelete =
+      request.nextUrl.searchParams.get('hardDelete') === 'true';
+    if (hardDelete && isAdminOrDev) {
       await Machine.deleteOne({ _id: id });
-      console.log(`[Machines API] Hard deleted machine: ${id} by ${currentUser?.emailAddress}`);
     } else {
-      // Soft delete (Archive)
       await Machine.findOneAndUpdate(
         { _id: id },
-        {
-          $set: {
-            deletedAt: new Date(),
-            updatedAt: new Date(),
-          },
-        }
+        { $set: { deletedAt: new Date(), updatedAt: new Date() } }
       );
     }
 
-    // ============================================================================
-    // STEP 5: Log activity
-    // ============================================================================
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        const deleteChanges = [
-          {
-            field: 'serialNumber',
-            oldValue: machineToDelete.serialNumber,
-            newValue: null,
-          },
-          { field: 'game', oldValue: machineToDelete.game, newValue: null },
-          {
-            field: 'gameType',
-            oldValue: machineToDelete.gameType,
-            newValue: null,
-          },
-          {
-            field: 'isCronosMachine',
-            oldValue: machineToDelete.isCronosMachine,
-            newValue: null,
-          },
-          {
-            field: 'cabinetType',
-            oldValue: machineToDelete.cabinetType,
-            newValue: null,
-          },
-          {
-            field: 'assetStatus',
-            oldValue: machineToDelete.assetStatus,
-            newValue: null,
-          },
-          {
-            field: 'gamingLocation',
-            oldValue: machineToDelete.gamingLocation,
-            newValue: null,
-          },
-          {
-            field: 'smibBoard',
-            oldValue: machineToDelete.smibBoard,
-            newValue: null,
-          },
-
-          {
-            field: 'serialNumber',
-            oldValue: machineToDelete.serialNumber,
-            newValue: null,
-          },
-          { field: 'game', oldValue: machineToDelete.game, newValue: null },
-          {
-            field: 'gameType',
-            oldValue: machineToDelete.gameType,
-            newValue: null,
-          },
-          {
-            field: 'isCronosMachine',
-            oldValue: machineToDelete.isCronosMachine,
-            newValue: null,
-          },
-          {
-            field: 'cabinetType',
-            oldValue: machineToDelete.cabinetType,
-            newValue: null,
-          },
-          {
-            field: 'assetStatus',
-            oldValue: machineToDelete.assetStatus,
-            newValue: null,
-          },
-          {
-            field: 'gamingLocation',
-            oldValue: machineToDelete.gamingLocation,
-            newValue: null,
-          },
-          {
-            field: 'smibBoard',
-            oldValue: machineToDelete.smibBoard,
-            newValue: null,
-          },
-        ];
-
-        await logActivity({
-          action: 'DELETE',
-          details: `Deleted machine "${machineToDelete.serialNumber || machineToDelete.game
-            }"`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          userId: currentUser._id as string,
-          username: currentUser.emailAddress as string,
-          metadata: {
-            userId: currentUser._id as string,
-            userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'machine',
-            resourceId: id,
-            resourceName: machineToDelete.serialNumber || machineToDelete.game,
-            changes: deleteChanges,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
-    }
-
-    // ============================================================================
-    // STEP 6: Return deletion result
-    // ============================================================================
-    // Force revalidation of the cabinets and machines pages
     revalidatePath('/cabinets');
     revalidatePath('/machines');
 
     return NextResponse.json({
       success: true,
-      message: 'Cabinet deleted successfully',
+      message: 'Machine deleted successfully',
     });
-  } catch (error: unknown) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Failed to delete cabinet';
-    console.error(
-      `[Machines API DELETE] Error after ${duration}ms:`,
-      errorMessage
-    );
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
+  });
 }
-

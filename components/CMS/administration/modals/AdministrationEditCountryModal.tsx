@@ -5,6 +5,7 @@
 
 'use client';
 
+import { ChangeEvent, FormEvent } from 'react';
 import type { Country } from '@/lib/types/country';
 import { gsap } from 'gsap';
 import { useEffect, useRef, useState } from 'react';
@@ -53,12 +54,12 @@ export default function AdministrationEditCountryModal({
     }
   }, [open]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!country?._id) return;
 

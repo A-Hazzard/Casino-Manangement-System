@@ -6,6 +6,7 @@ import { Suspense } from 'react';
 import ReportsPageContent from '@/components/CMS/reports/ReportsPageContent';
 import { ReportsPageSkeleton } from '@/components/shared/ui/skeletons/ReportsSkeletons';
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
+import MaintenanceWrapper from '@/components/shared/maintenance/MaintenanceWrapper';
 
 /**
  * Reports Page
@@ -22,9 +23,11 @@ import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
 export default function ReportsPage() {
   return (
     <ProtectedRoute requiredPage="reports">
-      <Suspense fallback={<ReportsPageSkeleton />}>
-        <ReportsPageContent />
-      </Suspense>
+      <MaintenanceWrapper pageKey="reports">
+        <Suspense fallback={<ReportsPageSkeleton />}>
+          <ReportsPageContent />
+        </Suspense>
+      </MaintenanceWrapper>
     </ProtectedRoute>
   );
 }

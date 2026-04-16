@@ -48,7 +48,7 @@ import {
     TableRow,
 } from '@/components/shared/ui/table';
 import { useUserStore } from '@/lib/store/userStore';
-import { formatDate } from '@/lib/utils/formatting';
+import { formatDateString } from '@/lib/utils/formatting';
 import { Activity, ArrowUpDown, Check, Copy, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -68,9 +68,11 @@ function AdministrationActivityLogsTable({
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0); // 0-indexed
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set([1]));
-  const itemsPerPage = 10;
-  const itemsPerBatch = 50;
-  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 5
+  const itemsPerPage = 20;
+  const itemsPerBatch = 40;
+  const pagesPerBatch = itemsPerBatch / itemsPerPage; // 2
+  const [serverTotalCount, setServerTotalCount] = useState(0);
+  const [serverTotalPages, setServerTotalPages] = useState(1);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,9 +96,13 @@ function AdministrationActivityLogsTable({
 
   // Delete states
   const { user: currentUser } = useUserStore();
-  const userRoles = currentUser?.roles?.map(r => r.toLowerCase()) || [];
+  const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
   const isDeveloper = userRoles.includes('developer');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // ObjectID resolution state (developer-only)
+  const [resolveProgress, setResolveProgress] = useState<{ updated: number; total: number; remaining: number } | null>(null);
+  const [isResolving, setIsResolving] = useState(false);
   const [logToDelete, setLogToDelete] = useState<ActivityLog | null>(null);
   const [deleteType, setDeleteType] = useState<'soft' | 'hard'>('soft');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -207,6 +213,11 @@ function AdministrationActivityLogsTable({
         const logs = data.data.activities || data.data.logs || [];
         setAllLogs(logs);
         setLoadedBatches(new Set([1]));
+        
+        if (data.data.pagination) {
+          setServerTotalCount(data.data.pagination.totalCount || 0);
+          setServerTotalPages(data.data.pagination.totalPages || 1);
+        }
       }
     } catch (error) {
       console.error('Error fetching activity logs:', error);
@@ -372,12 +383,10 @@ function AdministrationActivityLogsTable({
     return allLogs.slice(startIndex, endIndex);
   }, [allLogs, currentPage, itemsPerPage, pagesPerBatch]);
 
-  // Calculate total pages based on all loaded batches
+  // Calculate total pages based on server data
   const totalPages = useMemo(() => {
-    const totalItems = allLogs.length;
-    const totalPagesFromItems = Math.ceil(totalItems / itemsPerPage);
-    return totalPagesFromItems > 0 ? totalPagesFromItems : 1;
-  }, [allLogs.length, itemsPerPage]);
+    return serverTotalPages > 0 ? serverTotalPages : 1;
+  }, [serverTotalPages]);
 
   // Handle sort
   const handleSort = (column: string) => {
@@ -470,6 +479,43 @@ function AdministrationActivityLogsTable({
     };
   }, [fetchInitialBatch]);
 
+  // Developer-only: poll to resolve ObjectID resourceNames every 5 seconds
+  useEffect(() => {
+    if (!isDeveloper) return;
+
+    const runResolve = async () => {
+      if (isResolving) return;
+      setIsResolving(true);
+      try {
+        const res = await fetch('/api/admin/resolve-machine-names?limit=100');
+        const data = await res.json();
+        if (data.success) {
+          setResolveProgress({ updated: data.updated, total: data.total, remaining: data.remaining });
+          // If any logs were updated, refresh the table
+          if (data.updated > 0) {
+            fetchInitialBatch();
+          }
+        }
+      } catch {
+        // Silently ignore resolution errors
+      } finally {
+        setIsResolving(false);
+      }
+    };
+
+    // Run immediately on mount
+    runResolve();
+
+    // Then poll every 5 seconds while there are remaining logs
+    const interval = setInterval(() => {
+      if (resolveProgress === null || resolveProgress.remaining > 0) {
+        runResolve();
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isDeveloper, fetchInitialBatch]);
+
   // Handle delete action
   const handleDeleteClick = (log: ActivityLog) => {
     setLogToDelete(log);
@@ -503,6 +549,19 @@ function AdministrationActivityLogsTable({
 
   return (
     <div className={className}>
+      {/* Developer-only: ObjectID resolution progress banner */}
+      {isDeveloper && resolveProgress !== null && resolveProgress.total > 0 && (
+        <div className="mb-3 flex items-center gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm text-violet-800">
+          <span className="font-semibold text-violet-600">[DEV]</span>
+          {resolveProgress.remaining > 0 ? (
+            <span>
+              Resolving machine names: <strong>{resolveProgress.updated}</strong> updated this pass, <strong>{resolveProgress.remaining}</strong> remaining…
+            </span>
+          ) : (
+            <span>Machine name resolution complete — <strong>{resolveProgress.total}</strong> names resolved.</span>
+          )}
+        </div>
+      )}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -631,7 +690,7 @@ function AdministrationActivityLogsTable({
                       logs.map((log: ActivityLog) => (
                         <TableRow key={log._id}>
                           <TableCell className="font-mono text-sm">
-                            {formatDate(log.timestamp)}
+                            {formatDateString(log.timestamp)}
                           </TableCell>
                           <TableCell centered>
                             <div className="space-y-1">
@@ -826,15 +885,13 @@ function AdministrationActivityLogsTable({
           </div>
 
           {/* Pagination Controls */}
-          {!loading && logs.length > 0 && (
-            <div className="mt-8 flex justify-center pb-4">
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                setCurrentPage={setCurrentPage}
-              />
-            </div>
-          )}
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setCurrentPage={setCurrentPage}
+            totalCount={serverTotalCount}
+            showTotalCount
+          />
         </CardContent>
       </Card>
 
@@ -865,7 +922,7 @@ function AdministrationActivityLogsTable({
                 <p>ID: {logToDelete?._id}</p>
                 <p>Action: {logToDelete?.action}</p>
                 <p>User: {logToDelete?.username}</p>
-                <p>Time: {logToDelete && formatDate(logToDelete.timestamp)}</p>
+                <p>Time: {logToDelete && formatDateString(logToDelete.timestamp)}</p>
               </div>
             </div>
 

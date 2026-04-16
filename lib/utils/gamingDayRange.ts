@@ -1,338 +1,172 @@
 /**
  * Gaming Day Range Utility
  *
- * This utility handles the calculation of gaming day ranges based on each location's
- * gameDayOffset setting. Gaming days don't follow standard calendar days - they start
- * at a specific hour (e.g., 9AM) and run until the same hour the next day.
+ * Handles calculation of gaming day ranges based on location-specific gameDayOffset settings.
+ * Gaming days follow business rules, not calendar days:
+ * - Start at a configurable hour (e.g., 8 AM Trinidad time)
+ * - Run until 1ms before the same hour the next day
  *
- * Features:
- * - Gaming day range calculation
- * - Timezone offset handling for different licencees
- * - Support for custom game day offsets
- * - Date range calculations for time periods
- *
- * Example: If gameDayOffset is 9 (9AM start):
- * - "Today" becomes: 9AM today to 9AM tomorrow (Trinidad time)
- * - "Last 7 days" becomes: 9AM 7 days ago to 9AM tomorrow (Trinidad time)
+ * @module lib/utils/gamingDayRange
  */
 
-// ============================================================================
-// Type Definitions
-// ============================================================================
+/**
+ * Represents a gaming day time range in UTC.
+ */
 export type GamingDayRange = {
+  /** Start of the gaming day range (inclusive) in UTC */
   rangeStart: Date;
+  /** End of the gaming day range (inclusive) in UTC */
   rangeEnd: Date;
 };
 
-// ============================================================================
-// Timezone Functions
-// ============================================================================
-
 /**
- * Calculate gaming day range for a single date
- * @param selectedDate - The date to calculate the gaming day for
- * @param gameDayStartHour - The hour when the gaming day starts (0-23, in local timezone)
- * @param timezoneOffset - UTC offset in hours (e.g., -4 for UTC-4, default -4 for Trinidad/Guyana/Barbados)
- * @returns Object with rangeStart and rangeEnd in UTC
+ * Default timezone offset for Trinidad/Guyana/Barbados (UTC-4).
  */
-export function getGamingDayRange(
-  selectedDate: Date,
-  gameDayStartHour: number = 0,
-  timezoneOffset: number = -4
-): GamingDayRange {
-  // Gaming day runs from gameDayStartHour to (gameDayStartHour - 1ms) next day (local time)
-  // Convert local time to UTC by subtracting the timezone offset
-  // Example: For UTC-4 with offset 9: local 9 AM = 9 - (-4) = 13:00 UTC
-
-  // Gaming day start on the selected date at gameDayStartHour (e.g., offset 9 = 9:00:00.000 AM local)
-  const rangeStart = new Date(selectedDate);
-  rangeStart.setUTCHours(gameDayStartHour - timezoneOffset, 0, 0, 0);
-
-  // Gaming day end is 1 millisecond before the next gaming day starts
-  // (e.g., offset 9 = next day at 8:59:59.999 AM local)
-  const rangeEnd = new Date(selectedDate);
-  rangeEnd.setDate(rangeEnd.getDate() + 1); // Move to next day
-  rangeEnd.setUTCHours(gameDayStartHour - timezoneOffset, 0, 0, 0); // Set to start hour
-  rangeEnd.setMilliseconds(rangeEnd.getMilliseconds() - 1); // Subtract 1ms
-
-  return { rangeStart, rangeEnd };
-}
+const DEFAULT_TIMEZONE_OFFSET = -4;
 
 /**
- * Calculate gaming day range for a multi-day period
- * @param startDate - The start date of the period
- * @param endDate - The end date of the period
- * @param gameDayStartHour - The hour when the gaming day starts (0-23, local timezone)
- * @param timezoneOffset - UTC offset in hours (e.g., -4 for UTC-4, default -4 for Trinidad/Guyana/Barbados)
- * @returns Object with rangeStart and rangeEnd in UTC
+ * Default gaming day start hour (8 AM).
  */
-function getGamingDayRangeMultiDay(
-  startDate: Date,
-  endDate: Date,
-  gameDayStartHour: number = 0,
-  timezoneOffset: number = -4
-): GamingDayRange {
-  // For multi-day ranges, start from the gaming day start hour of the start date
-  // and end 1ms before the gaming day start hour of the day after the end date
+const DEFAULT_GAME_DAY_START_HOUR = 8;
 
-  // Gaming day start on the start date at gameDayStartHour
-  const rangeStart = new Date(startDate);
-  rangeStart.setUTCHours(gameDayStartHour - timezoneOffset, 0, 0, 0);
-
-  // Gaming day end is 1 millisecond before the next gaming day starts (day after end date)
-  const rangeEnd = new Date(endDate);
-  rangeEnd.setDate(rangeEnd.getDate() + 1); // Move to day after end date
-  rangeEnd.setUTCHours(gameDayStartHour - timezoneOffset, 0, 0, 0); // Set to start hour
-  rangeEnd.setMilliseconds(rangeEnd.getMilliseconds() - 1); // Subtract 1ms
-
-  return { rangeStart, rangeEnd };
-}
+/* ============================================================================
+ * PUBLIC API - Entry Points
+ * ============================================================================ */
 
 /**
- * Calculate gaming day range based on time period
- * @param timePeriod - The time period ("Today", "Yesterday", "last7days", "last30days", "Custom")
- * @param customStartDate - Custom start date (required for "Custom" period)
- * @param customEndDate - Custom end date (required for "Custom" period)
- * @param gameDayStartHour - The hour when the gaming day starts (0-23, Trinidad time)
- * @returns Object with rangeStart and rangeEnd in UTC
+ * Main entry point: Calculate gaming day range for a time period.
+ *
+ * @param timePeriod - Time period (Today, Yesterday, last7days, 30d, Custom, All Time, LastHour)
+ * @param gameDayStartHour - Hour when gaming day starts in local time (default: 8 AM)
+ * @param customStartDate - Required when timePeriod is "Custom"
+ * @param customEndDate - Required when timePeriod is "Custom"
+ * @param timezoneOffset - UTC offset (default: -4 for UTC-4)
+ * @returns Gaming day range in UTC
+ *
+ * @example
+ * // Get "Today" gaming day range
+ * getGamingDayRangeForPeriod('Today', 8);
+ *
+ * @example
+ * // Get "Custom" range
+ * getGamingDayRangeForPeriod('Custom', 8, new Date('2025-03-22'), new Date('2025-03-23'));
  */
 export function getGamingDayRangeForPeriod(
   timePeriod: string,
-  gameDayStartHour: number = 0,
+  gameDayStartHour: number = DEFAULT_GAME_DAY_START_HOUR,
   customStartDate?: Date,
   customEndDate?: Date,
-  timezoneOffset: number = -4
+  timezoneOffset: number = DEFAULT_TIMEZONE_OFFSET
 ): GamingDayRange {
-  // Get current time in LOCAL timezone (Trinidad/Guyana/Barbados = UTC-4)
-  // This ensures "Today" is based on local time, not UTC time
-  const nowUtc = new Date();
-  const nowLocal = new Date(nowUtc.getTime() + timezoneOffset * 60 * 60 * 1000);
-
-  // Use the local date for "today" calculations in UTC
-  const today = new Date(
-    Date.UTC(
-      nowLocal.getUTCFullYear(),
-      nowLocal.getUTCMonth(),
-      nowLocal.getUTCDate()
-    )
-  );
+  const nowLocal = getCurrentLocalTime(timezoneOffset);
+  const today = getLocalDateFromUTC(nowLocal);
 
   switch (timePeriod) {
     case 'Today':
-      // 🔧 FIX: If current time is before gaming day start hour, use YESTERDAY
-      // Example: If it's 2 AM and gaming day starts at 8 AM, we're still in yesterday's gaming day
-      const currentHour = nowLocal.getUTCHours();
-      const todayOrYesterday =
-        currentHour < gameDayStartHour
-          ? new Date(today.getTime() - 24 * 60 * 60 * 1000) // Use yesterday
-          : today; // Use today
-      return getGamingDayRange(
-        todayOrYesterday,
-        gameDayStartHour,
-        timezoneOffset
-      );
+      return handleToday(nowLocal, today, gameDayStartHour, timezoneOffset);
 
     case 'Yesterday':
-      // "Yesterday" refers to the calendar day before "today".
-      // However, if we are currently before the gaming day start hour,
-      // "today" (gaming day) is actually yesterday's calendar day,
-      // so "Yesterday" (gaming day) must be the day before that.
-      const currentHourY = nowLocal.getUTCHours();
-      const todayY =
-        currentHourY < gameDayStartHour
-          ? new Date(today.getTime() - 24 * 60 * 60 * 1000) // Shift back if in early morning
-          : today;
-      const calendarYesterday = new Date(
-        todayY.getTime() - 24 * 60 * 60 * 1000
-      );
-      return getGamingDayRange(
-        calendarYesterday,
-        gameDayStartHour,
-        timezoneOffset
-      );
+      return handleYesterday(nowLocal, today, gameDayStartHour, timezoneOffset);
 
     case 'last7days':
     case '7d':
-      // 🔧 FIX: Base calculation on current gaming day
-      const currentHour7d = nowLocal.getUTCHours();
-      const today7d =
-        currentHour7d < gameDayStartHour
-          ? new Date(today.getTime() - 24 * 60 * 60 * 1000)
-          : today;
-      const sevenDaysAgo = new Date(today7d);
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // -6 because today is day 1
-      return getGamingDayRangeMultiDay(
-        sevenDaysAgo,
-        today7d,
+      return handleLastDays(
+        nowLocal,
+        today,
         gameDayStartHour,
-        timezoneOffset
+        timezoneOffset,
+        6
       );
 
     case 'last30days':
     case '30d':
-      // 🔧 FIX: Base calculation on current gaming day
-      const currentHour30d = nowLocal.getUTCHours();
-      const today30d =
-        currentHour30d < gameDayStartHour
-          ? new Date(today.getTime() - 24 * 60 * 60 * 1000)
-          : today;
-      const thirtyDaysAgo = new Date(today30d);
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); // -29 because today is day 1
-      return getGamingDayRangeMultiDay(
-        thirtyDaysAgo,
-        today30d,
+      return handleLastDays(
+        nowLocal,
+        today,
         gameDayStartHour,
-        timezoneOffset
+        timezoneOffset,
+        29
       );
 
     case 'Quarterly':
-      // 🔧 FIX: Base calculation on current gaming day
-      const currentHourQ = nowLocal.getUTCHours();
-      const todayQ =
-        currentHourQ < gameDayStartHour
-          ? new Date(today.getTime() - 24 * 60 * 60 * 1000)
-          : today;
-      const ninetyDaysAgo = new Date(todayQ);
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89); // -89 because today is day 1
-      return getGamingDayRangeMultiDay(
-        ninetyDaysAgo,
-        todayQ,
+      return handleLastDays(
+        nowLocal,
+        today,
         gameDayStartHour,
-        timezoneOffset
+        timezoneOffset,
+        89
       );
 
     case 'All Time':
-      // For All Time, return a very wide range to include all records
-      return {
-        rangeStart: new Date(0),
-        rangeEnd: new Date('2100-01-01T23:59:59.999Z'),
-      };
+      return handleAllTime();
 
     case 'Custom':
-      if (!customStartDate || !customEndDate) {
-        throw new Error(
-          'Custom start and end dates are required for Custom time period'
-        );
-      }
-
-      // Validate dates are valid Date objects
-      if (
-        !(customStartDate instanceof Date) ||
-        !(customEndDate instanceof Date) ||
-        isNaN(customStartDate.getTime()) ||
-        isNaN(customEndDate.getTime())
-      ) {
-        throw new Error(
-          `Invalid date values: startDate=${customStartDate}, endDate=${customEndDate}`
-        );
-      }
-
-      // 🔧 FIX: Check if dates have specific time components (not midnight exactly)
-      // If the user explicitly provided a time (via 'T' format from frontend), we should respect it
-      // and bypass the gaming day offset logic.
-      const hasSpecificTime = 
-        customStartDate.getUTCHours() !== 0 || 
-        customStartDate.getUTCMinutes() !== 0 ||
-        customEndDate.getUTCHours() !== 0 || 
-        customEndDate.getUTCMinutes() !== 0;
-
-      if (hasSpecificTime) {
-        return { rangeStart: customStartDate, rangeEnd: customEndDate };
-      }
-
-      // Otherwise, for custom date-only selections, apply gaming day offset
-      // User selects: Oct 31 to Oct 31 (same day)
-      // Means: Oct 31 gaming day start (e.g., 11 AM) to Nov 1 gaming day start (e.g., 11 AM) exclusive
-      // If user selects: Sep 1 to Sep 30 (range)
-      // Means: Sep 1 gaming day start (e.g., 11 AM) to Oct 1 gaming day start (e.g., 11 AM) exclusive
-
-      const startGamingDay = getGamingDayRange(
+      return handleCustom(
         customStartDate,
+        customEndDate,
         gameDayStartHour,
         timezoneOffset
       );
 
-      // Check if start and end dates are the same day, or if endDate is startDate + 1 day
-      // (Some date pickers set endDate to startDate + 1 day when selecting a single day)
-      const startDateStr = customStartDate.toISOString().split('T')[0];
-      const endDateStr = customEndDate.toISOString().split('T')[0];
-      const isSameDay = startDateStr === endDateStr;
-
-      // Check if endDate is exactly 1 day after startDate (single day selection)
-      const startDateOnly = new Date(startDateStr + 'T00:00:00.000Z');
-      const endDateOnly = new Date(endDateStr + 'T00:00:00.000Z');
-      const daysDiff = Math.floor(
-        (endDateOnly.getTime() - startDateOnly.getTime()) /
-        (1000 * 60 * 60 * 24)
-      );
-      const isSingleDaySelection = isSameDay || daysDiff === 1;
-
-      if (isSingleDaySelection) {
-        // Single day selection: Only include that day's gaming day
-        // Gaming day for Nov 16: Nov 16 11:00 AM to Nov 17 10:59:59.999 AM (inclusive)
-        const endGamingDay = getGamingDayRange(
-          customStartDate, // Use startDate for single day selection
-          gameDayStartHour,
-          timezoneOffset
-        );
-        return {
-          rangeStart: startGamingDay.rangeStart,
-          rangeEnd: endGamingDay.rangeEnd, // End of the selected day's gaming day (Nov 17 10:59:59.999 AM)
-        };
-      } else {
-        // Date range: Include all gaming days from start to end (inclusive)
-        // For end date, we want to include the FULL gaming day, so we get the next gaming day start
-        const endDateNextDay = new Date(customEndDate);
-        endDateNextDay.setDate(endDateNextDay.getDate() + 1);
-        const endGamingDay = getGamingDayRange(
-          endDateNextDay,
-          gameDayStartHour,
-          timezoneOffset
-        );
-
-        return {
-          rangeStart: startGamingDay.rangeStart,
-          rangeEnd: endGamingDay.rangeStart, // Use start of next gaming day to include full last day
-        };
-      }
-
     case 'LastHour':
-      const endNow = new Date();
-      const startOneHourAgo = new Date(endNow.getTime() - 60 * 60 * 1000);
-      return { rangeStart: startOneHourAgo, rangeEnd: endNow };
+      return handleLastHour();
 
     default:
-      // Fallback to standard day boundaries for unknown periods
-      const fallbackStart = new Date(today);
-      fallbackStart.setUTCHours(0, 0, 0, 0);
-      const fallbackEnd = new Date(today);
-      fallbackEnd.setUTCHours(23, 59, 59, 999);
-      return { rangeStart: fallbackStart, rangeEnd: fallbackEnd };
+      return handleDefault(today);
   }
 }
 
 /**
- * Get all gaming day ranges for multiple locations
- * This is useful when aggregating data across locations with different gameDayOffsets
- * @param locations - Array of location objects with _id and gameDayOffset
- * @param timePeriod - The time period
- * @param customStartDate - Custom start date (for Custom period)
- * @param customEndDate - Custom end date (for Custom period)
+ * Get gaming day ranges for multiple locations with different offsets.
+ *
+ * @param locations - Array of locations with their gameDayOffset settings
+ * @param timePeriod - Time period to calculate
+ * @param customStartDate - Required when timePeriod is "Custom"
+ * @param customEndDate - Required when timePeriod is "Custom"
+ * @param timezoneOffset - UTC offset (default: -4)
  * @returns Map of locationId to GamingDayRange
  */
+export function getGamingDayRange(
+  dateOrTimePeriod: Date | string,
+  gameDayStartHourOrTimezoneOffset?: number,
+  customStartDateOrTimezoneOffset?: Date | number,
+  customEndDate?: Date,
+  timezoneOffset?: number
+): GamingDayRange {
+  if (dateOrTimePeriod instanceof Date) {
+    return calculateGamingDayRange(
+      dateOrTimePeriod,
+      gameDayStartHourOrTimezoneOffset ?? DEFAULT_GAME_DAY_START_HOUR,
+      typeof customStartDateOrTimezoneOffset === 'number'
+        ? customStartDateOrTimezoneOffset
+        : DEFAULT_TIMEZONE_OFFSET
+    );
+  }
+  return getGamingDayRangeForPeriod(
+    dateOrTimePeriod,
+    gameDayStartHourOrTimezoneOffset,
+    typeof customStartDateOrTimezoneOffset === 'object' &&
+      customStartDateOrTimezoneOffset instanceof Date
+      ? customStartDateOrTimezoneOffset
+      : undefined,
+    customEndDate,
+    typeof customStartDateOrTimezoneOffset === 'number'
+      ? customStartDateOrTimezoneOffset
+      : timezoneOffset
+  );
+}
+
 export function getGamingDayRangesForLocations(
   locations: Array<{ _id: string; gameDayOffset?: number }>,
   timePeriod: string,
   customStartDate?: Date,
   customEndDate?: Date,
-  timezoneOffset: number = -4
+  timezoneOffset: number = DEFAULT_TIMEZONE_OFFSET
 ): Map<string, GamingDayRange> {
   const ranges = new Map<string, GamingDayRange>();
 
   for (const location of locations) {
-    // Use ?? instead of || to properly handle 0 as a valid value
-    // Default to 8 (8 AM) if gameDayOffset is undefined
-    const gameDayOffset = location.gameDayOffset ?? 8;
+    const gameDayOffset = location.gameDayOffset ?? DEFAULT_GAME_DAY_START_HOUR;
     const range = getGamingDayRangeForPeriod(
       timePeriod,
       gameDayOffset,
@@ -340,10 +174,291 @@ export function getGamingDayRangesForLocations(
       customEndDate,
       timezoneOffset
     );
-    // Coerce to string for consistent Map lookup
     ranges.set(String(location._id), range);
   }
 
   return ranges;
+}
+
+/* ============================================================================
+ * TIME PERIOD HANDLERS
+ * ============================================================================ */
+
+/**
+ * Handle "Today" time period.
+ * If current hour is before gaming day start, use YESTERDAY's date.
+ */
+function handleToday(
+  nowLocal: Date,
+  today: Date,
+  gameDayStartHour: number,
+  timezoneOffset: number
+): GamingDayRange {
+  const currentHour = nowLocal.getUTCHours();
+  const dateToUse =
+    currentHour < gameDayStartHour ? subtractDays(today, 1) : today;
+  return calculateGamingDayRange(dateToUse, gameDayStartHour, timezoneOffset);
+}
+
+/**
+ * Handle "Yesterday" time period.
+ */
+function handleYesterday(
+  nowLocal: Date,
+  today: Date,
+  gameDayStartHour: number,
+  timezoneOffset: number
+): GamingDayRange {
+  const currentHour = nowLocal.getUTCHours();
+  const effectiveToday =
+    currentHour < gameDayStartHour ? subtractDays(today, 1) : today;
+  const calendarYesterday = subtractDays(effectiveToday, 1);
+  return calculateGamingDayRange(
+    calendarYesterday,
+    gameDayStartHour,
+    timezoneOffset
+  );
+}
+
+/**
+ * Handle "last7days", "30d", "Quarterly" time periods.
+ */
+function handleLastDays(
+  nowLocal: Date,
+  today: Date,
+  gameDayStartHour: number,
+  timezoneOffset: number,
+  daysToSubtract: number
+): GamingDayRange {
+  const currentHour = nowLocal.getUTCHours();
+  const effectiveToday =
+    currentHour < gameDayStartHour ? subtractDays(today, 1) : today;
+  const startDate = subtractDays(effectiveToday, daysToSubtract);
+  return calculateMultiDayRange(
+    startDate,
+    effectiveToday,
+    gameDayStartHour,
+    timezoneOffset
+  );
+}
+
+/**
+ * Handle "All Time" - return very wide range.
+ */
+function handleAllTime(): GamingDayRange {
+  return {
+    rangeStart: new Date(0),
+    rangeEnd: new Date('2100-01-01T23:59:59.999Z'),
+  };
+}
+
+/**
+ * Handle "Custom" time period.
+ * If dates have specific times, use exact times. Otherwise, apply gaming day expansion.
+ */
+function handleCustom(
+  customStartDate: Date | undefined,
+  customEndDate: Date | undefined,
+  gameDayStartHour: number,
+  timezoneOffset: number
+): GamingDayRange {
+  if (!customStartDate || !customEndDate) {
+    throw new Error(
+      'Custom start and end dates are required for Custom time period'
+    );
+  }
+
+  if (!isValidDate(customStartDate) || !isValidDate(customEndDate)) {
+    throw new Error(
+      `Invalid date values: startDate=${customStartDate}, endDate=${customEndDate}`
+    );
+  }
+
+  const hasSpecificTime =
+    hasExplicitTime(customStartDate, timezoneOffset) || 
+    hasExplicitTime(customEndDate, timezoneOffset);
+
+  if (hasSpecificTime) {
+    const finalStart = customStartDate;
+    let finalEnd = customEndDate;
+    // Auto-correct if end time is before or equal to start time (e.g., user picked 8:00 AM to 7:59 AM on the same date)
+    // This perfectly captures the user's intent to query until the next day's 7:59 AM.
+    if (finalEnd.getTime() <= finalStart.getTime()) {
+      finalEnd = new Date(finalEnd.getTime() + 24 * 60 * 60 * 1000);
+    }
+    return { rangeStart: finalStart, rangeEnd: finalEnd };
+  }
+
+  return expandToGamingDays(
+    customStartDate,
+    customEndDate,
+    gameDayStartHour,
+    timezoneOffset
+  );
+}
+
+/**
+ * Handle "LastHour" - return last 60 minutes.
+ */
+function handleLastHour(): GamingDayRange {
+  const endNow = new Date();
+  const startOneHourAgo = new Date(endNow.getTime() - 60 * 60 * 1000);
+  return { rangeStart: startOneHourAgo, rangeEnd: endNow };
+}
+
+/**
+ * Handle unknown time periods - fallback to midnight to midnight.
+ */
+function handleDefault(today: Date): GamingDayRange {
+  const fallbackStart = new Date(today);
+  fallbackStart.setUTCHours(0, 0, 0, 0);
+  const fallbackEnd = new Date(today);
+  fallbackEnd.setUTCHours(23, 59, 59, 999);
+  return { rangeStart: fallbackStart, rangeEnd: fallbackEnd };
+}
+
+/* ============================================================================
+ * CORE CALCULATION FUNCTIONS
+ * ============================================================================ */
+
+/**
+ * Calculate gaming day range for a single date.
+ * Gaming day: gameDayStartHour today → 1ms before same hour tomorrow.
+ *
+ * @param selectedDate - Calendar date to calculate from (local time)
+ * @param gameDayStartHour - Hour when gaming day starts (0-23)
+ * @param timezoneOffset - UTC offset (e.g., -4 for UTC-4)
+ * @returns Gaming day range in UTC
+ */
+function calculateGamingDayRange(
+  selectedDate: Date,
+  gameDayStartHour: number,
+  timezoneOffset: number
+): GamingDayRange {
+  const rangeStart = new Date(selectedDate);
+  rangeStart.setUTCHours(gameDayStartHour - timezoneOffset, 0, 0, 0);
+
+  const rangeEnd = new Date(selectedDate);
+  rangeEnd.setDate(rangeEnd.getDate() + 1);
+  rangeEnd.setUTCHours(gameDayStartHour - timezoneOffset, 0, 0, 0);
+  rangeEnd.setMilliseconds(rangeEnd.getMilliseconds() - 1);
+
+  return { rangeStart, rangeEnd };
+}
+
+/**
+ * Calculate gaming day range for multiple days.
+ * Start: gaming day start on startDate
+ * End: 1ms before gaming day start on day after endDate
+ */
+function calculateMultiDayRange(
+  startDate: Date,
+  endDate: Date,
+  gameDayStartHour: number,
+  timezoneOffset: number
+): GamingDayRange {
+  const rangeStart = new Date(startDate);
+  rangeStart.setUTCHours(gameDayStartHour - timezoneOffset, 0, 0, 0);
+
+  const rangeEnd = new Date(endDate);
+  rangeEnd.setDate(rangeEnd.getDate() + 1);
+  rangeEnd.setUTCHours(gameDayStartHour - timezoneOffset, 0, 0, 0);
+  rangeEnd.setMilliseconds(rangeEnd.getMilliseconds() - 1);
+
+  return { rangeStart, rangeEnd };
+}
+
+/**
+ * Expand date-only selections to full gaming days.
+ * Single day: gaming day from startDate to end of that day
+ * Range: gaming days from startDate to endDate (inclusive)
+ */
+function expandToGamingDays(
+  customStartDate: Date,
+  customEndDate: Date,
+  gameDayStartHour: number,
+  timezoneOffset: number
+): GamingDayRange {
+  // Boundary calculations:
+  // 1. The start of the period is the gaming day start of the chosen startDate.
+  const startRange = calculateGamingDayRange(
+    customStartDate,
+    gameDayStartHour,
+    timezoneOffset
+  );
+
+  // 2. The end of the period is the gaming day end of the chosen endDate.
+  // Note: calculateGamingDayRange(date) already includes the full 24-hour window for that date.
+  const endRange = calculateGamingDayRange(
+    customEndDate,
+    gameDayStartHour,
+    timezoneOffset
+  );
+
+  return {
+    rangeStart: startRange.rangeStart,
+    rangeEnd: endRange.rangeEnd,
+  };
+}
+
+/* ============================================================================
+ * UTILITY FUNCTIONS
+ * ============================================================================ */
+
+/**
+ * Get current time in local timezone.
+ */
+function getCurrentLocalTime(timezoneOffset: number): Date {
+  const nowUtc = new Date();
+  return new Date(nowUtc.getTime() + timezoneOffset * 60 * 60 * 1000);
+}
+
+/**
+ * Get local calendar date from local time.
+ */
+function getLocalDateFromUTC(nowLocal: Date): Date {
+  return new Date(
+    Date.UTC(
+      nowLocal.getUTCFullYear(),
+      nowLocal.getUTCMonth(),
+      nowLocal.getUTCDate()
+    )
+  );
+}
+
+
+/**
+ * Subtract days from a date.
+ */
+function subtractDays(date: Date, days: number): Date {
+  return new Date(date.getTime() - days * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * Check if a date has explicit time components (not midnight).
+ */
+function hasExplicitTime(date: Date, timezoneOffset: number): boolean {
+  // Check if it's midnight UTC (frequently used by browsers/libraries as a "Date Only" indicator)
+  const isUtcMidnight =
+    date.getUTCHours() === 0 &&
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0;
+
+  // Check if it's midnight in the specified local timezone
+  const localDate = new Date(date.getTime() + timezoneOffset * 60 * 60 * 1000);
+  const isLocalMidnight =
+    localDate.getUTCHours() === 0 &&
+    localDate.getUTCMinutes() === 0 &&
+    localDate.getUTCSeconds() === 0;
+
+  // If it is midnight in either UTC or Local, we assume no explicit time intent was provided (Date Only)
+  return !isUtcMidnight && !isLocalMidnight;
+}
+
+/**
+ * Check if a date is valid.
+ */
+function isValidDate(date: Date): boolean {
+  return date instanceof Date && !isNaN(date.getTime());
 }
 

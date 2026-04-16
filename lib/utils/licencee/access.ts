@@ -34,11 +34,8 @@ export function shouldShowLicenceeFilter(
   if (!user) return false;
 
   const roles = user.roles || [];
-  const normalizedRoles = roles.map(role =>
-    typeof role === 'string' ? role.toLowerCase() : role
-  );
   const isAdmin =
-    normalizedRoles.includes('admin') || normalizedRoles.includes('developer');
+    roles.includes('admin') || roles.includes('developer');
 
   // Always show for admins
   if (isAdmin) return true;
@@ -72,28 +69,18 @@ export function shouldShowNoLicenceeMessage(
   if (!user) return true;
 
   const roles = user.roles || [];
-  const normalizedRoles = roles.map(role =>
-    typeof role === 'string' ? role.toLowerCase() : role
-  );
-
   // Never show for admins
   if (
-    normalizedRoles.includes('admin') ||
-    normalizedRoles.includes('developer')
+    roles.includes('admin') ||
+    roles.includes('developer')
   ) {
     return false;
   }
 
   // Show if user has no assigned licencees
-  const userLicencees = Array.isArray(
-    (user as { assignedLicencees?: string[] })?.assignedLicencees
-  )
-    ? (user as { assignedLicencees: string[] }).assignedLicencees
-    : Array.isArray((user as Record<string, unknown>)?.licencees)
-    ? ((user as Record<string, unknown>).licencees as string[])
-    : [];
+  const userLicencees = user?.assignedLicencees
 
-  return userLicencees.length === 0;
+  return userLicencees?.length === 0;
 }
 
 /**

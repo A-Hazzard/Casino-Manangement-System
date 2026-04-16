@@ -117,11 +117,16 @@ export async function handleSummaryMode(
     geoCoords?: unknown;
     membershipEnabled?: boolean;
     enableMembership?: boolean;
+    aceEnabled?: boolean;
   }>,
   displayCurrency: string,
   perfStart: number
 ) {
   const allLocationIds = locations.map(loc => String(loc._id));
+  // Build a set of aceEnabled location IDs so online count can be overridden after aggregation
+  const aceEnabledLocIds = new Set(
+    locations.filter(loc => loc.aceEnabled === true).map(loc => String(loc._id))
+  );
   const machineCounts = await Machine.aggregate([
     { $match: { gamingLocation: { $in: allLocationIds }, deletedAt: { $in: [null, new Date(-1)] } } },
     {
@@ -136,13 +141,17 @@ export async function handleSummaryMode(
 
   const countsMap = new Map(machineCounts.map(c => [c._id, c]));
   const summaryResults = locations.map(loc => {
-    const counts = countsMap.get(String(loc._id)) || { totalMachines: 0, sasMachines: 0, onlineMachines: 0 };
+    const locId = String(loc._id);
+    const counts = countsMap.get(locId) || { totalMachines: 0, sasMachines: 0, onlineMachines: 0 };
+    // aceEnabled locations treat all their machines as online
+    const onlineMachines = aceEnabledLocIds.has(locId) ? counts.totalMachines : counts.onlineMachines;
     return {
-      _id: String(loc._id), location: String(loc._id), locationName: loc.name,
+      _id: locId, location: locId, locationName: loc.name,
       totalMachines: counts.totalMachines, sasMachines: counts.sasMachines,
-      onlineMachines: counts.onlineMachines, moneyIn: 0, moneyOut: 0, gross: 0,
+      onlineMachines, moneyIn: 0, moneyOut: 0, gross: 0,
       rel: loc.rel, isLocalServer: loc.isLocalServer, geoCoords: loc.geoCoords,
       membershipEnabled: loc.membershipEnabled || loc.enableMembership || false,
+      aceEnabled: loc.aceEnabled || false,
     };
   });
 

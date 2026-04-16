@@ -44,6 +44,7 @@ type CurrentUserResponse = {
     invalidProfileFields?: UserAuthPayload['invalidProfileFields'];
     invalidProfileReasons?: UserAuthPayload['invalidProfileReasons'];
     tempPasswordChanged?: boolean;
+    multiplier?: number | null;
   };
 };
 
@@ -116,6 +117,7 @@ export function useCurrentUserQuery() {
         invalidProfileFields: dbUser.invalidProfileFields,
         invalidProfileReasons: dbUser.invalidProfileReasons,
         tempPasswordChanged: dbUser.tempPasswordChanged,
+        multiplier: dbUser.multiplier,
       };
 
       // Only update store if data has changed
@@ -124,13 +126,6 @@ export function useCurrentUserQuery() {
 
       if (hasChanged) {
         setUser(userPayload);
-
-        if (process.env.NODE_ENV === 'development') {
-          console.log(
-            '✅ User store updated with assignedLicencees:',
-            dbUser.assignedLicencees
-          );
-        }
       }
 
       userCache.set(

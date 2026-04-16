@@ -205,7 +205,7 @@ export const CabinetDetailsLoadingState = ({
       selectedLicencee,
       setSelectedLicencee,
     }}
-    pageTitle=""
+    
     hideOptions={true}
     hideLicenceeFilter={false}
     mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
@@ -214,6 +214,59 @@ export const CabinetDetailsLoadingState = ({
     <CabinetDetailPageSkeleton />
     {error && <div className="mt-4 text-center text-destructive">{error}</div>}
   </PageLayout>
+);
+
+// Skeleton loaders for individual accounting tabs
+export const MetricsSkeleton = () => (
+  <div
+    className="flex w-full max-w-full flex-wrap gap-3 md:gap-4"
+    style={{ rowGap: '1rem' }}
+  >
+    {[1, 2, 3, 4, 5].map(i => (
+      <div
+        key={i}
+        className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
+      >
+        <div className="mb-2 h-4 animate-pulse rounded bg-gray-200 md:mb-4"></div>
+        <div className="mb-4 h-1 w-full bg-gray-300 md:mb-6"></div>
+        <div className="flex h-6 items-center justify-center">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent md:h-5 md:w-5"></div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+export const LiveMetricsSkeleton = () => (
+  <div className="grid max-w-full grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
+    {[1, 2, 3, 4, 5, 6].map(i => (
+      <div key={i} className="rounded-lg bg-container p-4 shadow md:p-6">
+        <div className="mb-2 h-4 animate-pulse rounded bg-gray-200 md:mb-4"></div>
+        <div className="mb-4 h-1 w-full bg-gray-300 md:mb-6"></div>
+        <div className="flex h-6 items-center justify-center">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-transparent md:h-5 md:w-5"></div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+export const ConfigurationsSkeleton = () => (
+  <div className="flex w-full flex-col flex-wrap items-center gap-4 sm:flex-row sm:items-stretch sm:justify-start">
+    {[1, 2].map(i => (
+      <div
+        key={i}
+        className="flex w-64 max-w-full flex-col overflow-hidden rounded-lg shadow"
+      >
+        <div className="flex items-center justify-center bg-gray-400 p-3">
+          <div className="h-4 w-32 animate-pulse rounded bg-gray-300"></div>
+        </div>
+        <div className="flex items-center justify-center bg-white p-4">
+          <div className="h-6 w-20 animate-pulse rounded bg-gray-200"></div>
+        </div>
+      </div>
+    ))}
+  </div>
 );
 
 

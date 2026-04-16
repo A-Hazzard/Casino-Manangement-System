@@ -171,7 +171,6 @@ export const fetchDashboardTotals = async (
     // Note: clearCache parameter removed - deduplication utility now handles this
     // The deduplication utility will normalize the request key and prevent duplicate calls
 
-    console.log('🔍 [fetchDashboardTotals] Calling API:', url);
     // Use deduplication to prevent duplicate requests
     let locationData;
     try {
@@ -191,45 +190,7 @@ export const fetchDashboardTotals = async (
       throw error;
     }
 
-    console.log('🔍 [fetchDashboardTotals] API Response:', {
-      hasData: !!locationData.data,
-      dataLength: locationData.data?.length || 0,
-      totalCount: locationData.totalCount || 0,
-      page: locationData.page || 1,
-      limit: locationData.limit || 0,
-      responseKeys: Object.keys(locationData),
-      firstFewLocations: (locationData.data || [])
-        .slice(0, 3)
-        .map(
-          (loc: {
-            name?: string;
-            locationName?: string;
-            moneyIn?: number;
-            _id?: string;
-          }) => ({
-            name: loc.name || loc.locationName,
-            _id: loc._id,
-            moneyIn: loc.moneyIn,
-          })
-        ),
-    });
-
-    // Verify we got all locations - if dataLength < totalCount, we're missing data
-    if (
-      locationData.totalCount &&
-      locationData.data?.length < locationData.totalCount
-    ) {
-      console.warn(
-        '⚠️ [fetchDashboardTotals] WARNING: Not all locations received!',
-        {
-          received: locationData.data?.length || 0,
-          total: locationData.totalCount,
-          missing: locationData.totalCount - (locationData.data?.length || 0),
-          page: locationData.page,
-          limit: locationData.limit,
-        }
-      );
-    }
+    // Check if response has error
 
     // Check if response has error
     if (locationData.error) {
@@ -259,47 +220,17 @@ export const fetchDashboardTotals = async (
     const totals = locationData.data.reduce(
       (
         acc: DashboardTotals,
-        loc: { moneyIn?: number; moneyOut?: number; gross?: number }
+        loc: { moneyIn?: number; moneyOut?: number; gross?: number; jackpot?: number }
       ) => ({
         moneyIn: acc.moneyIn + (loc.moneyIn || 0),
         moneyOut: acc.moneyOut + (loc.moneyOut || 0),
         gross: acc.gross + (loc.gross || 0),
+        jackpot: (acc.jackpot || 0) + (loc.jackpot || 0),
       }),
-      { moneyIn: 0, moneyOut: 0, gross: 0 }
+      { moneyIn: 0, moneyOut: 0, gross: 0, jackpot: 0 }
     );
 
-    // Log sample of actual location data to verify values
-    const sampleLocations = (locationData.data || [])
-      .slice(0, 5)
-      .map(
-        (loc: {
-          name?: string;
-          moneyIn?: number;
-          moneyOut?: number;
-          gross?: number;
-        }) => ({
-          name: loc.name,
-          moneyIn: loc.moneyIn,
-          moneyOut: loc.moneyOut,
-          gross: loc.gross,
-        })
-      );
-
-    console.log('🔍 [fetchDashboardTotals] Calculated Totals:', {
-      moneyIn: totals.moneyIn,
-      moneyOut: totals.moneyOut,
-      gross: totals.gross,
-      locationCount: locationData.data.length,
-      totalCount: locationData.totalCount,
-      locationsWithData: locationData.data.filter(
-        (loc: { moneyIn?: number }) => (loc.moneyIn || 0) > 0
-      ).length,
-      sampleLocations,
-      sumOfSampleMoneyIn: sampleLocations.reduce(
-        (sum: number, loc: { moneyIn?: number }) => sum + (loc.moneyIn || 0),
-        0
-      ),
-    });
+    // Validate filters haven't changed before updating totals
 
     // Validate filters haven't changed before updating totals
     // This prevents stale data from updating state when filters change rapidly
@@ -316,7 +247,6 @@ export const fetchDashboardTotals = async (
 
     // Convert to DashboardTotals format
     setTotals(totals);
-    console.log('🔍 [fetchDashboardTotals] setTotals called with:', totals);
   } catch (error) {
     // CRITICAL: Check for abort errors FIRST - aborting is NOT an error, it's expected when switching filters
     // Abort errors should NEVER show error toasts or log errors

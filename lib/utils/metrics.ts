@@ -75,12 +75,11 @@ export async function switchFilter(
         geoCoords: undefined,
       });
     } else {
-      console.warn('🚨 No metrics data returned');
       setTotals(null);
       setChartData([]);
     }
-  } catch (error) {
-    console.error('🚨 Error fetching metrics:', error);
+  } catch {
+    // Error handled by caller or silently failed for UI
   }
 }
 

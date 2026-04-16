@@ -24,11 +24,11 @@ import {
   getLicenceeCurrency,
 } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import type { LocationDocument } from '@/lib/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { GamingMachine } from '@/shared/types/entities';
 import { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * Main GET handler for fetching chart data for a single machine
  *
@@ -45,16 +45,13 @@ import { NextRequest, NextResponse } from 'next/server';
  * 10. Transform and return chart data
  */
 export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ machineId: string }> }
+  request: NextRequest
 ) {
   const startTime = Date.now();
+  const { pathname } = request.nextUrl;
+  const machineId = pathname.split('/')[3];
 
   try {
-    // ============================================================================
-    // STEP 1: Parse route parameters and query parameters
-    // ============================================================================
-    const { machineId } = await params;
     const { searchParams } = new URL(request.url);
     const timePeriod = searchParams.get('timePeriod');
     const startDateParam = searchParams.get('startDate');
@@ -68,6 +65,8 @@ export async function GET(
       | 'weekly'
       | 'monthly'
       | null;
+
+    console.log(`[Machine Chart] Request — machine: ${machineId}, timePeriod: ${timePeriod}, startDate: ${startDateParam}, endDate: ${endDateParam}, granularity: ${granularity ?? 'auto'}, currency: ${displayCurrency}`);
 
     // ============================================================================
     // STEP 2: Validate timePeriod or date range parameters
@@ -87,34 +86,12 @@ export async function GET(
     // ============================================================================
     // STEP 4: Fetch machine by ID
     // ============================================================================
-    let machine = await Machine.findOne({
+    const machine = await Machine.findOne({
       _id: machineId,
     }).lean<GamingMachine | null>();
 
-    if (
-      !machine &&
-      machineId.length === 24 &&
-      /^[0-9a-fA-F]{24}$/.test(machineId)
-    ) {
-      try {
-        const { default: mongoose } = await import('mongoose');
-        const objectId = new mongoose.Types.ObjectId(machineId);
-        // Use Mongoose model with ObjectId for legacy data
-        const machineDoc = await Machine.findOne({
-          _id: objectId as unknown as string,
-        }).lean<GamingMachine | null>();
-        if (machineDoc) {
-          machine = machineDoc;
-        }
-      } catch (objectIdError) {
-        console.warn(
-          `[Machine Chart API] Failed to query as ObjectId:`,
-          objectIdError
-        );
-      }
-    }
-
     if (!machine) {
+      console.warn(`[Machine Chart] Machine not found — id: ${machineId}`);
       return NextResponse.json(
         { success: false, error: 'Machine not found' },
         { status: 404 }
@@ -129,6 +106,7 @@ export async function GET(
         String(machine.gamingLocation)
       );
       if (!hasAccess) {
+        console.warn(`[Machine Chart] Access denied — machine: ${machineId}, location: ${machine.gamingLocation}`);
         return NextResponse.json(
           {
             success: false,
@@ -149,17 +127,14 @@ export async function GET(
           _id: machine.gamingLocation,
         })
           .select('gameDayOffset rel country')
-          .lean<{
-            gameDayOffset?: number;
-            rel?: { licencee?: string };
-            country?: string;
-          } | null>();
+          .lean() as LocationDocument | null;
 
         if (location) {
           gameDayOffset = location.gameDayOffset ?? 8;
+          console.log(`[Machine Chart] Location gameDayOffset: ${gameDayOffset} — location: ${machine.gamingLocation}`);
         }
       } catch (error) {
-        console.warn('Failed to fetch location for gameDayOffset:', error);
+        console.warn('[Machine Chart] Failed to fetch location for gameDayOffset:', error);
       }
     }
 
@@ -172,10 +147,11 @@ export async function GET(
     if (timePeriod === 'Custom' && startDateParam && endDateParam) {
       // Parse ISO timestamps with timezone offset (sent from frontend with local time + offset)
       // Frontend sends with times: "2025-12-07T11:45:00-04:00" (Trinidad local time with offset)
-      // Frontend sends date-only: "2025-12-07" (for gaming day offset to apply)
-      // new Date() correctly parses timezone-aware strings and converts to UTC internally
-      // For custom time periods, use the exact times provided without gaming day expansion
-      // This ensures the chart and metrics match the user's selected time range exactly
+      // Frontend sends midnight UTC "2025-12-07T00:00:00.000Z" for date-only calendar selections
+      // Use getGamingDayRangeForPeriod so that:
+      //   - Time-aware ranges (e.g. 8:00 AM → 7:59 AM) are used as-is
+      //   - Date-only midnight ranges (same-start/end midnight) are expanded to a full gaming day
+      // This matches exactly what the machine details API does (machines/[machineId]/route.ts)
       const customStart = new Date(startDateParam);
       const customEnd = new Date(endDateParam);
 
@@ -187,11 +163,15 @@ export async function GET(
         );
       }
 
-      // Use exact times provided - no gaming day expansion for custom ranges
-      // Date objects are already in UTC internally (JavaScript Date always stores UTC)
-      // This is correct for MongoDB queries which expect UTC dates
-      startDate = customStart;
-      endDate = customEnd;
+      const gamingDayRange = getGamingDayRangeForPeriod(
+        'Custom',
+        gameDayOffset,
+        customStart,
+        customEnd
+      );
+      startDate = gamingDayRange.rangeStart;
+      endDate = gamingDayRange.rangeEnd;
+      console.log(`[Machine Chart] Custom range resolved — raw: ${startDateParam} → ${endDateParam}, expanded: ${startDate?.toISOString()} → ${endDate?.toISOString()}`);
     } else if (timePeriod === 'All Time') {
       startDate = undefined;
       endDate = undefined;
@@ -203,6 +183,7 @@ export async function GET(
       );
       startDate = gamingDayRange.rangeStart;
       endDate = gamingDayRange.rangeEnd;
+      console.log(`[Machine Chart] Period "${timePeriodForGamingDay}" range — ${startDate?.toISOString()} → ${endDate?.toISOString()}`);
     }
 
     // ============================================================================
@@ -318,6 +299,9 @@ export async function GET(
         useDaily = true;
       }
     }
+
+    const resolvedGranularity = useMinute ? 'minute' : useHourly ? 'hourly' : useDaily ? 'daily' : useWeekly ? 'weekly' : useMonthly ? 'monthly' : 'yearly';
+    console.log(`[Machine Chart] Granularity resolved — ${granularity ? `manual: ${granularity}` : `auto: ${resolvedGranularity}`}, query window: ${startDate?.toISOString() ?? 'all'} → ${endDate?.toISOString() ?? 'all'}`);
 
     // Build aggregation pipeline
     const pipeline: PipelineStage[] = [];
@@ -514,6 +498,7 @@ export async function GET(
     pipeline.push({ $sort: { day: 1, time: 1 } });
 
     const chartData = await Meters.aggregate(pipeline);
+    console.log(`[Machine Chart] Meters aggregation returned ${chartData.length} bucket(s)`);
 
     // ============================================================================
     // STEP 9: Apply currency conversion if needed
@@ -536,10 +521,7 @@ export async function GET(
             _id: machine.gamingLocation,
           })
             .select('rel country')
-            .lean()) as {
-              rel?: { licencee?: string };
-              country?: string;
-            } | null;
+            .lean()) as LocationDocument | null;
         } catch (error) {
           console.warn(
             'Failed to fetch location for currency conversion:',
@@ -609,9 +591,7 @@ export async function GET(
     }));
 
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Machine Chart API] Completed in ${duration}ms`);
-    }
+    console.log(`[Machine Chart] Response — ${transformedData.length} data point(s), currency: ${displayCurrency}, ${duration}ms`);
 
     return NextResponse.json({
       success: true,
@@ -630,10 +610,7 @@ export async function GET(
       error instanceof Error
         ? error.message
         : 'Failed to fetch machine chart data';
-    console.error(
-      `[Machine Chart API] Error after ${duration}ms:`,
-      errorMessage
-    );
+    console.error(`[Machine Chart] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }

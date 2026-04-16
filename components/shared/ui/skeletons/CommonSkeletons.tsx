@@ -13,6 +13,7 @@
 
 'use client';
 
+import { ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
@@ -80,7 +81,7 @@ export const ChartNoData = ({
   message,
 }: {
   title: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   message: string;
 }) => (
   <Card>

@@ -11,6 +11,7 @@
 
 import LocationsPageContent from '@/components/CMS/locations/LocationsPageContent';
 import ProtectedRoute from '@/components/shared/auth/ProtectedRoute';
+import MaintenanceWrapper from '@/components/shared/maintenance/MaintenanceWrapper';
 import PageErrorBoundary from '@/components/shared/ui/errors/PageErrorBoundary';
 
 export const dynamic = 'force-dynamic';
@@ -18,9 +19,11 @@ export const dynamic = 'force-dynamic';
 export default function LocationsPage() {
   return (
     <ProtectedRoute requiredPage="locations">
-      <PageErrorBoundary>
-        <LocationsPageContent />
-      </PageErrorBoundary>
+      <MaintenanceWrapper pageKey="locations">
+        <PageErrorBoundary>
+          <LocationsPageContent />
+        </PageErrorBoundary>
+      </MaintenanceWrapper>
     </ProtectedRoute>
   );
 }

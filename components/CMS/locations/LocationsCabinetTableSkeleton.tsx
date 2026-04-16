@@ -1,16 +1,17 @@
-import React from 'react';
+
+import { FC } from 'react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 interface LocationsCabinetTableSkeletonProps {
-  subtractJackpot?: boolean;
+  includeJackpot?: boolean;
 }
 
 /**
  * Locations Cabinet Table Skeleton Loader
  * Matches the exact structure of CabinetTable component
  */
-const LocationsCabinetTableSkeleton: React.FC<LocationsCabinetTableSkeletonProps> = ({
-  subtractJackpot = false,
+const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
+  includeJackpot = false,
 }) => (
   <div className="w-full overflow-x-auto bg-white shadow">
     <table className="w-full">
@@ -34,9 +35,9 @@ const LocationsCabinetTableSkeleton: React.FC<LocationsCabinetTableSkeletonProps
           <th className="relative p-3 text-center font-semibold text-white">
             <span>GROSS</span>
           </th>
-          {subtractJackpot && (
+          {includeJackpot && (
             <th className="relative p-3 text-center font-semibold text-white">
-              <span>SUBTRACT JACKPOT</span>
+              <span>INCLUDE JACKPOT</span>
             </th>
           )}
           <th className="p-3 text-center font-semibold text-white">
@@ -86,8 +87,8 @@ const LocationsCabinetTableSkeleton: React.FC<LocationsCabinetTableSkeletonProps
                 <Skeleton className="mx-auto h-4 w-20" />
               </td>
             ))}
-            {/* Subtract Jackpot Column */}
-            {subtractJackpot && (
+            {/* Include Jackpot Column */}
+            {includeJackpot && (
               <td className="p-3 text-center align-middle text-sm">
                 <Skeleton className="mx-auto h-4 w-20" />
               </td>
