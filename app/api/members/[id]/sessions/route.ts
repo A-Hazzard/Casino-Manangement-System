@@ -35,16 +35,33 @@ function getWeekNumber(date: Date): number {
 }
 
 /**
- * Main GET handler for fetching member sessions
+ * GET /api/members/[id]/sessions
  *
- * Flow:
- * 1. Parse route parameters and query parameters
- * 2. Connect to database
- * 3. Build query for member sessions
- * 4. Handle individual session view or grouped view
- * 5. Process sessions and calculate metrics
- * 6. Apply currency conversion if needed
- * 7. Return paginated results
+ * Fetches machine sessions for a specific member with optional date filtering,
+ * time-period presets, and display-currency conversion. When `filter` is `session`
+ * the response is paginated individual rows; any other value groups sessions by
+ * day, week, or month and returns a single aggregated page.
+ *
+ * URL params:
+ * @param id          {string} Required (path). The string `_id` of the member whose sessions are fetched.
+ *
+ * Query params:
+ * @param page        {number} Optional. 1-based page number for individual session pagination (default: 1).
+ *                             Ignored when `filter` is not `session`.
+ * @param limit       {number} Optional. Number of sessions per page (default: 10).
+ *                             Ignored when `filter` is not `session`.
+ * @param filter      {string} Optional. Controls result shape. `session` (default) returns individual rows;
+ *                             `day`, `week`, or `month` collapses sessions into aggregate groups.
+ * @param displayCurrency {string} Optional. ISO currency code to convert financial metrics into
+ *                             (e.g. `"TTD"`, `"USD"`). Resolved via `getCurrencyFromQuery`.
+ * @param licencee    {string} Optional. Licencee ID used to look up the currency conversion rate
+ *                             for the location. If absent, conversion is skipped.
+ * @param startDate   {string} Optional. ISO date string for the start of a custom date range.
+ *                             Must be paired with `endDate`; filters `startTime >= startDate`.
+ * @param endDate     {string} Optional. ISO date string for the end of a custom date range.
+ *                             Must be paired with `startDate`; filters `startTime < endDate + 1 day`.
+ * @param timePeriod  {string} Optional. Preset time window applied when `startDate`/`endDate` are absent.
+ *                             Accepted values: `today`, `yesterday`, `7d`, `30d`, `all time`.
  */
 export async function GET(
   request: NextRequest

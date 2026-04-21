@@ -11,8 +11,10 @@ import QRCode from 'qrcode';
 /**
  * POST /api/auth/totp/setup
  *
- * Generates a TOTP secret and QR code for the user to scan.
- * The secret is saved as 'totpSecret' but 'totpEnabled' remains false until confirmed.
+ * Generates a TOTP secret and QR code for the authenticated user to scan with
+ * their authenticator app. Takes no request body; identity is derived from the
+ * session cookie. The secret is persisted as `totpSecret` but `totpEnabled`
+ * remains false until the code is confirmed via POST /api/auth/totp/confirm.
  */
 export async function POST() {
   try {

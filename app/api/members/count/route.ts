@@ -19,6 +19,10 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main GET handler for members count
  *
+ * @param {string} licencee - Filter count by licencee name
+ * @param {string} locationId - Filter count by specific location(s) (supports comma-separated list)
+ * @param {string} machineTypeFilter - Filter by machine features ('LocalServersOnly', 'SMIBLocationsOnly', 'NoSMIBLocation', 'MembershipOnly')
+ *
  * Flow:
  * 1. Parse licencee and location parameters
  * 2. Connect to database and authenticate user

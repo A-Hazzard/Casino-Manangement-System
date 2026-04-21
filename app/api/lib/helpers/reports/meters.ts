@@ -8,31 +8,19 @@
  * @module app/api/lib/helpers/metersReport
  */
 
-import type { TimePeriod } from '@/app/api/lib/types';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
+import type {
+  ParsedMetersReportParams,
+  MetersHourlyChartData as HourlyChartData,
+  MetersReportData,
+} from '@/shared/types/meters';
+export type { ParsedMetersReportParams };
+export type TransformedMeterData = MetersReportData;
+import type { TimePeriod } from '@/shared/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
-// Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
-
-/**
- * Parsed and validated request parameters
- */
-export type ParsedMetersReportParams = {
-  timePeriod: TimePeriod;
-  customStartDate: Date | undefined;
-  customEndDate: Date | undefined;
-  page: number;
-  limit: number;
-  search: string;
-  licencee: string | null;
-  displayCurrency: CurrencyCode;
-  includeHourlyData: boolean;
-  requestedLocationList: string[];
-  hourlyDataMachineIds?: string[]; // Optional: filter hourly data by specific machine IDs
-  granularity?: 'hourly' | 'minute'; // Optional: granularity for chart data
-};
 
 /**
  * Location data with gaming day offset information
@@ -73,40 +61,6 @@ export type MeterAggregationResult = {
   gamesPlayed: number;
   jackpot: number;
   lastReadAt: Date;
-};
-
-/**
- * Transformed meter report data for a machine
- */
-export type TransformedMeterData = {
-  machineId: string;
-  metersIn: number;
-  metersOut: number;
-  jackpot: number;
-  billIn: number;
-  voucherOut: number;
-  attPaidCredits: number;
-  gamesPlayed: number;
-  netGross: number;
-  includeJackpot: boolean;
-  location: string;
-  locationId: string;
-  createdAt: Date | undefined;
-  machineDocumentId: string;
-  customName?: string;
-  serialNumber?: string;
-  game?: string;
-};
-
-/**
- * Hourly chart data point
- */
-export type HourlyChartData = {
-  day: string;
-  hour: string;
-  gamesPlayed: number;
-  coinIn: number;
-  coinOut: number;
 };
 
 /**
@@ -723,7 +677,7 @@ export function transformMeterData(
       includeJackpot,
       location: locationName,
       locationId: machine.gamingLocation,
-      createdAt: meterData.lastReadAt || machine.lastActivity,
+      createdAt: (meterData.lastReadAt || machine.lastActivity || new Date()).toISOString(),
       machineDocumentId,
       game: machine.game || undefined,
       // Include raw fields for export logic

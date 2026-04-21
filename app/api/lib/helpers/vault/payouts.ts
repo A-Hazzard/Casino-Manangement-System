@@ -12,10 +12,8 @@
  */
 
 import { CashDeskPayout } from '@/app/api/lib/models/cashDeskPayouts';
-import type {
-  PayoutDocument,
-  UpdatePayoutRequest,
-} from '@/app/api/lib/types/vault';
+import { type UpdatePayoutRequest } from '@/shared/types/vault';
+import { type PayoutDocument } from '@/shared/types/models';
 
 /**
  * Get payout by ID

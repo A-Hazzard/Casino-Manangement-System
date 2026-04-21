@@ -33,7 +33,7 @@ import type {
   UserReportPreferences,
   ReportGenerationStatus,
   PerformanceComparison,
-} from '@/lib/types/reports';
+} from '@/shared/types/reports';
 
 // ============================================================================
 // Types

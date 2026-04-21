@@ -14,6 +14,13 @@ import {
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main POST handler for closing a vault shift
+ *
+ * @body {string} vaultShiftId - REQUIRED. ID of the shift to close.
+ * @body {number} closingBalance - REQUIRED. The confirmed closing balance.
+ * @body {Object} denominations - REQUIRED. Denomination breakdown of the closing balance.
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {

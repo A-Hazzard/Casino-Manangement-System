@@ -18,6 +18,8 @@ import { NextResponse } from 'next/server';
 /**
  * Main GET handler for fetching member debug information
  *
+ * (No query parameters)
+ *
  * Flow:
  * 1. Connect to database
  * 2. Get member counts (total, with/without deletedAt)

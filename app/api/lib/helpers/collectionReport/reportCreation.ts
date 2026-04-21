@@ -518,6 +518,30 @@ export async function createCollectionReport(
       }
     }
 
+    // Calculate and persist totalVariation from Collection snapshots (no Meters query needed)
+    try {
+      const linkedCols = await Collections.find(
+        { locationReportId: body.locationReportId },
+        { 'sasMeters.jackpot': 1, _id: 0 }
+      ).lean();
+      const totalJackpot = linkedCols.reduce(
+        (s, c) => s + ((c.sasMeters as { jackpot?: number } | undefined)?.jackpot ?? 0),
+        0
+      );
+      const includeJackpot = Boolean(body.includeJackpot);
+      const adjustedSas = includeJackpot
+        ? (body.totalSasGross ?? 0) - totalJackpot
+        : (body.totalSasGross ?? 0);
+      const totalVariation = (body.totalGross ?? 0) - adjustedSas;
+      await CollectionReport.findOneAndUpdate(
+        { locationReportId: body.locationReportId },
+        { $set: { totalVariation } }
+      );
+      console.log(`✅ [createCollectionReport] totalVariation stored: ${totalVariation}`);
+    } catch (varErr) {
+      console.warn('[createCollectionReport] totalVariation store failed (non-fatal):', varErr);
+    }
+
     const duration = Date.now() - startTime;
     console.log(
       `✅ [createCollectionReport] Report creation completed successfully in ${duration}ms`

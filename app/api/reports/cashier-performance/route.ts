@@ -20,6 +20,14 @@ interface CashierPerformanceQuery {
   cashierId?: string;
 }
 
+/**
+ * Main GET handler for fetching cashier performance report
+ *
+ * @param {string} locationId - Filter by specific location ID
+ * @param {string} cashierId - Filter by specific cashier user ID
+ * @param {string} startDate - ISO date for range start
+ * @param {string} endDate - ISO date for range end
+ */
 export async function GET(request: NextRequest) {
   try {
     // ============================================================================

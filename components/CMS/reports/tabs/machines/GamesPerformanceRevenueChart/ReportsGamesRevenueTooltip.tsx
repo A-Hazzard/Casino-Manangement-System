@@ -12,7 +12,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import {  useLayoutEffect, useState  } from 'react';
 import { createPortal } from 'react-dom';
-import type { GamesPerformanceData } from './ReportsGamesPerformanceRevenueChart';
+import { type GamesPerformanceData } from '@/shared/types/reports';
 
 type ReportsGamesRevenueTooltipProps = {
   active?: boolean;

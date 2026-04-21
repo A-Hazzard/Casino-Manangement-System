@@ -16,14 +16,15 @@ import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for refreshing access token
+ * POST /api/auth/refresh
  *
- * Flow:
- * 1. Parse refresh token from request body or cookies
- * 2. Validate refresh token presence
- * 3. Refresh access token using refresh token
- * 4. Set new access token as HTTP-only cookie
- * 5. Return success response
+ * Issues a new short-lived access token using a valid refresh token. Called when
+ * the access token has expired and a full re-login should be avoided.
+ *
+ * Body fields:
+ * @param refreshToken {string} Optional. The refresh token string. When omitted or set to
+ *                              the literal "auto", the token is read from the `refreshToken`
+ *                              HTTP-only cookie instead.
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();

@@ -15,7 +15,45 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler
+ * GET /api/locations/[locationId]
+ *
+ * Multi-purpose endpoint for a single location. Behaviour changes based on which
+ * query params are present. Used by the Location Details page, cabinet list, and
+ * page header name lookups.
+ *
+ * URL params:
+ * @param locationId  {string} Required (path). The `_id` of the location.
+ *
+ * Query params — mode selectors (mutually exclusive, checked in order):
+ * @param nameOnly    {'true'} Returns only `{ _id, name, licenceeId, includeJackpot }`.
+ *                             Used by the page header to resolve a location name from its ID
+ *                             without loading all cabinet data.
+ * @param basicInfo   {'true'} Returns the full location document (no machines).
+ *                             Used when the page only needs location settings (e.g. gameDayOffset,
+ *                             membershipEnabled) without the cabinet metrics payload.
+ *
+ * Query params — cabinet list mode (used when neither nameOnly nor basicInfo is set):
+ * @param timePeriod  {TimePeriod} Required in list mode. Defines the aggregation window for
+ *                                 financial metrics (Today, Yesterday, Week, Month, All Time, Custom).
+ *                                 Maps to a gaming-day-aware date range using the location's gameDayOffset.
+ * @param startDate   {string}     Required when timePeriod='Custom'. ISO date string (YYYY-MM-DD or full ISO).
+ *                                 Start of the custom aggregation window.
+ * @param endDate     {string}     Required when timePeriod='Custom'. ISO date string. End of the window.
+ * @param licencee    {string}     Optional. Validates that the requesting user's licencee matches the
+ *                                 location's licencee — used as an extra access guard for non-admin users.
+ * @param search      {string}     Optional. Filters cabinets by serial number, relayId, smibBoard,
+ *                                 custom name, or machine ID (case-insensitive substring match).
+ *                                 Prefix-matching results are ranked first.
+ * @param onlineStatus {'online'|'offline'|'never-online'|'all'} Optional. Filters cabinets by their
+ *                                 connectivity status. Online = last activity within 3 minutes.
+ *                                 Ignored for ACE-enabled locations (all machines treated as online).
+ * @param smibStatus  {'smib'|'no-smib'|'all'} Optional. Filters cabinets by whether they have a
+ *                                 SMIB board or relayId configured.
+ * @param includeArchived {'true'} Optional. When 'true', includes soft-deleted machines in the results.
+ *                                 Used by the Archived Cabinets view within a location.
+ * @param page        {number}     Optional. Page number for pagination (default: 1).
+ * @param limit       {number}     Optional. Number of cabinets per page. When omitted, all matching
+ *                                 cabinets are returned unpaginated.
  */
 export async function GET(request: NextRequest) {
   const { pathname } = request.nextUrl;

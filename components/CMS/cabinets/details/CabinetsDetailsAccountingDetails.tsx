@@ -178,7 +178,7 @@ const CabinetsDetailsAccountingDetails = ({
                         <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">Money In</h4>
                         <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getMoneyInColorClass()}`}>
+                          <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getMoneyInColorClass(Number(cabinet?.moneyIn ?? cabinet?.sasMeters?.drop ?? 0))}`}>
                             {formatAmount(Number(cabinet?.moneyIn ?? cabinet?.sasMeters?.drop ?? 0))}
                           </p>
                         </div>

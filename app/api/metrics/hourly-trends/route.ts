@@ -23,6 +23,13 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main GET handler for fetching hourly trends
  *
+ * @param {string} locationId - Single location ID
+ * @param {string} locationIds - Comma-separated location IDs
+ * @param {string} timePeriod - Time range preset ('Today', '7d', etc.)
+ * @param {string} licencee - Filter by licencee name
+ * @param {string} startDate - ISO date for custom range start
+ * @param {string} endDate - ISO date for custom range end
+ *
  * Flow:
  * 1. Parse and validate request parameters
  * 2. Connect to database

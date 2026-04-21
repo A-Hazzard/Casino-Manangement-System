@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { ActivityLog } from '../models/activityLog';
-import type { ActivityLogChange } from '../types/activityLog';
+import type { ActivityLogChange } from '@/shared/types/activityLog';
 
 /**
  * Simple activity logger for auth events and other simple logging needs

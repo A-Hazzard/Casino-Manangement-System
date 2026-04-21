@@ -1,11 +1,11 @@
-import { DateRange } from '@/lib/utils/date';
+import { DateRange } from '../utils/date/ranges';
 import { TimePeriod } from '@/shared/types/common';
-import { ReportView } from './reports';
+import { ReportTab, MachineEvaluationData, ReportView, DashboardTotals } from '@/shared/types/reports';
 
 export * from '@/shared/types/entities';
 
 // Re-export date types
-export type { DateRange };
+export type { DateRange, TimePeriod };
 
 // Dashboard types
 export type dashboardData = {
@@ -26,43 +26,8 @@ export type dashboardData = {
   };
 };
 
-export type DashboardTotals = {
-  moneyIn: number;
-  moneyOut: number;
-  gross: number;
-  jackpot?: number;
-  netGross?: number;
-};
-
-// Report types
-export type MachineEvaluationData = {
-  locationName: string;
-  locationId: string;
-  machineId: string;
-  machineName: string;
-  gameTitle: string;
-  manufacturer: string;
-  drop: number;
-  netWin: number;
-  coinIn: number;
-  avgBet: number;
-  actualHold: number;
-  theoreticalHold: number;
-  gamesPlayed: number;
-  gross: number;
-  cancelledCredits: number;
-  jackpot?: number; // Added for Top Machines table (ME3-2.5)
-  averageWager?: number; // Added for Top Machines table (ME3-2.3)
-};
-
-export type ReportTab = {
-  id: ReportView;
-  label: string;
-  icon?: string;
-  description?: string;
-  /** false when this tab is under maintenance */
-  available?: boolean;
-};
+// Re-export from shared reports
+export type { MachineEvaluationData, ReportTab, ReportView, DashboardTotals };
 
 // Top performing data types
 export type TopLocationData = {
@@ -131,7 +96,7 @@ export type locations = Array<{
 }>;
 
 // Dashboard filter types
-export type ActiveTab = 'overview' | 'sas-evaluation' | 'revenue-analysis' | 'machines' | 'Cabinets' | 'locations';
+export type ActiveTab = ReportView;
 
 export type ActiveFilters = {
   timePeriod?: string;
@@ -144,7 +109,3 @@ export type ActiveFilters = {
   last30days?: boolean;
   Custom?: boolean;
 };
-
-// Re-export TimePeriod
-export type { TimePeriod };
-

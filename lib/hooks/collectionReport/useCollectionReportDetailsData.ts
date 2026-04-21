@@ -120,7 +120,6 @@ export function useCollectionReportDetailsData() {
   // ==========================================================================
   // Refs
   // ==========================================================================
-  const hasRedirectedRef = useRef(false);
   const tabContentRef = useRef<HTMLDivElement>(null);
 
   // ==========================================================================
@@ -308,17 +307,6 @@ export function useCollectionReportDetailsData() {
   useEffect(() => {
     setMachinePage(1);
   }, [searchTerm]);
-
-  /**
-   * Redirect to collection list if report is in editing state
-   */
-  useEffect(() => {
-    if (reportData?.isEditing && !hasRedirectedRef.current) {
-      hasRedirectedRef.current = true;
-      toast.info('Resuming unfinished edit...');
-      router.push(`/collection-report?resume=${reportId}`);
-    }
-  }, [reportData?.isEditing, reportId, router]);
 
   /**
    * Sync tab state with URL changes (browser back/forward)

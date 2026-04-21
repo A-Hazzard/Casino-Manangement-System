@@ -14,6 +14,10 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * GET handler for checking username/email uniqueness
  *
+ * @param {string} username - Username to check for availability
+ * @param {string} email - Email address to check for availability
+ * @param {string} excludeId - Member ID to exclude from uniqueness check (for edits)
+ *
  * Flow:
  * 1. Parse query parameters (username, email, excludeId)
  * 2. Connect to database

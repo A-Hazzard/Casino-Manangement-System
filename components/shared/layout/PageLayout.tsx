@@ -65,7 +65,7 @@ export default function PageLayout({
   mainClassName = 'flex-1 w-full max-w-full mx-auto px-4 py-8 sm:p-10 md:px-12 space-y-12 mt-6',
   showToaster = true,
   toasterPosition = 'top-right',
-  toasterRichColors = false,
+  toasterRichColors = true,
   onRefresh,
   refreshing = false,
 }: PageLayoutProps) {

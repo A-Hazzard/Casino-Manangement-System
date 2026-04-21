@@ -9,8 +9,7 @@
  * - Animated tab transitions
  * - Responsive layout management
  * - Centralized modal management
- *
- * @module components/CMS/collectionReport/CollectionReportPageContent
+ * - Role-based access control for tab visibility
  */
 
 'use client';

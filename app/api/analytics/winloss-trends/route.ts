@@ -12,7 +12,14 @@ import type { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching win/loss trends
+ * GET /api/analytics/winloss-trends
+ *
+ * Returns win/loss ratio trend data aggregated over the requested period. Used by the Analytics win/loss trends chart.
+ *
+ * Query params:
+ * @param timePeriod  {TimePeriod} Optional. 'Today'|'Yesterday'|'7d'|'30d'|'Custom'. Defaults to 'Today'.
+ * @param licencee    {string}     Optional. Scopes results to this licencee.
+ * @param locationIds {string}     Optional. Comma-separated location IDs to filter results.
  */
 export async function GET(req: NextRequest) {
   return withApiAuth(req, async () => {

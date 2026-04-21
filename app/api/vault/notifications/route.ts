@@ -11,6 +11,11 @@ import {
 } from '@/lib/helpers/vault/notifications';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for vault notifications
+ *
+ * @param {string} locationId - REQUIRED. Fetch notifications for specific gaming location.
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload }) => {
     try {

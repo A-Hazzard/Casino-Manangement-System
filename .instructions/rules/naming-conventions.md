@@ -305,7 +305,22 @@ See [nextjs-rules.md](../rules/nextjs-rules.md) section **4.4. Custom Hook Struc
 
 ---
 
-## 9. Summary of Best Practices
+## 10. Variable Naming Rules
+
+### No Single-Letter Variables (CRITICAL)
+
+Never use single-letter variables (e.g., `s`, `c`, `i`, `g`, `m`) in any part of the codebase, including scripts, loops, and callbacks. Always use descriptive, domain-specific names that indicate the variable's purpose.
+
+- ❌ `collections.reduce((s, c) => s + c.gross, 0)`
+- ✅ `collections.reduce((sum, collection) => sum + collection.gross, 0)`
+- ❌ `const loc = await db.collection(...).findOne(...)`
+- ✅ `const location = await db.collection(...).findOne(...)`
+- ❌ `for (let i = 0; i < batch.length; i++)`
+- ✅ `for (let index = 0; index < batch.length; index++)`
+
+---
+
+## 11. Summary of Best Practices
 
 - **Lean Wrappers**: Keep `page.tsx` files minimal, delegating logic to a `PageContent` component.
 - **Specific Loading States**: Create content-specific skeletons in `components/ui/skeletons/`.

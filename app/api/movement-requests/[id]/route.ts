@@ -17,14 +17,17 @@ import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main DELETE handler for soft deleting a movement request
+ * DELETE /api/movement-requests/[id]
  *
- * Flow:
- * 1. Parse and validate request parameters
- * 2. Find movement request by ID
- * 3. Soft delete movement request
- * 4. Log activity
- * 5. Return success response
+ * Deletes a movement request. Admins and developers may delete any request;
+ * the original creator may soft-delete their own. Hard delete is restricted to
+ * developers only.
+ *
+ * Path params:
+ * @param id         {string}  Required. The ID of the movement request to delete.
+ *
+ * Query params:
+ * @param deleteType {string}  Optional. 'soft' (default) sets `deletedAt`; 'hard' permanently removes the document (developer only).
  */
 export async function DELETE(
   request: NextRequest
@@ -187,14 +190,22 @@ export async function DELETE(
 }
 
 /**
- * Main PATCH handler for updating a movement request
+ * PATCH /api/movement-requests/[id]
  *
- * Flow:
- * 1. Parse and validate request parameters and body
- * 2. Find original movement request
- * 3. Update movement request
- * 4. Log activity
- * 5. Return updated request
+ * Updates one or more fields of an existing movement request. Accessible to
+ * admins, developers, the original creator, the designated recipient, and
+ * location admins/technicians/managers assigned to the destination location.
+ *
+ * Path params:
+ * @param id          {string}  Required. The ID of the movement request to update.
+ *
+ * Body fields:
+ * @param cabinetIn   {string}  Optional. Cabinet/machine being moved.
+ * @param locationFrom {string} Optional. ID of the source location.
+ * @param locationTo  {string}  Optional. ID of the destination location.
+ * @param reason      {string}  Optional. Reason for the movement request.
+ * @param status      {string}  Optional. Updated status of the request (e.g. 'pending', 'approved', 'completed').
+ * @param requestTo   {string}  Optional. ID or email of the user the request is directed to.
  */
 export async function PATCH(
   request: NextRequest

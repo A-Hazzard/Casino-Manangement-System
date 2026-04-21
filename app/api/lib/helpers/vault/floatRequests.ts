@@ -13,12 +13,12 @@
  */
 
 import { FloatRequest } from '@/app/api/lib/models/floatRequests';
-import type {
-  CreateFloatRequestRequest,
-  DenominationBreakdown,
-  FloatRequestDocument,
-  FloatRequestQueryParams,
-} from '@/app/api/lib/types/vault';
+import {
+  type CreateFloatRequestRequest,
+  type Denomination,
+  type FloatRequestQueryParams,
+} from '@/shared/types/vault';
+import { type FloatRequestDocument } from '@/shared/types/models';
 
 // ============================================================================
 // Data Fetching Functions
@@ -142,7 +142,7 @@ export async function getFloatRequestById(
  * @returns Calculated total amount
  */
 export function calculateDenominationTotal(
-  denom: DenominationBreakdown
+  denom: Denomination[]
 ): number {
   if (!denom || typeof denom !== 'object') {
     return 0;
@@ -269,7 +269,7 @@ export async function createFloatRequest(
  */
 export async function approveFloatRequest(
   id: string,
-  approvedDenom: DenominationBreakdown | undefined,
+  approvedDenom: Denomination[] | undefined,
   manager: { _id: string }
 ): Promise<FloatRequestDocument | null> {
   const request = await FloatRequest.findOne({ _id: id }).lean();
@@ -280,7 +280,7 @@ export async function approveFloatRequest(
   const requestDoc = request as unknown as FloatRequestDocument;
 
   // Use provided approvedDenom or requestedDenom
-  const finalApprovedDenom = approvedDenom || requestDoc.requestedDenom;
+  const finalApprovedDenom = approvedDenom || requestDoc.requestedDenom || [];
   const approvedTotalAmount = calculateDenominationTotal(finalApprovedDenom);
 
   // Validate status transition
@@ -365,7 +365,7 @@ export async function rejectFloatRequest(
  */
 export async function editFloatRequest(
   id: string,
-  editedDenom: DenominationBreakdown
+  editedDenom: Denomination[]
 ): Promise<FloatRequestDocument | null> {
   const request = await FloatRequest.findOne({ _id: id }).lean();
   if (!request) {
@@ -497,7 +497,7 @@ export function transformFloatRequestForResponse(
     totalAmount: request.totalAmount,
     location: request.location,
     locationId: request.locationId,
-    approvedDenom: request.approvedDenom,
+    approvedDenom: request.approvedDenom || [],
     approvedFloatAt: request.approvedFloatAt,
     approvedTotalAmount: request.approvedTotalAmount,
     approvedBy: request.approvedBy,

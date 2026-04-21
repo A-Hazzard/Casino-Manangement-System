@@ -22,7 +22,7 @@ import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
+
 import {
     getGrossColorClass,
     getMoneyInColorClass,
@@ -85,7 +85,7 @@ export default function ReportsLocationsTable({
   const [sortField, setSortField] = useState<SortField>('moneyIn');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [searchTerm, setSearchTerm] = useState('');
-  const { displayCurrency } = useCurrencyFormat();
+  const { formatAmount } = useCurrencyFormat();
 
   // Calculate total machines across all locations for floor position calculation
   const totalMachinesAcrossAllLocations = useMemo(() => {
@@ -192,7 +192,7 @@ export default function ReportsLocationsTable({
   };
 
   const formatCurrency = (amount: number | null | undefined) => {
-    return formatCurrencyWithCodeString(amount, displayCurrency);
+    return formatAmount(amount || 0);
   };
 
   const formatNumber = (num: number) => {
@@ -202,9 +202,11 @@ export default function ReportsLocationsTable({
   // Mobile Card Component
   const LocationCard = ({ location }: { location: AggregatedLocation }) => {
     const holdPercentage =
-      location.moneyIn > 0 ? (location.gross / location.moneyIn) * 100 : 0;
+      (location.moneyIn || 0) > 0 ? (location.gross / location.moneyIn) * 100 : 0;
     const avgWagerPerGame =
-      location.gamesPlayed > 0 ? location.moneyIn / location.gamesPlayed : 0;
+      location.gamesPlayed && location.gamesPlayed > 0
+        ? location.moneyIn / location.gamesPlayed
+        : 0;
 
     return (
       <Card
@@ -308,7 +310,7 @@ export default function ReportsLocationsTable({
             <div>
               <span className="text-gray-500">Games Played:</span>
               <span className="ml-2 font-medium">
-                {formatNumber(location.gamesPlayed)}
+                {formatNumber(location.gamesPlayed || 0)}
               </span>
             </div>
           </div>
@@ -316,7 +318,7 @@ export default function ReportsLocationsTable({
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-500">Drop (Money In):</span>
-              <span className={`font-medium ${getMoneyInColorClass()}`}>
+              <span className={`font-medium ${getMoneyInColorClass(location.moneyIn)}`}>
                 {formatCurrency(location.moneyIn)}
               </span>
             </div>
@@ -523,11 +525,11 @@ export default function ReportsLocationsTable({
                 <tbody className="divide-y divide-gray-200 bg-white">
                   {sortedLocations.map(location => {
                     const holdPercentage =
-                      location.moneyIn > 0
+                      (location.moneyIn || 0) > 0
                         ? (location.gross / location.moneyIn) * 100
                         : 0;
                     const avgWagerPerGame =
-                      location.gamesPlayed > 0
+                      location.gamesPlayed && location.gamesPlayed > 0
                         ? location.moneyIn / location.gamesPlayed
                         : 0;
                     const floorPosition =
@@ -704,7 +706,7 @@ export default function ReportsLocationsTable({
                           {location.totalMachines}
                         </td>
                         <td
-                          className={`whitespace-nowrap px-4 py-3 text-left text-sm font-medium ${getMoneyInColorClass()}`}
+                          className={`whitespace-nowrap px-4 py-3 text-left text-sm font-medium ${getMoneyInColorClass(location.moneyIn)}`}
                         >
                           {formatCurrency(location.moneyIn)}
                         </td>
@@ -741,7 +743,7 @@ export default function ReportsLocationsTable({
                           {formatCurrency(location.jackpot || 0)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-left text-sm text-gray-900">
-                          {formatNumber(location.gamesPlayed)}
+                          {formatNumber(location.gamesPlayed || 0)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-left text-sm text-gray-900">
                           {formatCurrency(avgWagerPerGame)}

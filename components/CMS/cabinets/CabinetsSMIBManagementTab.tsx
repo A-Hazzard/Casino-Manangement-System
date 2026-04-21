@@ -203,7 +203,7 @@ export default function CabinetsSMIBManagementTab({
 
     // Fetch full machine data from database with smibConfig
     axios
-      .get(`/api/machines/by-id?id=${selectedMachineId}`)
+      .get(`/api/cabinets/by-id?id=${selectedMachineId}`)
       .then(response => {
         if (response.data && response.data.data) {
           const machine = response.data.data;
@@ -388,7 +388,7 @@ export default function CabinetsSMIBManagementTab({
     if (selectedMachineId) {
       try {
         const response = await axios.get(
-          `/api/machines/by-id?id=${selectedMachineId}`
+          `/api/cabinets/by-id?id=${selectedMachineId}`
         );
         setMachineData(response.data.data || response.data);
       } catch (err) {
@@ -873,4 +873,5 @@ export default function CabinetsSMIBManagementTab({
     </div>
   );
 }
+
 

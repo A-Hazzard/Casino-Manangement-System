@@ -62,10 +62,10 @@ async function mockUsersAPIs(
   await page.route('**/api/licencees**', (route) =>
     route.fulfill({ status: 200, json: MOCK_LICENCEES_LIST })
   );
-  await page.route('**/api/gaming-locations**', (route) =>
+  await page.route('**/api/locations**', (route) =>
     route.fulfill({
       status: 200,
-      json: { success: true, data: [], timestamp: new Date().toISOString() },
+      json: { success: true, locations: [], timestamp: new Date().toISOString() },
     })
   );
 }

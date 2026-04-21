@@ -35,7 +35,7 @@ import type {
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
-import { calculateMachineMovement } from '@/lib/utils/movement';
+import { calculateCabinetMovement } from '@/lib/utils/movement';
 import { validateCollectionReportPayload } from '@/lib/utils/validation';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -73,9 +73,7 @@ type UseNewCollectionModalProps = {
  * Sorts machines alphabetically with numeric awareness
  * Groups machines like "Machine 1, Machine 2, Machine 10" correctly
  */
-function sortMachinesAlphabetically<
-  T extends { name?: string; serialNumber?: string },
->(machines: T[]): T[] {
+function sortMachinesAlphabetically(machines: CollectionReportMachineSummary[]): CollectionReportMachineSummary[] {
   return [...machines].sort((a, b) => {
     const nameA = (a.name || a.serialNumber || '').toString();
     const nameB = (b.name || b.serialNumber || '').toString();
@@ -111,6 +109,7 @@ export function useNewCollectionModal({
   // ==========================================================================
   const {
     selectedLocationId,
+    selectedLocationName,
     setSelectedLocation,
     lockedLocationId,
     setLockedLocation,
@@ -128,7 +127,6 @@ export function useNewCollectionModal({
   // ==========================================================================
 
   // Location & Machine Selection
-  const [selectedLocationName] = useState('');
   const [machinesOfSelectedLocation, setMachinesOfSelectedLocation] = useState<
     CollectionReportMachineSummary[]
   >([]);
@@ -403,7 +401,7 @@ export function useNewCollectionModal({
       const fetchMachinesForLocation = async () => {
         try {
           const response = await axios.get(
-            `/api/machines?locationId=${locationIdToUse}&_t=${Date.now()}`
+            `/api/cabinets?locationId=${locationIdToUse}&_t=${Date.now()}`
           );
           if (response.data?.success && response.data?.data) {
             setMachinesOfSelectedLocation(response.data.data);
@@ -458,7 +456,7 @@ export function useNewCollectionModal({
     }
 
     const totalMovementData = collectedMachineEntries.map(entry => {
-      const movement = calculateMachineMovement(
+      const movement = calculateCabinetMovement(
         entry.metersIn || 0,
         entry.metersOut || 0,
         entry.prevIn || 0,
@@ -511,7 +509,15 @@ export function useNewCollectionModal({
     });
   }, [
     collectedMachineEntries,
-    financials,
+    // List only the specific financials fields that are read inside the callback.
+    // Using the entire `financials` object here causes an infinite loop because
+    // setFinancials() creates a new object reference, which recreates this callback,
+    // which triggers the useEffect([calculateAmountToCollect]) to re-run, forever.
+    financials.taxes,
+    financials.variance,
+    financials.advance,
+    financials.balanceCorrection,
+    financials.collectedAmount,
     locationCollectionBalance,
     locationProfitShare,
   ]);
@@ -530,7 +536,7 @@ export function useNewCollectionModal({
           locationId,
         });
         setIsLoadingExistingCollections(true);
-        let url = `/api/collections?incompleteOnly=true&_t=${Date.now()}`;
+        let url = `/api/collection-reports/collections?incompleteOnly=true&_t=${Date.now()}`;
         if (locationId) url += `&location=${locationId}`;
         if (userId) url += `&collector=${userId}`;
 
@@ -704,7 +710,7 @@ export function useNewCollectionModal({
         // Fetch last collection time from API
         axios
           .get(
-            `/api/collections/last-collection-time?machineId=${selectedMachineId}`
+            `/api/collection-reports/collections/last-collection-time?machineId=${selectedMachineId}`
           )
           .then(res => {
             const data = res.data?.data;
@@ -1308,7 +1314,7 @@ export function useNewCollectionModal({
       }
 
       const totalMovementData = collectedEntries.map(entry => {
-        const movement = calculateMachineMovement(
+        const movement = calculateCabinetMovement(
           entry.metersIn || 0,
           entry.metersOut || 0,
           entry.prevIn || 0,
@@ -1464,7 +1470,7 @@ export function useNewCollectionModal({
         collectedMachineEntries.map(async entry => {
           if (!entry._id) return;
           return await axiosInstance.patch(
-            `/api/collections?id=${entry._id}`,
+            `/api/collection-reports/collections?id=${entry._id}`,
             patchData
           );
         })

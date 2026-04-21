@@ -207,6 +207,25 @@ export function useLoginPageData() {
     if (logout || error || msg) router.replace('/login', { scroll: false });
   }, [searchParams, router]);
 
+  // === System Initialization Check ===
+  // If no users exist in the DB, redirect to /install for first-time setup
+  useEffect(() => {
+    let cancelled = false;
+    async function checkInitialization() {
+      try {
+        const res = await fetch('/api/install/status');
+        const data = await res.json();
+        if (!cancelled && !data.initialized) {
+          router.replace('/install');
+        }
+      } catch {
+        // Silently fail — if the check errors, let the user proceed to login
+      }
+    }
+    checkInitialization();
+    return () => { cancelled = true; };
+  }, [router]);
+
   // Remember Me Init
   useEffect(() => {
     const saved = localStorage.getItem('rememberedIdentifier');

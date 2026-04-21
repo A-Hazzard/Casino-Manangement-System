@@ -19,21 +19,21 @@ export async function addMachineCollection(
   data: Partial<CollectionDocument>
 ): Promise<CollectionDocument> {
   try {
-    console.log('📤 [addMachineCollection] Sending POST to /api/collections', {
+    console.log('📤 [addMachineCollection] Sending POST to /api/collection-reports/collections', {
       machineId: data.machineId,
       location: data.location,
       collector: data.collector,
       metersIn: data.metersIn,
       metersOut: data.metersOut,
     });
-    const res = await axios.post('/api/collections', data);
+    const res = await axios.post('/api/collection-reports/collections', data);
     console.log('✅ [addMachineCollection] Response received:', res.status);
     // The API returns { success: true, data: created, calculations: {...} }
     return res.data.data;
   } catch (error) {
     console.error('❌ [addMachineCollection] Error details:', {
       error,
-      url: '/api/collections',
+      url: '/api/collection-reports/collections',
       status: (error as AxiosError)?.response?.status,
       statusText: (error as AxiosError)?.response?.statusText,
       data: (error as AxiosError)?.response?.data,
@@ -48,7 +48,7 @@ export async function addMachineCollection(
 export async function deleteMachineCollection(
   id: string
 ): Promise<{ success: boolean }> {
-  const res = await axios.delete(`/api/collections?id=${id}`);
+  const res = await axios.delete(`/api/collection-reports/collections?id=${id}`);
   return res.data;
 }
 
@@ -62,7 +62,7 @@ export async function updateCollectionsWithReportId(
   // Update each collection with the correct locationReportId and mark as completed
   const updatePromises = collections.map(async collection => {
     try {
-      await axios.patch(`/api/collections?id=${collection._id}`, {
+      await axios.patch(`/api/collection-reports/collections?id=${collection._id}`, {
         locationReportId: reportId,
         isCompleted: true,
       });

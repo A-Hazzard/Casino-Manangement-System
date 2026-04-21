@@ -289,17 +289,45 @@ export default function AdministrationPageContent() {
               className="h-5 w-5 flex-shrink-0 sm:h-6 sm:w-6 md:h-8 md:w-8"
             />
           </h1>
-          {/* Mobile Refresh Button */}
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="ml-auto flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 md:hidden"
-            aria-label="Refresh"
-          >
-            <RefreshCw
-              className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`}
-            />
-          </button>
+          {/* Mobile Refresh + Create Buttons */}
+          <div className="ml-auto flex shrink-0 items-center gap-1 md:hidden">
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Refresh"
+            >
+              <RefreshCw
+                className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`}
+              />
+            </button>
+            {activeSection === 'users' ? (
+              <Button
+                onClick={usersHook.openAddUserModal}
+                className="flex items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:bg-buttonActive"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span>Create</span>
+              </Button>
+            ) : activeSection === 'licencees' ? (
+              <Button
+                onClick={licenceesHook.handleOpenAddLicencee}
+                disabled={licenceesHook.isCountriesLoading || licenceesHook.countries.length === 0}
+                className="flex items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:bg-buttonActive"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span>Create</span>
+              </Button>
+            ) : activeSection === 'countries' ? (
+              <Button
+                onClick={countriesHook.openAddModal}
+                className="flex items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:bg-buttonActive"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span>Create</span>
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         {/* Desktop Refresh and Action Buttons */}

@@ -88,6 +88,17 @@ function handleMongoDBError(error: unknown): NextResponse | null {
 /**
  * Main GET handler for fetching meter trends
  *
+ * @param {string} timePeriod - Time range preset (REQUIRED)
+ * @param {string} licencee - Filter metrics by licencee name or ID
+ * @param {string} currency - Target display currency (default: 'USD')
+ * @param {string} granularity - Data points density ('hourly', 'daily', etc.)
+ * @param {string} locationId - Comma-separated location IDs to filter
+ * @param {string} gameType - Comma-separated game types to filter
+ * @param {string} onlineStatus - Filter by connectivity status
+ * @param {string} search - Search query for machines/locations
+ * @param {string} startDate - ISO date for custom range start
+ * @param {string} endDate - ISO date for custom range end
+ *
  * Flow:
  * 1. Parse and validate request parameters
  * 2. Connect to database

@@ -17,6 +17,13 @@ import { apiLogger } from '../lib/services/loggerService';
 
 /**
  * Main GET handler for fetching users
+ *
+ * @param {string} status - Filter by status ('deleted', 'all')
+ * @param {string} role - Filter by role (e.g., 'cashier')
+ * @param {string} licencee - Filter users by assigned licencee ID
+ * @param {string} search - Search query for username or profile name
+ * @param {number} page - Page number for pagination
+ * @param {number} limit - Items per page
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: currentUser, userRoles, isAdminOrDev }) => {

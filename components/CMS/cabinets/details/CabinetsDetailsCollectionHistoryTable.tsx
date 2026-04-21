@@ -161,7 +161,7 @@ export function CabinetsDetailsCollectionHistoryTable({
     if (!entryToDelete || !entryToDelete.machineId) return;
 
     try {
-      const res = await axios.patch(`/api/machines/${entryToDelete.machineId}/collection-history`, {
+      const res = await axios.patch(`/api/cabinets/${entryToDelete.machineId}/collection-history`, {
         operation: 'delete',
         entryId: entryToDelete._id,
       });
@@ -186,7 +186,7 @@ export function CabinetsDetailsCollectionHistoryTable({
     if (!entryToEdit || !entryToEdit.machineId) return;
 
     try {
-      const res = await axios.patch(`/api/machines/${entryToEdit.machineId}/collection-history`, {
+      const res = await axios.patch(`/api/cabinets/${entryToEdit.machineId}/collection-history`, {
         operation: 'update',
         entryId: entryToEdit._id,
         entry: {
@@ -771,4 +771,5 @@ export function CabinetsDetailsCollectionHistoryTable({
     </TooltipProvider>
   );
 }
+
 

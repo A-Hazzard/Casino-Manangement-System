@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { useReportsStore } from '@/lib/store/reportsStore';
-import type { ReportView, ReportTab } from '@/lib/types/reports';
+import type { ReportView, ReportTab } from '@/shared/types/reports';
 
 /**
  * Custom hook for managing reports navigation logic
@@ -69,6 +69,10 @@ export function useReportsNavigation(reportsTabsConfig: ReportTab[]) {
       machines: '/reports?section=machines',
       locations: '/reports?section=locations',
       meters: '/reports?section=meters',
+      'sas-evaluation': '/reports?section=sas-evaluation',
+      'revenue-analysis': '/reports?section=revenue-analysis',
+      Cabinets: '/reports?section=Cabinets',
+      overview: '/reports?section=overview',
     };
 
     router.push(sectionMap[tabId]);

@@ -1,8 +1,22 @@
 /**
  * CollectionReportEditCollectionModal Component (Unified)
- * 
+ *
  * Master entry point for editing collection reports.
  * Automatically switches between Mobile and Desktop layouts based on screen size.
+ *
+ * Features:
+ * - Unified responsive orchestration (Desktop vs Mobile layouts)
+ * - Comprehensive state management via useCollectionReportEditModalData hook
+ * - Safe-close logic (blocks close while machine edit is active)
+ * - Batch SAS time updates
+ * - Variation check integration with popover feedback
+ * - Deep validation for physical vs digital reconciliations
+ *
+ * @param show - Whether the modal is visible
+ * @param onClose - Callback to close the modal
+ * @param reportId - ID of the collection report to edit
+ * @param locations - List of available locations with their associated machines
+ * @param onRefresh - Callback to refresh the main reports data
  */
 
 'use client';
@@ -26,8 +40,9 @@ import { VariationCheckPopover } from '@/components/CMS/collectionReport/variati
 import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
 import { MobileCollectionModalSkeleton } from '@/components/shared/ui/skeletons/MobileCollectionModalSkeleton';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
+import { toast } from 'sonner';
 import type { CollectionReportLocationWithMachines, MachineVariationData } from '@/lib/types/api';
 
 // Layouts
@@ -51,16 +66,23 @@ type WrapperProps = {
   locations: CollectionReportLocationWithMachines[];
   onRefresh: () => void;
   gameDayOffset?: number;
+  /** Called whenever the machine-form open/closed state changes */
+  onMachineEditingChange?: (editing: boolean) => void;
 };
 
-function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gameDayOffset }: WrapperProps) {
+function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gameDayOffset, onMachineEditingChange }: WrapperProps) {
   const desktopHook = useEditCollectionModal({ show, reportId, locations, onRefresh, onClose });
   const variation = useCollectionReportVariationCheck();
   const [variationsCollapsibleExpanded, setVariationsCollapsibleExpanded] = useState(false);
   const [showVariationPopover, setShowVariationPopover] = useState(false);
   const [showVariationsConfirmation, setShowVariationsConfirmation] = useState(false);
 
-  // Auto-check variations when collections are loaded (Request 5)
+  // Notify outer component when a machine form opens/closes
+  useEffect(() => {
+    onMachineEditingChange?.(!!desktopHook.editingEntryId);
+  }, [desktopHook.editingEntryId, onMachineEditingChange]);
+
+  // Auto-check variations when collections are loaded
   const initialCheckPerformedRef = useRef(false);
   useEffect(() => {
     if (show && !desktopHook.isLoadingCollections && desktopHook.collectedMachineEntries.length > 0 && !initialCheckPerformedRef.current) {
@@ -83,6 +105,10 @@ function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gam
   }, [show, desktopHook.isLoadingCollections, desktopHook.collectedMachineEntries.length, desktopHook.selectedLocationId]);
 
   const handleDesktopSubmit = () => {
+    if (desktopHook.editingEntryId) {
+      toast.warning('Save or cancel your current machine edit first.');
+      return;
+    }
     if (desktopHook.collectedMachineEntries.length === 0 || desktopHook.isProcessing) return;
     setShowVariationPopover(true);
     const machinesForCheck = desktopHook.collectedMachineEntries.map(entry => ({
@@ -110,8 +136,8 @@ function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gam
         </DialogDescription>
       </DialogHeader>
 
-      <DesktopEditLayout 
-        {...desktopHook} 
+      <DesktopEditLayout
+        {...desktopHook}
         locations={locations}
         onRefresh={onRefresh}
         isMinimized={variation.isMinimized}
@@ -192,13 +218,22 @@ function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gam
   );
 }
 
-function MobileEditWrapper({ show, reportId, locations, onRefresh, onClose }: WrapperProps) {
+function MobileEditWrapper({ show, reportId, locations, onRefresh, onClose, onMachineEditingChange }: WrapperProps) {
   const mobileHook = useMobileEditCollectionModal({ show, reportId, locations, onRefresh, onClose });
   const variation = useCollectionReportVariationCheck();
   const [showVariationPopover, setShowVariationPopover] = useState(false);
   const [showVariationsConfirmation, setShowVariationsConfirmation] = useState(false);
 
+  // Notify outer component when a machine form opens/closes
+  useEffect(() => {
+    onMachineEditingChange?.(!!mobileHook.modalState.editingEntryId);
+  }, [mobileHook.modalState.editingEntryId, onMachineEditingChange]);
+
   const handleMobileSubmit = () => {
+    if (mobileHook.modalState.editingEntryId) {
+      toast.warning('Save or cancel your current machine edit first.');
+      return;
+    }
     if (mobileHook.collectedMachines.length === 0 || mobileHook.modalState.isProcessing) return;
     setShowVariationPopover(true);
     const machinesForCheck = mobileHook.collectedMachines.map(entry => ({
@@ -214,7 +249,7 @@ function MobileEditWrapper({ show, reportId, locations, onRefresh, onClose }: Wr
     variation.checkVariations(mobileHook.lockedLocationId || mobileHook.selectedLocationId || '', machinesForCheck);
   };
 
-  // Auto-check variations when collections are loaded (Request 5)
+  // Auto-check variations when collections are loaded
   const initialCheckPerformedRef = useRef(false);
   useEffect(() => {
     if (show && !mobileHook.modalState.isLoadingCollections && mobileHook.collectedMachines.length > 0 && !initialCheckPerformedRef.current) {
@@ -249,12 +284,12 @@ function MobileEditWrapper({ show, reportId, locations, onRefresh, onClose }: Wr
           </div>
         </div>
       )}
-      
+
       {mobileHook.modalState.isLoadingMachines || mobileHook.modalState.isLoadingCollections ? (
         <MobileCollectionModalSkeleton />
       ) : (
-        <MobileEditLayout 
-          {...mobileHook} 
+        <MobileEditLayout
+          {...mobileHook}
           handleStartSubmit={handleMobileSubmit}
           variationsData={variation.variationsData}
         />
@@ -324,36 +359,61 @@ export default function CollectionReportEditCollectionModal({
   const isMobile = useMediaQuery('(max-width: 768px)');
   const { gameDayOffset } = useDashBoardStore();
 
+  // True while a machine edit form is open inside the modal
+  const isMachineEditingRef = useRef(false);
+  const handleMachineEditingChange = useCallback((editing: boolean) => {
+    isMachineEditingRef.current = editing;
+  }, []);
+
+  const handleCloseAttempt = useCallback(() => {
+    if (isMachineEditingRef.current) {
+      toast.warning('Save or cancel your current machine edit first.');
+      return;
+    }
+    onClose();
+  }, [onClose]);
+
   if (!show) return null;
 
   return (
-    <Dialog open={show} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Dialog open={show} onOpenChange={(isOpen) => { if (!isOpen) handleCloseAttempt(); }}>
       <DialogContent
-        className={isMobile 
+        className={isMobile
           ? "m-0 flex h-[100dvh] w-full max-w-full flex-col overflow-hidden border-none bg-gray-50 p-0 shadow-2xl"
           : "flex h-[95vh] w-[98vw] max-w-[98vw] flex-col bg-container p-0 md:h-[90vh] md:w-full md:max-w-6xl lg:max-w-7xl"
         }
         showCloseButton={!isMobile}
         isMobileFullScreen={isMobile}
+        onEscapeKeyDown={(e) => {
+          if (isMachineEditingRef.current) {
+            e.preventDefault();
+            toast.warning('Save or cancel your current machine edit first.');
+          }
+        }}
+        onInteractOutside={(e) => {
+          if (isMachineEditingRef.current) e.preventDefault();
+        }}
       >
         <DialogTitle className="sr-only">Edit Collection Report</DialogTitle>
 
         {isMobile ? (
-          <MobileEditWrapper 
-            show={show} 
-            reportId={reportId} 
-            locations={locations} 
-            onRefresh={onRefresh} 
-            onClose={onClose} 
+          <MobileEditWrapper
+            show={show}
+            reportId={reportId}
+            locations={locations}
+            onRefresh={onRefresh}
+            onClose={handleCloseAttempt}
+            onMachineEditingChange={handleMachineEditingChange}
           />
         ) : (
-          <DesktopEditWrapper 
-            show={show} 
-            reportId={reportId} 
-            locations={locations} 
-            onRefresh={onRefresh} 
-            onClose={onClose}
+          <DesktopEditWrapper
+            show={show}
+            reportId={reportId}
+            locations={locations}
+            onRefresh={onRefresh}
+            onClose={handleCloseAttempt}
             gameDayOffset={gameDayOffset}
+            onMachineEditingChange={handleMachineEditingChange}
           />
         )}
       </DialogContent>

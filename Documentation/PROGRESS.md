@@ -30,9 +30,9 @@
 
 ## 1. Project Overview
 
-**Evolution One CMS** is a full-stack, multi-tenant Casino Management System purpose-built for real-time slot machine monitoring, financial analytics, cash operations, and regulatory compliance. It is deployed in live casino environments across multiple properties and licencees, with a field-facing mobile interface and a back-office management portal.
+**Evolution One CMS** is a full-stack, multi-tenant Casino Management System purpose-built for real-time cabinet monitoring, financial analytics, cash operations, and regulatory compliance. It is deployed in live casino environments across multiple properties and licencees, with a field-facing mobile interface and a back-office management portal.
 
-The system is designed to replace fragmented, paper-based processes with a single source of truth for machine health, revenue reconciliation, and vault cash tracking — all under strict audit and role-based access controls.
+The system is designed to replace fragmented, paper-based processes with a single source of truth for cabinet performance, revenue reconciliation, and vault cash tracking — all under strict audit and role-based access controls.
 
 ---
 
@@ -88,7 +88,7 @@ The application is a single unified deployment. After login, users are automatic
 | `reviewer`, `owner` | `/locations` | Read-only financial view |
 | `vault-manager` | `/vault/management` | Vault management interface |
 | `cashier` | `/vault/cashier/payouts` | Cashier operations interface |
-| `technician` | `/cabinets` | Machine management only |
+| `technician` | `/cabinets` | Cabinet management only |
 | `collector` | `/collection-report` | Collection reports only |
 
 All pages, navigation, and features are gated at the component and API level by the user's role — not by any build-time or environment-level flag.
@@ -100,38 +100,38 @@ All pages, navigation, and features are gated at the component and API level by 
 ### 5.1 CMS — General Casino Management Interface
 
 #### Dashboard (`/`)
-Real-time KPI cards (Money In/Out, Jackpot & Gross Revenue) with machine online/offline counts, revenue trend charts (hourly/daily/weekly/monthly granularity), top-performing locations & cabinets leaderboard, and an interactive geographic map with colour-coded property markers (green = fully online, amber = partial, grey = offline). Global filter bar controls licencee scope and time period across all sections simultaneously. Currency auto-converts to the selected licencee's local currency (TTD, GYD, etc.). Dashboard auto-refreshes every 180 seconds. Gaming day offset applied to all figures.
+Real-time KPI cards (Money In/Out, Jackpot & Gross Revenue) with cabinet online/offline counts, revenue totals, and map visualization. Revenue trend charts (hourly/daily/weekly/monthly granularity), top-performing locations & cabinets leaderboard, and an interactive geographic map with colour-coded property markers (green = fully online, amber = partial, grey = offline). Global filter bar controls licencee scope and time period across all sections simultaneously. Currency auto-converts to the selected licencee's local currency (TTD, GYD, etc.). Dashboard auto-refreshes every 180 seconds. Gaming day offset applied to all figures.
 
 #### Locations (`/locations`, `/locations/[slug]`)
-Aggregated financial metrics per property based on each location's gaming period (`gameDayOffset`). Summary bar shows fleet-wide Money In, Money Out and Gross across the selected scope. Table supports multi-column sorting and filtering by licencee, machine type, and online status — clicking the "Offline" pill instantly filters to problem properties. Interactive map syncs with the table (clicking a map marker scrolls to the matching row). Reviewer multiplier scaling applied server-side. Location detail view (`/locations/[slug]`) shows a per-machine financial breakdown, membership stats, and geographic coordinates.
+Aggregated financial metrics per property based on each location's gaming period (`gameDayOffset`). Summary bar shows fleet-wide Money In, Money Out and Gross across the selected scope. Table supports multi-column sorting and filtering by licencee, cabinet type, and online status — clicking the "Offline" pill instantly filters to problem properties. Interactive map syncs with the table (clicking a map marker scrolls to the matching row). Reviewer multiplier scaling applied server-side. Location detail view (`/locations/[slug]`) shows a per-cabinet financial breakdown, membership stats, and geographic coordinates.
 
 #### Cabinets (`/cabinets`, `/cabinets/[slug]`)
-Full fleet management with remote MQTT commands (SYNC, LOCK, UNLOCK) and machine configurations inclusive of movement requests. Fleet table filters by location, manufacturer, online status, and machine type (Slot/VGT/Roulette/Terminal) with case-insensitive search across serial number, asset name, and game title. Details drawer (`/cabinets/[slug]`) is tabbed: **Accounting** (Money In/Out, Gross, Net Gross, Jackpot), **Live SAS Meters** (Coin In/Out, Current Credits, Total Drop), **Bill Validator** (denomination breakdown and subtotals), and **Audit Logs** (machine events). Each tab fetches lazily. SMIB Configuration panel (developer/technician only) exposes SMIB IP, SAS address, polling interval, and MQTT topic with live push via `POST /api/mqtt/update-machine-config`. Firmware OTA update and device restart also available from the details drawer.
+Full fleet management with remote MQTT commands (SYNC, LOCK, UNLOCK) and cabinet configurations inclusive of SMIB and accounting denomination settings. Fleet table filters by location, manufacturer, online status, and cabinet type (Slot/VGT/Roulette/Terminal) with case-insensitive search across serial number, asset name, and game title. Details drawer (`/cabinets/[slug]`) is tabbed: **Accounting** (Money In/Out, Gross, Net Gross, Jackpot), **Live SAS Meters** (Coin In/Out, Current Credits, Total Drop), **Bill Validator** (denomination breakdown and subtotals), and **Audit Logs** (cabinet events). Each tab fetches lazily. SMIB Configuration panel (developer/technician only) exposes SMIB IP, SAS address, polling interval, and MQTT topic with live push via `POST /api/mqtt/update-cabinet-config`. Firmware OTA update and device restart also available from the details drawer.
 
 #### Members (`/members`, `/members/[id]`)
 CRM hub for player identity, loyalty management, and win/loss analytics. List view with debounced search (350ms) across name, member ID and phone, filterable by licencee, location, and KYC status, paginated at 50 per page. Member 360 profile (`/members/[id]`) is tabbed: **Overview** (personal details, KYC documents), **Sessions** (full gaming session history), **Points History**, **Documents**, and **Win/Loss Report** (total won/lost across all sessions). KYC status and tier/points balance tracked per member.
 
-#### Sessions (`/sessions`, `/sessions/[sessionId]/[machineId]/events`)
+#### Sessions (`/sessions`, `/sessions/[sessionId]/[cabinetId]/events`)
 Real-time floor monitoring and session forensic replay. Session history table filterable by search (ID/asset/member), licencee, and date range. Session details drawer shows start/end time, computed duration, status, loyalty settings active during play (points multiplier, tier bonus), and a full forensic event feed (Card-In, Spin, Win, Card-Out) sourced from MQTT events. Live Operations Ticker (Server-Sent Events) pushes jackpots, door opens, and high-value card-ins to the floor view without a page refresh.
 
 #### Collection Report (`/collection-report`, `/collection-report/report/[reportId]`)
-Multi-step financial wizard for reconciling electronic machine meters with physical cash collection. Fully responsive with dedicated desktop and mobile layouts with feature parity. Skeleton loader shown on every fetch trigger, not just initial load.
+Multi-step financial wizard for reconciling electronic cabinet meters with physical cash collection. Full multi-tier check validation for cash variations. Desktop and mobile layouts with feature parity. Skeleton loader shown on every fetch trigger, not just initial load.
 
 **Four tabs:**
 - **Reports History** — Finalized audit log of all past collections; filterable by licencee, location, collector, and date range; variance flagged per report
 - **Monthly Revenue Report** — Property-level aggregated financial summaries for tax and accounting handover; PDF and Excel export
-- **Manager Schedule** — All properties with last collection date and machine count; rows highlighted red if overdue (>7 days)
+- **Manager Schedule** — All properties with last collection date and cabinet count; rows highlighted red/orange based on age.
 - **Collectors Schedule** — Field staff task list; switches to card-based mobile checklist for one-handed operation
 
 **3-Step Collection Wizard** (`CollectionReportNewCollectionModal` / `CollectionReportMobileNewCollectionModal`):
-1. **Property & Asset Selection** — Location dropdown rendered via React portal (`createPortal` to `document.body`) to escape `overflow: hidden` clipping; auto-sizes width to longest location name; supports 248+ locations. Machine list with live SAS sync per machine.
-2. **Meter & Cash Verification** — Physical Meter In/Out entry; auto-calculates `Movement Gross = (Current In − Prev In) − (Current Out − Prev Out)`; RAM clear toggle reveals `ramClearMeters` fields; collection time defaults to 1 minute before the `gameDayOffset` boundary; SAS start time auto-populated from the last completed collection for that machine (`GET /api/collections/last-collection-time`).
+1. **Property & Asset Selection** — Location dropdown rendered via React portal (`createPortal` to `document.body`) to escape `overflow: hidden` clipping; auto-sizes width to longest location name; supports 248+ locations. Cabinet list with live SAS sync per cabinet.
+2. **Meter & Cash Verification** — Physical Meter In/Out entry; auto-calculates `Movement Gross = (Current In − Prev In) − (Current Out − Prev Out)`; RAM clear toggle reveals `ramClearMeters` fields; collection time defaults to 1 minute before the `gameDayOffset` boundary; SAS start time auto-populated from the last completed collection for that cabinet (`GET /api/collections/last-collection-time`).
 3. **Financial Reconciliation & Commit** — The system compares the physical cash collected against the electronic meter reading and flags any difference. If the variance is unusually large, the collector must acknowledge the discrepancy and provide a note before the report can be submitted. The system also checks the submitted figures against historical averages and requires explicit confirmation if any value appears abnormal.
 
-**Edit Collection** — Full edit modal (desktop + mobile) with meter reversion on save, SAS time pre-population, and soft delete with audit trail. Edit modal defaults to showing the machines list so green "Added to Collection" indicators are visible.
+**Edit Collection** — Full edit modal (desktop + mobile) with meter reversion on save, SAS time pre-population, and soft delete with audit trail. Edit modal defaults to showing the cabinets list so green "Added to Collection" indicators are visible.
 
 #### Reports (`/reports`)
-Consolidated reporting hub aggregating collection data, machine performance, and financial summaries across properties and time ranges for regulatory and internal reporting.
+Consolidated reporting hub aggregating collection data, cabinet performance, and financial summaries across whole fleets or single properties for regulatory and internal reporting.
 
 #### Administration (`/administration`)
 Management hub for users, corporate entities (licencees), gaming locations, and platform audit logging. Access is role-gated per tab.
@@ -157,7 +157,7 @@ The Vault Management System (VMS) is a strict audit-grade cash control platform.
 The vault follows a strict daily lifecycle enforced at the API level:
 
 1. **Initialize / Open Vault** — Vault Manager counts and enters physical denominations to open the shift. Sets opening balance. Triggers `POST /api/vault/initialize`.
-2. **Add Cash** — Records cash brought into the vault (e.g. from a machine collection or bank delivery). Denomination-level breakdown required. Triggers `POST /api/vault/add-cash`.
+2. **Add Cash** — Records cash brought into the vault (e.g. from a cabinet collection or bank delivery). Linked to specific collection records. Triggers `POST /api/vault/add-cash`.
 3. **Remove Cash** — Records cash removed from the vault (e.g. bank run, cash transfer). Triggers `POST /api/vault/remove-cash`.
 4. **Float Approval** — Transfers a defined cash amount from the vault to a cashier's till. Triggers `POST /api/vault/float-request/approve`.
 5. **Expense Recording** — Logs a petty cash payment with mandatory category note. Triggers `POST /api/vault/expense`.
@@ -312,13 +312,13 @@ The system exposes approximately **100+ API route handlers** organized by domain
 `POST login` · `POST logout` · `POST refresh` · `POST refresh-token` · `POST forgot-password` · `GET current-user` · `POST clear-all-tokens` · `POST clear-token` · `POST clear-session` · `PATCH profile/update-email` · `GET/POST totp/setup` · `POST totp/confirm` · `POST totp/reset` · `POST verify-totp` · `POST totp/recover/verify` · `POST totp/recover/cashier` · `POST totp/recover/vm`
 
 ### Analytics (`/api/analytics/*`)
-`GET dashboard` · `GET charts` · `GET reports` · `GET machines` · `GET machines/stats` · `GET locations` · `GET logistics` · `GET hourly-revenue` · `GET machine-hourly` · `GET top-machines` · `GET jackpot-trends` · `GET winloss-trends` · `GET handle-trends` · `GET plays-trends` · `GET manufacturer-performance`
+`GET dashboard` · `GET charts` · `GET reports` · `GET cabinets` · `GET cabinets/stats` · `GET locations` · `GET logistics` · `GET hourly-revenue` · `GET cabinet-hourly` · `GET top-cabinets` · `GET jackpot-trends` · `GET winloss-trends` · `GET handle-trends` · `GET plays-trends` · `GET manufacturer-performance`
 
 ### Locations (`/api/locations/*`, `/api/reports/locations`)
 `GET/POST/PATCH/DELETE locations` · `GET locations/[locationId]` · `GET locations/[locationId]/cabinets` · `GET locations/[locationId]/cabinets/[cabinetId]` · `GET locations/search-all` · `GET locations/membership-count` · `GET reports/locations`
 
-### Machines & Meters (`/api/machines/*`, `/api/metrics/*`)
-`GET machines/aggregation` · `GET/PATCH/DELETE machines/[machineId]` · `GET machines/by-id` · `GET machines/by-id/events` · `POST smib/meters` · `POST smib/restart` · `POST smib/ota-update` · `POST smib/nvs-action` · `GET metrics/meters`
+### Cabinets & Meters (`/api/cabinets/*`, `/api/metrics/*`)
+`GET cabinets/aggregation` · `GET/PATCH/DELETE cabinets/[cabinetId]` · `GET cabinets/by-id` · `GET cabinets/by-id/events` · `POST smib/meters` · `POST smib/restart` · `POST smib/ota-update` · `POST smib/nvs-action` · `GET metrics/meters`
 
 ### Collections (`/api/collections/*`, `/api/collectionReport/*`, `/api/collection-report/*`)
 `GET/POST/PATCH/DELETE collections` · `GET collections/last-collection-time` · `GET collections/check-first-collection` · `GET/POST collectionReport` · `GET collectionReport/locations` · `GET/PATCH/DELETE collection-report/[reportId]` · `POST collection-reports/fix-report` · `GET collection-reports/check-all-issues` · `GET collection-reports`
@@ -336,7 +336,7 @@ The system exposes approximately **100+ API route handlers** organized by domain
 `GET/POST/PATCH/DELETE users` · `GET/POST/PATCH licencees` · `GET/POST/PATCH/DELETE gaming-locations` · `GET/POST collectors` · `GET/POST/DELETE firmwares` · `POST firmwares/migrate` · `GET manufacturers` · `GET/POST system-config`
 
 ### MQTT (`/api/mqtt/*`)
-`POST mqtt/discover-smibs` · `POST mqtt/config/publish` · `POST mqtt/config/request` · `POST mqtt/update-machine-config`
+`POST mqtt/discover-smibs` · `POST mqtt/config/publish` · `POST mqtt/config/request` · `POST mqtt/update-cabinet-config`
 
 ### Admin Utilities (`/api/admin/*`)
 `POST admin/reconnect-db` · `POST admin/create-indexes` · `POST admin/repair-sas-times` · `GET admin/auth/events` · `GET admin/auth/metrics` · `POST admin/migrations/rename-licencee` · `GET admin/cashiers`
@@ -364,13 +364,13 @@ The system exposes approximately **100+ API route handlers** organized by domain
 
 Users with a `multiplier` field (0–1) see scaled financial figures across all metric endpoints. The formula `displayedValue = rawValue × (1 − multiplier)` is applied server-side after currency conversion. For example, a reviewer with `multiplier = 0.95` sees 5% of raw values. `multiplier: null` disables scaling (full values shown).
 
-Applied in: `GET /api/reports/locations`, `GET /api/locations/search-all`, `GET /api/locations/[locationId]`, `GET /api/locations/[locationId]/cabinets/[cabinetId]`, `GET /api/machines/aggregation`, `GET /api/machines/[machineId]`, `GET /api/metrics/meters`.
+Applied in: `GET /api/reports/locations`, `GET /api/locations/search-all`, `GET /api/locations/[locationId]`, `GET /api/locations/[locationId]/cabinets/[cabinetId]`, `GET /api/cabinets/aggregation`, `GET /api/cabinets/[cabinetId]`, `GET /api/metrics/meters`.
 
 ### 7.3 Real-Time MQTT Infrastructure
 
-- **Heartbeat**: SMIB units publish to the MQTT broker every 60 seconds. The CMS updates `machine.lastActivity` on each heartbeat to drive online/offline status.
-- **Online Detection**: A machine is considered `online` if `aceEnabled: true` OR `lastActivity` is within the last 3 minutes (BR-CAB-01).
-- **Command Bus**: Remote commands published to `sunbox/[machineId]/command`. Supported: `SYNC`, `LOCK`, `UNLOCK`, firmware OTA, NVS actions, restart.
+- **Heartbeat**: SMIB units publish to the MQTT broker every 60 seconds. The CMS updates `cabinet.lastActivity` on each heartbeat to drive online/offline status.
+- **Online Detection**: A cabinet is considered `online` if `aceEnabled: true` OR `lastActivity` is within the last 3 minutes (BR-CAB-01).
+- **Command Bus**: Remote commands published to `sunbox/[cabinetId]/command`. Supported: `SYNC`, `LOCK`, `UNLOCK`, firmware OTA, NVS actions, restart.
 - **SAS Data**: 15-minute polls generate new `Meter` documents with movement deltas. `readAt` is the authoritative date-filtering field for all aggregation queries.
 
 ### 7.4 Authentication System
@@ -402,14 +402,14 @@ The system uses **30+ Mongoose schemas** across two primary domains:
 |:---|:---|
 | `Licencee` | Top-level multi-tenant entity |
 | `GamingLocation` | Casino property, gaming day offset, membership settings |
-| `Machine` | Slot machine hardware record, SMIB config, SAS meters |
+| `Cabinet` | Cabinet hardware record, SMIB config, SAS meters |
 | `Meter` | 15-minute financial snapshots with movement deltas |
-| `Collection` | Draft collection entries (one per machine per session) |
+| `Collection` | Draft collection entries (one per cabinet per session) |
 | `CollectionReport` | Finalized collection batch (parent of Collections) |
 | `User` | Authentication, roles, multiplier, assigned access |
 | `Member` | Player card profile, points, tier |
-| `MachineSession` | Gaming session records per machine |
-| `MachineEvent` | Individual SAS events within a session |
+| `CabinetSession` | Gaming session records per cabinet |
+| `CabinetEvent` | Individual SAS events within a session |
 | `AcceptedBill` | Bill validator denomination tracking |
 | `Firmware` | Firmware versions and deployment records |
 

@@ -1,13 +1,31 @@
 /**
- * Profile API Route
+ * PUT /api/profile
  *
- * This route handles user profile updates including personal information and password changes.
- * It supports:
- * - Profile field validation (username, email, phone, date of birth, etc.)
- * - Password change with current password verification
- * - Licencee and location assignment (for admin/developer roles)
- * - Session version incrementing on permission changes
- * - Profile validation status checking
+ * Updates the authenticated user's profile. Called from the profile settings
+ * page when the user saves personal information or changes their password.
+ * Admin and developer roles may also update their own licencee and location
+ * assignments via this endpoint. Any change to password, licencees, or
+ * locations increments sessionVersion to force re-authentication on other
+ * sessions. Duplicate username/email checks are enforced across all users.
+ * Cashiers using a temporary password may skip providing currentPassword on
+ * their first password change.
+ *
+ * Body fields:
+ * @param username      {string}   Required. New or unchanged username.
+ * @param firstName     {string}   Required. First name; letters and spaces only.
+ * @param lastName      {string}   Required. Last name; letters and spaces only.
+ * @param emailAddress  {string}   Required. Email address.
+ * @param phone         {string}   Required. Phone number (digits, spaces, hyphens, parens, leading +).
+ * @param otherName     {string}   Optional. Middle or other name.
+ * @param gender        {string}   Optional. Gender value; validated when explicitly sent.
+ * @param dateOfBirth   {string}   Optional. ISO date string (YYYY-MM-DD); must not be in the future.
+ * @param currentPassword {string} Conditional. Current password; required for non-cashier password
+ *   changes. Cashiers on a temporary password may omit this field.
+ * @param newPassword   {string}   Conditional. Required when changing password; must meet strength
+ *   requirements and must not match the current or last 2 passwords.
+ * @param confirmPassword {string} Conditional. Must match newPassword exactly.
+ * @param licenceeIds   {string[]} Optional. Admin/developer only — replace assigned licencees.
+ * @param locationIds   {string[]} Optional. Admin/developer only — replace assigned locations.
  *
  * @module app/api/profile/route
  */
@@ -33,37 +51,8 @@ import {
 } from '@/lib/utils/validation';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { NextRequest, NextResponse } from 'next/server';
+import type { ProfileUpdatePayload } from '@/shared/types/users';
 
-type ProfileUpdatePayload = {
-  username: string;
-  firstName: string;
-  lastName: string;
-  otherName?: string;
-  gender?: string;
-  emailAddress: string;
-  phone: string;
-  dateOfBirth?: string; // Optional - only validated if provided
-  currentPassword?: string;
-  newPassword?: string;
-  confirmPassword?: string;
-  licenceeIds?: string[];
-  locationIds?: string[];
-};
-
-/**
- * Main PUT handler for updating user profile
- *
- * Flow:
- * 1. Connect to database
- * 2. Authenticate user and get user ID
- * 3. Parse and validate request body
- * 4. Validate all profile fields
- * 5. Check for duplicate username/email
- * 6. Verify current password if changing password
- * 7. Build update operation
- * 8. Update user in database
- * 9. Return updated user with validation status
- */
 export async function PUT(request: NextRequest) {
   const startTime = Date.now();
 

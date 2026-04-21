@@ -149,25 +149,13 @@ export async function createLicencee(
 
   if (currentUser && currentUser.emailAddress) {
     try {
-      const createChanges = [
-        { field: 'name', oldValue: null, newValue: name },
-        { field: 'description', oldValue: null, newValue: description || '' },
-        { field: 'country', oldValue: null, newValue: country },
-        { field: 'licenceKey', oldValue: null, newValue: licenceKey },
-        { field: 'startDate', oldValue: null, newValue: finalStartDate },
-        { field: 'expiryDate', oldValue: null, newValue: finalExpiryDate },
-        {
-          field: 'isPaid',
-          oldValue: null,
-          newValue: finalExpiryDate ? finalExpiryDate > new Date() : false,
-        },
-      ];
-
       await logActivity({
         action: 'CREATE',
-        details: `Created new licencee "${name}" in ${country}`,
+        details: `Created licencee "${name}"`,
         ipAddress: getClientIP(request) || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
+        userId: currentUser._id as string,
+        username: currentUser.emailAddress as string,
         metadata: {
           userId: currentUser._id as string,
           userEmail: currentUser.emailAddress as string,
@@ -175,7 +163,6 @@ export async function createLicencee(
           resource: 'licencee',
           resourceId: newId,
           resourceName: name,
-          changes: createChanges,
         },
       });
     } catch (logError) {

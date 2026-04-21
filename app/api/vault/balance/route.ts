@@ -9,37 +9,16 @@ import UserModel from '@/app/api/lib/models/user';
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import type { VaultShift, VaultReconciliation } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 import { isShiftStaleBackend } from '../../lib/helpers/vault/gamingDay';
 import { GamingLocations } from '../../lib/models/gaminglocations';
 
-type VaultShiftReconciliation = {
-  timestamp?: Date;
-  previousBalance: number;
-  newBalance: number;
-  reason: string;
-  comment?: string;
-};
-
-type VaultShiftWithReconTimestamp = {
-  _id: string;
-  locationId: string;
-  vaultManagerId: string;
-  status: string;
-  openedAt?: Date;
-  closedAt?: Date;
-  openingBalance?: number;
-  openingDenominations?: Array<{ value: number; count: number }>;
-  currentDenominations?: Array<{ value: number; count: number }>;
-  closingBalance?: number;
-  closingDenominations?: Array<{ value: number; count: number }>;
-  reconciliations?: VaultShiftReconciliation[];
-  canClose?: boolean;
-  isReconciled?: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
+/**
+ * Main GET handler for fetching vault balance
+ *
+ * @param {string} locationId - ID of the location to fetch balance for (REQUIRED)
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ userRoles }) => {
     try {
@@ -65,7 +44,7 @@ export async function GET(request: NextRequest) {
       const activeShift = (await VaultShiftModel.findOne({
         locationId,
         status: 'active',
-      }).lean()) as unknown as VaultShiftWithReconTimestamp | null;
+      }).lean()) as unknown as VaultShift | null;
 
       if (!activeShift) {
         const lastClosed = (await VaultShiftModel.findOne({
@@ -73,15 +52,14 @@ export async function GET(request: NextRequest) {
           status: 'closed',
         })
           .sort({ closedAt: -1 })
-          .lean()) as unknown as VaultShiftWithReconTimestamp | null;
+          .lean()) as unknown as VaultShift | null;
         const lastReconTime = lastClosed?.reconciliations?.length
           ? new Date(
               Math.max(
-                ...lastClosed.reconciliations.map(r =>
-                  new Date(
-                    (r as VaultShiftReconciliation).timestamp ?? 0
-                  ).getTime()
-                )
+                ...lastClosed.reconciliations.map(r => {
+                  const ts = (r as VaultReconciliation).timestamp;
+                  return ts ? new Date(ts).getTime() : 0;
+                })
               )
             )
           : null;

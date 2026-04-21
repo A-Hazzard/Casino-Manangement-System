@@ -17,6 +17,8 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main GET handler for fetching MQTT configuration
  *
+ * @param {string} cabinetId - REQUIRED. Query param: The MongoDB ID of the cabinet
+ * 
  * Flow:
  * 1. Parse and validate request parameters
  * 2. Connect to database

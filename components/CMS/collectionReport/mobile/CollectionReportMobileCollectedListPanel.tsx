@@ -61,7 +61,41 @@ type MobileCollectedListPanelProps = {
 
 /**
  * CollectionReportMobileCollectedListPanel Component
- * Displays the collected machines list or financial form in mobile modal
+ *
+ * A high-level mobile container that toggles between the collected machine list and the final financial reconciliation form.
+ *
+ * Features:
+ * - Tabbed interface for switching between "List" and "Financial" views
+ * - Responsive machine cards with "Variation" indicators
+ * - Live reconciliation summary anchored above the list
+ * - Batch update controls for SAS time periods
+ * - Full-screen modal experience with slide animations
+ *
+ * @param isVisible - Visibility flag for the panel
+ * @param onBack - Callback to return to the selection or form screen
+ * @param isEditing - Whether we are modifying an existing submitted report
+ * @param collectedMachines - Array of collection documents successfully added to the batch
+ * @param searchTerm - Active filter string for the machine list
+ * @param onSearchChange - Callback triggered by the search input
+ * @param isViewingFinancialForm - Active view state (false for machine list, true for financials)
+ * @param onToggleView - Switcher callback between list and financials
+ * @param financials - Complete set of reconciliation fields (taxes, advance, variance, etc.)
+ * @param isProcessing - Loading status for batch actions or final submission
+ * @param isCreateReportsEnabled - Validation flag to allow final report creation
+ * @param updateAllSasStartDate - Current batch SAS start time value
+ * @param onUpdateAllSasStartDate - Setter for the batch start time
+ * @param updateAllSasEndDate - Current batch SAS end time value
+ * @param onUpdateAllSasEndDate - Setter for the batch end time
+ * @param onApplyAllDates - Execution callback for the batch time update
+ * @param formatDate - Utility for consistent date display
+ * @param sortMachines - Logic for ordering the machine list
+ * @param onEditMachine - Callback to jump back to the form for a specific machine
+ * @param onDeleteMachine - Callback to remove a machine from the batch
+ * @param onFinancialDataChange - Dispatcher for updating the reconciliation state
+ * @param onCreateReport - Final submission callback for the entire report
+ * @param onCollectedAmountChange - Sync callback for physical cash input
+ * @param onBaseBalanceCorrectionChange - Sync callback for anchor balance input
+ * @param variationMachineIds - Array of machine IDs with financial discrepancies for badging
  */
 export default function CollectionReportMobileCollectedListPanel({
   isVisible,

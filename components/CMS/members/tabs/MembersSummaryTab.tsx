@@ -60,7 +60,7 @@ export default function MembersSummaryTab({
     const fetchLocations = async () => {
       try {
         const response = await axios.get(
-          '/api/machines/locations?membershipOnly=true'
+          '/api/cabinets/locations?membershipOnly=true'
         );
         const data = response.data;
         if (data.locations && Array.isArray(data.locations)) {
@@ -194,4 +194,5 @@ export default function MembersSummaryTab({
     </div>
   );
 }
+
 

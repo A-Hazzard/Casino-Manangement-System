@@ -22,7 +22,7 @@ import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { fetchMovementRequests } from '@/lib/helpers/movementRequests';
 import { useMovementRequestActionsStore } from '@/lib/store/movementRequestActionsStore';
-import { MovementRequest } from '@/lib/types/movement';
+import { MovementRequest } from '@/shared/types/movement';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -242,3 +242,4 @@ export default function CabinetsMovementRequests({
     </div>
   );
 }
+

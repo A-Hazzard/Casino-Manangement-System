@@ -830,7 +830,6 @@ export const getLocationsWithMetrics = async (
       const recentCollectionReports = await CollectionReport.find({
         location: { $in: nonSmibLocationIds },
         timestamp: { $gte: threeMonthsAgo },
-        isEditing: { $ne: true }, // Exclude reports being edited
       })
         .select('location timestamp')
         .lean();
@@ -1116,7 +1115,6 @@ export const getLocationsWithMetrics = async (
       const recentCollectionReports = await CollectionReport.find({
         location: { $in: nonSmibLocationIds },
         timestamp: { $gte: threeMonthsAgo },
-        isEditing: { $ne: true }, // Exclude reports being edited
       })
         .select('location timestamp')
         .lean();

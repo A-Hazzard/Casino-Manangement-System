@@ -10,6 +10,14 @@ import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import { validateDenominations } from '@/lib/helpers/vault/calculations';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main POST handler for approving a float request
+ *
+ * @body {string} requestId - REQUIRED. ID of the request to approve.
+ * @body {string} status - REQUIRED. Target status ('approved' or 'rejected').
+ * @body {number} approvedAmount - Amount being approved.
+ * @body {Object} approvedDenominations - Denomination breakdown for the approval.
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {

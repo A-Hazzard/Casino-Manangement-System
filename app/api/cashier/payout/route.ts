@@ -1,11 +1,37 @@
 /**
- * Cashier Payout API
- * 
- * POST /api/cashier/payout
- * 
- * Process a ticket redemption or hand pay.
- * Updates cashier shift metrics and creates a payout record.
- * 
+ * POST /api/cashier/payout — Process a ticket redemption or hand-pay payout.
+ *
+ * Called when a cashier redeems a TITO ticket or processes a machine hand-pay.
+ * Validates that the cashier has sufficient float balance, creates a payout record
+ * and a corresponding vault transaction, and decrements the shift's running balance.
+ * Requires the vault shift to be reconciled before any payout can proceed.
+ *
+ * Body fields:
+ * @param cashierShiftId {string}  Required. The ID of the cashier's active shift.
+ * @param type           {string}  Required. Payout type: 'ticket' or 'hand_pay'.
+ * @param amount         {number}  Required. Payout amount; must be > 0 and ≤ current float balance.
+ * @param ticketNumber   {string}  Conditional. Required when type is 'ticket'.
+ * @param printedAt      {string}  Optional. ISO timestamp when the ticket was printed; stored for audit.
+ * @param machineId      {string}  Conditional. Required when type is 'hand_pay'; used to look up
+ *   machine serial number.
+ * @param reason         {string}  Optional. Description of the hand-pay reason; stored for audit.
+ * @param notes          {string}  Optional. Free-text notes attached to the payout record.
+ *
+ * ---
+ *
+ * GET /api/cashier/payout — Retrieve payout history.
+ *
+ * Returns payout records for the requesting cashier, or for any cashier if the
+ * caller has VM-level access. Populates machineSerialNumber on hand-pay records
+ * that pre-date the serial field for backward compatibility.
+ *
+ * Query parameters:
+ * @param cashierShiftId {string} Optional. Filter payouts to a specific shift.
+ * @param cashierId      {string} Optional. VM only — filter by a specific cashier's user ID.
+ * @param limit          {number} Optional. Maximum records to return. Defaults to 20.
+ * @param startDate      {string} Optional. ISO date string lower bound on payout timestamp.
+ * @param endDate        {string} Optional. ISO date string upper bound on payout timestamp.
+ *
  * @module app/api/cashier/payout/route
  */
 

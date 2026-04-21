@@ -29,6 +29,8 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main POST handler for requesting SMIB meters
  *
+ * @body {string} relayId - REQUIRED. The unique relay ID of the machine to read meters from.
+ *
  * Flow:
  * 1. Parse request body
  * 2. Validate relayId

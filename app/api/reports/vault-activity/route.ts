@@ -21,6 +21,15 @@ interface VaultActivityQuery {
   performedBy?: string;
 }
 
+/**
+ * Main GET handler for fetching vault activity report
+ *
+ * @param {string} locationId - Filter by specific location ID
+ * @param {string} type - Filter by transaction type
+ * @param {string} performedBy - Filter by user ID who performed action
+ * @param {string} startDate - ISO date for range start
+ * @param {string} endDate - ISO date for range end
+ */
 export async function GET(request: NextRequest) {
   try {
     // ============================================================================

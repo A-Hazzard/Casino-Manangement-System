@@ -1,12 +1,31 @@
 /**
- * Countries API Route
+ * Countries API Route — CRUD operations for the countries reference list.
  *
- * This route handles CRUD operations for countries.
- * It supports:
- * - Fetching all countries (excluding soft-deleted)
- * - Creating new countries
- * - Updating existing countries
- * - Soft deleting countries
+ * GET /api/countries — Fetch all active (non-soft-deleted) countries sorted
+ * alphabetically. No authentication required.
+ *
+ * POST /api/countries — Create a new country entry. Admin/developer/owner only.
+ *
+ * Body fields (POST):
+ * @param name       {string} Required. Full country name (e.g. 'Trinidad and Tobago').
+ * @param alpha2     {string} Required. ISO 3166-1 alpha-2 code (e.g. 'TT'); stored
+ *   uppercased and used as the document _id.
+ * @param alpha3     {string} Required. ISO 3166-1 alpha-3 code (e.g. 'TTO'); stored uppercased.
+ * @param isoNumeric {string} Required. ISO 3166-1 numeric code (e.g. '780').
+ *
+ * PUT /api/countries — Update an existing country. Admin/developer/owner only.
+ *
+ * Body fields (PUT):
+ * @param _id        {string} Required. The country document ID (alpha-2 code).
+ * @param name       {string} Optional. Updated country name.
+ * @param alpha2     {string} Optional. Updated alpha-2 code; stored uppercased.
+ * @param alpha3     {string} Optional. Updated alpha-3 code; stored uppercased.
+ * @param isoNumeric {string} Optional. Updated numeric code.
+ *
+ * DELETE /api/countries — Soft-delete a country (sets deletedAt). Admin/developer only.
+ *
+ * Query parameters (DELETE):
+ * @param id {string} Required. The country document ID to soft-delete.
  *
  * @module app/api/countries/route
  */
@@ -17,9 +36,6 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * GET handler - Fetch all countries (excluding soft-deleted)
- */
 export async function GET() {
   const startTime = Date.now();
 
@@ -65,9 +81,6 @@ export async function GET() {
   }
 }
 
-/**
- * POST handler - Create a new country
- */
 export async function POST(req: NextRequest) {
   try {
     // ============================================================================
@@ -125,6 +138,22 @@ export async function POST(req: NextRequest) {
       isoNumeric,
     });
 
+    if (user && (user as { emailAddress?: string }).emailAddress) {
+      logActivity({
+        action: 'CREATE',
+        details: `Created country "${name}"`,
+        ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || undefined,
+        userAgent: req.headers.get('user-agent') || undefined,
+        userId: (user as { _id: string })._id,
+        username: (user as { emailAddress: string }).emailAddress,
+        metadata: {
+          resource: 'country',
+          resourceId: alpha2.toUpperCase(),
+          resourceName: name,
+        },
+      }).catch(err => console.error('Failed to log country create:', err));
+    }
+
     return NextResponse.json({
       success: true,
       country: newCountry,
@@ -140,9 +169,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/**
- * PUT handler - Update an existing country
- */
 export async function PUT(req: NextRequest) {
   try {
     // ============================================================================
@@ -243,9 +269,6 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-/**
- * DELETE handler - Soft delete a country
- */
 export async function DELETE(req: NextRequest) {
   try {
     // ============================================================================

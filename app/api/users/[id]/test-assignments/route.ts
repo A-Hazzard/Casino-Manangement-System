@@ -1,8 +1,21 @@
 /**
- * Test Assignments API Route (DEV ONLY)
+ * PATCH /api/users/[id]/test-assignments
  *
- * This route allows direct testing of user assignment updates without authentication.
- * ONLY WORKS IN DEVELOPMENT MODE.
+ * DEV ONLY — directly overwrites a user's location and licencee assignments
+ * without any authentication. Blocked with HTTP 403 in any environment where
+ * NODE_ENV !== 'development'. Never call this from production code or expose
+ * it behind a real auth flow. Increments sessionVersion on every update to
+ * simulate the session-invalidation behaviour that real assignment changes trigger.
+ *
+ * Route parameters:
+ * @param id              {string}   Required. The user document ID extracted from the URL path
+ *   (/api/users/[id]/test-assignments).
+ *
+ * Body fields:
+ * @param assignedLocations  {string[]} Optional. Full replacement list of location IDs to assign.
+ *   Pass an empty array to clear all locations.
+ * @param assignedLicencees  {string[]} Optional. Full replacement list of licencee IDs to assign.
+ *   Pass an empty array to clear all licencees.
  *
  * @module app/api/users/[id]/test-assignments/route
  */
@@ -11,16 +24,6 @@ import UserModel from '@/app/api/lib/models/user';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * PATCH handler for testing user assignments (DEV ONLY)
- *
- * Flow:
- * 1. Check if in development mode
- * 2. Connect to database
- * 3. Parse request body (assignedLocations, assignedLicencees)
- * 4. Update user directly in database
- * 5. Return updated user data
- */
 export async function PATCH(
   request: NextRequest
 ): Promise<Response> {

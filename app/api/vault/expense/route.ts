@@ -14,6 +14,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Readable } from 'stream';
 import { Denomination, VaultTransaction } from '@/shared/types/vault';
 
+/**
+ * POST /api/vault/expense
+ *
+ * @body {FormData} category - Expense category (REQUIRED)
+ * @body {FormData} amount - Total expense amount (REQUIRED)
+ * @body {FormData} description - Description of expense
+ * @body {FormData} date - ISO date string for transaction
+ * @body {FormData} denominations - JSON string of denominations (REQUIRED)
+ * @body {FormData} file - Binary receipt image/PDF
+ * @body {FormData} bankDetails - JSON string of bank details
+ * @body {FormData} expenseDetails - JSON string of additional expense metadata
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles, db }) => {
     try {
@@ -98,6 +110,14 @@ export async function POST(request: NextRequest) {
   });
 }
 
+/**
+ * Main GET handler for vault expenses
+ *
+ * @param {string} locationId - ID of the location to filter by
+ * @param {string} startDate - ISO date for range start
+ * @param {string} endDate - ISO date for range end
+ * @param {string} category - Specific expense category to filter by
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {

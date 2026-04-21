@@ -19,6 +19,11 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main GET handler for fetching top machines with detailed metrics
  *
+ * @param {string} timePeriod - Time range preset ('Today', '7d', etc.)
+ * @param {string} licencee - Filter by licencee name
+ * @param {string} locationIds - Comma-separated location IDs to filter
+ * @param {number} limit - Number of machines to return (default: 5)
+ *
  * Flow:
  * 1. Parse and validate request parameters
  * 2. Connect to database

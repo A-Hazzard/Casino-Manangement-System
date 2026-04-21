@@ -17,7 +17,28 @@ import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching activity logs
+ * GET /api/activity-logs
+ *
+ * Returns a paginated, filtered list of activity log entries. Managers and
+ * location admins receive results scoped to their accessible resources; admins
+ * and developers see all logs. When `search` is provided without conflicting
+ * filters the results are ranked by relevance.
+ *
+ * Query params:
+ * @param page          {number}  Optional. Page number for pagination (default 1).
+ * @param limit         {number}  Optional. Records per page (default 50).
+ * @param userId        {string}  Optional. Filter by the acting user's ID.
+ * @param username      {string}  Optional. Case-insensitive regex match on username.
+ * @param email         {string}  Optional. Case-insensitive regex match on actor.email.
+ * @param action        {string}  Optional. Exact match on action type (e.g. 'CREATE', 'UPDATE').
+ * @param resource      {string}  Optional. Filter by resource type (e.g. 'machine', 'user').
+ * @param resourceId    {string}  Optional. Filter by the ID of the affected resource.
+ * @param membershipLog {string}  Optional. 'true' or 'false' — filter membership-related logs.
+ * @param startDate     {string}  Optional. ISO date string; include logs at or after this timestamp.
+ * @param endDate       {string}  Optional. ISO date string; include logs at or before this timestamp.
+ * @param search        {string}  Optional. Full-text search across username, email, resourceName, details, description, and IDs.
+ * @param sortBy        {string}  Optional. Field to sort by (default 'timestamp').
+ * @param sortOrder     {string}  Optional. 'asc' or 'desc' (default 'desc').
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: currentUser, userRoles, isAdminOrDev }) => {
@@ -160,7 +181,25 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Main POST handler for creating activity log entry
+ * POST /api/activity-logs
+ *
+ * Creates a new activity log entry. Called internally by server actions and
+ * API routes after performing auditable operations.
+ *
+ * Body fields:
+ * @param action        {string}  Required. The action performed (e.g. 'CREATE', 'UPDATE', 'DELETE').
+ * @param resource      {string}  Required. The resource type affected (e.g. 'machine', 'user').
+ * @param resourceId    {string}  Required. The ID of the affected resource.
+ * @param userId        {string}  Required. ID of the user performing the action.
+ * @param username      {string}  Required. Username (or email) of the actor.
+ * @param userRole      {string}  Optional. Role of the acting user, stored in actor.role.
+ * @param resourceName  {string}  Optional. Human-readable name of the affected resource.
+ * @param details       {string}  Optional. Free-text description of what changed.
+ * @param description   {string}  Optional. Short summary line for display.
+ * @param actor         {object}  Optional. Full actor object `{ id, email, role }` — overrides derived actor.
+ * @param changes       {Array}   Optional. Explicit list of `{ field, oldValue, newValue }` change records.
+ * @param previousData  {object}  Optional. Full document state before the change (auto-diffs with newData if both provided).
+ * @param newData       {object}  Optional. Full document state after the change (auto-diffs with previousData if both provided).
  */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async () => {

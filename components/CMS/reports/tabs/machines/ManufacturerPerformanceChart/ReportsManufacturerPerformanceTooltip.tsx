@@ -14,23 +14,7 @@ import {  useLayoutEffect, useState  } from 'react';
 
 import { createPortal } from 'react-dom';
 
-type RawTotals = {
-  coinIn: number;
-  netWin: number;
-  drop: number;
-  gross: number;
-  cancelledCredits: number;
-  gamesPlayed: number;
-};
-
-type TotalMetrics = {
-  coinIn: number;
-  netWin: number;
-  drop: number;
-  gross: number;
-  cancelledCredits: number;
-  gamesPlayed: number;
-};
+import { type PerformanceMetrics } from '@/shared/types/reports';
 
 type ReportsManufacturerPerformanceTooltipProps = {
   active?: boolean;
@@ -40,8 +24,8 @@ type ReportsManufacturerPerformanceTooltipProps = {
     color: string;
     payload?: {
       fullManufacturerName?: string;
-      rawTotals?: RawTotals;
-      totalMetrics?: TotalMetrics;
+      rawTotals?: PerformanceMetrics;
+      totalMetrics?: PerformanceMetrics;
       machineCount?: number;
       totalMachinesCount?: number;
     };
@@ -54,10 +38,10 @@ type ReportsManufacturerPerformanceTooltipProps = {
 /**
  * Helper to get raw value for a metric
  */
-function getRawValue(dataKey: string, rawTotals?: RawTotals): number | null {
+function getRawValue(dataKey: string, rawTotals?: PerformanceMetrics): number | null {
   if (!rawTotals) return null;
 
-  const keyMap: Record<string, keyof RawTotals> = {
+  const keyMap: Record<string, keyof PerformanceMetrics> = {
     'Floor Positions %': 'coinIn', // Not applicable, but we'll use coinIn as placeholder
     'Total Handle %': 'coinIn',
     'Total Win %': 'netWin',
@@ -76,11 +60,11 @@ function getRawValue(dataKey: string, rawTotals?: RawTotals): number | null {
  */
 function getTotalValue(
   dataKey: string,
-  totalMetrics?: TotalMetrics
+  totalMetrics?: PerformanceMetrics
 ): number | null {
   if (!totalMetrics) return null;
 
-  const keyMap: Record<string, keyof TotalMetrics> = {
+  const keyMap: Record<string, keyof PerformanceMetrics> = {
     'Floor Positions %': 'coinIn', // Not applicable, but we'll use coinIn as placeholder
     'Total Handle %': 'coinIn',
     'Total Win %': 'netWin',

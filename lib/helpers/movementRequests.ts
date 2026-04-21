@@ -12,7 +12,7 @@
  * - Paginates movement requests for display.
  */
 
-import type { MovementRequest } from '@/lib/types/movement';
+import type { MovementRequest } from '@/shared/types/movement';
 import axios from 'axios';
 
 // ============================================================================

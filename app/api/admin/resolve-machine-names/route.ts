@@ -20,6 +20,18 @@ export const runtime = 'nodejs';
 
 const OBJECT_ID_REGEX = /^[a-fA-F0-9]{24}$/;
 
+/**
+ * GET /api/admin/resolve-machine-names
+ *
+ * Back-fill maintenance operation that finds activity log entries whose
+ * `resourceName` is a raw 24-character ObjectID hex string, resolves each ID to
+ * the machine's human-readable name (serialNumber or custom.name), and updates
+ * the log documents in place. Call repeatedly until `remaining` reaches zero.
+ * Restricted to developer role.
+ *
+ * Query params:
+ * @param limit {number}  Optional. Maximum logs to process per call (default 100, max 500).
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ userRoles }) => {
     const normalizedRoles = userRoles.map(r => String(r).toLowerCase());

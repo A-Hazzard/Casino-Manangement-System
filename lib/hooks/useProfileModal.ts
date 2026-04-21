@@ -232,9 +232,9 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       hasAttemptedLocationsFetchRef.current = true;
       setLocationsLoading(true);
       axios
-        .get('/api/gaming-locations')
+        .get('/api/locations')
         .then(res => {
-          setLocations(res.data || []);
+          setLocations(res.data.locations || []);
         })
         .finally(() => setLocationsLoading(false));
     }
@@ -330,8 +330,15 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
 
     setIsLoading(true);
     try {
+      // Explicitly build the payload — never spread userData directly to avoid
+      // accidentally sending password/passwordUpdatedAt from the cached user object
+      // or browser-autofilled password fields being picked up.
+      const OMIT_KEYS = new Set(['password', 'passwordUpdatedAt', 'previousPassword', 'previousPasswords']);
+      const safeUserData = Object.fromEntries(
+        Object.entries(userData as Record<string, unknown>).filter(([key]) => !OMIT_KEYS.has(key))
+      );
       const updatedUser = {
-        ...userData,
+        ...safeUserData,
         emailAddress: emailAddress.trim(),
         profile: formData,
         profilePicture,
@@ -347,8 +354,10 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
         setUserData(res.data.user);
         setIsEditMode(false);
       }
-    } catch {
-      toast.error('Failed to update profile.');
+    } catch (error) {
+      const errData = (error as { response?: { data?: { error?: string; message?: string } } })?.response?.data;
+      const message = errData?.error || errData?.message || 'Failed to update profile.';
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

@@ -1,13 +1,32 @@
 /**
  * CollectionReportModals Component
  *
- * Orchestrates all modals for the collection report page.
+ * A centralized orchestration component that manages the visibility and lifecycle of all collection-related modals.
  *
  * Features:
- * - New Report modals (Mobile & Desktop)
- * - Edit Report modals (Mobile & Desktop)
- * - Delete Confirmation dialog
- * - Error boundary protection for complex edit modals
+ * - Managed visibility for New Report modals (Context-aware Mobile/Desktop switching)
+ * - Managed visibility for Edit Report flows
+ * - Centralized deletion handling for reports and schedules
+ * - Automated refresh triggers for parent data on successful operations
+ * - Standardized error handling for complex form states
+ *
+ * @param showNewCollectionMobile - Visibility state for mobile creation flow
+ * @param showNewCollectionDesktop - Visibility state for desktop creation flow
+ * @param showEditMobile - Visibility state for mobile editing flow
+ * @param showEditDesktop - Visibility state for desktop editing flow
+ * @param showDeleteDialog - Visibility state for report deletion confirmation
+ * @param showDeleteScheduleDialog - Visibility state for schedule deletion confirmation
+ * @param showEditScheduleModal - Visibility state for schedule edit form
+ * @param reportToDelete - Metadata of the report targeted for deletion
+ * @param scheduleToDelete - Metadata of the schedule targeted for deletion
+ * @param scheduleToEdit - Metadata of the schedule being modified
+ * @param locations - Shared location/machine data for creation/editing
+ * @param isProcessing - Global loading state for modal actions
+ * @param onCloseModals - Master callback to close all active modals
+ * @param onDeleteReport - Final execution callback for report deletion
+ * @param onDeleteSchedule - Final execution callback for schedule deletion
+ * @param onRefresh - Data refresh callback after operations
+ * @param onRefreshLocations - Location-specific refresh callback
  */
 
 'use client';

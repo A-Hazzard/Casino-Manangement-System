@@ -7,6 +7,13 @@ import { updateVaultShiftInventory } from '../../../lib/helpers/vault/inventory'
 import VaultShiftModel from '../../../lib/models/vaultShift';
 import VaultTransactionModel from '../../../lib/models/vaultTransaction';
 
+/**
+ * POST /api/vault/collection-session/finalize
+ *
+ * @body {string} sessionId - ID of the session to finalize (REQUIRED)
+ * @body {string} locationId - ID of the location (REQUIRED)
+ * @body {string} vaultShiftId - ID of the active vault shift (REQUIRED)
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user }) => {
     try {

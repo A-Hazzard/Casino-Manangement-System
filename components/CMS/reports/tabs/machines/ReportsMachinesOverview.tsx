@@ -43,8 +43,9 @@ import {
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type {
     MachineData,
+    MachineSortKey,
     ReportsMachinesOverviewProps,
-} from '@/lib/types/reports';
+} from '@/shared/types/reports';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { getFinancialColorClass } from '@/lib/utils/financial';
 import { Pencil2Icon } from '@radix-ui/react-icons';
@@ -75,12 +76,12 @@ const SortableHeader = ({
   onSort,
 }: {
   children: ReactNode;
-  sortKey: keyof MachineData;
+  sortKey: MachineSortKey;
   currentSort: {
-    key: keyof MachineData;
+    key: MachineSortKey;
     direction: 'asc' | 'desc';
   };
-  onSort: (key: keyof MachineData) => void;
+  onSort: (key: MachineSortKey) => void;
 }) => {
   const isActive = currentSort.key === sortKey;
 

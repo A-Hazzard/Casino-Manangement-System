@@ -50,7 +50,7 @@ import type {
 import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
 import type { VariationsCheckResponse } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
 import {
-  calculateMachineMovement,
+  calculateCabinetMovement,
   calculateMovement,
 } from '@/lib/utils/movement';
 import axios from 'axios';
@@ -1078,7 +1078,7 @@ export function useEditCollectionModal({
           };
 
           const response = await axios.post(
-            '/api/collections',
+            '/api/collection-reports/collections',
             collectionPayload
           );
 
@@ -1568,7 +1568,7 @@ export function useEditCollectionModal({
 
         // Recalculate report totals based on currently collected machines
         const totalMovementData = collectedMachineEntries.map(entry => {
-          const movement = calculateMachineMovement(
+          const movement = calculateCabinetMovement(
             entry.metersIn || 0,
             entry.metersOut || 0,
             entry.prevIn || 0,
@@ -1684,7 +1684,7 @@ export function useEditCollectionModal({
         collectedMachineEntries.map(async entry => {
           if (!entry._id) return;
           return await axios.patch(
-            `/api/collections?id=${entry._id}`,
+            `/api/collection-reports/collections?id=${entry._id}`,
             patchData
           );
         })
@@ -1765,7 +1765,7 @@ export function useEditCollectionModal({
         setIsLoadingMachines(true);
         try {
           const response = await axios.get(
-            `/api/machines?locationId=${selectedLocationId}&_t=${Date.now()}`
+            `/api/cabinets?locationId=${selectedLocationId}&_t=${Date.now()}`
           );
           if (response.data?.success && response.data?.data) {
             setMachinesOfSelectedLocation(response.data.data);
@@ -1798,7 +1798,7 @@ export function useEditCollectionModal({
     if (show && selectedMachineId) {
       axios
         .get(
-          `/api/collections/check-first-collection?machineId=${selectedMachineId}`
+          `/api/collection-reports/collections/check-first-collection?machineId=${selectedMachineId}`
         )
         .then(response => {
           setIsFirstCollection(prev => {
@@ -1872,7 +1872,7 @@ export function useEditCollectionModal({
 
     // Calculate total movement data from all machine entries using proper movement calculation
     const totalMovementData = collectedMachineEntries.map(entry => {
-      const movement = calculateMachineMovement(
+      const movement = calculateCabinetMovement(
         entry.metersIn || 0,
         entry.metersOut || 0,
         entry.prevIn || 0,
@@ -1967,11 +1967,6 @@ export function useEditCollectionModal({
         .then(data => {
           const reportData = data as CollectionReportData;
           setReportData(reportData);
-
-          // CRITICAL: If report has isEditing: true, there are unsaved changes
-          if (reportData.isEditing) {
-            setHasUnsavedEdits(true);
-          }
 
           // Set location from report - resolve BOTH id and name immediately
           if (reportData.locationName) {
@@ -2423,3 +2418,4 @@ export function useEditCollectionModal({
     userId,
   };
 }
+

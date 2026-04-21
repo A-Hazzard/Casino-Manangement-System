@@ -23,7 +23,6 @@ import {
   SelectValue,
 } from '@/components/shared/ui/select';
 import { Separator } from '@/components/shared/ui/separator';
-import { type MachineEvaluationData } from '@/lib/types';
 import { Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -39,34 +38,7 @@ import {
 import { ReportsManufacturerMultiSelect } from './ReportsManufacturerMultiSelect';
 import { ReportsManufacturerPerformanceTooltip } from './ReportsManufacturerPerformanceTooltip';
 import { useManufacturerPerformanceData } from './useManufacturerPerformanceData';
-type ManufacturerPerformanceData = {
-  manufacturer: string;
-  floorPositions: number;
-  totalHandle: number;
-  totalWin: number;
-  totalDrop: number;
-  totalCancelledCredits: number;
-  totalGross: number;
-  totalGamesPlayed: number;
-  rawTotals?: {
-    coinIn: number;
-    netWin: number;
-    drop: number;
-    gross: number;
-    cancelledCredits: number;
-    gamesPlayed: number;
-  };
-  totalMetrics?: {
-    coinIn: number;
-    netWin: number;
-    drop: number;
-    gross: number;
-    cancelledCredits: number;
-    gamesPlayed: number;
-  };
-  machineCount?: number;
-  totalMachinesCount?: number;
-};
+import { type ManufacturerPerformanceData, type MachineEvaluationData } from '@/shared/types/reports';
 
 type ReportsManufacturerPerformanceChartProps = {
   data: ManufacturerPerformanceData[];

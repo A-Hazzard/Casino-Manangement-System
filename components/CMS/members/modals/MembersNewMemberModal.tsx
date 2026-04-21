@@ -166,7 +166,7 @@ export default function MembersNewMemberModal({
     if (isOpen) {
       const fetchLocations = async () => {
         try {
-          const response = await axios.get('/api/machines/locations');
+          const response = await axios.get('/api/cabinets/locations');
           const locationsData = response.data.locations || [];
           const mappedLocations = locationsData.map(
             (loc: { _id: string; name: string; sasEnabled?: boolean }) => ({
@@ -927,4 +927,5 @@ export default function MembersNewMemberModal({
     </>
   );
 }
+
 

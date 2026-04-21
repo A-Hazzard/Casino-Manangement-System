@@ -42,9 +42,6 @@ async function mockLocationsAPIs(
   await page.route('**/api/auth/current-user**', (route) =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
   );
-  await page.route('**/api/gaming-locations**', (route) =>
-    route.fulfill({ status: 200, json: listPayload })
-  );
   await page.route('**/api/locations**', (route) =>
     route.fulfill({ status: 200, json: listPayload })
   );
@@ -105,12 +102,12 @@ test.describe('Locations', () => {
 
     await test.step('After creation, mock list returns 3 locations', async () => {
       // Re-route the list endpoint to return an updated list
-      await page.route('**/api/gaming-locations**', (route) =>
+      await page.route('**/api/locations**', (route) =>
         route.fulfill({
           status: 200,
           json: {
             ...MOCK_LOCATIONS_LIST,
-            data: [...MOCK_LOCATIONS_LIST.data, MOCK_LOCATION_CREATE_SUCCESS.data],
+            locations: [...(MOCK_LOCATIONS_LIST.locations || []), MOCK_LOCATION_CREATE_SUCCESS.location],
           },
         })
       );
@@ -195,7 +192,7 @@ test.describe('Locations', () => {
     });
 
     await test.step('After edit, mock list returns updated name', async () => {
-      await page.route('**/api/gaming-locations**', (route) =>
+      await page.route('**/api/locations**', (route) =>
         route.fulfill({ status: 200, json: MOCK_LOCATIONS_LIST_AFTER_EDIT })
       );
     });
@@ -267,7 +264,7 @@ test.describe('Locations', () => {
 
     await test.step('Confirm deletion', async () => {
       // Swap the list mock to return the post-delete list before confirming
-      await page.route('**/api/gaming-locations**', (route) =>
+      await page.route('**/api/locations**', (route) =>
         route.fulfill({ status: 200, json: MOCK_LOCATIONS_LIST_AFTER_DELETE })
       );
       await locationsPage.confirmDelete();

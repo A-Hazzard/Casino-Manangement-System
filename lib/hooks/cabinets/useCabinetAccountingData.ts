@@ -111,7 +111,7 @@ export function useCabinetAccountingData({
                 params.append('timePeriod', activityLogTimePeriod);
               }
 
-              const eventsRes = await axios.get(`/api/machines/by-id/events?${params.toString()}`);
+              const eventsRes = await axios.get(`/api/cabinets/by-id/events?${params.toString()}`);
               setActivityLog(eventsRes.data.events || []);
             } catch (error) {
               console.error('Failed to fetch machine events:', error);

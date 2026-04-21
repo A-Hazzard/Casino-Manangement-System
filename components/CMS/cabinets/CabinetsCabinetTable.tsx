@@ -340,7 +340,7 @@ export default function CabinetsCabinetTable({
 
                 <TableCell>
                   <span
-                    className={`font-semibold ${!hideFinancials ? getMoneyInColorClass() : 'text-gray-500'}`}
+                    className={`font-semibold ${!hideFinancials ? getMoneyInColorClass(cab.moneyIn) : 'text-gray-500'}`}
                   >
                     {hideFinancials ? '-' : formatCurrency(cab.moneyIn)}
                   </span>

@@ -7,8 +7,10 @@ import { NextResponse } from 'next/server';
 /**
  * POST /api/auth/totp/recover/cashier
  *
- * Initiates 2FA recovery for a Cashier.
- * Sends a notification to all Vault Managers at the user's location.
+ * Initiates 2FA recovery for a Cashier who has lost access to their authenticator
+ * app. Takes no request body; identity is derived from the session cookie. Sends
+ * an in-app notification to every active Vault Manager assigned to the cashier's
+ * location, requesting manual 2FA reset approval.
  */
 export async function POST() {
   try {

@@ -6,9 +6,14 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * POST /api/auth/profile/update-email
- * 
- * Securely updates the user's email address.
- * Requires the current login password for verification.
+ *
+ * Securely updates the authenticated user's email address. Called from the
+ * profile settings form; requires the current password to prevent unauthorised
+ * changes.
+ *
+ * Body fields:
+ * @param newEmail {string} Required. The new email address to assign to the account.
+ * @param password {string} Required. The user's current password, verified before the update is applied.
  */
 export async function POST(req: NextRequest) {
   try {

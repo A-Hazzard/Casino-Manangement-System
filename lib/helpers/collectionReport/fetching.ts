@@ -33,7 +33,7 @@ export async function fetchCollectionReportsByLicencee(
   if (search) params.append('search', search);
 
   const response = await axios.get(
-    `/api/collectionReport?${params.toString()}`,
+    `/api/collection-reports?${params.toString()}`,
     { signal }
   );
   return response.data;
@@ -51,7 +51,7 @@ export async function getLocationsWithMachines(
   if (licencee && licencee !== 'all') params.append('licencee', licencee);
 
   const response = await axios.get(
-    `/api/collectionReport?${params.toString()}`
+    `/api/collection-reports?${params.toString()}`
   );
   return response.data.locations || [];
 }
@@ -60,7 +60,7 @@ export async function getLocationsWithMachines(
  * Fetches a single collection report by ID
  */
 export async function fetchCollectionReportById(reportId: string) {
-  const response = await axios.get(`/api/collection-report/${reportId}`);
+  const response = await axios.get(`/api/collection-reports/${reportId}`);
   return response.data || null;
 }
 
@@ -69,7 +69,7 @@ export async function fetchCollectionReportById(reportId: string) {
  */
 export async function updateCollectionReport(reportId: string, data: unknown) {
   const response = await axios.patch(
-    `/api/collection-report/${reportId}`,
+    `/api/collection-reports/${reportId}`,
     data
   );
   return response.data;
@@ -79,7 +79,7 @@ export async function updateCollectionReport(reportId: string, data: unknown) {
  * Creates a new collection report
  */
 export async function createCollectionReport(payload: unknown) {
-  const response = await axios.post('/api/collectionReport', payload);
+  const response = await axios.post('/api/collection-reports', payload);
   return response.data;
 }
 
@@ -92,7 +92,7 @@ export async function fetchMonthlyReportLocations(licencee?: string) {
   if (licencee && licencee !== 'all') params.append('licencee', licencee);
 
   const response = await axios.get(
-    `/api/collectionReport?${params.toString()}`
+    `/api/collection-reports?${params.toString()}`
   );
   return (response.data.locations || []).map((loc: { _id: string; name: string }) => ({
     id: loc._id,
@@ -130,7 +130,7 @@ export async function fetchMonthlyReportSummaryAndDetails(params: {
   }
 
   const response = await axios.get(
-    `/api/collectionReport?${searchParams.toString()}`
+    `/api/collection-reports?${searchParams.toString()}`
   );
   return response.data;
 }

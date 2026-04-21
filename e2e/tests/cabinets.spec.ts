@@ -55,14 +55,17 @@ async function mockCabinetsListAPIs(
   await page.route('**/api/auth/current-user**', (route) =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
   );
-  await page.route('**/api/machines/aggregation**', (route) =>
+  await page.route('**/api/cabinets/aggregation**', (route) =>
     route.fulfill({ status: 200, json: listPayload })
   );
-  await page.route('**/api/machines**', (route) =>
+  await page.route('**/api/cabinets**', (route) =>
     route.fulfill({ status: 200, json: listPayload })
   );
-  await page.route('**/api/gaming-locations**', (route) =>
-    route.fulfill({ status: 200, json: MOCK_LOCATIONS_LIST })
+  await page.route('**/api/locations**', (route) =>
+    route.fulfill({
+      status: 200,
+      json: { success: true, locations: MOCK_LOCATIONS_LIST || [] },
+    })
   );
   await page.route('**/api/manufacturers**', (route) =>
     route.fulfill({ status: 200, json: MOCK_MANUFACTURERS })
@@ -81,7 +84,7 @@ async function mockCabinetDetailAPIs(
   await page.route(`**/api/cabinets/${CABINET_ID}**`, (route) =>
     route.fulfill({ status: 200, json: MOCK_CABINET_DETAIL })
   );
-  await page.route(`**/api/machines/${CABINET_ID}**`, (route) =>
+  await page.route(`**/api/cabinets/${CABINET_ID}**`, (route) =>
     route.fulfill({ status: 200, json: MOCK_CABINET_DETAIL })
   );
   await page.route('**/api/meters**', (route) =>
@@ -125,7 +128,7 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('Intercept POST cabinet creation endpoint', async () => {
-      await page.route('**/api/locations/**/cabinets', async (route) => {
+      await page.route('**/api/cabinets', async (route) => {
         if (route.request().method() === 'POST') {
           createRequestBody = route.request().postDataJSON() as Record<string, unknown>;
           await route.fulfill({ status: 201, json: MOCK_CABINET_CREATE_SUCCESS });
@@ -136,7 +139,7 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('After creation, return updated list including the new cabinet', async () => {
-      await page.route('**/api/machines/aggregation**', (route) =>
+      await page.route('**/api/cabinets/aggregation**', (route) =>
         route.fulfill({
           status: 200,
           json: {
@@ -265,7 +268,7 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('After edit, return updated list with renamed cabinet', async () => {
-      await page.route('**/api/machines/aggregation**', (route) =>
+      await page.route('**/api/cabinets/aggregation**', (route) =>
         route.fulfill({
           status: 200,
           json: {
@@ -339,7 +342,7 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('Swap list mock to post-delete payload then confirm', async () => {
-      await page.route('**/api/machines/aggregation**', (route) =>
+      await page.route('**/api/cabinets/aggregation**', (route) =>
         route.fulfill({ status: 200, json: MOCK_CABINETS_LIST_AFTER_DELETE })
       );
       await cabinetsPage.confirmDelete();
@@ -411,7 +414,7 @@ test.describe('Cabinet Detail', () => {
       await mockCabinetDetailAPIs(page);
       page.on('request', (req) => {
         if (req.url().includes(`/api/cabinets/${CABINET_ID}`) ||
-            req.url().includes(`/api/machines/${CABINET_ID}`)) {
+            req.url().includes(`/api/cabinets/${CABINET_ID}`)) {
           capturedUrls.push(req.url());
         }
       });
@@ -524,3 +527,4 @@ test.describe('Cabinets — Role-based access', () => {
     await expect(page).toHaveURL(/collection-report/);
   });
 });
+

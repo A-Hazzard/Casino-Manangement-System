@@ -89,7 +89,7 @@ export default function VaultLayoutWrapper({
           <ProfileValidationGate context="VAULT" />
           <SidebarInset>{children}</SidebarInset>
         </SidebarProvider>
-        <Toaster position="top-right" />
+        <Toaster position="top-right" richColors />
       </CurrencyProvider>
     </QueryProvider>
   );

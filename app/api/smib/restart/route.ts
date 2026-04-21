@@ -22,6 +22,8 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main POST handler for restarting a SMIB device
  *
+ * @body {string} relayId - REQUIRED. The 12-char hex relay ID of the SMIB to restart
+ * 
  * Flow:
  * 1. Parse request body
  * 2. Validate relayId

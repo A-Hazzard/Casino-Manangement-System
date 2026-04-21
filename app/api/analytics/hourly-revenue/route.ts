@@ -11,7 +11,15 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching hourly revenue data
+ * GET /api/analytics/hourly-revenue
+ *
+ * Returns hourly revenue breakdown for a single location. Used by the location detail analytics view.
+ *
+ * Query params:
+ * @param locationId {string} Required. The location to fetch hourly revenue for.
+ * @param timePeriod {string} Optional. Time window descriptor. Defaults to '24h'.
+ * @param startDate  {string} Optional. ISO datetime string for the start of a custom range.
+ * @param endDate    {string} Optional. ISO datetime string for the end of a custom range.
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async () => {

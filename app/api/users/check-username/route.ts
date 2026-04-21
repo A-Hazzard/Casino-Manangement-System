@@ -17,6 +17,10 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main GET handler for checking username and email availability
  *
+ * @param {string} username - Username to check availability for
+ * @param {string} email - Email address to check availability for
+ * @param {string} excludeId - User ID to exclude (useful for edit modes)
+ *
  * Flow:
  * 1. Connect to database
  * 2. Extract username, email, and excludeId from query parameters

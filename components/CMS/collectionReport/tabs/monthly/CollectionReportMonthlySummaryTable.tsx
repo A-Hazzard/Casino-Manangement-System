@@ -1,101 +1,107 @@
-/**
- * Monthly Report Summary Table Component
- * Table component for displaying monthly report summary metrics.
- *
- * Features:
- * - Summary metrics display (Drop, Cancelled Credits, Gross, SAS Gross)
- * - Single row summary table
- * - Copyable metrics values
- * - Responsive design
- *
- * @param summary - Monthly report summary data
- */
+'use client';
+
 import { toast } from 'sonner';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/shared/ui/table';
 import type { CollectionReportMonthlySummaryTableProps } from '@/lib/types/components';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { getGrossColorClass } from '@/lib/utils/financial';
+
+// ============================================================================
+// Config — mirrors FinancialMetricsCards desktop colour palette
+// ============================================================================
+
+const METRICS = [
+  {
+    key: 'drop' as const,
+    label: 'Drop',
+    bar: 'bg-buttonActive',
+  },
+  {
+    key: 'cancelledCredits' as const,
+    label: 'Cancelled Credits',
+    bar: 'bg-lighterBlueHighlight',
+  },
+  {
+    key: 'gross' as const,
+    label: 'Gross',
+    bar: 'bg-orangeHighlight',
+  },
+  {
+    key: 'sasGross' as const,
+    label: 'SAS Gross',
+    bar: 'bg-amber-400',
+  },
+];
+
+// ============================================================================
+// Component
+// ============================================================================
 
 export default function CollectionReportMonthlySummaryTable({
   summary,
+  loading,
 }: CollectionReportMonthlySummaryTableProps) {
-  // Copy to clipboard function
-  const copyToClipboard = async (text: string, label: string) => {
-    if (!text || text.trim() === '' || text === '-') {
-      toast.error(`No ${label} value to copy`);
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(text.trim());
-      toast.success(`${label} copied to clipboard`);
-    } catch {
-      toast.error(`Failed to copy ${label}`);
-    }
+  const { formatAmount } = useCurrencyFormat();
+
+  const formatVal = (v: number | string | null | undefined) => {
+    if (v === '-' || v === undefined || v === null || v === '') return '—';
+    const num = typeof v === 'string' ? parseFloat(v) : v;
+    return isNaN(num) ? String(v) : formatAmount(num);
   };
 
+  const colorCls = (v: number | string | null | undefined) => {
+    if (v === '-' || v === undefined || v === null || v === '') return '';
+    const num = typeof v === 'string' ? parseFloat(v) : v;
+    return isNaN(num) ? '' : getGrossColorClass(num);
+  };
+
+  const copy = async (text: string, label: string) => {
+    if (!text || text === '-') { toast.error(`No ${label} value to copy`); return; }
+    try {
+      await navigator.clipboard.writeText(text.replace('$', '').replace(/,/g, '').trim());
+      toast.success(`${label} copied to clipboard`);
+    } catch { toast.error(`Failed to copy ${label}`); }
+  };
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="h-[120px] animate-pulse rounded-lg bg-gray-200" />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="mb-0 overflow-x-auto rounded-lg bg-white shadow">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-button hover:bg-button">
-            <TableHead className="font-semibold text-white">DROP</TableHead>
-            <TableHead className="font-semibold text-white">
-              CANCELLED CREDITS
-            </TableHead>
-            <TableHead className="font-semibold text-white">GROSS</TableHead>
-            <TableHead className="font-semibold text-white">
-              SAS GROSS
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow className="hover:bg-gray-50">
-            <TableCell className="font-medium">
+    <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      {METRICS.map(metric => {
+        const raw = summary[metric.key];
+        const formatted = formatVal(raw);
+        const cls = colorCls(raw);
+
+        return (
+          <div
+            key={metric.key}
+            className="flex min-h-[120px] flex-col justify-center rounded-lg bg-gradient-to-b from-white to-transparent px-4 py-4 text-center shadow-md sm:px-6 sm:py-6"
+          >
+            <p className="mb-2 text-xs font-medium text-gray-500 sm:text-sm md:text-base lg:text-lg">
+              {metric.label}
+            </p>
+            <div className={`my-2 h-[4px] w-full rounded-full ${metric.bar}`} />
+            <div className="flex flex-1 items-center justify-center">
               <button
-                onClick={() => copyToClipboard(summary.drop, 'Drop')}
-                className="cursor-pointer hover:text-blue-600 hover:underline"
+                onClick={() => copy(String(raw ?? ''), metric.label)}
+                className="hover:opacity-70"
                 title="Click to copy"
               >
-                {summary.drop}
+                <span className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${cls || 'text-gray-900'}`}>
+                  {formatted}
+                </span>
               </button>
-            </TableCell>
-            <TableCell className="font-medium">
-              <button
-                onClick={() =>
-                  copyToClipboard(summary.cancelledCredits, 'Cancelled Credits')
-                }
-                className="cursor-pointer hover:text-blue-600 hover:underline"
-                title="Click to copy"
-              >
-                {summary.cancelledCredits}
-              </button>
-            </TableCell>
-            <TableCell className="font-medium">
-              <button
-                onClick={() => copyToClipboard(summary.gross, 'Gross')}
-                className="cursor-pointer hover:text-blue-600 hover:underline"
-                title="Click to copy"
-              >
-                {summary.gross}
-              </button>
-            </TableCell>
-            <TableCell className="font-medium">
-              <button
-                onClick={() => copyToClipboard(summary.sasGross, 'SAS Gross')}
-                className="cursor-pointer hover:text-blue-600 hover:underline"
-                title="Click to copy"
-              >
-                {summary.sasGross}
-              </button>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

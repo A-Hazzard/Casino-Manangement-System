@@ -1,13 +1,43 @@
 /**
  * Session Events API Route
  *
- * Fetches machine events for a specific session with filtering and pagination.
+ * Fetches machine events scoped to a specific session and machine, with filtering,
+ * time-range controls, and pagination. Also returns unique filter values for
+ * eventType, description, and game dropdowns in the same response.
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * GET /api/sessions/[sessionId]/[machineId]/events
+ *
+ * Fetches paginated machine events filtered to a specific session and machine.
+ * Supports narrowing by event category, description text, game name, and date range
+ * (either an explicit window or a preset period). Returns available filter options
+ * alongside the events so the UI can populate dropdowns without extra requests.
+ *
+ * URL params:
+ * @param sessionId   {string} Required (path). The string `_id` of the session to scope events to.
+ * @param machineId   {string} Required (path). The string `_id` of the machine to scope events to.
+ *
+ * Query params:
+ * @param page        {number} Optional. 1-based page number (default: 1).
+ * @param limit       {number} Optional. Number of events per page (default: 10).
+ * @param timePeriod  {string} Optional. Preset time window: `today`, `yesterday`, `7d` / `last7days`,
+ *                             `30d` / `last30days`, or `All Time` (no filter). Ignored when
+ *                             `startDate`/`endDate` are provided.
+ * @param eventType   {string} Optional. Case-insensitive partial-match filter on the event's
+ *                             `eventType` field (e.g. `"GAME_EVENT"`).
+ * @param event       {string} Optional. Case-insensitive partial-match filter on the event
+ *                             `description` field.
+ * @param game        {string} Optional. Case-insensitive partial-match filter on `gameName`.
+ * @param startDate   {string} Optional. ISO datetime string for the start of a custom date range.
+ *                             Must be paired with `endDate`; filters `date >= startDate`.
+ * @param endDate     {string} Optional. ISO datetime string for the end of a custom date range.
+ *                             Must be paired with `startDate`; filters `date <= endDate`.
+ */
 export async function GET(
   request: NextRequest
 ) {

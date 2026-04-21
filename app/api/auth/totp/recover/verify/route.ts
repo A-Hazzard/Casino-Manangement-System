@@ -6,9 +6,15 @@ import QRCode from 'qrcode';
 
 /**
  * POST /api/auth/totp/recover/verify
- * 
- * Verifies a 2FA recovery token sent via email.
- * If valid, generates a NEW TOTP secret and QR code for the user to re-setup.
+ *
+ * Validates a time-limited recovery token that was emailed to the user during the
+ * VM recovery flow. If valid, generates a new TOTP secret and QR code without
+ * immediately disabling the old secret, so existing 2FA protection is maintained
+ * until the new code is confirmed via POST /api/auth/totp/confirm.
+ *
+ * Body fields:
+ * @param token {string} Required. The recovery token from the emailed link, matched
+ *                       against `totpRecoveryToken` with expiry enforced via `totpRecoveryExpires`.
  */
 export async function POST(req: NextRequest) {
   try {

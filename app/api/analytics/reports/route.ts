@@ -10,7 +10,7 @@
  * @module app/api/analytics/reports/route
  */
 
-import type { ReportConfig } from '@/lib/types/reports';
+import type { ReportConfig } from '@/shared/types/reports';
 import { generateReportData } from '@/app/api/lib/helpers/reports/general';
 import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
@@ -67,7 +67,17 @@ function buildReportConfig(
 }
 
 /**
- * Main POST handler for generating analytics reports
+ * POST /api/analytics/reports
+ *
+ * Generates a structured analytics report from the provided configuration. Used by the Analytics reports builder page.
+ *
+ * Request body (JSON):
+ * @param title      {string}                                               Required. Human-readable title for the report.
+ * @param reportType {'locationPerformance'|'machineRevenue'|'fullFinancials'} Required. Determines the data shape of the report.
+ * @param dateRange  {{ start: string, end: string }}                       Required. ISO datetime strings defining the report window.
+ * @param filters    {{ locationIds?: string[], manufacturers?: string[] }} Required. Narrows the report dataset.
+ * @param fields     {string[]}                                             Required. List of metric field names to include in the report.
+ * @param chartType  {'bar'|'line'|'table'}                                 Required. Visualization type for the report output.
  *
  * Flow:
  * 1. Parse and validate request body

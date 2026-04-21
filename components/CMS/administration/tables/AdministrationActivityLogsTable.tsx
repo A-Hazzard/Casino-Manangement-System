@@ -18,7 +18,7 @@
  */
 'use client';
 
-import type { ActivityLog } from '@/app/api/lib/types/activityLog';
+import type { ActivityLog } from '@/shared/types/activityLog';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
@@ -26,8 +26,6 @@ import { DatePicker } from '@/components/shared/ui/date-picker';
 import {
     Dialog,
     DialogContent,
-    DialogFooter,
-    DialogHeader,
     DialogTitle,
 } from '@/components/shared/ui/dialog';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
@@ -49,7 +47,7 @@ import {
 } from '@/components/shared/ui/table';
 import { useUserStore } from '@/lib/store/userStore';
 import { formatDateString } from '@/lib/utils/formatting';
-import { Activity, ArrowUpDown, Check, Copy, Trash2 } from 'lucide-react';
+import { Activity, ArrowUpDown, Check, Copy, ExternalLink, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import AdministrationActivityLogsSearchBar from '../AdministrationActivityLogsSearchBar';
@@ -767,15 +765,9 @@ function AdministrationActivityLogsTable({
                           </TableCell>
                           <TableCell className="min-w-0 max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl">
                             <button
-                              onClick={() => {
-                                // Extract email/identifier from description if it's a login message
-                                const description = log.description || log.details || 'No description';
-                                const emailMatch = description.match(/(?:Successful login|Invalid password|User not found)[\s:]+([^\s]+@[^\s]+)/i);
-                                const textToCopy = emailMatch ? emailMatch[1] : description;
-                                copyToClipboard(textToCopy, 'Description', `description-${log._id}`);
-                              }}
+                              onClick={() => handleDescriptionClick(log)}
                               className="w-full cursor-pointer whitespace-normal break-words text-left text-sm transition-colors hover:text-blue-600 hover:underline"
-                              title="Click to copy description"
+                              title="Click to view details"
                             >
                               <div className="flex items-start gap-1">
                                 <span className="min-w-0 flex-1 break-words">
@@ -783,11 +775,7 @@ function AdministrationActivityLogsTable({
                                     log.details ||
                                     'No description'}
                                 </span>
-                                {copiedField === `description-${log._id}` ? (
-                                  <Check className="mt-0.5 h-3 w-3 flex-shrink-0 text-green-600" />
-                                ) : (
-                                  <Copy className="mt-0.5 h-3 w-3 flex-shrink-0 opacity-50" />
-                                )}
+                                <ExternalLink className="mt-0.5 h-3 w-3 flex-shrink-0 opacity-50" />
                               </div>
                             </button>
                           </TableCell>
@@ -871,6 +859,8 @@ function AdministrationActivityLogsTable({
                   key={log._id}
                   log={log}
                   onDescriptionClick={handleDescriptionClick}
+                  canDelete={isDeveloper}
+                  onDelete={handleDeleteClick}
                 />
               ))
             ) : (
@@ -903,74 +893,86 @@ function AdministrationActivityLogsTable({
         searchMode={searchMode}
       />
 
-      {/* Developer Delete Selection Modal */}
+      {/* Developer Delete Confirmation Modal */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-md bg-white">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-red-600">
-              <Trash2 className="h-5 w-5" />
-              Confirm Delete Log
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="rounded-lg bg-gray-50 p-4 border border-gray-100 space-y-2">
-              <p className="text-sm text-gray-700">
-                Are you sure you want to delete this activity log?
-              </p>
-              <div className="text-xs text-gray-500 font-mono space-y-1">
-                <p>ID: {logToDelete?._id}</p>
-                <p>Action: {logToDelete?.action}</p>
-                <p>User: {logToDelete?.username}</p>
-                <p>Time: {logToDelete && formatDateString(logToDelete.timestamp)}</p>
-              </div>
+        <DialogContent className="h-full gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-w-sm sm:rounded-xl">
+          <DialogTitle className="sr-only">Delete Activity Log</DialogTitle>
+          {/* Header */}
+          <div className="flex items-center gap-2.5 border-b bg-red-50 px-5 py-4">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100">
+              <Trash2 className="h-4 w-4 text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-red-700">Delete Activity Log</p>
+              <p className="text-xs text-red-500">This action may be irreversible</p>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="space-y-4 px-5 py-4">
+            {/* Log summary */}
+            <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 font-mono text-xs text-gray-500 space-y-1">
+              <p><span className="font-semibold text-gray-600">ID</span> &nbsp;{logToDelete?._id}</p>
+              <p><span className="font-semibold text-gray-600">Action</span> &nbsp;{logToDelete?.action}</p>
+              <p><span className="font-semibold text-gray-600">User</span> &nbsp;{logToDelete?.username}</p>
+              <p><span className="font-semibold text-gray-600">Time</span> &nbsp;{logToDelete && formatDateString(logToDelete.timestamp)}</p>
             </div>
 
-            <div className="flex flex-col gap-3 rounded-lg bg-amber-50 p-4 border border-amber-100">
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Deletion Mode:</span>
-              <div className="flex gap-2">
-                <Button
+            {/* Deletion mode */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Deletion mode</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
                   type="button"
-                  variant={deleteType === 'soft' ? 'default' : 'outline'}
-                  className={`flex-1 text-xs h-9 font-bold ${deleteType === 'soft' ? 'bg-amber-500 hover:bg-amber-600 border-none text-white' : 'bg-white border-amber-200 text-amber-700 hover:bg-amber-100'}`}
                   onClick={() => setDeleteType('soft')}
+                  className={`rounded-lg border py-2 text-xs font-semibold transition-colors ${
+                    deleteType === 'soft'
+                      ? 'border-amber-400 bg-amber-500 text-white'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-amber-300 hover:bg-amber-50'
+                  }`}
                 >
-                  SOFT DELETE
-                </Button>
-                <Button
+                  Soft delete
+                </button>
+                <button
                   type="button"
-                  variant={deleteType === 'hard' ? 'default' : 'outline'}
-                  className={`flex-1 text-xs h-9 font-bold ${deleteType === 'hard' ? 'bg-red-600 hover:bg-red-700 border-none text-white' : 'bg-white border-red-200 text-red-700 hover:bg-red-100'}`}
                   onClick={() => setDeleteType('hard')}
+                  className={`rounded-lg border py-2 text-xs font-semibold transition-colors ${
+                    deleteType === 'hard'
+                      ? 'border-red-500 bg-red-600 text-white'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-red-300 hover:bg-red-50'
+                  }`}
                 >
-                  HARD DELETE
-                </Button>
+                  Hard delete
+                </button>
               </div>
-              <p className="text-[10px] text-amber-800 italic leading-tight">
-                {deleteType === 'soft' 
-                  ? "Soft delete marks the log as hidden but keeps it in the database for auditing." 
-                  : "Hard delete PERMANENTLY removes the log from the database. This action cannot be undone."}
+              <p className="text-[11px] leading-relaxed text-gray-500">
+                {deleteType === 'soft'
+                  ? 'Hides the log from the UI but keeps it in the database for auditing.'
+                  : 'Permanently removes the log from the database. This cannot be undone.'}
               </p>
             </div>
           </div>
 
-          <DialogFooter className="flex sm:justify-center gap-3">
+          {/* Footer */}
+          <div className="flex gap-2 border-t bg-gray-50 px-5 py-3">
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setIsDeleteModalOpen(false)}
-              className="px-6 font-bold"
               disabled={isDeleting}
+              className="flex-1"
             >
-              CANCEL
+              Cancel
             </Button>
             <Button
+              size="sm"
               onClick={confirmDelete}
-              className={`px-8 font-bold ${deleteType === 'hard' ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-amber-500 hover:bg-amber-600 text-white'}`}
               disabled={isDeleting}
+              className={`flex-1 ${deleteType === 'hard' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600'} text-white`}
             >
-              {isDeleting ? 'PROCESSING...' : deleteType === 'hard' ? 'PERMANENTLY DELETE' : 'CONFIRM SOFT DELETE'}
+              {isDeleting ? 'Deleting…' : deleteType === 'hard' ? 'Delete permanently' : 'Soft delete'}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

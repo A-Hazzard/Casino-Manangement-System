@@ -10,7 +10,7 @@
  */
 
 import { Denomination } from '@/app/api/lib/models/denominations';
-import type { DenominationBreakdown } from '@/app/api/lib/types/vault';
+import type { DenominationBreakdown } from '@/shared/types/vault';
 
 /**
  * Calculate total cash on premises for a location

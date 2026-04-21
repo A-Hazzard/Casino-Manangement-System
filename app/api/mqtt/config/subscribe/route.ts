@@ -14,6 +14,8 @@ import { NextRequest } from 'next/server';
 /**
  * Main GET handler for MQTT config SSE subscription
  *
+ * @param {string} relayId - REQUIRED. The unique relay ID to subscribe to updates for.
+ *
  * Flow:
  * 1. Parse and validate relayId parameter
  * 2. Set up SSE headers

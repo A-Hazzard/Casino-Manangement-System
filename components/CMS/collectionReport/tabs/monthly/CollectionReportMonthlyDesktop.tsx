@@ -78,52 +78,46 @@ export default function CollectionReportMonthlyDesktop({
   return (
     <div className="hidden space-y-4 rounded-lg bg-white shadow-md md:block">
       {/* Controls Bar */}
-      <div className="flex flex-col gap-4 rounded-t-lg bg-buttonActive p-4 md:flex-row md:items-center">
+      <div className="flex items-center gap-3 rounded-t-lg bg-buttonActive p-4">
         <LocationMultiSelect
           locations={locations}
           selectedLocations={Array.isArray(monthlyLocation) ? monthlyLocation : (monthlyLocation === 'all' ? [] : [monthlyLocation])}
           onSelectionChange={onMonthlyLocationChange}
           placeholder="Select locations..."
-          className="w-auto"
+          className="w-auto min-w-[200px] max-w-xs"
         />
-        <div className="ml-auto flex w-full justify-end md:w-auto">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="flex items-center gap-2 border-white bg-white text-gray-700 hover:bg-gray-50"
-              >
-                <Download className="h-4 w-4" />
-                Export
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => handleExport('pdf')}
-                className="cursor-pointer"
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Export as PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('excel')}
-                className="cursor-pointer"
-              >
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Export as Excel
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="flex shrink-0 items-center gap-2 border-white bg-white text-gray-700 hover:bg-gray-50"
+            >
+              <Download className="h-4 w-4" />
+              Export
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleExport('pdf')} className="cursor-pointer">
+              <FileText className="mr-2 h-4 w-4" />
+              Export as PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport('excel')} className="cursor-pointer">
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              Export as Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Date Filters Bar */}
-      <CollectionReportMonthlyMonthYearPicker
-        value={pendingRange}
-        onChange={onPendingRangeChange}
-        onSetLastMonth={onSetLastMonth}
-      />
+      <div className="flex justify-center border-b border-gray-100 px-4 pb-4">
+        <CollectionReportMonthlyMonthYearPicker
+          value={pendingRange}
+          onChange={onPendingRangeChange}
+          onSetLastMonth={onSetLastMonth}
+        />
+      </div>
 
       {/* Content Area */}
       <div className="space-y-4 px-4 pb-4">

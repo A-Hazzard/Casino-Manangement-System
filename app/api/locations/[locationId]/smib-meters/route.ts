@@ -19,15 +19,17 @@ import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for requesting SMIB meters
+ * POST /api/locations/[locationId]/smib-meters
  *
- * Flow:
- * 1. Parse route parameters
- * 2. Connect to database
- * 3. Find machines at location with SMIBs
- * 4. Process meter requests in batches
- * 5. Log activity
- * 6. Return results
+ * Requests current meter readings from all SMIBs at a location via MQTT. Called
+ * when a user triggers a location-wide meter poll; the SMIBs respond asynchronously
+ * over MQTT and their readings are stored by the MQTT listener.
+ *
+ * URL params:
+ * @param locationId {string} Required (path). The location whose SMIB meters to request.
+ *
+ * Body fields:
+ * (none — machines are resolved from the locationId path parameter)
  */
 export async function POST(
   request: NextRequest

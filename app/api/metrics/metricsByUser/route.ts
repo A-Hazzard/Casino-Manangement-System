@@ -18,6 +18,9 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main GET handler for fetching user metrics
  *
+ * @param {string} userId - ID of the user to fetch metrics for (REQUIRED)
+ * @param {string} timePeriod - Time range preset for calculations
+ *
  * Flow:
  * 1. Parse and validate request parameters
  * 2. Validate time period

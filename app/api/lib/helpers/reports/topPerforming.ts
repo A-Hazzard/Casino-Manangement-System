@@ -3,8 +3,7 @@ import type { QueryFilter, TimePeriod } from '@/lib/types/api';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 import type { PipelineStage } from 'mongoose';
-
-type ActiveTab = 'locations' | 'Cabinets';
+import type { TopPerformingTab } from '@/shared/types/reports';
 
 /**
  * Fetches the top 5 performing locations or Cabinets based on total moneyIn (drop).
@@ -18,7 +17,7 @@ type ActiveTab = 'locations' | 'Cabinets';
  * @returns Promise resolving to aggregated results sorted by performance.
  */
 export async function getTopPerformingMetrics(
-  activeTab: ActiveTab,
+  activeTab: TopPerformingTab,
   timePeriod: TimePeriod,
   licencee?: string,
   customStartDate?: Date,

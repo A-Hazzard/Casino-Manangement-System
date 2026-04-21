@@ -12,7 +12,14 @@ import { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching jackpot trends data
+ * GET /api/analytics/jackpot-trends
+ *
+ * Returns jackpot payout trend data aggregated over the requested period. Used by the Analytics jackpot trends chart.
+ *
+ * Query params:
+ * @param timePeriod  {TimePeriod} Optional. 'Today'|'Yesterday'|'7d'|'30d'|'Custom'. Defaults to 'Today'.
+ * @param licencee    {string}     Optional. Scopes results to this licencee.
+ * @param locationIds {string}     Optional. Comma-separated location IDs to filter results.
  */
 export async function GET(req: NextRequest) {
   return withApiAuth(req, async () => {

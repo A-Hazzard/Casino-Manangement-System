@@ -28,15 +28,14 @@ import {
     calculateOfflineDurationHours,
     calculateParetoStatement,
     getPerformanceRating
-} from '@/lib/helpers/machines';
+} from '@/lib/helpers/cabinets';
 import { handleExportMeters as handleExportMetersHelper } from '@/lib/helpers/reports';
 
 import { ReportsMachinesEvaluation } from './ReportsMachinesEvaluation';
 import { ReportsMachinesOffline } from './ReportsMachinesOffline';
 import { ReportsMachinesOverview } from './ReportsMachinesOverview';
 
-import type { MachineEvaluationData } from '@/lib/types';
-import type { TopMachinesCriteria } from '@/lib/types/reports';
+import type { MachineEvaluationData, TopMachinesCriteria, MachineSortKey } from '@/shared/types/reports';
 import type { MachineData } from '@/shared/types/machines';
 
 /**
@@ -90,7 +89,7 @@ export default function ReportsMachinesTab() {
   // State: Sorting & Pagination
   // ============================================================================
   const [sortConfig, setSortConfig] = useState<{
-    key: keyof MachineData | 'offlineDurationHours';
+    key: MachineSortKey;
     direction: 'asc' | 'desc';
   }>({
     key: 'netWin',
@@ -934,7 +933,7 @@ export default function ReportsMachinesTab() {
             onSearchChange={setSearchTerm}
             onLocationChange={setOverviewSelectedLocation}
             onStatusChange={setOnlineStatusFilter}
-            onSort={(key: keyof MachineData) =>
+            onSort={(key: MachineSortKey) =>
               setSortConfig({
                 key,
                 direction:
@@ -1001,7 +1000,7 @@ export default function ReportsMachinesTab() {
             onSearchChange={setOfflineSearchTerm}
             onLocationChange={setOfflineSelectedLocations}
             onDurationChange={setSelectedOfflineDuration}
-            onSort={key =>
+            onSort={(key: MachineSortKey) =>
               setSortConfig({
                 key,
                 direction:
@@ -1010,7 +1009,7 @@ export default function ReportsMachinesTab() {
                     : 'desc',
               })
             }
-            onPageChange={page => setOfflineCurrentPage(page - 1)}
+            onPageChange={(page: number) => setOfflineCurrentPage(page - 1)}
             onRefresh={handleRefresh}
             onExport={handleExport}
             onEdit={handleEdit}
@@ -1024,4 +1023,5 @@ export default function ReportsMachinesTab() {
     </div>
   );
 }
+
 

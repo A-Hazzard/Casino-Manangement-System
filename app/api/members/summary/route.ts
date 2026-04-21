@@ -21,6 +21,15 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main GET handler for fetching members summary
  *
+ * @param {string} dateFilter - Time period preset ('yesterday', 'week', 'month', 'custom', 'all')
+ * @param {string} startDate - ISO date string for custom filter start
+ * @param {string} endDate - ISO date string for custom filter end
+ * @param {string} search - Search query for name, phone, or username
+ * @param {string} location - Filter by location ID(s)
+ * @param {string} licencee - Optional. Filter by licencee (ID or name)
+ * @param {number} page - Page number for pagination
+ * @param {number} limit - Items per page
+ *
  * Flow:
  * 1. Connect to database
  * 2. Parse query parameters

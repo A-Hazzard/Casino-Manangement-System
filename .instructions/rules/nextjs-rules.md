@@ -96,7 +96,8 @@ const [state, setState] = React.useState(); // Never do this
 - **No `any` allowed** - Create appropriate type definitions for all variables and functions.
 - **No underscore prefixes allowed** - Never prefix variables or functions with underscores (e.g., `_variable`, `_function`). If a parameter is unused, either use it or remove it entirely.
 - **Always check dependencies before deleting types or functions** - Use `grep_search` to verify usage before removal.
-- **Avoid type duplication** - Import and re-export from shared types instead of redefining.
+- **Avoid type duplication** - Import and re-export from shared types instead of redefining. Any type used in both frontend and backend MUST be defined in [`shared/types/`](mdc:shared/types).
+- **Type Explicitness**: Avoid vague types like `Record<string, any>` or `Record<string, number>` for core domain data. Use explicit types or arrays of objects (e.g., `Denomination[]` instead of `DenominationBreakdown`) to make the code easier to read for all developers.
 - Always import types from their respective type files - avoid redefining types.
 - Ensure type exports are properly named and documented.
 - **Handle type conflicts properly** - When accessing properties that may not exist in a type, use proper fallback logic (e.g., `property || fallbackValue`).
@@ -1319,6 +1320,35 @@ const pipeline: PipelineStage[] = [
 - Keep all database query logic type-safe – no `any` in query objects or results
 
 ---
+
+## 14. Financial Data Presentation
+
+**MANDATORY**: All components displaying financial numbers must follow consistent color-coding to indicate performance and direction of money flow.
+
+- **Green** (`text-green-600` or similar): Represents positive values, income, profit, or "Money In" (e.g., Gross Profit, Total In, Positive Growth).
+- **Red** (`text-red-600` or similar): Represents negative values, losses, expenses, or "Money Out" (e.g., Total Out, Discounts, Negative Growth).
+- **Neutral (No color)**: Represents zero values or neutral metrics that don't imply "good" or "bad" performance.
+
+### Implementation Helper
+
+Use the `getFinancialColorClass` or `getGrossColorClass` utility whenever possible to ensure consistency:
+
+```typescript
+import { getFinancialColorClass } from '@/lib/utils/financial';
+
+// JSX
+<span className={getFinancialColorClass(value)}>
+  {formatCurrency(value)}
+</span>
+```
+
+### General Rules for Financial UI:
+1. **Consistency**: Apply the same color logic across all tabs and reports (Overview, Monthly, Collection, etc.).
+2. **Readability**: Ensure sufficient contrast when using colored text, especially on background colors.
+3. **Alignment**: Financial numbers should generally be right-aligned in tables for easier comparison.
+
+---
+
 
 **Summary:**  
 Persistence: Keep going until the job is completely solved before ending your turn.

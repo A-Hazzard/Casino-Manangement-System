@@ -1,7 +1,7 @@
 /**
  * New Collection Financials Component
  *
- * Handles financial inputs for the New Collection Modal
+ * Handles financial inputs for the New Collection Modal.
  *
  * Features:
  * - Taxes, Advance, Variance inputs
@@ -10,6 +10,13 @@
  * - Balance Correction with tooltip
  * - Previous Balance (auto-calculated)
  * - Reason fields
+ *
+ * @param financials - Object containing all financial data (taxes, advance, variance, etc.)
+ * @param baseBalanceCorrection - The base correction value used as the starting point for reconciliation
+ * @param isProcessing - Loading state for async operations
+ * @param onFinancialsChange - Callback triggered when any shared financial field value changes
+ * @param onBaseBalanceCorrectionChange - Callback triggered when the base balance correction is updated
+ * @param onCollectedAmountChange - Callback triggered when the physical collected amount is updated
  */
 
 'use client';

@@ -14,6 +14,16 @@ import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * POST /api/vault/add-cash
+ *
+ * @body {string} source - Source of funds ('Bank', 'Machine', etc.)
+ * @body {number} amount - Total amount being added
+ * @body {Array} denominations - Denomination breakdown
+ * @body {string} notes - Optional transaction notes
+ * @body {Object} bankDetails - Details if source is bank
+ * @body {Array} machineIds - IDs if source is machine(s)
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {

@@ -6,9 +6,15 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * POST /api/auth/totp/reset
- * 
- * Resets 2FA for a specific user.
- * Restricted to Vault Managers and higher.
+ *
+ * Clears the TOTP secret and disables 2FA for a target user. Restricted to
+ * Vault Manager, Admin, and Developer roles. Called by a Vault Manager acting
+ * on a 2FA recovery notification raised by a cashier.
+ *
+ * Body fields:
+ * @param userId         {string} Required. The `_id` of the user whose 2FA should be reset.
+ * @param notificationId {string} Optional. The `_id` of the VaultNotification to mark as
+ *                                actioned once the reset completes.
  */
 export async function POST(req: NextRequest) {
   try {

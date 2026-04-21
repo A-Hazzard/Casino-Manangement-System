@@ -112,9 +112,9 @@ export async function fixAllReportsData(): Promise<{
       // Use the comprehensive fix function from fixReportOperations
       const { fixResults: reportFixResults } = await fixReportIssues(reportId);
 
-      const totalIssuesFixed = Object.values(
+      const totalIssuesFixed = (Object.values(
         reportFixResults.issuesFixed
-      ).reduce((sum, val) => sum + val, 0);
+      ) as number[]).reduce((sum, val) => sum + val, 0);
 
       if (totalIssuesFixed > 0) {
         fixResults.reportsFixed++;

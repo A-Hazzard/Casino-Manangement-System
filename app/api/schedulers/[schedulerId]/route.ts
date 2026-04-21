@@ -22,6 +22,21 @@ type RouteContext = { params: Promise<{ schedulerId: string }> };
 // ============================================================================
 // PATCH — Edit schedule fields
 // ============================================================================
+/**
+ * PATCH /api/schedulers/[schedulerId]
+ *
+ * Updates one or more fields on an existing schedule. Only provided fields are
+ * applied; at least one field must be included. Requires manager, admin,
+ * location admin, owner, or developer role.
+ *
+ * Path params:
+ * @param schedulerId {string}  Required. The ID of the schedule to update.
+ *
+ * Body fields:
+ * @param startTime   {string}  Optional. ISO 8601 date-time string for the new start time.
+ * @param endTime     {string}  Optional. ISO 8601 date-time string for the new end time.
+ * @param status      {string}  Optional. New status value for the schedule.
+ */
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     await connectDB();
@@ -119,6 +134,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 // ============================================================================
 // DELETE — Soft-delete (sets deletedAt)
 // ============================================================================
+/**
+ * DELETE /api/schedulers/[schedulerId]
+ *
+ * Soft-deletes a schedule by setting its `deletedAt` timestamp. The record is
+ * retained in the database but excluded from all active queries. Requires
+ * manager, admin, location admin, owner, or developer role.
+ *
+ * Path params:
+ * @param schedulerId {string}  Required. The ID of the schedule to delete.
+ */
 export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {
     await connectDB();

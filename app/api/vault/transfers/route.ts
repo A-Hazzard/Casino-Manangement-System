@@ -12,6 +12,15 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * POST /api/vault/transfers
  */
+/**
+ * POST /api/vault/transfers
+ *
+ * @body {string} fromLocationId - Source location ID (REQUIRED)
+ * @body {string} toLocationId - Destination location ID (REQUIRED)
+ * @body {number} amount - Transfer amount (REQUIRED)
+ * @body {Array} denominations - Denomination breakdown (REQUIRED)
+ * @body {string} notes - Transfer notes
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
@@ -99,6 +108,13 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/vault/transfers
+ */
+/**
+ * Main GET handler for inter-location transfers
+ *
+ * @param {string} locationId - ID of the location to fetch transfers for (REQUIRED)
+ * @param {number} page - Page number for pagination
+ * @param {number} limit - Results per page
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {

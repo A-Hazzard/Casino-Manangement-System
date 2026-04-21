@@ -1,7 +1,26 @@
+/**
+ * Rename Licencee Migration API Route
+ *
+ * One-off data migration that renames legacy licencee field variants across all
+ * MongoDB collections using $rename. Safe to re-run — documents that already use
+ * the target field name are not modified.
+ *
+ * @module app/api/admin/migrations/rename-licencee/route
+ */
+
 import { connectDB } from '@/app/api/lib/middleware/db';
 import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
 
+/**
+ * GET /api/admin/migrations/rename-licencee
+ *
+ * Iterates every collection in the connected database and applies $rename
+ * operations to normalise licencee field names (e.g. `licencee`,
+ * `rel.licencee`, `assignedLicencees`, `licenceeId`, `rel.licenceeId`).
+ * Returns a list of collections and field renames where at least one document
+ * was modified. No request body or query parameters are required.
+ */
 export async function GET() {
   try {
     await connectDB();

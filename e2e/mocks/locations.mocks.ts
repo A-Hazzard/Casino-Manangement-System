@@ -2,7 +2,7 @@
  * Mock payloads for Locations API routes.
  *
  * Endpoints covered:
- *   GET    /api/gaming-locations
+ *   GET    /api/locations?compact=1
  *   GET    /api/locations/[locationId]
  *   POST   /api/locations
  *   PUT    /api/locations
@@ -52,14 +52,14 @@ export const MOCK_LOCATION_2 = {
 
 export const MOCK_LOCATIONS_LIST = {
   success: true,
-  data: [MOCK_LOCATION_1, MOCK_LOCATION_2],
+  locations: [MOCK_LOCATION_1, MOCK_LOCATION_2],
   timestamp: new Date().toISOString(),
 };
 
 /** List with an extra "updated" location (after edit) */
 export const MOCK_LOCATIONS_LIST_AFTER_EDIT = {
   success: true,
-  data: [
+  locations: [
     { ...MOCK_LOCATION_1, name: 'Grand Casino North (Updated)' },
     MOCK_LOCATION_2,
   ],
@@ -69,7 +69,7 @@ export const MOCK_LOCATIONS_LIST_AFTER_EDIT = {
 /** List after deletion of location 1 */
 export const MOCK_LOCATIONS_LIST_AFTER_DELETE = {
   success: true,
-  data: [MOCK_LOCATION_2],
+  locations: [MOCK_LOCATION_2],
   timestamp: new Date().toISOString(),
 };
 
@@ -77,7 +77,7 @@ export const MOCK_LOCATIONS_LIST_AFTER_DELETE = {
 
 export const MOCK_LOCATION_DETAIL = {
   success: true,
-  data: MOCK_LOCATION_1,
+  location: MOCK_LOCATION_1,
   timestamp: new Date().toISOString(),
 };
 
@@ -85,7 +85,7 @@ export const MOCK_LOCATION_DETAIL = {
 
 export const MOCK_LOCATION_CREATE_SUCCESS = {
   success: true,
-  data: {
+  location: {
     ...MOCK_LOCATION_1,
     _id: 'loc_003',
     id: 'loc_003',

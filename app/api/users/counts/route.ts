@@ -20,6 +20,8 @@ import { NextRequest } from 'next/server';
 /**
  * Main GET handler for fetching user counts by role
  *
+ * @param {string} licencee - Optional licencee ID to filter counts by
+ *
  * Flow:
  * 1. Connect to database
  * 2. Get current user and permissions

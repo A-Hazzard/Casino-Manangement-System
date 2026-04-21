@@ -1,3 +1,4 @@
+
 /**
  * Transfer Approval API
  *
@@ -18,6 +19,13 @@ import { generateMongoId } from '@/lib/utils/id';
 import type { ApproveInterLocationTransferRequest } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * POST /api/vault/transfers/approve
+ *
+ * @body {string} transferId - REQUIRED. ID of the transfer request to approve
+ * @body {boolean} approved - REQUIRED. Whether to approve (true) or deny (false)
+ * @body {string} notes - Optional approval notes
+ */
 export async function POST(request: NextRequest) {
   try {
     // ============================================================================

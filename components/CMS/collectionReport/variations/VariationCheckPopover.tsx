@@ -1,3 +1,25 @@
+/**
+ * VariationCheckPopover Component
+ *
+ * A high-visibility modal popover that orchestrates the variation check process between meters and SAS data.
+ *
+ * Features:
+ * - Animated state transitions (Checking, No Variations, Variations Found, Error)
+ * - Portal-based rendering to ensure overlay priority
+ * - Detailed breakdown of machine variation counts
+ * - Action buttons for retry, minimize, and confirmed submission
+ *
+ * @param isOpen - Whether the popover is currently visible
+ * @param isChecking - Whether the background variation check process is active
+ * @param hasVariations - Result of the check (null if not finished, boolean otherwise)
+ * @param error - Error message string if the check failed
+ * @param variationsData - Full payload of variation check results including machine details
+ * @param onMinimize - Callback to collapse the popover and view full details instead
+ * @param onSubmit - Callback to proceed with report submission despite variations
+ * @param onRetry - Callback to restart the variation check process
+ * @param onClose - Callback to discard results and close the popover
+ * @param isLoading - Global loading state for action buttons
+ */
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';

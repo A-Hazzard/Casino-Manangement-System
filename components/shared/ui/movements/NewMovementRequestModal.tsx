@@ -25,8 +25,8 @@ import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { createMovementRequest } from '@/lib/helpers/movementRequests';
 import { useUserStore } from '@/lib/store/userStore';
 import type { NewMovementModalProps } from '@/lib/types/components';
-import type { MovementRequest } from '@/lib/types/movement';
-import type { MachineMovementRecord } from '@/lib/types/reports';
+import type { MovementRequest } from '@/shared/types/movement';
+import type { MachineMovementRecord } from '@/shared/types/reports';
 import { generateMongoId } from '@/lib/utils/id';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import axios from 'axios';
@@ -643,3 +643,4 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
 };
 
 export default NewMovementRequestModal;
+

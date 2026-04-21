@@ -2,6 +2,20 @@
  * Edit Collection Financials Component
  *
  * Handles financial inputs and report update for the Edit Collection Modal.
+ *
+ * Features:
+ * - Taxes, advance, and variance adjustment fields
+ * - Automated Target Collection calculation
+ * - Dynamic collection reconciliation summary
+ * - Shortage/Overage carry-over visualization
+ * - Locked field validation with tooltips
+ *
+ * @param financials - Persistent state object for all report financial data
+ * @param setFinancials - Functional state setter for the financials object
+ * @param baseBalanceCorrection - Anchor value for the opening balance of this specific report
+ * @param setBaseBalanceCorrection - Setter for the base balance correction
+ * @param isProcessing - Loading state indicating active API communication or heavy computation
+ * @param onCollectedAmountChange - Optional specialized callback for collected amount updates
  */
 
 'use client';

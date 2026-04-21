@@ -18,7 +18,16 @@ import type { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching manufacturer performance
+ * GET /api/analytics/manufacturer-performance
+ *
+ * Returns financial metrics aggregated by manufacturer for a specific location. Used by the location detail manufacturer performance chart.
+ *
+ * Query params:
+ * @param locationId {string}      Required. The location to fetch manufacturer performance for. Passing 'all' returns a 400.
+ * @param timePeriod {TimePeriod}  Optional. 'Today'|'Yesterday'|'7d'|'30d'|'Custom'. Defaults to 'Today'.
+ * @param startDate  {string}      Optional. ISO datetime string for the start of a custom range.
+ * @param endDate    {string}      Optional. ISO datetime string for the end of a custom range.
+ * @param licencee   {string}      Optional. Scopes results to this licencee.
  *
  * Flow:
  * 1. Parse and validate request parameters

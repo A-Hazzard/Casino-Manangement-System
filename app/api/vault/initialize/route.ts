@@ -10,6 +10,14 @@ import { validateDenominations } from '@/lib/helpers/vault/calculations';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * POST /api/vault/initialize
+ *
+ * @body {string} locationId - ID of the location to initialize (REQUIRED)
+ * @body {string} notes - Optional initialization notes
+ * @body {number} openingBalance - Manual override for opening balance
+ * @body {Array} denominations - Manual override for opening denominations
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {

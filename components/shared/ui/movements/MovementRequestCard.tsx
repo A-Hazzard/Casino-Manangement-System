@@ -1,6 +1,6 @@
 import { Button } from '@/components/shared/ui/button';
 import { useUserStore } from '@/lib/store/userStore';
-import { MovementRequest } from '@/lib/types/movement';
+import { MovementRequest } from '@/shared/types/movement';
 import {
     formatMovementRequestDate,
     getStatusColor,
@@ -145,4 +145,5 @@ export default function MovementRequestCard({
     </div>
   );
 }
+
 

@@ -1,14 +1,19 @@
 /**
- * Cashier Shift Close API
- *
  * POST /api/cashier/shift/close
  *
- * Close cashier shift with BLIND CLOSING feature (C-4).
+ * Submits a blind closing request for the cashier's active shift. Called when a
+ * cashier physically counts their drawer and wants to end their session. The
+ * cashier provides their physical count WITHOUT ever seeing the system's expected
+ * balance (blind-close security feature C-4). The shift is always moved to
+ * 'pending_review' and a Vault Manager notification is created regardless of
+ * whether the count matches; the VM then resolves or rejects via /shift/resolve
+ * or /shift/reject. Discrepancy amount is never returned to the cashier.
  *
- * CRITICAL SECURITY FEATURE:
- * - Cashier enters physical count WITHOUT seeing expected balance
- * - If match: Close shift successfully
- * - If mismatch: Lock to "pending_review", alert VM, DO NOT show discrepancy to cashier
+ * Body fields:
+ * @param shiftId      {string}   Required. The ID of the active cashier shift to close.
+ * @param physicalCount {number}  Required. The total cash amount the cashier physically counted.
+ * @param denominations {object[]} Required. Denomination breakdown of the physical count;
+ *   individual values must sum exactly to physicalCount.
  *
  * @module app/api/cashier/shift/close/route
  */
@@ -28,11 +33,6 @@ import type {
 } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * POST /api/cashier/shift/close
- *
- * Close cashier shift with blind closing
- */
 export async function POST(request: NextRequest) {
   try {
     // STEP 1: Authentication & Authorization

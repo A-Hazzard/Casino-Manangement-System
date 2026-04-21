@@ -11,6 +11,18 @@ import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * POST /api/vault/payout
+ *
+ * @body {string} cashierShiftId - ID of the active cashier shift (REQUIRED)
+ * @body {string} type - Payout type ('ticket', 'hand_pay', etc.) (REQUIRED)
+ * @body {number} amount - Payout amount (REQUIRED)
+ * @body {string} notes - Optional payout notes
+ * @body {string} ticketNumber - For ticket payouts
+ * @body {string} printedAt - ISO date for ticket printing
+ * @body {string} machineId - For hand pays
+ * @body {string} reason - For hand pays
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {

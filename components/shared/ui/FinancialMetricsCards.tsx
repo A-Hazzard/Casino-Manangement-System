@@ -295,7 +295,7 @@ export default function FinancialMetricsCards({
               </div>
               <div className="space-y-2">
                 <div
-                  className={`font-bold ${getMoneyInColorClass()} ${formatCurrencyWithScaling(totals?.moneyIn || 0).size}`}
+                  className={`font-bold ${getMoneyInColorClass(totals?.moneyIn)} ${formatCurrencyWithScaling(totals?.moneyIn || 0).size}`}
                 >
                   <CurrencyValueWithOverflow
                     value={totals?.moneyIn}
@@ -405,7 +405,7 @@ export default function FinancialMetricsCards({
             <div className="my-2 h-[4px] w-full rounded-full bg-buttonActive"></div>
             <div className="flex flex-1 items-center justify-center">
               <p
-                className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getMoneyInColorClass()}`}
+                className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${getMoneyInColorClass(totals?.moneyIn)}`}
               >
                 <CurrencyValueWithOverflow
                   value={totals?.moneyIn}

@@ -16,11 +16,17 @@
 // ============================================================================
 
 /**
- * Get color class for Money In (always green)
- * @returns CSS class for text color (always green)
+ * Get color class for Money In
+ * - Green if >= 1
+ * - No color otherwise
+ * @param value - The Money In value
+ * @returns CSS class for text color
  */
-export function getMoneyInColorClass(): string {
-  return 'text-green-600'; // Always green for Money In
+export function getMoneyInColorClass(value?: number | null | undefined): string {
+  if (value === 0 || value === null || value === undefined || isNaN(value)) {
+    return ''; // No color for zero values
+  }
+  return 'text-green-600'; // Green for positive values
 }
 
 /**
@@ -43,7 +49,12 @@ export function getMoneyOutColorClass(
     moneyIn === undefined ||
     isNaN(moneyIn)
   ) {
-    return 'text-gray-600'; // Default gray for null/undefined values
+    return ''; // No color for null/undefined values
+  }
+
+  // If Money Out is 0, don't apply color regardless of Money In
+  if (moneyOut === 0) {
+    return '';
   }
 
   // Blue if Money Out is less than Money In (acceptable), red if more (warning)
@@ -52,24 +63,26 @@ export function getMoneyOutColorClass(
 
 /**
  * Get color class for Gross
- * - Green if positive
- * - Red if negative
+ * - Green if >= 1
+ * - Red if <= -1
+ * - No color otherwise
  * @param value - The Gross value
  * @returns CSS class for text color
  */
 export function getGrossColorClass(value: number | null | undefined): string {
   if (value === null || value === undefined || isNaN(value)) {
-    return 'text-gray-600'; // Default gray for null/undefined values
+    return '';
   }
 
-  if (value > 0) {
-    return 'text-green-600'; // Green for positive values
-  } else if (value < 0) {
-    return 'text-red-600'; // Red for negative values
+  if (value >= 1) {
+    return 'text-green-600'; // Green for positive values >= 1
+  } else if (value <= -1) {
+    return 'text-red-600'; // Red for negative values <= -1
   } else {
-    return 'text-gray-600'; // Gray for zero values
+    return ''; // No color for zero values or small variations
   }
 }
+
 /**
  * Get the appropriate text color class for a financial value
  * @param value - The financial value to color code
@@ -79,15 +92,15 @@ export function getFinancialColorClass(
   value: number | null | undefined
 ): string {
   if (value === null || value === undefined || isNaN(value)) {
-    return 'text-gray-600'; // Default gray for null/undefined values
+    return '';
   }
 
-  if (value > 0) {
-    return 'text-green-600'; // Green for positive values
-  } else if (value < 0) {
-    return 'text-red-600'; // Red for negative values
+  if (value >= 1) {
+    return 'text-green-600'; // Green for positive values >= 1
+  } else if (value <= -1) {
+    return 'text-red-600'; // Red for negative values <= -1
   } else {
-    return 'text-gray-600'; // Gray for zero values
+    return ''; // No color for zero values or small variations
   }
 }
 // ============================================================================

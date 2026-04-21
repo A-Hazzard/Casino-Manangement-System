@@ -15,7 +15,7 @@
 'use client';
 
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
-import { getMachineChartData } from '@/lib/helpers/machines';
+import { getMachineChartData } from '@/lib/helpers/cabinets';
 import { useCabinetDetailsData, useSmibConfiguration } from '@/lib/hooks/data';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -502,4 +502,5 @@ export function useCabinetPageData() {
     onLocationClick: (id: string) => router.push(`/locations/${id}`),
   };
 }
+
 

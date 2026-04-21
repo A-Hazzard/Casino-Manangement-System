@@ -58,7 +58,7 @@ import {
   TopMachinesTableSkeleton,
 } from '@/components/shared/ui/skeletons/ReportsSkeletons';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
-import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
+
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { DashboardTotals } from '@/lib/types';
 import { TimePeriod } from '@/lib/types/api';
@@ -68,6 +68,7 @@ import {
   getMoneyInColorClass,
 } from '@/lib/utils/financial';
 import { MachineData } from '@/shared/types/machines';
+import { LocationTrendsResponse } from '@/shared/types/reports';
 
 type ReportsLocationsSASEvaluationProps = {
   // Data
@@ -75,26 +76,7 @@ type ReportsLocationsSASEvaluationProps = {
   allLocationsForDropdown: AggregatedLocation[];
   selectedSasLocations: string[];
   metricsTotals: DashboardTotals | null;
-  locationTrendData: {
-    trends: Array<{
-      day: string;
-      time?: string;
-      [locationId: string]:
-        | {
-            handle: number;
-            winLoss: number;
-            jackpot: number;
-            plays: number;
-            drop: number;
-            gross: number;
-          }
-        | string
-        | undefined;
-    }>;
-    locations: string[];
-    locationNames?: Record<string, string>;
-    isHourly?: boolean;
-  } | null;
+  locationTrendData: LocationTrendsResponse | null;
   topMachinesData: MachineData[];
   // Pagination
   currentPage: number;
@@ -154,8 +136,8 @@ export default function ReportsLocationsSASEvaluation({
   itemsPerPage,
 }: ReportsLocationsSASEvaluationProps) {
   const router = useRouter();
-  const { displayCurrency } = useCurrencyFormat();
-  const formatCurrency = (val: number | null | undefined) => formatCurrencyWithCodeString(val, displayCurrency);
+  const { formatAmount } = useCurrencyFormat();
+  const formatCurrency = (val: number | null | undefined) => formatAmount(val || 0);
   const { activeMetricsFilter } = useDashBoardStore();
 
   // Calculate display totals from selected locations
@@ -390,7 +372,7 @@ export default function ReportsLocationsSASEvaluation({
                   hasNonSasMachines: loc.hasNonSasMachines,
                   isLocalServer: loc.isLocalServer,
                   noSMIBLocation: !loc.hasSasMachines,
-                  hasSmib: loc.hasSasMachines,
+                  hasSmib: !!loc.hasSasMachines,
                   gamesPlayed: loc.gamesPlayed,
                 }))}
                 onLocationClick={locationId => {

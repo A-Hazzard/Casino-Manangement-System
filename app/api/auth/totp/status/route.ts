@@ -6,7 +6,10 @@ import { NextResponse } from 'next/server';
 /**
  * GET /api/auth/totp/status
  *
- * Checks if the current user has enabled Google Authenticator.
+ * Returns the 2FA configuration state for the currently authenticated user. Takes
+ * no query params; identity is derived from the session cookie. Returns whether
+ * `totpEnabled` is set, whether a secret exists, and the user's primary role and
+ * email — used by the frontend to decide which setup or recovery flow to show.
  */
 export async function GET() {
   try {

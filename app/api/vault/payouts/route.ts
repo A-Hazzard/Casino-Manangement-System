@@ -6,6 +6,15 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import PayoutModel from '@/app/api/lib/models/payout';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for listing payouts
+ *
+ * @param {string} locationId - REQUIRED. Filter payouts by gaming location.
+ * @param {number} page - Optional. Page number for pagination. Default: 1.
+ * @param {number} limit - Optional. Items per page. Default: 20.
+ * @param {string} search - Optional. Search query for ticket, notes, or cashier ID.
+ * @param {string} type - Optional. Filter by specific payout type.
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {

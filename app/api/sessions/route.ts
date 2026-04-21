@@ -25,6 +25,16 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * GET /api/sessions
  * Fetches paginated session records with optional search, date, and licencee filters.
+ *
+ * @param {number} page - Page number (default: 1)
+ * @param {number} limit - Items per page (default: 10)
+ * @param {string} search - Search query for machine, location, or member
+ * @param {string} sortBy - Field to sort by (default: 'startTime')
+ * @param {string} sortOrder - 'asc' or 'desc' (default: 'desc')
+ * @param {string} licencee - Filter by licencee ID
+ * @param {string} dateFilter - Date range preset ('today', 'yesterday', '7d', '30d', 'all')
+ * @param {string} startDate - ISO date for custom range start
+ * @param {string} endDate - ISO date for custom range end
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async () => {

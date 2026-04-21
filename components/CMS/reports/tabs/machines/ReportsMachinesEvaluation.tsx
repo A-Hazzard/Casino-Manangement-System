@@ -35,9 +35,10 @@ import {
   TopMachinesTableSkeleton,
 } from '@/components/shared/ui/skeletons/ReportsSkeletons';
 import type {
+  MachineEvaluationData,
   ReportsMachinesEvaluationProps,
   TopMachinesCriteria,
-} from '@/lib/types/reports';
+} from '@/shared/types/reports';
 import { getFinancialColorClass } from '@/lib/utils/financial';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import {
@@ -359,7 +360,7 @@ export const ReportsMachinesEvaluation = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {topMachines.map(machine => (
+                  {topMachines.map((machine: MachineEvaluationData) => (
                     <tr
                       key={machine.machineId}
                       className="border-b hover:bg-gray-50"
@@ -499,7 +500,7 @@ export const ReportsMachinesEvaluation = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {bottomMachines.map(machine => (
+                  {bottomMachines.map((machine: MachineEvaluationData) => (
                     <tr
                       key={machine.machineId}
                       className="border-b hover:bg-gray-50"

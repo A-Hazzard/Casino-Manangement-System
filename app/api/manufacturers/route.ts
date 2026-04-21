@@ -1,10 +1,20 @@
+/**
+ * GET /api/manufacturers
+ *
+ * Returns a sorted, deduplicated list of all machine manufacturer names sourced
+ * from the machines collection. Called by filter dropdowns and machine management
+ * forms. Merges the 'manufacturer' and 'manuf' fields to handle legacy data.
+ * Requires authentication via withApiAuth.
+ *
+ * No query parameters.
+ *
+ * @module app/api/manufacturers/route
+ */
+
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Machine } from '@/app/api/lib/models/machines';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * Main GET handler for fetching manufacturers
- */
 export async function GET(req: NextRequest) {
   return withApiAuth(req, async () => {
     const startTime = Date.now();

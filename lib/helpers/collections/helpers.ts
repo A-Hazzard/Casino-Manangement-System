@@ -27,7 +27,7 @@ export async function fetchCollectionsByLocationReportId(
   locationReportId: string
 ): Promise<CollectionDocument[]> {
   const { data } = await axios.get(
-    `/api/collections?locationReportId=${locationReportId}`
+    `/api/collection-reports/collections?locationReportId=${locationReportId}`
   );
   return data as CollectionDocument[];
 }
@@ -49,7 +49,7 @@ export async function updateCollection(
     });
 
     const { data } = await axios.patch(
-      `/api/collections/${collectionId}`,
+      `/api/collection-reports/collections/${collectionId}`,
       updateData
     );
 

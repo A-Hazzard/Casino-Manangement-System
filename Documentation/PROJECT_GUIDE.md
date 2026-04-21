@@ -10,7 +10,7 @@
 
 Evolution One CMS is a full-stack casino management platform built on Next.js 16 (App Router), MongoDB, and TypeScript. It is a single unified application — routing and feature access are determined entirely by the user's assigned role. After login, each role is automatically directed to its designated interface:
 
-- **CMS interface** (dashboard, analytics, machines, collections, members, sessions) — accessed by: `developer`, `admin`, `manager`, `location admin`, `reviewer`, `owner`, `technician`, `collector`
+- **CMS interface** (dashboard, analytics, cabinets, collections, members, sessions) — accessed by: `developer`, `admin`, `manager`, `location admin`, `reviewer`, `owner`, `technician`, `collector`
 - **Vault interface** (cash management, shifts, float requests, payouts) — accessed by: `vault-manager`, `cashier`
 
 ---
@@ -47,7 +47,7 @@ Technical reference for backend endpoints and core business logic.
 | **Auth & IAM** | [auth-api.md](./api/auth-api.md) | JWT Strategy, Session Versioning, TOTP, 9 Roles |
 | **Administration** | [administration-api.md](./api/administration-api.md) | RBAC, User CRUD, Multi-tenant Isolation |
 | **Locations API** | [locations-api.md](./api/locations-api.md) | Property Config, Reviewer Multiplier, Coordinate Conversion |
-| **Machines API** | [machines-api.md](./api/machines-api.md) | Hardware Fleet, Status Computation, Commands, Reviewer Multiplier |
+| **Cabinets API** | [cabinets-api.md](./api/cabinets-api.md) | Hardware Fleet, Status Computation, Commands, Reviewer Multiplier |
 | **Members API** | [members-api.md](./api/members-api.md) | Win/Loss Summation, Loyalty Ratios, KYC |
 | **Collections API** | [collections-api.md](./api/collections-api.md) | Finalization, History Bridge, Profit Sharing, SAS Time Defaults |
 | **Real-time Sync** | [sync-meters-api.md](./api/sync-meters-api.md) | MQTT Meter Handshake, Sync Accuracy |

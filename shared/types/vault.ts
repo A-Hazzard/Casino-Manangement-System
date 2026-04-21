@@ -19,7 +19,7 @@ export type MovementEndpoint = {
   id?: string;
 };
 
-export interface Cashier {
+export type Cashier = {
   _id: string;
   profile?: {
     firstName: string;
@@ -36,7 +36,7 @@ export interface Cashier {
   roles: string[];
   tempPassword?: string;
   tempPasswordChanged?: boolean;
-}
+};
 
 
 export type CashSource = 'Bank' | 'Owner Deposit' | 'Machine';
@@ -81,6 +81,19 @@ export type VaultShift = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+/**
+ * Minimal VaultShift for summary/overview displays
+ */
+export type VaultShiftOverview = Pick<
+  VaultShift,
+  | '_id'
+  | 'locationId'
+  | 'closingBalance'
+  | 'openingBalance'
+  | 'currentDenominations'
+  | 'openingDenominations'
+>;
 
 // ============================================================================
 // Cashier Shift Types (C-1, C-4)
@@ -131,6 +144,26 @@ export type CashierShift = {
   cashierName?: string;
   cashierUsername?: string;
 };
+
+/**
+ * Minimal CashierShift for summary/overview displays
+ */
+export type CashierShiftOverview = Pick<
+  CashierShift,
+  | '_id'
+  | 'locationId'
+  | 'cashierId'
+  | 'cashierName'
+  | 'cashierUsername'
+  | 'status'
+  | 'currentBalance'
+  | 'openingBalance'
+  | 'lastSyncedDenominations'
+  | 'openingDenominations'
+  | 'openedAt'
+  | 'createdAt'
+  | 'discrepancy'
+>;
 
 // ============================================================================
 // Transaction Types (BR-03)
@@ -217,6 +250,31 @@ export type VaultTransaction = {
 
   createdAt: Date;
   locationName?: string;
+  fromName?: string;
+  toName?: string;
+};
+
+/**
+ * Minimal VaultTransaction for summary/overview displays
+ */
+export type VaultTransactionOverview = Pick<
+  VaultTransaction,
+  | '_id'
+  | 'locationId'
+  | 'performedBy'
+  | 'from'
+  | 'to'
+  | 'type'
+  | 'amount'
+  | 'timestamp'
+>;
+
+/**
+ * Enriched VaultTransactionOverview with human-readable names.
+ */
+export type EnrichedVaultTransactionOverview = VaultTransactionOverview & {
+  locationName?: string;
+  performedByName?: string;
   fromName?: string;
   toName?: string;
 };
@@ -438,6 +496,12 @@ export type ExtendedVaultTransaction = VaultTransaction & {
   fromName?: string;
   toName?: string;
   performedByName?: string;
+  locationName?: string;
+  machineDetails?: Array<{
+    identifier: string;
+    game: string;
+    gameType: string;
+  }>;
 };
 
 // This seems to be the same as ExtendedVaultTransaction but with a different name
@@ -488,5 +552,48 @@ export type MachineCollectionActivity = {
   performedBy: string | { username: string; _id: string };
   notes?: string;
   variance?: number;
+};
+
+// ============================================================================
+// API Request/Response Types
+// ============================================================================
+
+/**
+ * Denomination breakdown (for backward compatibility if needed, but preferred is Denomination[])
+ */
+export type DenominationBreakdown = Record<string, number>;
+
+/**
+ * Create float request request body
+ */
+export type CreateFloatRequestRequest = {
+  type: 'FLOAT_INCREASE' | 'FLOAT_DECREASE';
+  requestedDenom: Denomination[];
+  shiftId: string;
+  locationId: string;
+};
+
+/**
+ * Float request query parameters
+ */
+export type FloatRequestQueryParams = {
+  page?: number;
+  limit?: number;
+  status?: string;
+  type?: string;
+  cashierId?: string;
+  locationId?: string;
+  shiftId?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+};
+
+/**
+ * Update payout request body
+ */
+export type UpdatePayoutRequest = {
+  amount?: number;
+  notes?: string;
+  status?: string;
 };
 

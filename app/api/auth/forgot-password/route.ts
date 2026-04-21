@@ -16,14 +16,14 @@ import { connectDB } from '../../lib/middleware/db';
 import { validateEmail } from '../../lib/utils/validation';
 
 /**
- * Main POST handler for password reset requests
+ * POST /api/auth/forgot-password
  *
- * Flow:
- * 1. Connect to database
- * 2. Parse and validate email from request body
- * 3. Validate email format
- * 4. Send password reset email
- * 5. Return result
+ * Initiates a password reset flow for the given email address. Email delivery
+ * is currently disabled; the route validates the address and returns a standard
+ * response directing the user to contact an administrator.
+ *
+ * Body fields:
+ * @param email {string} Required. The account email address to send the reset link to.
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();

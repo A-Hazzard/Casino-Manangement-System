@@ -73,7 +73,32 @@ type MobileFormPanelProps = {
 
 /**
  * CollectionReportMobileFormPanel Component
- * Complete form panel for mobile collection modal
+ *
+ * A specialized full-screen mobile panel that hosts the machine data entry form and financial summary.
+ *
+ * Features:
+ * - Slide-in transition for mobile view
+ * - Integrated MachineDataEntry form for meters and SAS info
+ * - Context-aware header with back navigation and machine count
+ * - View toggle between machine input and collected list
+ * - Bottom action bar for adding/updating machine entries
+ *
+ * @param isVisible - Whether the panel is currently transitioned into view
+ * @param onBack - Callback to return to the previous screen (typically location/machine selection)
+ * @param onViewCollectedList - Navigation callback to view the list of already collected machines
+ * @param selectedMachineData - Meta-data for the machine currently being loaded into the form
+ * @param editingEntryId - ID of the specific collection document being edited (null if new entry)
+ * @param formData - State object containing all meter, time, and note inputs
+ * @param collectedMachinesCount - Total count of machines successfully added to the current batch
+ * @param isProcessing - Loading state for submission or validation tasks
+ * @param inputsEnabled - Whether form fields should be interactable
+ * @param isAddMachineEnabled - Flag for enabling/disabling the final submission button
+ * @param formatMachineDisplay - Helper function to generate standardized machine labels
+ * @param onViewMachine - Navigation callback to view detailed machine history
+ * @param onFormDataChange - Generic dispatcher for updating the form state object
+ * @param onAddMachine - Submission callback for adding/updating the current machine entry
+ * @param autoFillRamClearMeters - Specialized callback for RAM Clear logic
+ * @param isManager - Whether the current view is the manager's financial summary mode
  */
 export default function CollectionReportMobileFormPanel({
   isVisible,

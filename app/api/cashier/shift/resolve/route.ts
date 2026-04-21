@@ -1,10 +1,22 @@
 /**
- * Cashier Shift Resolve API
- *
  * POST /api/cashier/shift/resolve
  *
- * Allows a Vault Manager to resolve a "pending_review" cashier shift.
- * The VM can override the closing balance and must provide an audit comment.
+ * Allows a Vault Manager to finalize and close a cashier shift that is awaiting
+ * review ('pending_review'). Called after the VM has verified the cashier's
+ * physical count; the VM may override the closing balance (e.g. to correct a
+ * discrepancy) and must supply an audit comment explaining any adjustment.
+ * Closing the shift creates a 'cashier_shift_close' vault transaction returning
+ * the confirmed float to the vault, and increments the vault shift's canClose
+ * flag if no other shifts remain open.
+ *
+ * Body fields:
+ * @param shiftId       {string}   Required. The ID of the 'pending_review' cashier shift to resolve.
+ * @param finalBalance  {number}   Required. The VM-confirmed closing balance (may differ from
+ *   cashier's physical count if an override is applied).
+ * @param auditComment  {string}   Optional. Mandatory justification when the VM overrides the
+ *   balance; stored permanently on the shift for compliance audits.
+ * @param denominations {object[]} Optional. VM-adjusted denomination breakdown matching
+ *   finalBalance; overwrites the cashier's submitted denominations if provided.
  *
  * @module app/api/cashier/shift/resolve/route
  */

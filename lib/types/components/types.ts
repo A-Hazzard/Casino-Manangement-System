@@ -1,6 +1,6 @@
 // UI Component types
 import type { ExtendedCabinetDetail } from '@/lib/types/pages';
-import type { MachineMovementRecord } from '@/lib/types/reports';
+import type { MachineMovementRecord } from '@/shared/types/reports';
 import type { AggregatedLocation } from '@/shared/types';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 

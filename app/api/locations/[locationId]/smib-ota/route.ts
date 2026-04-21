@@ -21,18 +21,19 @@ import axios from 'axios';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for triggering OTA updates
+ * POST /api/locations/[locationId]/smib-ota
  *
- * Flow:
- * 1. Parse route parameters and request body
- * 2. Validate relayIds and firmwareId
- * 3. Connect to database
- * 4. Prepare firmware file and get URL
- * 5. Build firmware URL from request headers
- * 6. Process OTA updates in batches
- * 7. Update machine firmwareUpdatedAt timestamps
- * 8. Log activity
- * 9. Return results
+ * Triggers an OTA firmware update for one or more SMIBs at a location via MQTT.
+ * Called when a user initiates a location-wide firmware push from the SMIB panel.
+ * Prepares the binary via the /serve endpoint, then pushes the URL and update
+ * command to each SMIB before stamping `firmwareUpdatedAt` on the machine record.
+ *
+ * URL params:
+ * @param locationId {string} Required (path). The location whose SMIBs to update.
+ *
+ * Body fields:
+ * @param relayIds   {string[]} Required. SMIB relay IDs to push the firmware to.
+ * @param firmwareId {string}   Required. MongoDB ID of the Firmware document to deploy.
  */
 export async function POST(
   request: NextRequest

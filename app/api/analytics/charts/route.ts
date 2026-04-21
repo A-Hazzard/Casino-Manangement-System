@@ -12,7 +12,14 @@ import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching charts data
+ * GET /api/analytics/charts
+ *
+ * Returns time-series chart data for revenue and financial metrics. Used by the Analytics dashboard charts section.
+ *
+ * Query params:
+ * @param licencee  {string}              Required. Scopes results to this licencee.
+ * @param period    {'last7days'|'last30days'} Optional. Time window for the chart data. Defaults to 'last30days'.
+ * @param currency  {CurrencyCode}        Optional. Display currency for converted values. Defaults to 'USD'.
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async () => {

@@ -23,13 +23,19 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 
 /**
- * Main GET handler for fetching authentication events
+ * GET /api/admin/auth/events
  *
- * Flow:
- * 1. Connect to database and authenticate user
- * 2. Parse query parameters (timeRange, action, success, search, page, limit)
- * 3. Fetch authentication events with filters and pagination
- * 4. Return events and pagination info
+ * Returns a paginated list of authentication events for the admin security
+ * dashboard. Results are filtered by time window and can be narrowed further
+ * by action type, success status, and free-text search.
+ *
+ * Query params:
+ * @param timeRange {string}  Optional. Lookback window: '1h', '24h' (default), '7d', or '30d'.
+ * @param action    {string}  Optional. Filter by auth event type (e.g. 'login', 'token_refresh', 'logout').
+ * @param success   {string}  Optional. 'true', 'false', or 'all' to filter by outcome.
+ * @param search    {string}  Optional. Searches across email address, IP address, and details fields.
+ * @param page      {number}  Optional. Page number for pagination (default 1).
+ * @param limit     {number}  Optional. Records per page (default 50).
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();

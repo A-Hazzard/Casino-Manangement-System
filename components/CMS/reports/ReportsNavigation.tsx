@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReportTab, ReportView } from '@/lib/types/reports';
+import type { ReportTab, ReportView } from '@/shared/types/reports';
 import { motion } from 'framer-motion';
 
 type ReportsNavigationProps = {

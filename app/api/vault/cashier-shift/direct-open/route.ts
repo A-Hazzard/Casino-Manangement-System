@@ -19,6 +19,15 @@ import {
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * POST /api/vault/cashier-shift/direct-open
+ *
+ * @body {string} locationId - ID of the location (REQUIRED)
+ * @body {string} cashierId - ID of the cashier to open shift for (REQUIRED)
+ * @body {number} amount - Opening float amount (REQUIRED)
+ * @body {Array} denominations - Denomination breakdown (REQUIRED)
+ * @body {string} notes - Transaction notes
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {

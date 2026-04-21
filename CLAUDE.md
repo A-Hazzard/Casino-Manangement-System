@@ -1,261 +1,100 @@
-# CLAUDE.md
+# CLAUDE.md — Absolute Master Context
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file is the single source of truth for architectural invariants, data integrity, and system philosophy for the Evolution One CMS project. It provides comprehensive guidance for development, operations, and compliance.
 
-## Project Overview
+## 🏗️ Project & Architectural Foundations
 
-**Evolution1 CMS** is a casino management system for real-time casino operations, financial tracking, and compliance monitoring. It is a single unified application — routing and available pages are determined entirely by the user's assigned role after login.
+### 1. Overview
+**Evolution1 CMS** is a casino management system for real-time operations, financial tracking, and compliance. It is a unified application where routing and features are determined by the user's assigned role.
 
-## Commands
+### 2. Multi-Tenant Isolation & Access Control
+- **Licencee Isolation**: Every user belongs to one or more `assignedLicencees`. Data leakage between licencees is a critical failure.
+- **Intersection Logic (Critical)**: 
+    - **Managers**: See ALL locations under their `assignedLicencees`.
+    - **Collectors/Location Admins/Technicians**: See ONLY `assignedLocations` that ALSO belong to their `assignedLicencees`.
+- **Role Hierarchy**: 1. Developer, 2. Owner, 3. Admin, 4. Manager, 5. Location Admin, 6. Vault-Manager, 7. Cashier, 8. Technician, 9. Collector, 10. Reviewer.
+- **Session Invalidation**: Changes to roles, licencees, or locations MUST increment `sessionVersion` on the user document to force re-login.
 
-```bash
-# Development
-bun run dev              # Start dev server at localhost:3000
-bun run dev:turbo        # Dev with Turbopack
-
-# Production
-bun run build            # Build Next.js application
-bun run start            # Start production server
-
-# Code Quality
-bun run lint             # ESLint on .ts/.tsx files
-bun run lint:fix         # Auto-fix ESLint issues
-bun run type-check       # TypeScript type checking (tsc --noEmit)
-bun run format           # Prettier formatting
-bun run check            # type-check && lint
-
-# Testing
-bun run test             # Run Jest tests
-bun run test:watch       # Jest in watch mode
-bun run test:coverage    # Jest with coverage
-```
-
-Use **bun exclusively** — the project has bun-specific overrides in package.json.
-
-## Architecture
-
-### Stack
-
-- **Next.js 16** (App Router), **TypeScript**, **Tailwind CSS**, **MongoDB/Mongoose**
-- **Zustand** for global state, **React Query (TanStack)** for server state
-- **Shadcn/UI** + Radix UI + MUI for components
-- **jose** for JWT, **bcryptjs** for passwords, **otplib** for TOTP/2FA
-- **Infobip** for SMS, **SendGrid/Nodemailer** for email, **MQTT** for real-time device comms
-
-### Directory Structure
-
-```
-app/
-  (auth)/login/          # Login page (unauthenticated route group)
-  api/                   # All API routes (Next.js App Router)
-    auth/                # JWT login/logout/refresh/TOTP/password reset
-    analytics/           # Dashboard metrics, charts, revenue
-    reports/             # Comprehensive reporting
-    locations/           # Location management
-    cabinets/            # Cabinet/slot machine management
-    machines/            # Machine details
-    members/             # Member profiles
-    sessions/            # Gaming session tracking
-    collection-report/   # Collection reports (edit/delete with meter reversion)
-    vault/               # Vault transactions, shifts
-    cashier/             # Cashier operations
-    users/               # User CRUD
-    admin/               # Admin migrations
-    lib/
-      middleware/db.ts   # MongoDB singleton connection manager
-      models/            # 30+ Mongoose schemas
-      helpers/           # Business logic (auth, reports, meters, vault, etc.)
-      utils/apiResponse.ts  # Standardized API response format
-      services/          # External service integrations
-  [feature pages]/       # Next.js page.tsx files (kept lean)
-
-components/
-  CMS/                   # CMS-specific components
-  VAULT/                 # Vault-specific components
-  shared/                # Layout, auth, UI, debug components
-  ui/                    # Shadcn/UI base components
-
-lib/
-  constants/             # Roles, navigation constants
-  hooks/                 # Custom React hooks
-  store/                 # Zustand stores
-  types/                 # Frontend TypeScript types
-  utils/                 # Frontend utilities
-  services/              # Frontend service layer
-  providers/             # React context providers
-
-shared/
-  types/                 # Types used by both frontend and backend:
-    auth.ts, api.ts, entities.ts, users.ts, vault.ts, analytics.ts, machines.ts, meters.ts
-  utils/                 # Shared utilities
-```
-
-### API Response Standard
-
-All API routes return a consistent format (see `app/api/lib/utils/apiResponse.ts`):
-
-```typescript
-// Success
-{ success: true, data: T, message?: string, timestamp: string }
-
-// Error
-{ success: false, error: string, message: string, code?: string, details?: Record<string, unknown>, timestamp: string }
-```
-
-### Authentication Flow
-
-1. `POST /api/auth/login` — validates credentials, issues HttpOnly JWT + refresh token cookies (7 days, 30 days if rememberMe)
-2. All protected API routes manually verify the JWT from cookies
-3. Page-level protection: `<ProtectedRoute requiredPage="...">` component
-4. API-level: manual role checking in route handlers using `UserAuthPayload` from the token
-
-**Roles** (hierarchy): `developer` > `admin` > `manager` > `location admin` > `vault-manager` > `cashier` > `technician` > `collector`
-
-### Database Connection
-
-`app/api/lib/middleware/db.ts` provides a singleton Mongoose connection with:
-
-- Connection caching across hot reloads
-- Automatic reconnection on URI changes
-- Pool: minPoolSize=2, maxPoolSize=10
-- Server-side only (throws if called from client)
-
-Call `await connectToDatabase()` at the start of every API route handler.
-
-## Critical Business Rules
-
-### Gaming Day Offset
-
-Business days run **8 AM to 8 AM Trinidad time (UTC-4)**, not midnight to midnight. This is stored as `gamingLocations.gameDayOffset` (default: 8) and must be applied to all financial metrics (dashboard, reports, analytics).
-
-**Do NOT apply** to: collection reports, activity logs, user sessions (use raw event timestamps).
-
-Helper: `lib/utils/gamingDayRange.ts`
-
-Example: At 2 AM Trinidad on Nov 11 → current gaming day is Nov 10 8 AM → Nov 11 8 AM.
-
-### Financial Calculations — Movement Delta Method
-
-Financial reporting uses **sum of movement fields** from meter readings, not calculated/derived values. This ensures accuracy across reads.
-
-### Licencee Access Context
-
-Multi-tenant: users are assigned to specific licencees and/or locations. All API responses must be filtered by the user's assigned licencees. Frontend passes licencee context in every request. See `.cursor/licencee-access-context.md`.
-
-### Timezone
-
-All dates stored in UTC. Display and query conversion to Trinidad (UTC-4). Never hardcode timezone offsets; use the timezone utilities.
-
-### Audit Logging
-
-Use `app/api/lib/helpers/activityLogger.ts` to log all significant CRUD operations and security events (logins, permission changes). Required for regulatory compliance.
-
-## Cookie & HTTP/HTTPS Security Rules
-
-> **Full reference:** See `Documentation/http-https-cookie-rules.md`
-
-This app runs on both HTTPS (production domain) and HTTP (LAN IP access e.g. `192.168.8.2`).
-Cookies with `secure: true` are **silently dropped** by browsers on HTTP connections, breaking auth entirely.
-
-### The Rule: Never Hardcode `secure: true`
-
-Always use the `isSecureContext()` utility from `lib/utils/cookieSecurity.ts`:
-
-```typescript
-import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
-
-// Setting cookies
-const options = getAuthCookieOptions(request, { maxAge: 60 * 60 * 24 * 7 });
-response.cookies.set('token', jwtToken, options);
-
-// Clearing cookies (logout/middleware)
-response.cookies.set('token', '', {
-  ...getAuthCookieOptions(request),
-  expires: new Date(0),
-});
-```
-
-The helper detects HTTPS via:
-
-1. `COOKIE_SECURE` env var (explicit override, useful for edge cases)
-2. `x-forwarded-proto` header (set by reverse proxies like nginx/Caddy)
-3. Request URL protocol as fallback
-4. `NODE_ENV === 'development'` → always `false`
-
-### Environment Variable
-
-```bash
-# .env.local — force HTTP mode (dev / LAN IP access)
-COOKIE_SECURE=false
-
-# .env.production — usually leave unset (auto-detected from x-forwarded-proto)
-# Only set COOKIE_SECURE=false if production is served over plain HTTP with no proxy
-```
-
-### Files That Must Use This Pattern
-
-Every file calling `response.cookies.set()`:
-
-- `app/api/auth/login/route.ts`
-- `app/api/auth/logout/route.ts`
-- `app/api/auth/refresh/route.ts`
-- `proxy.ts` (middleware — use request headers directly, no env var available in Edge)
-
-### sameSite
-
-Always use `sameSite: 'lax'`. Never use `sameSite: 'none'` (requires `secure: true` and breaks HTTP).
+### 3. The Financial Reviewer Scale
+The `reviewer` role sees a scaled-down version of all currency metrics to protect actual business performance data.
+- **Formula**: `scale = 1 - multiplier` (e.g., multiplier 0.30 results in 0.70 scale).
+- **Rule**: If `reviewer` role is missing or `multiplier` is null/0, `scale = 1`.
 
 ---
 
-## TypeScript Conventions
+## 💰 Financial & Collection Systems
 
-- Use `type` over `interface`
-- **No `any`** — create proper types
-- Type locations: `shared/types/` (shared frontend+backend), `lib/types/` (frontend only), `app/api/lib/types/` (backend only)
-- Strict mode is enabled with `noUnusedLocals`, `noImplicitReturns`, `noFallthroughCases`
-- Path alias `@/*` maps to root; `@shared/*` maps to `shared/`
+### 1. Business Day & Gaming Day Offset
+- **Trinidad Time (UTC-4)**: Business days run **8 AM to 8 AM**, not midnight.
+- **Rollover Rule**: If local time < 8 AM, queries for "Today" MUST resolve to the previous calendar day's 8 AM start.
+- **Application**: Applied to financial metrics (dashboard, reports, analytics). Do NOT apply to collection reports or user sessions.
 
-## React Imports (CRITICAL)
+### 2. `isEditing` — The Transactional State
+The system uses the `isEditing` flag on `CollectionReport` documents to manage data integrity.
+- **State 2 (isEditing: true)**: Report is "Checked Out". Collections are being modified, machine histories are NOT yet synced. Unsafe for financial reporting.
+- **State 3 (isEditing: false)**: Report is "Finalized". Machine histories are synchronized; record is auditable.
 
-**Never import the React namespace itself.**
+### 3. Collection Data Invariants
+- **Synchronization**: `locationReportId` and `isCompleted` MUST be kept in sync.
+- **prevIn / prevOut Priority**: 
+    1. Primary: The `metersIn/Out` from the machine's actual previous completed collection.
+    2. Fallback: The `machine.collectionMeters` values.
+- **Movement Delta**: `movement.gross` is the ground truth. Recalculations are ONLY permitted in the "Add Entry" phase; once saved, `movement.gross` is fixed.
 
-- ❌ `import React from 'react'` or `import * as React from 'react'`
-- ❌ `React.useState`, `React.useEffect`, `React.FC`, etc.
-- ✅ Always import directly: `import { useState, FC } from 'react'`
+---
 
-```typescript
-// ✅ CORRECT
-import { useState, useEffect, useMemo, FC, ChangeEvent } from 'react';
+## 💻 Technical Standards & Conventions
 
-// ❌ WRONG
-import React from 'react';
-React.useState();
-```
+### 1. Database (MongoDB)
+- **ID Pattern**: Use **String IDs** for everything (`_id: string`, NOT `ObjectId`).
+- **Query Tools**: Always use `findOne({ _id: id })`. **NEVER use `findById`**.
+- **Deleted State**: Use `$or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }]` for legacy vs active records.
+- **Models**: Always use imported Mongoose models from `app/api/lib/models/`.
 
-## Key Environment Variables
+### 2. TypeScript & Naming Conventions (CRITICAL)
+- **No `any`**: Create proper types or use `unknown`.
+- **No Single-Letter Variables**: Never use `s`, `c`, `i`, etc. Use descriptive names like `sum`, `collection`, `index`.
+- **Naming**: Use `type` over `interface`. Path aliases: `@/*` = root, `@shared/*` = `shared/`.
+- **Section Comments**: Use `// ============================================================================` separators with domain-specific labels.
 
-```
-MONGODB_URI              # MongoDB connection string
-JWT_SECRET               # JWT signing secret
-COOKIE_SECURE            # "true" | "false" — overrides auto-detection of secure cookie flag
-                         # Leave unset in production (auto-detects from x-forwarded-proto)
-                         # Set to "false" for LAN/IP HTTP access or dev environments
-SENDGRID_API_KEY         # Email via SendGrid
-INFOBIP_BASE_URL / INFOBIP_API_KEY   # SMS
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY      # Maps
-MQTT_URI / MQTT_PUB_TOPIC / MQTT_SUB_TOPIC  # Real-time device comms
-```
+### 3. React & Frontend
+- **React Imports**: NEVER import the React namespace. Use `import { useState, FC } from 'react'`.
+- **Loading States**: Every page/modal MUST have a matching skeleton in `components/ui/skeletons/`. No generic spinners.
+- **Component Structure**: 1. Hooks → 2. Computed → 3. Handlers → 4. Effects → 5. Render.
 
-## Documentation
+### 4. Cookie & HTTP/HTTPS Security
+- **The Rule**: Never hardcode `secure: true`. 
+- **Usage**: Always use `getAuthCookieOptions()` from `lib/utils/cookieSecurity.ts`.
+- **Lax**: Always use `sameSite: 'lax'`.
 
-Comprehensive docs live in `Documentation/` and `.cursor/`:
+---
 
-- `Documentation/TECHNICAL_HANDBOOK.md` — system standards, RBAC, UI patterns
-- `Documentation/timezone.md` — Trinidad time handling
-- `Documentation/financial-metrics-guide.md` — calculation methods
-- `Documentation/http-https-cookie-rules.md` — HTTP/HTTPS cookie security rules ← NEW
-- `.cursor/gaming-day-offset-system.md` — gaming day concept (critical)
-- `.cursor/licencee-access-context.md` — multi-tenant permissions
-- `.cursor/vault-FRD.md` — Vault functional requirements
-- `Documentation/frontend/` — per-page frontend docs
-- `Documentation/backend/` — per-endpoint backend docs
+## 🚀 Operations & Tooling
+
+### 1. Commands
+Use **bun exclusively** for all operations.
+- `bun run dev` - Start dev server at localhost:3000
+- `bun run check` - Run type-check && lint before committing
+- `bun run build` - Build Next.js application
+- `bun run test` - Run Jest tests
+
+### 2. Key Environment Variables
+- `MONGODB_URI`, `JWT_SECRET`, `COOKIE_SECURE`
+- `SENDGRID_API_KEY`, `INFOBIP_BASE_URL`/`INFOBIP_API_KEY`
+- `MQTT_URI`, `MQTT_PUB_TOPIC`, `MQTT_SUB_TOPIC`
+
+### 3. File Map & References
+- **Licencee Filtering**: `app/api/lib/helpers/licenceeFilter.ts`
+- **Reviewer Scale**: `app/api/lib/utils/reviewerScale.ts`
+- **Gaming Day**: `lib/utils/gamingDayRange.ts`
+- **Permissions**: `lib/utils/permissions/client.ts` / `server.ts`
+- **DB Middleware**: `app/api/lib/middleware/db.ts`
+- **Color Utilities**: `lib/utils/financial/colors.ts`
+
+---
+
+## 🏦 Vault vs CMS Environments
+Developed behaviors differ based on `process.env.APPLICATION`:
+- **CMS Mode**: Casino management metrics.
+- **VAULT Mode**: Cash desk management (Vault balance, Floats, Transfers).
+- **Routing**: Users are redirected to `/vault-management` in VAULT mode + authorized roles.

@@ -6,6 +6,12 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main POST handler for confirming a float request
+ *
+ * @body {string} requestId - REQUIRED. ID of the request to confirm.
+ * @body {string} notes - Optional. Confirmation notes.
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {

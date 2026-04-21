@@ -80,6 +80,18 @@ function createEmptyResponse(
 /**
  * Main GET handler for meters report
  *
+ * @param {string} locations - Comma-separated location names or IDs to filter
+ * @param {string} timePeriod - Time range preset ('Today', 'Yesterday', '7d', '30d', 'Custom')
+ * @param {string} licencee - Filter by licencee ID or "all"
+ * @param {string} currency - Target display currency code
+ * @param {boolean} includeHourlyData - Whether to calculate hourly movement deltas
+ * @param {string} granularity - Chart density ('hourly', 'minute')
+ * @param {string} hourlyDataMachineIds - Filter hourly deltas to specific machine IDs
+ * @param {number} page - Page number for pagination
+ * @param {number} limit - Items per page
+ * @param {string} startDate - ISO date for custom range start
+ * @param {string} endDate - ISO date for custom range end
+ *
  * Flow:
  * 1. Parse and validate request parameters
  * 2. Authenticate user and check permissions

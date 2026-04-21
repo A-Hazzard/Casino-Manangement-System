@@ -20,10 +20,20 @@ import {
 } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { AggregatedLocation } from '@/shared/types/entities';
+import type { LocationDocument } from '@/lib/types/common';
 import { NextResponse } from 'next/server';
 
 /**
- * Applies currency conversion to a list of aggregated locations
+ * Applies currency conversion to a list of aggregated locations.
+ * 
+ * Determines the native currency for each location based on its licencee or country,
+ * then converts financial figures (moneyIn, moneyOut, gross) to the display currency.
+ * 
+ * @param {AggregatedLocation[]} paginatedData - The list of location data to convert
+ * @param {string | undefined} licencee - The licencee filter from request
+ * @param {CurrencyCode} displayCurrency - The target currency code
+ * @param {boolean} isAdminOrDev - Whether the user has admin/dev privileges
+ * @returns {Promise<AggregatedLocation[]>} The converted location data
  */
 export async function applyLocationsCurrencyConversion(
   paginatedData: AggregatedLocation[],
@@ -106,19 +116,18 @@ export async function applyLocationsCurrencyConversion(
 }
 
 /**
- * Handles the summary mode for locations (used for dropdowns and quick lists)
+ * Handles the summary mode for locations (used for dropdowns and quick lists).
+ * 
+ * Aggregates machine counts (total, SAS, online) for each provided location.
+ * aceEnabled locations have their online machine count forced to match total machines.
+ * 
+ * @param {LocationDocument[]} locations - The list of raw location documents
+ * @param {string} displayCurrency - The currency to report in the response
+ * @param {number} perfStart - Performance hook timestamp
+ * @returns {Promise<NextResponse>} Standard report response with summary data
  */
 export async function handleSummaryMode(
-  locations: Array<{
-    _id: unknown;
-    name: string;
-    rel?: Record<string, unknown>;
-    isLocalServer?: boolean;
-    geoCoords?: unknown;
-    membershipEnabled?: boolean;
-    enableMembership?: boolean;
-    aceEnabled?: boolean;
-  }>,
+  locations: LocationDocument[],
   displayCurrency: string,
   perfStart: number
 ) {

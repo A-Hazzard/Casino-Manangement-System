@@ -15,16 +15,13 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching SMIB configurations
+ * GET /api/locations/[locationId]/smib-configs
  *
- * Flow:
- * 1. Parse route parameters
- * 2. Connect to database
- * 3. Find machines at location with SMIBs
- * 4. Transform data to LocationSmibConfig format
- * 5. Calculate online status
- * 6. Sort by online status and relayId
- * 7. Return configurations with summary
+ * Returns all SMIB configurations for machines at this location. Called when
+ * the SMIB management panel needs to display per-machine config and online status.
+ *
+ * URL params:
+ * @param locationId {string} Required (path). The location whose SMIB configs to retrieve.
  */
 export async function GET(
   request: NextRequest

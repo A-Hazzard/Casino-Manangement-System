@@ -25,12 +25,30 @@ import {
   TableRow,
 } from '@/components/shared/ui/table';
 import type { CollectionReportMonthlyDetailsTableProps, MonthlyReportDetailsRow } from '@/lib/types/components';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+
+import { getGrossColorClass } from '@/lib/utils/financial';
 
 export default function CollectionReportMonthlyDetailsTable({
   details,
   locations = [],
 }: CollectionReportMonthlyDetailsTableProps & { locations?: Array<{ id: string; name: string }> }) {
   const router = useRouter();
+  const { formatAmount } = useCurrencyFormat();
+
+  // Helper to format financial values with dollar signs
+  const formatVal = (v: number | string | null | undefined) => {
+    if (v === '-' || v === undefined || v === null || v === '') return v;
+    const num = typeof v === 'string' ? parseFloat(v) : v;
+    return isNaN(num) ? v : formatAmount(num);
+  };
+
+  // Returns green/red color class for any raw financial value
+  const colorClass = (v: number | string | null | undefined) => {
+    if (v === '-' || v === undefined || v === null || v === '') return '';
+    const num = typeof v === 'string' ? parseFloat(v) : v;
+    return isNaN(num) ? '' : getGrossColorClass(num);
+  };
 
   // Copy to clipboard function
   const copyToClipboard = async (text: string, label: string) => {
@@ -38,8 +56,11 @@ export default function CollectionReportMonthlyDetailsTable({
       toast.error(`No ${label} value to copy`);
       return;
     }
+    // Extract number for copying if it contains a dollar sign
+    const cleanText = text.replace('$', '').replace(/,/g, '').trim();
+
     try {
-      await navigator.clipboard.writeText(text.trim());
+      await navigator.clipboard.writeText(cleanText);
       toast.success(`${label} copied to clipboard`);
     } catch {
       toast.error(`Failed to copy ${label}`);
@@ -107,7 +128,7 @@ export default function CollectionReportMonthlyDetailsTable({
                     className="hover:text-blue-600 hover:underline cursor-pointer"
                     title="Click to copy"
                   >
-                    {row.drop}
+                    <span className={colorClass(row.drop)}>{formatVal(row.drop)}</span>
                   </button>
                 </TableCell>
                 <TableCell>
@@ -116,7 +137,7 @@ export default function CollectionReportMonthlyDetailsTable({
                     className="hover:text-blue-600 hover:underline cursor-pointer"
                     title="Click to copy"
                   >
-                    {row.win}
+                    <span className={colorClass(row.win)}>{formatVal(row.win)}</span>
                   </button>
                 </TableCell>
                 <TableCell>
@@ -125,7 +146,7 @@ export default function CollectionReportMonthlyDetailsTable({
                     className="hover:text-blue-600 hover:underline cursor-pointer"
                     title="Click to copy"
                   >
-                    {row.gross}
+                    <span className={colorClass(row.gross)}>{formatVal(row.gross)}</span>
                   </button>
                 </TableCell>
                 <TableCell>
@@ -134,7 +155,7 @@ export default function CollectionReportMonthlyDetailsTable({
                     className="hover:text-blue-600 hover:underline cursor-pointer"
                     title="Click to copy"
                   >
-                    {row.sasGross}
+                    <span className={colorClass(row.sasGross)}>{formatVal(row.sasGross)}</span>
                   </button>
                 </TableCell>
               </TableRow>

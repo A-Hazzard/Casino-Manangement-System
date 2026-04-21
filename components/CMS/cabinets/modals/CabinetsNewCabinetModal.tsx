@@ -19,7 +19,7 @@ import {
     SelectValue,
 } from '@/components/shared/ui/select';
 import { createCabinet } from '@/lib/helpers/cabinets';
-import { fetchManufacturers } from '@/lib/helpers/machines';
+import { fetchManufacturers } from '@/lib/helpers/cabinets';
 import { useNewCabinetStore } from '@/lib/store/newCabinetStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { NewCabinetFormData } from '@/shared/types/entities';
@@ -359,7 +359,7 @@ export default function CabinetsNewCabinetModal({
 
     try {
       const response = await fetch(
-        `/api/machines?checkSerial=${encodeURIComponent(serialNumber.trim())}`
+        `/api/cabinets?checkSerial=${encodeURIComponent(serialNumber.trim())}`
       );
       const result = await response.json();
 
@@ -376,7 +376,7 @@ export default function CabinetsNewCabinetModal({
 
     try {
       const response = await fetch(
-        `/api/machines?checkSmib=${encodeURIComponent(smib.trim())}`
+        `/api/cabinets?checkSmib=${encodeURIComponent(smib.trim())}`
       );
       const result = await response.json();
 
@@ -393,7 +393,7 @@ export default function CabinetsNewCabinetModal({
 
     try {
       const response = await fetch(
-        `/api/machines?checkCustomName=${encodeURIComponent(name.trim())}`
+        `/api/cabinets?checkCustomName=${encodeURIComponent(name.trim())}`
       );
       const result = await response.json();
 
@@ -947,4 +947,5 @@ export default function CabinetsNewCabinetModal({
     </div>
   );
 }
+
 

@@ -331,7 +331,7 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className={`font-semibold ${getMoneyInColorClass()}`}>
+                    <span className={`font-semibold ${getMoneyInColorClass(loc.moneyIn)}`}>
                       {formatCurrency(loc.moneyIn || 0)}
                     </span>
                   </TableCell>

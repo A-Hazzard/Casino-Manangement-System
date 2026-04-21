@@ -16,7 +16,14 @@ import type { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching plays trends
+ * GET /api/analytics/plays-trends
+ *
+ * Returns plays count trend data aggregated hourly or daily over the requested period. Used by the Analytics plays trends chart.
+ *
+ * Query params:
+ * @param timePeriod  {TimePeriod} Optional. 'Today'|'Yesterday'|'7d'|'30d'|'Custom'. Defaults to 'Today'.
+ * @param licencee    {string}     Optional. Scopes results to this licencee.
+ * @param locationIds {string}     Optional. Comma-separated location IDs to filter results.
  *
  * Flow:
  * 1. Parse and validate request parameters

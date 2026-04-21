@@ -14,12 +14,11 @@ import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for clearing authentication token
+ * POST /api/auth/clear-token
  *
- * Flow:
- * 1. Create success response
- * 2. Clear token cookie
- * 3. Return success response
+ * Expires the access token cookie only, leaving the refresh token intact. Takes
+ * no request body; clears the `token` cookie. Used when only the short-lived
+ * access token needs to be invalidated without ending the full session.
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();

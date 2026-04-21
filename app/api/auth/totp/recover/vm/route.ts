@@ -8,8 +8,11 @@ import { NextResponse } from 'next/server';
 /**
  * POST /api/auth/totp/recover/vm
  *
- * Initiates 2FA recovery for a Vault Manager (or higher).
- * Sends a unique link to their email address.
+ * Initiates 2FA recovery for a Vault Manager or higher-privileged user who has
+ * lost access to their authenticator app. Takes no request body; identity is
+ * derived from the session cookie. Generates a one-hour recovery token, persists
+ * it to the user document, and sends a recovery link to the account's email address.
+ * Restricted to roles: vault-manager, location admin, manager, admin, developer.
  */
 export async function POST() {
   try {

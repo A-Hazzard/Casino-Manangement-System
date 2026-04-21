@@ -20,7 +20,31 @@ import type { CurrencyCode } from '@/shared/types/currency';
 import type { AggregatedLocation } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
 /**
- * Main GET handler for fetching locations report
+ * Fetches the aggregated reporting data for gaming locations.
+ * 
+ * Supports various filters including licencee, time period, machine type, 
+ * and search terms. Can return full aggregated metrics or a simplified 
+ * summary for dropdowns/quick lists.
+ * 
+ * @param {NextRequest} req - The standard Next.js request object
+ * @query {TimePeriod} [timePeriod='7d'] - Preset time range
+ * @query {string} [licencee='all'] - ID of the licencee to filter by
+ * @query {CurrencyCode} [currency='USD'] - Target currency for financial data
+ * @query {string} [search] - Keyword to search by location name or ID
+ * @query {string} [machineTypeFilter] - CSV of filters (LocalServersOnly, SMIBLocationsOnly, etc.)
+ * @query {string} [onlineStatus='all'] - Connectivity filter (online, offline)
+ * @query {string} [locations] - CSV of specific location IDs to include
+ * @query {boolean} [showAllLocations=false] - Bypass pagination if true
+ * @query {boolean} [archived=false] - Include deleted locations if true
+ * @query {boolean} [summary=false] - Return only basic metadata for lists
+ * @query {number} [page=1] - Pagination page number
+ * @query {number} [limit=50] - Number of items per page
+ * @query {string} [sortBy='gross'] - Field to sort results by
+ * @query {string} [sortOrder='desc'] - Direction to sort ('asc' or 'desc')
+ * @query {string} [startDate] - ISO start date for Custom timePeriod
+ * @query {string} [endDate] - ISO end date for Custom timePeriod
+ * 
+ * @returns {NextResponse} JSON with data array, pagination metadata, and performance metrics
  */
 export async function GET(req: NextRequest) {
   return withApiAuth(

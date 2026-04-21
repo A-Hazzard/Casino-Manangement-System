@@ -23,6 +23,7 @@ import { getDatesForTimePeriod } from '@/lib/utils/date';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { TimePeriod } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
+import type { LocationTrendPoint, LocationTrendsResponse } from '@/shared/types/reports';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 import type { PipelineStage } from 'mongoose';
 
@@ -38,24 +39,6 @@ export type DailyTrendItem = {
   totalCancelledCredits: number;
   gross: number;
   netGross?: number;
-};
-
-export type LocationTrendData = {
-  day: string;
-  time?: string;
-  [locationId: string]:
-  | {
-    handle: number;
-    winLoss: number;
-    jackpot: number;
-    plays: number;
-    drop: number;
-    totalCancelledCredits: number;
-    gross: number;
-    netGross?: number;
-  }
-  | string
-  | undefined;
 };
 
 /**
@@ -545,9 +528,9 @@ function convertDailyTrendItems(
 function convertDailyTrendsToLocationTrends(
   convertedData: DailyTrendItem[],
   targetLocations: string[]
-): LocationTrendData[] {
+): LocationTrendPoint[] {
   // Group by day and time
-  const trendsMap = new Map<string, LocationTrendData>();
+  const trendsMap = new Map<string, LocationTrendPoint>();
 
   convertedData.forEach(item => {
     const key = `${item.day}_${item.time || ''}`;
@@ -592,19 +575,19 @@ function convertDailyTrendsToLocationTrends(
   return Array.from(trendsMap.values()).sort((a, b) => {
     if (a.day !== b.day) return a.day.localeCompare(b.day);
     return (a.time || '').localeCompare(b.time || '');
-  });
+  }) as LocationTrendPoint[];
 }
 
 /**
- * Format trends data for daily aggregation
+ * Format trends data for daily aggregation.
  */
 function formatDailyTrends(
   convertedData: DailyTrendItem[],
   targetLocations: string[],
   queryStartDate: Date,
   queryEndDate: Date
-): LocationTrendData[] {
-  const trends: LocationTrendData[] = [];
+): LocationTrendPoint[] {
+  const trends: LocationTrendPoint[] = [];
   const current = new Date(queryStartDate);
   current.setUTCHours(0, 0, 0, 0);
 
@@ -612,13 +595,13 @@ function formatDailyTrends(
 
   while (current <= end) {
     const dayKey = current.toISOString().split('T')[0];
-    const trendItem: LocationTrendData = {
+    const trendItem: LocationTrendPoint = {
       day: dayKey,
     };
 
-    targetLocations.forEach(locationId => {
+    targetLocations.forEach((locationId) => {
       const locationData = convertedData.find(
-        item => item.location === locationId && item.day === dayKey
+        (item) => item.location === locationId && item.day === dayKey
       );
       trendItem[locationId] = {
         handle: locationData?.handle || 0,
@@ -639,19 +622,18 @@ function formatDailyTrends(
 }
 
 /**
- * Format trends data for weekly aggregation
+ * Format trends data for weekly aggregation.
  */
 function formatWeeklyTrends(
   convertedData: DailyTrendItem[],
   targetLocations: string[],
   queryStartDate: Date,
   queryEndDate: Date
-): LocationTrendData[] {
-  const trends: LocationTrendData[] = [];
+): LocationTrendPoint[] {
+  const trends: LocationTrendPoint[] = [];
 
-  // Align to the start of the week (Sunday) to match the pipeline's $dayOfWeek - 1 logic
   const current = new Date(queryStartDate);
-  const dayOfWeek = current.getUTCDay(); // 0 is Sunday
+  const dayOfWeek = current.getUTCDay();
   current.setUTCDate(current.getUTCDate() - dayOfWeek);
   current.setUTCHours(0, 0, 0, 0);
 
@@ -659,13 +641,13 @@ function formatWeeklyTrends(
 
   while (current <= end) {
     const dayKey = current.toISOString().split('T')[0];
-    const trendItem: LocationTrendData = {
+    const trendItem: LocationTrendPoint = {
       day: dayKey,
     };
 
-    targetLocations.forEach(locationId => {
+    targetLocations.forEach((locationId) => {
       const locationData = convertedData.find(
-        item => item.location === locationId && item.day === dayKey
+        (item) => item.location === locationId && item.day === dayKey
       );
       trendItem[locationId] = {
         handle: locationData?.handle || 0,
@@ -686,17 +668,16 @@ function formatWeeklyTrends(
 }
 
 /**
- * Format trends data for monthly aggregation
+ * Format trends data for monthly aggregation.
  */
 function formatMonthlyTrends(
   convertedData: DailyTrendItem[],
   targetLocations: string[],
   queryStartDate: Date,
   queryEndDate: Date
-): LocationTrendData[] {
-  const trends: LocationTrendData[] = [];
+): LocationTrendPoint[] {
+  const trends: LocationTrendPoint[] = [];
 
-  // Align to the start of the month
   const current = new Date(queryStartDate);
   current.setUTCDate(1);
   current.setUTCHours(0, 0, 0, 0);
@@ -706,15 +687,15 @@ function formatMonthlyTrends(
   while (current <= end) {
     const year = current.getUTCFullYear();
     const month = (current.getUTCMonth() + 1).toString().padStart(2, '0');
-    const dayKey = `${year}-${month}`; // Matches pipeline's %Y-%m format
+    const dayKey = `${year}-${month}`;
 
-    const trendItem: LocationTrendData = {
+    const trendItem: LocationTrendPoint = {
       day: dayKey,
     };
 
-    targetLocations.forEach(locationId => {
+    targetLocations.forEach((locationId) => {
       const locationData = convertedData.find(
-        item => item.location === locationId && item.day === dayKey
+        (item) => item.location === locationId && item.day === dayKey
       );
       trendItem[locationId] = {
         handle: locationData?.handle || 0,
@@ -799,6 +780,26 @@ function calculateLocationTotals(
 /**
  * Get location trends data
  */
+/**
+ * Fetches location trends data (financials over time).
+ * 
+ * Aggregates data from Meters collection based on location, time period, and machine filters.
+ * Supports hourly, daily, weekly, and monthly granularity.
+ * 
+ * @param {string} locationIds - Comma-separated location IDs
+ * @param {TimePeriod} timePeriod - Preset time range (Today, 7d, etc.)
+ * @param {string | null} licencee - Licencee ID for filtering
+ * @param {string | null} startDateParam - ISO start date for Custom period
+ * @param {string | null} endDateParam - ISO end date for Custom period
+ * @param {CurrencyCode} displayCurrency - Target currency for values
+ * @param {'hourly'|'minute'|'daily'|'weekly'|'monthly'} [granularity] - Manual granularity override
+ * @param {string | null} [status] - Machine connectivity status filter
+ * @param {string | null} [gameType] - Machine game type filter
+ * @param {string} [searchTerm] - Keyword for machine search
+ * @param {boolean} [includeArchived=false] - Whether to include deleted machines
+ * 
+ * @returns {Promise<LocationTrendsResponse & { totals: Record<string, any>; converted: boolean; startDate: string; endDate: string; locationIds: string[]; currency: CurrencyCode }>}
+ */
 export async function getLocationTrends(
   locationIds: string,
   timePeriod: TimePeriod,
@@ -811,12 +812,11 @@ export async function getLocationTrends(
   gameType?: string | null,
   searchTerm?: string,
   includeArchived: boolean = false
-): Promise<{
+): Promise<LocationTrendsResponse & {
   locationIds: string[];
   timePeriod: TimePeriod;
   startDate: string;
   endDate: string;
-  trends: LocationTrendData[];
   totals: Record<
     string,
     {
@@ -829,11 +829,8 @@ export async function getLocationTrends(
       netGross: number;
     }
   >;
-  locations: string[];
-  locationNames: Record<string, string>;
   currency: CurrencyCode;
   converted: boolean;
-  isHourly: boolean;
   dataSpan?: {
     minDate: string;
     maxDate: string;

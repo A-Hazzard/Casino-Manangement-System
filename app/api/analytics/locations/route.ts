@@ -18,7 +18,13 @@ import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching top locations analytics
+ * GET /api/analytics/locations
+ *
+ * Returns the top 5 performing locations ranked by financial metrics. Used by the Analytics dashboard locations widget.
+ *
+ * Query params:
+ * @param licencee {string}        Required. Scopes results to this licencee.
+ * @param currency {CurrencyCode}  Optional. Display currency for converted values. Defaults to 'USD'.
  *
  * Flow:
  * 1. Connect to database

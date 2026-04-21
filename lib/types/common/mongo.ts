@@ -1,6 +1,6 @@
 /**
  * MongoDB Types
- * Re-exports model document types from backend for frontend usage.
+ * Re-exports model document types from shared definitions for frontend usage.
  */
 import type {
   SasMeters,
@@ -12,7 +12,7 @@ import type {
 // Re-export shared database types
 export type { DateRangeFilter, MongoDBQueryValue, QueryFilter };
 
-// Re-export model document types from backend
+// Re-export model document types from shared models
 export type {
   MachineDocument,
   GamingLocationDocument,
@@ -44,48 +44,13 @@ export type {
   FirmwareDocument,
   CountryDocument,
   AcceptedBillDocument,
-} from '@/app/api/lib/types/models';
+} from '@/shared/types/models';
 
 // Alias for backward compatibility
-export type { GamingLocationDocument as LocationDocument } from '@/app/api/lib/types/models';
+export type { GamingLocationDocument as LocationDocument } from '@/shared/types/models';
 
 // Re-export SasMeters for convenience
 export type { SasMeters };
 
-// Transformed cabinet data returned by API
-export type TransformedCabinet = {
-  _id: string;
-  locationId: string;
-  locationName: string;
-  assetNumber: string;
-  serialNumber: string;
-  custom?: Record<string, unknown>;
-  relayId: string;
-  smibBoard: string;
-  smbId: string;
-  lastActivity: Date | null;
-  lastOnline: Date | null;
-  game: string;
-  installedGame: string;
-  cabinetType: string;
-  manufacturer?: string;
-  assetStatus: string;
-  status: string;
-  gameType?: string;
-  isCronosMachine?: boolean;
-  moneyIn: number;
-  moneyOut: number;
-  jackpot: number;
-  cancelledCredits: number;
-  gross: number;
-  netGross?: number;
-  gamesPlayed?: number;
-  gamesWon?: number;
-  metersData: {
-    readAt: Date | null;
-    movement: Record<string, unknown> | null;
-  } | null;
-  sasMeters: Record<string, unknown> | null;
-  online?: boolean;
-  includeJackpot?: boolean;
-};
+// Re-export TransformedCabinet from entities
+export type { TransformedCabinet } from '@/shared/types/entities';

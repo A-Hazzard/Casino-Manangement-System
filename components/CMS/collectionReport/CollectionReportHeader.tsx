@@ -8,6 +8,12 @@
  * - Global refresh button
  * - Create Report button (Desktop full, Mobile icon)
  * - Loading states for actions
+ *
+ * @param activeTab - ID of the currently active navigation tab
+ * @param refreshing - Whether a global refresh operation is in progress
+ * @param onRefresh - Callback to trigger a data refresh across all tabs
+ * @param onCreateDesktop - Callback to open the desktop version of create report modal
+ * @param onCreateMobile - Callback to open the mobile version of create report modal
  */
 
 'use client';

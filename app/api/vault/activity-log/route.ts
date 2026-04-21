@@ -6,6 +6,20 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for fetching activity log
+ *
+ * @param {string} locationId - ID of the location to filter by (REQUIRED)
+ * @param {string} userId - Filter by specific user ID
+ * @param {string} cashierId - Filter by specific cashier ID
+ * @param {string} machineId - Filter by specific machine ID
+ * @param {string} cashierShiftId - Filter by specific cashier shift ID
+ * @param {string} type - Filter by transaction type
+ * @param {string} startDate - ISO date for range start
+ * @param {string} endDate - ISO date for range end
+ * @param {number} limit - Result limit per page
+ * @param {number} skip - Offset for pagination
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {

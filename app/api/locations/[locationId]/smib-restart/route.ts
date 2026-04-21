@@ -19,16 +19,16 @@ import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for restarting SMIBs at a location
+ * POST /api/locations/[locationId]/smib-restart
  *
- * Flow:
- * 1. Parse route parameters and request body
- * 2. Validate relayIds
- * 3. Connect to database
- * 4. Remove duplicate relayIds
- * 5. Process restart commands in batches
- * 6. Log activity
- * 7. Return results
+ * Sends restart commands to one or more SMIBs at a location via MQTT. Called
+ * when a user triggers a location-wide (or selected) SMIB reboot from the UI.
+ *
+ * URL params:
+ * @param locationId {string} Required (path). The location whose SMIBs to restart.
+ *
+ * Body fields:
+ * @param relayIds {string[]} Required. SMIB relay IDs (from MQTT discovery) to restart.
  */
 export async function POST(
   request: NextRequest

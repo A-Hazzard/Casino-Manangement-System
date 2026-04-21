@@ -21,7 +21,14 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching machine analytics
+ * GET /api/analytics/machines
+ *
+ * Returns the top-performing machines sorted by total drop, respecting role-based location access. Used by the Analytics machines widget.
+ *
+ * Query params:
+ * @param limit    {number} Optional. Maximum number of machines to return. Defaults to 5.
+ * @param licencee {string} Optional. Scopes results to this licencee.
+ * @param location {string} Optional. Single location ID to restrict results to one location.
  *
  * Flow:
  * 1. Parse and validate request parameters

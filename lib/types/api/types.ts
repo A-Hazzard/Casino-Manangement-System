@@ -41,8 +41,8 @@ export type ICollectionReport = {
   balanceCorrection?: number;
   balanceCorrectionReas?: string;
   machinesCollected?: string;
-  isEditing?: boolean;
   includeJackpot?: boolean;
+  totalVariation?: number;
   createdAt?: Date;
   updatedAt?: Date;
   __v?: number;

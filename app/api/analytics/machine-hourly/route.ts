@@ -20,7 +20,18 @@ import { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching machine hourly data
+ * GET /api/analytics/machine-hourly
+ *
+ * Returns 24-hour stacked hourly machine metric data grouped by location. Used by the machine hourly analytics chart.
+ *
+ * Query params:
+ * @param locationIds {string}        Optional. Comma-separated location IDs. At least one of locationIds or machineIds is required.
+ * @param machineIds  {string}        Optional. Comma-separated machine IDs. At least one of locationIds or machineIds is required.
+ * @param timePeriod  {TimePeriod}    Optional. 'Today'|'Yesterday'|'7d'|'30d'|'Custom'. Defaults to 'Today'.
+ * @param licencee    {string}        Optional. Scopes results to this licencee.
+ * @param startDate   {string}        Optional. ISO datetime string for the start of a custom range.
+ * @param endDate     {string}        Optional. ISO datetime string for the end of a custom range.
+ * @param currency    {CurrencyCode}  Optional. Display currency for converted values. Defaults to 'USD'.
  *
  * Flow:
  * 1. Connect to database

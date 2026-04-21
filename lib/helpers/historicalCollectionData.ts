@@ -31,7 +31,7 @@ export async function getPreviousCollectionMetersAtTime(
 ): Promise<{ prevIn: number; prevOut: number } | null> {
   try {
     // Query for the most recent collection for this machine BEFORE the given timestamp
-    const response = await axios.get('/api/collections', {
+    const response = await axios.get('/api/collection-reports/collections', {
       params: {
         machineId: machineId,
         beforeTimestamp: timestamp.toISOString(),

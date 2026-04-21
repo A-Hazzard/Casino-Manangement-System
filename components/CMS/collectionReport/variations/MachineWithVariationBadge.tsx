@@ -1,3 +1,17 @@
+/**
+ * MachineWithVariationBadge Component
+ *
+ * A wrapper component that adds a visual "Variation" badge to its children when a discrepancy is detected.
+ *
+ * Features:
+ * - Conditional badge rendering
+ * - Responsive positioning using absolute layout
+ * - Alert icon for quick visual identification
+ *
+ * @param children - The component(s) to be decorated with the badge
+ * @param hasVariation - Flag indicating if a variation badge should be displayed
+ * @param className - Optional CSS classes for the wrapper container
+ */
 'use client';
 
 import { AlertCircle } from 'lucide-react';

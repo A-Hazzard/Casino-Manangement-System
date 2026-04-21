@@ -14,7 +14,18 @@ import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching dashboard analytics
+ * GET /api/analytics/dashboard
+ *
+ * Returns aggregated financial metrics for a licencee's dashboard summary card.
+ * Called on dashboard page load and whenever the licencee selector changes.
+ *
+ * Query params:
+ * @param licencee  {string} Required. The licencee ID to scope all metric aggregation to.
+ *                           Drives totalDrop, totalCancelledCredits, and totalGross calculations.
+ * @param currency  {CurrencyCode} Optional. Target display currency (e.g. 'TTD', 'USD').
+ *                                 When the licencee has currency conversion enabled, financial
+ *                                 fields are converted from USD to this currency before returning.
+ *                                 Defaults to 'USD' (no conversion applied).
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async () => {

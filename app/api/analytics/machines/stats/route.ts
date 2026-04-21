@@ -21,7 +21,12 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching machine statistics
+ * GET /api/analytics/machines/stats
+ *
+ * Returns aggregate machine statistics (total, online, SAS counts and financial totals) scoped to the user's accessible locations. Used by the Analytics machines stats panel.
+ *
+ * Query params:
+ * @param licencee {string} Optional. Scopes results to this licencee. Pass 'all' or omit to include all accessible licencees.
  *
  * Flow:
  * 1. Parse and validate request parameters

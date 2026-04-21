@@ -1,13 +1,24 @@
 /**
  * Session Details API Route
  *
- * Fetches detailed information about a specific session.
+ * Fetches detailed information about a specific session, joining member profile
+ * and machine data for display on the Session Details view.
  */
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * GET /api/sessions/[sessionId]
+ *
+ * Fetches a single machine session with its joined member profile (firstName,
+ * lastName) and machine record, plus the location's membership settings.
+ * Used by the Session Details page to render the session header and metadata.
+ *
+ * URL params:
+ * @param sessionId {string} Required (path). The string `_id` of the machine session to retrieve.
+ */
 export async function GET(
   request: NextRequest
 ) {

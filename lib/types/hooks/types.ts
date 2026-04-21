@@ -5,7 +5,7 @@
 
 import { ReactElement } from 'react';
 import { MembersView } from '@/shared/types/entities';
-import { ReportView } from '@/lib/types/reports';
+import { ReportView } from '@/shared/types/reports';
 
 // Animation types
 export type AnimationVariants = {

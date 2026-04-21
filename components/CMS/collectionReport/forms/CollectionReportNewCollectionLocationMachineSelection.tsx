@@ -1,13 +1,28 @@
 /**
  * New Collection Location and Machine Selection Component
  *
- * Handles location selection and machine list display for the New Collection Modal
+ * Handles location selection and machine list display for the New Collection Modal.
  *
  * Features:
  * - Location selection dropdown
  * - Machine search functionality
  * - Machine list with selection state
  * - Locked location indicator
+ *
+ * @param locations - List of available locations for selection
+ * @param selectedLocationId - ID of the currently selected location
+ * @param lockedLocationId - ID of the location if it is locked due to existing entries
+ * @param machinesOfSelectedLocation - Array of all machines belonging to the selected location
+ * @param machineSearchTerm - Current search term for filtering the machine list
+ * @param filteredMachines - Array of machines that match the current search term
+ * @param selectedMachineId - ID of the machine currently selected for data entry
+ * @param collectedMachineEntries - List of machine IDs already added to the current batch
+ * @param editingEntryId - ID of the entry currently being edited (if any)
+ * @param isLoadingExistingCollections - Loading state for pre-existing collection data
+ * @param isProcessing - Overall form processing/submitting state
+ * @param onLocationChange - Callback triggered when the location selection changes
+ * @param onMachineSearchChange - Callback triggered when the machine search input changes
+ * @param onMachineSelect - Callback triggered when a machine is selected from the list
  */
 
 'use client';

@@ -16,6 +16,7 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import GlobalSidebarWrapper from '@/components/shared/layout/GlobalSidebarWrapper';
 import ProfileValidationGate from '@/components/shared/providers/ProfileValidationGate';
 import TempPasswordGate from '@/components/shared/providers/TempPasswordGate';
@@ -33,15 +34,33 @@ type LayoutWrapperProps = {
   children: ReactNode;
 };
 
+// Paths that should NOT have the CMS layout (sidebar, auth gates)
+const AUTH_PATHS = ['/login', '/forgot-password', '/reset-password', '/install'];
+
 export default function LayoutWrapper({
   children,
 }: LayoutWrapperProps) {
+  const pathname = usePathname();
   const { user } = useUserStore();
+
+  const isAuthPage = AUTH_PATHS.includes(pathname);
 
   // Get CMS navigation config with grouping for high-priority CMS roles
   const navConfig = useMemo(() => {
     return getCmsNavigationConfig(user?.roles as string[]);
   }, [user?.roles]);
+
+  // If it's an auth or setup page, render without the CMS layout wrapper
+  if (isAuthPage) {
+    return (
+      <QueryProvider>
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          {children}
+          <Toaster position="top-right" richColors />
+        </LocalizationProvider>
+      </QueryProvider>
+    );
+  }
 
   return (
     <QueryProvider>
@@ -54,7 +73,7 @@ export default function LayoutWrapper({
             <SidebarInset>{children}</SidebarInset>
           </SidebarProvider>
         </LocalizationProvider>
-        <Toaster position="top-right" />
+        <Toaster position="top-right" richColors />
       </CurrencyProvider>
     </QueryProvider>
   );

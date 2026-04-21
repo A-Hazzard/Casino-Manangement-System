@@ -55,8 +55,6 @@ project-root/
 │   │   ├── Sidebar.tsx
 │   │   └── PageLayout.tsx
 │   ├── [feature]/              # Feature-specific components
-│   │   ├── [ComponentName].tsx # Component
-│   │   └── modals/             # Feature modals
 │   └── CMS/                    # CMS mode components
 │   └── VAULT/                  # Vault mode components
 │
@@ -65,11 +63,13 @@ project-root/
 └── Documentation/              # Project documentation
 ```
 
+- **Rules & Standards**: See [`ARCHITECTURE.md`](mdc:.instructions/rules/ARCHITECTURE.md) for the rules hierarchy.
+
 ## Directory Placement Rules
 
 ### `shared/types/` - Shared Types (Frontend + Backend)
 
-Use for types referenced in both frontend and backend code.
+Use for types referenced in both frontend and backend code. This is the **Single Source of Truth** for core data models.
 
 ```typescript
 // shared/types/entities.ts

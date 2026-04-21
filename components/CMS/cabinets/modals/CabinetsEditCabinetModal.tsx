@@ -9,7 +9,7 @@
 
 import { Button } from '@/components/shared/ui/button';
 import { fetchCabinetById, updateCabinet } from '@/lib/helpers/cabinets';
-import { fetchManufacturers } from '@/lib/helpers/machines';
+import { fetchManufacturers } from '@/lib/helpers/cabinets';
 import { useCabinetsActionsStore } from '@/lib/store/cabinetActionsStore';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
@@ -139,8 +139,8 @@ export default function CabinetsEditCabinetModal({
       if (!response.ok) {
         console.error('Failed to log activity:', response.statusText);
       }
-    } catch (error) {
-      console.error('Error logging activity:', error);
+    } catch (_id) {
+      console.error('Error logging activity:', _id);
     }
   };
 
@@ -152,7 +152,7 @@ export default function CabinetsEditCabinetModal({
 
     try {
       const response = await fetch(
-        `/api/machines?checkSerial=${encodeURIComponent(
+        `/api/cabinets?checkSerial=${encodeURIComponent(
           serialNumber.trim()
         )}&excludeId=${formData._id}`
       );
@@ -161,8 +161,8 @@ export default function CabinetsEditCabinetModal({
       if (result.success && !result.available) {
         setSerialNumberError('Serial number already exists');
       }
-    } catch (error) {
-      console.error('Failed to check serial number availability:', error);
+    } catch (_id) {
+      console.error('Failed to check serial number availability:', _id);
     }
   };
 
@@ -172,7 +172,7 @@ export default function CabinetsEditCabinetModal({
 
     try {
       const response = await fetch(
-        `/api/machines?checkSmib=${encodeURIComponent(
+        `/api/cabinets?checkSmib=${encodeURIComponent(
           smib.trim()
         )}&excludeId=${formData._id}`
       );
@@ -181,8 +181,8 @@ export default function CabinetsEditCabinetModal({
       if (result.success && !result.available) {
         setRelayIdError('SMIB board already exists');
       }
-    } catch (error) {
-      console.error('Failed to check SMIB availability:', error);
+    } catch (_id) {
+      console.error('Failed to check SMIB availability:', _id);
     }
   };
 
@@ -192,7 +192,7 @@ export default function CabinetsEditCabinetModal({
 
     try {
       const response = await fetch(
-        `/api/machines?checkCustomName=${encodeURIComponent(
+        `/api/cabinets?checkCustomName=${encodeURIComponent(
           name.trim()
         )}&excludeId=${formData._id}`
       );
@@ -201,8 +201,8 @@ export default function CabinetsEditCabinetModal({
       if (result.success && !result.available) {
         setCustomNameError('Machine custom name already exists');
       }
-    } catch (error) {
-      console.error('Failed to check custom name availability:', error);
+    } catch (_id) {
+      console.error('Failed to check custom name availability:', _id);
     }
   };
 
@@ -262,8 +262,8 @@ export default function CabinetsEditCabinetModal({
         })
       );
       setLocations(mappedLocations);
-    } catch (error) {
-      console.error('Failed to fetch locations:', error);
+    } catch (_id) {
+      console.error('Failed to fetch locations:', _id);
       toast.error('Failed to load locations');
       setLocations([]);
     } finally {
@@ -277,8 +277,8 @@ export default function CabinetsEditCabinetModal({
       setManufacturersLoading(true);
       const fetchedManufacturers = await fetchManufacturers();
       setManufacturers(fetchedManufacturers);
-    } catch (error) {
-      console.error('Failed to fetch manufacturers:', error);
+    } catch (_id) {
+      console.error('Failed to fetch manufacturers:', _id);
       toast.error('Failed to load manufacturers');
       setManufacturers([]);
     } finally {
@@ -794,15 +794,7 @@ export default function CabinetsEditCabinetModal({
 
       // Pass only the changed fields to reduce unnecessary updates and logging
       // Convert customDateRange to DateRange format expected by updateCabinet
-      const dateRangeForUpdate =
-        customDateRange?.startDate && customDateRange?.endDate
-          ? { from: customDateRange.startDate, to: customDateRange.endDate }
-          : undefined;
-      const success = await updateCabinet(
-        updatePayload,
-        activeMetricsFilter,
-        dateRangeForUpdate
-      );
+      const success = await updateCabinet(updatePayload);
       if (success) {
         // Log the cabinet update activity with proper change tracking
         const changesSummary = getChangesSummary(meaningfulChanges);
@@ -1088,3 +1080,4 @@ export default function CabinetsEditCabinetModal({
     </div>
   );
 }
+

@@ -8,56 +8,32 @@ import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 import type { LocationDocument } from '@/lib/types/common';
+import type {
+  VaultShiftOverview,
+  CashierShiftOverview,
+  VaultTransactionOverview,
+  EnrichedVaultTransactionOverview,
+} from '@/shared/types/vault';
+import type { UserOverview } from '@/shared/types/models';
 
-type VaultShiftDoc = {
-  _id: string;
-  locationId: string;
-  closingBalance?: number;
-  openingBalance?: number;
-  currentDenominations?: Array<{ denomination: number; quantity: number }>;
-  openingDenominations?: Array<{ denomination: number; quantity: number }>;
-};
-
-type CashierShiftDoc = {
-  _id: string;
-  locationId: string;
-  cashierId: string;
-  cashierName?: string;
-  cashierUsername?: string;
-  status: string;
-  currentBalance?: number;
-  openingBalance?: number;
-  lastSyncedDenominations?: Array<{ denomination: number; quantity: number }>;
-  openingDenominations?: Array<{ denomination: number; quantity: number }>;
-  openedAt?: Date;
-  createdAt: Date;
-  discrepancy?: number;
-};
-
-type VaultTransactionDoc = {
-  _id: string;
-  locationId: string;
-  performedBy?: string;
-  from?: { type: string; id?: string };
-  to?: { type: string; id?: string };
-  type: string;
-  amount: number;
-  timestamp: Date;
-};
-
-type UserDoc = {
-  _id: string;
-  profile?: { firstName?: string; lastName?: string };
-  username?: string;
-};
-
-type FormattedTransaction = VaultTransactionDoc & {
-  locationName?: string;
-  performedByName?: string;
-  fromName?: string;
-  toName?: string;
-};
-
+/**
+ * Main GET handler for global vault overview.
+ *
+ * STEP 1: Authorization and permission check.
+ * STEP 2: Parse query parameters (licenceeId, timePeriod, date range).
+ * STEP 3: Fetch locations and build location maps.
+ * STEP 4: Import models and fetch active shifts, transactions, and float requests.
+ * STEP 5: Aggregation and processing of balanced/transaction data.
+ * STEP 6: Return formatted global overview data.
+ *
+ * @param {NextRequest} request - The incoming Next.js request.
+ * @param {string} request.url - URL containing searchParams:
+ *   - licenceeId: Filter by licencee (or 'all').
+ *   - timePeriod: Gaming day preset ('Today', 'Yesterday', etc.).
+ *   - startDate: Custom range start (ISO string).
+ *   - endDate: Custom range end (ISO string).
+ * @returns {Promise<NextResponse>} Structured global vault overview data.
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ isAdminOrDev }) => {
     if (!isAdminOrDev)
@@ -158,11 +134,11 @@ export async function GET(request: NextRequest) {
           .limit(20)
           .lean(),
       ])) as unknown as [
-        VaultShiftDoc[],
-        CashierShiftDoc[],
-        CashierShiftDoc[],
+        VaultShiftOverview[],
+        CashierShiftOverview[],
+        CashierShiftOverview[],
         Record<string, unknown>[],
-        VaultTransactionDoc[],
+        VaultTransactionOverview[],
       ];
 
       let totalBalance = 0;
@@ -199,7 +175,7 @@ export async function GET(request: NextRequest) {
       const filteredTransactions = (await VaultTransactionModel.find({
         locationId: { $in: locationIds },
         timestamp: { $gte: rangeStart, $lte: rangeEnd },
-      }).lean()) as unknown as VaultTransactionDoc[];
+      }).lean()) as unknown as VaultTransactionOverview[];
       filteredTransactions.forEach(tx => {
         if (tx.to?.type === 'vault') totalIn += tx.amount;
         if (tx.from?.type === 'vault') totalOut += tx.amount;
@@ -247,27 +223,29 @@ export async function GET(request: NextRequest) {
         if (tx.to?.type === 'cashier' && tx.to.id) userIds.add(tx.to.id);
       });
 
-      let userMap: Record<string, UserDoc> = {};
+      let userMap: Record<string, UserOverview> = {};
       if (userIds.size > 0) {
         const UserModel = (await import('@/app/api/lib/models/user')).default;
         const users = await UserModel.find(
           { _id: { $in: Array.from(userIds) } },
           { 'profile.firstName': 1, 'profile.lastName': 1, username: 1 }
         ).lean();
-        userMap = (users as UserDoc[]).reduce(
+        userMap = (users as unknown as UserOverview[]).reduce(
           (acc, u) => {
             acc[String(u._id)] = u;
             return acc;
           },
-          {} as Record<string, UserDoc>
+          {} as Record<string, UserOverview>
         );
       }
 
-      const formatTx = (tx: VaultTransactionDoc): FormattedTransaction => {
+      const formatTx = (
+        tx: VaultTransactionOverview
+      ): EnrichedVaultTransactionOverview => {
         const res = {
           ...tx,
           locationName: locationNameMap[tx.locationId],
-        } as FormattedTransaction;
+        } as EnrichedVaultTransactionOverview;
         const perfUser = userMap[tx.performedBy || ''];
         if (perfUser?.profile?.firstName)
           res.performedByName = `${perfUser.profile.firstName} ${perfUser.profile.lastName}`;

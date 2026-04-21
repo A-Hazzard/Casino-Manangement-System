@@ -18,6 +18,18 @@ interface ResetPasswordRequest {
   cashierId: string;
 }
 
+/**
+ * POST /api/admin/cashiers/reset
+ *
+ * Generates a new temporary password for an existing cashier account and forces
+ * a password change on next login. The plaintext temporary password is returned
+ * in the response for the vault manager to relay. Accessible to developer, admin,
+ * owner, manager, vault-manager, and location admin roles; non-admin callers are
+ * further restricted to cashiers within their shared licencees.
+ *
+ * Body fields:
+ * @param cashierId {string}  Required. The ID of the cashier user whose password will be reset.
+ */
 export async function POST(request: NextRequest) {
   try {
     // ============================================================================

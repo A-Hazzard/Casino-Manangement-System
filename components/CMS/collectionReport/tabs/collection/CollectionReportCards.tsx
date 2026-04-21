@@ -1,23 +1,25 @@
 /**
- * Collection Report Cards Component
- * Mobile-friendly card view for displaying collection reports.
+ * CollectionReportCards Component
+ *
+ * A mobile-optimized card-based list view for scanning and managing collection reports.
+ * Used primarily on small screens to provide a high-density, touch-friendly interface.
  *
  * Features:
- * - Collection report data display
- * - Grid or single column layout
- * - Issue indicators for reports with problems
- * - Edit and delete actions (role-based)
- * - Navigation to report details
- * - Currency formatting
- * - Status badges
- * - Responsive design (mobile only)
+ * - Responsive grid-to-list card transformations
+ * - Visual "Issue" indicators for reports requiring attention
+ * - Interactive action menus (Edit, Delete, View Details)
+ * - Detailed financial summaries (In, Out, Gross, Variance)
+ * - Role-based permission gating for data modifications
+ * - High-contrast status badges for report workflow states
  *
- * @param data - Array of collection report rows
+ * @param data - Collection report data records to display
  * @param gridLayout - Whether to use grid layout
+ * @param loading - Loading state indicator
  * @param reportIssues - Issues data for reports
- * @param onEdit - Callback when edit is clicked
- * @param onDelete - Callback when delete is clicked
+ * @param onEdit - Callback to launch edit flow for a specific report
+ * @param onDelete - Callback to trigger deletion confirmation
  * @param editableReportIds - Set of report IDs that can be edited
+ * @param selectedLicencee - Currently selected licencee filter
  */
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
@@ -51,8 +53,21 @@ export default function CollectionReportCards({
   selectedLicencee,
 }: CollectionReportCardsProps) {
   const router = useRouter();
-  useCurrencyFormat();
-  const user = useUserStore(state => state.user);
+    const { formatAmount } = useCurrencyFormat();
+    const user = useUserStore(state => state.user);
+
+    // Helper to format financial values with dollar signs
+    const formatVal = (v: number | string | null | undefined) => {
+      if (v === 'No Variance' || v === '-' || v === undefined || v === null) return v;
+      const num = typeof v === 'string' ? parseFloat(v) : v;
+      return isNaN(num) ? v : formatAmount(num);
+    };
+
+    const colorClass = (v: number | string | null | undefined) => {
+      if (v === 'No Variance' || v === '-' || v === undefined || v === null) return '';
+      const num = typeof v === 'string' ? parseFloat(v) : v;
+      return isNaN(num) ? '' : getGrossColorClass(num);
+    };
 
   // Check if user has admin access to see issue highlights
   const isAdminUser = user?.roles
@@ -202,7 +217,7 @@ export default function CollectionReportCards({
                   <span
                     className={`text-sm font-semibold ${getGrossColorClass(typeof row?.gross === 'string' ? parseFloat(row.gross) || 0 : row?.gross || 0)}`}
                   >
-                    {row?.gross || 0}
+                    {formatVal(row?.gross)}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -217,43 +232,40 @@ export default function CollectionReportCards({
                   <span className="text-sm font-medium text-gray-700">
                     Collected
                   </span>
-                  <span className="text-sm font-semibold">
-                    {row?.collected || 0}
+                  <span className={`text-sm font-semibold ${colorClass(row?.collected)}`}>
+                    {formatVal(row?.collected)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium text-gray-700">
                     Uncollected
                   </span>
-                  <span className="text-sm font-semibold">
-                    {row?.uncollected || '-'}
+                  <span className={`text-sm font-semibold ${colorClass(row?.uncollected)}`}>
+                    {formatVal(row?.uncollected)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium text-gray-700">
                     Variation
                   </span>
-                  <span className="text-sm font-semibold">
-                    {row?.variation || 'No Variance'}
+                  <span className={`text-sm font-semibold ${colorClass(row?.variation)}`}>
+                    {formatVal(row?.variation)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium text-gray-700">
                     Balance
                   </span>
-                  <span className="text-sm font-semibold">
-                    {row?.balance || 0}
+                  <span className={`text-sm font-semibold ${colorClass(row?.balance)}`}>
+                    {formatVal(row?.balance)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm font-medium text-gray-700">
                     Location Revenue
                   </span>
-                  <span className="text-sm font-semibold">
-                    {row?.locationRevenue !== undefined &&
-                    row?.locationRevenue !== null
-                      ? row.locationRevenue
-                      : '-'}
+                  <span className={`text-sm font-semibold ${colorClass(row?.locationRevenue)}`}>
+                    {formatVal(row?.locationRevenue)}
                   </span>
                 </div>
                 <div className="flex justify-between">

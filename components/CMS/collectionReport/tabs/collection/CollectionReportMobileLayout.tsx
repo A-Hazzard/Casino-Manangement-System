@@ -1,9 +1,14 @@
 /**
  * CollectionReportMobileLayout Component
- * 
- * Mobile UI layout for the collection reports tab.
- * 
- * @param props - Component props
+ *
+ * Dedicated layout orchestration for the Collection Reports list on mobile devices.
+ *
+ * Features:
+ * - Stacked arrangement of filters and entry cards
+ * - Optimized for touch interaction and vertical scrolling
+ * - Fluid sizing to fit various mobile viewport widths
+ *
+ * @param props - Metadata and callbacks for mobile rendering
  */
 
 'use client';

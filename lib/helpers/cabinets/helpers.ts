@@ -52,7 +52,7 @@ export const fetchCabinets = async (
 ) => {
   try {
     // Construct the URL with appropriate parameters
-    let url = `/api/machines/aggregation`;
+    let url = `/api/cabinets/aggregation`;
 
     // Add query parameters if they exist
     const queryParams = [];
@@ -242,7 +242,7 @@ export const fetchCabinetById = async (
 ) => {
   try {
     // Use the main machines endpoint with time period filtering
-    let endpoint = `/api/machines/${cabinetId}`;
+    let endpoint = `/api/cabinets/${cabinetId}`;
 
     // Add query parameters
     const queryParams = [];
@@ -339,27 +339,8 @@ export const createCabinet = async (
   try {
     // Activity logging removed - handled via API calls
 
-    let apiData;
-    let endpoint = '/api/machines';
-
-    if ('serialNumber' in data) {
-      apiData = data;
-
-      if (data.gamingLocation) {
-        endpoint = `/api/locations/${data.gamingLocation}/cabinets`;
-      } else {
-        throw new Error('Gaming location is required to create a cabinet');
-      }
-    } else {
-      apiData = data;
-      if (data.locationId) {
-        endpoint = `/api/locations/${data.locationId}/cabinets`;
-      } else {
-        throw new Error('Location is required to create a cabinet');
-      }
-    }
-
-    const response = await axios.post(endpoint, apiData);
+    const endpoint = '/api/cabinets';
+    const response = await axios.post(endpoint, data);
 
     if (response.data && response.data.success) {
       // Activity logging removed - handled via API calls
@@ -382,9 +363,7 @@ export const createCabinet = async (
  * @returns Promise resolving to the updated cabinet data, or throws on error.
  */
 export const updateCabinet = async (
-  data: CabinetFormData,
-  timePeriod?: string,
-  customDateRange?: DateRange
+  data: CabinetFormData
 ) => {
   try {
     // console.log(
@@ -394,71 +373,9 @@ export const updateCabinet = async (
     // console.log("gameType in data:", data.gameType);
     // Activity logging removed - handled via API calls
 
-    // Get the machine data with gamingLocation from the new endpoint
-    let cabinetUrl = `/api/machines/${data._id}`;
-
-    // Add query parameters
-    const queryParams = [];
-    if (
-      timePeriod === 'Custom' &&
-      customDateRange?.from &&
-      customDateRange?.to
-    ) {
-      // Check if dates have time components (not midnight)
-      const hasTime =
-        customDateRange.from.getHours() !== 0 ||
-        customDateRange.from.getMinutes() !== 0 ||
-        customDateRange.from.getSeconds() !== 0 ||
-        customDateRange.to.getHours() !== 0 ||
-        customDateRange.to.getMinutes() !== 0 ||
-        customDateRange.to.getSeconds() !== 0;
-
-      if (hasTime) {
-        // Send local time with timezone offset to preserve user's time selection
-        const fromDate = formatLocalDateTimeString(customDateRange.from, -4);
-        const toDate = formatLocalDateTimeString(customDateRange.to, -4);
-        queryParams.push(`startDate=${fromDate}`);
-        queryParams.push(`endDate=${toDate}`);
-      } else {
-        // Date-only: always include time component so backend doesn't need format detection
-        const fromDate =
-          customDateRange.from.toISOString().split('T')[0] + 'T00:00:00.000Z';
-        const toDate =
-          customDateRange.to.toISOString().split('T')[0] + 'T00:00:00.000Z';
-        queryParams.push(`startDate=${fromDate}`);
-        queryParams.push(`endDate=${toDate}`);
-      }
-      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
-    } else if (timePeriod) {
-      queryParams.push(`timePeriod=${encodeURIComponent(timePeriod)}`);
-    }
-
-    if (queryParams.length > 0) {
-      cabinetUrl += `?${queryParams.join('&')}`;
-    }
-
-    const cabinetResponse = await axios.get(cabinetUrl, {
-      headers: getAuthHeaders(),
-    });
-
-    if (!cabinetResponse.data?.success || !cabinetResponse.data?.data) {
-      throw new Error('Failed to fetch cabinet data');
-    }
-
-    const cabinet = cabinetResponse.data.data;
-    if (!cabinet.gamingLocation) {
-      throw new Error('Cabinet location not found');
-    }
-
-    const locationId = cabinet.gamingLocation;
-    // console.log(
-    //   "Sending PUT request to:",
-    //   `/api/locations/${locationId}/cabinets/${data._id}`
-    // );
-    // console.log("Request payload:", JSON.stringify(data, null, 2));
-
+    // Using the unified cabinet endpoint
     const response = await axios.put(
-      `/api/locations/${locationId}/cabinets/${data._id}`,
+      `/api/cabinets/${data._id}`,
       data
     );
 
@@ -492,7 +409,7 @@ export const fetchCabinetLocations = async (licencee?: string) => {
       params = { licencee };
     }
 
-    const response = await axios.get('/api/machines/locations', {
+    const response = await axios.get('/api/cabinets/locations', {
       params,
       headers: getAuthHeaders(),
     });
@@ -563,6 +480,7 @@ export async function fetchCabinetsForLocation(
 
     const params: Record<string, string> = {
       timePeriod: timePeriod,
+      locationId: locationId, // Use the new centralized aggregation filter
     };
 
     if (licencee) {
@@ -595,7 +513,7 @@ export async function fetchCabinetsForLocation(
 
     // Add includeArchived parameter if provided
     if (includeArchived) {
-      params.includeArchived = 'true';
+      params.onlineStatus = 'archived'; // Logically map archived view for the aggregator
     }
  
     // Add smibStatus parameter if provided
@@ -629,13 +547,12 @@ export async function fetchCabinetsForLocation(
         params.endDate =
           customDateRange.to.toISOString().split('T')[0] + 'T00:00:00.000Z';
       }
-      params.timePeriod = 'Custom';
     }
 
     const queryString = new URLSearchParams(params).toString();
 
     const response = await axios.get(
-      `/api/locations/${locationId}?${queryString}`,
+      `/api/cabinets/aggregation?${queryString}`,
       {
         headers: {
           'Content-Type': 'application/json',
@@ -700,7 +617,7 @@ export async function fetchCabinetsForLocation(
 export async function restoreCabinet(locationId: string, cabinetId: string) {
   try {
     const response = await axios.patch(
-      `/api/locations/${locationId}/cabinets/${cabinetId}`,
+      `/api/cabinets/${cabinetId}`,
       { action: 'restore' },
       { headers: getAuthHeaders() }
     );
@@ -730,7 +647,7 @@ export async function permanentlyDeleteCabinet(
 ) {
   try {
     const response = await axios.delete(
-      `/api/locations/${locationId}/cabinets/${cabinetId}?hardDelete=true`,
+      `/api/cabinets/${cabinetId}?hardDelete=true`,
       { headers: getAuthHeaders() }
     );
 
@@ -773,7 +690,7 @@ export async function fetchCabinetTotals(
   netGross: number;
 } | null> {
   try {
-    let url = `/api/machines/aggregation?timePeriod=${activeMetricsFilter}`;
+    let url = `/api/cabinets/aggregation?timePeriod=${activeMetricsFilter}`;
 
     if (activeMetricsFilter === 'Custom' && customDateRange) {
       const fromDate =
@@ -964,7 +881,7 @@ export const updateMachineCollectionHistory = async (
 ) => {
   try {
     const response = await axios.patch(
-      `/api/machines/${machineId}/collection-history`,
+      `/api/cabinets/${machineId}/collection-history`,
       {
         operation,
         entry: collectionHistoryEntry,
@@ -980,3 +897,4 @@ export const updateMachineCollectionHistory = async (
     throw error;
   }
 };
+

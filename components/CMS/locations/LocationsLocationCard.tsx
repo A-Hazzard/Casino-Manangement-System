@@ -251,7 +251,7 @@ export default function LocationsLocationCard({
           <span className="font-medium">Money In</span>
           <CurrencyValueWithOverflow
             value={location.moneyIn ?? 0}
-            className={`break-words text-right font-semibold ${getMoneyInColorClass()}`}
+            className={`break-words text-right font-semibold ${getMoneyInColorClass(location.moneyIn)}`}
             formatCurrencyFn={formatCurrency}
           />
         </div>

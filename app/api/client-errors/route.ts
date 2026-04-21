@@ -1,31 +1,29 @@
 /**
- * Client Error Logging Route
+ * POST /api/client-errors
  *
- * Receives client-side runtime errors (including React component stacks)
- * and logs them on the server so they are visible in deployment/platform logs.
+ * Receives client-side runtime errors (window errors, unhandled promise
+ * rejections, and React component crashes) and writes them to the server
+ * console so they appear in deployment/platform logs alongside server errors.
+ * Called automatically by GlobalErrorBoundary — no frontend page invokes
+ * this directly. No authentication required; the payload contains no
+ * sensitive user data.
  *
- * Called from GlobalErrorBoundary automatically when an error is caught.
- * No auth required — the payload contains no sensitive user data.
+ * Body fields:
+ * @param message        {string} Required. The error message string.
+ * @param context        {string} Required. Error origin: 'window', 'react', or 'promise'.
+ * @param url            {string} Required. The page URL where the error occurred.
+ * @param userAgent      {string} Required. Browser user-agent string from the client.
+ * @param timestamp      {string} Required. ISO timestamp of when the error was captured.
+ * @param stack          {string} Optional. JavaScript stack trace from the Error object.
+ * @param componentStack {string} Optional. React component stack trace (only present for
+ *   React render errors caught by an error boundary).
  *
  * @module app/api/client-errors/route
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import type { ClientErrorPayload } from '@/shared/types/api';
 
-type ClientErrorPayload = {
-  message: string;
-  stack?: string;
-  componentStack?: string;
-  context: 'window' | 'react' | 'promise';
-  url: string;
-  userAgent: string;
-  timestamp: string;
-};
-
-/**
- * POST /api/client-errors
- * Logs a client-side error to the server console.
- */
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as ClientErrorPayload;

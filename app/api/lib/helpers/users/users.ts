@@ -575,28 +575,9 @@ export async function createUser(
   const currentUser = await getUserFromServer();
   if (currentUser && currentUser.emailAddress) {
     try {
-      const createChanges = [
-        { field: 'username', oldValue: null, newValue: username },
-        { field: 'emailAddress', oldValue: null, newValue: emailAddress },
-        { field: 'roles', oldValue: null, newValue: roles.join(', ') },
-        { field: 'isEnabled', oldValue: null, newValue: isEnabled },
-        {
-          field: 'firstName',
-          oldValue: null,
-          newValue: profile.firstName || '',
-        },
-        { field: 'lastName', oldValue: null, newValue: profile.lastName || '' },
-        { field: 'gender', oldValue: null, newValue: profile.gender || '' },
-        {
-          field: 'profilePicture',
-          oldValue: null,
-          newValue: profilePicture ? 'Profile picture updated' : 'None',
-        },
-    ];
-
       await logActivity({
         action: 'CREATE',
-        details: `Created new user "${username}" with email ${emailAddress}`,
+        details: `Created user "${username}"`,
         ipAddress: getClientIP(request) || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
         userId: currentUser._id as string,
@@ -608,7 +589,6 @@ export async function createUser(
           resource: 'User',
           resourceId: newUser._id.toString(),
           resourceName: username,
-          changes: createChanges,
         },
       });
     } catch (logError) {
@@ -1308,11 +1288,11 @@ export async function updateUser(
     throw dbError;
   }
 
-  // Log activity (reuse requestingUser from earlier)
-  const currentUser = requestingUser as CurrentUser | null;
+  // Log activity — fetch user for logging even in dev mode where requestingUser is null
+  const currentUser = (requestingUser as CurrentUser | null) || await getUserFromServer() as CurrentUser | null;
   const clientIP = getClientIP(request);
   if (currentUser && currentUser.emailAddress) {
-    await logActivity({
+    logActivity({
       action: 'update',
       details: `Updated user profile for "${updatedUser.username || 'user'}"`,
       ipAddress: clientIP || undefined,
@@ -1328,7 +1308,7 @@ export async function updateUser(
         resourceName: updatedUser.username || '',
         changes: changes,
       },
-    });
+    }).catch(err => console.error('[updateUser] Failed to log activity:', err));
   }
 
   return updatedUser;
@@ -1528,6 +1508,13 @@ function calculateUserChanges(
     return current;
   };
 
+  // Normalize values for comparison: Date objects → ISO date strings, avoid false positives
+  const normalizeForCompare = (v: unknown): unknown => {
+    if (v instanceof Date) return v.toISOString().split('T')[0];
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v)) return v.split('T')[0];
+    return v;
+  };
+
   const fieldChecks = [
     {
       field: 'firstName',
@@ -1623,7 +1610,7 @@ function calculateUserChanges(
   ];
 
   fieldChecks.forEach(({ field, original, updated }) => {
-    if (updated !== undefined && updated !== original) {
+    if (updated !== undefined && normalizeForCompare(updated) !== normalizeForCompare(original)) {
       let oldValue = (original as string) || '';
       let newValue = (updated as string) || '';
 
@@ -1640,6 +1627,16 @@ function calculateUserChanges(
       });
     }
   });
+
+  // Detect password change — only fires if password was explicitly processed (hashed string set by updateUser)
+  // passwordUpdatedAt alone is NOT enough: it can arrive in the payload from a userData spread on the frontend
+  if (updateFields.password !== undefined) {
+    changes.push({
+      field: 'password',
+      oldValue: '(previous password)',
+      newValue: 'Password updated',
+    });
+  }
 
   return changes;
 }

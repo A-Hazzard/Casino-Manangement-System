@@ -2,6 +2,20 @@
  * CollectionReportMobileNewCollectionModal Component
  *
  * Mobile-optimized modal for creating new collection reports.
+ * Orchestrates multiple sub-panels (Selection, Form, List, Financials) for a seamless small-screen experience.
+ *
+ * Features:
+ * - Three-stage workflow: Location/Machine Selection → Data Entry Form → Reconciliation Summary
+ * - Real-time machine collection status (Added/Selected/Unselected)
+ * - Integrated Live Reconciliation summary display
+ * - Variation check confirmation workflow before submission
+ * - Smooth CSS transitions between stacked mobile panels
+ *
+ * @param show - Whether the modal is visible
+ * @param onClose - Callback to close the modal
+ * @param locations - List of available locations with their associated machines
+ * @param onRefresh - Callback to refresh the main reports data
+ * @param onRefreshLocations - Callback to refresh the locations list data
  */
 
 'use client';
@@ -462,7 +476,7 @@ export default function CollectionReportMobileNewCollectionModal({
                                       setStoreSelectedMachineData(machine);
                                       // Auto-populate sasStartTime from the last completed collection
                                       axios
-                                        .get(`/api/collections/last-collection-time?machineId=${String(machine._id)}`)
+                                        .get(`/api/collection-reports/collections/last-collection-time?machineId=${String(machine._id)}`)
                                         .then(res => {
                                           const lastTime = res.data?.data?.collectionTime;
                                           setStoreFormData({ sasStartTime: lastTime ? new Date(lastTime) : null });

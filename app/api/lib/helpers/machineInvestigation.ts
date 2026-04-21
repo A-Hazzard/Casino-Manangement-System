@@ -346,7 +346,7 @@ function analyzeCollectionHistory(
       prevMetersOut: entry.prevMetersOut,
       prevIn: entry.prevIn,
       prevOut: entry.prevOut,
-      timestamp: entry.timestamp,
+      timestamp: new Date(entry.timestamp),
       locationReportId: entry.locationReportId,
       issues: [],
     };
@@ -438,7 +438,7 @@ function matchCollectionsWithHistory(
 
     return {
       collectionId: collection._id,
-      collectionTimestamp: collection.timestamp,
+      collectionTimestamp: new Date(collection.timestamp),
       collectionMetersIn: collection.metersIn,
       collectionMetersOut: collection.metersOut,
       collectionPrevIn: collection.prevIn,

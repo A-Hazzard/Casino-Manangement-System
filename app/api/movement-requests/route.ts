@@ -235,6 +235,11 @@ export async function GET(req: NextRequest) {
   });
 }
 
+/**
+ * Main POST handler for creating a new movement request
+ *
+ * @body {Object} data - REQUIRED. The movement request data (cabinetIn, locationFrom, locationTo, etc.)
+ */
 export async function POST(req: NextRequest) {
   return withApiAuth(req, async ({ user: currentUser }) => {
     const startTime = Date.now();

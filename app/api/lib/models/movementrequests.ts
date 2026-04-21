@@ -1,4 +1,4 @@
-import type { MovementRequest as MovementRequestType } from '@/lib/types/movement';
+import type { MovementRequest as MovementRequestType } from '@/shared/types/movement';
 import mongoose, { Schema } from 'mongoose';
 
 const movementRequestSchema = new Schema<MovementRequestType>(
@@ -45,4 +45,5 @@ const movementRequestSchema = new Schema<MovementRequestType>(
 export const MovementRequest =
   (mongoose.models?.MovementRequest as mongoose.Model<MovementRequestType>) ||
   mongoose.model<MovementRequestType>('MovementRequest', movementRequestSchema);
+
 

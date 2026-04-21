@@ -144,6 +144,7 @@ rule("All backend code must use strict TypeScript standards.") {
   checklist: [
   "Prefer type over interface unless extending interfaces",
   "No any types",
+  "No single-letter variables (use descriptive names even in loops/reduces)",
   "No underscore-prefixed variables, except _id for MongoDB",
   "Types organized: shared/types (cross-domain), app/api/lib/types (backend only)",
   "Database types modelled using InferSchemaType<typeof schema> & Document for Mongoose"

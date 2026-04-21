@@ -36,7 +36,7 @@ import {
     SelectValue,
 } from '@/components/shared/ui/select';
 import { MachinesOfflineSkeleton } from '@/components/shared/ui/skeletons/ReportsSkeletons';
-import type { MachineData, ReportsMachinesOfflineProps } from '@/lib/types/reports';
+import type { MachineData, ReportsMachinesOfflineProps, MachineSortKey } from '@/shared/types/reports';
 import { getFinancialColorClass } from '@/lib/utils/financial';
 import deleteIcon from '@/public/deleteIcon.svg';
 import editIcon from '@/public/editIcon.svg';
@@ -69,12 +69,12 @@ const SortableHeader = ({
   onSort,
 }: {
   children: ReactNode;
-  sortKey: keyof MachineData | 'offlineDurationHours';
+  sortKey: MachineSortKey;
   currentSort: {
-    key: keyof MachineData | 'offlineDurationHours';
+    key: MachineSortKey;
     direction: 'asc' | 'desc';
   };
-  onSort: (key: keyof MachineData | 'offlineDurationHours') => void;
+  onSort: (key: MachineSortKey) => void;
 }) => {
   const isActive = currentSort.key === sortKey;
 
@@ -434,7 +434,7 @@ export const ReportsMachinesOffline = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {offlineMachines.map(machine => {
+                  {offlineMachines.map((machine: MachineData) => {
                     const lastOnlineDate = machine.lastActivity ? new Date(machine.lastActivity) : null;
 
                     return (
@@ -544,7 +544,7 @@ export const ReportsMachinesOffline = ({
 
               {/* Mobile Card View */}
               <div className="grid grid-cols-1 gap-4 lg:hidden">
-                {offlineMachines.map(machine => {
+                {offlineMachines.map((machine: MachineData) => {
                   const lastOnlineDate = machine.lastActivity ? new Date(machine.lastActivity) : null;
 
                   return (

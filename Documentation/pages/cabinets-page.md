@@ -1,14 +1,14 @@
 # Cabinets Page Implementation (`/cabinets`)
 
-**Author:** Aaron Hazzard - Senior Software Engineer  
+**Author:** Evolution One Engineering  
 **Last Updated:** April 2026  
-**Version:** 4.3.0
+**Version:** 5.0.0 (Unified API Architecture)
 
 ---
 
 ## 1. Page Overview
 
-Real-time telemetry and hardware management hub for all gaming machines across the property fleet.
+Real-time telemetry and hardware management hub for all gaming **cabinets** across the property fleet. This page provides a centralized view of both automated (SMIB) and manual machine assets, integrated with the unified cabinets API.
 
 ---
 
@@ -18,101 +18,64 @@ Real-time telemetry and hardware management hub for all gaming machines across t
 The primary management grid for all gaming hardware across the floor.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
-| **Asset #** | `custom.name` | `GET /api/machines` |
-| **Serial Number** | `serialNumber` | `GET /api/machines` |
-| **Game Title** | `game` | `GET /api/machines` |
-| **Live Status** | `isOnline` (Computed) | `GET /api/machines` |
-| **Location** | `gamingLocation.name` | `GET /api/machines` |
-| **Manufacturer** | `manufacturer` | `GET /api/machines` |
+| **Asset #** | `assetNumber` | `GET /api/cabinets/aggregation` |
+| **Serial Number** | `serialNumber` | `GET /api/cabinets/aggregation` |
+| **Game Title** | `installedGame` | `GET /api/cabinets/aggregation` |
+| **Live Status** | `online` (Boolean) | `GET /api/cabinets/aggregation` |
+| **Location** | `locationName` | `GET /api/cabinets/aggregation` |
+| **Manufacturer** | `manufacturer` | `GET /api/cabinets/aggregation` |
 
-- **Filters**: Responsive to `Location`, `Manufacturer`, `Online Status` (All/Online/Offline), and `Machine Type` (Slot/VGT/Roulette/Terminal).
-- **Search**: Matches against `serialNumber`, `custom.name`, and `game` using case-insensitive partial match.
-- **Implementation**: `CabinetsPageContent` using the `useFetchMachines` hook with server-side pagination and search.
+- **Filters**: Responsive to `LocationId`, `GameType`, `OnlineStatus`, and `SmibStatus`.
+- **Implementation**: Utilizes the `useCabinetPageData` hook which communicates with the centralized aggregation engine.
 
-### 🕹️ Machine Details Drawer
-A comprehensive fly-out panel providing a 360-degree view of a single asset. Opened by clicking any row in the Fleet Inventory Table.
-
-#### Accounting Metrics Tab
+### 🕹️ Cabinet Details Drawer
+A comprehensive fly-out panel providing a 360-degree view of a single asset.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
-| **Money In** | `moneyIn` (movement.drop) | `GET /api/machines/aggregation` |
-| **Money Out** | `moneyOut` (Base + Jackpot if applicable) | `GET /api/machines/aggregation` |
-| **Gross** | `gross` (Money In - Money Out) | `GET /api/machines/aggregation` |
-| **Net Gross** | `netGross` (True Profit) | `GET /api/machines/aggregation` |
-| **Jackpot** | `jackpot` (movement.jackpot) | `GET /api/machines/aggregation` |
-
-#### Live SAS Meters Tab
-| UI Term | Data Element | Source API |
-| :--- | :--- | :--- |
-| **Coin In** | `currentMeters.coinIn` | `GET /api/machines/[id]` |
-| **Coin Out** | `currentMeters.coinOut` | `GET /api/machines/[id]` |
-| **Current Credits** | `currentMeters.currentCredits` | `GET /api/machines/[id]` |
-| **Total Drop** | `currentMeters.totalDrop` | `GET /api/machines/[id]` |
-
-#### Bill Validator Tab
-| UI Term | Data Element | Source API |
-| :--- | :--- | :--- |
-| **Denomination** | `denomination` | `GET /api/bill-validator/[id]` |
-| **Bill Count** | `count` | `GET /api/bill-validator/[id]` |
-| **Subtotal** | `subtotal` | `GET /api/bill-validator/[id]` |
+| **Money In** | `moneyIn` | `GET /api/cabinets/[cabinetId]` |
+| **Money Out** | `moneyOut` | `GET /api/cabinets/[cabinetId]` |
+| **Gross** | `gross` | `GET /api/cabinets/[cabinetId]` |
+| **Jackpot** | `jackpot` | `GET /api/cabinets/[cabinetId]` |
+| **Live Meters** | `sasMeters.*` | `GET /api/cabinets/[cabinetId]` |
+| **Analytics** | Time-series data | `GET /api/cabinets/[cabinetId]/chart` |
+| **History** | Collection records | `GET /api/cabinets/[cabinetId]/collection-history` |
 
 #### Audit Logs Tab
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
-| **Event Type** | `eventType` | `GET /api/machines/by-id/events` |
-| **Description** | `eventDescription` | `GET /api/machines/by-id/events` |
-| **Timestamp** | `timestamp` | `GET /api/machines/by-id/events` |
-
-- **Date Filtering**: All tabs support specific ranges (Today, Yesterday, 7d, 30d, All Time, Custom).
-- **Lazy Loading**: Each tab only fetches its data when selected (no upfront double-fetching).
-
-### ⚙️ SMIB Configuration Panel
-Hardware-level settings for the on-board system module (SMIB). Available within the Machine Details Drawer.
-| UI Term | Data Element | Source API |
-| :--- | :--- | :--- |
-| **SMIB IP** | `smibIP` | `GET /api/mqtt/machine-config` |
-| **SAS Address** | `sasAddress` | `GET /api/mqtt/machine-config` |
-| **Polling Interval** | `interval` | `GET /api/mqtt/machine-config` |
-| **MQTT Topic** | `mqttTopic` | `GET /api/mqtt/machine-config` |
-
-- **Security**: Editing these fields requires the `Developer` or `Technician` role.
-- **Implementation**: `SmibConfigForm` sub-component within the Details Drawer.
+| **Event Type** | `eventType` | `GET /api/activity-log?cabinetId=[cabinetId]` |
 
 ---
 
 ## 3. Remote Operations & Commands
 
-The interface provides a **"Command Center"** for direct hardware interaction (visible inside the Machine Details Drawer):
-- **Sync Meters**: Manually forces the SMIB to poll the machine for the latest cumulative readings. Triggers `POST /api/machines/command` with `{ action: 'SYNC' }`.
-- **Remote Lock**: Disables the machine cabinet for floor maintenance. Triggers `POST /api/machines/command` with `{ action: 'LOCK' }`.
-- **Remote Unlock**: Re-enables a locked machine. Triggers `POST /api/machines/command` with `{ action: 'UNLOCK' }`.
-- **Audit Log**: Every command execution is written to the activity log with the operator's user ID and timestamp.
+The interface provides a **"Command Center"** for direct hardware interaction:
+- **Sync Meters**: Triggers `POST /api/cabinets/[cabinetId]/sync-meters` (PATCH).
+- **Refresh Status**: Triggers `POST /api/cabinets/[cabinetId]/refresh` (PATCH).
+- **SMIB Config**: Managed via `PATCH /api/cabinets/[cabinetId]` (SMIB Configuration settings).
 
 ---
 
-## 4. Real-Time Status Logic (SSE)
+## 4. Real-Time Status Logic (Connectivity)
 
-- **Connectivity Pulse**: The 🟢 icon on the fleet table is updated instantly via **Server-Sent Events (SSE)**. If a machine misses two consecutive heartbeats (>180s), the icon automatically transitions to 🔴 without requiring a page reload.
-- **Jackpot Alert**: A ⚡ animation flashes on the table row when a `Handpaid Jackpot` event is pushed through the SSE bus, requiring floor manager acknowledgement.
-- **Door Open Alert**: A 🚨 door icon appears instantly on the row when the SMIB sends a `DOOR_OPEN` event via MQTT.
+- **Connectivity Pulse**: The 🟢 icon on the fleet table is updated based on `lastActivity` or `aceEnabled` status. A cabinet is considered online if it has communicated within the last 3 minutes or is in an ACE-enabled location.
+- **Data Source**: Reconciled via `GET /api/cabinets/aggregation` with specialized match stages for online/offline status.
 
 ---
 
 ## 5. Role-Based Access Control (RBAC)
 
-- **Technicians**: Full access to "Remote Commands" and "SMIB Config" tab.
-- **Managers**: Limited to "Accounting Metrics" and "Audit Logs" for dispute resolution.
-- **Auditors**: Can view "Bill Validator" data but are restricted from triggering Sync, Lock or Unlock commands.
-- **Location Admins**: Only see machines belonging to locations explicitly assigned to their profile; the table is auto-filtered on page load.
+- **Technicians**: Full access to "SMIB Management" and remote configuration. Restricted to "Last Hour" metrics view unless elevated.
+- **Managers**: Access to "Total Accounting Metrics" and "Collection History".
+- **Location Admins**: Restricted to cabinets assigned to their authorized locations (enforced via `getUserLocationFilter` on the API).
 
 ---
 
-## 6. Technical UI Standards
+## 6. Technical Standards
 
-- **Skeleton UX**: `MachineRowSkeleton` used during initial table hydration.
-- **Performance**: The Details Drawer uses memoization to prevent re-renders when the background SSE feed updates status icons in the main table.
-- **Search Debounce**: 300ms debounce on the search input to prevent excessive API calls while the user is typing.
-- **Responsive Design**: On mobile devices, the table hides `Manufacturer` and `Game Title` columns, showing a condensed "Asset Card" with `Live Status` and `Net Gross`.
+- **Centralized Service**: All API interactions are handled by the `fetchCabinets` and `fetchCabinetById` helpers in `lib/helpers/cabinets/helpers.ts`.
+- **Architecture**: Redirects all hardware-related traffic to the centralized `/api/cabinets` namespace.
 
 ---
-**Internal Document** - Engineering Team
+
+**Technical Reference Document** — Evolution One CMS API Centralization Phase

@@ -18,7 +18,7 @@ import type {
   CollectionReportMachineSummary,
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
-import { calculateMachineMovement } from '@/lib/utils/movement';
+import { calculateCabinetMovement } from '@/lib/utils/movement';
 import axios, { type AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -193,7 +193,7 @@ export function useMobileEditCollectionModal({
     }
 
     const totalMovementData = modalState.collectedMachines.map(entry => {
-      const movement = calculateMachineMovement(
+      const movement = calculateCabinetMovement(
         entry.metersIn || 0,
         entry.metersOut || 0,
         entry.prevIn || 0,
@@ -554,13 +554,13 @@ export function useMobileEditCollectionModal({
 
       if (isEditing) {
         const response = await axios.patch(
-          `/api/collections?id=${modalState.editingEntryId}`,
+          `/api/collection-reports/collections?id=${modalState.editingEntryId}`,
           collectionPayload
         );
         createdCollection = response.data;
       } else {
         const response = await axios.post(
-          '/api/collections',
+          '/api/collection-reports/collections',
           collectionPayload
         );
         createdCollection = response.data.data;
@@ -708,7 +708,7 @@ export function useMobileEditCollectionModal({
       setModalState(prev => ({ ...prev, isProcessing: true }));
 
       try {
-        await axios.delete(`/api/collections?id=${entryId}`);
+        await axios.delete(`/api/collection-reports/collections?id=${entryId}`);
 
         // Calculate new state values
         const newCollectedMachines = modalState.collectedMachines.filter(
@@ -1069,12 +1069,8 @@ export function useMobileEditCollectionModal({
           );
           const reportData = reportResponse.data;
 
-          if (reportData.isEditing) {
-            setModalState(prev => ({ ...prev, hasUnsavedEdits: true }));
-          }
-
           const collectionsResponse = await axios.get(
-            `/api/collections?locationReportId=${reportId}&_t=${Date.now()}`
+            `/api/collection-reports/collections?locationReportId=${reportId}&_t=${Date.now()}`
           );
           const collections = collectionsResponse.data;
 
@@ -1098,7 +1094,7 @@ export function useMobileEditCollectionModal({
               collectedMachines: collections,
               originalCollections: JSON.parse(JSON.stringify(collections)),
               availableMachines: matchingLocation.machines || [],
-              hasUnsavedEdits: reportData.isEditing || false,
+              hasUnsavedEdits: false,
               financials: {
                 variance: String(reportData.locationMetrics?.variance || 0),
                 previousBalance: String(
@@ -1299,7 +1295,7 @@ export function useMobileEditCollectionModal({
         const results = await Promise.allSettled(
           modalState.collectedMachines.map(async entry => {
             if (!entry._id) return;
-            return await axios.patch(`/api/collections?id=${entry._id}`, patchData);
+            return await axios.patch(`/api/collection-reports/collections?id=${entry._id}`, patchData);
           })
         );
         const failed = results.filter(r => r.status === 'rejected').length;

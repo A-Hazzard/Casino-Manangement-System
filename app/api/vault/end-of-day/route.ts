@@ -10,6 +10,12 @@ import {
 } from '@/app/api/lib/helpers/vault/endOfDay';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for end-of-day reports
+ *
+ * @param {string} locationId - ID of the location (REQUIRED)
+ * @param {string} date - ISO date string for the report (REQUIRED)
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user }) => {
     try {
@@ -45,6 +51,13 @@ export async function GET(request: NextRequest) {
   });
 }
 
+/**
+ * POST /api/vault/end-of-day
+ *
+ * @body {string} locationId - ID of the location (REQUIRED)
+ * @body {string} date - ISO date string for the report (REQUIRED)
+ * @body {string} format - Distribution format (e.g., 'CSV')
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user }) => {
     try {

@@ -14,6 +14,12 @@ import { getUserIdFromServer } from '@/app/api/lib/helpers/users/users';
 import { comparePassword } from '@/app/api/lib/utils/validation';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main POST handler for checking password matching
+ *
+ * @body {string} password - REQUIRED. The password string to check.
+ * @body {string} type - REQUIRED. Check type: 'verify' (current) or 'reuse' (history).
+ */
 export async function POST(request: NextRequest) {
   try {
     await connectDB();

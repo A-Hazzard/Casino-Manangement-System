@@ -15,15 +15,18 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching cabinet metrics
+ * GET /api/cabinets/[cabinetId]/metrics
  *
- * Flow:
- * 1. Parse route parameters and query parameters
- * 2. Connect to database
- * 3. Find cabinet by ID
- * 4. Get cabinet location
- * 5. Build redirect URL with query parameters
- * 6. Redirect to location-specific endpoint
+ * Resolves the cabinet's parent location and redirects to the location-specific
+ * metrics endpoint. Called by the cabinet detail view to load performance data.
+ *
+ * URL params:
+ * @param cabinetId {string} Required (path). The cabinet (machine) ID to resolve.
+ *
+ * Query params:
+ * @param timePeriod {string} Optional. Time period filter forwarded to the location endpoint (e.g. "today", "week").
+ * @param startDate  {string} Optional. ISO start date forwarded to the location endpoint.
+ * @param endDate    {string} Optional. ISO end date forwarded to the location endpoint.
  */
 export async function GET(
   request: NextRequest

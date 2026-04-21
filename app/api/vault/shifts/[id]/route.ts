@@ -9,6 +9,11 @@ import {
 } from '@/app/api/lib/helpers/vault/shifts';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for fetching shift details
+ *
+ * @param {string} id - REQUIRED (path). The ID of the shift to fetch.
+ */
 export async function GET(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const shiftId = pathname.split('/').pop();

@@ -17,7 +17,14 @@ import { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching handle trends data
+ * GET /api/analytics/handle-trends
+ *
+ * Returns handle (drop) trend data aggregated hourly or daily over the requested period. Used by the Analytics trends charts.
+ *
+ * Query params:
+ * @param timePeriod  {TimePeriod} Optional. 'Today'|'Yesterday'|'7d'|'30d'|'Custom'. Defaults to 'Today'.
+ * @param licencee    {string}     Optional. Scopes results to this licencee.
+ * @param locationIds {string}     Optional. Comma-separated location IDs to filter results.
  *
  * Flow:
  * 1. Parse and validate request parameters (timePeriod, licencee, locationIds)

@@ -1,8 +1,15 @@
 /**
- * Collection Report Filters Component
- * Filter bar for collection reports with location, search, and status filters.
+ * CollectionReportFilters Component
+ *
+ * A robust horizontally-oriented filtering bar for narrowing down collection report lists.
  *
  * Features:
+ * - Multi-criteria search (Location names, Report IDs, Serial numbers)
+ * - Type-specific filtering (Manual reports vs Scheduled tasks)
+ * - Date range selection with custom calendar integration
+ * - Real-time "Clear All" capability for reset
+ * - Responsive layout: Inline for desktop, stacked for mobile
+ * - Informative "No Results" state handling
  * - Location selection dropdown
  * - Search functionality
  * - Uncollected only filter checkbox
@@ -11,6 +18,13 @@
  * - GSAP animations for search state
  * - Responsive design
  *
+ * @param searchTerm - Active search string for text-based matching
+ * @param searchType - Specific field toggle for the search input
+ * @param dateRange - Standardized {from, to} date object for temporal filtering
+ * @param onSearchChange - Callback for search text updates
+ * @param onSearchTypeChange - Callback for switching search categories
+ * @param onDateRangeChange - Callback for range selection updates
+ * @param onClearFilters - Callback to reset all filter state
  * @param locations - Available locations list
  * @param selectedLocation - Currently selected location
  * @param onLocationChange - Callback when location changes

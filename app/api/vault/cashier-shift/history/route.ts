@@ -6,6 +6,15 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for cashier shift history
+ *
+ * @param {string} cashierId - ID of the cashier (REQUIRED)
+ * @param {string} locationId - Filter by location ID
+ * @param {number} limit - Results per page
+ * @param {number} skip - Offset for pagination
+ * @param {boolean} variance - Only show shifts with discrepancies
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {

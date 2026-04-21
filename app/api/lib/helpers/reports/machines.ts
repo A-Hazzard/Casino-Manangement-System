@@ -4,7 +4,7 @@
  * This module contains helper functions for the machines report API route.
  * It handles fetching machine statistics, overview, and performance evaluation.
  *
- * @module app/api/lib/helpers/machinesReport
+ * @module app/api/lib/helpers/cabinetsReport
  */
 
 import { Countries } from '@/app/api/lib/models/countries';
@@ -406,6 +406,9 @@ export async function getMachineStats(
     onlineCount,
     offlineCount: totalCount - onlineCount,
     totalCount,
+    totalMachines: totalCount,
+    onlineMachines: onlineCount,
+    offlineMachines: totalCount - onlineCount,
     totalGross: convertedTotals.totalGross || 0,
     totalDrop: convertedTotals.totalDrop || 0,
     totalCancelledCredits: convertedTotals.totalCancelledCredits || 0,
@@ -1235,3 +1238,4 @@ export async function getOfflineMachines(
     },
   });
 }
+

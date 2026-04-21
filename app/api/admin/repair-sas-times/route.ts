@@ -25,14 +25,19 @@ export const runtime = 'nodejs';
 type RepairMode = 'dry-run' | 'commit';
 
 /**
- * Main POST handler for repairing SAS times
+ * POST /api/admin/repair-sas-times
  *
- * Flow:
- * 1. Connect to database
- * 2. Parse query parameters (mode, filters)
- * 3. Build filter from parameters
- * 4. Execute repair operation
- * 5. Return repair results
+ * Repairs incorrect SAS timestamps in collection records by normalising them to
+ * the 8 AM Trinidad-time gaming-day boundary and recalculating SAS metrics.
+ * Run in 'dry-run' mode first to preview changes, then 'commit' to apply them.
+ * No authentication guard in the handler — restrict at infrastructure level.
+ *
+ * Query params:
+ * @param mode             {string}  Optional. 'dry-run' (default) previews changes; 'commit' applies them.
+ * @param locationReportId {string}  Optional. Limit repair to collections belonging to this report ID.
+ * @param machineId        {string}  Optional. Limit repair to collections for this machine ID.
+ * @param startDate        {string}  Optional. ISO date string; only include collections at or after this timestamp.
+ * @param endDate          {string}  Optional. ISO date string; only include collections at or before this timestamp.
  */
 export async function POST(req: NextRequest) {
   const startTime = Date.now();

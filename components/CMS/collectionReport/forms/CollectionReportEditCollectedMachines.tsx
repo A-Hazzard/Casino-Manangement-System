@@ -1,13 +1,27 @@
 /**
  * Edit Collection Collected Machines Component
  *
- * Displays the list of machines that have already been collected in the current report
+ * Displays the list of machines that have already been collected in the current report.
  *
  * Features:
  * - List of collected machines with key details
  * - Edit and delete actions for each entry
  * - Empty state display
  * - Update All SAS Times functionality (two date pickers for start and end)
+ * - Live Reconciliation summary section at the bottom
+ *
+ * @param collectedMachineEntries - List of machine entries successfully added to the report
+ * @param isProcessing - Global loading state for the edit operation
+ * @param onEditEntry - Callback to select a machine for editing
+ * @param onDeleteEntry - Callback to remove a machine from the collection list
+ * @param updateAllSasStartDate - Value for the batch SAS start time update
+ * @param setUpdateAllSasStartDate - Setter for the batch SAS start time
+ * @param updateAllSasEndDate - Value for the batch SAS end time update
+ * @param setUpdateAllSasEndDate - Setter for the batch SAS end time
+ * @param onRefresh - Optional callback to refresh report details
+ * @param financials - Subset of financial data for the live reconciliation summary
+ * @param variationMachineIds - Array of machine IDs with detected meter variations
+ * @param onApplyAllDates - Execution callback for applying SAS times block to all entries
  */
 
 'use client';

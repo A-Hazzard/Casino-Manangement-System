@@ -15,12 +15,12 @@ import { connectDB, disconnectDB } from '@/app/api/lib/middleware/db';
 import { NextResponse } from 'next/server';
 
 /**
- * Main POST handler for forcing database reconnection
+ * POST /api/admin/reconnect-db
  *
- * Flow:
- * 1. Disconnect existing database connection
- * 2. Reconnect with new connection string
- * 3. Return success response
+ * Forces a full MongoDB disconnect and reconnect cycle. Useful after rotating
+ * the MONGODB_URI environment variable without restarting the server. No
+ * request body is required. No authentication guard — restrict at the
+ * infrastructure/network level.
  */
 export async function POST() {
   const startTime = Date.now();
@@ -72,10 +72,10 @@ export async function POST() {
 }
 
 /**
- * GET handler for checking connection status
+ * GET /api/admin/reconnect-db
  *
- * Flow:
- * 1. Return connection status information
+ * Returns a hint message directing callers to use POST, along with whether
+ * MONGODB_URI is currently set. No side effects.
  */
 export async function GET() {
   return NextResponse.json({

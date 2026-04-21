@@ -6,7 +6,7 @@
  * @param locationId - Optional specific location ID to get stats for that location only
  */
 
-import { fetchMachineStats } from '@/lib/helpers/machines';
+import { fetchMachineStats } from '@/lib/helpers/cabinets';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type {
@@ -60,6 +60,12 @@ export function useLocationMachineStats(
         totalMachines: 0,
         onlineMachines: 0,
         offlineMachines: 0,
+        totalCount: 0,
+        onlineCount: 0,
+        offlineCount: 0,
+        totalGross: 0,
+        totalDrop: 0,
+        totalCancelledCredits: 0,
         totalLocations: 0,
         onlineLocations: 0,
         offlineLocations: 0,
@@ -114,6 +120,12 @@ export function useLocationMachineStats(
           totalMachines: 0,
           onlineMachines: 0,
           offlineMachines: 0,
+          totalCount: 0,
+          onlineCount: 0,
+          offlineCount: 0,
+          totalGross: 0,
+          totalDrop: 0,
+          totalCancelledCredits: 0,
           totalLocations: 0,
           onlineLocations: 0,
           offlineLocations: 0,
@@ -132,4 +144,5 @@ export function useLocationMachineStats(
     error,
   };
 }
+
 

@@ -11,6 +11,12 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 import type { LocationDocument } from '@/lib/types/common';
 
+/**
+ * Main GET handler for vault metrics breakdown
+ *
+ * @param {string} locationId - REQUIRED. Filter metrics by location.
+ * @param {string} type - REQUIRED. Type of breakdown to retrieve.
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {

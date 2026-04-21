@@ -1,3 +1,20 @@
+/**
+ * VariationsConfirmationDialog Component
+ *
+ * A secondary confirmation modal used to ensure users intentionally submit reports with known financial variations.
+ *
+ * Features:
+ * - Clear summary of total machines with variations
+ * - Aggregate monetary variation display
+ * - Portal-based rendering for reliable stacking
+ *
+ * @param isOpen - Whether the dialog is visible
+ * @param machineCount - Number of machines currently showing variations
+ * @param totalVariation - The sum of all discrepancies in the batch
+ * @param isLoading - Loading state for the "Continue Anyway" action
+ * @param onConfirm - Callback to proceed with final report submission
+ * @param onCancel - Callback to return to the edit/view state
+ */
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';

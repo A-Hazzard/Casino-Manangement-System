@@ -1,7 +1,25 @@
 /**
  * Mobile Edit Collection Modal - Location Selector Component
  *
- * Handles location selection and main screen navigation buttons
+ * Handles location selection and primary navigation actions for the Edit Collection workflow on mobile.
+ *
+ * Features:
+ * - Locked location display for edit mode consistency
+ * - Contextual buttons based on machine selection and collection count
+ * - Informative loading states for document reconciliation checks
+ * - Direct navigation to forms, machines, and report overview
+ *
+ * @param locations - List of all available locations for data selection
+ * @param selectedLocationId - The source location ID for this specific report
+ * @param lockedLocationId - ID of the location if it is hard-locked during editing
+ * @param selectedLocationName - Human-readable name of the selected location
+ * @param isLoadingCollections - Loading state during initial report/collection check
+ * @param collectedMachinesCount - Total number of machines processed in the current batch
+ * @param selectedMachine - ID of the machine currently active in the form state
+ * @param onLocationChange - Callback for setting the location (typically disabled in edit)
+ * @param onOpenReport - Operation callback to launch the machine report form
+ * @param onViewForm - Navigation callback to view the summary/financial form
+ * @param onViewCollectedMachines - Navigation callback to view the list of added machines
  */
 
 'use client';

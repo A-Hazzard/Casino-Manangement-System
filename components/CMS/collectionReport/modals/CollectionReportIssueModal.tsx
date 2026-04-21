@@ -1,18 +1,19 @@
 /**
- * Collection Issue Modal Component
- * Modal for displaying collection report issues and their details.
+ * CollectionIssueModal Component
+ *
+ * A diagnostic modal designed for displaying and correcting data integrity issues in collection reports.
  *
  * Features:
- * - Issue type display with icons and colors
- * - Issue description and details
- * - Affected machine information
- * - Issue severity indicators
- * - Action buttons for resolving issues
- * - Issue type configurations (inverted times, meter mismatches, SAS time issues)
+ * - Dynamic issue classification (Inverted times, Meter mismatches, SAS range errors)
+ * - Comparative data view: Current vs Expected values
+ * - Explicit fix explanations based on issue type
+ * - High-visibility severity badging
+ * - Deep metadata display including collection and machine context
+ * - Scrollable container for complex data payloads
  *
  * @param isOpen - Whether the modal is visible
- * @param issue - Collection issue object to display
- * @param onClose - Callback to close the modal
+ * @param issue - Detailed collection issue object containing metrics and explanations
+ * @param onClose - Callback to dismiss the modal
  */
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';

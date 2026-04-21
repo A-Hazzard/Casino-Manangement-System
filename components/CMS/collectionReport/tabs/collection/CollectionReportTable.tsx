@@ -1,19 +1,20 @@
 /**
- * Collection Report Table Component
- * Desktop table view for displaying collection reports with sorting and actions.
+ * CollectionReportTable Component
+ *
+ * The primary desktop data grid for listing and managing historical collection reports.
+ * Provides a dense, sortable view of all financial reconciliations.
  *
  * Features:
- * - Collection report data display
- * - Sortable columns
- * - Issue indicators for reports with problems
- * - Edit and delete actions (role-based)
- * - Navigation to report details
+ * - Deterministic data sorting with visual headers
+ * - Issue icon integration for immediate error visibility
+ * - Aggregate financial calculation displays per row
+ * - Interactive row navigation to detailed report pages
+ * - Inline management actions (Edit/Delete) with role-based visibility
+ * - Clean, professional "Modern CMS" aesthetics with hover effects
  * - Currency formatting
  * - Status badges
  * - Responsive design (desktop only)
  *
- * @param data - Array of collection report rows
- * @param reportIssues - Issues data for reports
  * @param onEdit - Callback when edit is clicked
  * @param onDelete - Callback when delete is clicked
  * @param sortField - Current sort field
@@ -65,9 +66,23 @@ export default function CollectionReportTable({
   editableReportIds,
   selectedLicencee,
 }: CollectionReportTableProps) {
-  useCurrencyFormat();
+  const { formatAmount } = useCurrencyFormat();
   const router = useRouter();
   const user = useUserStore(state => state.user);
+
+  // Helper to format financial values with dollar signs
+  const formatVal = (v: number | string | null | undefined) => {
+    if (v === 'No Variance' || v === '-' || v === undefined || v === null) return v;
+    const num = typeof v === 'string' ? parseFloat(v) : v;
+    return isNaN(num) ? v : formatAmount(num);
+  };
+
+  // Returns green/red color class for any raw financial value; empty string for non-numeric sentinels
+  const colorClass = (v: number | string | null | undefined) => {
+    if (v === 'No Variance' || v === '-' || v === undefined || v === null) return '';
+    const num = typeof v === 'string' ? parseFloat(v) : v;
+    return isNaN(num) ? '' : getGrossColorClass(num);
+  };
 
   // Check if user has admin access to see issue highlights
   const isAdminUser = user?.roles
@@ -314,19 +329,15 @@ export default function CollectionReportTable({
                         : row?.gross || 0
                     )}
                   >
-                    {row?.gross || 0}
+                    {formatVal(row?.gross)}
                   </span>
                 </TableCell>
                 <TableCell centered={true}>{row?.machines || '0/0'}</TableCell>
-                <TableCell centered={true}>{row?.collected || 0}</TableCell>
-                <TableCell centered={true}>{row?.uncollected || '-'}</TableCell>
-                <TableCell centered={true}>
-                  {row?.variation || 'No Variance'}
-                </TableCell>
-                <TableCell centered={true}>{row?.balance || 0}</TableCell>
-                <TableCell centered={true}>
-                  {row?.locationRevenue || 0}
-                </TableCell>
+                <TableCell centered={true}><span className={colorClass(row?.collected)}>{formatVal(row?.collected)}</span></TableCell>
+                <TableCell centered={true}><span className={colorClass(row?.uncollected)}>{formatVal(row?.uncollected)}</span></TableCell>
+                <TableCell centered={true}><span className={colorClass(row?.variation)}>{formatVal(row?.variation)}</span></TableCell>
+                <TableCell centered={true}><span className={colorClass(row?.balance)}>{formatVal(row?.balance)}</span></TableCell>
+                <TableCell centered={true}><span className={colorClass(row?.locationRevenue)}>{formatVal(row?.locationRevenue)}</span></TableCell>
                 <TableCell centered={true}>{row?.time || '-'}</TableCell>
                 <TableCell centered={true}>
                   <div className="flex items-center gap-2">

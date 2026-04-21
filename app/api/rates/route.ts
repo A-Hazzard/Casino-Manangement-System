@@ -1,11 +1,15 @@
 /**
- * Exchange Rates API Route
+ * GET /api/rates
  *
- * This route handles fetching current exchange rates and currency information.
- * It supports:
- * - Exchange rates retrieval
- * - Available currencies list
- * - Optional currency metadata (names, symbols)
+ * Returns the current in-memory exchange rate table and list of supported
+ * currency codes. Called by the currency conversion utilities and any UI
+ * that needs to display amounts in non-base currencies. No authentication
+ * required. Rates are sourced from static configuration, not a live feed.
+ *
+ * Query parameters:
+ * @param includeMetadata {boolean} Optional. When 'true', the response includes a
+ *   'currencyInfo' array with the full name and symbol for each available currency
+ *   code (e.g. { code: 'TTD', name: 'Trinidad and Tobago Dollar', symbol: 'TT$' }).
  *
  * @module app/api/rates/route
  */
@@ -19,15 +23,6 @@ import {
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * Main GET handler for fetching exchange rates
- *
- * Flow:
- * 1. Parse query parameters (includeMetadata)
- * 2. Fetch exchange rates and available currencies
- * 3. Build response with optional metadata
- * 4. Return rates and currency information
- */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
 

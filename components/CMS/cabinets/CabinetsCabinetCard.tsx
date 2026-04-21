@@ -227,7 +227,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
           ) : (
             <CurrencyValueWithOverflow
               value={props.moneyIn || 0}
-              className={`font-medium ${getMoneyInColorClass()}`}
+              className={`font-medium ${getMoneyInColorClass(props.moneyIn)}`}
               formatCurrencyFn={formatCurrency}
             />
           )}

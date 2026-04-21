@@ -10,7 +10,7 @@
  */
 
 import { Shift } from '@/app/api/lib/models/shifts';
-import type { ShiftDocument } from '@/app/api/lib/types/vault';
+import { type ShiftDocument } from '@/shared/types/models';
 
 /**
  * Get shift by ID

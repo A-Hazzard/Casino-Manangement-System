@@ -35,3 +35,22 @@ export type OriginalUserType = {
   roles?: string[];
 };
 
+/**
+ * Payload structure for updating user profile information.
+ */
+export type ProfileUpdatePayload = {
+  username: string;
+  firstName: string;
+  lastName: string;
+  otherName?: string;
+  gender?: string;
+  emailAddress: string;
+  phone: string;
+  dateOfBirth?: string; // Optional - only validated if provided
+  currentPassword?: string;
+  newPassword?: string;
+  confirmPassword?: string;
+  licenceeIds?: string[];
+  locationIds?: string[];
+};
+

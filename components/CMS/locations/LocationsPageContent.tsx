@@ -252,6 +252,7 @@ export default function LocationsPageContent() {
                     onDelete={location => openDeleteModal(location)}
                     onRestore={location => handleRestore(location)}
                     showArchived={locationsPageData.selectedStatus === 'Archived'}
+                    canManageLocations={canManageLocations}
                   />
                 ))}
               </div>
@@ -262,6 +263,7 @@ export default function LocationsPageContent() {
                   locations={locationData}
                   onLocationClick={handleLocationClick}
                   showArchived={locationsPageData.selectedStatus === 'Archived'}
+                  canManageLocations={canManageLocations}
                   onAction={(action, loc) => {
                     if (action === 'edit') openEditModal(loc);
                     if (action === 'delete') openDeleteModal(loc);

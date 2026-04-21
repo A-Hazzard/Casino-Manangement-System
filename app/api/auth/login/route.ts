@@ -31,17 +31,15 @@ import { NextRequest } from 'next/server';
 export const runtime = 'nodejs';
 
 /**
- * Main POST handler for user login
+ * POST /api/auth/login
  *
- * Flow:
- * 1. Connect to database
- * 2. Parse and validate request body
- * 3. Validate identifier format (email or username)
- * 4. Extract client IP and user agent
- * 5. Authenticate user with credentials
- * 6. Generate JWT tokens
- * 7. Set secure authentication cookies
- * 8. Return user data and validation requirements
+ * Authenticates a user and issues JWT access and refresh token cookies. Called
+ * on every login form submission; extends token lifetime when rememberMe is set.
+ *
+ * Body fields:
+ * @param identifier {string} Required. Email address or username used to look up the account.
+ * @param password   {string} Required. Plain-text password verified against the stored hash.
+ * @param rememberMe {boolean} Optional. When true, extends cookie maxAge from 7 days to 30 days.
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();

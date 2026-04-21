@@ -45,6 +45,25 @@ type CollectionReportDetailsCollectionsTableProps = {
  *
  * Displays the list of machine metrics for a collection report.
  * Supports searching, sorting, and pagination across desktop and mobile views.
+ *
+ * Features:
+ * - Searchable machine data with real-time filtering
+ * - Sortable columns for machine ID, gross, variation, etc.
+ * - Interactive machine display with navigation to cabinet details
+ * - Visual indicators for RAM clears, notes, and jackpot deductions
+ * - Responsive dual-view: Table for desktop, card-stack for mobile
+ *
+ * @param metrics - Array of all machine metrics associated with the report
+ * @param paginatedMetrics - Subset of metrics for the current page view
+ * @param searchTerm - Active search filter text
+ * @param onSearchChange - Callback for search input updates
+ * @param sortField - The metric property currently being sorted by
+ * @param sortDirection - 'asc' or 'desc' sorting state
+ * @param onSort - Callback to trigger sorting by a specific field
+ * @param currentPage - Current active pagination page
+ * @param totalPages - Total number of available pages
+ * @param onPageChange - Callback for page navigation
+ * @param useNetGross - Flag to subtract jackpots from SAS Gross display
  */
 export function CollectionReportDetailsCollectionsTable({
   metrics,
@@ -59,6 +78,21 @@ export function CollectionReportDetailsCollectionsTable({
   onPageChange,
   useNetGross = false,
 }: CollectionReportDetailsCollectionsTableProps) {
+  // ============================================================================
+  // Formatting helpers
+  // ============================================================================
+  // Show decimals only when the fractional part is >= 0.1 (e.g. 78596 → "78,596", 26440.50 → "26,440.50")
+  const smartNum = (v: number | string): string => {
+    const n = Number(v);
+    if (isNaN(n)) return String(v);
+    const frac = Math.abs(n % 1);
+    return n.toLocaleString(undefined, frac >= 0.1
+      ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+      : { minimumFractionDigits: 0, maximumFractionDigits: 0 }
+    );
+  };
+  const smartCurrency = (v: number | string) => '$' + smartNum(v);
+
   // ============================================================================
   // Router & Component State
   // ============================================================================
@@ -189,10 +223,8 @@ export function CollectionReportDetailsCollectionsTable({
                   {metric.dropCancelled || '0 / 0'}
                 </TableCell>
 
-                <TableCell className="px-4 py-4 font-medium text-gray-900">
-                  {metric.metersGross?.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                  })}
+                <TableCell className={`px-4 py-4 font-medium ${Number(metric.metersGross ?? 0) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {smartCurrency(metric.metersGross ?? 0)}
                 </TableCell>
 
                 <TableCell className="px-4 py-4">
@@ -205,9 +237,7 @@ export function CollectionReportDetailsCollectionsTable({
                 <TableCell
                   className={`px-4 py-4 font-bold ${Number(metric.variation) < 0 ? 'text-red-600' : 'text-green-600'}`}
                 >
-                  {metric.variation?.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                  })}
+                  {smartCurrency(metric.variation ?? 0)}
                 </TableCell>
 
                 <TableCell className="min-w-[160px] whitespace-nowrap px-4 py-4 text-xs text-gray-500">
@@ -226,6 +256,7 @@ export function CollectionReportDetailsCollectionsTable({
         {paginatedMetrics.map(metric => {
           const jackpot = metric.jackpot ?? 0;
           const hasJackpotDeduction = useNetGross && jackpot > 0;
+          // formatSmartDecimal always returns a string — convert back to number for arithmetic
           const rawSasGross = Number(metric.sasGross) || 0;
           const displaySasGross = hasJackpotDeduction
             ? rawSasGross - jackpot
@@ -262,39 +293,37 @@ export function CollectionReportDetailsCollectionsTable({
                 />
                 <CollectionReportDetailsMobileField
                   label="Machine Gross"
-                  value={metric.metersGross}
-                  isCurrency
+                  value={smartCurrency(metric.metersGross ?? 0)}
+                  className={Number(metric.metersGross ?? 0) < 0 ? 'text-red-600' : 'text-green-600'}
                 />
                 <div>
                   <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
                     {useNetGross ? 'SAS Gross (Net)' : 'SAS Gross'}
                   </p>
                   <p
-                    className={`mt-0.5 font-medium ${hasJackpotDeduction && displaySasGross < 0 ? 'text-red-600' : ''}`}
+                    className={`mt-0.5 font-medium ${
+                      metric.sasGross === 'No SAS Data'
+                        ? ''
+                        : displaySasGross < 0
+                        ? 'text-red-600'
+                        : 'text-green-600'
+                    }`}
                   >
-                    {typeof metric.sasGross === 'string' ? (
-                      <span className="italic text-gray-500">
-                        {metric.sasGross}
-                      </span>
+                    {metric.sasGross === 'No SAS Data' ? (
+                      <span className="italic text-gray-500">No SAS Data</span>
                     ) : (
-                      displaySasGross.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                      })
+                      smartCurrency(displaySasGross)
                     )}
                   </p>
                   {hasJackpotDeduction && (
                     <p className="mt-0.5 text-[10px] text-amber-600">
-                      Jackpot: -
-                      {jackpot.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                      })}
+                      Jackpot: -{smartCurrency(jackpot)}
                     </p>
                   )}
                 </div>
                 <CollectionReportDetailsMobileField
                   label="Variation"
-                  value={metric.variation ?? 0}
-                  isCurrency={typeof metric.variation !== 'string'}
+                  value={smartCurrency(metric.variation ?? 0)}
                   isBold
                   className={
                     Number(metric.variation || 0) < 0

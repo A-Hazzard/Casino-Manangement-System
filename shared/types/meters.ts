@@ -1,4 +1,27 @@
-// Meters report types
+import type { TimePeriod } from './common';
+import type { CurrencyCode } from './currency';
+
+/**
+ * Parsed and validated request parameters for meters report
+ */
+export type ParsedMetersReportParams = {
+  timePeriod: TimePeriod;
+  customStartDate: Date | undefined;
+  customEndDate: Date | undefined;
+  page: number;
+  limit: number;
+  search: string;
+  licencee: string | null;
+  displayCurrency: CurrencyCode;
+  includeHourlyData: boolean;
+  requestedLocationList: string[];
+  hourlyDataMachineIds?: string[];
+  granularity?: 'hourly' | 'minute';
+};
+
+/**
+ * Individual data record for meters report
+ */
 export type MetersReportData = {
   machineId: string;
   metersIn: number;
@@ -8,6 +31,8 @@ export type MetersReportData = {
   voucherOut: number;
   attPaidCredits: number;
   gamesPlayed: number;
+  netGross: number;
+  includeJackpot: boolean;
   location: string;
   locationId: string;
   createdAt: string;
@@ -18,6 +43,20 @@ export type MetersReportData = {
   game?: string;
 };
 
+/**
+ * Hourly/Minute chart data point
+ */
+export type MetersHourlyChartData = {
+  day: string;
+  hour: string;
+  gamesPlayed: number;
+  coinIn: number;
+  coinOut: number;
+};
+
+/**
+ * Standard response format for meters report API
+ */
 export type MetersReportResponse = {
   data: MetersReportData[];
   totalCount: number;
@@ -26,9 +65,12 @@ export type MetersReportResponse = {
   limit: number;
   locations: string[];
   dateRange: {
-    start: string;
-    end: string;
+    start: Date | string;
+    end: Date | string;
   };
+  timePeriod: TimePeriod;
+  currency: CurrencyCode;
+  converted: boolean;
   pagination: {
     page: number;
     limit: number;
@@ -37,6 +79,7 @@ export type MetersReportResponse = {
     hasNextPage: boolean;
     hasPrevPage: boolean;
   };
+  hourlyChartData?: MetersHourlyChartData[];
 };
 
 

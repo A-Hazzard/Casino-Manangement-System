@@ -17,6 +17,9 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main POST handler for requesting MQTT config
  *
+ * @body {string} relayId - REQUIRED. The unique relay ID to request from.
+ * @body {string} component - REQUIRED. The component code to request config for.
+ *
  * Flow:
  * 1. Parse request body
  * 2. Validate request body

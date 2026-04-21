@@ -17,10 +17,14 @@
  * - Toast notifications
  * - Tooltips for guidance
  *
- * @param open - Whether the modal is visible
+ * @param show - Whether the modal is visible
  * @param onClose - Callback to close the modal
+ * @param locations - List of available locations with their associated machines
+ * @param onRefresh - Callback to refresh the main reports data
+ * @param onRefreshLocations - Callback to refresh the locations list data
  * @param onSuccess - Callback when collection is successfully created
  */
+
 import CollectionReportNewCollectionCollectedMachines from '@/components/CMS/collectionReport/forms/CollectionReportNewCollectionCollectedMachines';
 import CollectionReportNewCollectionFinancials from '@/components/CMS/collectionReport/forms/CollectionReportNewCollectionFinancials';
 import CollectionReportNewCollectionFormFields from '@/components/CMS/collectionReport/forms/CollectionReportNewCollectionFormFields';
@@ -214,7 +218,6 @@ export default function CollectionReportNewCollectionModal({
 
   return (
     <>
-
     {/* Main Container */}
       <Dialog 
         open={show} 

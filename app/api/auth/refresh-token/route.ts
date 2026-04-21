@@ -15,14 +15,12 @@ import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for refreshing token via activity monitor
+ * POST /api/auth/refresh-token
  *
- * Flow:
- * 1. Extract token from cookies
- * 2. Verify current token validity
- * 3. Generate new token with same payload (keep session alive)
- * 4. Set new token as HTTP-only cookie
- * 5. Return success response
+ * Silently extends the session while the user is active. Called by the activity
+ * monitor on a heartbeat interval; takes no explicit body — reads the current
+ * `token` cookie, re-signs it with the same payload, and writes the renewed
+ * cookie back (maxAge 120 minutes).
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();

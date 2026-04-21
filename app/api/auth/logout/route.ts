@@ -14,13 +14,10 @@ import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for user logout
+ * POST /api/auth/logout
  *
- * Flow:
- * 1. Create success response
- * 2. Clear access token cookie
- * 3. Clear refresh token cookie
- * 4. Return success response
+ * Ends the user's session by expiring all auth cookies. Takes no request body;
+ * clears the `token` (access token) and `refreshToken` cookies.
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();

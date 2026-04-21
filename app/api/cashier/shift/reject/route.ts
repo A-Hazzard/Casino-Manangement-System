@@ -1,10 +1,17 @@
 /**
- * Cashier Shift Reject API
- *
  * POST /api/cashier/shift/reject
  *
- * Allows a Vault Manager to reject a "pending_review" cashier shift.
- * This puts the shift back into "active" status so the cashier can continue or re-submit.
+ * Allows a Vault Manager to reject a cashier shift that is awaiting review
+ * ('pending_review'). Called when the VM determines the cashier's physical count
+ * is unacceptable and the cashier should recount and resubmit. Reverts the shift
+ * to 'active' status so the cashier can submit a new closing count. The VM's
+ * rejection reason is stored on the shift but is not revealed to the cashier as
+ * a discrepancy amount.
+ *
+ * Body fields:
+ * @param shiftId {string} Required. The ID of the 'pending_review' cashier shift to reject.
+ * @param reason  {string} Optional. The VM's explanation for the rejection; stored on the
+ *   shift for audit purposes.
  *
  * @module app/api/cashier/shift/reject/route
  */

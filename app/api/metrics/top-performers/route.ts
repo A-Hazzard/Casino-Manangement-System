@@ -189,6 +189,12 @@ async function getTopPerformer(
 /**
  * Main GET handler for fetching top performer
  *
+ * @param {string} locationId - ID of the location to analyze (REQUIRED)
+ * @param {string} timePeriod - Time range preset for top performer check
+ * @param {string} licencee - Filter by licencee name
+ * @param {string} startDate - ISO date for custom range start
+ * @param {string} endDate - ISO date for custom range end
+ *
  * Flow:
  * 1. Parse and validate request parameters
  * 2. Connect to database

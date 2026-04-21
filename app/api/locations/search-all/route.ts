@@ -30,31 +30,20 @@ import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { TimePeriod } from '@/shared/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
+import type { AggregatedLocation } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
-type LocationAggregationResult = {
-  _id: string;
-  name: string;
-  address?: string;
-  country?: string;
-  rel?: Record<string, unknown>;
-  profitShare?: number;
-  geoCoords?: Record<string, unknown>;
-  totalMachines: number;
-  onlineMachines: number;
-  moneyIn: number;
-  moneyOut: number;
-  jackpot: number;
-  includeJackpot: boolean;
-  gross: number;
-  isLocalServer: boolean;
-  hasSmib: boolean;
-  noSMIBLocation: boolean;
-  membershipEnabled?: boolean;
-  memberCount?: number;
-};
 
 /**
  * Main GET handler for searching all locations
+ *
+ * @param {string} licencee - Filter locations by licencee name
+ * @param {string} search - Search query for name or ID
+ * @param {string} currency - Target currency code for financial values
+ * @param {string} timePeriod - Time range for metrics ('30d' default)
+ * @param {string} startDate - ISO date for custom range start
+ * @param {string} endDate - ISO date for custom range end
+ * @param {string} machineTypeFilter - Filter locations by machine capabilities
+ * @param {string} onlineStatus - Filter by connectivity status
  *
  * Flow:
  * 1. Parse query parameters (licencee, search, currency)
@@ -494,7 +483,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`[locations/search-all] User ${userPayload?._id} (${userPayload?.username}) multiplier: ${reviewerMult}, scale: ${reviewerScale}`);
 
-    const locations: LocationAggregationResult[] = matchingLocations.map(location => {
+    const locations: AggregatedLocation[] = matchingLocations.map(location => {
       const locationId = String(location._id);
       const financialData = metersByLocation.get(locationId) || {
         totalMoneyIn: 0,
@@ -518,6 +507,8 @@ export async function GET(request: NextRequest) {
 
       return {
         _id: locationId,
+        location: locationId,
+        locationName: location.name,
         name: location.name,
         address: location.address,
         country: location.country,
@@ -557,7 +548,7 @@ export async function GET(request: NextRequest) {
         }
 
         if (onlineStatus === 'neveronline') {
-          return (loc as LocationAggregationResult & { isNeverOnline?: boolean }).isNeverOnline;
+          return loc.isNeverOnline;
         }
 
         return true;
@@ -567,10 +558,8 @@ export async function GET(request: NextRequest) {
     // Handle Offline sorting if specified
     if (onlineStatus === 'offlinelongest' || onlineStatus === 'offlineshortest') {
       finalFilteredLocations.sort((a, b) => {
-        const typeA = a as LocationAggregationResult & { latestActivity?: number };
-        const typeB = b as LocationAggregationResult & { latestActivity?: number };
-        const activityA = typeA.latestActivity || 0;
-        const activityB = typeB.latestActivity || 0;
+        const activityA = a.latestActivity || 0;
+        const activityB = b.latestActivity || 0;
 
         return onlineStatus === 'offlinelongest'
           ? activityA - activityB

@@ -12,7 +12,16 @@ import { ActivityLog } from '@/app/api/lib/models/activityLog';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * DELETE handler for an activity log entry
+ * DELETE /api/activity-logs/[id]
+ *
+ * Deletes a single activity log entry by ID. Restricted to developers only.
+ * Soft delete sets `deletedAt`; hard delete permanently removes the document.
+ *
+ * Path params:
+ * @param id         {string}  Required. The ID of the activity log entry to delete.
+ *
+ * Query params:
+ * @param deleteType {string}  Optional. 'soft' (default) or 'hard'. Hard delete is permanent and requires developer role.
  */
 export async function DELETE(
   request: NextRequest

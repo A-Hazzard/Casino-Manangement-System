@@ -103,25 +103,6 @@ export async function getAllCollectionReportsWithMachineCounts(
         preserveNullAndEmptyArrays: true,
       },
     },
-    // Lookup licencee to get live includeJackpot flag (not stored on old CollectionReport docs)
-    {
-      $lookup: {
-        from: 'licencees',
-        let: { licenceeId: '$locationDetails.rel.licencee' },
-        pipeline: [
-          { $match: { $expr: { $eq: ['$_id', '$$licenceeId'] } } },
-          { $project: { includeJackpot: 1 } },
-        ],
-        as: 'licenceeDetails',
-      },
-    },
-    {
-      $addFields: {
-        licenceeIncludeJackpot: {
-          $ifNull: [{ $arrayElemAt: ['$licenceeDetails.includeJackpot', 0] }, false],
-        },
-      },
-    },
     // Apply licencee filter only if provided
     ...(licenceeId
       ? [
@@ -215,16 +196,6 @@ export async function getAllCollectionReportsWithMachineCounts(
           },
         },
         calculatedSasGross: { $sum: { $toDouble: { $ifNull: ['$sasMeters.gross', 0] } } },
-        calculatedJackpot: { $sum: { $toDouble: { $ifNull: ['$sasMeters.jackpot', 0] } } },
-        // Collect per-machine SAS time windows + stored jackpot so we can query Meters per-report
-        meterQueryMeta: {
-          $push: {
-            machineId: '$machineId',
-            startTime: '$sasMeters.sasStartTime',
-            endTime: '$sasMeters.sasEndTime',
-            storedJackpot: '$sasMeters.jackpot',
-          },
-        },
       },
     },
   ]);
@@ -254,63 +225,6 @@ export async function getAllCollectionReportsWithMachineCounts(
   );
   const machineCountMap = new Map(
     machineCounts.map(item => [item._id, item.totalMachines])
-  );
-
-  // Query Meters per-report to get accurate SAS gross.
-  // We CANNOT batch across all reports and group by machine — a machine that appears
-  // in multiple reports would have all its time windows summed together, inflating SAS gross.
-  // Instead, run one Meters aggregation per report, each scoped to its own machines+windows.
-  // This mirrors exactly what the detail page does for a single report.
-  const { Meters } = await import('@/app/api/lib/models/meters');
-  const reportSasMap = new Map<string, { sasGross: number; jackpot: number }>();
-
-  await Promise.all(
-    collectionAggregation.map(async (report) => {
-      const meta: Array<{ machineId?: string; startTime?: string; endTime?: string; storedJackpot?: number }> =
-        report.meterQueryMeta || [];
-      const validMeta = meta.filter(m => m.machineId && m.startTime && m.endTime);
-
-      if (validMeta.length === 0) return;
-
-      const pairs = validMeta.map(m => ({
-        machine: m.machineId,
-        readAt: { $gte: new Date(m.startTime!), $lte: new Date(m.endTime!) },
-      }));
-
-      // Group by machine (mirrors detail page) so we can apply per-machine jackpot fallback.
-      // movement.jackpot is 0 in Meters for some machines — fall back to sasMeters.jackpot snapshot.
-      const metersByMachine: Array<{ _id: string; totalDrop: number; totalCancelled: number; totalJackpot: number }> =
-        await Meters.aggregate([
-          { $match: { $or: pairs } },
-          {
-            $group: {
-              _id: '$machine',
-              totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-              totalCancelled: { $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] } },
-              totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
-            },
-          },
-        ]);
-
-      const meterMap = new Map(metersByMachine.map(m => [m._id, m]));
-
-      let totalSasGross = 0;
-      let totalJackpot = 0;
-
-      for (const m of validMeta) {
-        const meterData = meterMap.get(m.machineId!);
-        if (meterData) {
-          totalSasGross += meterData.totalDrop - meterData.totalCancelled;
-          // Prefer movement.jackpot if non-zero; otherwise fall back to stored sasMeters.jackpot
-          totalJackpot += meterData.totalJackpot !== 0 ? meterData.totalJackpot : (m.storedJackpot || 0);
-        } else {
-          // No Meters data for this machine — use stored jackpot snapshot
-          totalJackpot += m.storedJackpot || 0;
-        }
-      }
-
-      reportSasMap.set(report._id, { sasGross: totalSasGross, jackpot: totalJackpot });
-    })
   );
 
   // Define type for the enriched report from aggregation
@@ -350,8 +264,6 @@ export async function getAllCollectionReportsWithMachineCounts(
       collectedMachines: 0,
       calculatedGross: 0,
       calculatedSasGross: 0,
-      calculatedJackpot: 0,
-      meterQueryMeta: [] as Array<{ machineId?: string; startTime?: string; endTime?: string }>,
     };
 
     // Get location ID for machine count lookup
@@ -389,21 +301,13 @@ export async function getAllCollectionReportsWithMachineCounts(
     // Priority: calculatedGross (Machine Delta) -> stored totalGross -> totalSasGross from report -> calculatedSasGross
     const displayGross = collectionData.calculatedGross || storedGross || collectionData.calculatedSasGross;
 
-    // SAS gross: prefer live Meters query (per-report, scoped to this report's time windows).
-    // Fall back to stored sasMeters.gross if Meters returned nothing for this report.
-    // Use live licenceeIncludeJackpot fetched via $lookup — older CollectionReport docs
-    // have includeJackpot=false by default and cannot be trusted.
-    const reportIncludeJackpot = Boolean(doc.licenceeIncludeJackpot);
-    const liveSas = reportSasMap.get(locationReportId);
-    const sasGrossFromReport = liveSas ? liveSas.sasGross : (collectionData.calculatedSasGross || 0);
-    // Jackpot is computed per-machine in the Meters query above:
-    //   - uses movement.jackpot if non-zero, else falls back to stored sasMeters.jackpot
-    // This mirrors the detail page's per-machine fallback logic exactly.
-    const jackpotFromReport = liveSas ? liveSas.jackpot : (collectionData.calculatedJackpot || 0);
-
-    // Calculate adjusted SAS gross for variation calculation (Drop - NetCancelled - Jackpot if required)
-    const adjustedSasGross = reportIncludeJackpot ? sasGrossFromReport - jackpotFromReport : sasGrossFromReport;
-    const calculatedVariation = displayGross - adjustedSasGross;
+    // Read pre-computed totalVariation stored on the CollectionReport document.
+    // Backfill migration ensures all historical docs have this field.
+    const storedVariation = (doc as Record<string, unknown>).totalVariation;
+    if (storedVariation === undefined) {
+      console.warn(`[service] totalVariation missing for report ${locationReportId}`);
+    }
+    const calculatedVariation = typeof storedVariation === 'number' ? storedVariation : 0;
 
     // Apply reviewer scale to all financial output values before formatting.
     // For non-reviewers scale === 1, so multiplication is a no-op.

@@ -21,6 +21,14 @@ type CollectionReportDetailsSasCompareTabProps = {
  *
  * Displays SAS system totals for comparison against manual meter data.
  * Helps identifying discrepancies between electronic system and physical collection.
+ *
+ * Features:
+ * - Side-by-side comparison of SAS Drop, Cancelled, and Gross totals
+ * - Responsive layout: Table for desktop, formatted cards for mobile
+ * - Dynamic color coding for financial values
+ * - Aggregate computation of totals from reporting data
+ *
+ * @param reportData - Full report details object containing SAS metrics
  */
 const CollectionReportDetailsSasCompareTab: FC<CollectionReportDetailsSasCompareTabProps> = ({
   reportData,
@@ -63,7 +71,7 @@ const CollectionReportDetailsSasCompareTab: FC<CollectionReportDetailsSasCompare
               <div key={i} className="flex justify-between items-center">
                 <span className="text-gray-600 font-medium">{m.label}</span>
                 <span className={`font-bold ${getFinancialColorClass(m.value)}`}>
-                  {m.value.toLocaleString(undefined, {
+                  ${m.value.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
@@ -88,7 +96,7 @@ const CollectionReportDetailsSasCompareTab: FC<CollectionReportDetailsSasCompare
               <TableRow key={i} className="hover:bg-gray-50/50">
                 <TableCell className="font-medium text-gray-700">{m.label}</TableCell>
                 <TableCell className={`text-right font-bold ${getFinancialColorClass(m.value)}`}>
-                  {m.value.toLocaleString(undefined, {
+                  ${m.value.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}

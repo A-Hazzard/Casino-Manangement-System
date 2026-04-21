@@ -14,7 +14,7 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
-import type { MachineAnalytics } from '@/lib/types/reports';
+import type { MachineAnalytics } from '@/shared/types/reports';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { subDays } from 'date-fns';
 import type { PipelineStage } from 'mongoose';
@@ -149,11 +149,18 @@ export type MachineStatsResult = {
     totalGross: number;
     totalMachines: number;
     onlineMachines: number;
+    offlineMachines: number;
+    totalCount: number;
+    onlineCount: number;
+    offlineCount: number;
     sasMachines: number;
   };
   totalMachines: number;
   onlineMachines: number;
   offlineMachines: number;
+  totalCount: number;
+  onlineCount: number;
+  offlineCount: number;
 };
 
 /**
@@ -310,11 +317,18 @@ export async function getMachineStatsForAnalytics(
       totalGross: financials.totalGross,
       totalMachines: counts.totalMachines,
       onlineMachines: counts.onlineMachines,
+      offlineMachines: counts.totalMachines - counts.onlineMachines,
+      totalCount: counts.totalMachines,
+      onlineCount: counts.onlineMachines,
+      offlineCount: counts.totalMachines - counts.onlineMachines,
       sasMachines: counts.sasMachines,
     },
     totalMachines: counts.totalMachines,
     onlineMachines: counts.onlineMachines,
     offlineMachines: counts.totalMachines - counts.onlineMachines,
+    totalCount: counts.totalMachines,
+    onlineCount: counts.onlineMachines,
+    offlineCount: counts.totalMachines - counts.onlineMachines,
   };
 }
 

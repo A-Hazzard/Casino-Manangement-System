@@ -1,158 +1,224 @@
 /**
- * Collection Reports API Route
+ * Collection Reports API Route (Centralized)
  *
- * This route handles fetching collection reports with role-based access control.
+ * This route handles fetching and creating collection reports.
  * It supports:
- * - Filtering by locationReportId and isEditing status
- * - Role-based location filtering (admin, manager, collector/technician)
- * - Sorting and pagination
+ * - GET: Retrieves collection reports with filtering by time period, licencee, and location
+ *        Also supports fetching locations with machines and monthly report summaries
+ * - POST: Creates a new collection report and updates related collections and machines
  *
  * @module app/api/collection-reports/route
  */
 
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-  buildCollectionReportsLocationFilter,
-  buildCollectionReportsQuery,
-  extractUserPermissions,
-  type CollectionReportsQueryParams,
-} from '@/app/api/lib/helpers/collectionReport/reports';
-import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
+  calculateDateRangeForTimePeriod,
+  determineAllowedLocationIds,
+  fetchLocationsWithMachines,
+  getLocationNamesFromIds,
+  getMonthlyCollectionReportByLocation,
+  getMonthlyCollectionReportSummary,
+} from '@/app/api/lib/helpers/collectionReport/queries';
+import {
+  createCollectionReport,
+  sanitizeCollectionReportPayload,
+  validateCollectionReportPayload,
+} from '@/app/api/lib/helpers/collectionReport/reportCreation';
+import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReport/service';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { CollectionReport } from '@/app/api/lib/models/collectionReport';
-import { getReviewerScale, scaleReportFinancials } from '@/app/api/lib/utils/reviewerScale';
+import type { TimePeriod } from '@/app/api/lib/types';
+import { getReviewerScale } from '@/app/api/lib/utils/reviewerScale';
+import type { CreateCollectionReportPayload } from '@/lib/types/api';
+import { getClientIP } from '@/lib/utils/ipAddress';
+import { resolveLicenceeId } from '@/lib/utils/licencee';
 import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromServer } from '../lib/helpers/users';
 
 /**
- * Main GET handler for fetching collection reports
+ * GET /api/collection-reports
  *
- * Flow:
- * 1. Parse and validate request parameters
- * 2. Connect to database
- * 3. Authenticate user and extract permissions
- * 4. Build location filter based on user role
- * 5. Build MongoDB query
- * 6. Execute query with sorting and pagination
- * 7. Return collection reports
+ * Retrieves collection reports with filtering by time period, licencee, and location;
+ * also handles sub-queries for locations-with-machines and monthly report summaries.
  */
-export async function GET(request: NextRequest) {
+export async function GET(req: NextRequest) {
   const startTime = Date.now();
 
   try {
     // ============================================================================
-    // STEP 1: Parse and validate request parameters
-    // ============================================================================
-    const { searchParams } = new URL(request.url);
-    const params: CollectionReportsQueryParams = {
-      locationReportId: searchParams.get('locationReportId'),
-      isEditing: searchParams.get('isEditing'),
-      limit: searchParams.get('limit'),
-      sortBy: searchParams.get('sortBy') || 'updatedAt',
-      sortOrder: searchParams.get('sortOrder') || 'desc',
-      search: searchParams.get('search'),
-    };
-
-    // ============================================================================
-    // STEP 2: Connect to database
+    // STEP 1: Connect to the database
     // ============================================================================
     await connectDB();
 
     // ============================================================================
-    // STEP 3: Authenticate user and extract permissions
+    // STEP 2: Parse request parameters
+    // ============================================================================
+    const { searchParams } = new URL(req.url);
+
+    // ============================================================================
+    // STEP 3: Handle locationsWithMachines query
+    // ============================================================================
+    if (searchParams.get('locationsWithMachines')) {
+      try {
+        const rawLicenceeParam = searchParams.get('licencee') || undefined;
+
+        const result = await fetchLocationsWithMachines(rawLicenceeParam);
+        return NextResponse.json(result);
+      } catch (error: unknown) {
+        const duration = Date.now() - startTime;
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+        if (errorMessage === 'Unauthorized') {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        console.error(
+          `[Collection Reports GET API] Error fetching locations with machines after ${duration}ms:`,
+          errorMessage
+        );
+        return NextResponse.json(
+          {
+            error: 'Failed to fetch locations with machines',
+            details: errorMessage,
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // ============================================================================
+    // STEP 4: Handle monthly report summary query
+    // ============================================================================
+    const timePeriod =
+      (searchParams.get('timePeriod') as TimePeriod) || undefined;
+    const startDateStr = searchParams.get('startDate');
+    const endDateStr = searchParams.get('endDate');
+    const locationName = searchParams.get('locationName') || undefined;
+    const locationId = searchParams.get('locationId') || undefined;
+    const locationIds =
+      searchParams.get('locationIds')?.split(',') || undefined;
+    const rawLicenceeParam = searchParams.get('licencee') || undefined;
+    const licencee =
+      rawLicenceeParam && rawLicenceeParam !== 'all'
+        ? resolveLicenceeId(rawLicenceeParam) || rawLicenceeParam
+        : rawLicenceeParam;
+
+    if (startDateStr && endDateStr && !timePeriod) {
+      const summary = await getMonthlyCollectionReportSummary(
+        new Date(startDateStr),
+        new Date(endDateStr),
+        locationName || locationIds || (locationId ? [locationId] : undefined),
+        licencee
+      );
+      const details = await getMonthlyCollectionReportByLocation(
+        new Date(startDateStr),
+        new Date(endDateStr),
+        locationName || locationIds || (locationId ? [locationId] : undefined),
+        licencee
+      );
+      return NextResponse.json({ summary, details });
+    }
+
+    // ============================================================================
+    // STEP 5: Calculate date range for time period
+    // ============================================================================
+    const { startDate, endDate } = calculateDateRangeForTimePeriod(
+      timePeriod,
+      startDateStr,
+      endDateStr
+    );
+
+    // ============================================================================
+    // STEP 6: Determine user access and allowed locations
     // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      const duration = Date.now() - startTime;
+      console.error(
+        `[Collection Reports GET API] Unauthorized access after ${duration}ms.`
+      );
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Compute reviewer scale once — non-reviewers get 1 (no-op).
+    // Reviewer scale — non-reviewers always get 1 (no transformation).
     const reviewerScale = getReviewerScale(userPayload as { multiplier?: number | null; roles?: string[] });
 
-    const userPermissions = extractUserPermissions(userPayload as {
-      roles?: unknown;
-      assignedLocations?: string[];
-      assignedLicencees?: string[];
-    });
+    const userRoles = (userPayload?.roles as string[]) || [];
+    // Use only new field
+    let userLicencees: string[] = [];
+    if (
+      Array.isArray(
+        (userPayload as { assignedLicencees?: string[] })?.assignedLicencees
+      )
+    ) {
+      userLicencees = (userPayload as { assignedLicencees: string[] })
+        .assignedLicencees;
+    }
+    // Use only new field
+    let userLocationPermissions: string[] = [];
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
+    }
 
-    // ============================================================================
-    // STEP 4: Build location filter based on user role
-    // ============================================================================
-    const locationFilter = await buildCollectionReportsLocationFilter(
-      userPermissions
+    const allowedLocationIds = await determineAllowedLocationIds(
+      userRoles,
+      userLicencees,
+      userLocationPermissions
     );
 
-    // If location filter is empty array, user has no access
-    if (Array.isArray(locationFilter) && locationFilter.length === 0) {
-      const duration = Date.now() - startTime;
-      if (duration > 1000) {
-        console.warn(`[Collection Reports GET API] No access after ${duration}ms`);
-      }
+    if (allowedLocationIds !== 'all' && allowedLocationIds.length === 0) {
       return NextResponse.json([]);
     }
 
     // ============================================================================
-    // STEP 5: Build MongoDB query
+    // STEP 7: Parse pagination parameters
     // ============================================================================
-    const query = buildCollectionReportsQuery(params, locationFilter);
+    const page = parseInt(searchParams.get('page') || '1');
+    const requestedLimit = parseInt(searchParams.get('limit') || '50');
+    const limit = Math.min(requestedLimit, 100); // Cap at 100 for performance
 
     // ============================================================================
-    // STEP 6: Execute query with sorting and pagination
+    // STEP 8: Fetch and filter collection reports
     // ============================================================================
-    let queryBuilder = CollectionReport.find(query);
+    const { reports, total } = await getAllCollectionReportsWithMachineCounts(
+      licencee,
+      startDate,
+      endDate,
+      page,
+      limit,
+      reviewerScale
+    );
 
-    const sortOptions: Record<string, 1 | -1> = {};
-    sortOptions[params.sortBy || 'updatedAt'] =
-      params.sortOrder === 'asc' ? 1 : -1;
-    queryBuilder = queryBuilder.sort(sortOptions);
-
-    if (params.limit) {
-      queryBuilder = queryBuilder.limit(parseInt(params.limit, 10));
-    }
-
-    const collectionReports = await queryBuilder.exec();
-
-    // Relevance sort in memory if searching
-    if (params.search && params.search.trim()) {
-      const searchTermLower = params.search.trim().toLowerCase();
-
-      collectionReports.sort((a, b) => {
-        const aId = String(a.locationReportId || '').toLowerCase();
-        const bId = String(b.locationReportId || '').toLowerCase();
-        const aCollector = String(a.collector || '').toLowerCase();
-        const bCollector = String(b.collector || '').toLowerCase();
-        const aName = String(a.collectorName || '').toLowerCase();
-        const bName = String(b.collectorName || '').toLowerCase();
-
-        const aStarts = aId.startsWith(searchTermLower) || aCollector.startsWith(searchTermLower) || aName.startsWith(searchTermLower);
-        const bStarts = bId.startsWith(searchTermLower) || bCollector.startsWith(searchTermLower) || bName.startsWith(searchTermLower);
-
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
-
-        return 0;
+    // Filter reports by allowed locations if needed
+    // Note: Collection reports store location NAME in the location field, not ID
+    let paginatedReports = reports;
+    if (allowedLocationIds !== 'all') {
+      const allowedLocationNames =
+        await getLocationNamesFromIds(allowedLocationIds);
+      paginatedReports = reports.filter(report => {
+        const reportLocationName = String(report.location);
+        return allowedLocationNames.includes(reportLocationName);
       });
     }
 
-    // ============================================================================
-    // STEP 7: Apply reviewer scale and return collection reports
-    // ============================================================================
-    const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Collection Reports GET API] Completed in ${duration}ms`);
-    }
+    const totalPages = Math.ceil(total / limit);
 
-    // For non-reviewers (scale === 1) no transformation occurs.
-    const scaledReports =
-      reviewerScale === 1
-        ? collectionReports
-        : collectionReports.map(r =>
-            scaleReportFinancials(
-              r.toObject() as Parameters<typeof scaleReportFinancials>[0],
-              reviewerScale
-            )
-          );
-
-    return NextResponse.json(scaledReports);
-  } catch (error) {
+    // ============================================================================
+    // STEP 9: Return paginated results
+    // ============================================================================
+    return NextResponse.json({
+      data: paginatedReports,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    });
+  } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
@@ -160,7 +226,176 @@ export async function GET(request: NextRequest) {
       `[Collection Reports GET API] Error after ${duration}ms:`,
       errorMessage
     );
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch collection reports', details: errorMessage },
+      { status: 500 }
+    );
   }
 }
 
+/**
+ * POST /api/collection-reports
+ *
+ * Creates a new collection report, syncs machine meter histories, and logs the activity.
+ */
+export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+
+  try {
+    // ============================================================================
+    // STEP 1: Connect to the database
+    // ============================================================================
+    await connectDB();
+
+    // ============================================================================
+    // STEP 2: Parse and validate request body
+    // ============================================================================
+    const body = (await req.json()) as CreateCollectionReportPayload;
+    const validation = validateCollectionReportPayload(body);
+    if (!validation.isValid) {
+      const duration = Date.now() - startTime;
+      console.error(
+        `[Collection Reports POST API] Validation failed after ${duration}ms: ${validation.error}`
+      );
+      return NextResponse.json(
+        { success: false, error: validation.error },
+        { status: 400 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 3: Sanitize string fields
+    // ============================================================================
+    const sanitizedBody = sanitizeCollectionReportPayload(body);
+
+    // ============================================================================
+    // STEP 4: Create collection report using helper
+    // ============================================================================
+    const result = await createCollectionReport(sanitizedBody);
+
+    if (!result.success) {
+      const duration = Date.now() - startTime;
+      console.error(
+        `[Collection Reports POST API] Failed to create report after ${duration}ms: ${result.error}`
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.error || 'Failed to create collection report',
+        },
+        { status: 500 }
+      );
+    }
+
+    // ============================================================================
+    // STEP 5: Log activity
+    // ============================================================================
+    const currentUser = await getUserFromServer();
+    if (currentUser && currentUser.emailAddress) {
+      try {
+        const createChanges = [
+          {
+            field: 'locationName',
+            oldValue: null,
+            newValue: body.locationName,
+          },
+          {
+            field: 'collector',
+            oldValue: null,
+            newValue: body.collector,
+          },
+          {
+            field: 'amountCollected',
+            oldValue: null,
+            newValue: body.amountCollected,
+          },
+          {
+            field: 'amountToCollect',
+            oldValue: null,
+            newValue: body.amountToCollect,
+          },
+          { field: 'variance', oldValue: null, newValue: body.variance },
+          {
+            field: 'partnerProfit',
+            oldValue: null,
+            newValue: body.partnerProfit,
+          },
+          { field: 'taxes', oldValue: null, newValue: body.taxes },
+          {
+            field: 'machines',
+            oldValue: null,
+            newValue: body.machines?.length || 0,
+          },
+        ];
+
+        // Add granular machine data to changes for better traceability
+        if (body.machines && Array.isArray(body.machines)) {
+          body.machines.forEach((m: Record<string, unknown>, index: number) => {
+            const machineName = m.machineCustomName || m.machineName || m.serialNumber || `Machine ${index + 1}`;
+            createChanges.push({
+              field: `machine_${index}_details`,
+              oldValue: null,
+              newValue: `${machineName}: In: ${m.metersIn}, Out: ${m.metersOut}${m.prevIn !== undefined ? ` (Prev: ${m.prevIn} In, ${m.prevOut} Out)` : ''}${m.ramClear ? ', RAM Cleared' : ''}${m.notes ? `, Notes: ${m.notes}` : ''}`,
+            });
+          });
+        }
+
+        const userId = (currentUser._id ||
+          currentUser.id ||
+          currentUser.sub) as string | undefined;
+        const username =
+          (currentUser.emailAddress as string | undefined) ||
+          (currentUser.username as string | undefined);
+
+        await logActivity({
+          action: 'CREATE',
+          details: `Created collection report for ${body.locationName} by ${
+            body.collector || 'Unknown'
+          } (${body.machines?.length || 0} machines, $${
+            body.amountCollected
+          } collected)`,
+          ipAddress: getClientIP(req) || undefined,
+          userAgent: req.headers.get('user-agent') || undefined,
+          userId,
+          username,
+          metadata: {
+            userId: (currentUser._id ||
+              currentUser.id ||
+              currentUser.sub) as string,
+            userEmail: currentUser.emailAddress as string,
+            userRole: (currentUser.roles as string[])?.[0] || 'user',
+            resource: 'collection-report',
+            resourceId: result.report
+              ? String((result.report as { _id: unknown })._id)
+              : sanitizedBody.locationReportId,
+            resourceName: `${body.locationName} - ${body.collector || 'Unknown'}`,
+            changes: createChanges,
+          },
+        });
+      } catch (logError) {
+        console.error('Failed to log activity:', logError);
+      }
+    }
+
+    // ============================================================================
+    // STEP 6: Return success response
+    // ============================================================================
+    return NextResponse.json({ success: true, report: result.report });
+  } catch (error: unknown) {
+    const duration = Date.now() - startTime;
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      `[Collection Reports POST API] Error after ${duration}ms:`,
+      errorMessage
+    );
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to create collection report',
+        details: errorMessage,
+      },
+      { status: 500 }
+    );
+  }
+}

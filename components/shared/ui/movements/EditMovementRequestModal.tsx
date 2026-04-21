@@ -24,7 +24,7 @@ import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { updateMovementRequest } from '@/lib/helpers/movementRequests';
 import { useMovementRequestActionsStore } from '@/lib/store/movementRequestActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
-import { MovementRequest } from '@/lib/types/movement';
+import { MovementRequest } from '@/shared/types/movement';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
 import axios from 'axios';
 import { Loader2, Search } from 'lucide-react';
@@ -650,3 +650,4 @@ export default function EditMovementRequestModal({ onSaved }: { onSaved: () => v
     </Dialog>
   );
 }
+

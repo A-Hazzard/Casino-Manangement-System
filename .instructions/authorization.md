@@ -149,10 +149,18 @@ For multi-tenant data, APIs filter by user's `assignedLocations`:
 const hasAllLocationAccess =
   userRoles.includes('admin') ||
   userRoles.includes('developer') ||
-  userRoles.includes('owner') ||
-  userRoles.includes('reviewer'); // reviewers see all locations
+  userRoles.includes('owner');
 
 if (hasAllLocationAccess) return 'all';
+
+// Location admins and reviewers: use assigned locations, falling back to licencee locations
+if (isLocationAdmin || isReviewer) {
+  if (userLocationPermissions.length > 0) return userLocationPermissions;
+  // ... query locations by userLicencees
+}
+
+// Collector/Technician: strictly assigned locations only
+return userLocationPermissions.length === 0 ? [] : userLocationPermissions;
 ```
 
 **File:** `app/api/lib/helpers/licenceeFilter.ts`
@@ -161,10 +169,17 @@ if (hasAllLocationAccess) return 'all';
 const hasAllLocationAccess =
   userRoles.includes('admin') ||
   userRoles.includes('developer') ||
-  userRoles.includes('owner') ||
-  userRoles.includes('reviewer'); // reviewers bypass location filter
+  userRoles.includes('owner');
+// NOTE: reviewer is intentionally excluded — reviewers are filtered by assignedLocations / assignedLicencees
 
 if (hasAllLocationAccess) return true;
+
+// Location admins, vault managers, cashiers, and reviewers see their assigned locations,
+// falling back to all licencee locations if no specific locations are assigned
+if (isLocationAdmin || isVaultManager || isCashier || isReviewer) {
+  if (userLocationPermissions.length > 0) return userLocationPermissions;
+  return licenceeLocations;
+}
 ```
 
 ---
@@ -416,5 +431,6 @@ export function getReviewerScale(user: UserForScale): number {
 
 | Location Access | developer | owner | admin | manager | location admin | collector | reviewer |
 | --------------- | --------- | ----- | ----- | ------- | -------------- | --------- | -------- |
-| All locations   | ✅        | ✅    | ✅    | ❌      | ❌             | ❌        | ✅       |
-| Assigned only   | ❌        | ❌    | ❌    | ✅      | ✅             | ✅        | ❌       |
+| All locations   | ✅        | ✅    | ✅    | ❌      | ❌             | ❌        | ❌       |
+| Licencee's locations | ❌   | ❌    | ❌    | ✅      | ✅ (fallback)  | ❌        | ✅ (fallback) |
+| Assigned only   | ❌        | ❌    | ❌    | ❌      | ✅ (if set)    | ✅        | ✅ (if set) |

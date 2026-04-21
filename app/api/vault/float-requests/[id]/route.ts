@@ -12,6 +12,11 @@ import {
 import { canEditFloatRequest } from '@/app/api/lib/helpers/vault/authorization';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for fetching float request details
+ *
+ * @param {string} id - REQUIRED (path). The ID of the float request to fetch.
+ */
 export async function GET(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const requestId = pathname.split('/').pop();
@@ -43,6 +48,12 @@ export async function GET(req: NextRequest) {
   });
 }
 
+/**
+ * Main PUT handler for editing a float request
+ *
+ * @param {string} id - REQUIRED (path). The ID of the float request to update.
+ * @body {number} requestedDenom - REQUIRED. The new denomination amount for the request.
+ */
 export async function PUT(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const requestId = pathname.split('/').pop();

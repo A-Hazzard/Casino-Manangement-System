@@ -1,10 +1,13 @@
 /**
- * Current Cashier Shift API
- *
  * GET /api/cashier/shift/current
  *
- * Retrieve the current active or pending shift for the logged-in cashier.
- * Used to populate the cashier dashboard.
+ * Returns the calling cashier's current open or pending shift. Called on every
+ * cashier dashboard load to determine session state (no shift, pending approval,
+ * active, or pending review). Also returns whether the location has an active
+ * reconciled vault shift (needed to enable the shift-open button) and any
+ * pending float requests associated with the current shift.
+ *
+ * No query parameters — shift is resolved entirely from the authenticated user's session.
  *
  * @module app/api/cashier/shift/current/route
  */

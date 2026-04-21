@@ -27,7 +27,7 @@ Use when **creating or modifying API routes** in `app/api/`.
 ### 2. Step-by-Step Implementation
 
 ```typescript
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     // ============================================================================
     // STEP 1: Parse and validate request parameters

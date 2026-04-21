@@ -18,13 +18,16 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for downloading firmware by version
+ * GET /api/firmwares/download/[version]
  *
- * Flow:
- * 1. Parse and validate request parameters
- * 2. Find firmware document by version
- * 3. Download firmware file from GridFS
- * 4. Return file with appropriate headers for SMIB OTA
+ * Streams a firmware binary from GridFS using a version string as the lookup
+ * key instead of a document ID. Used by SMIB devices during OTA updates to
+ * fetch a specific firmware version by its human-readable version number;
+ * response headers disable caching to ensure devices always receive the
+ * latest binary.
+ *
+ * URL params:
+ * @param version {string} Required (path). The firmware version string to look up (e.g. "1.2.3").
  */
 export async function GET(
   request: NextRequest

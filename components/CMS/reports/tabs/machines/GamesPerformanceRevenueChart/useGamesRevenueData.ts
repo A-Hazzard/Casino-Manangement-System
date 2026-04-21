@@ -4,37 +4,11 @@
  * Handles data aggregation, filtering, and transformation for the revenue chart
  */
 
-import { type MachineEvaluationData } from '@/lib/types';
+import {
+  type GamesPerformanceData,
+  type MachineEvaluationData,
+} from '@/shared/types/reports';
 import { useMemo } from 'react';
-
-type GamesPerformanceData = {
-  gameName: string;
-  floorPositions: number;
-  totalHandle: number;
-  totalWin: number;
-  totalDrop: number;
-  totalCancelledCredits: number;
-  totalGross: number;
-  totalGamesPlayed: number;
-  rawTotals?: {
-    coinIn: number;
-    netWin: number;
-    drop: number;
-    gross: number;
-    cancelledCredits: number;
-    gamesPlayed: number;
-  };
-  totalMetrics?: {
-    coinIn: number;
-    netWin: number;
-    drop: number;
-    gross: number;
-    cancelledCredits: number;
-    gamesPlayed: number;
-  };
-  machineCount?: number;
-  totalMachinesCount?: number;
-};
 
 type UseGamesRevenueDataProps = {
   initialData: GamesPerformanceData[];

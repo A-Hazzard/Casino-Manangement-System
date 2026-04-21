@@ -20,6 +20,11 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main GET handler for searching locations
  *
+ * @param {string} licencee - Filter search by licencee name
+ * @param {string} search - Search query for location name
+ * @param {string} startDate - ISO date for metrics range start (default: 30d ago)
+ * @param {string} endDate - ISO date for metrics range end (default: now)
+ *
  * Flow:
  * 1. Parse query parameters (licencee, timePeriod, search, dates)
  * 2. Build location match filter

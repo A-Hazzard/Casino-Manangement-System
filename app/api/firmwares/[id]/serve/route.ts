@@ -19,17 +19,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 
 /**
- * Main GET handler for serving firmware
+ * GET /api/firmwares/[id]/serve
  *
- * Flow:
- * 1. Connect to database and initialize GridFS bucket
- * 2. Parse and validate request parameters
- * 3. Find firmware document
- * 4. Create /public/firmwares directory if needed
- * 5. Download firmware from GridFS
- * 6. Write file to /public/firmwares/
- * 7. Schedule auto-cleanup after 30 minutes
- * 8. Return static URL
+ * Extracts a firmware binary from GridFS onto disk at `/public/firmwares/` and
+ * returns a static URL pointing to that file. Called by the OTA update flow
+ * before broadcasting the download URL to SMIBs via MQTT; the file is
+ * automatically deleted from disk after 30 minutes.
+ *
+ * URL params:
+ * @param id {string} Required (path). The MongoDB ID of the Firmware document to serve.
  */
 export async function GET(
   request: NextRequest

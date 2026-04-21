@@ -1,5 +1,22 @@
 /**
  * Mobile Collection Modal - Machine List Component
+ *
+ * A simplified selection interface for picking machines during new collection report creation on mobile.
+ *
+ * Features:
+ * - Direct search-to-select workflow
+ * - "Added" badges for machines already in the batch
+ * - Loading skeletons for asynchronous data fetching
+ * - Clean, full-height scrollable list area
+ *
+ * @param machines - Array of available machine summaries
+ * @param collectedMachines - Array of machine documents already in the batch
+ * @param searchTerm - Current text-based search filter
+ * @param selectedMachine - The ID of the machine currently being configured
+ * @param isLoadingMachines - Loading status for the list content
+ * @param onSearchChange - Callback for updating the search state
+ * @param onMachineSelect - Interaction callback for picking a machine
+ * @param onBack - Navigation callback to exit the list
  */
 
 'use client';

@@ -1,13 +1,57 @@
 /**
  * Feedback API Route
  *
- * This route handles feedback submission and retrieval.
- * It supports:
- * - Feedback submission with validation
- * - User authentication and identification
- * - Activity logging for feedback creation
- * - Admin-only feedback retrieval with filtering
- * - Pagination and sorting
+ * Handles feedback submission (POST), admin retrieval (GET), targeted field
+ * updates (PATCH), full record updates (PUT), and deletion (DELETE).
+ *
+ * POST /api/feedback — Submit a feedback entry. No authentication required;
+ * authenticated users have their session info merged in automatically.
+ *
+ * Body fields (POST):
+ * @param category    {string} Required. One of: 'bug' | 'suggestion' | 'general-review' |
+ *   'feature-request' | 'performance' | 'ui-ux' | 'other'.
+ * @param description {string} Required. Feedback body text; 10–5000 characters.
+ * @param email       {string} Optional. Submitter email (required if username is absent).
+ * @param username    {string} Optional. Submitter username (required if email is absent).
+ * @param userId      {string} Optional. Authenticated user's ID; used to merge session data.
+ * @param firstName   {string} Optional. Submitter first name.
+ * @param lastName    {string} Optional. Submitter last name.
+ * @param locationId  {string} Optional. The location the feedback is associated with.
+ * @param licenceeId  {string} Optional. The licencee the feedback is associated with.
+ *
+ * GET /api/feedback — Retrieve paginated feedback list. Admin/developer/owner only.
+ *
+ * Query parameters (GET):
+ * @param email    {string} Optional. Filter by submitter email (regex) or exact feedback _id.
+ * @param category {string} Optional. Filter by feedback category.
+ * @param status   {string} Optional. Filter by status ('pending' | 'reviewed' | 'resolved' |
+ *   'archived'). Archived items are normally excluded unless status='archived'.
+ * @param page     {number} Optional. Page number for pagination. Defaults to 1.
+ * @param limit    {number} Optional. Records per page. Defaults to 50.
+ *
+ * PATCH /api/feedback — Partial update (archive, status, notes). Admin/developer/owner only.
+ *
+ * Body fields (PATCH):
+ * @param _id      {string}  Required. Feedback document ID.
+ * @param archived {boolean} Optional. Set to true to archive, false to unarchive.
+ * @param status   {string}  Optional. New status value.
+ * @param notes    {string}  Optional. Internal admin notes.
+ *
+ * PUT /api/feedback — Full update with Zod validation. Admin/developer/owner only.
+ *
+ * Body fields (PUT):
+ * @param _id        {string}  Required. Feedback document ID.
+ * @param status     {string}  Optional. New status ('pending' | 'reviewed' | 'resolved').
+ * @param archived   {boolean} Optional. Archive flag.
+ * @param notes      {string}  Optional. Internal admin notes.
+ * @param reviewedBy {string}  Optional. Reviewer identifier; auto-set when status changes to
+ *   'reviewed' or 'resolved'.
+ * @param reviewedAt {string|Date} Optional. Review timestamp; auto-set on status change.
+ *
+ * DELETE /api/feedback — Permanently delete a feedback record. Admin/developer only.
+ *
+ * Body fields (DELETE):
+ * @param _id {string} Required. Feedback document ID to delete.
  *
  * @module app/api/feedback/route
  */
@@ -47,19 +91,6 @@ const feedbackSchema = z.object({
     .max(5000, 'Feedback description cannot exceed 5000 characters'),
 });
 
-/**
- * Main POST handler for submitting feedback
- *
- * Flow:
- * 1. Connect to database
- * 2. Parse and validate request body
- * 3. Validate email or username requirement
- * 4. Get logged-in user info if available
- * 5. Generate feedback ID
- * 6. Create feedback entry
- * 7. Log activity for feedback creation
- * 8. Return success response
- */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
@@ -254,18 +285,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * Main GET handler for fetching feedback (Admin only)
- *
- * Flow:
- * 1. Connect to database
- * 2. Authenticate user
- * 3. Check admin/developer role
- * 4. Parse query parameters (filters, pagination)
- * 5. Build query filter
- * 6. Fetch feedback with pagination
- * 7. Return paginated feedback list
- */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
@@ -687,7 +706,7 @@ export async function PUT(request: NextRequest) {
 
       const changes = calculateChanges(
         existingFeedback as Record<string, unknown>,
-        updatedFeedback as Record<string, unknown>
+        updateData as Record<string, unknown>
       );
       const changesSummary = changes
         .map(

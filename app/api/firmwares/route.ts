@@ -9,6 +9,8 @@ import { Readable } from 'stream';
 
 /**
  * Main GET handler for fetching firmwares
+ *
+ * @param {boolean} includeDeleted - Whether to include archived firmware records
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async () => {
@@ -34,6 +36,11 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/firmwares
+ *
+ * @body {FormData} product - Product name/identifier (REQUIRED)
+ * @body {FormData} version - Firmware version string (REQUIRED)
+ * @body {FormData} versionDetails - Description of version changes
+ * @body {FormData} file - Binary firmware file (.bin only) (REQUIRED)
  */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: currentUser, db }) => {

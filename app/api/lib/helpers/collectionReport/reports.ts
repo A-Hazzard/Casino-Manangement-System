@@ -96,7 +96,6 @@ export async function getCollectorsPaginated(
  */
 export type CollectionReportsQueryParams = {
   locationReportId?: string | null;
-  isEditing?: string | null;
   limit?: string | null;
   sortBy?: string;
   sortOrder?: string;
@@ -186,10 +185,6 @@ export function buildCollectionReportsQuery(
 
   if (params.locationReportId) {
     query.locationReportId = params.locationReportId;
-  }
-
-  if (params.isEditing === 'true') {
-    query.isEditing = true;
   }
 
   // Handle search parameter - search across multiple fields

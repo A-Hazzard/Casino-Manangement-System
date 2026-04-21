@@ -19,20 +19,24 @@
 import { Card, CardContent } from '@/components/shared/ui/card';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
-import { Eye, EyeOff, Copy, Check } from 'lucide-react';
+import { Eye, EyeOff, Copy, Check, Trash2 } from 'lucide-react';
 import { formatDateString } from '@/lib/utils/formatting';
 import { toast } from 'sonner';
-import type { ActivityLog } from '@/app/api/lib/types/activityLog';
+import type { ActivityLog } from '@/shared/types/activityLog';
 import { useState } from 'react';
 
 type AdministrationActivityLogCardProps = {
   log: ActivityLog;
   onDescriptionClick?: (log: ActivityLog) => void;
+  canDelete?: boolean;
+  onDelete?: (log: ActivityLog) => void;
 };
 
 function AdministrationActivityLogCard({
   log,
   onDescriptionClick,
+  canDelete = false,
+  onDelete,
 }: AdministrationActivityLogCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -135,104 +139,102 @@ function AdministrationActivityLogCard({
     <Card className="w-full">
       <CardContent className="p-4">
         {/* Header Row */}
-        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className={getActionBadgeStyle(log.action || 'unknown')}>
-              {(log.action || 'unknown').toUpperCase()}
-            </Badge>
-            <Badge className={getResourceBadgeStyle(log.resource || 'unknown')}>
-              {log.resource || 'unknown'}
-            </Badge>
-          </div>
-          <div className="text-left sm:text-right">
-            <div className="font-mono text-sm text-gray-600">
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className={getActionBadgeStyle(log.action || 'unknown')}>
+                {(log.action || 'unknown').toUpperCase()}
+              </Badge>
+              <Badge className={getResourceBadgeStyle(log.resource || 'unknown')}>
+                {log.resource || 'unknown'}
+              </Badge>
+            </div>
+            <div className="mt-1 font-mono text-xs text-gray-500">
               {formatDateString(log.timestamp)}
             </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
             <div className="font-mono text-xs text-gray-500">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 {log.ipAddress && log.ipAddress !== 'unknown' ? (
                   <button
                     onClick={() => copyToClipboard(log.ipAddress!, 'IP Address', 'ip')}
                     className="flex items-center gap-1 hover:text-blue-600 hover:underline"
                     title="Click to copy IP address"
                   >
-                    <span>{log.ipAddress}</span>
+                    <span className="max-w-[100px] truncate">{log.ipAddress}</span>
                     {copiedField === 'ip' ? (
                       <Check className="h-3 w-3 text-green-600" />
                     ) : (
                       <Copy className="h-3 w-3 opacity-50" />
                     )}
                   </button>
-                ) : (
-                  <span>N/A</span>
-                )}
-                {log.ipAddress && log.ipAddress.includes('(Local)') && (
-                  <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-600">
-                    Local
-                  </span>
-                )}
-                {log.ipAddress && log.ipAddress.includes('(Public)') && (
-                  <span className="rounded bg-green-50 px-2 py-0.5 text-xs text-green-600">
-                    Public
-                  </span>
-                )}
+                ) : null}
               </div>
             </div>
+            {canDelete && onDelete && (
+              <button
+                onClick={() => onDelete(log)}
+                className="ml-1 rounded p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                title="Delete log"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
-
         {/* User Info */}
         <div className="mb-3 space-y-1">
           {/* Username */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-500">Username:</span>
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="shrink-0 text-xs font-semibold text-gray-500">Username:</span>
             <button
               onClick={() => copyToClipboard(displayUsername, 'Username', 'username')}
-              className="flex items-center gap-1 text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline"
+              className="flex min-w-0 items-center gap-1 text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline"
               title="Click to copy username"
             >
-              {displayUsername}
+              <span className="break-all">{displayUsername}</span>
               {copiedField === 'username' ? (
-                <Check className="h-3 w-3 text-green-600" />
+                <Check className="h-3 w-3 shrink-0 text-green-600" />
               ) : (
-                <Copy className="h-3 w-3 opacity-50" />
+                <Copy className="h-3 w-3 shrink-0 opacity-50" />
               )}
             </button>
           </div>
-          
+
           {/* User ID */}
           {displayUserId && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-500">User ID:</span>
+            <div className="flex min-w-0 items-baseline gap-2">
+              <span className="shrink-0 text-xs font-semibold text-gray-500">User ID:</span>
               <button
                 onClick={() => copyToClipboard(displayUserId, 'User ID', 'userId')}
-                className="flex items-center gap-1 font-mono text-xs text-gray-700 hover:text-blue-600 hover:underline"
+                className="flex min-w-0 items-center gap-1 font-mono text-xs text-gray-700 hover:text-blue-600 hover:underline"
                 title="Click to copy user ID"
               >
-                {displayUserId}
+                <span className="break-all">{displayUserId}</span>
                 {copiedField === 'userId' ? (
-                  <Check className="h-3 w-3 text-green-600" />
+                  <Check className="h-3 w-3 shrink-0 text-green-600" />
                 ) : (
-                  <Copy className="h-3 w-3 opacity-50" />
+                  <Copy className="h-3 w-3 shrink-0 opacity-50" />
                 )}
               </button>
             </div>
           )}
-          
+
           {/* Email (only show if different from username) */}
           {displayEmail && displayEmail !== displayUsername && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-gray-500">Email:</span>
+            <div className="flex min-w-0 items-baseline gap-2">
+              <span className="shrink-0 text-xs font-semibold text-gray-500">Email:</span>
               <button
                 onClick={() => copyToClipboard(displayEmail, 'Email', 'email')}
-                className="flex items-center gap-1 text-sm text-gray-600 hover:text-blue-600 hover:underline"
+                className="flex min-w-0 items-center gap-1 text-sm text-gray-600 hover:text-blue-600 hover:underline"
                 title="Click to copy email"
               >
-                {displayEmail}
+                <span className="break-all">{displayEmail}</span>
                 {copiedField === 'email' ? (
-                  <Check className="h-3 w-3 text-green-600" />
+                  <Check className="h-3 w-3 shrink-0 text-green-600" />
                 ) : (
-                  <Copy className="h-3 w-3 opacity-50" />
+                  <Copy className="h-3 w-3 shrink-0 opacity-50" />
                 )}
               </button>
             </div>

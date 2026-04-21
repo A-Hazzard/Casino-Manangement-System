@@ -47,6 +47,7 @@ import {
   LocationsRevenueAnalysisSkeleton,
   MachineHourlyChartsSkeleton,
   SummaryCardsSkeleton,
+  TopMachinesTableSkeleton,
 } from '@/components/shared/ui/skeletons/ReportsSkeletons';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import ReportsLocationsRevenueTable from '@/components/CMS/reports/tabs/locations/ReportsLocationsRevenueTable';
@@ -63,10 +64,8 @@ import {
   getMoneyInColorClass,
 } from '@/lib/utils/financial';
 import { MachineData } from '@/shared/types/machines';
+import { LocationTrendsResponse } from '@/shared/types/reports';
 import { useRouter } from 'next/navigation';
-import {
-  TopMachinesTableSkeleton,
-} from '@/components/shared/ui/skeletons/ReportsSkeletons';
 
 type ReportsLocationsRevenueAnalysisProps = {
   // Data
@@ -74,26 +73,7 @@ type ReportsLocationsRevenueAnalysisProps = {
   allLocationsForDropdown: AggregatedLocation[];
   selectedRevenueLocations: string[];
   metricsTotals: DashboardTotals | null;
-  locationTrendData: {
-    trends: Array<{
-      day: string;
-      time?: string;
-      [locationId: string]:
-        | {
-            handle: number;
-            winLoss: number;
-            jackpot: number;
-            plays: number;
-            drop: number;
-            gross: number;
-          }
-        | string
-        | undefined;
-    }>;
-    locations: string[];
-    locationNames?: Record<string, string>;
-    isHourly?: boolean;
-  } | null;
+  locationTrendData: LocationTrendsResponse | null;
   topMachinesData: MachineData[];
   // Pagination
   currentPage: number;

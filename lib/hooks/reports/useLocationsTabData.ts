@@ -28,6 +28,7 @@ import { deduplicateRequest } from '@/lib/utils/requestDeduplication';
 import { isAbortError } from '@/lib/utils/errors';
 import { LocationMetrics, TopLocation } from '@/shared/types';
 import { MachineData } from '@/shared/types/machines';
+import { LocationTrendsResponse } from '@/shared/types/reports';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -89,37 +90,7 @@ export function useLocationsTabData({
     []
   );
   const [bottomMachinesLoading, setBottomMachinesLoading] = useState(false);
-  const [locationTrendData, setLocationTrendData] = useState<{
-    trends: Array<{
-      day: string;
-      time?: string;
-      [locationId: string]:
-        | {
-            handle: number;
-            winLoss: number;
-            jackpot: number;
-            plays: number;
-            drop: number;
-            gross: number;
-          }
-        | string
-        | undefined;
-    }>;
-    totals: Record<
-      string,
-      {
-        handle: number;
-        winLoss: number;
-        jackpot: number;
-        plays: number;
-        drop: number;
-        gross: number;
-      }
-    >;
-    locations: string[];
-    locationNames?: Record<string, string>;
-    isHourly?: boolean;
-  } | null>(null);
+  const [locationTrendData, setLocationTrendData] = useState<LocationTrendsResponse | null>(null);
   const [locationTrendLoading, setLocationTrendLoading] = useState(false);
   const [accumulatedLocations, setAccumulatedLocations] = useState<
     AggregatedLocation[]

@@ -19,15 +19,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiLogger } from '../../lib/services/loggerService';
 
 /**
- * Main GET handler for fetching user by ID
+ * GET /api/users/[id]
  *
- * Flow:
- * 1. Resolve route parameters
- * 2. Initialize API logging
- * 3. Connect to database
- * 4. Validate user ID
- * 5. Fetch user from database
- * 6. Return user data
+ * Fetches a single user document by ID for the Users management page.
+ *
+ * URL params:
+ * @param id {string} Required (path). The string `_id` of the user to retrieve.
  */
 export async function GET(
   request: NextRequest
@@ -109,16 +106,31 @@ export async function GET(
 }
 
 /**
- * Main PUT handler for updating user by ID
+ * PUT /api/users/[id]
  *
- * Flow:
- * 1. Resolve route parameters
- * 2. Initialize API logging
- * 3. Connect to database
- * 4. Parse request body
- * 5. Validate user ID
- * 6. Update user in database
- * 7. Return updated user data
+ * Performs a full replacement update of a user record; used by the Users management
+ * page to save changes to profile, roles, and access assignments. `_id` is stripped
+ * from the body before the update is applied so the path param is always authoritative.
+ *
+ * URL params:
+ * @param id {string} Required (path). The string `_id` of the user to update.
+ *
+ * Body fields:
+ * @param _id              {string}   Ignored. Stripped before update; the path `id` is used instead.
+ * @param roles            {string[]} Optional. New role list for the user (e.g. `["manager", "collector"]`).
+ *                                    Triggers `sessionVersion` increment to force re-login.
+ * @param assignedLocations  {string[]} Optional. Location IDs the user is permitted to access.
+ *                                    Restricted to admin/owner/developer; silently stripped for others.
+ * @param assignedLicencees  {string[]} Optional. Licencee IDs that scope the user's data visibility.
+ *                                    Restricted to admin/owner/developer; silently stripped for others.
+ * @param isEnabled        {boolean}  Optional. Activates or deactivates the user account.
+ * @param multiplier       {number}   Optional. Reviewer-scale multiplier (reviewer role only).
+ *                                    Restricted to admin/owner/developer; silently stripped for others.
+ * @param profile          {object}   Optional. Nested profile fields: `firstName`, `lastName`,
+ *                                    `gender`, `phoneNumber`, `identification` (idType/idNumber).
+ * @param username         {string}   Optional. Login username; must be unique across all users.
+ * @param emailAddress     {string}   Optional. Login email; must be unique across all users.
+ * @param password         {string}   Optional. New plain-text password; hashed before storage.
  */
 export async function PUT(
   request: NextRequest
@@ -200,16 +212,31 @@ export async function PUT(
 }
 
 /**
- * Main PATCH handler for updating user by ID
+ * PATCH /api/users/[id]
  *
- * Flow:
- * 1. Resolve route parameters
- * 2. Initialize API logging
- * 3. Connect to database
- * 4. Parse request body
- * 5. Validate user ID
- * 6. Update user in database
- * 7. Return updated user data
+ * Applies a partial update to a user record; used for targeted field changes (e.g.
+ * toggling `isEnabled`, updating a single profile field) without sending the full
+ * document. Identical permission enforcement to PUT — `_id` is stripped from the body
+ * and the path param is used as the authoritative identifier.
+ *
+ * URL params:
+ * @param id {string} Required (path). The string `_id` of the user to update.
+ *
+ * Body fields (all optional; only provided fields are applied):
+ * @param _id              {string}   Ignored. Stripped before update; the path `id` is used instead.
+ * @param roles            {string[]} New role list. Triggers `sessionVersion` increment to force re-login.
+ * @param assignedLocations  {string[]} Location IDs the user is permitted to access.
+ *                                    Restricted to admin/owner/developer; silently stripped for others.
+ * @param assignedLicencees  {string[]} Licencee IDs that scope the user's data visibility.
+ *                                    Restricted to admin/owner/developer; silently stripped for others.
+ * @param isEnabled        {boolean}  Activates or deactivates the user account.
+ * @param multiplier       {number}   Reviewer-scale multiplier (reviewer role only).
+ *                                    Restricted to admin/owner/developer; silently stripped for others.
+ * @param profile          {object}   Nested profile fields: `firstName`, `lastName`,
+ *                                    `gender`, `phoneNumber`, `identification` (idType/idNumber).
+ * @param username         {string}   Login username; must be unique across all users.
+ * @param emailAddress     {string}   Login email; must be unique across all users.
+ * @param password         {string}   New plain-text password; hashed before storage.
  */
 export async function PATCH(
   request: NextRequest

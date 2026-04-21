@@ -13,6 +13,15 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for fetching collection sessions
+ *
+ * @param {string} vaultShiftId - Filter by specific vault shift (REQUIRED)
+ * @param {string} locationId - Filter by location ID (REQUIRED)
+ * @param {string} status - Filter by session status
+ * @param {string} type - Filter by session type ('soft_count', etc.)
+ * @param {boolean} isEndOfDay - Filter specifically for EOD sessions
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async () => {
     try {
@@ -53,6 +62,18 @@ export async function GET(request: NextRequest) {
   });
 }
 
+/**
+ * Main POST handler for managing collection sessions
+ *
+ * @body {string} action - Action to perform ('start', 'addEntry', 'removeEntry', 'cancel') (REQUIRED)
+ * @body {string} locationId - ID of the location (REQUIRED)
+ * @body {string} vaultShiftId - ID of the active vault shift (REQUIRED)
+ * @body {string} machineId - ID of the machine (for removeEntry)
+ * @body {Object} entryData - Data for the session entry (for addEntry)
+ * @body {string} sessionId - ID of the session (for non-start actions)
+ * @body {string} type - Session type ('soft_count', etc.)
+ * @body {boolean} isEndOfDay - Whether this is an EOD session
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user }) => {
     try {

@@ -1,12 +1,18 @@
 /**
- * Cashier Shift Open API
- * 
  * POST /api/cashier/shift/open
- * 
- * Initiate opening of a cashier shift.
- * Creates a shift with 'pending_start' status and a corresponding float request.
- * The shift becomes 'active' only after VM approval.
- * 
+ *
+ * Initiates a cashier shift opening request. Called when a cashier starts their
+ * working session — creates a shift in 'pending_start' status and submits a float
+ * request to the Vault Manager for approval before the shift goes active.
+ * Requires an active, reconciled vault shift at the location and the cashier to
+ * be assigned to that location. Fails if the cashier already has an open shift.
+ *
+ * Body fields:
+ * @param locationId    {string}   Required. The location ID where the shift is being opened.
+ * @param requestedFloat {number}  Required. The total float amount requested for this shift.
+ * @param denominations {object[]} Required. Denomination breakdown of the float; individual
+ *   values must sum exactly to requestedFloat.
+ *
  * @module app/api/cashier/shift/open/route
  */
 

@@ -16,7 +16,15 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching top machines
+ * GET /api/analytics/top-machines
+ *
+ * Returns the top-performing machines for a specific location sorted by revenue. Used by the location detail top machines widget.
+ *
+ * Query params:
+ * @param locationId {string} Required. The location to fetch top machines for.
+ * @param timePeriod {string} Optional. Time window descriptor. Defaults to '24h'.
+ * @param startDate  {string} Optional. ISO datetime string for the start of a custom range.
+ * @param endDate    {string} Optional. ISO datetime string for the end of a custom range.
  *
  * Flow:
  * 1. Parse and validate request parameters

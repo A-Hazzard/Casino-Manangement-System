@@ -97,7 +97,7 @@ export default function CabinetsDeleteCabinetModal({
 
     setLoading(true);
     try {
-      await axios.delete(`/api/machines?id=${selectedCabinet._id}`);
+      await axios.delete(`/api/cabinets?id=${selectedCabinet._id}`);
 
       await logActivity(
         'delete',
@@ -203,3 +203,4 @@ export default function CabinetsDeleteCabinetModal({
     </div>
   );
 }
+

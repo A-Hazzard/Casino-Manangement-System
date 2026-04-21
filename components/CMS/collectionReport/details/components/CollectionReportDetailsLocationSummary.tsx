@@ -48,7 +48,7 @@ export const CollectionReportDetailsLocationSummary: FC<CollectionReportDetailsL
               <span className="text-gray-600">{row.label}</span>
               <span className={`font-medium ${row.isCurrency ? getFinancialColorClass(row.value as number) : 'text-gray-800'}`}>
                 {row.isCurrency 
-                  ? (row.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'
+                  ? `$${(row.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
                   : row.value}
               </span>
             </div>
@@ -70,7 +70,7 @@ export const CollectionReportDetailsLocationSummary: FC<CollectionReportDetailsL
               <td className="p-3 font-medium text-gray-700">{row.label}</td>
               <td className={`p-3 text-right ${row.isCurrency ? getFinancialColorClass(row.value as number) : ''}`}>
                 {row.isCurrency 
-                  ? (row.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'
+                  ? `$${(row.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
                   : row.value}
               </td>
             </tr>

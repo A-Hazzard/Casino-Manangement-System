@@ -12,8 +12,8 @@
 // Backend movement calculation (for API routes)
 export { calculateMovement } from './calculation';
 
-// Machine movement calculation (for collection modals)
-export { calculateMachineMovement } from './machine';
+// Cabinet movement calculation (for collection modals)
+export { calculateCabinetMovement } from './cabinet';
 
 // Movement request utilities
 export { formatMovementRequestDate, getStatusColor } from './requests';

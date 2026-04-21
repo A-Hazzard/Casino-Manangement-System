@@ -6,15 +6,17 @@
  *
  * Used by Playwright's auth fixture so tests receive a properly signed
  * token that the Next.js middleware (proxy.ts) will accept.
- *
- * POST /api/e2e/auth
- * Body: { user: MockUserPayload }
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAccessToken } from '@/lib/utils/auth';
 import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 
+/**
+ * POST /api/e2e/auth
+ * 
+ * @body {Object} user - REQUIRED. MockUserPayload containing _id, username, roles, etc.
+ */
 export async function POST(request: NextRequest) {
   // Only available outside production unless specifically enabled
   if (process.env.NODE_ENV === 'production' && process.env.ENABLE_E2E_AUTH !== 'true') {

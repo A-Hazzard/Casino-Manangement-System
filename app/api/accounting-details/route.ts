@@ -16,7 +16,17 @@ import type { BillValidatorTimePeriod } from '@/shared/types/billValidator';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching accounting details
+ * GET /api/accounting-details
+ *
+ * Returns accounting details (including accepted bill information) for a single
+ * machine, filtered by a predefined time period.
+ *
+ * Query params:
+ * @param machineId   {string}                 Required. The ID of the machine to retrieve
+ *                                             accounting details for.
+ * @param timePeriod  {BillValidatorTimePeriod} Optional. Time window for the data. Defaults
+ *                                             to 'today'. Accepted values are those defined
+ *                                             by BillValidatorTimePeriod.
  *
  * Flow:
  * 1. Connect to database

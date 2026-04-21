@@ -14,7 +14,7 @@ import {
     TableRow,
 } from '@/components/shared/ui/table';
 import { useUserStore } from '@/lib/store/userStore';
-import { MovementRequest } from '@/lib/types/movement';
+import { MovementRequest } from '@/shared/types/movement';
 import {
     formatMovementRequestDate,
     getStatusColor,
@@ -238,3 +238,4 @@ export default function MovementRequestsTable({
     </div>
   );
 }
+

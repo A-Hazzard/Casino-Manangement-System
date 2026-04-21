@@ -10,13 +10,13 @@
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
-import type { MachineWithHistory } from '@/app/api/lib/types';
+import type { MachineWithHistory } from '@/shared/types/machines';
 import {
-  CollectionData,
-  FixResults,
-  HistoryEntry,
-  MachineData,
-} from '@/lib/types/reports';
+  type CollectionData,
+  type FixResults,
+  type HistoryEntry,
+  type MachineData,
+} from '@/shared/types/reports';
 import { calculateMovement } from '@/lib/utils/movement';
 import { calculateSasMetrics } from './creation';
 
@@ -193,7 +193,7 @@ export async function fixReportIssues(
       progress - lastProgressLog >= 10 ||
       fixResults.collectionsProcessed % 500 === 0
     ) {
-      const totalIssues = Object.values(fixResults.issuesFixed).reduce(
+      const totalIssues = (Object.values(fixResults.issuesFixed) as number[]).reduce(
         (sum, val) => sum + val,
         0
       );
@@ -206,7 +206,7 @@ export async function fixReportIssues(
   }
 
   // Final progress for Phase 1
-  const totalIssuesPhase1 = Object.values(fixResults.issuesFixed).reduce(
+  const totalIssuesPhase1 = (Object.values(fixResults.issuesFixed) as number[]).reduce(
     (sum, val) => sum + val,
     0
   );
@@ -284,7 +284,7 @@ export async function fixReportIssues(
   console.log(`\n${'='.repeat(80)}`);
   console.log('✅ FIX COMPLETED');
   console.log(`${'='.repeat(80)}`);
-  const totalIssuesFixed = Object.values(fixResults.issuesFixed).reduce(
+  const totalIssuesFixed = (Object.values(fixResults.issuesFixed) as number[]).reduce(
     (sum, val) => sum + val,
     0
   );
@@ -311,7 +311,7 @@ export async function fixReportIssues(
   // Log errors if any
   if (fixResults.errors.length > 0) {
     console.log('⚠️  Errors encountered:');
-    fixResults.errors.slice(0, 5).forEach(err => {
+    fixResults.errors.slice(0, 5).forEach((err: { collectionId: string; error: string; machineId?: string }) => {
       console.log(`   - Collection ${err.collectionId}: ${err.error}`);
     });
     if (fixResults.errors.length > 5) {

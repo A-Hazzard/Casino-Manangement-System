@@ -30,13 +30,13 @@ The primary grid for managing and auditing individual gaming properties.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
 | **Property Name** | `name` | `GET /api/locationAggregation` |
-| **Machine Count** | `machineCount` | `GET /api/locationAggregation` |
+| **Cabinet Count** | `machineCount` | `GET /api/locationAggregation` |
 | **Status** | `onlineStatus` | `GET /api/locationAggregation` |
 
-- **Interactive**: Support for multi-sorting (e.g. Sort by Gross, then by Machine Count).
+- **Interactive**: Support for multi-sorting (e.g. Sort by Gross, then by Cabinet Count).
 - **Implementation**: `LocationsTable` component with server-side filtering via the `locationAggregation` endpoint.
 
-### 📡 Machine Connectivity Widget
+### 📡 Cabinet Connectivity Widget
 Real-time operational health of the property fleet.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -45,7 +45,7 @@ Real-time operational health of the property fleet.
 | **Total Members** | `membershipCount` | `GET /api/locations/membership-count` |
 
 - **Filtering**: Clicking the "Offline" pill automatically filters the table to show only properties with reported hardware issues.
-- **Implementation**: `MachineStatusWidget` component.
+- **Implementation**: `CabinetStatusWidget` component.
 
 ### 🗺️ Interactive Property Map
 Geospatial visualization of the property portfolio.
@@ -62,7 +62,7 @@ Geospatial visualization of the property portfolio.
 ## 3. Filtering & Persistence
 
 - **Location Search**: The search bar performing a case-insensitive `$regex` match on the property name.
-- **Machine Type Filter**: Allows users to filter properties that contain specific cabinet types (e.g. "Only show locations with VGTs").
+- **Cabinet Type Filter**: Allows users to filter properties that contain specific cabinet types (e.g. "Only show locations with VGTs").
 - **Persistence**: The selected `licencee` and `timePeriod` are persisted in the session to maintain context when navigating between the Dashboard and Locations page.
 
 ---
@@ -78,7 +78,7 @@ Geospatial visualization of the property portfolio.
 ## 5. Visual Indicators & Icons
 
 - 🏢 **Property Icon**: Standard building icon used for gaming locations.
-- 🔴 **Offline Alert**: A pulse animation appears on map markers and table rows if a property has zero active machine heartbeats.
+- 🔴 **Offline Alert**: A pulse animation appears on map markers and table rows if a property has zero active cabinet heartbeats.
 - 💰 **High Performance**: A gold border or "Top Star" icon appears for properties in the top 10% of gross revenue for the selected period.
 
 ---

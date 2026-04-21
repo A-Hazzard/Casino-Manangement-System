@@ -19,17 +19,23 @@ import type { SmibConfig } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for updating SMIB configuration
+ * POST /api/cabinets/[cabinetId]/smib-config
  *
- * Flow:
- * 1. Parse route parameters and request body
- * 2. Connect to database
- * 3. Find cabinet and verify location exists
- * 4. Build update fields for SMIB config
- * 5. Update machine in database
- * 6. Send SMIB configuration via MQTT if provided
- * 7. Handle machine control commands if provided
- * 8. Return updated machine data
+ * Updates the SMIB configuration stored on the machine document, then pushes
+ * the new config and/or a machine control command to the SMIB via MQTT. Called
+ * when an operator saves SMIB settings or sends a control command from the cabinet panel.
+ *
+ * URL params:
+ * @param cabinetId {string} Required (path). The cabinet (machine) ID to configure.
+ *
+ * Body fields:
+ * @param smibConfig     {object} Optional. SMIB config sections to persist and push via MQTT.
+ *   @param smibConfig.mqtt {object} Optional. MQTT broker connection settings.
+ *   @param smibConfig.net  {object} Optional. Network / Wi-Fi settings.
+ *   @param smibConfig.coms {object} Optional. Serial communication settings.
+ *   @param smibConfig.ota  {object} Optional. OTA update settings.
+ * @param smibVersion    {object} Optional. Version metadata to store on the machine record.
+ * @param machineControl {object} Optional. Machine control command payload sent via MQTT.
  */
 export async function POST(
   request: NextRequest
@@ -178,13 +184,13 @@ export async function POST(
 }
 
 /**
- * GET handler for fetching SMIB configuration
+ * GET /api/cabinets/[cabinetId]/smib-config
  *
- * Flow:
- * 1. Parse route parameters
- * 2. Connect to database
- * 3. Find cabinet by ID
- * 4. Return SMIB configuration and version
+ * Returns the current SMIB configuration, version metadata, and relay ID for a
+ * cabinet. Called when the SMIB config panel opens to pre-populate form fields.
+ *
+ * URL params:
+ * @param cabinetId {string} Required (path). The cabinet (machine) ID to fetch config for.
  */
 export async function GET(
   request: NextRequest

@@ -35,6 +35,22 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main GET handler for location aggregation
  *
+ * @param {string} timePeriod - Time range preset ('Today', 'Yesterday', '7d', etc.)
+ * @param {string} licencee - Filter aggregation by licencee name
+ * @param {string} currency - Target currency code for financial values
+ * @param {string} machineTypeFilter - Filter by capabilities ('LocalServersOnly', etc.)
+ * @param {boolean} clearCache - Force cache invalidation
+ * @param {boolean} sasEvaluationOnly - Only include machines with SAS data
+ * @param {boolean} basicList - Return simplified location structure
+ * @param {string} selectedLocations - Comma-separated list of IDs to include
+ * @param {number} page - Page number for pagination
+ * @param {number} limit - Items per page
+ * @param {string} search - Search query for location name
+ * @param {string} onlineStatus - Filter by location connectivity
+ * @param {string} startDate - ISO date for custom range start
+ * @param {string} endDate - ISO date for custom range end
+ * @param {string} testUserId - Specific user ID to simulate permissions for (Dev only)
+ *
  * Flow:
  * 1. Parse and validate request parameters
  * 2. Handle cache clearing if requested

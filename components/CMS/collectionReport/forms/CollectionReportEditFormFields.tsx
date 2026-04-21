@@ -2,6 +2,50 @@
  * Edit Collection Form Fields Component
  *
  * Handles collection time, meters input, RAM clear, and notes for the Edit Collection Modal.
+ *
+ * Features:
+ * - Specific machine display with historical context
+ * - Manual and automatic SAS time management
+ * - Meters regression validation
+ * - RAM Clear meter handling
+ * - View machine history shortcut
+ *
+ * @param selectedLocationName - Name of the location the report belongs to
+ * @param machineForDataEntry - Machine summary object for the machine being edited
+ * @param currentCollectionTime - Currently selected collection timestamp
+ * @param setCurrentCollectionTime - Setter for the collection timestamp
+ * @param showAdvancedSas - Toggle state for manual SAS time period overrides
+ * @param setShowAdvancedSas - Toggle setter for manual SAS times
+ * @param sasStartTime - Manually overridden SAS start time
+ * @param setSasStartTime - Setter for manual SAS start time
+ * @param sasEndTime - Manually overridden SAS end time
+ * @param setSasEndTime - Setter for manual SAS end time
+ * @param currentMetersIn - Editable value for Meters In
+ * @param setCurrentMetersIn - Setter for Meters In
+ * @param currentMetersOut - Editable value for Meters Out
+ * @param setCurrentMetersOut - Setter for Meters Out
+ * @param currentRamClearMetersIn - Editable value for pre-reset Meters In
+ * @param setCurrentRamClearMetersIn - Setter for RAM Clear Meters In
+ * @param currentRamClearMetersOut - Editable value for pre-reset Meters Out
+ * @param setCurrentRamClearMetersOut - Setter for RAM Clear Meters Out
+ * @param currentMachineNotes - Custom notes for this individual machine entry
+ * @param setCurrentMachineNotes - Setter for machine notes
+ * @param currentRamClear - Whether RAM clear logic is active for this entry
+ * @param setCurrentRamClear - Toggle for RAM clear state
+ * @param prevIn - Historical Meters In value for reference
+ * @param prevOut - Historical Meters Out value for reference
+ * @param onPrevInChange - Callback for manual previous meter adjustments
+ * @param onPrevOutChange - Callback for manual previous meter adjustments
+ * @param debouncedCurrentMetersIn - Debounced meter in value for validation checks
+ * @param debouncedCurrentMetersOut - Debounced meter out value for validation checks
+ * @param inputsEnabled - Global editability flag for the form
+ * @param isProcessing - Loading state for async submission/validation
+ * @param editingEntryId - The unique ID of the machine entry being modified
+ * @param isAddMachineEnabled - Validation flag for the update button state
+ * @param onAddOrUpdateEntry - Save callback for the machine entry
+ * @param onCancelEdit - Discard changes callback
+ * @param onDisabledFieldClick - Informative callback for locked fields
+ * @param onViewMachine - Navigation callback to view machine details
  */
 
 'use client';

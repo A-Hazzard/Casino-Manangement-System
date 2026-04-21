@@ -1,9 +1,14 @@
 /**
  * CollectionReportDesktopLayout Component
  *
- * Desktop UI layout for the collection reports tab.
+ * Dedicated layout orchestration for the Collection Reports list on desktop devices.
  *
- * @param props - Component props
+ * Features:
+ * - Clean integration of search filters and data table
+ * - Consistent spacing and alignment for full-width views
+ * - Optimized for non-touch interaction and high information density
+ *
+ * @param props - Metadata and callbacks passed from the parent orchestration layer
  */
 
 'use client';

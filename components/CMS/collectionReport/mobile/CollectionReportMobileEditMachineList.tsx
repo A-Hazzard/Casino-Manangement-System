@@ -1,7 +1,26 @@
 /**
  * Mobile Edit Collection Modal - Machine List Component
  *
- * Displays the list of available machines for selection
+ * A specialized selection panel for picking machines within the Edit Collection flow on mobile.
+ *
+ * Features:
+ * - Searchable machine list with real-time filtering
+ * - Visual status indicators for "Added" or "Selected" states
+ * - Integrated Live Reconciliation summary (Target info)
+ * - Auto-scrolling container with custom scrollbars
+ * - Back navigation to the location selector
+ *
+ * @param locationName - The name of the location used for contextual labeling
+ * @param machines - List of all machines available for the location
+ * @param collectedMachines - Documents for machines already part of the current report
+ * @param searchTerm - Active search filter text
+ * @param selectedMachine - The ID of the machine currently active in the form (if any)
+ * @param isLoadingMachines - Loading state for the machinery data fetch
+ * @param onSearchChange - Callback for search input updates
+ * @param onMachineSelect - Selection callback when a machine is tapped
+ * @param onMachineUnselect - Deselection callback to clear the active machine
+ * @param onBack - Navigation callback to return to the previous screen
+ * @param sortMachines - Logic for deterministic sorting of the machine list
  */
 
 'use client';

@@ -14,14 +14,16 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for syncing cabinet meters
+ * POST /api/cabinets/[cabinetId]/sync-meters
  *
- * Flow:
- * 1. Parse route parameters
- * 2. Connect to database
- * 3. Find cabinet by ID
- * 4. Get cabinet location
- * 5. Redirect to location-specific endpoint
+ * Resolves the cabinet's parent location and redirects to the location-specific
+ * sync-meters endpoint. Called to force a meter synchronisation for a single cabinet.
+ *
+ * URL params:
+ * @param cabinetId {string} Required (path). The cabinet (machine) ID whose meters to sync.
+ *
+ * Body fields:
+ * (none — body is forwarded transparently to the location-specific endpoint via redirect)
  */
 export async function POST(
   request: NextRequest

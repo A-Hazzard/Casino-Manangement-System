@@ -1,11 +1,13 @@
 /**
- * Cashier Shift Cancel API
- *
  * POST /api/cashier/shift/cancel
  *
- * Cancel a pending cashier shift opening request.
- * Removes the pending shift and associated float request.
- * Also actioned/dismisses any associated notifications for Vault Managers.
+ * Cancels the calling cashier's own pending shift request. Called when a cashier
+ * wants to withdraw a shift-open request that is still awaiting Vault Manager
+ * approval ('pending_start'), or to retract a close submission that is awaiting
+ * review ('pending_review'). No request body is needed — the shift is resolved
+ * from the authenticated session. Dismisses any associated VM notifications.
+ *
+ * No body fields — action is resolved entirely from the authenticated user's session.
  *
  * @module app/api/cashier/shift/cancel/route
  */

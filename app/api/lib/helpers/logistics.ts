@@ -7,8 +7,8 @@
  * @module app/api/lib/helpers/logistics
  */
 
-import type { MovementRequestStatus } from '@/lib/types/movement';
-import type { LogisticsEntry } from '@/lib/types/reports';
+import type { MovementRequestStatus } from '@/shared/types/movement';
+import type { LogisticsEntry } from '@/shared/types/reports';
 import { MovementRequest } from '../models/movementrequests';
 
 /**
@@ -112,5 +112,6 @@ export async function getLogisticsData(
 
   return transformToLogisticsEntries(logisticsData);
 }
+
 
 

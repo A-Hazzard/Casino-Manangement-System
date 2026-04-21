@@ -21,14 +21,11 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextResponse } from 'next/server';
 
 /**
- * Main GET handler for current user
+ * GET /api/auth/current-user
  *
- * Flow:
- * 1. Authenticate user from JWT token
- * 2. Connect to database
- * 3. Fetch user data from database
- * 4. Validate profile fields
- * 5. Return user data with validation status
+ * Returns the full profile for the currently authenticated user. Takes no query
+ * params; reads the `token` JWT cookie, validates the sessionVersion against the
+ * database to detect permission changes, and hydrates profile-completeness flags.
  */
 export async function GET() {
   const startTime = Date.now();

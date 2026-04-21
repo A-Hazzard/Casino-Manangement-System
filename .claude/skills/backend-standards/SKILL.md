@@ -282,6 +282,15 @@ const machines = await Machine.find(query).lean(); // ✅ Good
 const count = await Machine.countDocuments(query); // ✅ No lean needed
 ```
 
+## Type Safety & DTOs
+
+Refer to [`type-safety.md`](mdc:.instructions/rules/type-safety.md) for detailed rules.
+
+**Key Backend Rules:**
+1. **Explicit Return Types**: All API helpers must have explicit return type annotations.
+2. **DTO Mapping**: When returning data to the frontend, ensure the mapped object matches a type defined in `shared/types/`.
+3. **Zero `any`**: Use `unknown` or specific interfaces for database query results.
+
 ## Code Review Checklist
 
 - ✅ Using Mongoose models, not `db.collection()`

@@ -121,7 +121,7 @@ export default function LocationMultiSelect({
       </Button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+        <div className="absolute z-50 mt-1 max-h-96 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
           {/* Header with search and clear button */}
           <div className="border-b border-gray-100 p-2">
             <div className="mb-2 flex items-center justify-between">

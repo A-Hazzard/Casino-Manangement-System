@@ -20,13 +20,17 @@ import {
 import { connectDB } from '@/app/api/lib/middleware/db';
 
 /**
- * Main PATCH handler for updating machine histories from a collection report
+ * PATCH /api/collection-reports/[reportId]/update-history
  *
- * Flow:
- * 1. Parse and validate request parameters (reportId, changes array)
- * 2. Connect to database
- * 3. Execute batch history update operation
- * 4. Return results summary
+ * Batch-updates machine collectionMetersHistory entries from a collection report, setting correct
+ * prevIn/prevOut values from actual collection data, updating machine current meters, and marking
+ * collections as completed. Developer/admin only maintenance route.
+ *
+ * Path parameters:
+ * @param reportId  {string} Required. The `locationReportId` of the collection report being updated.
+ *
+ * Body fields:
+ * @param changes   {Array}  Required. Array of machine history change objects to apply. Each entry must conform to `UpdateHistoryPayload['changes']`.
  */
 export async function PATCH(
   request: NextRequest

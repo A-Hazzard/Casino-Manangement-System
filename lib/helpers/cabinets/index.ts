@@ -1,12 +1,20 @@
 /**
- * Cabinet Helpers
+ * Machine Helpers
  *
- * Central export point for cabinet-related helper functions.
+ * Central export point for machine-related helper functions.
  *
  * Features:
- * - Cabinet data fetching and management
- * - Cabinet page utilities
+ * - Machine chart data fetching
+ * - Machines tab data and calculations
+ * - Machine statistics and analytics
+ * - Top performing machines data
+ * - Manufacturer data fetching
  */
 
+export * from './chart';
+export * from './tab';
+export * from './stats';
+export * from './topPerforming';
+export * from './manufacturers';
 export * from './helpers';
 export * from './page';

@@ -18,6 +18,9 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main GET handler for membership count
  *
+ * @param {string} licencee - Filter count by licencee name
+ * @param {string} locationId - Filter count by specific location ID
+ *
  * Flow:
  * 1. Parse licencee parameter
  * 2. Connect to database and authenticate user

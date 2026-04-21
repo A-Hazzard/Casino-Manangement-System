@@ -22,13 +22,14 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 
 /**
- * Main GET handler for fetching authentication metrics
+ * GET /api/admin/auth/metrics
  *
- * Flow:
- * 1. Connect to database and authenticate user
- * 2. Parse query parameters (timeRange)
- * 3. Fetch authentication metrics
- * 4. Return metrics data
+ * Returns aggregate authentication metrics for the admin security dashboard.
+ * Includes total logins, failed logins, active sessions, locked accounts, and
+ * suspicious activity counts, all scoped to the requested time window.
+ *
+ * Query params:
+ * @param timeRange {string}  Optional. Lookback window: '1h', '24h' (default), '7d', or '30d'.
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();

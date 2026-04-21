@@ -22,7 +22,7 @@ This is the **primary method** for all Dashboard and Real-time reporting.
   // Summing the pre-calculated diffs in the Meters collection
   { $sum: "$movement.drop" }
   ```
-- **Why?**: This prevents "Ghost Revenue" issues during RAM clears or hardware swaps. If a machine's cumulative meter resets to 0, only the 15-minute movement is affected, preserving the historical truth.
+- **Why?**: This prevents "Ghost Revenue" issues during RAM clears or hardware swaps. If a cabinet's cumulative meter resets to 0, only the 15-minute movement is affected, preserving the historical truth.
 
 ---
 
@@ -95,10 +95,10 @@ displayedValue = rawValue * (1 - user.multiplier)
 **Affected Routes:**
 - `GET /api/reports/locations` — applied per location before `moneyIn/moneyOut/gross/jackpot` are computed
 - `GET /api/locations/search-all` — applied to `totalMoneyIn/Out/Jackpot` per location
-- `GET /api/locations/[locationId]` — applied per machine inside the location
+- `GET /api/locations/[locationId]` — applied per cabinet inside the location
 - `GET /api/locations/[locationId]/cabinets/[cabinetId]` — applied to raw meter totals
-- `GET /api/machines/aggregation` — applied in STEP 10.5 (post-currency conversion)
-- `GET /api/machines/[machineId]` — applied in STEP 9.5 (post-currency conversion)
+- `GET /api/cabinets/aggregation` — applied in STEP 10.5 (post-currency conversion)
+- `GET /api/cabinets/[cabinetId]` — applied in STEP 9.5 (post-currency conversion)
 - `GET /api/metrics/meters` — passed as `userMultiplier` param to `getMeterTrends()` helper
 
 ---

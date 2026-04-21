@@ -21,6 +21,18 @@ interface CreateCashierRequest {
   locationId?: string;
 }
 
+/**
+ * POST /api/admin/cashiers
+ *
+ * Creates a new cashier user account with a system-generated temporary password.
+ * The caller receives the plaintext temporary password in the response so it can
+ * be shared with the new cashier. Restricted to developer, admin, and manager roles.
+ *
+ * Body fields:
+ * @body {string} name       - REQUIRED. Full display name for the new cashier account.
+ * @body {string} email      - REQUIRED. Email address used as the login credential; must be unique.
+ * @body {string} locationId - OPTIONAL. ID of the gaming location to associate with the cashier.
+ */
 export async function POST(request: NextRequest) {
   try {
     // ============================================================================

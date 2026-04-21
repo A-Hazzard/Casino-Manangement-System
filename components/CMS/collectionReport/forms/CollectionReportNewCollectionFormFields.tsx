@@ -1,7 +1,7 @@
 /**
  * New Collection Form Fields Component
  *
- * Handles collection time, meters input, RAM clear, and notes for the New Collection Modal
+ * Handles collection time, meters input, RAM clear, and notes for the New Collection Modal.
  *
  * Features:
  * - Collection time picker
@@ -10,6 +10,43 @@
  * - Advanced SAS start override
  * - Machine notes
  * - Add/Update entry buttons
+ *
+ * @param selectedLocationName - Name of the location selected for collection
+ * @param previousCollectionTime - Date of the last collection for the selected machine
+ * @param machineForDataEntry - Currently selected machine object for data entry
+ * @param currentCollectionTime - Date object representing the current collection time
+ * @param showAdvancedSas - Toggle state for manual SAS time overrides
+ * @param sasStartTime - Manual start time for SAS period
+ * @param sasEndTime - Manual end time for SAS period
+ * @param currentMetersIn - Current Meters In value as a string
+ * @param currentMetersOut - Current Meters Out value as a string
+ * @param currentRamClearMetersIn - RAM Clear Meters In value as a string
+ * @param currentRamClearMetersOut - RAM Clear Meters Out value as a string
+ * @param currentMachineNotes - Custom notes for the current machine entry
+ * @param currentRamClear - Whether RAM clear is enabled for this machine
+ * @param prevIn - Previous Meters In value from the last report
+ * @param prevOut - Previous Meters Out value from the last report
+ * @param inputsEnabled - Whether form inputs are in an editable state
+ * @param isProcessing - Loading state for async operations
+ * @param editingEntryId - ID of the entry currently being edited in the batch
+ * @param isAddMachineEnabled - Whether the machine can currently be added to the list
+ * @param onCollectionTimeChange - Callback for collection time updates
+ * @param onAdvancedSasToggle - Callback for advanced options toggle
+ * @param onSasStartTimeChange - Callback for SAS start time updates
+ * @param onSasEndTimeChange - Callback for SAS end time updates
+ * @param onMetersInChange - Callback for Meters In value updates
+ * @param onMetersOutChange - Callback for Meters Out value updates
+ * @param onRamClearMetersInChange - Callback for RAM Clear meters updates
+ * @param onRamClearMetersOutChange - Callback for RAM Clear meters updates
+ * @param onMachineNotesChange - Callback for notes updates
+ * @param onRamClearChange - Callback for RAM Clear checkbox updates
+ * @param onDisabledFieldClick - Callback when a disabled field is interacted with
+ * @param onAddEntry - Callback to add a new machine to the batch
+ * @param onCancelEdit - Callback to cancel an existing edit session
+ * @param onAddOrUpdateEntry - Callback to save changes to the current entry
+ * @param onPrevInChange - Callback for manual previous in override
+ * @param onPrevOutChange - Callback for manual previous out override
+ * @param onViewMachine - Callback to view detailed machine history
  */
 
 'use client';

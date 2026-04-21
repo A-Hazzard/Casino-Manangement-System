@@ -23,6 +23,9 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main POST handler for executing NVS actions
  *
+ * @body {string} relayId - REQUIRED. The unique relay ID of the target SMIB.
+ * @body {string} action - REQUIRED. The NVS clear action ('clear_nvs', 'clear_nvs_meters', etc.).
+ *
  * Flow:
  * 1. Parse request body
  * 2. Validate relayId and action

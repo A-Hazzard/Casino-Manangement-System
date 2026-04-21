@@ -16,6 +16,14 @@ type CollectionReportDetailsLocationMetricsTabProps = {
  *
  * Displays aggregated location-level metrics for a collection report.
  * Organized into summary totals and detailed metric sections (Variance, Revenue, Balances, Corrections).
+ *
+ * Features:
+ * - High-level financial summary component (Responsive)
+ * - Grid-based layout for categorical metrics
+ * - Clear separation of variance, revenue, balances, and corrections
+ * - Specialized currency formatting for financial values
+ *
+ * @param reportData - Full report details object containing location metrics
  */
 const CollectionReportDetailsLocationMetricsTab: FC<CollectionReportDetailsLocationMetricsTabProps> = ({
   reportData,
@@ -30,7 +38,7 @@ const CollectionReportDetailsLocationMetricsTab: FC<CollectionReportDetailsLocat
     {
       title: 'Section 1: Collection Variance',
       items: [
-        { label: 'Variance', value: locationMetrics?.variance, isCurrency: typeof locationMetrics?.variance === 'number' },
+        { label: 'Variance', value: locationMetrics?.variance, isCurrency: true },
         { label: 'Variance Reason', value: locationMetrics?.varianceReason },
         { label: 'Amount To Collect', value: locationMetrics?.amountToCollect, isCurrency: true },
         { label: 'Collected Amount', value: locationMetrics?.collectedAmount, isCurrency: true },

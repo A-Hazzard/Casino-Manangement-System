@@ -273,7 +273,6 @@ export async function updateCollectionReport(
     { locationReportId: reportId },
     {
       ...updateData,
-      isEditing: false, // Mark as NOT editing when report is finalized
       updatedAt: new Date(),
     },
     { new: true }
@@ -305,6 +304,37 @@ export async function updateCollectionReport(
   // Recalculate affected machines
   const affectedMachineIds = await getAffectedMachineIds(reportId);
   await recalculateMultipleMachineCollections(affectedMachineIds);
+
+  // Recalculate totalVariation from Collection snapshots (covers both PC and mobile edit modals)
+  try {
+    const linkedCols = await Collections.find(
+      { locationReportId: reportId },
+      { 'sasMeters.jackpot': 1, _id: 0 }
+    ).lean();
+    const totalJackpot = linkedCols.reduce(
+      (s, c) => s + ((c.sasMeters as { jackpot?: number } | undefined)?.jackpot ?? 0),
+      0
+    );
+    const totalGross = typeof updateData.totalGross === 'number'
+      ? updateData.totalGross
+      : (updatedReport.totalGross ?? 0);
+    const totalSasGross = typeof updateData.totalSasGross === 'number'
+      ? updateData.totalSasGross
+      : (updatedReport.totalSasGross ?? 0);
+    const includeJackpot = Boolean(
+      updateData.includeJackpot !== undefined
+        ? updateData.includeJackpot
+        : updatedReport.includeJackpot
+    );
+    const adjustedSas = includeJackpot ? totalSasGross - totalJackpot : totalSasGross;
+    const totalVariation = totalGross - adjustedSas;
+    await CollectionReport.findOneAndUpdate(
+      { locationReportId: reportId },
+      { $set: { totalVariation } }
+    );
+  } catch (varErr) {
+    console.warn('[updateCollectionReport] totalVariation update failed (non-fatal):', varErr);
+  }
 
   return {
     success: true,

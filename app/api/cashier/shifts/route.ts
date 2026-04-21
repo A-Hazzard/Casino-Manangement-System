@@ -1,10 +1,23 @@
 /**
- * Cashier Shifts List API
- *
  * GET /api/cashier/shifts
  *
- * Retrieves a list of cashier shifts with optional filtering.
- * Useful for VM dashboard to find pending reviews.
+ * Returns a paginated, filtered list of cashier shifts. Called by the Vault
+ * Manager dashboard to find shifts awaiting review and by the cashier history
+ * view. Non-VM callers are silently restricted to their own shifts regardless
+ * of the cashierId param. Results are joined with user and location collections
+ * to include cashierName and locationName for display.
+ *
+ * Query parameters:
+ * @param status     {string}  Optional. Single status value or comma-separated list
+ *   (e.g. 'pending_review' or 'active,pending_review') to filter by shift status.
+ * @param locationId {string}  Optional. Restrict results to a specific location.
+ * @param cashierId  {string}  Optional. Filter by cashier user ID. Ignored for non-VM
+ *   callers — they always see only their own shifts.
+ * @param limit      {number}  Optional. Maximum number of results to return. Defaults to 20.
+ * @param startDate  {string}  Optional. ISO date string; only return shifts created on or
+ *   after this date.
+ * @param endDate    {string}  Optional. ISO date string; only return shifts created on or
+ *   before this date.
  *
  * @module app/api/cashier/shifts/route
  */

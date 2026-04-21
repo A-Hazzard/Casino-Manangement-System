@@ -1,8 +1,9 @@
-import { ReportConfig } from '@/lib/types/reports';
+import { type ReportConfig, type ReportData } from '@/shared/types/reports';
 import { isWithinInterval } from 'date-fns';
 
 type Reportable = Record<string, unknown>;
 
+// Optimized GamingMachine type for reports
 type GamingMachine = {
   _id: string;
   locationId: string;
@@ -22,27 +23,6 @@ type CasinoLocation = {
   name: string;
   region: string;
 };
-
-type ReportData = {
-  config: ReportConfig;
-  summary: {
-    totalRecords: number;
-    dateGenerated: string;
-    keyMetrics: Array<{ label: string; value: number }>;
-  };
-  tableData: Reportable[];
-  chartData: Array<{ label: string; value: number }>;
-  metadata: {
-    generatedBy: string;
-    generatedAt: string;
-    executionTime: number;
-    dataSourceLastUpdated: string;
-    reportVersion: string;
-    totalDataPoints: number;
-  };
-};
-// TODO: Replace with actual MongoDB data fetching
-// const mockData = await fetchAnalyticsDataFromMongoDB();
 
 function applyFilters(config: ReportConfig): GamingMachine[] {
   // TODO: Replace with actual MongoDB query
@@ -152,12 +132,12 @@ export function generateReportData(config: ReportConfig): ReportData {
       { label: 'Total Machines Analyzed', value: filteredMachines.length },
       {
         label: 'Total Handle',
-        value: filteredMachines.reduce((sum, m) => sum + m.coinIn, 0),
+        value: filteredMachines.reduce((sum, m) => sum + (m.coinIn || 0), 0),
       },
       {
         label: 'Total Win',
         value: filteredMachines.reduce(
-          (sum, m) => sum + (m.coinIn - m.coinOut),
+          (sum, m) => sum + ((m.coinIn || 0) - (m.coinOut || 0)),
           0
         ),
       },
@@ -182,4 +162,3 @@ export function generateReportData(config: ReportConfig): ReportData {
     },
   };
 }
-

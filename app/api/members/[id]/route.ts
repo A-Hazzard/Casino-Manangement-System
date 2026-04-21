@@ -17,13 +17,13 @@ import { Member } from '@/app/api/lib/models/members';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching a member by ID
+ * GET /api/members/[id]
  *
- * Flow:
- * 1. Parse route parameters
- * 2. Connect to database
- * 3. Fetch member with location information using aggregation
- * 4. Return member data
+ * Fetches a single member document with its associated gaming location name joined
+ * via aggregation; used by the Member Details page to populate the member profile view.
+ *
+ * URL params:
+ * @param id {string} Required (path). The string `_id` of the member to retrieve.
  */
 export async function GET(
   request: NextRequest
@@ -110,16 +110,29 @@ export async function GET(
 }
 
 /**
- * PUT handler for updating a member
+ * PUT /api/members/[id]
  *
- * Flow:
- * 1. Parse route parameters and request body
- * 2. Validate member ID
- * 3. Connect to database
- * 4. Find member by ID
- * 5. Update member fields
- * 6. Save updated member
- * 7. Return updated member
+ * Updates a member's profile and account settings; restricted to admin and developer
+ * roles. Changes are activity-logged with a before/after diff. Requires the caller
+ * to be authenticated via session cookie.
+ *
+ * URL params:
+ * @param id {string} Required (path). The string `_id` of the member to update.
+ *
+ * Body fields (all optional; only provided keys are applied):
+ * @param profile          {object}  Nested profile sub-document. Accepted sub-fields:
+ *                                    `firstName` {string} — member's given name (required if provided, cannot be blank).
+ *                                    `lastName`  {string} — member's family name (required if provided, cannot be blank).
+ *                                    `email`     {string} — contact email; must be unique across members.
+ *                                    `occupation` {string} — member's stated occupation.
+ *                                    `address`   {string} — member's physical address.
+ *                                    `gender`    {string} — member's gender.
+ *                                    `dob`       {string} — date of birth (ISO string or locale date).
+ * @param username         {string}  Member's login/display username; must be unique across all members.
+ * @param phoneNumber      {string}  Member's contact phone number.
+ * @param points           {number}  Current loyalty points balance for the member.
+ * @param uaccount         {unknown} Universal account reference object stored on the member document.
+ * @param gamingLocation   {string}  ID of the gaming location this member belongs to (required, cannot be blank).
  */
 export async function PUT(
   request: NextRequest
@@ -393,16 +406,13 @@ export async function PUT(
 }
 
 /**
- * DELETE handler for soft-deleting a member
+ * DELETE /api/members/[id]
  *
- * Flow:
- * 1. Parse route parameters
- * 2. Validate member ID
- * 3. Connect to database
- * 4. Find member by ID
- * 5. Soft delete member (set deletedAt)
- * 6. Save member
- * 7. Return success response
+ * Soft-deletes a member by setting `deletedAt` to the current timestamp; the record
+ * is retained in the database and excluded from active queries via the deleted-state filter.
+ *
+ * URL params:
+ * @param id {string} Required (path). The string `_id` of the member to soft-delete.
  */
 export async function DELETE(
   request: NextRequest

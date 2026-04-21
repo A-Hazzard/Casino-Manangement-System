@@ -73,11 +73,11 @@ export default function DashboardDesktopLayout(
   );
 
   return (
-    <div className="grid grid-cols-5 gap-6">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
       {/* ============================================================================
          Left Section (Dashboard Content) - 60% Width (3/5 columns)
          ============================================================================ */}
-      <div className="col-span-3 space-y-10">
+      <div className="space-y-10 xl:col-span-3">
         {/* Date Filter Controls & Machine Status Widget */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex-shrink-0">
@@ -110,7 +110,7 @@ export default function DashboardDesktopLayout(
                 if (!(props.loadingChartData || props.refreshing))
                   props.onRefresh();
               }}
-              aria-disabled={props.loadingChartData || props.refreshing}
+              aria-disabled={props.loadingChartData || props.refreshing ? 'true' : 'false'}
               tabIndex={0}
               role="button"
             >
@@ -196,7 +196,7 @@ export default function DashboardDesktopLayout(
       {/* ============================================================================
          Right Section (Map & Status) - 40% Width (2/5 columns)
          ============================================================================ */}
-      <div className="col-span-2 space-y-10">
+      <div className="space-y-10 xl:col-span-2">
         {/* Map Preview Section */}
         <div className="rounded-lg bg-container p-6 shadow-md">
           <div className="mb-4 flex items-center justify-between">

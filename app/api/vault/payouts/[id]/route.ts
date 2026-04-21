@@ -9,9 +9,14 @@ import {
   updatePayout,
   transformPayoutForResponse,
 } from '@/app/api/lib/helpers/vault/payouts';
-import type { UpdatePayoutRequest } from '@/app/api/lib/types/vault';
+import type { UpdatePayoutRequest } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for fetching payout details
+ *
+ * @param {string} id - REQUIRED (path). The ID of the payout to fetch.
+ */
 export async function GET(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const payoutId = pathname.split('/').pop();
@@ -46,6 +51,12 @@ export async function GET(req: NextRequest) {
   });
 }
 
+/**
+ * Main PUT handler for updating a payout
+ *
+ * @param {string} id - REQUIRED (path). The ID of the payout to update.
+ * @body {UpdatePayoutRequest} data - The updated payout data fields.
+ */
 export async function PUT(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const payoutId = pathname.split('/').pop();

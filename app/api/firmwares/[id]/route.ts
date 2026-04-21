@@ -20,7 +20,13 @@ import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for downloading firmware by ID
+ * GET /api/firmwares/[id]
+ *
+ * Downloads the raw firmware binary for a given firmware document ID. Called
+ * when a client needs to retrieve the file directly by its database record ID.
+ *
+ * URL params:
+ * @param id {string} Required (path). The MongoDB ID of the Firmware document to download.
  */
 export async function GET(
   request: NextRequest
@@ -71,15 +77,14 @@ export async function GET(
 }
 
 /**
- * Main DELETE handler for soft deleting a firmware
+ * DELETE /api/firmwares/[id]
  *
- * Flow:
- * 1. Parse and validate request parameters
- * 2. Connect to database
- * 3. Find firmware by ID
- * 4. Soft delete firmware
- * 5. Log activity
- * 6. Return success response
+ * Soft-deletes a firmware document by setting its `deletedAt` timestamp. Called
+ * when an operator removes a firmware version from the management panel; the
+ * binary is retained in GridFS but the record is no longer surfaced in listings.
+ *
+ * URL params:
+ * @param id {string} Required (path). The MongoDB ID of the Firmware document to delete.
  */
 export async function DELETE(
   request: NextRequest

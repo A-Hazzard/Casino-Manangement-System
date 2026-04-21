@@ -14,6 +14,14 @@ import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main POST handler for removing cash from vault
+ *
+ * @body {string} reason - REQUIRED. Reason for the cash removal.
+ * @body {number} amount - REQUIRED. Total amount to remove.
+ * @body {Object} denominations - REQUIRED. Denomination breakdown of the removal.
+ * @body {string} notes - Optional. Additional context.
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {

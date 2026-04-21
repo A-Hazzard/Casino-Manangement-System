@@ -19,7 +19,12 @@ import UserModel from '@/app/api/lib/models/user';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for creating database indexes
+ * POST /api/admin/create-indexes
+ *
+ * Creates MongoDB indexes across all major collections to improve query
+ * performance. Safe to re-run — MongoDB skips indexes that already exist.
+ * Restricted to admin and developer roles. Returns a per-collection status
+ * report listing successes and any errors encountered.
  */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ isAdminOrDev }) => {
@@ -58,7 +63,10 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET handler for checking index creation status
+ * GET /api/admin/create-indexes
+ *
+ * Returns a hint message directing callers to use POST. No side effects.
+ * Lists the collection names that are eligible for index creation.
  */
 export async function GET(request: NextRequest) {
     return withApiAuth(request, async () => {

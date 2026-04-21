@@ -20,6 +20,13 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main GET handler for fetching schedulers
  *
+ * @param {string} licencee - Filter by licencee ID or "all"
+ * @param {string} location - Filter by location ID or "all"
+ * @param {string} collector - Filter by collector user ID or "all"
+ * @param {string} status - Filter by scheduler status
+ * @param {string} startDate - Range start for scheduler startTime
+ * @param {string} endDate - Range end for scheduler startTime
+ *
  * Flow:
  * 1. Connect to database
  * 2. Parse query parameters (licencee, location, collector, status, dates)

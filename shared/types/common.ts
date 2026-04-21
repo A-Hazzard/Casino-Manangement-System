@@ -81,6 +81,8 @@ export type CollectionMetersHistoryEntry = {
   metersOut: number;
   prevMetersIn: number;
   prevMetersOut: number;
+  prevIn?: number;
+  prevOut?: number;
   locationReportId: string;
 };
 
@@ -101,3 +103,10 @@ export type BillValidatorData = {
   dollarTotalUnknown?: number;
 };
 
+export type Alert = {
+  id: string;
+  type: 'info' | 'warning' | 'error' | 'success';
+  message: string;
+  timestamp: Date;
+  read?: boolean;
+};

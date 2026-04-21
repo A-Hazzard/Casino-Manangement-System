@@ -13,6 +13,18 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main GET handler for fetching members
+ *
+ * @param {string} search - Search string for name, username, or ID
+ * @param {number} page - Page number for pagination (defaults to 1)
+ * @param {number} limit - Items per page (defaults to 10)
+ * @param {string} sortBy - Field to sort by (e.g., 'name', 'createdAt')
+ * @param {string} sortOrder - 'asc' or 'desc'
+ * @param {string} startDate - Filter by creation date start
+ * @param {string} endDate - Filter by creation date end
+ * @param {string} winLossFilter - 'positive', 'negative', or 'all'
+ * @param {string} locationFilter - Filter by location ID(s)
+ * @param {string} currency - Display currency code (e.g., 'USD', 'GYD')
+ * @param {string} licencee - Licencee for currency conversion rules
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async () => {
@@ -252,6 +264,10 @@ export async function GET(request: NextRequest) {
 
 /**
  * Main POST handler for creating a new member
+ *
+ * @body {Object} profile - REQUIRED. Member profile data (firstName, lastName, etc.)
+ * @body {string} username - REQUIRED. Unique username for the member
+ * @body {string} gamingLocation - Optional. ID of the member's primary gaming location
  */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: currentUser }) => {

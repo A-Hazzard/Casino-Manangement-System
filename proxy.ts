@@ -21,7 +21,7 @@ import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
 import { jwtVerify } from 'jose';
 import { NextRequest, NextResponse } from 'next/server';
 
-const publicPaths = ['/login', '/forgot-password', '/reset-password'];
+const publicPaths = ['/login', '/forgot-password', '/reset-password', '/install'];
 
 /**
  * Validates database context from JWT token

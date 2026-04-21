@@ -17,5 +17,37 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "iconLibrary": "lucide"
+  "iconLibrary": "lucide",
+  {
+    "_id": "<String(ObjectId())>",
+    "machine": "<MachineId>",
+    "location": "<LocationId>",
+    "movement": {
+      "coinIn": 0,
+      "coinOut": 0,
+      "jackpot": 0,
+      "totalHandPaidCancelledCredits": 0,
+      "totalCancelledCredits": <Movement Out>,
+      "gamesPlayed": 0,
+      "gamesWon": 0,
+      "currentCredits": 0,
+      "totalWonCredits": 0,
+      "drop": <Movement In>
+    },
+    "coinIn": 0,
+    "coinOut": 0,
+    "jackpot": 0,
+    "totalHandPaidCancelledCredits": 0,
+    "totalCancelledCredits": <Current Meter Out>,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "currentCredits": 0,
+    "totalWonCredits": 0,
+    "drop": <Current Meter In>,
+    "isSasCreated": false,
+    "readAt": <currentDateTime>,
+    "createdAt": <currentDateTime>,
+    "updatedAt": <currentDateTime>
+  }
 }
+

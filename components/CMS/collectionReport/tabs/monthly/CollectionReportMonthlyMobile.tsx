@@ -1,28 +1,5 @@
-/**
- * Monthly Mobile UI Component
- * Mobile layout wrapper for monthly reports page.
- *
- * Features:
- * - Mobile-only display (hidden on desktop)
- * - Location selection dropdown
- * - Date range picker
- * - Monthly report summary display
- * - Monthly report details cards
- * - Export PDF and Excel functionality
- * - Pagination controls
- * - Client-side pagination
- *
- * @param allLocationNames - Array of all location names
- * @param monthlyLocation - Currently selected location
- * @param onMonthlyLocationChange - Callback when location changes
- * @param pendingRange - Pending date range selection
- * @param onPendingRangeChange - Callback when date range changes
- * @param onApplyDateRange - Callback to apply date range
- * @param onSetLastMonth - Callback to set last month date range
- * @param monthlySummary - Monthly report summary data
- * @param monthlyDetails - Monthly report details data
- * @param monthlyLoading - Whether data is loading
- */
+'use client';
+
 import { CollectionReportMonthlyMonthYearPicker } from '@/components/CMS/collectionReport/tabs/monthly/CollectionReportMonthlyMonthYearPicker';
 import { Button } from '@/components/shared/ui/button';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
@@ -39,10 +16,9 @@ import { toast } from 'sonner';
 
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import type { MonthlyMobileUIProps, MonthlyReportDetailsRow } from '@/lib/types/components';
-import {
-  exportMonthlyReportExcel,
-  exportMonthlyReportPDF,
-} from '@/lib/utils/export';
+import { exportMonthlyReportExcel, exportMonthlyReportPDF } from '@/lib/utils/export';
+import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
+import { getGrossColorClass } from '@/lib/utils/financial';
 
 // ============================================================================
 // Constants
@@ -50,276 +26,281 @@ import {
 
 const ITEMS_PER_PAGE = 20;
 
-/**
- * CollectionReportMonthlyMobile Component
- * Mobile layout wrapper for monthly reports page.
- */
+// Colour config for each summary metric — mirrors FinancialMetricsCards style
+const SUMMARY_METRICS = [
+  {
+    key: 'drop' as const,
+    label: 'Drop',
+    gradient: 'from-purple-500 to-purple-600',
+    dot: 'bg-purple-500',
+  },
+  {
+    key: 'cancelledCredits' as const,
+    label: 'Cancelled Credits',
+    gradient: 'from-blue-500 to-blue-600',
+    dot: 'bg-blue-500',
+  },
+  {
+    key: 'gross' as const,
+    label: 'Gross',
+    gradient: 'from-orange-500 to-orange-600',
+    dot: 'bg-orange-500',
+  },
+  {
+    key: 'sasGross' as const,
+    label: 'SAS Gross',
+    gradient: 'from-amber-500 to-yellow-500',
+    dot: 'bg-amber-500',
+  },
+];
+
+// ============================================================================
+// Component
+// ============================================================================
+
 export default function CollectionReportMonthlyMobile({
   locations,
   monthlyLocation,
   onMonthlyLocationChange,
   pendingRange,
-      onPendingRangeChange,
-      onSetLastMonth,
+  onPendingRangeChange,
+  onSetLastMonth,
   monthlySummary,
   monthlyDetails,
   monthlyLoading,
 }: MonthlyMobileUIProps) {
   const router = useRouter();
+  const { formatAmount } = useCurrencyFormat();
   const [currentPage, setCurrentPage] = useState(0);
 
-  // Copy to clipboard function
-  const copyToClipboard = async (text: string, label: string) => {
-    if (!text || text.trim() === '' || text === '-') {
-      toast.error(`No ${label} value to copy`);
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(text.trim());
-      toast.success(`${label} copied to clipboard`);
-    } catch {
-      toast.error(`Failed to copy ${label}`);
-    }
+  const formatVal = (v: number | string | null | undefined): string => {
+    if (v === '-' || v === undefined || v === null || v === '') return '—';
+    const num = typeof v === 'string' ? parseFloat(v) : v;
+    return isNaN(num) ? String(v) : formatAmount(num);
   };
 
-  // Find location ID by name
-  const getLocationId = (locationName: string): string | null => {
-    const location = locations.find(loc => loc.name === locationName);
-    return location?.id || null;
+  const colorCls = (v: number | string | null | undefined): string => {
+    if (v === '-' || v === undefined || v === null || v === '') return '';
+    const num = typeof v === 'string' ? parseFloat(v) : v;
+    return isNaN(num) ? '' : getGrossColorClass(num);
   };
+
+  const copy = async (text: string, label: string) => {
+    if (!text || text.trim() === '' || text === '-') { toast.error(`No ${label} value to copy`); return; }
+    try {
+      await navigator.clipboard.writeText(text.replace('$', '').replace(/,/g, '').trim());
+      toast.success(`${label} copied`);
+    } catch { toast.error(`Failed to copy ${label}`); }
+  };
+
+  const getLocationId = (name: string) => locations.find(loc => loc.name === name)?.id ?? null;
 
   const totalPages = Math.ceil(monthlyDetails.length / ITEMS_PER_PAGE) || 1;
-  const firstItemIndex = currentPage * ITEMS_PER_PAGE;
-  const lastItemIndex = (currentPage + 1) * ITEMS_PER_PAGE;
-  const currentCardsToDisplay = monthlyDetails.slice(
-    firstItemIndex,
-    lastItemIndex
-  );
+  const startIdx = currentPage * ITEMS_PER_PAGE;
+  const endIdx = startIdx + ITEMS_PER_PAGE;
+  const pageItems = monthlyDetails.slice(startIdx, endIdx);
 
-  const handlePaginate = (pageNumber: number) => {
-    if (pageNumber < 0 || pageNumber >= totalPages) return;
-    setCurrentPage(pageNumber);
-  };
+  const summaryTitle =
+    Array.isArray(monthlyLocation) && monthlyLocation.length > 0
+      ? `${monthlyLocation.length} Location${monthlyLocation.length > 1 ? 's' : ''} — Summary`
+      : monthlyLocation !== 'all' && typeof monthlyLocation === 'string'
+        ? `${locations.find(loc => loc.id === monthlyLocation)?.name ?? monthlyLocation} — Summary`
+        : `All (${monthlyDetails.length}/${locations.length}) Locations — Summary`;
 
-  // Handler for export with format selection
   const handleExport = async (format: 'pdf' | 'excel') => {
-    const totalLocations = locations.length;
-    const currentLocationsCount = monthlyDetails.length;
     if (format === 'pdf') {
-      await exportMonthlyReportPDF(monthlySummary, monthlyDetails, totalLocations, currentLocationsCount);
+      await exportMonthlyReportPDF(monthlySummary, monthlyDetails, locations.length, monthlyDetails.length);
     } else {
-      exportMonthlyReportExcel(monthlySummary, monthlyDetails, totalLocations, currentLocationsCount);
+      exportMonthlyReportExcel(monthlySummary, monthlyDetails, locations.length, monthlyDetails.length);
     }
   };
 
   return (
-    <div className="w-full px-2 pb-4 sm:px-4 md:hidden">
-      <div className="mx-auto max-w-xl space-y-4 rounded-lg bg-white p-3 shadow-lg sm:p-4">
-        <div className="grid grid-cols-2 gap-3">
-          <LocationMultiSelect
-            locations={locations}
-            selectedLocations={Array.isArray(monthlyLocation) ? monthlyLocation : (monthlyLocation === 'all' ? [] : [monthlyLocation])}
-            onSelectionChange={onMonthlyLocationChange}
-            placeholder="Select locations..."
-            className="w-full"
-          />
+    <div className="w-full pb-6 md:hidden">
 
+      {/* ── Purple filter bar ── */}
+      <div className="bg-buttonActive px-3 py-3 sm:px-4">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <LocationMultiSelect
+              locations={locations}
+              selectedLocations={
+                Array.isArray(monthlyLocation)
+                  ? monthlyLocation
+                  : monthlyLocation === 'all' ? [] : [monthlyLocation]
+              }
+              onSelectionChange={onMonthlyLocationChange}
+              placeholder="Select locations..."
+              className="w-full"
+            />
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="flex items-center justify-center gap-1 truncate rounded-md border border-gray-300 bg-gray-200 px-2.5 py-2 text-xs text-gray-700 hover:bg-gray-300 sm:text-sm"
+                className="h-11 shrink-0 gap-1.5 rounded-md bg-white px-3 text-xs font-medium text-gray-700 hover:bg-gray-50"
               >
-                <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <Download className="h-3.5 w-3.5" />
                 Export
-                <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <ChevronDown className="h-3 w-3 opacity-60" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => handleExport('pdf')}
-                className="cursor-pointer"
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Export as PDF
+              <DropdownMenuItem onClick={() => handleExport('pdf')} className="cursor-pointer">
+                <FileText className="mr-2 h-4 w-4" />Export as PDF
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => handleExport('excel')}
-                className="cursor-pointer"
-              >
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Export as Excel
+              <DropdownMenuItem onClick={() => handleExport('excel')} className="cursor-pointer">
+                <FileSpreadsheet className="mr-2 h-4 w-4" />Export as Excel
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+      </div>
 
-        <div className="w-full">
-          <CollectionReportMonthlyMonthYearPicker
-            value={pendingRange}
-            onChange={onPendingRangeChange}
-            onSetLastMonth={onSetLastMonth}
-          />
-        </div>
+      {/* ── Date picker — below the filter bar ── */}
+      <div className="border-b bg-white px-3 py-3 sm:px-4">
+        <CollectionReportMonthlyMonthYearPicker
+          value={pendingRange}
+          onChange={onPendingRangeChange}
+          onSetLastMonth={onSetLastMonth}
+        />
+      </div>
 
+      {/* ── Summary totals — FinancialMetricsCards style ── */}
+      <div className="px-3 pt-4 sm:px-4">
         {monthlyLoading ? (
-          <div className="h-32 w-full animate-pulse rounded-lg bg-gray-200" />
-        ) : (
-          <div className="space-y-2 rounded-lg bg-blue-500 p-4 text-white shadow-md">
-            <h2 className="text-center text-xl font-bold">
-              {Array.isArray(monthlyLocation) && monthlyLocation.length > 0
-                ? `${monthlyLocation.length} Selected Locations - Summary`
-                : monthlyLocation !== 'all' && typeof monthlyLocation === 'string'
-                  ? `${locations.find(loc => loc.id === monthlyLocation)?.name || monthlyLocation} - Summary`
-                  : `All (${monthlyDetails.length}/${locations.length}) Locations Total`}
-            </h2>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-1 text-center">
-              {[
-                { label: 'DROP', value: monthlySummary.drop, copyLabel: 'Drop' },
-                {
-                  label: 'CANCELLED CREDITS',
-                  value: monthlySummary.cancelledCredits,
-                  copyLabel: 'Cancelled Credits',
-                },
-                { label: 'GROSS', value: monthlySummary.gross, copyLabel: 'Gross' },
-                { label: 'SAS GROSS', value: monthlySummary.sasGross, copyLabel: 'SAS Gross' },
-              ].map(item => (
-                <div key={item.label}>
-                  <div className="text-xs font-semibold uppercase tracking-wider opacity-90">
-                    {item.label}
-                  </div>
-                  <button
-                    onClick={() => copyToClipboard(item.value, item.copyLabel)}
-                    className="truncate text-lg font-medium hover:text-blue-200 hover:underline cursor-pointer"
-                    title="Click to copy"
-                  >
-                    {item.value}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {monthlyLoading ? (
-          <div className="mt-4 space-y-3">
-            {[1, 2].map(i => (
-              <div
-                key={i}
-                className="h-36 w-full animate-pulse rounded-lg bg-gray-200"
-              />
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-200" />
             ))}
           </div>
-        ) : currentCardsToDisplay.length === 0 && !monthlyLoading ? null : (
+        ) : (
           <>
-            <div className="mt-4 space-y-4">
-              {currentCardsToDisplay.map((detail: MonthlyReportDetailsRow, index: number) => {
-                const locationId = getLocationId(detail.location);
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-400">
+              {summaryTitle}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {SUMMARY_METRICS.map(metric => {
+                const raw = monthlySummary[metric.key];
+                const formatted = formatVal(raw);
+                const valueCls = colorCls(raw);
                 return (
                   <div
-                    key={index}
-                    className="overflow-hidden rounded-lg bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
+                    key={metric.key}
+                    className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
                   >
-                    <div className="flex items-center justify-between rounded-t-lg bg-lighterBlueHighlight px-4 py-3">
-                      <div className="flex min-w-0 flex-1 items-center gap-1.5">
-                        <span className="text-md font-semibold text-white">Location:</span>
-                        {locationId ? (
-                          <>
-                            <button
-                              onClick={e => {
-                                e.stopPropagation();
-                                router.push(`/locations/${locationId}`);
-                              }}
-                              className="text-md truncate font-semibold text-white hover:text-blue-200 hover:underline cursor-pointer"
-                              title="Click to view location details"
-                            >
-                              {detail.location}
-                            </button>
-                            <button
-                              onClick={e => {
-                                e.stopPropagation();
-                                router.push(`/locations/${locationId}`);
-                              }}
-                              className="flex-shrink-0"
-                              title="View location details"
-                            >
-                              <ExternalLink className="h-3.5 w-3.5 text-white hover:text-blue-200 cursor-pointer transition-transform hover:scale-110" />
-                            </button>
-                          </>
-                        ) : (
-                          <span className="text-md truncate font-semibold text-white">
-                            {detail.location}
-                          </span>
-                        )}
+                    {/* Coloured top strip */}
+                    <div className={`absolute left-0 right-0 top-0 h-1 bg-gradient-to-r ${metric.gradient}`} />
+                    <div className="p-4 pt-5">
+                      <div className="mb-2 flex items-center justify-between">
+                        <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                          {metric.label}
+                        </h3>
+                        <div className={`h-2 w-2 rounded-full ${metric.dot}`} />
                       </div>
-                    </div>
-                    <div className="flex flex-col gap-2 p-4 text-sm">
-                      <div className="flex justify-between">
-                        <span className="font-medium text-gray-700">Drop:</span>
-                        <button
-                          onClick={() => copyToClipboard(detail.drop, 'Drop')}
-                          className="text-right font-semibold hover:text-blue-600 hover:underline cursor-pointer"
-                          title="Click to copy"
-                        >
-                          {detail.drop}
-                        </button>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium text-gray-700">Win:</span>
-                        <button
-                          onClick={() => copyToClipboard(detail.win, 'Win')}
-                          className="text-right font-semibold hover:text-blue-600 hover:underline cursor-pointer"
-                          title="Click to copy"
-                        >
-                          {detail.win}
-                        </button>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium text-gray-700">Gross:</span>
-                        <button
-                          onClick={() => copyToClipboard(detail.gross, 'Gross')}
-                          className="text-right font-semibold hover:text-blue-600 hover:underline cursor-pointer"
-                          title="Click to copy"
-                        >
-                          {detail.gross}
-                        </button>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium text-gray-700">
-                          SAS Gross:
+                      <button
+                        onClick={() => copy(String(raw ?? ''), metric.label)}
+                        className="text-left hover:opacity-70"
+                        title="Tap to copy"
+                      >
+                        <span className={`text-lg font-bold ${valueCls || 'text-gray-900'}`}>
+                          {formatted}
                         </span>
-                        <button
-                          onClick={() => copyToClipboard(detail.sasGross, 'SAS Gross')}
-                          className="text-right font-semibold hover:text-blue-600 hover:underline cursor-pointer"
-                          title="Click to copy"
-                        >
-                          {detail.sasGross}
-                        </button>
-                      </div>
+                      </button>
                     </div>
                   </div>
                 );
               })}
             </div>
-
-            {totalPages > 0 && (
-              <PaginationControls
-                currentPage={currentPage}
-                totalPages={totalPages}
-                setCurrentPage={handlePaginate}
-              />
-            )}
-            {currentCardsToDisplay.length > 0 && (
-              <p className="mt-2 text-center text-xs text-gray-500">
-                Showing {firstItemIndex + 1} -{' '}
-                {Math.min(lastItemIndex, monthlyDetails.length)} of{' '}
-                {monthlyDetails.length} records
-              </p>
-            )}
           </>
         )}
       </div>
+
+      {/* ── Location cards — collection tab card style ── */}
+      {monthlyLoading ? (
+        <div className="mt-4 space-y-3 px-3 sm:px-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-44 animate-pulse rounded-lg bg-gray-200" />
+          ))}
+        </div>
+      ) : pageItems.length === 0 ? (
+        <p className="mt-6 px-3 text-center text-sm text-gray-400 sm:px-4">
+          No data for the selected period.
+        </p>
+      ) : (
+        <>
+          <div className="mt-4 space-y-4 px-3 sm:px-4">
+            {pageItems.map((detail: MonthlyReportDetailsRow, index: number) => {
+              const locationId = getLocationId(detail.location);
+              return (
+                <div
+                  key={index}
+                  className="overflow-hidden rounded-lg bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
+                >
+                  {/* Header — same as collection tab card */}
+                  <div className="bg-lighterBlueHighlight px-4 py-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      {locationId ? (
+                        <>
+                          <button
+                            onClick={() => router.push(`/locations/${locationId}`)}
+                            className="min-w-0 truncate text-sm font-semibold text-white hover:text-blue-200"
+                          >
+                            {detail.location}
+                          </button>
+                          <button onClick={() => router.push(`/locations/${locationId}`)}>
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0 text-white/70 hover:text-white" />
+                          </button>
+                        </>
+                      ) : (
+                        <span className="min-w-0 truncate text-sm font-semibold text-white">
+                          {detail.location}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Body — stacked label: value rows like collection tab */}
+                  <div className="flex flex-col gap-3 bg-white p-4">
+                    {[
+                      { label: 'Drop', value: detail.drop },
+                      { label: 'Win', value: detail.win },
+                      { label: 'Gross', value: detail.gross },
+                      { label: 'SAS Gross', value: detail.sasGross },
+                    ].map(row => (
+                      <div key={row.label} className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">{row.label}</span>
+                        <button
+                          onClick={() => copy(row.value, row.label)}
+                          className="text-right text-sm font-semibold hover:opacity-70"
+                          title="Tap to copy"
+                        >
+                          <span className={colorCls(row.value) || 'text-gray-900'}>
+                            {formatVal(row.value)}
+                          </span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="mt-4 px-3 sm:px-4">
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                setCurrentPage={page => { if (page >= 0 && page < totalPages) setCurrentPage(page); }}
+              />
+              <p className="mt-2 text-center text-xs text-gray-400">
+                {startIdx + 1}–{Math.min(endIdx, monthlyDetails.length)} of {monthlyDetails.length} locations
+              </p>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
-

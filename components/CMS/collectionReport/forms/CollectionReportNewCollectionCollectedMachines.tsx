@@ -1,13 +1,24 @@
 /**
  * New Collection Collected Machines Component
  *
- * Displays the list of machines that have already been collected in the current batch
+ * Displays the list of machines that have already been collected in the current batch.
  *
  * Features:
  * - List of collected machines with key details
  * - Edit and delete actions for each entry
  * - Empty state display
  * - Update All SAS Times functionality (two date pickers for start and end)
+ *
+ * @param collectedMachineEntries - Array of machine collection documents currently in the batch
+ * @param isProcessing - Loading state for async operations
+ * @param onEditEntry - Callback to start editing a specific machine entry
+ * @param onDeleteEntry - Callback to remove a machine entry from the batch
+ * @param updateAllSasStartDate - Current value for the 'Apply All' start date picker
+ * @param setUpdateAllSasStartDate - Function to update the 'Apply All' start date
+ * @param updateAllSasEndDate - Current value for the 'Apply All' end date picker
+ * @param setUpdateAllSasEndDate - Function to update the 'Apply All' end date
+ * @param onApplyAllDates - Callback to trigger the batch update of SAS times
+ * @param variationMachineIds - Array of machine IDs that have failed variation checks
  */
 
 'use client';

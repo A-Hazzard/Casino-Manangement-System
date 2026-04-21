@@ -1,3 +1,18 @@
+/**
+ * VariationsCollapsibleSection Component
+ *
+ * A collapsible UI section that displays a summary and list of all machines with financial variations.
+ *
+ * Features:
+ * - Animated expansion/collapse using Framer Motion
+ * - Variation count badge for quick recognition
+ * - Integrated VariationsListDisplay for detailed data
+ *
+ * @param machines - Array of machine data including financial discrepancies
+ * @param isExpanded - Current expansion state of the section
+ * @param onExpandChange - Callback triggered when the section is toggled
+ * @param onMachineClick - Optional callback for navigating to a specific machine's data
+ */
 'use client';
 
 import { motion } from 'framer-motion';

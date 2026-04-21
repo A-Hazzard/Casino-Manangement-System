@@ -16,12 +16,12 @@ import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for clearing user session
+ * POST /api/auth/clear-session
  *
- * Flow:
- * 1. Create success response
- * 2. Clear all authentication cookies (token, refreshToken, user)
- * 3. Return success response
+ * Invalidates the current session by expiring the core session cookies. Takes
+ * no request body; clears the `token`, `refreshToken`, and `user` cookies.
+ * Used when a database mismatch is detected or the session must be forcefully
+ * terminated server-side.
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();

@@ -1,32 +1,23 @@
-/**
- * Activity Log Description Dialog Component
- * Dialog for displaying activity log description with change details.
- *
- * Features:
- * - Activity log description display
- * - Change tracking with old/new value comparison
- * - ID resolution to human-readable names
- * - Date and time formatting
- * - Field name formatting
- * - Badge indicators
- * - Search mode support
- *
- * @param props - Component props
- */
 'use client';
 
-import type { ActivityLog } from '@/app/api/lib/types/activityLog';
-import { Badge } from '@/components/shared/ui/badge';
+import type { ActivityLog } from '@/shared/types/activityLog';
+import { Button } from '@/components/shared/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
 } from '@/components/shared/ui/dialog';
-import { formatValue } from '@/lib/utils/date';
 import { formatDate } from '@/lib/utils/formatting';
 import { isIdValue, resolveIdToName } from '@/lib/utils/id';
+import { formatValue } from '@/lib/utils/date';
+import { ArrowRight, Check, Copy } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
+type ResolvedChange = {
+  field: string;
+  oldValue: string;
+  newValue: string;
+};
 
 type AdministrationActivityLogDescriptionDialogProps = {
   isOpen: boolean;
@@ -35,234 +26,242 @@ type AdministrationActivityLogDescriptionDialogProps = {
   searchMode: 'username' | 'email' | 'description' | '_id';
 };
 
+const ACTION_CONFIG: Record<string, { header: string; badge: string; dot: string }> = {
+  create: {
+    header: 'bg-emerald-600',
+    badge: 'bg-emerald-500/25 text-emerald-100 ring-1 ring-emerald-400/30',
+    dot: 'bg-emerald-300',
+  },
+  update: {
+    header: 'bg-blue-600',
+    badge: 'bg-blue-500/25 text-blue-100 ring-1 ring-blue-400/30',
+    dot: 'bg-blue-300',
+  },
+  delete: {
+    header: 'bg-rose-600',
+    badge: 'bg-rose-500/25 text-rose-100 ring-1 ring-rose-400/30',
+    dot: 'bg-rose-300',
+  },
+  login: {
+    header: 'bg-green-600',
+    badge: 'bg-green-500/25 text-green-100 ring-1 ring-green-400/30',
+    dot: 'bg-green-300',
+  },
+  logout: {
+    header: 'bg-slate-600',
+    badge: 'bg-slate-500/25 text-slate-100 ring-1 ring-slate-400/30',
+    dot: 'bg-slate-300',
+  },
+  default: {
+    header: 'bg-slate-600',
+    badge: 'bg-slate-500/25 text-slate-100 ring-1 ring-slate-400/30',
+    dot: 'bg-slate-300',
+  },
+};
+
+const RESOURCE_BADGE: Record<string, string> = {
+  user:       'bg-indigo-100 text-indigo-700',
+  machine:    'bg-orange-100 text-orange-700',
+  cabinet:    'bg-orange-100 text-orange-700',
+  location:   'bg-teal-100 text-teal-700',
+  collection: 'bg-yellow-100 text-yellow-700',
+  member:     'bg-pink-100 text-pink-700',
+  licencee:   'bg-cyan-100 text-cyan-700',
+  country:    'bg-lime-100 text-lime-700',
+  session:    'bg-violet-100 text-violet-700',
+};
+
+function formatFieldLabel(field: string) {
+  return field
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/\./g, ' › ')
+    .replace(/^./, s => s.toUpperCase())
+    .trim();
+}
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
+  return (
+    <button
+      onClick={copy}
+      title="Copy"
+      className="ml-1 inline-flex shrink-0 items-center rounded p-0.5 text-gray-400 transition-colors hover:text-gray-600"
+    >
+      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+    </button>
+  );
+}
+
+function MetaRow({ label, value, mono, copyable }: { label: string; value?: string | null; mono?: boolean; copyable?: boolean }) {
+  if (!value || value === 'N/A' || value === 'unknown') return null;
+  return (
+    <div className="flex items-baseline gap-3 py-1.5">
+      <span className="w-16 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-gray-400">{label}</span>
+      <div className="flex min-w-0 flex-1 items-center">
+        <span className={`min-w-0 break-all text-xs text-gray-800 ${mono ? 'font-mono' : 'font-medium'}`}>{value}</span>
+        {copyable && <CopyButton value={value} />}
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="border-t px-5 py-4">
+      <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">{title}</p>
+      {children}
+    </div>
+  );
+}
+
 function AdministrationActivityLogDescriptionDialog({
   isOpen,
   onClose,
   log,
   searchMode,
 }: AdministrationActivityLogDescriptionDialogProps) {
-  const [resolvedChanges, setResolvedChanges] = useState<
-    Array<{
-      field: string;
-      oldValue: string;
-      newValue: string;
-      originalChange: { field: string; oldValue: unknown; newValue: unknown };
-    }>
-  >([]);
+  const [resolvedChanges, setResolvedChanges] = useState<ResolvedChange[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Resolve IDs and format values
   useEffect(() => {
-    // Reset when dialog closes or log changes
-    if (!isOpen || !log || !log.changes || log.changes.length === 0) {
+    if (!isOpen || !log?.changes?.length) {
       setResolvedChanges([]);
       return;
     }
-
-    let isMounted = true;
-
-    const resolveChanges = async () => {
+    let alive = true;
+    setLoading(true);
+    (async () => {
       try {
         const resolved = await Promise.all(
-          log
-            .changes!// Filter out changes where "To" value is an ID
-            .filter(change => !isIdValue(change.newValue))
-            .map(async change => {
-              const formattedOldValue = isIdValue(change.oldValue)
-                ? await resolveIdToName(change.oldValue, change.field)
-                : formatValue(change.oldValue, change.field);
-              const formattedNewValue = formatValue(
-                change.newValue,
-                change.field
-              );
-
-              return {
-                field: change.field,
-                oldValue: formattedOldValue,
-                newValue: formattedNewValue,
-                originalChange: change,
-              };
-            })
+          log.changes!
+            .filter(c => !isIdValue(c.newValue))
+            .map(async c => ({
+              field: c.field,
+              oldValue: isIdValue(c.oldValue)
+                ? await resolveIdToName(c.oldValue, c.field)
+                : formatValue(c.oldValue, c.field),
+              newValue: formatValue(c.newValue, c.field),
+            }))
         );
-        // Only update state if component is still mounted
-        if (isMounted) {
-          setResolvedChanges(resolved);
-        }
-      } catch (error) {
-        console.error('Error resolving changes:', error);
-        if (isMounted) {
-          setResolvedChanges([]);
-        }
+        if (alive) setResolvedChanges(resolved);
+      } catch {
+        if (alive) setResolvedChanges([]);
+      } finally {
+        if (alive) setLoading(false);
       }
-    };
-
-    resolveChanges();
-
-    // Cleanup function
-    return () => {
-      isMounted = false;
-    };
+    })();
+    return () => { alive = false; };
   }, [isOpen, log]);
 
-  // Early return after hooks
   if (!log) return null;
 
-  // Get action badge variant
-  const getActionBadgeVariant = (action: string) => {
-    switch (action) {
-      case 'create':
-        return 'default';
-      case 'update':
-        return 'secondary';
-      case 'delete':
-        return 'destructive';
-      case 'view':
-        return 'outline';
-      default:
-        return 'outline';
-    }
-  };
-
-  // Get resource badge variant
-  const getResourceBadgeVariant = (resource: string) => {
-    switch (resource) {
-      case 'user':
-        return 'default';
-      case 'machine':
-        return 'secondary';
-      case 'location':
-        return 'outline';
-      case 'collection':
-        return 'destructive';
-      case 'licencee':
-        return 'default';
-      case 'member':
-        return 'secondary';
-      case 'session':
-        return 'outline';
-      default:
-        return 'outline';
-    }
-  };
-
-  const description = log.description || log.details || 'No description';
+  const action = (log.action || 'unknown').toLowerCase();
+  const cfg = ACTION_CONFIG[action] ?? ACTION_CONFIG.default;
+  const resourceKey = log.resource?.toLowerCase() ?? '';
+  const resourceBadge = RESOURCE_BADGE[resourceKey] ?? 'bg-gray-100 text-gray-600';
+  const description = log.description || log.details || 'No description available';
+  const displayUsername = searchMode === 'email'
+    ? (log.actor?.email || log.username || '')
+    : (log.username || log.actor?.email || '');
+  const displayEmail = log.actor?.email && log.actor.email !== 'unknown' && log.actor.email !== displayUsername
+    ? log.actor.email
+    : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Badge variant={getActionBadgeVariant(log.action || 'unknown')}>
-              {(log.action || 'unknown').toUpperCase()}
-            </Badge>
-            <Badge variant={getResourceBadgeVariant(log.resource || 'unknown')}>
-              {log.resource || 'unknown'}
-            </Badge>
-            <span className="text-sm font-normal text-gray-500">
-              {formatDate(log.timestamp)}
+      {/* Mobile: full-height sheet. Desktop: auto-height modal capped at 85vh */}
+      <DialogContent className="flex h-full flex-col gap-0 overflow-hidden rounded-none p-0 shadow-2xl sm:h-auto sm:max-h-[85vh] sm:max-w-lg sm:rounded-xl">
+        <DialogTitle className="sr-only">Activity Log Details</DialogTitle>
+
+        {/* ── Coloured header ── */}
+        <div className={`shrink-0 ${cfg.header} px-5 pb-4 pt-5 text-white`}>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${cfg.badge}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+              {action}
             </span>
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {/* User Information */}
-          <div className="border-b pb-3">
-            <h4 className="mb-2 text-sm font-medium text-gray-700">User</h4>
-            <div className="text-sm">
-              {searchMode === 'email' ? (
-                <>
-                  <div className="font-medium">{log.actor?.email || 'N/A'}</div>
-                  {log.username && (
-                    <div className="text-gray-500">{log.username}</div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className="font-medium">{log.username}</div>
-                  {log.actor?.email && (
-                    <div className="text-gray-500">{log.actor.email}</div>
-                  )}
-                </>
-              )}
-            </div>
+            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${resourceBadge}`}>
+              {log.resource || 'unknown'}
+            </span>
+            <span className="ml-auto shrink-0 text-[11px] text-white/60">{formatDate(log.timestamp)}</span>
           </div>
+          <p className="text-sm leading-relaxed text-white/90">{description}</p>
+        </div>
 
-          {/* Resource Information */}
-          <div className="border-b pb-3">
-            <h4 className="mb-2 text-sm font-medium text-gray-700">Resource</h4>
-            <div className="space-y-1 text-sm">
-              <div>
-                <span className="text-gray-500">ID:</span> {log.resourceId}
-              </div>
-              {log.resourceName && (
-                <div>
-                  <span className="text-gray-500">Name:</span>{' '}
-                  {log.resourceName}
-                </div>
-              )}
-            </div>
-          </div>
+        {/* ── Scrollable body ── */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
 
-          {/* Description */}
-          <div className="border-b pb-3">
-            <h4 className="mb-2 text-sm font-medium text-gray-700">
-              Description
-            </h4>
-            <div className="whitespace-pre-wrap break-words rounded-md bg-gray-50 p-3 text-sm text-gray-900">
-              {description}
-            </div>
-          </div>
+          {/* Actor */}
+          <Section title="Actor">
+            <MetaRow label="User" value={displayUsername} copyable />
+            {displayEmail && <MetaRow label="Email" value={displayEmail} copyable />}
+            <MetaRow label="User ID" value={log.userId} mono copyable />
+            <MetaRow label="Role" value={log.actor?.role} />
+          </Section>
 
-          {/* Changes (if available) */}
-          {resolvedChanges && resolvedChanges.length > 0 && (
-            <div className="border-b pb-3">
-              <h4 className="mb-2 text-sm font-medium text-gray-700">
-                Changes
-              </h4>
+          {/* Resource */}
+          <Section title="Resource">
+            <MetaRow label="Name" value={log.resourceName} />
+            <MetaRow label="ID" value={log.resourceId} mono copyable />
+          </Section>
+
+          {/* Technical */}
+          <Section title="Technical">
+            <MetaRow label="IP" value={log.ipAddress} mono copyable />
+            <MetaRow label="Log ID" value={log._id} mono copyable />
+          </Section>
+
+          {/* Changes */}
+          <Section title={`Changes${resolvedChanges.length ? ` (${resolvedChanges.length})` : ''}`}>
+            {loading ? (
               <div className="space-y-2">
-                {resolvedChanges.map((change, index) => (
-                  <div
-                    key={index}
-                    className="rounded-md bg-blue-50 p-3 text-sm"
-                  >
-                    <div className="mb-1 font-medium text-blue-900">
-                      {change.field}
-                    </div>
-                    <div className="text-blue-800">
-                      <span className="text-gray-600">From:</span>{' '}
-                      <span className="rounded bg-red-100 px-1 font-mono">
-                        {change.oldValue}
-                      </span>
-                    </div>
-                    <div className="text-blue-800">
-                      <span className="text-gray-600">To:</span>{' '}
-                      <span className="rounded bg-green-100 px-1 font-mono">
-                        {change.newValue}
-                      </span>
+                {[1, 2].map(i => <div key={i} className="h-16 animate-pulse rounded-lg bg-gray-100" />)}
+              </div>
+            ) : resolvedChanges.length > 0 ? (
+              <div className="space-y-2">
+                {resolvedChanges.map((change, i) => (
+                  <div key={i} className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+                    <p className="mb-2 text-[11px] font-semibold text-gray-500">
+                      {formatFieldLabel(change.field)}
+                    </p>
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-gray-400">Before</p>
+                        <span className="inline-block max-w-full break-all rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700">
+                          {change.oldValue || '—'}
+                        </span>
+                      </div>
+                      <ArrowRight className="mt-5 h-3 w-3 shrink-0 text-gray-300" />
+                      <div className="min-w-0 flex-1">
+                        <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-gray-400">After</p>
+                        <span className="inline-block max-w-full break-all rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
+                          {change.newValue || '—'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="rounded-lg border border-dashed border-gray-200 py-5 text-center">
+                <p className="text-xs text-gray-400">No field changes recorded</p>
+              </div>
+            )}
+          </Section>
+        </div>
 
-          {/* Technical Details */}
-          <div>
-            <h4 className="mb-2 text-sm font-medium text-gray-700">
-              Technical Details
-            </h4>
-            <div className="space-y-1 text-sm text-gray-600">
-              <div>
-                <span className="text-gray-500">IP Address:</span>{' '}
-                {log.ipAddress || 'N/A'}
-              </div>
-              <div>
-                <span className="text-gray-500">User ID:</span> {log.userId}
-              </div>
-              <div>
-                <span className="text-gray-500">Log ID:</span> {log._id}
-              </div>
-            </div>
-          </div>
+        {/* ── Footer ── */}
+        <div className="shrink-0 flex justify-end border-t bg-gray-50 px-5 py-3">
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Close
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

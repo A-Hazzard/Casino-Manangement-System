@@ -3,14 +3,34 @@
  */
 
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
-import type { VaultTransactionDocument } from '@/app/api/lib/types/models';
+import type { ExtendedVaultTransaction } from '@/shared/types/vault';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { NextRequest, NextResponse } from 'next/server';
 import { GamingLocations } from '../../lib/models/gaminglocations';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 
-type TxWithLocation = VaultTransactionDocument & { locationName?: string };
-
+/**
+ * Main GET handler for vault transactions.
+ *
+ * STEP 1: Authorization and permission check.
+ * STEP 2: Parse query parameters (locationId, page, limit, type, status, search).
+ * STEP 3: Handle location authorization filtering.
+ * STEP 4: Build database query based on filters.
+ * STEP 5: Fetch transactions and total count from DB.
+ * STEP 6: Enrich transactions with location, user, and machine details.
+ * STEP 7: Apply reviewer multiplier scaling if applicable.
+ * STEP 8: Return formatted response with pagination.
+ *
+ * @param {NextRequest} request - The incoming Next.js request.
+ * @param {string} request.url - URL containing searchParams:
+ *   - locationId: Filter by location ID (or 'all').
+ *   - page: Page number for pagination (default: 1).
+ *   - limit: Items per page (default: 20, max: 100).
+ *   - type: Filter by transaction type(s) (comma-separated).
+ *   - status: Filter by status (e.g., 'voided').
+ *   - search: Generic search query for notes/metadata.
+ * @returns {Promise<NextResponse>} Paginated vault transaction list with enriched metadata.
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
@@ -83,8 +103,8 @@ export async function GET(request: NextRequest) {
         VaultTransactionModel.countDocuments(query),
       ]);
 
-      let finalTx: TxWithLocation[] =
-        transactions as unknown as TxWithLocation[];
+      let finalTx: ExtendedVaultTransaction[] =
+        transactions as unknown as ExtendedVaultTransaction[];
       if (locationId === 'all' || !locationId) {
         const locIds = transactions.map(tx => tx.locationId);
         const locations = (await GamingLocations.find(
@@ -93,7 +113,7 @@ export async function GET(request: NextRequest) {
         )
           .lean()
           .then(loc =>
-            loc.map(l => ({ _id: String(l._id), name: l.name as string }))
+          loc.map(l => ({ _id: String(l._id), name: l.name as string }))
           )) as { _id: string; name: string }[];
         const nMap = locations.reduce(
           (acc, loc) => {
@@ -105,7 +125,7 @@ export async function GET(request: NextRequest) {
         finalTx = transactions.map(tx => ({
           ...(tx as unknown as Record<string, unknown>),
           locationName: nMap[tx.locationId] || 'Unknown',
-        })) as unknown as TxWithLocation[];
+        })) as unknown as ExtendedVaultTransaction[];
       }
 
       const uIds = new Set<string>();

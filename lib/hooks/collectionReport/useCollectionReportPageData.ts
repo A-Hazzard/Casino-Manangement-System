@@ -275,7 +275,8 @@ export function useCollectionReportPageData() {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      abortControllerRef.current = new AbortController();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
       if (!hasStartedFirstLoadRef.current) {
         hasStartedFirstLoadRef.current = true;
@@ -295,7 +296,7 @@ export function useCollectionReportPageData() {
           0,
           undefined,
           debouncedSearch,
-          abortControllerRef.current?.signal
+          controller.signal
         );
 
         if (result) {
@@ -317,7 +318,7 @@ export function useCollectionReportPageData() {
         }
         console.error('[fetchReports] error:', err);
       } finally {
-        if (!abortControllerRef.current?.signal.aborted) {
+        if (!controller.signal.aborted) {
           setLoading(false);
           if (!hasReceivedFirstResponseRef.current) {
             hasReceivedFirstResponseRef.current = true;
@@ -397,7 +398,7 @@ export function useCollectionReportPageData() {
   const confirmDelete = async () => {
     if (!reportToDelete) return;
     try {
-      await axios.delete(`/api/collection-report/${reportToDelete}`);
+      await axios.delete(`/api/collection-reports/${reportToDelete}`);
       toast.success('Report deleted');
       refreshReports();
     } catch {
@@ -455,6 +456,8 @@ export function useCollectionReportPageData() {
       setCurrentPage(0);
       setLoading(true);
       setInitialLoading(true);
+      hasReceivedFirstResponseRef.current = false;
+      hasStartedFirstLoadRef.current = false;
       fetchReports(1);
     } else {
       setLoading(false);

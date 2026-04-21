@@ -38,7 +38,7 @@ export const CollectionReportDetailsLocationMetricCard: FC<CollectionReportDetai
                 <td className="py-2 text-gray-600 font-medium">{item.label}</td>
                 <td className={`py-2 text-right font-semibold ${item.isCurrency ? getFinancialColorClass(item.value as number) : 'text-gray-900'}`}>
                   {item.isCurrency 
-                    ? (item.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'
+                    ? `$${(item.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
                     : (item.value ?? '-')}
                 </td>
               </tr>

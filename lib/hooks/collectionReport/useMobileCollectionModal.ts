@@ -22,7 +22,7 @@ import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
-import { calculateMachineMovement } from '@/lib/utils/movement';
+import { calculateCabinetMovement } from '@/lib/utils/movement';
 import { calculateDefaultCollectionTime } from '@/lib/utils/collection';
 import axios, { type AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -236,7 +236,7 @@ export function useMobileCollectionModal({
     async (locationId?: string) => {
       setModalState(prev => ({ ...prev, isLoadingCollections: true }));
       try {
-        let url = '/api/collections';
+        let url = '/api/collection-reports/collections';
         if (locationId) {
           url += `?locationId=${locationId}`;
         }
@@ -378,7 +378,7 @@ export function useMobileCollectionModal({
       const fetchMachinesForLocation = async () => {
         try {
           const response = await axios.get(
-            `/api/machines?locationId=${locationIdToUse}&_t=${Date.now()}`
+            `/api/cabinets?locationId=${locationIdToUse}&_t=${Date.now()}`
           );
           if (response.data?.success && response.data?.data) {
             setStoreAvailableMachines(response.data.data);
@@ -413,7 +413,7 @@ export function useMobileCollectionModal({
     }
 
     const totalMovementData = modalState.collectedMachines.map(entry => {
-      const movement = calculateMachineMovement(
+      const movement = calculateCabinetMovement(
         entry.metersIn || 0,
         entry.metersOut || 0,
         entry.prevIn || 0,
@@ -657,13 +657,13 @@ export function useMobileCollectionModal({
 
       if (isEditing) {
         const response = await axios.patch(
-          `/api/collections?id=${modalState.editingEntryId}`,
+          `/api/collection-reports/collections?id=${modalState.editingEntryId}`,
           collectionPayload
         );
         createdCollection = response.data.data;
       } else {
         const response = await axios.post(
-          '/api/collections',
+          '/api/collection-reports/collections',
           collectionPayload
         );
         createdCollection = response.data.data;
@@ -931,7 +931,7 @@ export function useMobileCollectionModal({
         );
 
         // Delete from database
-        await axios.delete(`/api/collections?id=${entryId}`);
+        await axios.delete(`/api/collection-reports/collections?id=${entryId}`);
 
         // Update local state
         setModalState(prev => {
@@ -1074,7 +1074,7 @@ export function useMobileCollectionModal({
       // Step 2: Update collections
       const updatePromises = machinesForReport.map(async collection => {
         try {
-          await axios.patch(`/api/collections?id=${collection._id}`, {
+          await axios.patch(`/api/collection-reports/collections?id=${collection._id}`, {
             locationReportId: reportId,
             isCompleted: true,
           });
@@ -1285,7 +1285,7 @@ export function useMobileCollectionModal({
               updateData['sasMeters.sasEndTime'] = updateAllSasEndDate.toISOString();
             }
 
-            return await axios.patch(`/api/collections?id=${entry._id}`, updateData);
+            return await axios.patch(`/api/collection-reports/collections?id=${entry._id}`, updateData);
           })
         );
         const failed = results.filter(r => r.status === 'rejected').length;
@@ -1337,3 +1337,4 @@ export function useMobileCollectionModal({
     },
   };
 }
+

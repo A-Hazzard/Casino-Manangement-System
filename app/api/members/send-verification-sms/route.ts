@@ -1,13 +1,19 @@
 /**
- * API Route: Send Verification SMS to a Member
- * 
- * Flow:
- * 1. Connect to Database
- * 2. Parse Query Params (memberId, phoneNumber)
- * 3. Call Send Verification SMS Helper
- * 4. Update Member with new Code and Timestamp
- * 5. Return success result
- * 
+ * GET /api/members/send-verification-sms
+ *
+ * Sends an SMS verification code to a member's phone number via the Infobip
+ * gateway. NOT called directly by any frontend page — this endpoint is invoked
+ * server-side only (e.g. from member-registration or profile-update flows that
+ * need to trigger SMS delivery on behalf of the user). Generates a new
+ * verification code, stores it on the member document with a timestamp, and
+ * dispatches the message. Activity is logged on both success and failure.
+ *
+ * Query parameters:
+ * @param memberId    {string} Required. The ID of the member record to attach the
+ *   verification code to.
+ * @param phoneNumber {string} Required. E.164-format phone number to send the SMS to
+ *   (e.g. '+18681234567'). Must pass basic format validation before dispatch.
+ *
  * @module app/api/members/send-verification-sms/route
  */
 

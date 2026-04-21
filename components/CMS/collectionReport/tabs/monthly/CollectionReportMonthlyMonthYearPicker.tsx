@@ -79,39 +79,35 @@ export const CollectionReportMonthlyMonthYearPicker: FC<MonthYearPickerProps> = 
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-center gap-6 rounded-b-lg bg-gray-50 px-4 py-5 border-t border-gray-100/50 shadow-inner">
-      {/* Quick Actions */}
-      <div className="flex items-center gap-2">
-         <Button
-          variant="outline"
-          className="h-10 rounded-lg border-gray-300 bg-white px-5 py-2 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-100 hover:text-gray-900 transition-all duration-200"
-          onClick={onSetLastMonth}
-          disabled={disabled}
-        >
-          Last Month
-        </Button>
-      </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <Button
+        variant="outline"
+        className="h-10 shrink-0 rounded-lg border-gray-300 bg-white px-4 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-100"
+        onClick={onSetLastMonth}
+        disabled={disabled}
+      >
+        Last Month
+      </Button>
 
-      {/* Selectors */}
-      <div className="flex items-center gap-4 flex-grow max-w-md justify-center">
-        <div className="w-full sm:w-44">
+      <div className="flex flex-1 items-center gap-2">
+        <div className="min-w-[130px]">
           <CustomSelect
             value={selectedMonth}
             onValueChange={handleMonthChange}
             options={monthOptions}
-            placeholder="Select Month"
+            placeholder="Month"
             disabled={disabled}
-            triggerClassName="bg-white border-gray-300 font-semibold h-10 shadow-sm focus:ring-2 focus:ring-buttonActive/20"
+            triggerClassName="bg-white border-gray-300 font-semibold h-10 shadow-sm w-full"
           />
         </div>
-        <div className="w-full sm:w-32">
+        <div className="w-24 shrink-0">
           <CustomSelect
             value={selectedYear}
             onValueChange={handleYearChange}
             options={yearOptions}
-            placeholder="Select Year"
+            placeholder="Year"
             disabled={disabled}
-            triggerClassName="bg-white border-gray-300 font-semibold h-10 shadow-sm focus:ring-2 focus:ring-buttonActive/20"
+            triggerClassName="bg-white border-gray-300 font-semibold h-10 shadow-sm w-full"
           />
         </div>
       </div>

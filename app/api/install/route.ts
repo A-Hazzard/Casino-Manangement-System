@@ -23,6 +23,11 @@ import { hashPassword } from '@/app/api/lib/utils/validation';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for initial system setup
+ *
+ * (No query parameters)
+ */
 export async function GET() {
   try {
     // ============================================================================

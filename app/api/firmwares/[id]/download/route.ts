@@ -17,12 +17,14 @@ import {
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for downloading firmware by ID
+ * GET /api/firmwares/[id]/download
  *
- * Flow:
- * 2. Find firmware document by ID
- * 3. Download firmware file from GridFS
- * 4. Return file with appropriate headers
+ * Streams the firmware binary from GridFS as an `application/octet-stream`
+ * attachment. Called when a user manually triggers a firmware download from
+ * the firmware management UI.
+ *
+ * URL params:
+ * @param id {string} Required (path). The MongoDB ID of the Firmware document to download.
  */
 export async function GET(
   request: NextRequest

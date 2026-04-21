@@ -33,47 +33,10 @@ import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-type VerificationDetails = {
-  metricName: string;
-  totalMachines: number;
-  machinesWithData: number;
-  topMachines: Array<{
-    machineId: string;
-    machineName: string;
-    value: number;
-    cumulative: number;
-    percentageOfTotal: number;
-  }>;
-  allMachinesWithData: Array<{
-    machineId: string;
-    machineName: string;
-    locationName: string;
-    locationId: string;
-    manufacturer: string;
-    gameTitle: string;
-    value: number;
-    percentageOfTotal: number;
-    // Include all relevant metrics for context
-    coinIn?: number;
-    netWin?: number;
-    gamesPlayed?: number;
-    drop?: number;
-    gross?: number;
-  }>;
-  totalValue: number;
-  cumulativeValue: number;
-  machinePercentage: number;
-  metricPercentage: number;
-};
-
-type ReportsMachinesEvaluationSummaryProps = {
-  handleStatement: string;
-  winStatement: string;
-  gamesPlayedStatement: string;
-  handleDetails?: VerificationDetails;
-  winDetails?: VerificationDetails;
-  gamesPlayedDetails?: VerificationDetails;
-};
+import {
+  type VerificationDetails,
+  type ReportsMachinesEvaluationSummaryProps,
+} from '@/shared/types/reports';
 
 function MachinesWithDataModal({
   isOpen,

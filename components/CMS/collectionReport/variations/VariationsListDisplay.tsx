@@ -1,3 +1,18 @@
+/**
+ * VariationsListDisplay Component
+ *
+ * A detailed data display component that renders a comparison between Meter Gross and SAS Gross for discrepant machines.
+ *
+ * Features:
+ * - Dual layout: Responsive cards for mobile and dense table for desktop
+ * - Batch total footer for aggregate reconciliation
+ * - SAS time period visualization for meter comparison
+ * - Smart formatting for currency and date/time values
+ *
+ * @param machines - List of machines with their meter vs SAS data comparison
+ * @param onMachineClick - Optional callback for machine navigation
+ * @param isCompact - Force mobile card layout regardless of screen size
+ */
 'use client';
 
 import { format } from 'date-fns';

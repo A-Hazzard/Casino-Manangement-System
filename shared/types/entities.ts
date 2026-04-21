@@ -64,21 +64,23 @@ export type AggregatedLocation = {
   moneyOut: number;
   gross: number;
   netGross?: number;
-  coinIn: number;
-  coinOut: number;
+  coinIn?: number;
+  coinOut?: number;
   jackpot: number;
   totalMachines: number;
   onlineMachines: number;
-  sasMachines: number;
-  nonSasMachines: number;
-  hasSasMachines: boolean;
-  hasNonSasMachines: boolean;
+  sasMachines?: number;
+  nonSasMachines?: number;
+  hasSasMachines?: boolean;
+  hasNonSasMachines?: boolean;
   isLocalServer: boolean;
   noSMIBLocation: boolean;
   hasSmib: boolean;
-  gamesPlayed: number;
-  rel?: { licencee?: string | null }; // For currency conversion
+  gamesPlayed?: number;
+  rel?: { licencee?: string | null; [key: string]: unknown }; // For currency conversion
   country?: string; // For currency conversion
+  address?: string;
+  profitShare?: number;
   totalDrop?: number; // Alias for moneyIn in some contexts
   enableMembership?: boolean; // Membership enabled flag
   membershipEnabled?: boolean; // Alias for enableMembership
@@ -88,6 +90,7 @@ export type AggregatedLocation = {
   geoCoords?: GeoCoordinates; // Geographic coordinates for mapping
   includeJackpot?: boolean; // Setting from associated Licencee
   latestActivity?: number; // Timestamp of latest machine activity
+  isNeverOnline?: boolean;
   machines?: Array<{
     _id: string;
     assetNumber?: string;
@@ -105,6 +108,23 @@ export type LocationMetrics = {
   totalCancelledCredits: number;
   onlineMachines: number;
   totalMachines: number;
+};
+
+export type UpdateLocationData = {
+  name?: string;
+  country?: string;
+  address?: Partial<Address>;
+  rel?: Partial<RelationshipInfo>;
+  profitShare?: number;
+  gameDayOffset?: number;
+  geoCoords?: Partial<GeoCoordinates>;
+  isLocalServer?: boolean;
+  billValidatorOptions?: Record<string, boolean>;
+  membershipEnabled?: boolean;
+  aceEnabled?: boolean;
+  locationMembershipSettings?: Record<string, unknown>;
+  updatedAt?: Date;
+  [key: string]: unknown;
 };
 
 // Top location for dashboard and reports
@@ -626,5 +646,43 @@ export type CollectionIssueDetails = {
     affectedMachines: number;
     affectedReports: number;
   };
+};
+
+// Transformed cabinet data returned by API for simplified UI display
+export type TransformedCabinet = {
+  _id: string;
+  locationId: string;
+  locationName: string;
+  assetNumber: string;
+  serialNumber: string;
+  custom?: Record<string, unknown>;
+  relayId: string;
+  smibBoard: string;
+  smbId: string;
+  lastActivity: Date | null;
+  lastOnline: Date | null;
+  game: string;
+  installedGame: string;
+  cabinetType: string;
+  manufacturer?: string;
+  assetStatus: string;
+  status: string;
+  gameType?: string;
+  isCronosMachine?: boolean;
+  moneyIn: number;
+  moneyOut: number;
+  jackpot: number;
+  cancelledCredits: number;
+  gross: number;
+  netGross?: number;
+  gamesPlayed?: number;
+  gamesWon?: number;
+  metersData: {
+    readAt: Date | null;
+    movement: Record<string, unknown> | null;
+  } | null;
+  sasMeters: Record<string, unknown> | null;
+  online?: boolean;
+  includeJackpot?: boolean;
 };
 

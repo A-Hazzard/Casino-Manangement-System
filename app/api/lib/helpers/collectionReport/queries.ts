@@ -295,9 +295,10 @@ export async function determineAllowedLocationIds(
   const hasAllLocationAccess =
     userRoles.includes('admin') ||
     userRoles.includes('developer') ||
-    userRoles.includes('owner') ||
-    userRoles.includes('reviewer');
+    userRoles.includes('owner');
   const isManager = userRoles.includes('manager');
+  const isLocationAdmin = userRoles.includes('location admin');
+  const isReviewer = userRoles.includes('reviewer');
 
   if (hasAllLocationAccess) {
     return 'all';
@@ -317,10 +318,7 @@ export async function determineAllowedLocationIds(
       await import('@/app/api/lib/models/gaminglocations');
     const managerLocations = await GamingLocations.find(
       {
-        $or: [
-          { 'rel.licencee': { $in: userLicencees } },
-          { 'rel.licencee': { $in: userLicencees } },
-        ],
+        'rel.licencee': { $in: userLicencees },
         $and: [
           {
             $or: [
@@ -336,6 +334,44 @@ export async function determineAllowedLocationIds(
       .exec();
 
     return managerLocations.map(loc => String(loc._id));
+  }
+
+  // Location admins and reviewers: use assigned locations if set,
+  // otherwise fall back to all locations in their assigned licencees
+  if (isLocationAdmin || isReviewer) {
+    if (userLocationPermissions.length > 0) {
+      return userLocationPermissions;
+    }
+
+    if (userLicencees.length === 0) {
+      return [];
+    }
+
+    const db = await connectDB();
+    if (!db) {
+      throw new Error('Database connection failed');
+    }
+
+    const { GamingLocations } =
+      await import('@/app/api/lib/models/gaminglocations');
+    const licenceeLocations = await GamingLocations.find(
+      {
+        'rel.licencee': { $in: userLicencees },
+        $and: [
+          {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ],
+          },
+        ],
+      },
+      { _id: 1 }
+    )
+      .lean()
+      .exec();
+
+    return licenceeLocations.map(loc => String(loc._id));
   }
 
   // Collector/Technician - use ONLY their assigned location permissions

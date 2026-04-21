@@ -20,11 +20,17 @@ import type { TimePeriod } from '@/app/api/lib/types';
 import { resolveLicenceeId } from '@/lib/utils/licencee';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
-
-type ActiveTab = 'locations' | 'Cabinets';
+import type { TopPerformingTab } from '@/shared/types/reports';
 
 /**
  * Main GET handler for fetching top performing metrics
+ *
+ * @param {string} activeTab - Tab to analyze ('locations' or 'Cabinets')
+ * @param {string} timePeriod - Time range preset ('7d' default)
+ * @param {string} licencee - Filter by licencee name or ID
+ * @param {string} currency - Target display currency
+ * @param {string} startDate - ISO date for custom range start
+ * @param {string} endDate - ISO date for custom range end
  *
  * Flow:
  * 1. Parse and validate request parameters
@@ -42,7 +48,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const searchParams = req.nextUrl.searchParams;
     const activeTab =
-      (searchParams.get('activeTab') as ActiveTab) || 'locations';
+      (searchParams.get('activeTab') as TopPerformingTab) || 'locations';
     const timePeriod: TimePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || '7d';
 

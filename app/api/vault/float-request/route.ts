@@ -12,6 +12,17 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main GET handler for float requests
+ *
+ * @param {string} cashierId - Filter by cashier ID (Admin/VM required to view others)
+ * @param {string} locationId - Filter by location ID
+ * @param {number} page - Page number for pagination
+ * @param {number} limit - Results per page
+ * @param {string} status - Filter by request status ('pending', 'approved', etc.)
+ * @param {string} startDate - ISO date for range start
+ * @param {string} endDate - ISO date for range end
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
@@ -212,6 +223,16 @@ export async function GET(request: NextRequest) {
   });
 }
 
+/**
+ * Main POST handler for submitting float requests
+ *
+ * @body {string} type - Request type ('increase', 'decrease') (REQUIRED)
+ * @body {number} amount - Requested amount (REQUIRED)
+ * @body {Array} denominations - Break down of requested denominations
+ * @body {string} reason - Reason for float request
+ * @body {string} locationId - ID of the location (REQUIRED)
+ * @body {string} cashierShiftId - ID of the active cashier shift (REQUIRED)
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload }) => {
     try {

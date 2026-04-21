@@ -1,3 +1,12 @@
+/**
+ * Machines and Meters Migration API Route
+ *
+ * This route handles exporting and migrating data from a source SAS production database.
+ * Used during data onboarding and system upgrades.
+ *
+ * @module app/api/migration/machines-meters/route
+ */
+
 import { connectDB, disconnectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
@@ -19,28 +28,22 @@ const SOURCE_URI = 'mongodb://sunny1:87ydaiuhdsia2e@147.182.210.65:32017/sas-pro
 const EXPORT_DIR = path.join(process.cwd(), 'migration_exports');
 const TIMEZONE_OFFSET = -4;
 
+import type {
+  LeanLicencee,
+  LeanLocation,
+  LeanMachine,
+} from '@/shared/types/models';
+
 // --- Migration Types ---
 type MigrationPeriod = 'Today' | 'Yesterday';
 
-type LeanLicencee = {
-    _id: string;
-    name: string;
-};
 
-type LeanLocation = {
-    _id: string;
-    gameDayOffset?: number;
-    licencee?: string;
-    rel?: {
-        licencee?: string;
-    };
-};
-
-type LeanMachine = {
-    _id: string;
-    gamingLocation?: string;
-};
-
+/**
+ * Main POST handler for migrating machines and meters
+ *
+ * @body {string} licenceeName - Optional. Name of the licencee to migrate (default: 'Cabana')
+ * @body {boolean} migrateMeters - Optional. Whether to include meter readings (default: true)
+ */
 export async function POST(request: Request) {
     const logs: string[] = [];
     const log = (msg: string) => {

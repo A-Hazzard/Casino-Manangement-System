@@ -27,7 +27,7 @@ import {
 } from '@/lib/types';
 
 import getAllGamingLocations from '@/lib/helpers/locations';
-import { fetchTopPerformingData } from '@/lib/helpers/machines';
+import { fetchTopPerformingData } from '@/lib/helpers/cabinets';
 import {
   classifyError,
   isAbortError,
@@ -525,3 +525,4 @@ export const handleDashboardRefresh = async (
     setLoadingTopPerforming(false);
   }
 };
+

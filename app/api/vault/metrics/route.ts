@@ -13,6 +13,14 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 import type { LocationDocument } from '@/lib/types/common';
 
+/**
+ * Main GET handler for vault metrics
+ *
+ * @param {string} locationId - ID of the location (REQUIRED)
+ * @param {string} timePeriod - Named period ('Today', 'Yesterday', 'Last 7 Days', etc.)
+ * @param {string} startDate - Manual ISO date start
+ * @param {string} endDate - Manual ISO date end
+ */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {

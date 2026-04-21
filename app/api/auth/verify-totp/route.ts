@@ -6,13 +6,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * POST /api/auth/verify-totp
- * 
- * Verifies a Google Authenticator TOTP code for the current user.
- * 
- * Request body:
- * {
- *   "token": "123456"
- * }
+ *
+ * Verifies a live TOTP code against the authenticated user's stored secret.
+ * Called at privileged action checkpoints (e.g. vault operations) where a
+ * second-factor challenge is required after the user is already logged in.
+ *
+ * Body fields:
+ * @param token {string} Required. The current 6-digit TOTP code from the user's authenticator app.
  */
 export async function POST(req: NextRequest) {
   try {

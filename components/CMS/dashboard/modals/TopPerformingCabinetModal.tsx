@@ -25,7 +25,7 @@ import {
   getMachineChartData,
   getMachineMetrics,
   type MachineMetricsData,
-} from '@/lib/helpers/machines';
+} from '@/lib/helpers/cabinets';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import type { dashboardData } from '@/lib/types';
 import { getDefaultChartGranularity } from '@/lib/utils/chart';
@@ -458,3 +458,4 @@ export default function TopPerformingCabinetModal({
     </div>
   );
 }
+

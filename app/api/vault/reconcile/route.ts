@@ -11,6 +11,15 @@ import { validateDenominations } from '@/lib/helpers/vault/calculations';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main POST handler for vault reconciliation
+ *
+ * @body {string} vaultShiftId - REQUIRED. The ID of the shift being reconciled.
+ * @body {number} newBalance - REQUIRED. The counted balance to set.
+ * @body {Object} denominations - REQUIRED. Denomination counts for the new balance.
+ * @body {string} reason - REQUIRED. Reason for the adjustment.
+ * @body {string} comment - Optional. Additional details.
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {

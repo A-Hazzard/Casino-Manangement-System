@@ -14,6 +14,18 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main GET handler for fetching machines report
+ *
+ * @param {string} type - report sub-type ('stats', 'offline', 'all', or default 'overview')
+ * @param {string} timePeriod - Time range preset ('Today', '7d', etc.)
+ * @param {string} licencee - Filter by licencee name
+ * @param {string} onlineStatus - Filter by connectivity ('online', 'offline', 'all')
+ * @param {string} search - Search query for machine fields
+ * @param {string} locationId - Comma-separated location IDs to filter
+ * @param {string} currency - Target display currency code
+ * @param {number} page - Page number for pagination
+ * @param {number} limit - Items per page
+ * @param {string} startDate - ISO date for custom range start
+ * @param {string} endDate - ISO date for custom range end
  */
 export async function GET(req: NextRequest) {
   return withApiAuth(req, async ({ user: userPayload, userRoles, isAdminOrDev }) => {

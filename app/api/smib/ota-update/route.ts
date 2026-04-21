@@ -23,8 +23,12 @@ import axios from 'axios';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for triggering OTA update
- *
+ * @param {string} relayId - REQUIRED. The unique identifier of the SMIB board (via body)
+ * @param {string} firmwareId - REQUIRED. The MongoDB ID of the firmware to install (via body)
+ * 
+ * @body {string} relayId - REQUIRED. SMIB identifier
+ * @body {string} firmwareId - REQUIRED. Firmware record ID
+ * 
  * Flow:
  * 1. Parse request body
  * 2. Validate relayId and firmwareId

@@ -36,7 +36,7 @@ Use for **all data filtering and access control** in APIs and pages.
 
 ```typescript
 // Location → Licencee relationship
-{
+type Location = {
   _id: string;
   name: string;
   rel: {
@@ -45,7 +45,7 @@ Use for **all data filtering and access control** in APIs and pages.
 }
 
 // Machine → Location relationship
-{
+type Machine = {
   _id: string;
   serialNumber: string;
   gamingLocation: string;  // Location ID (inherits licencee)

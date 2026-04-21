@@ -24,7 +24,7 @@ import { useReportsTabContent } from '@/lib/hooks/data';
 import { useReportsNavigation } from '@/lib/hooks/navigation';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useUserStore } from '@/lib/store/userStore';
-import type { ReportView } from '@/lib/types/reports';
+import type { ReportView } from '@/shared/types/reports';
 import Image from 'next/image';
 
 /**
@@ -105,6 +105,30 @@ export default function ReportsPageContent() {
     locations: <ReportsLocationsTabWithErrorHandling />,
     machines: <ReportsMachinesTab />,
     meters: <ReportsMetersTab />,
+    'sas-evaluation': (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <h3 className="text-xl font-semibold text-gray-500">SAS Evaluation</h3>
+        <p className="mt-2 text-gray-400">This report view is coming soon.</p>
+      </div>
+    ),
+    'revenue-analysis': (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <h3 className="text-xl font-semibold text-gray-500">Revenue Analysis</h3>
+        <p className="mt-2 text-gray-400">This report view is coming soon.</p>
+      </div>
+    ),
+    Cabinets: (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <h3 className="text-xl font-semibold text-gray-500">Cabinets Overview</h3>
+        <p className="mt-2 text-gray-400">This report view is coming soon.</p>
+      </div>
+    ),
+    overview: (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <h3 className="text-xl font-semibold text-gray-500">Reports Overview</h3>
+        <p className="mt-2 text-gray-400">This report view is coming soon.</p>
+      </div>
+    ),
   };
 
   const { getTabAnimationProps, currentTabComponent } = useReportsTabContent({

@@ -15,6 +15,14 @@ import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Main POST handler for submitting a soft count
+ *
+ * @body {string} locationId - REQUIRED. Location where the soft count was performed.
+ * @body {number} amount - REQUIRED. Total amount from the soft count.
+ * @body {Object} denominations - REQUIRED. Denomination breakdown of the count.
+ * @body {string} machineId - Optional. Specific machine ID for the soft count.
+ */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {

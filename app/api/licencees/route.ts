@@ -1,7 +1,35 @@
 /**
- * Licencees API Route
+ * Licencees API Route — Full CRUD for licencee management.
  *
- * This route handles licencee management operations including fetching, creating, updating, and deleting licencees.
+ * All methods require authentication via withApiAuth. Results are filtered to
+ * the caller's assigned licencees unless the caller has unrestricted access
+ * (developer/admin/owner).
+ *
+ * GET /api/licencees — Fetch the caller's accessible licencees with pagination.
+ *
+ * Query parameters (GET):
+ * @param licencee {string} Optional. Filter by licencee ID or name; pass 'all' or omit to
+ *   return all accessible licencees.
+ * @param page     {number} Optional. Page number. Defaults to 1.
+ * @param limit    {number} Optional. Records per page; capped at 100. Defaults to 50.
+ *
+ * POST /api/licencees — Create a new licencee.
+ *
+ * Body fields (POST):
+ * @param name    {string} Required. Display name for the licencee.
+ * @param country {string} Required. Country code or name for the licencee.
+ * Additional fields are forwarded to the createLicencee helper.
+ *
+ * PUT /api/licencees — Update an existing licencee.
+ *
+ * Body fields (PUT):
+ * @param _id {string} Required. The licencee document ID to update.
+ * Additional fields are forwarded to the updateLicencee helper.
+ *
+ * DELETE /api/licencees — Delete a licencee.
+ *
+ * Body fields (DELETE):
+ * @param _id {string} Required. The licencee document ID to delete.
  *
  * @module app/api/licencees/route
  */
@@ -17,9 +45,6 @@ import {
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * Main GET handler for fetching licencees
- */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async () => {
     const { searchParams } = new URL(request.url);
@@ -71,9 +96,6 @@ export async function GET(request: NextRequest) {
   });
 }
 
-/**
- * Main POST handler for creating a new licencee
- */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async () => {
     const body = await request.json();
@@ -91,9 +113,6 @@ export async function POST(request: NextRequest) {
   });
 }
 
-/**
- * Main PUT handler for updating a licencee
- */
 export async function PUT(request: NextRequest) {
   return withApiAuth(request, async () => {
     const body = await request.json();
@@ -111,9 +130,6 @@ export async function PUT(request: NextRequest) {
   });
 }
 
-/**
- * Main DELETE handler for deleting a licencee
- */
 export async function DELETE(request: NextRequest) {
   return withApiAuth(request, async () => {
     const body = await request.json();

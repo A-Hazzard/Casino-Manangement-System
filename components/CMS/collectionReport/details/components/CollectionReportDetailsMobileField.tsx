@@ -28,7 +28,7 @@ export const CollectionReportDetailsMobileField: FC<CollectionReportDetailsMobil
     <div>
       <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">{label}</p>
       <p className={`mt-0.5 font-medium ${isBold ? 'font-bold' : ''} ${className}`}>
-        {isCurrency ? (value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2 }) : (value || '-')}
+        {isCurrency ? `$${(value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : (value || '-')}
       </p>
     </div>
   );

@@ -16,12 +16,12 @@ import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main POST handler for clearing all tokens
+ * POST /api/auth/clear-all-tokens
  *
- * Flow:
- * 1. Create success response
- * 2. Clear all token-related cookies
- * 3. Return success response
+ * Forcefully invalidates the entire session by expiring all auth-related cookies.
+ * Takes no request body; clears `token`, `refreshToken`, `sessionId`, and
+ * `user-auth-store` cookies. Typically called when a database context change
+ * makes existing tokens invalid. Also accessible via GET for browser redirects.
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -70,8 +70,10 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * GET endpoint for easy browser access
- * Delegates to POST handler
+ * GET /api/auth/clear-all-tokens
+ *
+ * Alias for the POST handler above; provided for browser-navigable access (e.g.
+ * redirect links). Takes no params and clears the same set of cookies.
  */
 export async function GET(request: NextRequest) {
   return POST(request);

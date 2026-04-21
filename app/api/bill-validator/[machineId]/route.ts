@@ -16,22 +16,35 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { AcceptedBill } from '@/app/api/lib/models/acceptedBills';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
-import type { TimePeriod } from '@/app/api/lib/types';
+import type { TimePeriod } from '@/shared/types/common';
+import type { AcceptedBillDocument } from '@/shared/types/models';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { NextRequest, NextResponse } from 'next/server';
 
-type BillDocument = {
+type BillDocument = AcceptedBillDocument & {
   toObject?: () => Record<string, unknown>;
-  value?: number;
-  movement?: Record<string, number> & {
-    dollarTotalUnknown?: number;
-  };
-  readAt?: Date;
-  createdAt?: Date;
-} & Record<string, unknown>;
+};
 
 /**
- * Main GET handler for fetching bill validator data
+ * GET /api/bill-validator/[machineId]
+ *
+ * Returns denomination-level bill validator data (counts, subtotals, and totals)
+ * for a single machine, filtered by time period or a custom date range. Supports
+ * both legacy V1 (value field / createdAt) and current V2 (movement object / readAt)
+ * data formats. Technician-only sessions are automatically restricted to LastHour.
+ *
+ * URL params:
+ * @param machineId  {string} Required (path). The machine whose bill validator data is fetched.
+ *
+ * Query params:
+ * @param timePeriod  {TimePeriod} Optional. Predefined window such as 'Today', 'Yesterday',
+ *                    '7d', '30d', 'Quarterly', 'All Time', or 'LastHour'. Defaults to '7d'.
+ *                    Ignored when startDate + endDate are both supplied.
+ *                    Forced to 'LastHour' for technician-only sessions.
+ * @param startDate   {string} Optional. ISO 8601 date/datetime for the start of a custom range.
+ *                    Must be paired with endDate. Maps to createdAt (V1) or readAt (V2).
+ * @param endDate     {string} Optional. ISO 8601 date/datetime for the end of a custom range.
+ *                    Must be paired with startDate.
  *
  * Flow:
  * 1. Connect to database

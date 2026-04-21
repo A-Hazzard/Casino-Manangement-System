@@ -28,6 +28,10 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Main POST handler for updating machine configuration
  *
+ * @body {string} relayId - REQUIRED. The unique relay ID of the machine.
+ * @body {Object} smibConfig - REQUIRED. The new SMIB configuration object.
+ * @body {string} smibVersion - Optional. The new SMIB firmware version.
+ *
  * Flow:
  * 1. Parse and validate request body
  * 2. Connect to database

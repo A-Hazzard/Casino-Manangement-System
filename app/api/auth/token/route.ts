@@ -14,11 +14,11 @@ import { getUserIdFromServer } from '@/app/api/lib/helpers/users/users';
 import { NextResponse } from 'next/server';
 
 /**
- * Main GET handler for token validation
+ * GET /api/auth/token
  *
- * Flow:
- * 1. Extract and validate user ID from JWT token
- * 2. Return user ID if authenticated
+ * Validates the current session and returns the authenticated user's ID. Takes
+ * no query params; reads the `token` JWT cookie and extracts the userId from
+ * the verified payload.
  */
 export async function GET() {
   const startTime = Date.now();

@@ -52,16 +52,18 @@ shared/types/        # Shared frontend + backend
 └── index.ts         # Central export point
 
 lib/types/           # Frontend-only types
-types/               # Application-wide types
+app/api/lib/types/   # Backend-only types (API helpers, DB logic)
+types/               # Application-wide/Global types
 ```
 
 ### Type Organization Rules
 
 1. **Always import from type files**, never define inline
-2. **Prefer `type` over `interface`**
-3. **Check dependencies before deleting types** - use grep to find usages
-4. **Avoid type duplication** - import and re-export from shared types
-5. **Handle type conflicts** - use proper fallback logic
+2. **Prefer `type` over `interface`** for all data structures
+3. **Explicit Return Types** are required for all helpers and API functions
+4. **Explicity Unions over Enums**: Use `'active' | 'inactive'` instead of `enum Status`
+5. **Check dependencies before deleting types** - use grep to find usages
+6. **Avoid type duplication** - import and re-export from shared types
 
 ```typescript
 // ❌ WRONG - Type defined inline
@@ -125,15 +127,17 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
 ```typescript
 import { createContext, useContext, ReactNode, FC } from 'react';
 
-interface ContextValue {
-  // Your types
-}
+type ContextValue = {
+  user: User | null;
+  loading: boolean;
+};
 
 const Context = createContext<ContextValue | null>(null);
 
 export const ContextProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const value: ContextValue = {
-    // Your values
+    user: null,
+    loading: false
   };
   return <Context.Provider value={value}>{children}</Context.Provider>;
 };

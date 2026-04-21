@@ -15,7 +15,13 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Main GET handler for fetching logistics data
+ * GET /api/analytics/logistics
+ *
+ * Returns machine movement/logistics entries derived from movement requests. Used by the Logistics analytics page.
+ *
+ * Query params:
+ * @param searchTerm   {string} Optional. Text search across cabinet name, location name, and moved-by user.
+ * @param statusFilter {string} Optional. Filters entries by movement request status.
  *
  * Flow:
  * 1. Parse and validate request parameters

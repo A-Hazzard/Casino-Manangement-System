@@ -1,12 +1,27 @@
 /**
  * Edit Collection Location and Machine Selection Component
  *
- * Handles location selection and machine list display for the Edit Collection Modal
+ * Handles location selection and machine list display for the Edit Collection Modal.
  *
  * Features:
  * - Location selection dropdown (disabled/locked)
  * - Machine search functionality
  * - Machine list with selection state
+ * - Automatic "Added" status indicators for machines already in the report
+ *
+ * @param locations - Complete list of locations with their associated machines
+ * @param selectedLocationId - The source location ID for this report (typically immutable)
+ * @param setSelectedLocationId - Setter for the location (used during init)
+ * @param machinesOfSelectedLocation - All machines available for the currently selected location
+ * @param machineSearchTerm - Filter string for the machine selection list
+ * @param setMachineSearchTerm - State setter for machine searching
+ * @param filteredMachines - Search-filtered subset of machines
+ * @param isLoadingMachines - Loading indicator for machine data fetching
+ * @param isProcessing - Loading indicator for submission/batch operations
+ * @param selectedMachineId - ID of the machine currently being configured
+ * @param setSelectedMachineId - Selection callback for machines
+ * @param collectedMachineEntries - List of machines already existing in the draft/report
+ * @param editingEntryId - ID of the specific collection entry being modified
  */
 
 'use client';
