@@ -35,10 +35,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../lib/helpers/users';
 
 /**
- * GET /api/collection-reports
+ * Main GET handler for collection reports
  *
  * Retrieves collection reports with filtering by time period, licencee, and location;
  * also handles sub-queries for locations-with-machines and monthly report summaries.
+ *
+ * @param {boolean} locationsWithMachines - If true, returns locations with attached machines instead of reports
+ * @param {string} timePeriod - Time range preset ('Today', 'Yesterday', '7d', '30d', 'Custom', 'This Month', 'Last Month')
+ * @param {string} startDate - ISO date string for custom range start
+ * @param {string} endDate - ISO date string for custom range end
+ * @param {string} locationName - Filter by specific location name
+ * @param {string} locationId - Filter by specific location ID
+ * @param {string} locationIds - Comma-separated list of location IDs to filter by
+ * @param {string} licencee - Filter by licencee ID or "all"
+ * @param {number} page - Page number for pagination
+ * @param {number} limit - Items per page
+ *
+ * Flow:
+ * 1. Connect to the database
+ * 2. Parse request parameters
+ * 3. Handle locationsWithMachines sub-query if requested
+ * 4. Handle monthly report summary sub-query if date range provided without timePeriod
+ * 5. Calculate date range for time period
+ * 6. Determine user access and allowed locations
+ * 7. Parse pagination parameters
+ * 8. Fetch and filter collection reports
+ * 9. Return paginated results
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
@@ -60,8 +82,12 @@ export async function GET(req: NextRequest) {
     if (searchParams.get('locationsWithMachines')) {
       try {
         const rawLicenceeParam = searchParams.get('licencee') || undefined;
+        const includeMachines = searchParams.get('includeMachines') === 'true';
 
-        const result = await fetchLocationsWithMachines(rawLicenceeParam);
+        const result = await fetchLocationsWithMachines(
+          rawLicenceeParam,
+          includeMachines
+        );
         return NextResponse.json(result);
       } catch (error: unknown) {
         const duration = Date.now() - startTime;
@@ -189,7 +215,8 @@ export async function GET(req: NextRequest) {
       endDate,
       page,
       limit,
-      reviewerScale
+      reviewerScale,
+      locationIds || (locationId ? [locationId] : undefined)
     );
 
     // Filter reports by allowed locations if needed
@@ -234,9 +261,27 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * POST /api/collection-reports
+ * Main POST handler for creating a collection report
  *
  * Creates a new collection report, syncs machine meter histories, and logs the activity.
+ *
+ * @body {string} locationReportId - Unique auto-generated ID for the location report
+ * @body {string} locationName - Name of the gaming location
+ * @body {string} collector - Name or user ID of the collector
+ * @body {number} amountCollected - Total physical cash collected
+ * @body {number} amountToCollect - Expected amount based on meters
+ * @body {number} variance - Difference between collected and expected
+ * @body {number} partnerProfit - Calculated profit split for partner
+ * @body {number} taxes - Calculated taxes
+ * @body {Array} machines - Array of machine collection details
+ *
+ * Flow:
+ * 1. Connect to the database
+ * 2. Parse and validate request body
+ * 3. Sanitize string fields
+ * 4. Create collection report using helper
+ * 5. Log activity
+ * 6. Return success response
  */
 export async function POST(req: NextRequest) {
   const startTime = Date.now();

@@ -19,7 +19,8 @@ export async function fetchCollectionReportsByLicencee(
   skip: number = 0,
   locationName?: string,
   search?: string,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  locationIds?: string[]
 ) {
   const params = new URLSearchParams();
   if (licencee && licencee !== 'all') params.append('licencee', licencee);
@@ -30,6 +31,7 @@ export async function fetchCollectionReportsByLicencee(
   if (limit) params.append('limit', String(limit));
   if (skip) params.append('skip', String(skip));
   if (locationName) params.append('locationName', locationName);
+  if (locationIds && locationIds.length > 0) params.append('locationIds', locationIds.join(','));
   if (search) params.append('search', search);
 
   const response = await axios.get(
@@ -44,10 +46,12 @@ export async function fetchCollectionReportsByLicencee(
  * Fetches locations with their machines for creating new reports
  */
 export async function getLocationsWithMachines(
-  licencee?: string
+  licencee?: string,
+  includeMachines: boolean = false
 ): Promise<CollectionReportLocationWithMachines[]> {
   const params = new URLSearchParams();
   params.append('locationsWithMachines', 'true');
+  if (includeMachines) params.append('includeMachines', 'true');
   if (licencee && licencee !== 'all') params.append('licencee', licencee);
 
   const response = await axios.get(
@@ -81,23 +85,6 @@ export async function updateCollectionReport(reportId: string, data: unknown) {
 export async function createCollectionReport(payload: unknown) {
   const response = await axios.post('/api/collection-reports', payload);
   return response.data;
-}
-
-/**
- * Fetches locations for monthly reports
- */
-export async function fetchMonthlyReportLocations(licencee?: string) {
-  const params = new URLSearchParams();
-  params.append('locationsWithMachines', 'true'); // Or a simpler endpoint if available
-  if (licencee && licencee !== 'all') params.append('licencee', licencee);
-
-  const response = await axios.get(
-    `/api/collection-reports?${params.toString()}`
-  );
-  return (response.data.locations || []).map((loc: { _id: string; name: string }) => ({
-    id: loc._id,
-    name: loc.name,
-  }));
 }
 
 /**

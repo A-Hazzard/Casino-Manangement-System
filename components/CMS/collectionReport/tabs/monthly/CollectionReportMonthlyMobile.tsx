@@ -11,7 +11,6 @@ import {
 } from '@/components/shared/ui/dropdown-menu';
 import { ChevronDown, Download, ExternalLink, FileSpreadsheet, FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { toast } from 'sonner';
 
 import PaginationControls from '@/components/shared/ui/PaginationControls';
@@ -23,8 +22,6 @@ import { getGrossColorClass } from '@/lib/utils/financial';
 // ============================================================================
 // Constants
 // ============================================================================
-
-const ITEMS_PER_PAGE = 20;
 
 // Colour config for each summary metric — mirrors FinancialMetricsCards style
 const SUMMARY_METRICS = [
@@ -67,11 +64,16 @@ export default function CollectionReportMonthlyMobile({
   onSetLastMonth,
   monthlySummary,
   monthlyDetails,
+  monthlyCurrentItems,
   monthlyLoading,
+  monthlyTotalPages,
+  monthlyPage,
+  onPaginateMonthly,
+  monthlyFirstItemIndex,
+  monthlyLastItemIndex,
 }: MonthlyMobileUIProps) {
   const router = useRouter();
   const { formatAmount } = useCurrencyFormat();
-  const [currentPage, setCurrentPage] = useState(0);
 
   const formatVal = (v: number | string | null | undefined): string => {
     if (v === '-' || v === undefined || v === null || v === '') return '—';
@@ -95,10 +97,8 @@ export default function CollectionReportMonthlyMobile({
 
   const getLocationId = (name: string) => locations.find(loc => loc.name === name)?.id ?? null;
 
-  const totalPages = Math.ceil(monthlyDetails.length / ITEMS_PER_PAGE) || 1;
-  const startIdx = currentPage * ITEMS_PER_PAGE;
-  const endIdx = startIdx + ITEMS_PER_PAGE;
-  const pageItems = monthlyDetails.slice(startIdx, endIdx);
+  const totalPages = monthlyTotalPages || 1;
+  const pageItems = monthlyCurrentItems;
 
   const summaryTitle =
     Array.isArray(monthlyLocation) && monthlyLocation.length > 0
@@ -248,7 +248,11 @@ export default function CollectionReportMonthlyMobile({
                           >
                             {detail.location}
                           </button>
-                          <button onClick={() => router.push(`/locations/${locationId}`)}>
+                          <button
+                            onClick={() => router.push(`/locations/${locationId}`)}
+                            title="View location details"
+                            aria-label="View location details"
+                          >
                             <ExternalLink className="h-3.5 w-3.5 shrink-0 text-white/70 hover:text-white" />
                           </button>
                         </>
@@ -290,12 +294,12 @@ export default function CollectionReportMonthlyMobile({
           {totalPages > 1 && (
             <div className="mt-4 px-3 sm:px-4">
               <PaginationControls
-                currentPage={currentPage}
+                currentPage={monthlyPage}
                 totalPages={totalPages}
-                setCurrentPage={page => { if (page >= 0 && page < totalPages) setCurrentPage(page); }}
+                setCurrentPage={onPaginateMonthly}
               />
               <p className="mt-2 text-center text-xs text-gray-400">
-                {startIdx + 1}–{Math.min(endIdx, monthlyDetails.length)} of {monthlyDetails.length} locations
+                {monthlyFirstItemIndex}–{monthlyLastItemIndex} of {monthlyDetails.length} locations
               </p>
             </div>
           )}

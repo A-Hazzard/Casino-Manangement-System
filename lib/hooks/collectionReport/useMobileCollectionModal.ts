@@ -37,10 +37,15 @@ type UseMobileCollectionModalProps = {
 
 export function useMobileCollectionModal({
   show,
-  locations = [],
+  locations: propLocations = [],
   onRefresh,
   onClose,
 }: UseMobileCollectionModalProps) {
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [internalLocations, setInternalLocations] = useState<CollectionReportLocationWithMachines[]>([]);
+
+  // Use internal locations if available, fallback to prop
+  const locations = internalLocations.length > 0 ? internalLocations : propLocations;
   const user = useUserStore(state => state.user);
 
   const {
@@ -163,6 +168,27 @@ export function useMobileCollectionModal({
   const [updateAllSasStartDate, setUpdateAllSasStartDate] = useState<Date | undefined>(undefined);
   const [updateAllSasEndDate, setUpdateAllSasEndDate] = useState<Date | undefined>(undefined);
 
+  // ==========================================================================
+  // Fetch rich metadata when modal opens
+  useEffect(() => {
+    if (show && user?._id) {
+      setIsLoadingLocations(true);
+      import('@/lib/helpers/collectionReport/fetching').then(({ getLocationsWithMachines }) => {
+        getLocationsWithMachines(undefined, false)
+          .then(locs => {
+            setInternalLocations(locs);
+          })
+          .catch(err => {
+            console.error('Error fetching collection metadata:', err);
+          })
+          .finally(() => setIsLoadingLocations(false));
+      });
+    } else {
+      setIsLoadingLocations(false);
+    }
+  }, [show, user?._id]);
+
+
   // Refs to prevent infinite loops
   const hasFetchedOnOpenRef = useRef(false);
   const isUpdatingFromModalStateRef = useRef(false);
@@ -178,22 +204,15 @@ export function useMobileCollectionModal({
   // ============================================================================
 
   /**
-   * Find which location a machine belongs to
+   * Find which location a machine belongs to using the location name from the collection
    */
-  const getLocationIdFromMachine = useCallback((machineId: string) => {
-    // Find the location that contains this machine
-    for (const location of locationsRef.current) {
-      if (location.machines) {
-        const machine = location.machines.find(
-          m => String(m._id) === machineId
-        );
-        if (machine) {
-          return String(location._id);
-        }
-      }
-    }
-    return null;
-  }, []);
+  const getLocationIdFromMachine = useCallback(
+    (locationName: string) => {
+      const matchingLoc = locationsRef.current.find(l => l.name === locationName);
+      return matchingLoc ? String(matchingLoc._id) : null;
+    },
+    []
+  );
 
   // ============================================================================
   // Navigation Helpers
@@ -259,9 +278,9 @@ export function useMobileCollectionModal({
 
           // Auto-attach location from first machine
           const firstCollection = response.data[0];
-          if (firstCollection.machineId) {
+          if (firstCollection.location) {
             const machineLocationId = getLocationIdFromMachine(
-              firstCollection.machineId
+              firstCollection.location
             );
             if (machineLocationId) {
               // Find matching location
@@ -865,7 +884,7 @@ export function useMobileCollectionModal({
           );
 
           // Update available machines
-          setStoreAvailableMachines(location.machines);
+          setStoreAvailableMachines(location.machines || []);
           setStoreSelectedLocation(String(location._id), location.name);
         }
       }
@@ -1181,6 +1200,8 @@ export function useMobileCollectionModal({
   // ============================================================================
 
   return {
+    locations,
+    isLoadingLocations,
     modalState,
     setModalState,
     showUnsavedChangesWarning,

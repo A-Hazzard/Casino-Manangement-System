@@ -16,7 +16,7 @@ import type { DateRange as RDPDateRange } from 'react-day-picker';
  */
 export function filterCollectionReports(
   reports: CollectionReportRow[],
-  selectedLocation: string,
+  selectedLocation: string | string[],
   search: string,
   showUncollectedOnly: boolean,
   locations: LocationSelectItem[],
@@ -24,7 +24,7 @@ export function filterCollectionReports(
 ): CollectionReportRow[] {
   console.warn('[filterCollectionReports] Starting filter process');
   console.warn(
-    `[filterCollectionReports] selectedLocation: "${selectedLocation}"`
+    `[filterCollectionReports] selectedLocation:`, selectedLocation
   );
   console.warn(`[filterCollectionReports] search: "${search}"`);
   console.warn(
@@ -38,9 +38,29 @@ export function filterCollectionReports(
   const filtered = reports.filter((r, index) => {
     // Location matching logic
     const isAllLocations = selectedLocation === 'all';
-    const foundLocation = locations.find(l => l._id === selectedLocation);
-    const locationName = foundLocation?.name;
-    const matchesLocation = isAllLocations || r.location === locationName;
+    let matchesLocation = false;
+    let locationNameForLog = '';
+
+    if (isAllLocations) {
+      matchesLocation = true;
+      locationNameForLog = 'all';
+    } else if (Array.isArray(selectedLocation)) {
+      if (selectedLocation.length === 0 || selectedLocation.includes('all')) {
+        matchesLocation = true;
+        locationNameForLog = 'all';
+      } else {
+        const selectedNames = locations
+          .filter(l => selectedLocation.includes(l._id))
+          .map(l => l.name);
+        matchesLocation = selectedNames.includes(r.location);
+        locationNameForLog = selectedNames.join(', ');
+      }
+    } else {
+      const foundLocation = locations.find(l => l._id === selectedLocation);
+      const locationName = foundLocation?.name;
+      matchesLocation = r.location === locationName;
+      locationNameForLog = locationName || '';
+    }
 
     // Log first few reports for debugging
     if (index < 3) {
@@ -48,7 +68,7 @@ export function filterCollectionReports(
       console.warn(`  - Report location: "${r.location}"`);
       console.warn(`  - Selected location: "${selectedLocation}"`);
       console.warn(`  - Is all locations: ${isAllLocations}`);
-      console.warn(`  - Found location name: "${locationName}"`);
+      console.warn(`  - Found location name: "${locationNameForLog}"`);
       console.warn(`  - Matches location: ${matchesLocation}`);
     }
 

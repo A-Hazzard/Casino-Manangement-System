@@ -59,10 +59,12 @@ type CollectionReportMobileNewCollectionModalProps = {
 export default function CollectionReportMobileNewCollectionModal({
   show,
   onClose,
-  locations = [],
+  locations: propLocations = [],
   onRefresh,
 }: CollectionReportMobileNewCollectionModalProps) {
   const {
+    locations,
+    isLoadingLocations,
     modalState,
     setModalState,
     selectedLocation,
@@ -106,7 +108,7 @@ export default function CollectionReportMobileNewCollectionModal({
     handleApplyAllDates,
   } = useMobileCollectionModal({
     show,
-    locations,
+    locations: propLocations,
     onRefresh,
     onClose,
   });
@@ -272,19 +274,23 @@ export default function CollectionReportMobileNewCollectionModal({
                         : ''
                     }
                   >
-                    <LocationSingleSelect
-                      locations={locations.map(loc => ({
-                        id: String(loc._id),
-                        name: loc.name,
-                        sasEnabled: false,
-                      }))}
-                      selectedLocation={
-                        lockedLocationId || selectedLocation || ''
-                      }
-                      onSelectionChange={handleLocationChange}
-                      placeholder="Choose a location..."
-                      includeAllOption={false}
-                    />
+                    {isLoadingLocations ? (
+                      <Skeleton className="h-10 w-full rounded-md" />
+                    ) : (
+                      <LocationSingleSelect
+                        locations={locations.map(loc => ({
+                          id: String(loc._id),
+                          name: loc.name,
+                          sasEnabled: false,
+                        }))}
+                        selectedLocation={
+                          lockedLocationId || selectedLocation || ''
+                        }
+                        onSelectionChange={handleLocationChange}
+                        placeholder="Choose a location..."
+                        includeAllOption={false}
+                      />
+                    )}
                   </div>
                 </>
               )}

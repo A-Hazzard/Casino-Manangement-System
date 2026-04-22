@@ -42,7 +42,8 @@ export async function getAllCollectionReportsWithMachineCounts(
   endDate?: Date,
   page = 1,
   limit = 50,
-  scale = 1
+  scale = 1,
+  locationIds?: string[]
 ): Promise<{ reports: CollectionReportRow[]; total: number }> {
   let rawReports: Array<Record<string, unknown>> = [];
 
@@ -64,6 +65,11 @@ export async function getAllCollectionReportsWithMachineCounts(
   // Add date range filtering if provided
   if (startDate && endDate) {
     matchCriteria.timestamp = { $gte: startDate, $lte: endDate };
+  }
+
+  // Add location filtering if provided
+  if (locationIds && locationIds.length > 0) {
+    matchCriteria.location = { $in: locationIds };
   }
 
   // Always use aggregation to include collector details lookup
@@ -141,7 +147,7 @@ export async function getAllCollectionReportsWithMachineCounts(
     .filter(Boolean);
 
   // Get all unique location IDs for batch machine counting
-  const locationIds = [
+  const uniqueLocationIds = [
     ...new Set(
       rawReports
         .map(doc => {
@@ -204,7 +210,7 @@ export async function getAllCollectionReportsWithMachineCounts(
   const machineCounts = await Machine.aggregate([
     {
       $match: {
-        gamingLocation: { $in: locationIds },
+        gamingLocation: { $in: uniqueLocationIds },
         $or: [
           { deletedAt: null },
           { deletedAt: { $lt: new Date('2025-01-01') } },

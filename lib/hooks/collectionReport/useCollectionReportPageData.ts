@@ -19,8 +19,7 @@
 import { COLLECTION_TABS_CONFIG } from '@/lib/constants';
 import {
   fetchCollectionReportsByLicencee,
-  getLocationsWithMachines,
-} from '@/lib/helpers/collectionReport';
+} from '@/lib/helpers/collectionReport/fetching';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { useCollectionNavigation } from '@/lib/hooks/navigation';
 import { useDebounce } from '@/lib/hooks/useDebounce';
@@ -147,9 +146,10 @@ export function useCollectionReportPageData() {
    */
   const isDataMissingForPage = useMemo(() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
-    return (
-      filteredReports.length <= startIndex && allReports.length < totalReports
-    );
+    const isAtEndOfLoaded = filteredReports.length <= startIndex;
+    const hasMoreOnServer = allReports.length < totalReports;
+
+    return isAtEndOfLoaded && hasMoreOnServer;
   }, [filteredReports.length, allReports.length, currentPage, totalReports]);
 
   /**
@@ -160,13 +160,37 @@ export function useCollectionReportPageData() {
     const displayedCount = filteredReports.length;
     const displayedPages = Math.ceil(displayedCount / ITEMS_PER_PAGE) || 1;
 
+    const isFiltered =
+      (Array.isArray(filters.selectedLocation) ? filters.selectedLocation.length > 0 && !filters.selectedLocation.includes('all') : filters.selectedLocation !== 'all') ||
+      filters.showUncollectedOnly ||
+      filters.selectedFilters.length > 0;
+
+    // If we have more on server, and we are either not filtered OR we are at the end of our current matches,
+    // show one more page to allow fetching the next batch.
     if (allReports.length < totalReports && totalReports > 0) {
+      // If we are filtered, we only show an extra page if the current matches are a multiple of ITEMS_PER_PAGE
+      // or if we have no matches yet, suggesting there might be more in the next batch.
+      if (isFiltered) {
+        if (displayedCount === 0 || (displayedCount > 0 && displayedCount % ITEMS_PER_PAGE === 0)) {
+           const serverTotalPages = Math.ceil(totalReports / ITEMS_PER_PAGE) || 1;
+           return Math.min(displayedPages + 1, serverTotalPages);
+        }
+        return displayedPages;
+      }
+
       const serverTotalPages = Math.ceil(totalReports / ITEMS_PER_PAGE) || 1;
       return Math.min(displayedPages + 1, serverTotalPages);
     }
 
     return displayedPages;
-  }, [filteredReports.length, allReports.length, totalReports]);
+  }, [
+    filteredReports.length,
+    allReports.length,
+    totalReports,
+    filters.selectedLocation,
+    filters.showUncollectedOnly,
+    filters.selectedFilters.length,
+  ]);
 
   // ==========================================================================
   // Computed Values - Permissions
@@ -296,7 +320,8 @@ export function useCollectionReportPageData() {
           0,
           undefined,
           debouncedSearch,
-          controller.signal
+          controller.signal,
+          Array.isArray(filters.selectedLocation) ? filters.selectedLocation : (filters.selectedLocation !== 'all' ? [filters.selectedLocation] : undefined)
         );
 
         if (result) {
@@ -435,14 +460,19 @@ export function useCollectionReportPageData() {
 
   /**
    * Fetch locations on licencee change
+   * Uses lightweight metadata fetch for performance
    */
   useEffect(() => {
     fetchAllGamingLocations(selectedLicencee || undefined).then(locs => {
-      setLocations(locs.map(l => ({ _id: l.id, name: l.name })));
+      // Map to standardized location format
+      const formatted = locs.map(l => ({
+        _id: String(l.id),
+        name: l.name,
+      }));
+      setLocations(formatted);
+      // Initialize metadata array as empty, modals will handle their own rich fetching
+      setLocationsWithMachines([]);
     });
-    getLocationsWithMachines(selectedLicencee || undefined).then(
-      setLocationsWithMachines
-    );
   }, [selectedLicencee]);
 
   /**
@@ -579,12 +609,15 @@ export function useCollectionReportPageData() {
     setEditingReportId,
     // Data Refresh
     onRefreshLocations: useCallback(async () => {
-      const locs = await fetchAllGamingLocations(selectedLicencee || undefined);
-      setLocations(locs.map(l => ({ _id: l.id, name: l.name })));
-      const locsWithMachines = await getLocationsWithMachines(
+      const locs = await fetchAllGamingLocations(
         selectedLicencee || undefined
       );
-      setLocationsWithMachines(locsWithMachines);
+      const formatted = locs.map(l => ({
+        _id: String(l.id),
+        name: l.name,
+      }));
+      setLocations(formatted);
+      setLocationsWithMachines([]);
     }, [selectedLicencee]),
   };
 }

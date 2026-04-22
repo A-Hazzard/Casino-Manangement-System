@@ -6,10 +6,8 @@
 
 'use client';
 
-import {
-    fetchMonthlyReportLocations,
-    fetchMonthlyReportSummaryAndDetails
-} from '@/lib/helpers/collectionReport';
+import { fetchMonthlyReportSummaryAndDetails } from '@/lib/helpers/collectionReport';
+import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import type {
     MonthlyReportDetailsRow,
     MonthlyReportSummary
@@ -18,7 +16,7 @@ import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 
-export function useMonthlyReportData(selectedLicencee: string | null) {
+export function useMonthlyReportData(selectedLicencee: string | null, activeTab: string) {
   // ============================================================================
   // State Management
   // ============================================================================
@@ -32,6 +30,8 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
     sasGross: '-',
   });
   const [monthlyDetails, setMonthlyDetails] = useState<MonthlyReportDetailsRow[]>([]);
+  const [sortField, setSortField] = useState<keyof MonthlyReportDetailsRow>('gross');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [monthlyPage, setMonthlyPage] = useState(0);
   const [pendingRange, setPendingRange] = useState<RDPDateRange | undefined>(() => {
     const end = endOfMonth(new Date());
@@ -68,6 +68,16 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
     }
   }, [pendingRange, monthlyLocation, selectedLicencee]);
 
+  const handleSort = useCallback((field: keyof MonthlyReportDetailsRow) => {
+    if (sortField === field) {
+      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortDirection('desc'); // Default to desc for new field
+    }
+    setMonthlyPage(0);
+  }, [sortField]);
+
   const handleSetLastMonth = useCallback(() => {
     const lastMonth = subMonths(new Date(), 1);
     const start = startOfMonth(lastMonth);
@@ -83,10 +93,38 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
     return Math.ceil(monthlyDetails.length / ITEMS_PER_PAGE) || 1;
   }, [monthlyDetails.length]);
 
+  const sortedDetails = useMemo(() => {
+    const data = [...monthlyDetails];
+    if (!sortField) return data;
+
+    return data.sort((a, b) => {
+      const valA = a[sortField];
+      const valB = b[sortField];
+
+      // Helper to parse currency string to number
+      const parseVal = (v: string) => {
+        if (v === '-' || !v) return -Infinity;
+        const num = parseFloat(v.replace(/[$,]/g, ''));
+        return isNaN(num) ? -Infinity : num;
+      };
+
+      if (sortField === 'location') {
+        return sortDirection === 'asc'
+          ? (valA as string).localeCompare(valB as string)
+          : (valB as string).localeCompare(valA as string);
+      }
+
+      const numA = parseVal(valA as string);
+      const numB = parseVal(valB as string);
+
+      return sortDirection === 'asc' ? numA - numB : numB - numA;
+    });
+  }, [monthlyDetails, sortField, sortDirection]);
+
   const monthlyCurrentItems = useMemo(() => {
     const skip = monthlyPage * ITEMS_PER_PAGE;
-    return monthlyDetails.slice(skip, skip + ITEMS_PER_PAGE);
-  }, [monthlyDetails, monthlyPage]);
+    return sortedDetails.slice(skip, skip + ITEMS_PER_PAGE);
+  }, [sortedDetails, monthlyPage]);
 
   const firstItemIndex = monthlyPage * ITEMS_PER_PAGE + 1;
   const lastItemIndex = Math.min((monthlyPage + 1) * ITEMS_PER_PAGE, monthlyDetails.length);
@@ -96,13 +134,14 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
   // ============================================================================
   // Fetch locations on mount and licencee change
   useEffect(() => {
-    fetchMonthlyReportLocations(selectedLicencee || undefined).then(setLocations);
+    fetchAllGamingLocations(selectedLicencee || undefined).then(setLocations);
   }, [selectedLicencee]);
 
-  // Initial fetch and fetch on location/range change
+  // Fetch only when the monthly tab is active
   useEffect(() => {
+    if (activeTab !== 'monthly') return;
     fetchMonthlyData();
-  }, [fetchMonthlyData]);
+  }, [fetchMonthlyData, activeTab]);
 
   return {
     locations,
@@ -113,7 +152,7 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
     onApplyDateRange: fetchMonthlyData,
     onSetLastMonth: handleSetLastMonth,
     monthlySummary,
-    monthlyDetails,
+    monthlyDetails: sortedDetails,
     monthlyCurrentItems,
     monthlyLoading,
     monthlyTotalPages,
@@ -122,6 +161,9 @@ export function useMonthlyReportData(selectedLicencee: string | null) {
     monthlyPaginationRef: paginationRef,
     monthlyFirstItemIndex: firstItemIndex,
     monthlyLastItemIndex: lastItemIndex,
+    sortField,
+    sortDirection,
+    handleSort,
   };
 }
 

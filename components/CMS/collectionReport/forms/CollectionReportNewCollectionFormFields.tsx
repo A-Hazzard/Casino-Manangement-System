@@ -182,6 +182,7 @@ export default function CollectionReportNewCollectionFormFields({
               onViewMachine();
             }}
             aria-label="View machine details"
+            title="View machine details"
           >
             <ExternalLink className="h-4 w-4" />
           </button>

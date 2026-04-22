@@ -177,7 +177,7 @@ export type CollectionReportMachineSummary = {
 export type CollectionReportLocationWithMachines = {
   _id: MongooseId;
   name: string;
-  machines: CollectionReportMachineSummary[];
+  machines?: CollectionReportMachineSummary[];
   previousCollectionTime?: string | Date;
   profitShare?: number;
   collectionBalance?: number;

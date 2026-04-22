@@ -60,6 +60,35 @@ interface CheckVariationsResponse {
   machines: MachineVariationData[];
 }
 
+/**
+ * Main POST handler for checking collection report variations
+ *
+ * Compares meter gross against SAS gross for a set of machines to detect discrepancies
+ * before a collection report is submitted. Developer/admin only maintenance route.
+ *
+ * @param {NextRequest} request - Information about the incoming request
+ * @body {string} locationId - Required. ID of the gaming location; used to look up the licencee's `includeJackpot` setting.
+ * @body {Array} machines - Required. Array of machine meter snapshots to check.
+ *   - machineId {string} Required. Machine identifier.
+ *   - metersIn {number} Required. Current coin-in meter reading.
+ *   - metersOut {number} Required. Current coin-out meter reading.
+ *   - machineName {string} Optional. Display name
+ *   - sasStartTime {string} Optional. ISO timestamp for SAS window
+ *   - sasEndTime {string} Optional. ISO timestamp for SAS window
+ *   - prevMetersIn {number} Optional. Previous coin-in reading
+ *   - prevMetersOut {number} Optional. Previous coin-out reading
+ *   - movementGross {number} Optional. Pre-calculated gross
+ * @body {boolean} includeJackpot - Optional. When true, subtracts jackpot from SAS gross. Defaults to the licencee setting if omitted.
+ *
+ * Flow:
+ * 1. Connect to the database
+ * 2. Parse request body and validate required fields
+ * 3. Fetch licencee's includeJackpot flag if not provided
+ * 4. Fetch machine details for display
+ * 5. Fetch SAS meter data for machines with SAS time ranges
+ * 6. Calculate variations (meter gross vs SAS gross) for each machine
+ * 7. Return variation data and total variance
+ */
 export async function POST(request: NextRequest) {
   try {
     await connectDB();

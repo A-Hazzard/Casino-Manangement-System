@@ -76,7 +76,7 @@ type UseEditCollectionModalProps = {
 export function useEditCollectionModal({
   show,
   reportId,
-  locations,
+  locations: propLocations,
   onRefresh,
   onClose,
 }: UseEditCollectionModalProps) {
@@ -98,6 +98,14 @@ export function useEditCollectionModal({
     setFormData: setStoreFormData,
     calculateCarryover: storeCalculateCarryover,
     setSelectedLocation: setStoreSelectedLocation,
+  } = useCollectionModalStore();
+
+  const [internalLocations, setInternalLocations] = useState<CollectionReportLocationWithMachines[]>([]);
+  
+  // Use internal locations if available, fallback to prop
+  const locations = internalLocations.length > 0 ? internalLocations : propLocations;
+
+  const {
     selectedLocationId: storeLocationId,
     selectedLocationName: storeLocationName,
     selectedMachineId: storeMachineId,
@@ -127,6 +135,7 @@ export function useEditCollectionModal({
   const [machinesOfSelectedLocation, setMachinesOfSelectedLocation] = useState<
     CollectionReportMachineSummary[]
   >([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [isLoadingMachines, setIsLoadingMachines] = useState(false);
   const [isLoadingCollections, setIsLoadingCollections] = useState(false);
   const [hasSetCollectionTimeFromReport, setHasSetCollectionTimeFromReport] =
@@ -250,7 +259,7 @@ export function useEditCollectionModal({
         const machineEntry = collectedMachineEntries.find(
           e => String(e.machineId) === selectedMachineId
         );
-        const machineInfo = location?.machines?.find(
+        const machineInfo = machinesOfSelectedLocation.find(
           m => String(m._id) === selectedMachineId
         );
 
@@ -323,6 +332,27 @@ export function useEditCollectionModal({
   useEffect(() => {
     locationsRef.current = locations;
   }, [locations]);
+
+  // ==========================================================================
+  // Fetch rich metadata when modal opens
+  useEffect(() => {
+    if (show && userId) {
+      setIsLoadingLocations(true);
+      import('@/lib/helpers/collectionReport/fetching').then(({ getLocationsWithMachines }) => {
+        getLocationsWithMachines(undefined, false)
+          .then(locs => {
+            setInternalLocations(locs);
+          })
+          .catch(err => {
+            console.error('Error fetching collection metadata:', err);
+          })
+          .finally(() => setIsLoadingLocations(false));
+      });
+    } else {
+      setIsLoadingLocations(false);
+    }
+  }, [show, userId]);
+
 
   // ==========================================================================
   // Computed Values
@@ -2378,6 +2408,7 @@ export function useEditCollectionModal({
     setBaseBalanceCorrection,
     machinesOfSelectedLocation,
     setMachinesOfSelectedLocation,
+    isLoadingLocations,
     isLoadingMachines,
     setIsLoadingMachines,
     hasSetCollectionTimeFromReport,

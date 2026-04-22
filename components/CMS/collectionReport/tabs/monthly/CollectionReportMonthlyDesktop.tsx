@@ -63,6 +63,9 @@ export default function CollectionReportMonthlyDesktop({
   monthlyTotalPages,
   monthlyPage,
   onPaginateMonthly,
+  sortField,
+  sortDirection,
+  handleSort,
 }: MonthlyDesktopUIProps) {
   // Handler for export with format selection
   const handleExport = async (format: 'pdf' | 'excel') => {
@@ -138,7 +141,14 @@ export default function CollectionReportMonthlyDesktop({
           <div className="mt-4 h-40 w-full animate-pulse rounded bg-gray-200" />
         ) : monthlyCurrentItems.length === 0 && !monthlyLoading ? null : (
           <>
-            <CollectionReportMonthlyDetailsTable details={monthlyCurrentItems} locations={locations} loading={monthlyLoading} />
+            <CollectionReportMonthlyDetailsTable
+              details={monthlyCurrentItems}
+              locations={locations}
+              loading={monthlyLoading}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+            />
             {monthlyTotalPages > 0 && (
               <PaginationControls
                 currentPage={monthlyPage}

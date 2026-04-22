@@ -7,6 +7,7 @@ checklist: [
 "Handler functions (e.g., GET) must use documented step-by-step visual comments and numbered steps",
 "Each major operation inside handlers must be labeled as `STEP N: [Description]` with separator lines",
 "Flow must be pre-documented in handler JSDoc (listing steps)",
+"All API handlers must properly document their params (@param and @body) and provide a high-level explanation of what the method is for",
 "Complex or reusable logic extracted to app/api/lib/helpers/[feature].ts and imported",
 "Performance tracking added (measure elapsed time; log >1000ms and on error)",
 "Proper try/catch error handling with suitable HTTP status codes and safe error messages",

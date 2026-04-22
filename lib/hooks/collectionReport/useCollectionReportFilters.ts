@@ -47,7 +47,7 @@ export function useCollectionReportFilters({
   // ==========================================================================
   // Local State - Filters
   // ==========================================================================
-  const [selectedLocation, setSelectedLocation] = useState('all');
+  const [selectedLocation, setSelectedLocation] = useState<string | string[]>('all');
   const [showUncollectedOnly, setShowUncollectedOnly] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 

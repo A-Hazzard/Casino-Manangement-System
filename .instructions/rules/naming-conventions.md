@@ -178,6 +178,12 @@ components/collectionReport/
 │ └── `types/` (Backend-specific types)
 └── `[route]/` (Route handlers)
 
+**API Route Documentation Rules (CRITICAL)**:
+Every API route handler (`GET`, `POST`, `PATCH`, `DELETE`) MUST properly document its parameters using a JSDoc block immediately above the export keyword. The documentation block must contain:
+1. **Method Explanation**: A high-level description of what the API method is for.
+2. **Parameters**: Explicit documentation of every expected parameter using `@param {type} name - description` for query/path parameters, and `@body {type} name - description` for request body payloads. 
+3. **Flow Outline**: A numbered list describing the high-level steps of the handler function.
+
 ## 5. Utility File Organization & Naming
 
 ### 5.1. File Naming Based on Use Cases

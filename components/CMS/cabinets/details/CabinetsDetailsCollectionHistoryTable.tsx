@@ -77,7 +77,9 @@ const formatLargeNumber = (num: number): string => {
 const SmartNumberDisplay: FC<{ value: number }> = ({ value }) => {
   const formattedFull = value.toLocaleString();
   const formattedCompact = formatLargeNumber(value);
-  const shouldAbbreviate = value >= 1000000;
+  // Only abbreviate if the number is >= 100,000,000 (100M)
+  // This ensures values like 36M are shown in full if they fit the column.
+  const shouldAbbreviate = value >= 100000000;
   const displayValue = shouldAbbreviate ? formattedCompact : formattedFull;
 
   if (!shouldAbbreviate) {
@@ -478,7 +480,7 @@ export function CabinetsDetailsCollectionHistoryTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="w-[85px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
+                  className="w-[110px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
                   onClick={() => handleSort('metersIn')}
                 >
                   <div className="flex items-center gap-1">
@@ -487,7 +489,7 @@ export function CabinetsDetailsCollectionHistoryTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="w-[85px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
+                  className="w-[110px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
                   onClick={() => handleSort('metersOut')}
                 >
                   <div className="flex items-center gap-1">
@@ -496,7 +498,7 @@ export function CabinetsDetailsCollectionHistoryTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="w-[85px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
+                  className="w-[110px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
                   onClick={() => handleSort('prevIn')}
                 >
                   <div className="flex items-center gap-1">
@@ -505,7 +507,7 @@ export function CabinetsDetailsCollectionHistoryTable({
                   </div>
                 </TableHead>
                 <TableHead
-                  className="w-[85px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
+                  className="w-[110px] cursor-pointer select-none px-2 text-left hover:bg-muted/50"
                   onClick={() => handleSort('prevOut')}
                 >
                   <div className="flex items-center gap-1">
@@ -528,13 +530,17 @@ export function CabinetsDetailsCollectionHistoryTable({
                 <TableRow
                   key={`${row.locationReportId}-${row.timestamp}-${index}`}
                 >
-                  <TableCell className="text-left">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate">
-                        {new Date(row.timestamp).toLocaleString('en-US', {
-                          year: 'numeric',
+                  <TableCell className="text-left py-2">
+                    <div className="flex flex-col">
+                      <span className="whitespace-nowrap text-sm font-medium">
+                        {new Date(row.timestamp).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </span>
+                      <span className="whitespace-nowrap text-[11px] leading-tight text-muted-foreground">
+                        {new Date(row.timestamp).toLocaleTimeString('en-US', {
                           hour: 'numeric',
                           minute: '2-digit',
                           second: '2-digit',
@@ -613,10 +619,14 @@ export function CabinetsDetailsCollectionHistoryTable({
                     Collection Entry
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(row.timestamp).toLocaleDateString('en-US', {
+                    {new Date(row.timestamp).toLocaleString('en-US', {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      hour12: true,
                     })}
                   </span>
                 </CardTitle>
@@ -639,14 +649,6 @@ export function CabinetsDetailsCollectionHistoryTable({
                     <span className="text-xs font-medium text-muted-foreground">Prev. Out:</span>
                     <span className="font-semibold"><SmartNumberDisplay value={row.prevOut || 0} /></span>
                   </div>
-                </div>
-                <div className="text-center text-xs text-muted-foreground">
-                  {new Date(row.timestamp).toLocaleString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: true,
-                  })}
                 </div>
                 {row.locationReportId && (
                   <Button

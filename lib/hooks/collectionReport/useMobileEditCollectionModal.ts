@@ -439,21 +439,13 @@ export function useMobileEditCollectionModal({
     return amountToCollectHasValue && balanceCorrectionHasValue;
   }, [modalState.collectedMachines, modalState.financials]);
 
-  // Helper function to get location ID from machine ID
+  /**
+   * Find location ID for a given machine using the location name from the collection
+   */
   const getLocationIdFromMachine = useCallback(
-    (machineId: string) => {
-      // Find the location that contains this machine
-      for (const location of locations) {
-        if (location.machines) {
-          const machine = location.machines.find(
-            m => String(m._id) === machineId
-          );
-          if (machine) {
-            return String(location._id);
-          }
-        }
-      }
-      return null;
+    (locationName: string) => {
+      const matchingLoc = locations.find(l => l.name === locationName);
+      return matchingLoc ? String(matchingLoc._id) : null;
     },
     [locations]
   );
@@ -767,12 +759,12 @@ export function useMobileEditCollectionModal({
 
           setModalState(prev => ({
             ...prev,
-            availableMachines: location.machines,
+            availableMachines: location.machines || [],
             selectedLocation: String(location._id),
             selectedLocationName: location.name,
           }));
 
-          setStoreAvailableMachines(location.machines);
+          setStoreAvailableMachines(location.machines || []);
           setStoreSelectedLocation(String(location._id), location.name);
         }
       }
@@ -1149,6 +1141,37 @@ export function useMobileEditCollectionModal({
     setStoreAvailableMachines,
     setStoreCollectedMachines,
   ]);
+
+  // Fetch machines when location changes (important since they are no longer pre-fetched)
+  useEffect(() => {
+    const locationIdToUse = modalState.lockedLocationId || modalState.selectedLocation;
+    if (locationIdToUse && show) {
+      setModalState(prev => ({ ...prev, isLoadingMachines: true }));
+      const fetchMachinesForLocation = async () => {
+        try {
+          const response = await axios.get(
+            `/api/cabinets?locationId=${locationIdToUse}&_t=${Date.now()}`
+          );
+          if (response.data?.success && response.data?.data) {
+            setStoreAvailableMachines(response.data.data);
+            setModalState(prev => ({
+              ...prev,
+              availableMachines: response.data.data,
+              isLoadingMachines: false
+            }));
+          } else {
+            setStoreAvailableMachines([]);
+            setModalState(prev => ({ ...prev, availableMachines: [], isLoadingMachines: false }));
+          }
+        } catch (error) {
+          console.error('Error fetching machines for location:', error);
+          setStoreAvailableMachines([]);
+          setModalState(prev => ({ ...prev, availableMachines: [], isLoadingMachines: false }));
+        }
+      };
+      fetchMachinesForLocation();
+    }
+  }, [modalState.selectedLocation, modalState.lockedLocationId, show, setStoreAvailableMachines]);
 
 
 

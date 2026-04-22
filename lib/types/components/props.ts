@@ -103,11 +103,9 @@ export type MonthlyReportSummary = {
 
 // Monthly report details row type
 export type MonthlyReportDetailsRow = {
-  location: string;
-  drop: string;
-  win: string;
   gross: string;
   sasGross: string;
+  [key: string]: string; // Allow string indexing for sorting
 };
 
 export type CollectionReportNewCollectionModalProps = {
@@ -159,8 +157,8 @@ export type CollectionReportDesktopUIProps = {
   filteredReports: CollectionReportRow[];
   desktopTableRef: RefObject<HTMLDivElement | null>;
   locations: LocationSelectItem[];
-  selectedLocation: string;
-  onLocationChange: (value: string) => void;
+  selectedLocation: string | string[];
+  onLocationChange: (value: string | string[]) => void;
   search: string;
   onSearchChange: (value: string) => void;
   onSearchSubmit: () => void;
@@ -186,8 +184,8 @@ export type CollectionReportMobileUIProps = {
   mobileCardsRef: RefObject<HTMLDivElement | null>;
   disabled?: boolean;
   locations: LocationSelectItem[];
-  selectedLocation: string;
-  onLocationChange: (value: string) => void;
+  selectedLocation: string | string[];
+  onLocationChange: (value: string | string[]) => void;
   search: string;
   onSearchChange: (value: string) => void;
   onSearchSubmit: () => void;
@@ -222,6 +220,9 @@ export type CollectionReportMonthlyDesktopUIProps = {
   monthlyPaginationRef: RefObject<HTMLDivElement | null>;
   monthlyFirstItemIndex: number;
   monthlyLastItemIndex: number;
+  sortField: keyof MonthlyReportDetailsRow;
+  sortDirection: 'asc' | 'desc';
+  handleSort: (field: keyof MonthlyReportDetailsRow) => void;
 };
 
 export type MonthlyDesktopUIProps = CollectionReportMonthlyDesktopUIProps;
@@ -236,7 +237,13 @@ export type CollectionReportMonthlyMobileUIProps = {
   onSetLastMonth: () => void;
   monthlySummary: MonthlyReportSummary;
   monthlyDetails: MonthlyReportDetailsRow[];
+  monthlyCurrentItems: MonthlyReportDetailsRow[];
   monthlyLoading: boolean;
+  monthlyTotalPages: number;
+  monthlyPage: number;
+  onPaginateMonthly: (page: number) => void;
+  monthlyFirstItemIndex: number;
+  monthlyLastItemIndex: number;
 };
 
 export type MonthlyMobileUIProps = CollectionReportMonthlyMobileUIProps;
@@ -244,6 +251,9 @@ export type MonthlyMobileUIProps = CollectionReportMonthlyMobileUIProps;
 export type CollectionReportMonthlyDetailsTableProps = {
   details: MonthlyReportDetailsRow[];
   loading: boolean;
+  sortField?: keyof MonthlyReportDetailsRow;
+  sortDirection?: 'asc' | 'desc';
+  onSort?: (field: keyof MonthlyReportDetailsRow) => void;
 };
 
 export type CollectionReportMonthlySummaryTableProps = {
@@ -380,8 +390,8 @@ export type CollectorScheduleFiltersProps = CollectionReportCollectorScheduleFil
 
 export type CollectionReportFiltersProps = {
   locations: Array<{ _id: string; name: string }>;
-  selectedLocation: string;
-  onLocationChange: (value: string) => void;
+  selectedLocation: string | string[];
+  onLocationChange: (value: string | string[]) => void;
   search: string;
   onSearchChange: (value: string) => void;
   onSearchSubmit: () => void;

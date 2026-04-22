@@ -102,7 +102,7 @@ const CollectionReportPageContent: FC = () => {
   } = hook;
 
   // Initialize specialized hooks for secondary tabs
-  const monthlyHook = useMonthlyReportData(selectedLicencee);
+  const monthlyHook = useMonthlyReportData(selectedLicencee, activeTab);
   const collectorHook = useCollectorScheduleData(selectedLicencee, locations);
   const managerHook = useManagerScheduleData(
     selectedLicencee,
@@ -263,7 +263,11 @@ const CollectionReportPageContent: FC = () => {
                       <PaginationControls
                           currentPage={hook.currentPage}
                           totalPages={hook.totalPages || 1}
-                          totalCount={hook.totalReports}
+                          totalCount={
+                            filters.selectedLocation !== 'all' || filters.showUncollectedOnly || filters.selectedFilters.length > 0
+                              ? filters.filteredReports.length
+                              : hook.totalReports
+                          }
                           setCurrentPage={setCurrentPage}
                         />
                       </div>

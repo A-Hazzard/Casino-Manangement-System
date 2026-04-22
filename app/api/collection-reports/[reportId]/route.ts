@@ -29,7 +29,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../../lib/helpers/users';
 
 /**
- * GET /api/collection-reports/[reportId]
+ * Main GET handler for fetching an individual collection report
+ *
+ * Retrieves a collection report with machine metrics and access control checks.
+ * Standardizes on supporting both human-readable locationReportId and MongoDB _id.
+ *
+ * @param {NextRequest} request - Information about the incoming request
+ * @param {string} reportId - (Path parameter) The ID/locationReportId of the collection report
+ *
+ * Flow:
+ * 1. Connect to the database
+ * 2. Parse reportId from URL
+ * 3. Find report by locationReportId or MongoDB _id
+ * 4. Verify user has access to the location
+ * 5. Fetch enriched report data using helper
+ * 6. Return report data 
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
 
@@ -93,7 +107,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 }
 
 /**
- * PATCH /api/collection-reports/[reportId]
+ * Main PATCH handler for updating an individual collection report
+ *
+ * Updates a collection report and cascades changes to related collections.
+ *
+ * @param {NextRequest} request - Information about the incoming request
+ * @param {string} reportId - (Path parameter) The ID/locationReportId of the collection report
+ * @body {Partial<CreateCollectionReportPayload>} updateData - Fields to update (amountCollected, etc.)
+ *
+ * Flow:
+ * 1. Connect to the database
+ * 2. Parse reportId from URL and request body
+ * 3. Find existing report to handle either ID type
+ * 4. Fetch associated collections to track machine list changes
+ * 5. Update using specialized helper
+ * 6. Log activity
+ * 7. Return success response
  */
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
@@ -206,7 +235,22 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 }
 
 /**
- * DELETE /api/collection-reports/[reportId]
+ * Main DELETE handler for an individual collection report
+ *
+ * Deletes a collection report and reverts machine collection meters to previous state.
+ *
+ * @param {NextRequest} request - Information about the incoming request
+ * @param {string} reportId - (Path parameter) The ID/locationReportId of the collection report
+ *
+ * Flow:
+ * 1. Connect to the database
+ * 2. Parse reportId from URL
+ * 3. Find existing report
+ * 4. Revert machine collection meters
+ * 5. Delete associated collections
+ * 6. Delete collection report
+ * 7. Log activity
+ * 8. Return success response
  */
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
   try {

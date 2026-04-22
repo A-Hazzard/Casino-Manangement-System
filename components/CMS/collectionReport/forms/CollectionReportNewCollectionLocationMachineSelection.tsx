@@ -45,6 +45,8 @@ type NewCollectionLocationMachineSelectionProps = {
   selectedMachineId: string | undefined;
   collectedMachineEntries: Array<{ machineId: string; _id?: string }>;
   editingEntryId: string | null;
+  isLoadingLocations: boolean;
+  isLoadingMachines: boolean;
   isLoadingExistingCollections: boolean;
   isProcessing: boolean;
   onLocationChange: (value: string) => void;
@@ -62,6 +64,8 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
   selectedMachineId,
   collectedMachineEntries,
   editingEntryId,
+  isLoadingLocations,
+  isLoadingMachines,
   isLoadingExistingCollections,
   isProcessing,
   onLocationChange,
@@ -79,17 +83,21 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
             : ''
         }
       >
-        <LocationSingleSelect
-          locations={locations.filter(loc => loc.name).map(loc => ({
-            id: String(loc._id),
-            name: loc.name,
-            sasEnabled: false,
-          }))}
-          selectedLocation={lockedLocationId || selectedLocationId || ''}
-          onSelectionChange={onLocationChange}
-          placeholder="Select Location"
-          includeAllOption={false}
-        />
+        {isLoadingLocations ? (
+          <Skeleton className="h-10 w-full rounded-md" />
+        ) : (
+          <LocationSingleSelect
+            locations={locations.filter(loc => loc.name).map(loc => ({
+              id: String(loc._id),
+              name: loc.name,
+              sasEnabled: false,
+            }))}
+            selectedLocation={lockedLocationId || selectedLocationId || ''}
+            onSelectionChange={onLocationChange}
+            placeholder="Select Location"
+            includeAllOption={false}
+          />
+        )}
       </div>
 
       {lockedLocationId && (
@@ -101,14 +109,18 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
       {/* Machine search bar - always visible when location is selected */}
       {(selectedLocationId || lockedLocationId) && (
         <div className="space-y-2">
-          <Input
-            type="text"
-            placeholder="Search machines..."
-            value={machineSearchTerm}
-            onChange={e => onMachineSearchChange(e.target.value)}
-            className="w-full"
-          />
-          {machineSearchTerm && (
+          {isLoadingMachines ? (
+            <Skeleton className="h-10 w-full rounded-md" />
+          ) : (
+            <Input
+              type="text"
+              placeholder="Search machines..."
+              value={machineSearchTerm}
+              onChange={e => onMachineSearchChange(e.target.value)}
+              className="w-full"
+            />
+          )}
+          {!isLoadingMachines && machineSearchTerm && (
             <p className="text-xs text-gray-500">
               Showing {filteredMachines.length} of{' '}
               {machinesOfSelectedLocation.length} machines
@@ -133,7 +145,13 @@ export default function CollectionReportNewCollectionLocationMachineSelection({
             ))}
           </div>
         ) : selectedLocationId || lockedLocationId ? (
-          (() => {
+          isLoadingMachines ? (
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map(i => (
+                <Skeleton key={i} className="h-12 w-full rounded-md" />
+              ))}
+            </div>
+          ) : (() => {
             const locationIdToUse = lockedLocationId || selectedLocationId;
             const location = locations.find(
               l => String(l._id) === locationIdToUse

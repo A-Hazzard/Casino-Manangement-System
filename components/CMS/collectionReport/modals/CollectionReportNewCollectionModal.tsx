@@ -65,7 +65,7 @@ import type { CollectionReportNewCollectionModalProps } from '@/lib/types/compon
 export default function CollectionReportNewCollectionModal({
   show,
   onClose,
-  locations = [],
+  locations: propLocations = [],
   onRefresh,
   onRefreshLocations,
   onSuccess,
@@ -128,6 +128,9 @@ export default function CollectionReportNewCollectionModal({
   );
 
   const {
+    locations,
+    isLoadingLocations,
+    isLoadingMachines,
     selectedLocationId,
     selectedLocationName,
     machinesOfSelectedLocation,
@@ -207,7 +210,7 @@ export default function CollectionReportNewCollectionModal({
     handleApplyAllDates,
   } = useNewCollectionModal({
     show,
-    locations,
+    locations: propLocations,
     userId,
     onRefresh,
     onRefreshLocations,
@@ -260,6 +263,8 @@ export default function CollectionReportNewCollectionModal({
                 selectedMachineId={selectedMachineId}
                 collectedMachineEntries={collectedMachineEntries}
                 editingEntryId={editingEntryId}
+                isLoadingLocations={isLoadingLocations}
+                isLoadingMachines={isLoadingMachines}
                 isLoadingExistingCollections={isLoadingExistingCollections}
                 isProcessing={isProcessing}
                 onLocationChange={handleLocationChange}

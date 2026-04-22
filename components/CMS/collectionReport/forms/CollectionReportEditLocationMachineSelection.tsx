@@ -46,6 +46,7 @@ type EditCollectionLocationMachineSelectionProps = {
   machineSearchTerm: string;
   setMachineSearchTerm: (term: string) => void;
   filteredMachines: CollectionReportMachineSummary[];
+  isLoadingLocations: boolean;
   isLoadingMachines: boolean;
   isProcessing: boolean;
   selectedMachineId: string;
@@ -62,6 +63,7 @@ export default function CollectionReportEditLocationMachineSelection({
   machineSearchTerm,
   setMachineSearchTerm,
   filteredMachines,
+  isLoadingLocations,
   isLoadingMachines,
   isProcessing,
   selectedMachineId,
@@ -72,30 +74,38 @@ export default function CollectionReportEditLocationMachineSelection({
   return (
     <div className="flex flex-1 flex-col h-full min-h-0 w-full space-y-3 p-3 md:p-4 transition-all">
       <div className="pointer-events-none opacity-50">
-        <LocationSingleSelect
-          selectedLocation={selectedLocationId}
-          onSelectionChange={setSelectedLocationId}
-          locations={locations.map(loc => ({
-            id: String(loc._id),
-            name: loc.name,
-            sasEnabled: false,
-          }))}
-          placeholder="Select Location"
-          includeAllOption={false}
-        />
+        {isLoadingLocations ? (
+          <Skeleton className="h-10 w-full rounded-md" />
+        ) : (
+          <LocationSingleSelect
+            selectedLocation={selectedLocationId}
+            onSelectionChange={setSelectedLocationId}
+            locations={locations.map(loc => ({
+              id: String(loc._id),
+              name: loc.name,
+              sasEnabled: false,
+            }))}
+            placeholder="Select Location"
+            includeAllOption={false}
+          />
+        )}
       </div>
 
       {/* Machine search bar - always visible when location is selected */}
       {selectedLocationId && (
         <div className="space-y-2">
-          <Input
-            type="text"
-            placeholder="Search machines..."
-            value={machineSearchTerm}
-            onChange={e => setMachineSearchTerm(e.target.value)}
-            className="w-full"
-          />
-          {machineSearchTerm && (
+          {isLoadingMachines ? (
+            <Skeleton className="h-10 w-full rounded-md" />
+          ) : (
+            <Input
+              type="text"
+              placeholder="Search machines..."
+              value={machineSearchTerm}
+              onChange={e => setMachineSearchTerm(e.target.value)}
+              className="w-full"
+            />
+          )}
+          {!isLoadingMachines && machineSearchTerm && (
             <p className="text-xs text-gray-500">
               Showing {filteredMachines.length} of{' '}
               {machinesOfSelectedLocation.length} machines

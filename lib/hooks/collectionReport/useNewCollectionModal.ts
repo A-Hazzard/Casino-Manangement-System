@@ -19,6 +19,7 @@
 // ============================================================================
 
 import { createCollectionReport } from '@/lib/helpers/collectionReport';
+import { getLocationsWithMachines } from '@/lib/helpers/collectionReport/fetching';
 import {
   addMachineCollection,
   deleteMachineCollection,
@@ -96,7 +97,7 @@ function sortMachinesAlphabetically(machines: CollectionReportMachineSummary[]):
 
 export function useNewCollectionModal({
   show,
-  locations,
+  locations: propLocations,
   userId,
   onRefresh,
   onRefreshLocations,
@@ -127,10 +128,16 @@ export function useNewCollectionModal({
   // ==========================================================================
 
   // Location & Machine Selection
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [isLoadingMachines, setIsLoadingMachines] = useState(false);
   const [machinesOfSelectedLocation, setMachinesOfSelectedLocation] = useState<
     CollectionReportMachineSummary[]
   >([]);
   const [machineSearchTerm, setMachineSearchTerm] = useState('');
+  const [internalLocations, setInternalLocations] = useState<CollectionReportLocationWithMachines[]>([]);
+  
+  // Use internal locations if available, fallback to prop
+  const locations = internalLocations.length > 0 ? internalLocations : propLocations;
   const [selectedMachineId, setSelectedMachineId] = useState<
     string | undefined
   >(undefined);
@@ -227,16 +234,12 @@ export function useNewCollectionModal({
   // ==========================================================================
 
   /**
-   * Find location ID for a given machine
+   * Find location ID for a given machine using the location name from the collection
    */
-  const getLocationIdFromMachine = useCallback(
-    (machineId: string) => {
-      for (const location of locations) {
-        if (location.machines?.some(m => String(m._id) === machineId)) {
-          return String(location._id);
-        }
-      }
-      return null;
+  const getLocationIdFromCollection = useCallback(
+    (locationName: string) => {
+      const found = locations.find(l => l.name === locationName);
+      return found ? String(found._id) : null;
     },
     [locations]
   );
@@ -392,6 +395,25 @@ export function useNewCollectionModal({
     onRefreshLocationsRef.current = onRefreshLocations;
   });
 
+  // Fetch rich metadata when modal opens
+  useEffect(() => {
+    if (show && userId) {
+      setIsLoadingLocations(true);
+      getLocationsWithMachines(undefined, false)
+        .then((locs: CollectionReportLocationWithMachines[]) => {
+          setInternalLocations(locs);
+        })
+        .catch((err: unknown) => {
+          console.error('Error fetching collection metadata:', err);
+          toast.error('Failed to load collection metadata');
+        })
+        .finally(() => setIsLoadingLocations(false));
+    } else {
+      setIsLoadingLocations(false);
+    }
+  }, [show, userId]);
+
+
   /**
    * Fetch machines when location changes
    */
@@ -399,6 +421,7 @@ export function useNewCollectionModal({
     const locationIdToUse = lockedLocationId || selectedLocationId;
     if (locationIdToUse) {
       const fetchMachinesForLocation = async () => {
+        setIsLoadingMachines(true);
         try {
           const response = await axios.get(
             `/api/cabinets?locationId=${locationIdToUse}&_t=${Date.now()}`
@@ -411,6 +434,8 @@ export function useNewCollectionModal({
         } catch (error) {
           console.error('Error fetching machines for location:', error);
           setMachinesOfSelectedLocation([]);
+        } finally {
+          setIsLoadingMachines(false);
         }
       };
       fetchMachinesForLocation();
@@ -562,9 +587,9 @@ export function useNewCollectionModal({
           }
 
           const firstCollection = response.data[0];
-          if (firstCollection.machineId) {
-            const properLocationId = getLocationIdFromMachine(
-              firstCollection.machineId
+          if (firstCollection.location) {
+            const properLocationId = getLocationIdFromCollection(
+              firstCollection.location
             );
             if (properLocationId) {
               const locationData = locations.find(
@@ -596,6 +621,7 @@ export function useNewCollectionModal({
       setCollectedMachineEntries,
       setCurrentCollectionTime,
       setFinancials,
+      getLocationIdFromCollection,
     ]
   );
 
@@ -621,8 +647,8 @@ export function useNewCollectionModal({
       locations.length > 0
     ) {
       const firstCollection = collectedMachineEntries[0];
-      const properLocationId = getLocationIdFromMachine(
-        firstCollection.machineId
+      const properLocationId = getLocationIdFromCollection(
+        firstCollection.location
       );
       if (properLocationId) {
         const locationData = locations.find(
@@ -642,7 +668,7 @@ export function useNewCollectionModal({
     collectedMachineEntries,
     locations,
     selectedLocationId,
-    getLocationIdFromMachine,
+    getLocationIdFromCollection,
     setSelectedLocation,
     setLockedLocation,
     setFinancials,
@@ -723,9 +749,9 @@ export function useNewCollectionModal({
           })
           .catch(() => {
             // Fallback to machine's cached collection time
-            const machineFromLocation = locations
-              .flatMap(l => l.machines || [])
-              .find(m => String(m._id) === selectedMachineId);
+            const machineFromLocation = machinesOfSelectedLocation.find(
+              m => String(m._id) === selectedMachineId
+            );
             setSasStartTime(
               machineFromLocation?.collectionTime
                 ? new Date(machineFromLocation.collectionTime)
@@ -772,9 +798,9 @@ export function useNewCollectionModal({
     if (newVal) {
       const locationIdToUse = lockedLocationId || selectedLocationId;
       const location = locations.find(l => String(l._id) === locationIdToUse);
-      const machine = locations
-        .flatMap(l => l.machines || [])
-        .find(m => String(m._id) === selectedMachineId);
+      const machine = machinesOfSelectedLocation.find(
+        m => String(m._id) === selectedMachineId
+      );
 
       if (!sasStartTime) {
         const gameDayOffset = location?.gameDayOffset ?? 8;
@@ -812,15 +838,15 @@ export function useNewCollectionModal({
    */
   const handleLocationChange = useCallback(
     (value: string) => {
-      const selectedLoc = locations.find(loc => String(loc._id) === value);
-      setSelectedLocation(value, selectedLoc?.name || '');
-      if (selectedLoc) {
+      const location = locations.find(l => String(l._id) === value);
+      setSelectedLocation(value, location?.name || '');
+      if (location) {
         setFinancials({
-          previousBalance: (selectedLoc.collectionBalance || 0).toString(),
+          previousBalance: (location.collectionBalance || 0).toString(),
         });
-        if (selectedLoc.gameDayOffset !== undefined) {
+        if (location.gameDayOffset !== undefined) {
           const defaultTime = calculateDefaultCollectionTime(
-            selectedLoc.gameDayOffset
+            location.gameDayOffset
           );
           setCurrentCollectionTime(defaultTime);
         }
@@ -1550,6 +1576,9 @@ export function useNewCollectionModal({
 
   return {
     // Location & Machine Selection
+    locations,
+    isLoadingLocations,
+    isLoadingMachines,
     selectedLocationId,
     selectedLocationName,
     machinesOfSelectedLocation,

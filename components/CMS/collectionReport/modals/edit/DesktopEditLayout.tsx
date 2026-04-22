@@ -16,6 +16,7 @@ type DesktopEditLayoutProps = {
   machineSearchTerm: string;
   setMachineSearchTerm: (term: string) => void;
   filteredMachines: CollectionReportMachineSummary[];
+  isLoadingLocations: boolean;
   isLoadingMachines: boolean;
   isProcessing: boolean;
   selectedMachineId: string;
@@ -95,6 +96,7 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
     machineSearchTerm,
     setMachineSearchTerm,
     filteredMachines,
+    isLoadingLocations,
     isLoadingMachines,
     isProcessing,
     selectedMachineId,
@@ -166,6 +168,7 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
           machineSearchTerm={machineSearchTerm}
           setMachineSearchTerm={setMachineSearchTerm}
           filteredMachines={filteredMachines}
+          isLoadingLocations={isLoadingLocations}
           isLoadingMachines={isLoadingMachines}
           isProcessing={isProcessing}
           selectedMachineId={selectedMachineId}

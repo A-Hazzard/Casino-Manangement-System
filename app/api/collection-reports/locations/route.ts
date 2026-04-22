@@ -19,12 +19,21 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { resolveLicenceeId } from '@/lib/utils/licencee';
 
 /**
- * GET /api/collectionReport/locations
+ * Main GET handler for fetching collection report locations
  *
- * Returns locations accessible to the authenticated user, filtered by licencee, for use in collection report forms.
+ * Returns locations accessible to the authenticated user, filtered by licencee, 
+ * for use in collection report forms and filters.
  *
- * Query params:
- * @param licencee {string} Optional. Licencee ID or slug to scope results; pass "all" or omit to return all accessible licencees.
+ * @param {NextRequest} req - Information about the incoming request
+ * @param {string} licencee - Optional query param. Licencee ID or slug to scope results.
+ *
+ * Flow:
+ * 1. Connect to the database
+ * 2. Parse query parameters
+ * 3. Get user's accessible licencees and permissions
+ * 4. Build query filter based on access control and deletion status
+ * 5. Fetch locations with minimal projection
+ * 6. Return locations array with id and name
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();

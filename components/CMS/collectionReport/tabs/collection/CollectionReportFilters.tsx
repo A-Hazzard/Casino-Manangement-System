@@ -45,7 +45,7 @@ import { KeyboardEvent } from 'react';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Button } from '@/components/shared/ui/button';
-import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
+import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
 
 import { gsap } from 'gsap';
 import type { CollectionReportFiltersProps } from '@/lib/types/components';
@@ -143,6 +143,8 @@ export default function CollectionReportFilters({
           />
           <button
             onClick={onSearchSubmit}
+            aria-label="Submit search"
+            title="Submit search"
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-700"
           >
             <MagnifyingGlassIcon className="h-5 w-5 text-black" />
@@ -150,20 +152,19 @@ export default function CollectionReportFilters({
         </div>
 
         {/* Location Select Dropdown */}
-        <LocationSingleSelect
+        <LocationMultiSelect
           locations={locations.map(loc => ({
             id: loc._id,
             name: loc.name,
             sasEnabled: false,
           }))}
-          selectedLocation={selectedLocation}
+          selectedLocations={Array.isArray(selectedLocation) ? selectedLocation : (selectedLocation === 'all' ? [] : [selectedLocation])}
           onSelectionChange={value => {
             console.warn('[LOCATION SELECT] Value changed to:', value);
-            onLocationChange(value);
+            onLocationChange(value.length === 0 ? 'all' : value);
           }}
-          placeholder="Select Location"
+          placeholder="Select Locations"
           className="w-full md:flex-1 md:max-w-[300px] lg:w-[240px] lg:flex-none lg:min-w-[200px]"
-          includeAllOption={true}
         />
 
         {/* Clear Filters Button - only visible on lg and above */}

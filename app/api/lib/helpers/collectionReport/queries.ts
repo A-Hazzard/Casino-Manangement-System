@@ -27,10 +27,12 @@ import { PipelineStage } from 'mongoose';
  * Fetches locations with machines for collection reports
  *
  * @param rawLicenceeParam - Raw licencee parameter (supports both spellings)
+ * @param includeMachines - Whether to include machines in the result
  * @returns Promise<{ locations: unknown[] }>
  */
 export async function fetchLocationsWithMachines(
-  rawLicenceeParam?: string | null
+  rawLicenceeParam?: string | null,
+  includeMachines: boolean = true
 ): Promise<{ locations: unknown[] }> {
   const normalizedLicencee =
     rawLicenceeParam && rawLicenceeParam !== 'all'
@@ -44,7 +46,6 @@ export async function fetchLocationsWithMachines(
   }
 
   const userRoles = (user.roles as string[]) || [];
-  // Use only new field
   let userAccessibleLicencees: string[] = [];
   if (
     Array.isArray((user as { assignedLicencees?: string[] })?.assignedLicencees)
@@ -52,7 +53,6 @@ export async function fetchLocationsWithMachines(
     userAccessibleLicencees = (user as { assignedLicencees: string[] })
       .assignedLicencees;
   }
-  // Use only new field
   let userLocationPermissions: string[] = [];
   if (
     Array.isArray((user as { assignedLocations?: string[] })?.assignedLocations)
@@ -87,9 +87,12 @@ export async function fetchLocationsWithMachines(
     matchCriteria['_id'] = { $in: allowedLocationIds };
   }
 
-  const locationsWithMachines = await GamingLocations.aggregate([
+  const pipeline: PipelineStage[] = [
     {
       $match: matchCriteria,
+    },
+    {
+      $sort: { name: 1 },
     },
     {
       $project: {
@@ -101,7 +104,10 @@ export async function fetchLocationsWithMachines(
         gameDayOffset: 1,
       },
     },
-    {
+  ];
+
+  if (includeMachines) {
+    pipeline.push({
       $lookup: {
         from: 'machines',
         localField: '_id',
@@ -131,8 +137,9 @@ export async function fetchLocationsWithMachines(
           },
         ],
       },
-    },
-    {
+    });
+
+    pipeline.push({
       $project: {
         _id: 1,
         name: 1,
@@ -170,8 +177,10 @@ export async function fetchLocationsWithMachines(
           },
         },
       },
-    },
-  ]);
+    });
+  }
+
+  const locationsWithMachines = await GamingLocations.aggregate(pipeline);
 
   return { locations: locationsWithMachines };
 }

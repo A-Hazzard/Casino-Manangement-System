@@ -32,6 +32,9 @@ import { getGrossColorClass } from '@/lib/utils/financial';
 export default function CollectionReportMonthlyDetailsTable({
   details,
   locations = [],
+  sortField,
+  sortDirection,
+  onSort,
 }: CollectionReportMonthlyDetailsTableProps & { locations?: Array<{ id: string; name: string }> }) {
   const router = useRouter();
   const { formatAmount } = useCurrencyFormat();
@@ -78,12 +81,61 @@ export default function CollectionReportMonthlyDetailsTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
-            <TableHead className="font-semibold text-white">LOCATION</TableHead>
-            <TableHead className="font-semibold text-white">DROP</TableHead>
-            <TableHead className="font-semibold text-white">WIN</TableHead>
-            <TableHead className="font-semibold text-white">GROSS</TableHead>
-            <TableHead className="font-semibold text-white">
-              SAS GROSS
+            <TableHead
+              className="relative font-semibold text-white cursor-pointer select-none"
+              onClick={() => onSort?.('location')}
+              isFirstColumn={true}
+            >
+              <span>LOCATION</span>
+              {sortField === 'location' && (
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                  {sortDirection === 'desc' ? '▼' : '▲'}
+                </span>
+              )}
+            </TableHead>
+            <TableHead
+              className="relative font-semibold text-white cursor-pointer select-none"
+              onClick={() => onSort?.('drop')}
+            >
+              <span>DROP</span>
+              {sortField === 'drop' && (
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                  {sortDirection === 'desc' ? '▼' : '▲'}
+                </span>
+              )}
+            </TableHead>
+            <TableHead
+              className="relative font-semibold text-white cursor-pointer select-none"
+              onClick={() => onSort?.('win')}
+            >
+              <span>WIN</span>
+              {sortField === 'win' && (
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                  {sortDirection === 'desc' ? '▼' : '▲'}
+                </span>
+              )}
+            </TableHead>
+            <TableHead
+              className="relative font-semibold text-white cursor-pointer select-none"
+              onClick={() => onSort?.('gross')}
+            >
+              <span>GROSS</span>
+              {sortField === 'gross' && (
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                  {sortDirection === 'desc' ? '▼' : '▲'}
+                </span>
+              )}
+            </TableHead>
+            <TableHead
+              className="relative font-semibold text-white cursor-pointer select-none"
+              onClick={() => onSort?.('sasGross')}
+            >
+              <span>SAS GROSS</span>
+              {sortField === 'sasGross' && (
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs">
+                  {sortDirection === 'desc' ? '▼' : '▲'}
+                </span>
+              )}
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -92,7 +144,7 @@ export default function CollectionReportMonthlyDetailsTable({
             const locationId = getLocationId(row.location);
             return (
               <TableRow key={idx} className="hover:bg-gray-50">
-                <TableCell className="font-medium">
+                <TableCell className="font-medium" isFirstColumn={true}>
                   <div className="flex items-center gap-1.5">
                     {locationId ? (
                       <>
@@ -106,14 +158,15 @@ export default function CollectionReportMonthlyDetailsTable({
                         >
                           {row.location}
                         </button>
-                        <button
-                          onClick={e => {
-                            e.stopPropagation();
-                            router.push(`/locations/${locationId}`);
-                          }}
-                          className="flex-shrink-0"
-                          title="View location details"
-                        >
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              router.push(`/locations/${locationId}`);
+                            }}
+                            className="flex-shrink-0"
+                            title="View location details"
+                            aria-label="View location details"
+                          >
                           <ExternalLink className="h-3.5 w-3.5 text-gray-500 hover:text-blue-600 cursor-pointer transition-transform hover:scale-110" />
                         </button>
                       </>

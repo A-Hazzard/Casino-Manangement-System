@@ -50,6 +50,7 @@ export default function CollectionReportFormMachineInfoDisplay({
               onViewMachine();
             }}
             aria-label="View machine details"
+            title="View machine details"
           >
             <ExternalLink className="h-5 w-5" />
           </button>
