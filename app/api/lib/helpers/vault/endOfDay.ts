@@ -155,9 +155,9 @@ export async function generateEndOfDayReport(
 
   // Transform denominations
   const denominationBreakdown: Record<string, number> = {};
-  vaultDenominations.forEach((d: { denomination: number; quantity: number }) => {
-    const key = String(d.denomination);
-    denominationBreakdown[key] = (denominationBreakdown[key] || 0) + (d.quantity || 0);
+  vaultDenominations.forEach((denomItem: { denomination: number; quantity: number }) => {
+    const key = String(denomItem.denomination);
+    denominationBreakdown[key] = (denominationBreakdown[key] || 0) + (denomItem.quantity || 0);
   });
 
   // ============================================================================
@@ -179,18 +179,18 @@ export async function generateEndOfDayReport(
     balance: shift.status === 'closed' ? (shift.closingBalance as number || 0) : (shift.currentBalance as number || shift.openingBalance as number || 0),
   }));
 
-  const totalCashierFloat = cashierFloats.reduce((sum, c) => sum + c.balance, 0);
+const totalCashierFloat = cashierFloats.reduce((sum, cashierFloatItem) => sum + cashierFloatItem.balance, 0);
 
-  // ============================================================================
-  // 3. Machine Counts (Drops)
-  // ============================================================================
-  const machinesMatchQuery = {
+// ============================================================================
+// 3. Machine Counts (Drops)
+// ============================================================================
+const machinesMatchQuery = {
     gamingLocation: locationId,
     deletedAt: { $exists: false }
   };
   const allMachines = await Machine.find(machinesMatchQuery).select('_id assetNumber custom.name').lean();
 
-  const machineIds = allMachines.map(m => String(m._id));
+  const machineIds = allMachines.map(machine => String(machine._id));
 
   const machineMeters = await Meters.aggregate([
     {
@@ -217,31 +217,31 @@ export async function generateEndOfDayReport(
   const midDaySoftCounts: EndOfDayReport['midDaySoftCounts'] = [];
   const endOfDaySoftCounts: EndOfDayReport['endOfDaySoftCounts'] = [];
 
-  softCounts.forEach((sc: Record<string, unknown>) => {
-    const mId = sc.machineId as string;
-    const machine = allMachines.find((m: Record<string, unknown>) => String(m._id) === mId);
+  softCounts.forEach((softCount: Record<string, unknown>) => {
+    const machineId = softCount.machineId as string;
+    const machine = allMachines.find((machineItem: Record<string, unknown>) => String(machineItem._id) === machineId);
     if (!machine) return;
 
-    const machineDrop = dropMap.get(mId) || 0;
-    const variance = (sc.amount as number) - machineDrop;
+    const machineDrop = dropMap.get(machineId) || 0;
+    const variance = (softCount.amount as number) - machineDrop;
 
     const entry = {
-      machineId: mId,
+      machineId: machineId,
       location: ((machine.custom as Record<string, unknown>)?.name as string || machine.assetNumber as string || 'Floor'),
-      amount: sc.amount as number,
-      countedAt: sc.countedAt as Date,
+      amount: softCount.amount as number,
+      countedAt: softCount.countedAt as Date,
       variance
     };
 
-    if (sc.isEndOfDay) {
+    if (softCount.isEndOfDay) {
       endOfDaySoftCounts.push(entry);
     } else {
       midDaySoftCounts.push(entry);
     }
   });
 
-  const totalMachineBalance = endOfDaySoftCounts.reduce((sum, s) => sum + s.amount, 0) +
-    midDaySoftCounts.reduce((sum, s) => sum + s.amount, 0);
+  const totalMachineBalance = endOfDaySoftCounts.reduce((sum, endItem) => sum + endItem.amount, 0) +
+    midDaySoftCounts.reduce((sum, midItem) => sum + midItem.amount, 0);
 
   // ============================================================================
   // 4. Aggregations & Metrics (Sum all shifts for the day)
@@ -259,21 +259,21 @@ export async function generateEndOfDayReport(
   let totalPayouts = 0;
   let expenses = 0;
 
-  transactions.forEach((tx) => {
-    const vtx = tx as unknown as { type: string; amount: number; to?: { type: string }; from?: { type: string } };
-    if (vtx.type === 'vault_reconciliation') return;
+  transactions.forEach((transactionItem) => {
+    const vaultTransaction = transactionItem as unknown as { type: string; amount: number; to?: { type: string }; from?: { type: string } };
+    if (vaultTransaction.type === 'vault_reconciliation') return;
 
-    if (vtx.to?.type === 'vault') {
-      totalCashIn += vtx.amount;
+    if (vaultTransaction.to?.type === 'vault') {
+      totalCashIn += vaultTransaction.amount;
     }
-    if (vtx.from?.type === 'vault') {
-      totalCashOut += vtx.amount;
+    if (vaultTransaction.from?.type === 'vault') {
+      totalCashOut += vaultTransaction.amount;
     }
-    if (vtx.type === 'expense') {
-      expenses += vtx.amount;
+    if (vaultTransaction.type === 'expense') {
+      expenses += vaultTransaction.amount;
     }
-    if (vtx.type === 'payout') {
-      totalPayouts += vtx.amount;
+    if (vaultTransaction.type === 'payout') {
+      totalPayouts += vaultTransaction.amount;
     }
   });
 

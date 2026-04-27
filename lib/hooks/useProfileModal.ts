@@ -267,7 +267,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
 
   // Options for multi-select
   const licenceeOptions: MultiSelectOption[] = useMemo(
-    () => licencees.map(l => ({ id: String(l._id), label: l.name })),
+    () => licencees.map(licencee => ({ id: String(licencee._id), label: licencee.name })),
     [licencees]
   );
 
@@ -284,7 +284,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   }, [locations, allLicenceesSelected, selectedLicenceeIds]);
 
   const locationOptions: MultiSelectOption[] = useMemo(
-    () => availableLocations.map(l => ({ id: String(l._id), label: l.name })),
+    () => availableLocations.map(location => ({ id: String(location._id), label: location.name })),
     [availableLocations]
   );
 

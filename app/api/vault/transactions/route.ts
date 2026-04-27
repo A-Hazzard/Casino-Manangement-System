@@ -199,21 +199,21 @@ export async function GET(request: NextRequest) {
           actor: { type: string; id?: string } | undefined
         ) => {
           if (actor?.type === 'cashier' && actor.id) {
-            const c = userMap[actor.id] as
+            const cashierData = userMap[actor.id] as
               | { profile?: { firstName?: string; lastName?: string } }
               | undefined;
-            return c?.profile?.firstName
-              ? `Cashier (${c.profile.firstName} ${c.profile.lastName})`
+            return cashierData?.profile?.firstName
+              ? `Cashier (${cashierData.profile.firstName} ${cashierData.profile.lastName})`
               : `Cashier (${actor.id})`;
           }
           if (actor?.type === 'machine' && actor.id) {
-            const m = machineMap[actor.id] as
+            const machineData = machineMap[actor.id] as
               | { serialNumber?: string; custom?: { name?: string } }
               | undefined;
-            return m
+            return machineData
               ? `Machine (${
-                  String(m.serialNumber || '').trim() ||
-                  String(m.custom?.name || '').trim() ||
+                  String(machineData.serialNumber || '').trim() ||
+                  String(machineData.custom?.name || '').trim() ||
                   actor.id
                 })`
               : `Machine (${actor.id})`;
@@ -234,7 +234,7 @@ export async function GET(request: NextRequest) {
 
         if (aMIds.size > 0) {
           res.machineDetails = Array.from(aMIds).map(id => {
-            const m = machineMap[id] as
+            const machineData = machineMap[id] as
               | {
                   serialNumber?: string;
                   custom?: { name?: string };
@@ -243,16 +243,16 @@ export async function GET(request: NextRequest) {
                   gameType?: string;
                 }
               | undefined;
-            if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
-            const sn = String(m.serialNumber || '').trim();
-            const nm = String(m.custom?.name || '').trim();
-            const g = String(m.game || m.installedGame || '');
-            const gt = String(m.gameType || '');
+            if (!machineData) return { identifier: id, game: 'N/A', gameType: 'N/A' };
+            const sn = String(machineData.serialNumber || '').trim();
+            const nm = String(machineData.custom?.name || '').trim();
+            const game = String(machineData.game || machineData.installedGame || '');
+            const gameType = String(machineData.gameType || '');
             const main = sn || nm || 'N/A';
             return {
               identifier: nm && nm !== main ? `${main} (${nm})` : main,
-              game: g.trim(),
-              gameType: gt.trim(),
+              game: game.trim(),
+              gameType: gameType.trim(),
             };
           });
         }

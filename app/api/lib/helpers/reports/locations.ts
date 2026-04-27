@@ -60,18 +60,18 @@ export async function applyLocationsCurrencyConversion(
 
     // Create a map of licencee ID to name
     const licenceeIdToName = new Map<string, string>();
-    licenceesData.forEach((lic: { _id: unknown; name?: string }) => {
-      if (lic._id && lic.name) {
-        licenceeIdToName.set(String(lic._id), lic.name);
+    licenceesData.forEach((licenceeData: { _id: unknown; name?: string }) => {
+      if (licenceeData._id && licenceeData.name) {
+        licenceeIdToName.set(String(licenceeData._id), licenceeData.name);
       }
     });
 
     // Get country details for currency mapping
     const countriesData = await Countries.find({}).lean();
     const countryIdToName = new Map<string, string>();
-    countriesData.forEach((country: { _id: unknown; name?: string }) => {
-      if (country._id && country.name) {
-        countryIdToName.set(String(country._id), country.name);
+    countriesData.forEach((countryData: { _id: unknown; name?: string }) => {
+      if (countryData._id && countryData.name) {
+        countryIdToName.set(String(countryData._id), countryData.name);
       }
     });
 

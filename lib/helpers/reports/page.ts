@@ -529,20 +529,20 @@ export async function handleExportMeters(
         {
           label: 'Online Machines',
           value: machinesToExport
-            .filter((m: MachineData) => m.isOnline)
+            .filter((machineData: MachineData) => machineData.isOnline)
             .length.toString(),
         },
         {
           label: 'Offline Machines',
           value: machinesToExport
-            .filter((m: MachineData) => !m.isOnline)
+            .filter((machineData: MachineData) => !machineData.isOnline)
             .length.toString(),
         },
         {
           label: 'Total Net Win',
           value: `$${machinesToExport
             .reduce(
-              (sum: number, m: MachineData) => sum + (m.netWin || 0),
+              (sum: number, machineData: MachineData) => sum + (machineData.netWin || 0),
               0
             )
             .toLocaleString()}`,
@@ -551,7 +551,7 @@ export async function handleExportMeters(
           label: 'Total Drop',
           value: `$${machinesToExport
             .reduce(
-              (sum: number, m: MachineData) => sum + (m.drop || 0),
+              (sum: number, machineData: MachineData) => sum + (machineData.drop || 0),
               0
             )
             .toLocaleString()}`,

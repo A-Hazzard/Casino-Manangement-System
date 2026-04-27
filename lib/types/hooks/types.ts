@@ -1,13 +1,7 @@
-/**
- * Type definitions for custom hooks
- * Centralized types for all custom hook interfaces and return types
- */
-
 import { ReactElement } from 'react';
 import { MembersView } from '@/shared/types/entities';
 import { ReportView } from '@/shared/types/reports';
 
-// Animation types
 export type AnimationVariants = {
   initial: Record<string, string | number>;
   animate: Record<string, string | number>;
@@ -18,7 +12,6 @@ export type AnimationConfig = {
   tabVariants: AnimationVariants;
 };
 
-// Tab content types
 export type TabComponents<T extends string> = Record<T, ReactElement>;
 
 export type TabAnimationProps = {
@@ -31,7 +24,6 @@ export type TabAnimationProps = {
   className: string;
 };
 
-// Members tab content types
 export type UseMembersTabContentProps = {
   activeTab: MembersView;
   animations: AnimationConfig;
@@ -44,7 +36,6 @@ export type UseMembersTabContentReturn = {
   currentTabComponent: ReactElement;
 };
 
-// Reports tab content types
 export type UseReportsTabContentProps = {
   activeView: ReportView;
   animations: AnimationConfig;

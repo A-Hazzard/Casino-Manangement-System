@@ -37,7 +37,6 @@ export type LocationSortOption =
   | 'totalMachines'
   | 'onlineMachines';
 
-// Filter types
 export type LocationFilter =
   | 'NoSMIBLocation'
   | 'SMIBLocationsOnly'
@@ -92,7 +91,7 @@ export type LocationCardData = {
 };
 
 export type LocationTableProps = {
-  canManageLocations?: boolean; // If false, hide edit/delete buttons
+  canManageLocations?: boolean;
   locations: AggregatedLocation[];
   onSort: (column: LocationSortOption) => void;
   sortOption: LocationSortOption;
@@ -100,7 +99,7 @@ export type LocationTableProps = {
   onLocationClick: (id: string) => void;
   onAction: (action: 'edit' | 'delete' | 'restore', location: AggregatedLocation) => void;
   formatCurrency: (amount: number) => string;
-  selectedFilters?: LocationFilter[]; // Add selectedFilters prop
+  selectedFilters?: LocationFilter[];
   showArchived?: boolean;
 };
 

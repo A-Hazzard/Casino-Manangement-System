@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch machine details (name, game) for display
-    const machineIds = machines.map(m => m.machineId as unknown as MongooseId);
+    const machineIds = machines.map(machine => machine.machineId as unknown as MongooseId);
     const machineDetails = await Machine.find(
       { _id: { $in: machineIds } },
       { machineId: 1, serialNumber: 1, custom: 1, game: 1, machineCustomName: 1, machineName: 1 }
@@ -141,17 +141,17 @@ export async function POST(request: NextRequest) {
       machineName?: string;
     }>;
 
-    const machineDetailsMap = new Map(machineDetails.map(m => [m._id, m]));
+    const machineDetailsMap = new Map(machineDetails.map(machineDetail => [machineDetail._id, machineDetail]));
 
     // Fetch SAS meter data for machines with SAS time ranges
     const { Meters } = await import('@/app/api/lib/models/meters');
 
     const meterQueries = machines
-      .filter(m => m.sasStartTime && m.sasEndTime)
-      .map(m => ({
-        machineId: m.machineId,
-        startTime: new Date(m.sasStartTime!),
-        endTime: new Date(m.sasEndTime!),
+      .filter(machine => machine.sasStartTime && machine.sasEndTime)
+      .map(machine => ({
+        machineId: machine.machineId,
+        startTime: new Date(machine.sasStartTime!),
+        endTime: new Date(machine.sasEndTime!),
       }));
 
     const allMeterData: Array<{
@@ -165,9 +165,9 @@ export async function POST(request: NextRequest) {
       const cursor = Meters.aggregate([
         {
           $match: {
-            $or: meterQueries.map(q => ({
-              machine: q.machineId,
-              readAt: { $gte: q.startTime, $lte: q.endTime },
+            $or: meterQueries.map(query => ({
+              machine: query.machineId,
+              readAt: { $gte: query.startTime, $lte: query.endTime },
             })),
           },
         },
@@ -188,12 +188,12 @@ export async function POST(request: NextRequest) {
 
     // Create lookup map
     const meterDataMap = new Map(
-      allMeterData.map(m => [
-        m._id,
+      allMeterData.map(meterData => [
+        meterData._id,
         {
-          drop: m.totalDrop,
-          cancelled: m.totalCancelled,
-          jackpot: m.totalJackpot,
+          drop: meterData.totalDrop,
+          cancelled: meterData.totalCancelled,
+          jackpot: meterData.totalJackpot,
         },
       ])
     );

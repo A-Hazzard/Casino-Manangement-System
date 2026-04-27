@@ -1,8 +1,3 @@
-/**
- * Sessions Types
- * Types for gaming session data and machine events.
- */
-
 export type Session = {
   _id: string;
   sessionId: string;
@@ -24,8 +19,8 @@ export type Session = {
   won: number;
   bet: number;
   gamesWon: number;
-  duration: number; // in minutes
-  status?: string; // e.g. "active", "completed"
+  duration: number;
+  status?: string;
   totalPlays: number;
   totalWin: number;
   totalLoss: number;
@@ -47,20 +42,20 @@ export type EventSequenceStep = {
 
 export type MachineEvent = {
   _id: string;
-  machine: string; // Machine ID
-  currentSession?: string; // Session ID
-  eventType: string; // "priority", "significant", "general"
+  machine: string;
+  currentSession?: string;
+  eventType: string;
   description: string;
-  command?: string; // Event code
+  command?: string;
   gameName?: string;
-  date: string; // ISO date string
+  date: string;
   sequence?: EventSequenceStep[];
 };
 
 export type PaginationData = {
   currentPage: number;
   totalPages: number;
-  totalItems: number; // Renamed from totalSessions/totalEvents for generic use
+  totalItems: number;
   hasNextPage: boolean;
   hasPrevPage: boolean;
 };
@@ -120,7 +115,6 @@ export type SessionsFiltersProps = {
   setSortBy?: (field: string) => void;
   setSortOrder?: (order: 'asc' | 'desc') => void;
   onSortChange?: (field: string) => void;
-  // Optional props for backward compatibility or if needed
   statusFilter?: string;
   dateRange?: unknown;
   onDateRangeChange?: (range: unknown) => void;

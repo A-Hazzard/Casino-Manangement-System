@@ -136,7 +136,7 @@ export function useLocationsPageData() {
   };
 
   const handleFilterChange = (filter: LocationFilter, checked: boolean) => {
-    setSelectedFilters(prev => checked ? [...prev, filter] : prev.filter(f => f !== filter));
+    setSelectedFilters(prev => checked ? [...prev, filter] : prev.filter(activeFilter => activeFilter !== filter));
     setCurrentPage(0);
   };
 

@@ -198,21 +198,21 @@ export async function GET(req: NextRequest) {
       // ============================================================================
       // STEP 7: Transform requests with location names and map legacy statuses
       // ============================================================================
-      const transformed = requests.map((r: Record<string, unknown>) => {
+      const transformed = requests.map((requestItem: Record<string, unknown>) => {
         // Map legacy statuses to purely pending/completed
-        const mappedStatus = r.status as string;
+        const mappedStatus = requestItem.status as string;
         let finalStatus = mappedStatus;
         if (mappedStatus === 'approved') finalStatus = 'completed';
         if (mappedStatus === 'in progress') finalStatus = 'pending';
         if (mappedStatus === 'rejected') finalStatus = 'completed'; // Or pending? Leave rejected as pending for safety if it shouldn't be completed
 
         return {
-          ...r,
+          ...requestItem,
           status: finalStatus === 'approved' ? 'completed' : finalStatus === 'in progress' ? 'pending' : (finalStatus || 'pending'),
-          locationFrom: idToName[String(r.locationFrom)] || String(r.locationFrom),
-          locationTo: idToName[String(r.locationTo)] || String(r.locationTo),
-          recipientName: r.recipientName || r.requestTo, // Fallback
-          creatorName: r.creatorName || r.createdBy // Fallback
+          locationFrom: idToName[String(requestItem.locationFrom)] || String(requestItem.locationFrom),
+          locationTo: idToName[String(requestItem.locationTo)] || String(requestItem.locationTo),
+          recipientName: requestItem.recipientName || requestItem.requestTo, // Fallback
+          creatorName: requestItem.creatorName || requestItem.createdBy // Fallback
         };
       });
 

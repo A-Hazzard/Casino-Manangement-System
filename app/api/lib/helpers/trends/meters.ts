@@ -571,8 +571,8 @@ async function processLocationMetricsBatches(
 ): Promise<MeterTrendMetric[]> {
   const metricsPerLocation: MeterTrendMetric[] = [];
 
-  for (let i = 0; i < locations.length; i += batchSize) {
-    const batch = locations.slice(i, i + batchSize);
+  for (let locationIndex = 0; locationIndex < locations.length; locationIndex += batchSize) {
+    const batch = locations.slice(locationIndex, locationIndex + batchSize);
     const batchResults = await Promise.all(
       batch.map(async location => {
         const locationId = String(location._id);

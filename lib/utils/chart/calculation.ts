@@ -27,12 +27,12 @@ const RADIAN = Math.PI / 180;
 export function calculatePieChartLabelData(props: CustomizedLabelProps) {
   const radius =
     props.innerRadius + (props.outerRadius - props.innerRadius) * 0.7;
-  const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
-  const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
+  const labelX = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
+  const labelY = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
 
   return {
-    x,
-    y,
+    x: labelX,
+    y: labelY,
     textAnchor: 'middle' as const,
     dominantBaseline: 'central' as const,
     fontSize: props.percent < 0.1 ? '12px' : '14px',

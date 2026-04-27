@@ -50,14 +50,9 @@ type MobileFormPanelProps = {
   isAddMachineEnabled: boolean;
 
   // Callbacks
-  formatMachineDisplay: (
-    machine: CollectionReportMachineSummary
-  ) => string | ReactElement;
+  formatMachineDisplay: (machine: CollectionReportMachineSummary) => string | ReactElement;
   onViewMachine: () => void;
-  onFormDataChange: (
-    field: string,
-    value: string | boolean | Date | null
-  ) => void;
+  onFormDataChange: (field: string, value: string | boolean | Date | null) => void;
   onFinancialDataChange: (field: string, value: string) => void;
   onAddMachine: () => void;
 
@@ -131,6 +126,7 @@ export default function CollectionReportMobileFormPanel({
             <div className="flex items-center gap-1">
               <button
                 onClick={onBack}
+                title="Go back"
                 className="flex h-10 w-10 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 active:scale-95"
               >
                 <ArrowLeft className="h-6 w-6" />

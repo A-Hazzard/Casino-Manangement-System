@@ -72,7 +72,7 @@ export default function ReportsLocationsRevenueTable({
   // Filter locations based on search term
   const filteredLocations = useMemo(() => {
     if (!searchTerm?.trim()) return locations;
-    const q = (searchTerm || '').toLowerCase().trim();
+    const searchQuery = (searchTerm || '').toLowerCase().trim();
     return locations.filter(location => {
       const name = String(
         (location as Record<string, unknown>).name ||
@@ -84,7 +84,7 @@ export default function ReportsLocationsRevenueTable({
           (location as Record<string, unknown>).location ||
           ''
       ).toLowerCase();
-      return name.includes(q) || id.includes(q);
+      return name.includes(searchQuery) || id.includes(searchQuery);
     });
   }, [locations, searchTerm]);
 

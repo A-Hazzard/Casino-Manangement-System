@@ -94,7 +94,7 @@ export function useCollectionReportVariationCheck(options: UseVariationCheckOpti
       });
 
       try {
-        const response = await fetch('/api/collection-report/check-variations', {
+        const response = await fetch('/api/collection-reports/check-variations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

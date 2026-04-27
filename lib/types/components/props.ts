@@ -12,7 +12,6 @@ export type ChartProps = {
   activeMetricsFilter: TimePeriod | '';
   totals?: DashboardTotals | null;
   granularity?: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
-  /** @deprecated useNetGross is no longer used - Jackpot metric replaces Net Gross in the chart */
   useNetGross?: boolean;
 };
 
@@ -25,11 +24,9 @@ export type CustomizedLabelProps = {
   percent: number;
 };
 
-// Centralized props type for date filters to comply with Next.js rules on shared typing
 export type DateFiltersProps = {
   disabled?: boolean;
   onCustomRangeGo?: () => void;
-  /** Label for the calendar's apply button. Defaults to "Get Meters". Use context-specific labels e.g. "Get Reports", "Get Sessions", "Get Activity". */
   customRangeGoLabel?: string;
   hideAllTime: boolean;
   showQuarterly?: boolean;
@@ -48,7 +45,6 @@ export type HeaderProps = {
   hideCurrencyFilter?: boolean;
 };
 
-// Tooltip data for collector hover
 export type CollectorTooltipData = {
   firstName?: string;
   lastName?: string;
@@ -56,15 +52,14 @@ export type CollectorTooltipData = {
   email?: string;
 };
 
-// Represents a single row in the Collection Reports table
 export type CollectionReportRow = {
   _id: string;
   locationReportId: string;
   collector: string;
-  collectorFullName?: string; // Display name (username → firstName → email → collectorName)
-  collectorFullNameTooltip?: string; // Full name for tooltip (firstName + lastName when available)
-  collectorTooltipData?: CollectorTooltipData; // Tooltip data with firstName, lastName, ID, email
-  collectorUserNotFound?: boolean; // True if collector user no longer exists
+  collectorFullName?: string;
+  collectorFullNameTooltip?: string;
+  collectorTooltipData?: CollectorTooltipData;
+  collectorUserNotFound?: boolean;
   location: string;
   gross: number | string;
   machines: string;
@@ -86,14 +81,12 @@ export type SchedulerTableRow = {
   visitTime: string;
   createdAt: string;
   status: string;
-  // Raw ISO strings preserved for the edit modal
   rawStartTime: string;
   rawEndTime: string;
   collectorName: string;
   locationName: string;
 };
 
-// Monthly report summary type
 export type MonthlyReportSummary = {
   drop: string;
   cancelledCredits: string;
@@ -101,11 +94,10 @@ export type MonthlyReportSummary = {
   sasGross: string;
 };
 
-// Monthly report details row type
 export type MonthlyReportDetailsRow = {
   gross: string;
   sasGross: string;
-  [key: string]: string; // Allow string indexing for sorting
+  [key: string]: string;
 };
 
 export type CollectionReportNewCollectionModalProps = {
@@ -125,8 +117,6 @@ export type CollectionReportEditCollectionModalProps = {
   onRefresh?: () => void;
 };
 
-// Collection Report UI Props Types
-
 export type CollectionReportTableProps = {
   data: CollectionReportRow[];
   loading?: boolean;
@@ -136,17 +126,17 @@ export type CollectionReportTableProps = {
   sortField?: keyof CollectionReportRow;
   sortDirection?: 'asc' | 'desc';
   onSort?: (field: keyof CollectionReportRow) => void;
-  editableReportIds?: Set<string>; // Set of locationReportIds that can be edited
+  editableReportIds?: Set<string>;
   selectedLicencee?: string | null;
 };
 
 export type CollectionReportCardsProps = {
   data: CollectionReportRow[];
-  gridLayout?: boolean; // New prop to control grid vs single column layout
+  gridLayout?: boolean;
   reportIssues?: Record<string, { issueCount: number; hasIssues: boolean }>;
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
-  editableReportIds?: Set<string>; // Set of locationReportIds that can be edited
+  editableReportIds?: Set<string>;
   loading?: boolean;
   onRefresh?: () => void;
   selectedLicencee?: string | null;
@@ -175,7 +165,7 @@ export type CollectionReportDesktopUIProps = {
   sortDirection?: 'asc' | 'desc';
   onSort?: (field: keyof CollectionReportRow) => void;
   selectedLicencee?: string;
-  editableReportIds?: Set<string>; // Set of locationReportIds that can be edited (most recent per location)
+  editableReportIds?: Set<string>;
 };
 
 export type CollectionReportMobileUIProps = {
@@ -199,7 +189,7 @@ export type CollectionReportMobileUIProps = {
   onEdit?: (reportId: string) => void;
   onDelete?: (reportId: string) => void;
   selectedLicencee?: string;
-  editableReportIds?: Set<string>; // Set of locationReportIds that can be edited (most recent per location)
+  editableReportIds?: Set<string>;
 };
 
 export type CollectionReportMonthlyDesktopUIProps = {
@@ -330,7 +320,6 @@ export type CollectionReportManagerScheduleFiltersProps = {
   loading: boolean;
 };
 
-// Collector Schedule prop types
 export type CollectionReportCollectorDesktopUIProps = {
   locations: LocationSelectItem[];
   collectors: string[];
@@ -433,7 +422,6 @@ export type MapPreviewProps = {
   className?: string;
 };
 
-// Layout Props
 export type DashboardMobileLayoutProps = {
   children?: ReactNode;
   activeFilters: import('@/lib/types').ActiveFilters;

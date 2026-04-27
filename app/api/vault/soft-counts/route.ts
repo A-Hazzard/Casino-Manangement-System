@@ -126,11 +126,10 @@ export async function POST(request: NextRequest) {
         softCount,
         transaction: vaultTransaction,
       });
-    } catch (e: unknown) {
-      console.error('[SoftCount POST] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
+    } catch (e) {
+      console.error('[SoftCount POST] Error:', e instanceof Error ? e.message : 'Unknown error');
       return NextResponse.json(
-        { success: false, error: message },
+        { success: false, error: 'Internal server error' },
         { status: 500 }
       );
     }

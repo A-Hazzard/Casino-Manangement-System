@@ -173,7 +173,7 @@ export function useCollectionReportFilters({
    */
   const handleFilterChange = (filter: string, checked: boolean) => {
     if (checked) setSelectedFilters(prev => [...prev, filter]);
-    else setSelectedFilters(prev => prev.filter(f => f !== filter));
+    else setSelectedFilters(prev => prev.filter(activeFilter => activeFilter !== filter));
   };
 
   /**

@@ -1,4 +1,3 @@
-// API-specific user types
 export type CurrentUser = {
   _id: string;
   emailAddress: string;
@@ -35,9 +34,6 @@ export type OriginalUserType = {
   roles?: string[];
 };
 
-/**
- * Payload structure for updating user profile information.
- */
 export type ProfileUpdatePayload = {
   username: string;
   firstName: string;
@@ -46,7 +42,7 @@ export type ProfileUpdatePayload = {
   gender?: string;
   emailAddress: string;
   phone: string;
-  dateOfBirth?: string; // Optional - only validated if provided
+  dateOfBirth?: string;
   currentPassword?: string;
   newPassword?: string;
   confirmPassword?: string;

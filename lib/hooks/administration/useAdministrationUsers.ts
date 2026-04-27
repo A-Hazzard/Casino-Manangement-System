@@ -157,10 +157,10 @@ export function useAdministrationUsers({
     const usersToCount = allUsers;
     return {
       total: usersToCount.length,
-      collectors: usersToCount.filter(u => (u.roles as string[] | undefined)?.includes('collector')).length,
-      admins: usersToCount.filter(u => (u.roles as string[] | undefined)?.some(r => r === 'admin' || r === 'developer')).length,
-      locationAdmins: usersToCount.filter(u => (u.roles as string[] | undefined)?.includes('location admin')).length,
-      managers: usersToCount.filter(u => (u.roles as string[] | undefined)?.includes('manager')).length,
+      collectors: usersToCount.filter(user => (user.roles as string[] | undefined)?.includes('collector')).length,
+      admins: usersToCount.filter(user => (user.roles as string[] | undefined)?.some(role => role === 'admin' || role === 'developer')).length,
+      locationAdmins: usersToCount.filter(user => (user.roles as string[] | undefined)?.includes('location admin')).length,
+      managers: usersToCount.filter(user => (user.roles as string[] | undefined)?.includes('manager')).length,
     };
   }, [allUsers]);
 
@@ -649,13 +649,13 @@ export function useAdministrationUsers({
         itemsPerBatch,
         onSuccess: async updatedUserData => {
           setAllUsers(prevUsers =>
-            prevUsers.map(u =>
-              u._id === updatedUserData._id ? updatedUserData : u
+            prevUsers.map(user =>
+              user._id === updatedUserData._id ? updatedUserData : user
             )
           );
           setAllLoadedUsers(prevUsers =>
-            prevUsers.map(u =>
-              u._id === updatedUserData._id ? updatedUserData : u
+            prevUsers.map(user =>
+              user._id === updatedUserData._id ? updatedUserData : user
             )
           );
           setIsUserModalOpen(false);

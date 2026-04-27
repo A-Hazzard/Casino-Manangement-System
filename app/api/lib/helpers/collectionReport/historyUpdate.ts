@@ -23,6 +23,9 @@ export type MachineChange = {
   prevMetersOut: number;
   collectionId: string;
   timestamp?: Date;
+  ramClear?: boolean;
+  ramClearMetersIn?: number;
+  ramClearMetersOut?: number;
 };
 
 export type UpdateHistoryPayload = {
@@ -167,6 +170,9 @@ async function processSingleMachineChange(
         prevOut: Number(change.prevMetersOut),
         collectionTime: change.timestamp ? new Date(change.timestamp) : undefined,
         timestamp: change.timestamp ? new Date(change.timestamp) : undefined,
+        ramClear: change.ramClear,
+        ramClearMetersIn: change.ramClearMetersIn,
+        ramClearMetersOut: change.ramClearMetersOut,
         updatedAt: new Date(),
       },
     },

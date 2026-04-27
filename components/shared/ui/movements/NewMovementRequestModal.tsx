@@ -74,13 +74,13 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
   // Use prop locations or fetch if not provided
   useEffect(() => {
     if (propLocations && propLocations.length > 0) {
-      setLocations(propLocations.map(loc => {
-        const l = loc as Record<string, unknown>;
-        const rel = l.rel as Record<string, unknown> | undefined;
+      setLocations(propLocations.map(locationItem => {
+        const locationData = locationItem as Record<string, unknown>;
+        const relationData = locationData.rel as Record<string, unknown> | undefined;
         return { 
-          id: String(l._id || ''), 
-          name: String(l.name || ''),
-          licenceeId: String(l.licenceeId || rel?.licencee || rel?.licencee || l.licencee || '')
+          id: String(locationData._id || ''), 
+          name: String(locationData.name || ''),
+          licenceeId: String(locationData.licenceeId || relationData?.licencee || relationData?.licencee || locationData.licencee || '')
         };
       }));
     } else {

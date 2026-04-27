@@ -27,6 +27,8 @@ const movementSchema = new Schema(
 const collectionsSchema = new Schema(
   {
     _id: { type: String },
+    ramClearMeterId: { type: String },
+    meterId: { type: String },
     isCompleted: { type: Boolean },
     metersIn: { type: Number },
     metersOut: { type: Number },

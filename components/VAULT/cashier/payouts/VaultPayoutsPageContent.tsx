@@ -89,15 +89,15 @@ export default function VaultPayoutsPageContent() {
         const res = await fetch(`/api/vault/payouts?locationId=${locationId}&limit=50`); 
         const data = await res.json();
         if (data.success) {
-            setPayouts(data.payouts.map((p: Record<string, unknown>): MappedPayout => ({
-                id: String(p._id || ''),
-                ticketNumber: String(p.ticketNumber || (p.type === 'hand_pay' ? 'Hand Pay' : 'N/A')),
-                amount: Number(p.amount || 0),
-                cashier: String(p.cashierName || p.cashierId || 'Unknown'),
-                cashierId: String(p.cashierId || ''),
+            setPayouts(data.payouts.map((payoutItem: Record<string, unknown>): MappedPayout => ({
+                id: String(payoutItem._id || ''),
+                ticketNumber: String(payoutItem.ticketNumber || (payoutItem.type === 'hand_pay' ? 'Hand Pay' : 'N/A')),
+                amount: Number(payoutItem.amount || 0),
+                cashier: String(payoutItem.cashierName || payoutItem.cashierId || 'Unknown'),
+                cashierId: String(payoutItem.cashierId || ''),
                 station: 'Vault',
-                processed: String(p.createdAt || p.timestamp || ''),
-                notes: String(p.notes || '-')
+                processed: String(payoutItem.createdAt || payoutItem.timestamp || ''),
+                notes: String(payoutItem.notes || '-')
             })));
             setTotalCount(data.pagination.total);
         } else {
@@ -148,9 +148,9 @@ export default function VaultPayoutsPageContent() {
 
   const shiftDate = useMemo(() => {
     if (!rawShiftDate) return null;
-    const d = new Date(rawShiftDate);
-    d.setHours(23, 59, 59, 999);
-    return d;
+    const dateValue = new Date(rawShiftDate);
+    dateValue.setHours(23, 59, 59, 999);
+    return dateValue;
   }, [rawShiftDate]);
 
   const handlePayout = async (data: CreatePayoutRequest) => {

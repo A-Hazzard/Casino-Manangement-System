@@ -3,7 +3,6 @@ import type { SmibDevice } from '@/shared/types/entities';
 import type { QueryFilter } from '../common/mongo';
 import type { CollectionSasMeters } from '../collection/types';
 
-// Re-export types for convenience
 export type { QueryFilter, TimePeriod };
 
 export type DiscoverSmibsResponse = {
@@ -12,7 +11,6 @@ export type DiscoverSmibsResponse = {
   error?: string;
 };
 
-// Collection Report interface for Mongoose model
 export type ICollectionReport = {
   _id?: string;
   variance: number;
@@ -144,19 +142,24 @@ export type CreateCollectionReportPayload = {
   balanceCorrection?: number;
   balanceCorrectionReas?: string;
   machines: Array<{
+    collectionId?: string;
     machineId: string;
+    locationId?: string;
     metersIn: number;
     metersOut: number;
     prevMetersIn: number;
     prevMetersOut: number;
     timestamp: Date | string;
     locationReportId: string;
+    ramClear?: boolean;
+    ramClearMetersIn?: number;
+    ramClearMetersOut?: number;
   }>;
-  collectionIds?: string[]; // Optional: collection _id array for faster lookup
+  collectionIds?: string[];
 };
 
 export type CollectionReportMachineSummary = {
-  _id: MongooseId;
+  _id: string;
   serialNumber: string;
   origSerialNumber?: string;
   machineId?: string;
@@ -185,7 +188,6 @@ export type CollectionReportLocationWithMachines = {
   includeJackpot?: boolean;
 };
 
-// Types for Collection Report Page
 export type MachineMetric = {
   id: string;
   machineId: string;
@@ -244,11 +246,10 @@ export type CollectionReportData = {
   useNetGross?: boolean;
 };
 
-// Types for Collection Report Variation Checking (pre-submission)
 export type MachineVariationData = {
   machineId: string;
   machineName: string;
-  variation: number | string; // "No SAS Data" or numeric value
+  variation: number | string;
   sasGross: number | string;
   meterGross: number;
   sasStartTime?: string | null;

@@ -11,6 +11,9 @@ import type {
 } from '@/shared/types/entities';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
+import type { CollectionDocument } from '@/lib/types/collection';
+import type { GamingMachine } from '@shared/types';
+import type { CollectionReportDocument } from '@shared/types';
 
 /**
  * Finds the previous collection for a machine
@@ -36,13 +39,13 @@ function findPreviousCollection(
 ) {
   return allCollections
     .filter(
-      c =>
-        c.machineId === machineId &&
-        new Date(c.timestamp || c.collectionTime || 0) < currentTimestamp &&
-        c.isCompleted === true &&
-        c.locationReportId &&
-        c.locationReportId.trim() !== '' &&
-        c._id.toString() !== currentCollectionId
+      collection =>
+        collection.machineId === machineId &&
+        new Date(collection.timestamp || collection.collectionTime || 0) < currentTimestamp &&
+        collection.isCompleted === true &&
+        collection.locationReportId &&
+        collection.locationReportId.trim() !== '' &&
+        collection._id.toString() !== currentCollectionId
     )
     .sort((a, b) => {
       const aTime = new Date(a.timestamp || a.collectionTime || 0).getTime();
@@ -372,21 +375,21 @@ async function checkCollectionHistoryIssues(
         _id: { $in: machineObjectIds },
         collectionMetersHistory: { $exists: true, $ne: [] },
       })
-      .lean()
+      .lean<GamingMachine[]>()
       .exec();
 
     for (const machine of machinesWithHistory) {
       const history = machine.collectionMetersHistory || [];
 
-      for (let i = 0; i < history.length; i++) {
-        const entry = history[i];
+      for (let historyIndex = 0; historyIndex < history.length; historyIndex++) {
+        const entry = history[historyIndex];
 
         if (!entry.locationReportId) continue;
 
         const matchingCollection = await Collections.findOne({
           locationReportId: entry.locationReportId,
           machineId: String(machine._id),
-        }).lean();
+        }).lean<CollectionDocument>();
 
         if (!matchingCollection) continue;
 
@@ -400,7 +403,7 @@ async function checkCollectionHistoryIssues(
           Math.abs(historyPrevOut - collectionPrevOut) > 0.1
         ) {
           issues.push({
-            collectionId: `machine-${String(machine._id)}-history-${i}`,
+            collectionId: `machine-${String(machine._id)}-history-${historyIndex}`,
             machineName:
               machine.serialNumber ||
               machine.custom?.name ||
@@ -411,12 +414,12 @@ async function checkCollectionHistoryIssues(
               current: {
                 prevMetersIn: entry.prevMetersIn,
                 prevMetersOut: entry.prevMetersOut,
-                entryIndex: i,
+                entryIndex: historyIndex,
               },
               expected: {
                 prevMetersIn: collectionPrevIn,
                 prevMetersOut: collectionPrevOut,
-                entryIndex: i,
+                entryIndex: historyIndex,
               },
               explanation: `Collection history entry does not match its collection document. History has prevMetersIn=${historyPrevIn}, prevMetersOut=${historyPrevOut}, but collection document has prevIn=${collectionPrevIn}, prevOut=${collectionPrevOut}.`,
             },
@@ -533,7 +536,7 @@ export async function checkCollectionReportIssues(
       ],
     })
       .sort({ collectionTime: -1, timestamp: -1 })
-      .lean();
+      .lean<CollectionDocument>();
 
     if (actualPreviousCollection) {
       const prevMeterIssues = validatePreviousMeters(
@@ -550,7 +553,7 @@ export async function checkCollectionReportIssues(
 
   // Check collection history issues
   const machineIdsInReport = [
-    ...new Set(collections.map(c => c.machineId).filter(Boolean)),
+    ...new Set(collections.map(collection => collection.machineId).filter(Boolean)),
   ];
   const historyIssues = await checkCollectionHistoryIssues(machineIdsInReport);
   issues.push(...historyIssues);
@@ -608,7 +611,7 @@ export async function investigateMostRecentReport(): Promise<{
 
   const mostRecentReport = await CollectionReport.findOne({})
     .sort({ timestamp: -1 })
-    .lean();
+    .lean<CollectionReportDocument>();
 
   if (!mostRecentReport) {
     return {
@@ -621,7 +624,7 @@ export async function investigateMostRecentReport(): Promise<{
     locationReportId: mostRecentReport.locationReportId,
   })
     .sort({ timestamp: 1 })
-    .lean();
+    .lean<CollectionDocument[]>();
 
   const issues: Array<{
     collectionId: string;
@@ -715,13 +718,12 @@ export async function investigateMostRecentReport(): Promise<{
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
       const machine = await Machine.findOne({
         _id: collection.machineId,
-      }).lean();
+      }).lean<GamingMachine>();
       if (
         machine &&
-        (machine as Record<string, unknown>).collectionMetersHistory
+        machine.collectionMetersHistory
       ) {
-        const history = (machine as Record<string, unknown>)
-          .collectionMetersHistory as Array<{
+        const history = machine.collectionMetersHistory as Array<{
           metersIn?: number;
           metersOut?: number;
           locationReportId?: string;

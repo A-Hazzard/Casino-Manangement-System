@@ -8,12 +8,12 @@ const MetersSchema = new Schema(
     },
     machine: { type: String, required: true },
     location: { type: String, required: true },
-    locationSession: { type: String, required: true }, // Added based on example
-    viewingAccountDenomination: {
+       viewingAccountDenomination: {
       // Added based on example
       drop: { type: Number, default: 0 },
       totalCancelledCredits: { type: Number, default: 0 },
     },
+    locationSession: { type: String },
     movement: {
       // Updated based on example, removed extra fields
       coinIn: { type: Number, default: 0 },
@@ -38,9 +38,11 @@ const MetersSchema = new Schema(
     currentCredits: { type: Number, default: 0 },
     gamesPlayed: { type: Number, default: 0 },
     gamesWon: { type: Number, default: 0 },
-    readAt: { type: Date, default: Date.now }, // Kept at top level
-    // createdAt and updatedAt are handled by timestamps: true
-    // machineId removed as it's not in the example
+    isSasCreated: { type: Boolean },
+    isRamClear: { type: Boolean },
+    readAt: { type: Date, default: Date.now },
+    createdAt: { type: Date, default: Date.now },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true, versionKey: false }
 );

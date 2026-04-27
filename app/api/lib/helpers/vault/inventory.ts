@@ -2,7 +2,7 @@ import { Denomination, VaultShift } from '@/shared/types/vault';
 
 /**
  * Updates a vault shift's balance and inventory based on a transaction.
- * 
+ *
  * @param vaultShift The Mongoose vault shift document (as VaultShift)
  * @param amount The transaction amount (positive for in, negative for out)
  * @param denominations The denominations used in the transaction
@@ -27,18 +27,18 @@ export async function updateVaultShiftInventory(
   const inventoryMap = new Map<number, number>();
 
   // Initialize map with current inventory
-  currentInventory.forEach((d: Denomination) => {
-    inventoryMap.set(d.denomination, d.quantity);
+  currentInventory.forEach((denom: Denomination) => {
+    inventoryMap.set(denom.denomination, denom.quantity);
   });
 
   // Apply changes from denominations
-  denominations.forEach((d: Denomination) => {
-    const currentQty = inventoryMap.get(d.denomination) || 0;
+  denominations.forEach((denom: Denomination) => {
+    const currentQty = inventoryMap.get(denom.denomination) || 0;
     if (isAddition) {
-      inventoryMap.set(d.denomination, currentQty + d.quantity);
+      inventoryMap.set(denom.denomination, currentQty + denom.quantity);
     } else {
       // Ensure we don't go below zero (though validation should prevent this)
-      inventoryMap.set(d.denomination, Math.max(0, currentQty - d.quantity));
+      inventoryMap.set(denom.denomination, Math.max(0, currentQty - denom.quantity));
     }
   });
 
@@ -48,7 +48,7 @@ export async function updateVaultShiftInventory(
       denomination: denomination as Denomination['denomination'],
       quantity,
     }))
-    .filter(d => d.quantity >= 0); // Keep zeros so they show up in UI if needed, or filter them
+    .filter(denom => denom.quantity >= 0); // Keep zeros so they show up in UI if needed, or filter them
 
   vaultShift.updatedAt = new Date();
   await vaultShift.save();
@@ -61,6 +61,6 @@ export async function updateVaultShiftInventory(
  */
 export function validateDenominationTotal(amount: number, denominations: Denomination[]): boolean {
   if (!denominations || denominations.length === 0) return amount === 0;
-  const total = denominations.reduce((sum, d) => sum + (d.denomination * d.quantity), 0);
+  const total = denominations.reduce((sum, denom) => sum + (denom.denomination * denom.quantity), 0);
   return Math.abs(total - amount) < 0.01;
 }

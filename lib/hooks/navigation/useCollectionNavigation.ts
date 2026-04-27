@@ -7,7 +7,7 @@ export function useCollectionNavigation(tabs: CollectionTab[]) {
 
   // state is kept local in page, so this hook only provides helpers
   const ensureValidView = (view: string | null): CollectionView => {
-    const valid = tabs.map(t => t.id) as CollectionView[];
+    const valid = tabs.map(tab => tab.id) as CollectionView[];
     if (view && valid.includes(view as CollectionView))
       return view as CollectionView;
     return 'collection' as CollectionView;

@@ -348,12 +348,12 @@ export async function getCollectionReportById(
   // Do NOT use sasMeters.machine (display identifier) — it's inconsistent.
   const meterQueries = collections
     .filter(
-      c => c.machineId && c.sasMeters?.sasStartTime && c.sasMeters?.sasEndTime
+      collection => collection.machineId && collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime
     )
-    .map(c => ({
-      machineId: c.machineId as string,
-      startTime: new Date(c.sasMeters!.sasStartTime!),
-      endTime: new Date(c.sasMeters!.sasEndTime!),
+    .map(collection => ({
+      machineId: collection.machineId as string,
+      startTime: new Date(collection.sasMeters!.sasStartTime!),
+      endTime: new Date(collection.sasMeters!.sasEndTime!),
     }));
 
   // Build a single aggregation to get all meter data grouped by machine
@@ -409,26 +409,26 @@ export async function getCollectionReportById(
   );
 
   // Calculate location metrics from actual collections using the same logic as individual machines
-  const totalDrop = collections.reduce((sum, col) => {
-    return sum + ((col.metersIn || 0) - (col.prevIn || 0));
+  const totalDrop = collections.reduce((sum, collection) => {
+    return sum + ((collection.metersIn || 0) - (collection.prevIn || 0));
   }, 0);
 
-  const totalCancelled = collections.reduce((sum, col) => {
-    return sum + ((col.metersOut || 0) - (col.prevOut || 0));
+  const totalCancelled = collections.reduce((sum, collection) => {
+    return sum + ((collection.metersOut || 0) - (collection.prevOut || 0));
   }, 0);
 
-  const totalMetersGross = collections.reduce((sum, col) => {
+  const totalMetersGross = collections.reduce((sum, collection) => {
     // Prefer stored movement.gross; fall back to raw delta calculation for older documents
-    const storedGross = col.movement?.gross;
+    const storedGross = collection.movement?.gross;
     if (storedGross !== undefined && storedGross !== null) {
       return sum + storedGross;
     }
     // Fallback: same formula as the main list page aggregation
     return (
       sum +
-      ((col.metersIn || 0) -
-        (col.prevIn || 0) -
-        ((col.metersOut || 0) - (col.prevOut || 0)))
+      ((collection.metersIn || 0) -
+        (collection.prevIn || 0) -
+        ((collection.metersOut || 0) - (collection.prevOut || 0)))
     );
   }, 0);
 
@@ -511,15 +511,15 @@ export async function getCollectionReportById(
   const locationMetrics = {
     droppedCancelled: `${formatSmartDecimal(totalDrop * scale)} / ${formatSmartDecimal(totalCancelled * scale)}`,
     metersGross: totalMetersGross * scale,
-    jackpot: collections.reduce((sum, col) => {
-      const meterData = meterDataMap.get(col.machineId);
-      return sum + (meterData?.jackpot ?? col.sasMeters?.jackpot ?? 0);
+    jackpot: collections.reduce((sum, collection) => {
+      const meterData = meterDataMap.get(collection.machineId);
+      return sum + (meterData?.jackpot ?? collection.sasMeters?.jackpot ?? 0);
     }, 0) * scale,
     netGross:
       (totalMetersGross -
-      collections.reduce((sum, col) => {
-        const meterData = meterDataMap.get(col.machineId);
-        return sum + (meterData?.jackpot ?? col.sasMeters?.jackpot ?? 0);
+      collections.reduce((sum, collection) => {
+        const meterData = meterDataMap.get(collection.machineId);
+        return sum + (meterData?.jackpot ?? collection.sasMeters?.jackpot ?? 0);
       }, 0)) * scale,
     variation: totalVariation * scale,
     sasGross: totalSasGross * scale,

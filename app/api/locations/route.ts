@@ -96,9 +96,9 @@ export async function GET(request: NextRequest) {
       const allLicenceeIds = Array.from(
         new Set(
           locations
-            .map(loc => {
-              const l = loc.rel?.licencee;
-              return Array.isArray(l) ? l[0] : l;
+            .map(location => {
+              const licenceeRef = location.rel?.licencee;
+              return Array.isArray(licenceeRef) ? licenceeRef[0] : licenceeRef;
             })
             .filter(Boolean)
         )
@@ -109,22 +109,22 @@ export async function GET(request: NextRequest) {
         { includeJackpot: 1 }
       ).lean();
       const jackpotMap = new Map(
-        licenceeDocs.map(l => [String(l._id), !!l.includeJackpot])
+        licenceeDocs.map(licenceeDoc => [String(licenceeDoc._id), !!licenceeDoc.includeJackpot])
       );
 
-      const results = locations.map(loc => {
-        const lRaw = loc.rel?.licencee;
-        const lId = Array.isArray(lRaw)
-          ? lRaw[0]
-            ? String(lRaw[0])
+      const results = locations.map(location => {
+        const licenceeRef = location.rel?.licencee;
+        const licenceeId = Array.isArray(licenceeRef)
+          ? licenceeRef[0]
+            ? String(licenceeRef[0])
             : null
-          : lRaw
-            ? String(lRaw)
+          : licenceeRef
+            ? String(licenceeRef)
             : null;
         return {
-          ...loc,
-          licenceeId: lId,
-          includeJackpot: lId ? jackpotMap.get(lId) || false : false,
+          ...location,
+          licenceeId: licenceeId,
+          includeJackpot: licenceeId ? jackpotMap.get(licenceeId) || false : false,
         };
       });
 

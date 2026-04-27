@@ -338,13 +338,13 @@ const createStore = () => {
         })),
       updateScheduledReport: (id, updates) =>
         set(state => ({
-          scheduledReports: state.scheduledReports.map(r =>
-            r.id === id ? { ...r, ...updates } : r
+          scheduledReports: state.scheduledReports.map(report =>
+            report.id === id ? { ...report, ...updates } : report
           ),
         })),
       deleteScheduledReport: id =>
         set(state => ({
-          scheduledReports: state.scheduledReports.filter(r => r.id !== id),
+          scheduledReports: state.scheduledReports.filter(report => report.id !== id),
         })),
 
       // User preferences actions

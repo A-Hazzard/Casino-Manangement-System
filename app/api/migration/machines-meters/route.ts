@@ -93,7 +93,7 @@ export async function POST(request: Request) {
             log(`   ✅ ${licencees.length} Licencees exported.`);
         }
 
-        const targetLicencee = licencees.find((l) => l.name === licenceeName);
+        const targetLicencee = licencees.find((licencee) => licencee.name === licenceeName);
         const targetLicenceeId = targetLicencee?._id?.toString();
 
         if (!targetLicenceeId) {
@@ -145,10 +145,10 @@ export async function POST(request: Request) {
         
         if (migrateMeters && machines.length > 0) {
             log('📊 Fetching meters...');
-            const machineIds = (machines as unknown as LeanMachine[]).map((m) => m._id.toString());
-            
+            const machineIds = (machines as unknown as LeanMachine[]).map((machine) => machine._id.toString());
+
             for (const machineId of machineIds) {
-                const machineObj = (machines as unknown as LeanMachine[]).find((m) => m._id.toString() === machineId);
+                const machineObj = (machines as unknown as LeanMachine[]).find((machine) => machine._id.toString() === machineId);
                 if (!machineObj) continue;
 
                 const locId = machineObj.gamingLocation?.toString();

@@ -223,8 +223,8 @@ export async function fixAllCollectionHistoryData(): Promise<{
 function checkMachineHistoryForIssues(machine: MachineDocument): boolean {
   if (!machine.collectionMetersHistory) return false;
 
-  for (let i = 1; i < machine.collectionMetersHistory.length; i++) {
-    const entry = machine.collectionMetersHistory[i];
+  for (let historyIndex = 1; historyIndex < machine.collectionMetersHistory.length; historyIndex++) {
+    const entry = machine.collectionMetersHistory[historyIndex];
     const prevMetersIn = entry.prevMetersIn || 0;
     const prevMetersOut = entry.prevMetersOut || 0;
 

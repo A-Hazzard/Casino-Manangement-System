@@ -11,6 +11,8 @@
 
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
+import type { CollectionDocument } from '@/lib/types/collection';
+import type { GamingMachine } from '@shared/types';
 
 type CollectionRecord = Record<string, unknown>;
 type HistoryEntry = Record<string, unknown>;
@@ -111,7 +113,7 @@ export async function fixMachineCollectionHistory(
           collectionTime: 1,
           timestamp: 1,
         })
-        .lean();
+        .lean<CollectionDocument[]>();
 
       console.warn(
         `   📊 Found ${actualCollections.length} actual collections`
@@ -223,9 +225,8 @@ export async function fixMachineCollectionHistory(
         // CRITICAL: Use findOne with _id instead of findById (repo rule)
         const currentMachineState = await Machine.findOne({
           _id: machineId,
-        }).lean();
-        const machineState = currentMachineState as CollectionRecord | null;
-        const currentCollectionMeters = machineState?.collectionMeters as
+        }).lean<GamingMachine>();
+        const currentCollectionMeters = currentMachineState?.collectionMeters as
           | { metersIn: number; metersOut: number }
           | undefined;
 
@@ -424,9 +425,9 @@ function analyzeCollectionHistory(
   );
 
   let isChronologicallyCorrect = true;
-  for (let i = 0; i < sortedHistory.length; i++) {
+  for (let entryIndex = 0; entryIndex < sortedHistory.length; entryIndex++) {
     if (
-      JSON.stringify(sortedHistory[i]) !== JSON.stringify(currentHistory[i])
+      JSON.stringify(sortedHistory[entryIndex]) !== JSON.stringify(currentHistory[entryIndex])
     ) {
       isChronologicallyCorrect = false;
       break;
@@ -440,9 +441,9 @@ function analyzeCollectionHistory(
 
   // Check previous meter values accuracy
   let incorrectPrevValues = 0;
-  for (let i = 1; i < currentHistory.length; i++) {
-    const currentEntry = currentHistory[i];
-    const prevEntry = currentHistory[i - 1];
+  for (let historyIndex = 1; historyIndex < currentHistory.length; historyIndex++) {
+    const currentEntry = currentHistory[historyIndex];
+    const prevEntry = currentHistory[historyIndex - 1];
 
     if (
       currentEntry.prevMetersIn !== prevEntry.metersIn ||

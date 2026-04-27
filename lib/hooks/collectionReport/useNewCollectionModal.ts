@@ -1,8 +1,8 @@
 /**
  * useNewCollectionModal Hook
  *
- * Manages state and logic for the New Collection Modal.
- * Handles location selection, machine fetching, validation, entry management,
+ * Manages state and logic for the Create New Collection Report Modal.
+ * Handles location selection, machine fetching, validation, meter reading entry management,
  * and collection report creation.
  *
  * Architecture:
@@ -185,28 +185,17 @@ export function useNewCollectionModal({
   } = storeFormData;
 
   // Setter functions for form data
-  const setCurrentCollectionTime = (val: Date) =>
-    setStoreFormData({ collectionTime: val });
-  const setCurrentMetersIn = (val: string) =>
-    setStoreFormData({ metersIn: val });
-  const setCurrentMetersOut = (val: string) =>
-    setStoreFormData({ metersOut: val });
-  const setCurrentRamClearMetersIn = (val: string) =>
-    setStoreFormData({ ramClearMetersIn: val });
-  const setCurrentRamClearMetersOut = (val: string) =>
-    setStoreFormData({ ramClearMetersOut: val });
-  const setCurrentMachineNotes = (val: string) =>
-    setStoreFormData({ notes: val });
-  const setCurrentRamClear = (val: boolean) =>
-    setStoreFormData({ ramClear: val });
-  const setSasStartTime = (val: Date | null) =>
-    setStoreFormData({ sasStartTime: val });
-  const setSasEndTime = (val: Date | null) =>
-    setStoreFormData({ sasEndTime: val });
-  const setPrevIn = (val: string | number | null) =>
-    setStoreFormData({ prevIn: val?.toString() || '' });
-  const setPrevOut = (val: string | number | null) =>
-    setStoreFormData({ prevOut: val?.toString() || '' });
+  const setCurrentCollectionTime = (val: Date) => setStoreFormData({ collectionTime: val });
+  const setCurrentMetersIn = (val: string) => setStoreFormData({ metersIn: val });
+  const setCurrentMetersOut = (val: string) => setStoreFormData({ metersOut: val });
+  const setCurrentRamClearMetersIn = (val: string) => setStoreFormData({ ramClearMetersIn: val });
+  const setCurrentRamClearMetersOut = (val: string) => setStoreFormData({ ramClearMetersOut: val });
+  const setCurrentMachineNotes = (val: string) => setStoreFormData({ notes: val });
+  const setCurrentRamClear = (val: boolean) => setStoreFormData({ ramClear: val });
+  const setSasStartTime = (val: Date | null) => setStoreFormData({ sasStartTime: val });
+  const setSasEndTime = (val: Date | null) => setStoreFormData({ sasEndTime: val });
+  const setPrevIn = (val: string | number | null) => setStoreFormData({ prevIn: val?.toString() || '' });
+  const setPrevOut = (val: string | number | null) => setStoreFormData({ prevOut: val?.toString() || '' });
 
   // Derived prev values
   const prevIn = storePrevIn !== '' ? Number(storePrevIn) : null;
@@ -238,7 +227,7 @@ export function useNewCollectionModal({
    */
   const getLocationIdFromCollection = useCallback(
     (locationName: string) => {
-      const found = locations.find(l => l.name === locationName);
+      const found = locations.find(location => location.name === locationName);
       return found ? String(found._id) : null;
     },
     [locations]
@@ -253,7 +242,7 @@ export function useNewCollectionModal({
    */
   const selectedLocation = useMemo(() => {
     const locationIdToUse = lockedLocationId || selectedLocationId;
-    return locations.find(l => String(l._id) === locationIdToUse);
+    return locations.find(location => String(location._id) === locationIdToUse);
   }, [locations, selectedLocationId, lockedLocationId]);
 
   /**
@@ -287,7 +276,7 @@ export function useNewCollectionModal({
    */
   const machineForDataEntry = useMemo(() => {
     let found = machinesOfSelectedLocation.find(
-      m => String(m._id) === selectedMachineId
+      machine => machine._id === selectedMachineId
     );
     if (!found && selectedMachineId) {
       const collectedEntry = collectedMachineEntries.find(
@@ -453,7 +442,7 @@ export function useNewCollectionModal({
   useEffect(() => {
     const locationIdToUse = lockedLocationId || selectedLocationId;
     if (locationIdToUse) {
-      const location = locations.find(l => String(l._id) === locationIdToUse);
+      const location = locations.find(location => String(location._id) === locationIdToUse);
       if (location?.gameDayOffset !== undefined) {
         const defaultTime = calculateDefaultCollectionTime(
           location.gameDayOffset
@@ -741,22 +730,41 @@ export function useNewCollectionModal({
           .then(res => {
             const data = res.data?.data;
             const lastTime = data?.collectionTime;
-            setSasStartTime(lastTime ? new Date(lastTime) : null);
+            if (lastTime) {
+              setSasStartTime(new Date(lastTime));
+            } else {
+              const loc = locations.find(l => String(l._id) === (lockedLocationId || selectedLocationId));
+              const gameDayOffset = loc?.gameDayOffset ?? 8;
+              const now = new Date();
+              const currentGamingDayStart = new Date(now);
+              if (now.getHours() < gameDayOffset) {
+                currentGamingDayStart.setDate(currentGamingDayStart.getDate() - 1);
+              }
+              currentGamingDayStart.setHours(gameDayOffset, 0, 0, 0);
+              setSasStartTime(new Date(currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000));
+            }
             if (data?.hasPreviousCollection) {
               setPrevIn(data.metersIn !== null ? data.metersIn : 0);
               setPrevOut(data.metersOut !== null ? data.metersOut : 0);
             }
           })
           .catch(() => {
-            // Fallback to machine's cached collection time
             const machineFromLocation = machinesOfSelectedLocation.find(
               m => String(m._id) === selectedMachineId
             );
-            setSasStartTime(
-              machineFromLocation?.collectionTime
-                ? new Date(machineFromLocation.collectionTime)
-                : null
-            );
+            if (machineFromLocation?.collectionTime) {
+              setSasStartTime(new Date(machineFromLocation.collectionTime));
+            } else {
+              const loc = locations.find(l => String(l._id) === (lockedLocationId || selectedLocationId));
+              const gameDayOffset = loc?.gameDayOffset ?? 8;
+              const now = new Date();
+              const currentGamingDayStart = new Date(now);
+              if (now.getHours() < gameDayOffset) {
+                currentGamingDayStart.setDate(currentGamingDayStart.getDate() - 1);
+              }
+              currentGamingDayStart.setHours(gameDayOffset, 0, 0, 0);
+              setSasStartTime(new Date(currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000));
+            }
           });
       }
 
@@ -797,7 +805,7 @@ export function useNewCollectionModal({
 
     if (newVal) {
       const locationIdToUse = lockedLocationId || selectedLocationId;
-      const location = locations.find(l => String(l._id) === locationIdToUse);
+      const location = locations.find(location => String(location._id) === locationIdToUse);
       const machine = machinesOfSelectedLocation.find(
         m => String(m._id) === selectedMachineId
       );
@@ -838,7 +846,7 @@ export function useNewCollectionModal({
    */
   const handleLocationChange = useCallback(
     (value: string) => {
-      const location = locations.find(l => String(l._id) === value);
+      const location = locations.find(location => String(location._id) === value);
       setSelectedLocation(value, location?.name || '');
       if (location) {
         setFinancials({
@@ -880,7 +888,7 @@ export function useNewCollectionModal({
       if (!machineForDataEntry || !selectedLocationId) return;
 
       const entryData: Partial<CollectionDocument> = {
-        machineId: String(machineForDataEntry._id),
+        machineId: machineForDataEntry._id,
         location: selectedLocationName,
         metersIn: Number(currentMetersIn),
         metersOut: Number(currentMetersOut),
@@ -909,10 +917,7 @@ export function useNewCollectionModal({
       };
 
       const createdCollection = await addMachineCollection(entryData);
-      setCollectedMachineEntries([
-        ...collectedMachineEntries,
-        createdCollection,
-      ]);
+      setCollectedMachineEntries([...collectedMachineEntries, createdCollection]);
       setLockedLocation(selectedLocationId);
       setHasChanges(true);
       resetEntryForm();
@@ -1068,8 +1073,8 @@ export function useNewCollectionModal({
         editingEntryId,
         updatedData
       );
-      const updatedList = collectedMachineEntries.map(e =>
-        String(e._id) === editingEntryId ? updatedCollection : e
+      const updatedList = collectedMachineEntries.map(entry =>
+        String(entry._id) === editingEntryId ? updatedCollection : entry
       );
       setCollectedMachineEntries(updatedList);
       setHasChanges(true);
@@ -1182,7 +1187,7 @@ export function useNewCollectionModal({
    */
   const handleEditCollectedEntry = useCallback(
     (id: string) => {
-      const entry = collectedMachineEntries.find(e => String(e._id) === id);
+      const entry = collectedMachineEntries.find(entry => String(entry._id) === id);
       if (entry) {
         setEditingEntryId(id);
         setSelectedMachineId(entry.machineId);
@@ -1391,8 +1396,8 @@ export function useNewCollectionModal({
         totalGross: reportTotalData.gross,
         totalSasGross:
           variationsData?.machines.reduce(
-            (sum: number, m: MachineVariationData) =>
-              sum + (Number(m.sasGross) || 0),
+            (sum: number, machineData: MachineVariationData) =>
+              sum + (Number(machineData.sasGross) || 0),
             0
           ) || 0,
         timestamp: currentCollectionTime,
@@ -1407,23 +1412,28 @@ export function useNewCollectionModal({
         balanceCorrection: Number(financials.balanceCorrection) || 0,
         balanceCorrectionReas: financials.balanceCorrectionReason,
         includeJackpot: selectedLocation?.includeJackpot || false,
-        machines: collectedEntries.map(e => {
+        machines: collectedEntries.map((entry) => {
           const varData = variationsData?.machines.find(
-            m => m.machineId === e.machineId
+            variationMachine => variationMachine.machineId === entry.machineId
           );
           return {
-            machineId: String(e.machineId),
-            metersIn: e.metersIn,
-            metersOut: e.metersOut,
-            prevMetersIn: e.prevIn || 0,
-            prevMetersOut: e.prevOut || 0,
-            timestamp: e.timestamp,
+            collectionId: entry._id,
+            machineId: String(entry.machineId),
+            locationId: selectedLocationId || '',
+            metersIn: entry.metersIn,
+            metersOut: entry.metersOut,
+            prevMetersIn: entry.prevIn || 0,
+            prevMetersOut: entry.prevOut || 0,
+            timestamp: entry.timestamp,
             locationReportId: reportId,
             sasGross: varData ? Number(varData.sasGross) || 0 : undefined,
             variation: varData ? Number(varData.variation) || 0 : undefined,
+            ramClear: entry.ramClear,
+            ramClearMetersIn: entry.ramClearMetersIn,
+            ramClearMetersOut: entry.ramClearMetersOut,
           };
         }),
-        collectionIds: collectedEntries.map(e => String(e._id)),
+        collectionIds: collectedEntries.map(entry => entry._id),
       };
 
       const validation = validateCollectionReportPayload(payload);
@@ -1501,7 +1511,7 @@ export function useNewCollectionModal({
           );
         })
       );
-      const failed = results.filter(r => r.status === 'rejected').length;
+      const failed = results.filter(result => result.status === 'rejected').length;
       if (failed > 0) {
         toast.error(
           `${failed} machine${failed > 1 ? 's' : ''} failed to update`

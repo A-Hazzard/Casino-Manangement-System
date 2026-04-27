@@ -82,16 +82,16 @@ export function CollectionReportDetailsCollectionsTable({
   // Formatting helpers
   // ============================================================================
   // Show decimals only when the fractional part is >= 0.1 (e.g. 78596 → "78,596", 26440.50 → "26,440.50")
-  const smartNum = (v: number | string): string => {
-    const n = Number(v);
-    if (isNaN(n)) return String(v);
-    const frac = Math.abs(n % 1);
-    return n.toLocaleString(undefined, frac >= 0.1
+  const smartNum = (value: number | string): string => {
+    const numericValue = Number(value);
+    if (isNaN(numericValue)) return String(value);
+    const fractionalPart = Math.abs(numericValue % 1);
+    return numericValue.toLocaleString(undefined, fractionalPart >= 0.1
       ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
       : { minimumFractionDigits: 0, maximumFractionDigits: 0 }
     );
   };
-  const smartCurrency = (v: number | string) => '$' + smartNum(v);
+  const smartCurrency = (value: number | string) => '$' + smartNum(value);
 
   // ============================================================================
   // Router & Component State

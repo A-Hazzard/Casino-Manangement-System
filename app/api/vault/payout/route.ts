@@ -168,11 +168,10 @@ export async function POST(request: NextRequest) {
         },
         { status: 201 }
       );
-    } catch (e: unknown) {
-      console.error('[Payout Create] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
+    } catch (e) {
+      console.error('[Payout Create] Error:', e instanceof Error ? e.message : 'Unknown error');
       return NextResponse.json(
-        { success: false, error: message },
+        { success: false, error: 'Internal server error' },
         { status: 500 }
       );
     }

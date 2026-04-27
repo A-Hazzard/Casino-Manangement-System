@@ -83,8 +83,8 @@ export async function repairSasTimesForCollections(
 
   const results: RepairResult[] = [];
 
-  for (const c of collections) {
-    const repairResult = await repairSingleCollectionSasTimes(c, mode);
+  for (const collection of collections) {
+    const repairResult = await repairSingleCollectionSasTimes(collection, mode);
     results.push(repairResult);
   }
 

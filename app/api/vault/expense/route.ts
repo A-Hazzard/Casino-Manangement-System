@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       let denominations: Denomination[] = [];
       if (denominationsStr) {
         try {
-          denominations = JSON.parse(denominationsStr).filter((d: Denomination) => d.quantity > 0).map((d: Denomination) => ({ denomination: Number(d.denomination) as Denomination['denomination'], quantity: Math.max(0, Number(d.quantity)) }));
+          denominations = JSON.parse(denominationsStr).filter((denom: Denomination) => denom.quantity > 0).map((denom: Denomination) => ({ denomination: Number(denom.denomination) as Denomination['denomination'], quantity: Math.max(0, Number(denom.quantity)) }));
         } catch { console.error('Denom parse error'); }
       }
 
@@ -81,11 +81,11 @@ export async function POST(request: NextRequest) {
         const { Machine } = await import('@/app/api/lib/models/machines');
         const mList = await Machine.find({ _id: { $in: expenseDetails.machineIds } }).lean();
         expenseDetails.machineDetails = expenseDetails.machineIds.map((id: string) => {
-          const m = mList.find((x: Record<string, unknown>) => String(x._id) === id || String(x.machineId) === id || (x.serialNumber as string) === id) as Record<string, unknown> | undefined;
-          if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
-          const custom = m.custom as { name?: string } | undefined;
-          const mainId = (m.serialNumber as string || '')?.trim() || custom?.name?.trim() || 'N/A';
-          return { identifier: custom?.name ? `${mainId} (${custom.name})` : mainId, game: ((m.game as string || m.installedGame as string || '') as string).trim(), gameType: (m.gameType as string || '').trim() };
+          const machineItem = mList.find((x: Record<string, unknown>) => String(x._id) === id || String(x.machineId) === id || (x.serialNumber as string) === id) as Record<string, unknown> | undefined;
+          if (!machineItem) return { identifier: id, game: 'N/A', gameType: 'N/A' };
+          const custom = machineItem.custom as { name?: string } | undefined;
+          const mainId = (machineItem.serialNumber as string || '')?.trim() || custom?.name?.trim() || 'N/A';
+          return { identifier: custom?.name ? `${mainId} (${custom.name})` : mainId, game: ((machineItem.game as string || machineItem.installedGame as string || '') as string).trim(), gameType: (machineItem.gameType as string || '').trim() };
         });
       }
 
@@ -159,29 +159,29 @@ export async function GET(request: NextRequest) {
       const expenses = await VaultTransactionModel.find(query).sort({ timestamp: -1 }).limit(500).lean() as unknown as LocalTransaction[];
 
       const missingIds = new Set<string>();
-      expenses.forEach((e: LocalTransaction) => {
-        if (e.expenseDetails?.isMachineRepair && e.expenseDetails.machineIds?.length && !e.expenseDetails.machineDetails?.length) {
-          e.expenseDetails.machineIds.forEach((id: string) => missingIds.add(id));
+      expenses.forEach((expenseItem: LocalTransaction) => {
+        if (expenseItem.expenseDetails?.isMachineRepair && expenseItem.expenseDetails.machineIds?.length && !expenseItem.expenseDetails.machineDetails?.length) {
+          expenseItem.expenseDetails.machineIds.forEach((id: string) => missingIds.add(id));
         }
       });
 
       if (missingIds.size > 0) {
         const { Machine } = await import('@/app/api/lib/models/machines');
         const mList = await Machine.find({ _id: { $in: Array.from(missingIds) } }).lean();
-        expenses.forEach((e: LocalTransaction) => {
-          if (e.expenseDetails?.isMachineRepair && e.expenseDetails.machineIds?.length && !e.expenseDetails.machineDetails?.length) {
-            e.expenseDetails.machineDetails = e.expenseDetails.machineIds.map((id: string) => {
-              const m = mList.find((x: Record<string, unknown>) => String(x._id) === id || String(x.machineId) === id || (x.serialNumber as string) === id) as Record<string, unknown> | undefined;
-              if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
-              const custom = m.custom as { name?: string } | undefined;
-              const mainId = (m.serialNumber as string || '')?.trim() || custom?.name?.trim() || 'N/A';
-              return { identifier: custom?.name ? `${mainId} (${custom.name})` : mainId, game: ((m.game as string || m.installedGame as string || '') as string).trim(), gameType: (m.gameType as string || '').trim() };
+        expenses.forEach((expense: LocalTransaction) => {
+          if (expense.expenseDetails?.isMachineRepair && expense.expenseDetails.machineIds?.length && !expense.expenseDetails.machineDetails?.length) {
+            expense.expenseDetails.machineDetails = expense.expenseDetails.machineIds.map((id: string) => {
+              const machineItem = mList.find((x: Record<string, unknown>) => String(x._id) === id || String(x.machineId) === id || (x.serialNumber as string) === id) as Record<string, unknown> | undefined;
+              if (!machineItem) return { identifier: id, game: 'N/A', gameType: 'N/A' };
+              const custom = machineItem.custom as { name?: string } | undefined;
+              const mainId = (machineItem.serialNumber as string || '')?.trim() || custom?.name?.trim() || 'N/A';
+              return { identifier: custom?.name ? `${mainId} (${custom.name})` : mainId, game: ((machineItem.game as string || machineItem.installedGame as string || '') as string).trim(), gameType: (machineItem.gameType as string || '').trim() };
             });
           }
         });
       }
 
-      expenses.forEach((e: VaultTransaction) => { if (e.expenseDetails) delete e.expenseDetails.machineIds; });
+      expenses.forEach((expense: VaultTransaction) => { if (expense.expenseDetails) delete expense.expenseDetails.machineIds; });
       return NextResponse.json({ success: true, expenses, count: expenses.length });
     } catch (error: unknown) {
       console.error('[Expense GET] Error:', error);

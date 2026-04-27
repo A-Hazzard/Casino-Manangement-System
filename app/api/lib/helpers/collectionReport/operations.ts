@@ -10,6 +10,7 @@ import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { recalculateMachineCollections } from './recalculation';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
+import type { CollectionDocument } from '@/lib/types/collection';
 
 /**
  * Updates collection report timestamp and cascades changes to related collections and gaming locations
@@ -182,7 +183,7 @@ async function findPreviousCollectionForRevert(
     ],
   })
     .sort({ collectionTime: -1, timestamp: -1 })
-    .lean();
+    .lean<CollectionDocument>();
 
   if (previousCollection) {
     return {
@@ -310,9 +311,9 @@ export async function updateCollectionReport(
     const linkedCols = await Collections.find(
       { locationReportId: reportId },
       { 'sasMeters.jackpot': 1, _id: 0 }
-    ).lean();
+    ).lean<CollectionDocument[]>();
     const totalJackpot = linkedCols.reduce(
-      (s, c) => s + ((c.sasMeters as { jackpot?: number } | undefined)?.jackpot ?? 0),
+      (sum, collection) => sum + (collection.sasMeters?.jackpot ?? 0),
       0
     );
     const totalGross = typeof updateData.totalGross === 'number'

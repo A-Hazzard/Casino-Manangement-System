@@ -144,11 +144,11 @@ export async function investigateSpecificMachine(machineId: string): Promise<{
     issues: issues,
     summary: {
       totalIssues: issues.length,
-      fieldNameIssues: issues.filter((i: HistoryAnalysisEntry) =>
-        i.issues.some((issue: string) => issue.includes('prevIn/prevOut'))
+      fieldNameIssues: issues.filter((historyEntry: HistoryAnalysisEntry) =>
+        historyEntry.issues.some((issue: string) => issue.includes('prevIn/prevOut'))
       ).length,
-      prevMetersIssues: issues.filter((i: HistoryAnalysisEntry) =>
-        i.issues.some((issue: string) => issue.includes('prevMeters'))
+      prevMetersIssues: issues.filter((historyEntry: HistoryAnalysisEntry) =>
+        historyEntry.issues.some((issue: string) => issue.includes('prevMeters'))
       ).length,
     },
   };
@@ -305,11 +305,11 @@ async function investigateMachineInternal(
     issues: issues,
     summary: {
       totalIssues: issues.length,
-      fieldNameIssues: issues.filter((i: HistoryAnalysisEntry) =>
-        i.issues.some((issue: string) => issue.includes('prevIn/prevOut'))
+      fieldNameIssues: issues.filter((historyEntry: HistoryAnalysisEntry) =>
+        historyEntry.issues.some((issue: string) => issue.includes('prevIn/prevOut'))
       ).length,
-      prevMetersIssues: issues.filter((i: HistoryAnalysisEntry) =>
-        i.issues.some((issue: string) => issue.includes('prevMeters'))
+      prevMetersIssues: issues.filter((historyEntry: HistoryAnalysisEntry) =>
+        historyEntry.issues.some((issue: string) => issue.includes('prevMeters'))
       ).length,
     },
   };
@@ -335,10 +335,10 @@ function analyzeCollectionHistory(
   const historyAnalysis: HistoryAnalysisEntry[] = [];
   const issues: HistoryAnalysisEntry[] = [];
 
-  for (let i = 0; i < history.length; i++) {
-    const entry = history[i];
+  for (let historyIndex = 0; historyIndex < history.length; historyIndex++) {
+    const entry = history[historyIndex];
     const analysis: HistoryAnalysisEntry = {
-      entryIndex: i,
+      entryIndex: historyIndex,
       entryId: entry._id,
       metersIn: entry.metersIn,
       metersOut: entry.metersOut,
@@ -359,8 +359,8 @@ function analyzeCollectionHistory(
     }
 
     // Check for zero/undefined prevMeters values
-    if (i > 0) {
-      const prevEntry = history[i - 1];
+    if (historyIndex > 0) {
+      const prevEntry = history[historyIndex - 1];
       const expectedPrevIn = prevEntry?.metersIn || 0;
       const expectedPrevOut = prevEntry?.metersOut || 0;
 

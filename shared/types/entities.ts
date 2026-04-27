@@ -1,4 +1,3 @@
-// Shared entity types used across frontend and backend
 import { Types } from 'mongoose';
 import type {
   BillValidatorData,
@@ -7,7 +6,6 @@ import type {
   SasMeters,
 } from './common';
 
-// Location types
 export type Location = {
   _id: string;
   locationName: string;
@@ -56,10 +54,10 @@ export type GeoCoordinates = {
 };
 
 export type AggregatedLocation = {
-  _id?: string; // Optional location ID for internal use
+  _id?: string;
   location: string;
   locationName: string;
-  name?: string; // Alias for locationName
+  name?: string;
   moneyIn: number;
   moneyOut: number;
   gross: number;
@@ -77,19 +75,19 @@ export type AggregatedLocation = {
   noSMIBLocation: boolean;
   hasSmib: boolean;
   gamesPlayed?: number;
-  rel?: { licencee?: string | null; [key: string]: unknown }; // For currency conversion
-  country?: string; // For currency conversion
+  rel?: { licencee?: string | null; [key: string]: unknown };
+  country?: string;
   address?: string;
   profitShare?: number;
-  totalDrop?: number; // Alias for moneyIn in some contexts
-  enableMembership?: boolean; // Membership enabled flag
-  membershipEnabled?: boolean; // Alias for enableMembership
-  aceEnabled?: boolean; // Ace Enabled implies location is fully online
-  memberCount?: number; // Number of members at this location
-  hasNoRecentCollectionReport?: boolean; // Flag indicating no collection report in past 3 months (for NON-SMIB locations)
-  geoCoords?: GeoCoordinates; // Geographic coordinates for mapping
-  includeJackpot?: boolean; // Setting from associated Licencee
-  latestActivity?: number; // Timestamp of latest machine activity
+  totalDrop?: number;
+  enableMembership?: boolean;
+  membershipEnabled?: boolean;
+  aceEnabled?: boolean;
+  memberCount?: number;
+  hasNoRecentCollectionReport?: boolean;
+  geoCoords?: GeoCoordinates;
+  includeJackpot?: boolean;
+  latestActivity?: number;
   isNeverOnline?: boolean;
   machines?: Array<{
     _id: string;
@@ -97,11 +95,10 @@ export type AggregatedLocation = {
     serialNumber?: string;
     isSasMachine?: boolean;
     lastActivity?: Date | null;
-  }>; // Optional machines array for location details
+  }>;
   deletedAt?: string | Date | null;
 };
 
-// Location metrics for reports and analytics
 export type LocationMetrics = {
   totalGross: number;
   totalDrop: number;
@@ -127,7 +124,6 @@ export type UpdateLocationData = {
   [key: string]: unknown;
 };
 
-// Top location for dashboard and reports
 export type TopLocation = {
   locationId: string;
   locationName: string;
@@ -142,51 +138,43 @@ export type TopLocation = {
     lat: number;
     lng: number;
   };
-  // Additional fields for the new card design
   holdPercentage: number;
 };
 
-// Unified Gaming Machine type - consolidates Machine and Cabinet types
 export type GamingMachine = {
   _id: string;
-  // Core identification fields
   serialNumber: string;
-  origSerialNumber?: string; // Original serial number from system
+  origSerialNumber?: string;
   assetNumber?: string;
   machineId?: string;
   relayId?: string;
-  smbId?: string; // Alias for smibBoard for UI convenience
+  smbId?: string;
   smibBoard?: string;
-  custom: { name: string }; // Custom name for machines - required field
+  custom: { name: string };
 
-  // Game information
   game: string;
-  installedGame?: string; // Alias for game for UI convenience
+  installedGame?: string;
   gameType: string;
   otherGameType?: string;
   isCronosMachine: boolean;
   gameNumber?: string;
 
-  // Physical characteristics
   cabinetType: string;
   assetStatus: string;
-  status?: string; // Alias for assetStatus for UI convenience
+  status?: string;
   manufacturer?: string;
-  manuf?: string; // Alternative manufacturer field
+  manuf?: string;
 
-  // Location and configuration
   gamingLocation: string;
   gamingBoard?: string;
   accountingDenomination: number | string;
   collectionMultiplier?: string;
 
-  // Activity and status
   lastActivity?: Date | string;
   lastOnline?: string | Date;
   loggedIn?: boolean;
   online?: boolean;
 
-  // Financial metrics (from aggregation)
   moneyIn?: number;
   moneyOut?: number;
   jackpot?: number;
@@ -197,10 +185,9 @@ export type GamingMachine = {
   coinOut?: number;
   gamesPlayed?: number;
   gamesWon?: number;
-  handle?: number; // Same as coinIn for betting activity
-  includeJackpot?: boolean; // Setting from associated Licencee
+  handle?: number;
+  includeJackpot?: boolean;
 
-  // SAS and meter data
   sasMeters?: SasMeters;
   meterData?: MeterData | null;
   calculatedMetrics?: {
@@ -212,7 +199,6 @@ export type GamingMachine = {
     gamesWon: number;
   };
 
-  // Configuration objects
   gameConfig?: {
     accountingDenomination?: number;
     theoreticalRtp?: number;
@@ -230,7 +216,6 @@ export type GamingMachine = {
 
   smibConfig?: SmibConfig;
 
-  // Collection and bill validator data
   collectionMeters?: {
     metersIn: number;
     metersOut: number;
@@ -257,7 +242,6 @@ export type GamingMachine = {
     dollarTotalUnknown?: number;
   };
 
-  // Machine settings and features
   machineMembershipSettings?: {
     isPointsAllowed: boolean;
     isFreePlayAllowed: boolean;
@@ -266,23 +250,19 @@ export type GamingMachine = {
     freePlayCreditsTimeout: number;
   };
 
-  // Credits and balances
   nonRestricted?: number;
   restricted?: number;
-  uaccount?: number; // User account balance
+  uaccount?: number;
   playableBalance?: number;
 
-  // SAS protocol and protocols
   sasVersion?: string;
   isSasMachine?: boolean;
   protocols?: Array<{ protocol: string; version: string }>;
 
-  // Game management
   numberOfEnabledGames?: number;
   enabledGameNumbers?: string[];
   noOfGames?: number;
 
-  // Maintenance and history
   machineType?: string;
   machineStatus?: string;
   lastMaintenanceDate?: Date;
@@ -302,7 +282,6 @@ export type GamingMachine = {
   }>;
   currentSession?: string;
 
-  // Viewing account denomination
   viewingAccountDenomination?: Array<{
     asOf: Date;
     denomination: number;
@@ -320,18 +299,15 @@ export type GamingMachine = {
     totalCancelledCredits: number;
   };
 
-  // Additional fields
   isSunBoxDevice?: boolean;
   lastBillMeterAt?: Date;
   lastSasMeterAt?: Date;
   operationsWhileIdle?: { extendedMeters: Date };
 
-  // Timestamps
   createdAt: Date | string;
   updatedAt: Date | string;
   deletedAt?: Date | string | null;
 
-  // Frontend-specific fields
   locationId?: string;
   locationName?: string;
   gameDayOffset?: number;
@@ -376,7 +352,6 @@ export type SmibConfig = {
   };
 };
 
-// SMIB Discovery and Status types
 export type SmibDevice = {
   relayId: string;
   machineId: string;
@@ -388,12 +363,11 @@ export type SmibDevice = {
   lastSeen?: Date | string | null;
 };
 
-// Casino Member type - extends User for casino-specific functionality
 export type CasinoMember = {
   _id: string;
   memberId: string;
   username: string;
-  user: string; // Reference to User _id
+  user: string;
   gamingLocation: string;
   locationName?: string;
   accountLocked: boolean;
@@ -443,14 +417,13 @@ export type CasinoMember = {
   startMeters?: MetersData;
   startTime?: Date | string | null;
   status: string;
-  uaccount: number; // Account balance
+  uaccount: number;
   ucardId: string;
   ulock: number;
   upassFull: number;
   updatedAt: Date | string;
   utype: number;
   uvalid: number;
-  // Calculated fields for frontend
   winLoss?: number;
   totalMoneyIn?: number;
   totalMoneyOut?: number;
@@ -464,7 +437,6 @@ export type CasinoMember = {
   };
 };
 
-// Firmware types
 export type Firmware = {
   _id: string;
   product: string;
@@ -478,13 +450,17 @@ export type Firmware = {
   deletedAt?: string | null;
 };
 
-// Supporting types for CasinoMember and GamingMachine
 export type MachineDocument = GamingMachine;
 
 export type MetersData = {
   _id?: string;
   machine?: string;
   location?: string;
+  locationSession?: string;
+  viewingAccountDenomination?: {
+    drop?: number;
+    totalCancelledCredits?: number;
+  };
   movement?: {
     coinIn?: number;
     coinOut?: number;
@@ -507,9 +483,12 @@ export type MetersData = {
   currentCredits?: number;
   totalWonCredits?: number;
   drop?: number;
+  isSasCreated?: boolean;
+  isRamClear?: boolean;
   readAt?: Date | string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
+  deletedAt?: Date | string | null;
 };
 
 export type BillMetersData = {
@@ -568,9 +547,9 @@ export type MemberSession = {
   time?: string;
   sessionLength?: string;
   handle?: number;
-  moneyIn?: number; // Physical cash inserted (movement.drop)
-  moneyOut?: number; // Manual payouts (movement.totalCancelledCredits)
-  cancelledCredits?: number; // Legacy field - use moneyOut instead
+  moneyIn?: number;
+  moneyOut?: number;
+  cancelledCredits?: number;
   jackpot?: number;
   won?: number;
   bet?: number;
@@ -583,7 +562,6 @@ export type MemberSession = {
   duration?: number;
 };
 
-// Members UI types
 export type MembersView = 'members' | 'summary-report' | 'activity-log';
 
 export type MembersTab = {
@@ -591,11 +569,9 @@ export type MembersTab = {
   label: string;
   icon: string;
   description: string;
-  /** false when this tab is under maintenance */
   available?: boolean;
 };
 
-// Form data types for cabinet creation/editing
 export type NewCabinetFormData = {
   serialNumber: string;
   game: string;
@@ -619,7 +595,6 @@ export type NewCabinetFormData = {
   };
 };
 
-// Collection Issue types for enhanced Fix SAS Times system
 export type CollectionIssue = {
   collectionId: string;
   machineName: string;
@@ -648,7 +623,6 @@ export type CollectionIssueDetails = {
   };
 };
 
-// Transformed cabinet data returned by API for simplified UI display
 export type TransformedCabinet = {
   _id: string;
   locationId: string;

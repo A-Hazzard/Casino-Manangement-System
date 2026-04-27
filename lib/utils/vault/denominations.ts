@@ -45,8 +45,8 @@ export function getInitialDenominationRecord(
 ): Record<string, number> {
   const values = getDenominationValues(licenceeId);
   const record: Record<string, number> = {};
-  values.forEach(v => {
-    record[v.toString()] = 0;
+  values.forEach(value => {
+    record[value.toString()] = 0;
   });
   return record;
 }

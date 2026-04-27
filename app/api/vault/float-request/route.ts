@@ -306,13 +306,9 @@ export async function POST(request: NextRequest) {
         message: 'Float request submitted',
         floatRequest: floatRequest.toObject(),
       });
-    } catch (error: unknown) {
-      console.error('[Float Create API] Error:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[Float Create API] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }
@@ -378,13 +374,9 @@ export async function DELETE(request: NextRequest) {
         success: true,
         message: 'Request cancelled successfully',
       });
-    } catch (error: unknown) {
-      console.error('[Float Cancel API] Error:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[Float Cancel API] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }

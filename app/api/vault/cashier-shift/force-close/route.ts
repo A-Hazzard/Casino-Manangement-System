@@ -107,13 +107,9 @@ export async function POST(request: NextRequest) {
         success: true,
         message: 'Shift force closed',
       });
-    } catch (e: unknown) {
-      console.error('[Cashier Force Close] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[Cashier Force Close] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }

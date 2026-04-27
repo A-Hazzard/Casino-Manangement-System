@@ -2,7 +2,7 @@ export type Licencee = {
   _id: string;
   name: string;
   country: string;
-  countryName?: string; // For populated country name
+  countryName?: string;
   startDate?: Date | string;
   expiryDate?: Date | string;
   prevStartDate?: Date | string;

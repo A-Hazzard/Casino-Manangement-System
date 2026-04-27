@@ -160,8 +160,8 @@ export function getGranularityFromDataPoints(
   }
 
   // Find earliest and latest timestamps
-  const earliest = new Date(Math.min(...timestamps.map(t => t.getTime())));
-  const latest = new Date(Math.max(...timestamps.map(t => t.getTime())));
+  const earliest = new Date(Math.min(...timestamps.map(timestamp => timestamp.getTime())));
+  const latest = new Date(Math.max(...timestamps.map(timestamp => timestamp.getTime())));
 
   // Calculate hours difference
   const hoursDiff = (latest.getTime() - earliest.getTime()) / (1000 * 60 * 60);

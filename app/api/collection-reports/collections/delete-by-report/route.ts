@@ -61,7 +61,7 @@ export async function DELETE(request: NextRequest) {
     // STEP 5: Get machine IDs from collections
     // ============================================================================
     const machineIds = [
-      ...new Set(collections.map(c => c.machineId).filter(Boolean)),
+      ...new Set(collections.map(collection => collection.machineId).filter(Boolean)),
     ];
 
     // ============================================================================

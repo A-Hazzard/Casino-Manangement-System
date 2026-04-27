@@ -116,8 +116,8 @@ function isEqual(a: unknown, b: unknown): boolean {
 
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-      if (!isEqual(a[i], b[i])) return false;
+    for (let itemIndex = 0; itemIndex < a.length; itemIndex++) {
+      if (!isEqual(a[itemIndex], b[itemIndex])) return false;
     }
     return true;
   }
@@ -213,7 +213,7 @@ export function getChangesSummary(changes: ChangeItem[]): string {
   if (changes.length === 0) return 'No changes detected';
   if (changes.length === 1) return `1 change: ${formatChangeItem(changes[0])}`;
 
-  const fieldNames = changes.map(c => c.field).join(', ');
+  const fieldNames = changes.map(change => change.field).join(', ');
   return `${changes.length} changes: ${fieldNames}`;
 }
 

@@ -4,10 +4,8 @@ import { ReportTab, MachineEvaluationData, ReportView, DashboardTotals } from '@
 
 export * from '@/shared/types/entities';
 
-// Re-export date types
 export type { DateRange, TimePeriod };
 
-// Dashboard types
 export type dashboardData = {
   xValue: string;
   day: string;
@@ -26,10 +24,8 @@ export type dashboardData = {
   };
 };
 
-// Re-export from shared reports
 export type { MachineEvaluationData, ReportTab, ReportView, DashboardTotals };
 
-// Top performing data types
 export type TopLocationData = {
   locationId: string;
   locationName: string;
@@ -57,7 +53,6 @@ export type TopPerformingItem = {
   totalDrop?: number;
 };
 
-// Export data types
 export type LocationExportData = {
   locationName: string;
   totalMachines: number;
@@ -73,7 +68,6 @@ export type LocationExportData = {
   isLocalServer: boolean;
 };
 
-// Dashboard filter types
 export type dateRange = {
   from?: Date;
   to?: Date;
@@ -84,7 +78,6 @@ export type dateRange = {
   [key: string]: unknown;
 };
 
-// Location types
 export type locations = Array<{
   _id: string;
   name: string;
@@ -95,7 +88,6 @@ export type locations = Array<{
   gross?: number;
 }>;
 
-// Dashboard filter types
 export type ActiveTab = ReportView;
 
 export type ActiveFilters = {

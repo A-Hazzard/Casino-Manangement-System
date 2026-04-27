@@ -99,13 +99,9 @@ export async function POST(request: NextRequest) {
         success: true,
         totalCollected: session.totalCollected,
       });
-    } catch (e: unknown) {
-      console.error('[FinalizeCollection] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[FinalizeCollection] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }

@@ -29,20 +29,25 @@ export function calculateDefaultCollectionTime(
   targetDate?: Date
 ): Date {
   const baseDate = targetDate || new Date();
-
-  // Default to 10 AM if no gameDayOffset provided
   const offsetHour = gameDayOffset ?? 10;
 
-  // Create a new date at the offset hour
   const collectionTime = new Date(
     baseDate.getFullYear(),
     baseDate.getMonth(),
     baseDate.getDate(),
     offsetHour,
-    0, // Start at 00 minutes
+    0,
     0,
     0
   );
+
+  // When no specific date is provided and the gaming day has already started,
+  // advance to the next day so the default is the END of the current gaming day,
+  // not the start — avoids sasStartTime == sasEndTime when the last collection
+  // was at this same offset hour.
+  if (!targetDate && baseDate.getHours() >= offsetHour) {
+    collectionTime.setDate(collectionTime.getDate() + 1);
+  }
 
   return collectionTime;
 }

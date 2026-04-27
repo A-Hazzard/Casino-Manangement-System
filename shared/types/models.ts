@@ -1,8 +1,3 @@
-/**
- * MongoDB Model Types
- * Type definitions for all Mongoose models in the application.
- * Use Pick<> to select only the fields you need when querying.
- */
 import type { Denomination } from './vault';
 
 export type AcceptedBillDocument = {
@@ -759,9 +754,6 @@ export type UserDocument = {
   updatedAt: Date;
 };
 
-/**
- * Minimal User representation for summary/overview displays.
- */
 export type UserOverview = Pick<UserDocument, '_id' | 'profile' | 'username'>;
 
 export type VaultCollectionSessionDocument = {
@@ -904,22 +896,11 @@ export type VaultTransactionDocument = {
   [key: string]: unknown;
 };
 
-// --- Lean Types for Migration and Summaries ---
-
-/**
- * Lean representation of a Licencee, typically used for lists or migration.
- */
 export type LeanLicencee = Pick<LicenceeDocument, '_id' | 'name'>;
 
-/**
- * Lean representation of a Gaming Location, with essential fields for migration.
- */
 export type LeanLocation = Pick<
   GamingLocationDocument,
   '_id' | 'gameDayOffset' | 'rel'
 > & { licencee?: string };
 
-/**
- * Lean representation of a Machine, with basic location metadata.
- */
 export type LeanMachine = Pick<MachineDocument, '_id' | 'gamingLocation'>;

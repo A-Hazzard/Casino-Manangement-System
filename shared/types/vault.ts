@@ -1,14 +1,3 @@
-/**
- * Vault System Type Definitions
- *
- * Shared types for vault management, cashier operations, and transactions.
- * These types align with the Mongoose models and FRD requirements.
- */
-
-// ============================================================================
-// Common Types
-// ============================================================================
-
 export type Denomination = {
   denomination: 1 | 2 | 5 | 10 | 20 | 50 | 100 | 500 | 1000 | 5000;
   quantity: number;
@@ -48,10 +37,6 @@ export type ExpenseCategory =
   | 'Bank Account'
   | 'Other';
 
-// ============================================================================
-// Vault Shift Types (VM-1)
-// ============================================================================
-
 export type VaultShiftStatus = 'active' | 'closed';
 
 export type VaultReconciliation = {
@@ -60,7 +45,7 @@ export type VaultReconciliation = {
   newBalance: number;
   denominations: Denomination[];
   reason: string;
-  comment: string; // Mandatory for audit
+  comment: string;
 };
 
 export type VaultShift = {
@@ -72,19 +57,16 @@ export type VaultShift = {
   closedAt?: Date;
   openingBalance: number;
   openingDenominations: Denomination[];
-  currentDenominations?: Denomination[]; // Tracks live inventory
+  currentDenominations?: Denomination[];
   closingBalance?: number;
   closingDenominations?: Denomination[];
   reconciliations: VaultReconciliation[];
-  canClose: boolean; // BR-01
+  canClose: boolean;
   isReconciled: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
 
-/**
- * Minimal VaultShift for summary/overview displays
- */
 export type VaultShiftOverview = Pick<
   VaultShift,
   | '_id'
@@ -94,10 +76,6 @@ export type VaultShiftOverview = Pick<
   | 'currentDenominations'
   | 'openingDenominations'
 >;
-
-// ============================================================================
-// Cashier Shift Types (C-1, C-4)
-// ============================================================================
 
 export type CashierShiftStatus = 'pending_start' | 'active' | 'closed' | 'pending_review' | 'cancelled';
 
@@ -110,18 +88,15 @@ export type CashierShift = {
   openedAt: Date;
   closedAt?: Date;
 
-  // Opening
   openingBalance: number;
   openingDenominations: Denomination[];
 
-  // Closing - Blind Close (C-4)
   cashierEnteredBalance?: number;
   cashierEnteredDenominations?: Denomination[];
   expectedClosingBalance?: number;
   closingBalance?: number;
   closingDenominations?: Denomination[];
 
-  // Discrepancy
   discrepancy?: number;
   discrepancyResolved: boolean;
   vmReviewNotes?: string;
@@ -129,25 +104,20 @@ export type CashierShift = {
   reviewedBy?: string;
   reviewedAt?: Date;
 
-  // Denomination tracking (Synced only on float movements)
   lastSyncedDenominations?: Denomination[];
   currentBalance: number;
 
-  // Metrics (Synced from model)
   payoutsTotal: number;
   payoutsCount: number;
   floatAdjustmentsTotal: number;
 
-  notes?: string; // Additional notes for shift resolution or denial
+  notes?: string;
   createdAt: Date;
   updatedAt: Date;
   cashierName?: string;
   cashierUsername?: string;
 };
 
-/**
- * Minimal CashierShift for summary/overview displays
- */
 export type CashierShiftOverview = Pick<
   CashierShift,
   | '_id'
@@ -164,10 +134,6 @@ export type CashierShiftOverview = Pick<
   | 'createdAt'
   | 'discrepancy'
 >;
-
-// ============================================================================
-// Transaction Types (BR-03)
-// ============================================================================
 
 export type TransactionType =
   | 'vault_open'
@@ -190,42 +156,35 @@ export type VaultTransaction = {
   timestamp: Date;
   type: TransactionType;
 
-  // Movement
   from: MovementEndpoint;
   to: MovementEndpoint;
 
   amount: number;
   denominations: Denomination[];
 
-  // Balance tracking
   vaultBalanceBefore?: number;
   vaultBalanceAfter?: number;
   cashierBalanceBefore?: number;
   cashierBalanceAfter?: number;
 
-  // References
   vaultShiftId?: string;
   cashierShiftId?: string;
   floatRequestId?: string;
   payoutId?: string;
 
-  // Audit
   performedBy: string;
   notes?: string;
   reason?: string;
   auditComment?: string;
 
-  // Attachments
   attachmentId?: string;
   attachmentName?: string;
 
-  // Immutability
   isVoid: boolean;
   voidReason?: string;
   voidedBy?: string;
   voidedAt?: Date;
 
-  // Expense Specific Data
   paymentMethod?: 'cash' | 'bank';
   bankDetails?: {
     bankName?: string;
@@ -254,9 +213,6 @@ export type VaultTransaction = {
   toName?: string;
 };
 
-/**
- * Minimal VaultTransaction for summary/overview displays
- */
 export type VaultTransactionOverview = Pick<
   VaultTransaction,
   | '_id'
@@ -269,9 +225,6 @@ export type VaultTransactionOverview = Pick<
   | 'timestamp'
 >;
 
-/**
- * Enriched VaultTransactionOverview with human-readable names.
- */
 export type EnrichedVaultTransactionOverview = VaultTransactionOverview & {
   locationName?: string;
   performedByName?: string;
@@ -281,7 +234,6 @@ export type EnrichedVaultTransactionOverview = VaultTransactionOverview & {
 
 
 
-// Inter-location transfer creation
 export type CreateInterLocationTransferRequest = {
   fromLocationId: string;
   toLocationId: string;
@@ -290,7 +242,6 @@ export type CreateInterLocationTransferRequest = {
   notes?: string;
 };
 
-// Transfer approval
 export type ApproveInterLocationTransferRequest = {
   transferId: string;
   approved: boolean;
@@ -309,13 +260,11 @@ export type FloatRequest = {
 
   type: FloatRequestType;
 
-  // Request
   requestedAmount: number;
   requestedDenominations: Denomination[];
   requestNotes?: string;
   requestedAt: Date;
 
-  // Approval
   status: FloatRequestStatus;
   approvedAmount?: number;
   approvedDenominations?: Denomination[];
@@ -323,7 +272,6 @@ export type FloatRequest = {
   processedAt?: Date;
   vmNotes?: string;
 
-  // Transaction reference
   transactionId?: string;
 
   createdAt: Date;
@@ -331,10 +279,6 @@ export type FloatRequest = {
   locationName?: string;
   cashierName?: string;
 };
-
-// ============================================================================
-// Payout Types (C-2)
-// ============================================================================
 
 export type PayoutType = 'ticket' | 'hand_pay';
 
@@ -351,10 +295,6 @@ export type SoftCount = {
   isEndOfDay?: boolean;
   createdAt: Date;
 };
-
-// ============================================================================
-// Inter-Location Transfers Types
-// ============================================================================
 
 export type InterLocationTransfer = {
   _id: string;
@@ -377,18 +317,12 @@ export type InterLocationTransfer = {
 
 
 
-
-
-
-
-// Cashier shift open
 export type OpenCashierShiftRequest = {
   locationId: string;
   requestedFloat: number;
   denominations: Denomination[];
 };
 
-// Cashier shift close (Blind Close - C-4)
 export type CloseCashierShiftRequest = {
   shiftId: string;
   physicalCount: number;
@@ -399,21 +333,16 @@ export type CloseCashierShiftResponse =
   | { success: true; status: 'closed' | 'pending_review'; message: string; }
   | { success: false; error: string; };
 
-// Payout creation
 export type CreatePayoutRequest = {
   cashierShiftId: string;
   type: PayoutType;
   amount: number;
   ticketNumber?: string;
-  printedAt?: string; // ISO date string
+  printedAt?: string;
   machineId?: string;
   reason?: string;
   notes?: string;
 };
-
-// ============================================================================
-// Dashboard/UI Types
-// ============================================================================
 
 export type VaultBalance = {
   balance: number;
@@ -438,8 +367,8 @@ export type VaultBalance = {
 };
 
 export type CashDesk = {
-  _id: string; // This is the shiftId
-  cashierId?: string; // The user ID of the cashier
+  _id: string;
+  cashierId?: string;
   locationId: string;
   name: string;
   cashierName?: string;
@@ -491,7 +420,6 @@ export type VaultMetrics = {
   fills: number;
 };
 
-// This seems to be a more detailed version of VaultTransaction
 export type ExtendedVaultTransaction = VaultTransaction & {
   fromName?: string;
   toName?: string;
@@ -504,10 +432,8 @@ export type ExtendedVaultTransaction = VaultTransaction & {
   }>;
 };
 
-// This seems to be the same as ExtendedVaultTransaction but with a different name
 export type FloatTransaction = ExtendedVaultTransaction;
 
-// This seems to be a more detailed version of VaultTransaction
 export type VaultTransactionType = TransactionType;
 
 export type UnbalancedShiftInfo = {
@@ -521,10 +447,6 @@ export type UnbalancedShiftInfo = {
   closedAt: Date;
   locationName?: string;
 };
-
-// ============================================================================
-// Machine Collection Types
-// ============================================================================
 
 export type CollectionSessionEntry = {
   machineId: string;
@@ -554,18 +476,8 @@ export type MachineCollectionActivity = {
   variance?: number;
 };
 
-// ============================================================================
-// API Request/Response Types
-// ============================================================================
-
-/**
- * Denomination breakdown (for backward compatibility if needed, but preferred is Denomination[])
- */
 export type DenominationBreakdown = Record<string, number>;
 
-/**
- * Create float request request body
- */
 export type CreateFloatRequestRequest = {
   type: 'FLOAT_INCREASE' | 'FLOAT_DECREASE';
   requestedDenom: Denomination[];
@@ -573,9 +485,6 @@ export type CreateFloatRequestRequest = {
   locationId: string;
 };
 
-/**
- * Float request query parameters
- */
 export type FloatRequestQueryParams = {
   page?: number;
   limit?: number;
@@ -588,9 +497,6 @@ export type FloatRequestQueryParams = {
   sortOrder?: 'asc' | 'desc';
 };
 
-/**
- * Update payout request body
- */
 export type UpdatePayoutRequest = {
   amount?: number;
   notes?: string;

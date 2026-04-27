@@ -14,26 +14,32 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { recalculateMachineCollections } from '@/app/api/lib/helpers/collectionReport/recalculation';
+import { updateRegularAndRamClearMeters } from '@/app/api/lib/helpers/collectionReport/reportCreation';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import type { PreviousCollectionMeters } from '@/lib/types/collection';
+import type { CollectionDocument, PreviousCollectionMeters } from '@/lib/types/collection';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { calculateMovement } from '@/lib/utils/movement';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * PATCH /api/collections/[id]
+ * PATCH /api/collection-reports/collections/[id]
  *
- * Updates a single collection document and triggers all dependent recalculations.
- * When meter or timestamp fields change, movement/softMeters are recalculated,
- * sasMeters are re-derived (including a full SAS time-range query when the timestamp
- * moves), the machine's collectionMetersHistory is kept in sync, and a cascade
- * recalculation is run across all other collections for the same machine. Every
- * update is recorded in the activity log.
+ * EDITS a single collection document (NOT creation flow).
+ * Used when user edits a collection entry in the UI to correct values.
  *
- * URL params:
+ * Key behaviors:
+ * - Updates collection document with edited values (metersIn, metersOut, prevIn, prevOut, notes, etc.)
+ * - Recalculates movement and SAS metrics when meters change
+ * - Recalculates SAS time ranges when timestamp changes
+ * - Updates machine collectionMetersHistory entry
+ * - Does NOT update machine.collectionMeters (only creation flow does this)
+ * - Calls updateRegularAndRamClearMeters with fully updated document
+ *
+ * @see updateMachineCollectionData — for CREATION flow (updates machine meters)
+ *
  * @param id                  {string} Required (path). The _id of the collection to update.
  *
  * Body fields:
@@ -639,19 +645,24 @@ export async function PATCH(
 
     // Get the final updated collection (with movement if recalculated)
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    let finalCollection = await Collections.findOne({ _id: collectionId }).lean();
+    let finalCollection = await Collections.findOne({ _id: collectionId }).lean<CollectionDocument>();
     if (shouldCascade && updatedCollection.machineId) {
       try {
         await recalculateMachineCollections(
           String(updatedCollection.machineId)
         );
-        finalCollection = await Collections.findOne({ _id: collectionId }).lean();
+        finalCollection = await Collections.findOne({ _id: collectionId }).lean<CollectionDocument>();
       } catch (recalcError) {
         console.error(
           'Failed to recalculate machine collections:',
           recalcError
         );
       }
+    }
+
+    // Update regular and RAM clear meters with the fully updated collection document
+    if (finalCollection) {
+      await updateRegularAndRamClearMeters(finalCollection);
     }
 
     // ============================================================================

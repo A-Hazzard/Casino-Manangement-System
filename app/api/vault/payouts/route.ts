@@ -110,9 +110,9 @@ export async function GET(request: NextRequest) {
       const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
       if (reviewerMult !== null) {
         const mult = 1 - reviewerMult;
-        payouts.forEach((p: { amount: number }) => {
-          if (typeof p.amount === 'number') {
-            p.amount *= mult;
+        payouts.forEach((payoutItem: { amount: number }) => {
+          if (typeof payoutItem.amount === 'number') {
+            payoutItem.amount *= mult;
           }
         });
       }

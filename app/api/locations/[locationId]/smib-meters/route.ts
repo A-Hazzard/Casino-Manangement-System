@@ -83,8 +83,8 @@ export async function POST(
 
     // Process in batches of 10 for parallel execution
     const BATCH_SIZE = 10;
-    for (let i = 0; i < machines.length; i += BATCH_SIZE) {
-      const batch = machines.slice(i, i + BATCH_SIZE);
+    for (let machineIndex = 0; machineIndex < machines.length; machineIndex += BATCH_SIZE) {
+      const batch = machines.slice(machineIndex, machineIndex + BATCH_SIZE);
 
       await Promise.allSettled(
         batch.map(async machine => {

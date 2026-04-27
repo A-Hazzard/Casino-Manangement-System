@@ -10,6 +10,7 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import UserModel from '@/app/api/lib/models/user';
+import type { UserDocument, GamingLocationDocument } from '@shared/types';
 
 /**
  * User role and permission information
@@ -70,16 +71,14 @@ export async function getCollectorsPaginated(
     .sort({ username: 1 })
     .skip(skip)
     .limit(limit)
-    .lean();
+    .lean<UserDocument[]>();
 
-  const collectors = (users as Array<Record<string, unknown>>).map(user => ({
+  const collectors = users.map(user => ({
     id: String(user._id),
     username: String(user.username || ''),
     email: String(user.emailAddress || ''),
-    firstName: String(
-      (user.profile as Record<string, unknown>)?.firstName || ''
-    ),
-    lastName: String((user.profile as Record<string, unknown>)?.lastName || ''),
+    firstName: String(user.profile?.firstName || ''),
+    lastName: String(user.profile?.lastName || ''),
   }));
 
   return {
@@ -154,7 +153,7 @@ export async function buildCollectionReportsLocationFilter(
       },
       { _id: 1 }
     )
-      .lean()
+      .lean<GamingLocationDocument[]>()
       .exec();
 
     const managerLocationIds = managerLocations.map(loc => String(loc._id));

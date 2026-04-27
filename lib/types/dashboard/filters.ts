@@ -1,11 +1,3 @@
-/**
- * Dashboard Filters Types
- * Types for dashboard filter functionality.
- *
- * Manages dashboard filter state including active metrics filter,
- * pie chart filter, and custom date range.
- */
-
 import type { TimePeriod, dateRange } from '@/lib/types/index';
 
 export type UseDashboardFiltersProps = {

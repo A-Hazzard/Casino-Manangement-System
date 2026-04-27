@@ -1,9 +1,6 @@
 import type { CollectionMetersHistoryEntry } from './common';
 import type { GamingMachine } from './entities';
 
-/**
- * Payload structure for creating or updating a gaming machine.
- */
 export type MachinePayload = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
   collectionSettings?: {
     lastCollectionTime?: string;
@@ -12,8 +9,6 @@ export type MachinePayload = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedA
   };
 };
 
-// Shared machine types used across frontend and backend
-// Machine data structure from API (optimized)
 export type MachineData = {
   machineId: string;
   serialNumber?: string;
@@ -41,17 +36,15 @@ export type MachineData = {
   averageWager?: number;
   totalHandPaidCancelledCredits?: number;
   includeJackpot?: boolean;
-  // Frontend-calculated fields (not from API)
   actualHold?: number;
   totalWonCredits?: number;
   currentCredits?: number;
   gamesWon?: number;
-  offlineDurationHours?: number; // Calculated from lastActivity for offline machines
+  offlineDurationHours?: number;
   offlineTimeLabel?: string;
   actualOfflineTime?: string;
 };
 
-// Machine statistics for dashboard cards
 export type MachineStats = {
   onlineCount?: number;
   offlineCount?: number;
@@ -69,7 +62,6 @@ export type MachineStats = {
   offlineLocations?: number;
 };
 
-// Machine API response
 export type MachinesApiResponse = {
   data: MachineData[];
   pagination: {
@@ -82,7 +74,6 @@ export type MachinesApiResponse = {
   };
 };
 
-// Machine stats API response
 export type MachineStatsApiResponse = {
   onlineCount: number;
   offlineCount: number;
@@ -92,10 +83,6 @@ export type MachineStatsApiResponse = {
   totalCancelledCredits: number;
 };
 
-/**
- * Machine document with collection meters history
- * Used for operations that require machine data with its collection history
- */
 export type MachineWithHistory = {
   _id: string;
   serialNumber?: string;
@@ -104,10 +91,6 @@ export type MachineWithHistory = {
   collectionMetersHistory: Array<CollectionMetersHistoryEntry>;
 };
 
-/**
- * Machine document with optional collection meters history
- * Used when history may or may not be present
- */
 export type MachineWithOptionalHistory = {
   _id: string;
   serialNumber?: string;

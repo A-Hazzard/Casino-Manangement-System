@@ -22,6 +22,7 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import type { TimePeriod } from '@/app/api/lib/types';
 import { resolveLicenceeId } from '@/lib/utils/licencee';
 import { PipelineStage } from 'mongoose';
+import type { GamingLocationDocument } from '@shared/types';
 
 /**
  * Fetches locations with machines for collection reports
@@ -339,7 +340,7 @@ export async function determineAllowedLocationIds(
       },
       { _id: 1 }
     )
-      .lean()
+      .lean<GamingLocationDocument[]>()
       .exec();
 
     return managerLocations.map(loc => String(loc._id));
@@ -377,7 +378,7 @@ export async function determineAllowedLocationIds(
       },
       { _id: 1 }
     )
-      .lean()
+      .lean<GamingLocationDocument[]>()
       .exec();
 
     return licenceeLocations.map(loc => String(loc._id));
@@ -413,10 +414,10 @@ export async function getLocationNamesFromIds(
     },
     { _id: 1, name: 1 }
   )
-    .lean()
+    .lean<GamingLocationDocument[]>()
     .exec();
 
-  return locations.map(loc => String(loc.name));
+  return locations.map(location => String(location.name));
 }
 
 /**
@@ -641,7 +642,7 @@ export async function getMonthlyCollectionReportByLocation(
         $or: [{ _id: { $in: filterArray } }, { name: { $in: filterArray } }],
       },
       { name: 1 }
-    ).lean();
+    ).lean<GamingLocationDocument[]>();
 
     const existingNames = new Set(result.map(r => r._id));
 

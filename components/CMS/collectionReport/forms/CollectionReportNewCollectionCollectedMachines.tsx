@@ -61,12 +61,12 @@ export default function CollectionReportNewCollectionCollectedMachines({
   const filteredEntries = useMemo(() => {
     const reversed = collectedMachineEntries.slice().reverse();
     if (!searchQuery.trim()) return reversed;
-    const q = searchQuery.toLowerCase();
+    const searchTermLower = searchQuery.toLowerCase();
     return reversed.filter(entry =>
-      (entry.serialNumber?.toLowerCase() || '').includes(q) ||
-      (entry.machineCustomName?.toLowerCase() || '').includes(q) ||
-      (entry.machineId?.toLowerCase() || '').includes(q) ||
-      (entry.game?.toLowerCase() || '').includes(q)
+      (entry.serialNumber?.toLowerCase() || '').includes(searchTermLower) ||
+      (entry.machineCustomName?.toLowerCase() || '').includes(searchTermLower) ||
+      (entry.machineId?.toLowerCase() || '').includes(searchTermLower) ||
+      (entry.game?.toLowerCase() || '').includes(searchTermLower)
     );
   }, [collectedMachineEntries, searchQuery]);
 

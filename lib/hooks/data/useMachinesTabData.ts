@@ -152,9 +152,9 @@ export const useMachinesTabData = (
             setAllOverviewMachines(newMachines);
           } else {
             setAllOverviewMachines(prev => {
-              const existingIds = new Set(prev.map(m => m.machineId));
+              const existingIds = new Set(prev.map(machine => machine.machineId));
               const uniqueNewMachines = newMachines.filter(
-                m => !existingIds.has(m.machineId)
+                machine => !existingIds.has(machine.machineId)
               );
               return [...prev, ...uniqueNewMachines];
             });

@@ -1,8 +1,3 @@
-/**
- * Currency conversion types for Evolution CMS
- * Only applies when "All Licencee" is selected
- */
-
 export type CurrencyCode = 'USD' | 'TTD' | 'GYD' | 'BBD';
 
 export type ExchangeRates = {

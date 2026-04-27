@@ -216,12 +216,12 @@ export async function fetchLocationData(
     .lean()
     .exec();
 
-  return locationsData.map((loc: Record<string, unknown>) => ({
-    _id: String(loc._id),
-    name: (loc.name as string) || 'Unknown Location',
-    gameDayOffset: (loc.gameDayOffset as number) ?? 8, // Default to 8 AM
-    rel: (loc.rel as { licencee?: string }) || undefined,
-    country: (loc.country as string) || undefined,
+  return locationsData.map((locationData: Record<string, unknown>) => ({
+    _id: String(locationData._id),
+    name: (locationData.name as string) || 'Unknown Location',
+    gameDayOffset: (locationData.gameDayOffset as number) ?? 8, // Default to 8 AM
+    rel: (locationData.rel as { licencee?: string }) || undefined,
+    country: (locationData.country as string) || undefined,
   }));
 }
 
@@ -244,9 +244,9 @@ export function calculateGamingDayRanges(
   queryStartDate: Date;
   queryEndDate: Date;
 } {
-  const locationsListForGamingDay = locationsData.map(loc => ({
-    _id: loc._id,
-    gameDayOffset: loc.gameDayOffset,
+  const locationsListForGamingDay = locationsData.map(location => ({
+    _id: location._id,
+    gameDayOffset: location.gameDayOffset,
   }));
 
   const gamingDayRanges = getGamingDayRangesForLocations(
@@ -259,7 +259,7 @@ export function calculateGamingDayRanges(
   // Get the earliest start and latest end across all locations
   const rangesArray = Array.from(gamingDayRanges.values());
   const queryStartDate = new Date(
-    Math.min(...rangesArray.map(r => r.rangeStart.getTime()))
+    Math.min(...rangesArray.map(gamingDayRange => gamingDayRange.rangeStart.getTime()))
   );
   const queryEndDate = new Date(
     Math.max(...rangesArray.map(r => r.rangeEnd.getTime()))
@@ -329,15 +329,15 @@ export async function fetchMachinesData(
     );
   }
 
-  return machinesData.map((machine: Record<string, unknown>) => ({
-    _id: (machine._id as string).toString(),
-    serialNumber: (machine.serialNumber as string) || undefined,
-    custom: (machine.custom as { name?: string }) || undefined,
-    gamingLocation: (machine.gamingLocation as string) || '',
-    sasMeters: machine.sasMeters,
-    lastActivity: (machine.lastActivity as Date) || undefined,
-    collectorDenomination: machine.collectorDenomination as number | undefined,
-    gameConfig: machine.gameConfig as
+  return machinesData.map((machineData: Record<string, unknown>) => ({
+    _id: (machineData._id as string).toString(),
+    serialNumber: (machineData.serialNumber as string) || undefined,
+    custom: (machineData.custom as { name?: string }) || undefined,
+    gamingLocation: (machineData.gamingLocation as string) || '',
+    sasMeters: machineData.sasMeters,
+    lastActivity: (machineData.lastActivity as Date) || undefined,
+    collectorDenomination: machineData.collectorDenomination as number | undefined,
+    gameConfig: machineData.gameConfig as
       | { accountingDenomination?: number | string }
       | undefined,
   }));
@@ -424,19 +424,19 @@ export async function getLastMeterPerMachine(
   const metersAggregation = resolvedArrays.flat();
 
   // Populate the map for meter data lookup
-  metersAggregation.forEach((meter: Record<string, unknown>) => {
-    metersMap.set(meter._id as string, {
-      _id: meter._id as string,
-      drop: (meter.drop as number) || 0,
-      totalCancelledCredits: (meter.totalCancelledCredits as number) || 0,
+  metersAggregation.forEach((meterData: Record<string, unknown>) => {
+    metersMap.set(meterData._id as string, {
+      _id: meterData._id as string,
+      drop: (meterData.drop as number) || 0,
+      totalCancelledCredits: (meterData.totalCancelledCredits as number) || 0,
       totalHandPaidCancelledCredits:
-        (meter.totalHandPaidCancelledCredits as number) || 0,
-      coinIn: (meter.coinIn as number) || 0,
-      coinOut: (meter.coinOut as number) || 0,
-      totalWonCredits: (meter.totalWonCredits as number) || 0,
-      gamesPlayed: (meter.gamesPlayed as number) || 0,
-      jackpot: (meter.jackpot as number) || 0,
-      lastReadAt: (meter.lastReadAt as Date) || new Date(),
+        (meterData.totalHandPaidCancelledCredits as number) || 0,
+      coinIn: (meterData.coinIn as number) || 0,
+      coinOut: (meterData.coinOut as number) || 0,
+      totalWonCredits: (meterData.totalWonCredits as number) || 0,
+      gamesPlayed: (meterData.gamesPlayed as number) || 0,
+      jackpot: (meterData.jackpot as number) || 0,
+      lastReadAt: (meterData.lastReadAt as Date) || new Date(),
     });
   });
 
@@ -538,21 +538,21 @@ export async function getHourlyChartData(
 
   // Only return hours with actual data - filter out hours where all values are zero
   return hourlyAggregation
-    .map((item: Record<string, unknown>) => {
-      const gamesPlayed = (item.gamesPlayed as number) || 0;
-      const coinIn = (item.coinIn as number) || 0;
-      const coinOut = (item.coinOut as number) || 0;
+    .map((hourData: Record<string, unknown>) => {
+      const gamesPlayed = (hourData.gamesPlayed as number) || 0;
+      const coinIn = (hourData.coinIn as number) || 0;
+      const coinOut = (hourData.coinOut as number) || 0;
 
       return {
-        day: ((item._id as Record<string, unknown>).day as string) || '',
-        hour: ((item._id as Record<string, unknown>).hour as string) || '',
+        day: ((hourData._id as Record<string, unknown>).day as string) || '',
+        hour: ((hourData._id as Record<string, unknown>).hour as string) || '',
         gamesPlayed,
         coinIn,
         coinOut,
       };
     })
     .filter(
-      item => item.gamesPlayed > 0 || item.coinIn > 0 || item.coinOut > 0
+      hourlyItem => hourlyItem.gamesPlayed > 0 || hourlyItem.coinIn > 0 || hourlyItem.coinOut > 0
     );
 }
 

@@ -103,14 +103,12 @@ export type UserAuthPayload = {
       email?: string;
     };
   };
-  // Enhanced security fields
   lastLoginAt?: Date;
   loginCount?: number;
   isLocked?: boolean;
   lockedUntil?: Date;
   failedLoginAttempts?: number;
   tempPasswordChanged?: boolean;
-  // Validation flags
   requiresPasswordUpdate?: boolean;
   requiresProfileUpdate?: boolean;
   invalidProfileFields?: InvalidProfileFields;
@@ -139,7 +137,6 @@ export type JwtPayload = {
   roles?: string[];
   assignedLocations?: string[];
   assignedLicencees?: string[];
-  // multiplier removed from JWT to ensure live DB lookup
   sessionId: string;
   sessionVersion?: number;
   dbContext: {
@@ -148,7 +145,7 @@ export type JwtPayload = {
   };
   iat?: number;
   exp?: number;
-  jti?: string; // JWT ID for tracking
+  jti?: string;
 };
 
 export type RefreshTokenPayload = {

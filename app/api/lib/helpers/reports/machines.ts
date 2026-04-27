@@ -30,8 +30,8 @@ import { NextResponse } from 'next/server';
 async function buildLicenceeJackpotMap(): Promise<Map<string, boolean>> {
   const licencees = await Licencee.find({}, { _id: 1, includeJackpot: 1 }).lean();
   const map = new Map<string, boolean>();
-  licencees.forEach((l) => {
-    map.set(String(l._id), Boolean(l.includeJackpot));
+  licencees.forEach((licenceeItem) => {
+    map.set(String(licenceeItem._id), Boolean(licenceeItem.includeJackpot));
   });
   return map;
 }

@@ -449,8 +449,8 @@ function hasCollectionHistoryIssues(machine: {
   }
 
   // Check if any entry (except first) has prevIn/prevOut as 0 or undefined
-  for (let i = 1; i < machine.collectionMetersHistory.length; i++) {
-    const entry = machine.collectionMetersHistory[i];
+  for (let historyIndex = 1; historyIndex < machine.collectionMetersHistory.length; historyIndex++) {
+    const entry = machine.collectionMetersHistory[historyIndex];
     const prevIn = entry.prevIn || 0;
     const prevOut = entry.prevOut || 0;
 

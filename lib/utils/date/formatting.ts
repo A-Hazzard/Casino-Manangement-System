@@ -74,14 +74,14 @@ function formatProfileObject(profile: Record<string, unknown>): string {
  */
 export function formatDate(date: Date | string | number | undefined): string {
   if (!date) return '-';
-  const d =
+  const dateObj =
     typeof date === 'string' || typeof date === 'number'
       ? new Date(date)
       : date;
 
-  if (!(d instanceof Date) || isNaN(d.getTime())) return '-';
+  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return '-';
 
-  return d.toLocaleDateString(undefined, {
+  return dateObj.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -123,14 +123,14 @@ export function formatDateWithOrdinal(
   date: Date | string | number | undefined
 ): string {
   if (!date) return 'Unknown';
-  const d =
+  const dateObj =
     typeof date === 'string' || typeof date === 'number'
       ? new Date(date)
       : date;
 
-  if (!(d instanceof Date) || isNaN(d.getTime())) return 'Unknown';
+  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return 'Unknown';
 
-  return format(d, 'MMM do yyyy h:mm a');
+  return format(dateObj, 'MMM do yyyy h:mm a');
 }
 
 /**
@@ -299,8 +299,8 @@ export function formatValue(value: unknown, fieldName?: string): string {
 
       // Check for movement object
       if (fieldName === 'movement' || ('metersIn' in value && 'metersOut' in value && 'gross' in value)) {
-        const m = value as Record<string, unknown>;
-        return `In: ${m.metersIn}, Out: ${m.metersOut}, Gross: ${m.gross}`;
+        const movementData = value as Record<string, unknown>;
+        return `In: ${movementData.metersIn}, Out: ${movementData.metersOut}, Gross: ${movementData.gross}`;
       }
 
       // Check if it's a profile object (has profile-like properties)

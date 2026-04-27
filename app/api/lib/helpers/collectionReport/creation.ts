@@ -94,19 +94,19 @@ export async function calculateSasMetrics(
   // Sum all movement fields (daily deltas) within the SAS time period
   // This is the correct approach when machines only have movement data, not cumulative data
   const drop = metersInPeriod.reduce(
-    (sum, meter) => sum + (meter.movement?.drop || 0),
+    (sum, meterItem) => sum + (meterItem.movement?.drop || 0),
     0
   );
   const totalCancelledCredits = metersInPeriod.reduce(
-    (sum, meter) => sum + (meter.movement?.totalCancelledCredits || 0),
+    (sum, meterItem) => sum + (meterItem.movement?.totalCancelledCredits || 0),
     0
   );
   const gamesPlayed = metersInPeriod.reduce(
-    (sum, meter) => sum + (meter.movement?.gamesPlayed || 0),
+    (sum, meterItem) => sum + (meterItem.movement?.gamesPlayed || 0),
     0
   );
   const jackpot = metersInPeriod.reduce(
-    (sum, meter) => sum + (meter.movement?.jackpot || 0),
+    (sum, meterItem) => sum + (meterItem.movement?.jackpot || 0),
     0
   );
 
@@ -553,40 +553,40 @@ function validateCollectionPayload(payload: unknown): {
     return { isValid: false, errors };
   }
 
-  const p = payload as Record<string, unknown>;
+  const payloadRecord = payload as Record<string, unknown>;
 
-  if (!p.machineId) {
+  if (!payloadRecord.machineId) {
     errors.push("Machine ID is required");
   }
 
-  if (!p.location) {
+  if (!payloadRecord.location) {
     errors.push("Location is required");
   }
 
-  if (!p.collector) {
+  if (!payloadRecord.collector) {
     errors.push("Collector is required");
   }
 
-  if (typeof p.metersIn !== "number" || p.metersIn < 0) {
+  if (typeof payloadRecord.metersIn !== "number" || payloadRecord.metersIn < 0) {
     errors.push("Meters In must be a valid non-negative number");
   }
 
-  if (typeof p.metersOut !== "number" || p.metersOut < 0) {
+  if (typeof payloadRecord.metersOut !== "number" || payloadRecord.metersOut < 0) {
     errors.push("Meters Out must be a valid non-negative number");
   }
 
-  if (p.sasStartTime) {
-    if (!(p.sasStartTime instanceof Date)) {
+  if (payloadRecord.sasStartTime) {
+    if (!(payloadRecord.sasStartTime instanceof Date)) {
       errors.push("SAS Start Time must be a valid Date object");
-    } else if (isNaN(p.sasStartTime.getTime())) {
+    } else if (isNaN(payloadRecord.sasStartTime.getTime())) {
       errors.push("SAS Start Time is an invalid Date");
     }
   }
 
-  if (p.sasEndTime) {
-    if (!(p.sasEndTime instanceof Date)) {
+  if (payloadRecord.sasEndTime) {
+    if (!(payloadRecord.sasEndTime instanceof Date)) {
       errors.push("SAS End Time must be a valid Date object");
-    } else if (isNaN(p.sasEndTime.getTime())) {
+    } else if (isNaN(payloadRecord.sasEndTime.getTime())) {
       errors.push("SAS End Time is an invalid Date");
     }
   }

@@ -112,8 +112,8 @@ export const getLocationsWithMetrics = async (
     const qualityFilters: Record<string, unknown>[] = [];
 
     filters.forEach(filter => {
-      const f = filter.trim();
-      switch (f) {
+      const filterItem = filter.trim();
+      switch (filterItem) {
         // --- Connection Category ---
         case 'LocalServersOnly':
           connectionFilters.push({ isLocalServer: true });
@@ -205,8 +205,8 @@ export const getLocationsWithMetrics = async (
     // Fetch licencee includeJackpot settings
     const licencees = await Licencee.find({}, { _id: 1, includeJackpot: 1 }).lean().exec();
     const licenceeSettingsMap = new Map<string, boolean>();
-    licencees.forEach((l) => {
-      licenceeSettingsMap.set(String(l._id), Boolean(l.includeJackpot));
+    licencees.forEach((licencee) => {
+      licenceeSettingsMap.set(String(licencee._id), Boolean(licencee.includeJackpot));
     });
 
     const locationsWithMetrics: AggregatedLocation[] = [];
@@ -418,10 +418,10 @@ export const getLocationsWithMetrics = async (
           }).length;
           const isNeverOnline = totalMachines > 0 && machines.every(m => !m.lastActivity);
           const latestActivity = machines.length > 0
-            ? Math.max(...machines.map(m => {
-              if (!m.lastActivity) return 0;
-              const d = m.lastActivity instanceof Date ? m.lastActivity : new Date(String(m.lastActivity).replace(' ', 'T'));
-              return d.getTime();
+            ? Math.max(...machines.map(machineItem => {
+              if (!machineItem.lastActivity) return 0;
+              const dateValue = machineItem.lastActivity instanceof Date ? machineItem.lastActivity : new Date(String(machineItem.lastActivity).replace(' ', 'T'));
+              return dateValue.getTime();
             }))
             : 0;
 
@@ -519,8 +519,8 @@ export const getLocationsWithMetrics = async (
       // Instead of N+1 queries per batch, we use 3 queries per batch regardless of batch size
       const BATCH_SIZE = 10;
 
-      for (let i = 0; i < locations.length; i += BATCH_SIZE) {
-        const batch = locations.slice(i, i + BATCH_SIZE);
+      for (let locationIndex = 0; locationIndex < locations.length; locationIndex += BATCH_SIZE) {
+        const batch = locations.slice(locationIndex, locationIndex + BATCH_SIZE);
 
         // Step 1: Calculate gaming day ranges for all locations in batch
         const batchGamingDayRanges = new Map<
@@ -735,15 +735,15 @@ export const getLocationsWithMetrics = async (
               return false;
             }
           }).length;
-          const isNeverOnline = totalMachines > 0 && machines.every(m => !m.lastActivity);
+          const isNeverOnline = totalMachines > 0 && machines.every(mach => !mach.lastActivity);
           const latestActivity = machines.length > 0
-            ? Math.max(...machines.map(m => {
-              if (!m.lastActivity) return 0;
-              const d = m.lastActivity instanceof Date ? m.lastActivity : new Date(String(m.lastActivity).replace(' ', 'T'));
-              return d.getTime();
+            ? Math.max(...machines.map(mach => {
+              if (!mach.lastActivity) return 0;
+              const dateValue = mach.lastActivity instanceof Date ? mach.lastActivity : new Date(String(mach.lastActivity).replace(' ', 'T'));
+              return dateValue.getTime();
             }))
             : 0;
-          const sasMachines = machines.filter(m => m.isSasMachine).length;
+          const sasMachines = machines.filter(mach => mach.isSasMachine).length;
           const nonSasMachines = totalMachines - sasMachines;
 
           const licenceeId = location.rel?.licencee ? String(location.rel.licencee) : '';
@@ -836,22 +836,22 @@ export const getLocationsWithMetrics = async (
 
       // Create a set of location IDs that have recent collection reports
       const locationsWithRecentReports = new Set<string>();
-      recentCollectionReports.forEach((report: { location: string }) => {
-        locationsWithRecentReports.add(report.location);
+      recentCollectionReports.forEach((collectionReport: { location: string }) => {
+        locationsWithRecentReports.add(collectionReport.location);
       });
 
       // Mark locations without recent collection reports as offline
       // Also add flag to indicate missing collection report
-      locationsWithMetrics.forEach(loc => {
+      locationsWithMetrics.forEach(locationMetric => {
         if (
-          (loc.sasMachines === 0 || loc.noSMIBLocation) &&
-          !locationsWithRecentReports.has(loc.location)
+          (locationMetric.sasMachines === 0 || locationMetric.noSMIBLocation) &&
+          !locationsWithRecentReports.has(locationMetric.location)
         ) {
           // No collection report in past 3 months - mark as offline
-          loc.onlineMachines = 0;
+          locationMetric.onlineMachines = 0;
           // Add flag for frontend to show warning icon
           (
-            loc as { hasNoRecentCollectionReport?: boolean }
+            locationMetric as { hasNoRecentCollectionReport?: boolean }
           ).hasNoRecentCollectionReport = true;
         }
       });
@@ -1121,22 +1121,22 @@ export const getLocationsWithMetrics = async (
 
       // Create a set of location IDs that have recent collection reports
       const locationsWithRecentReports = new Set<string>();
-      recentCollectionReports.forEach((report: { location: string }) => {
-        locationsWithRecentReports.add(report.location);
+      recentCollectionReports.forEach((collectionReport: { location: string }) => {
+        locationsWithRecentReports.add(collectionReport.location);
       });
 
       // Mark locations without recent collection reports as offline
       // Also add flag to indicate missing collection report
-      enhancedMetrics.forEach(loc => {
+      enhancedMetrics.forEach(locationMetric => {
         if (
-          (loc.sasMachines === 0 || loc.noSMIBLocation) &&
-          !locationsWithRecentReports.has(loc.location)
+          (locationMetric.sasMachines === 0 || locationMetric.noSMIBLocation) &&
+          !locationsWithRecentReports.has(locationMetric.location)
         ) {
           // No collection report in past 3 months - mark as offline
-          loc.onlineMachines = 0;
+          locationMetric.onlineMachines = 0;
           // Add flag for frontend to show warning icon
           (
-            loc as { hasNoRecentCollectionReport?: boolean }
+            locationMetric as { hasNoRecentCollectionReport?: boolean }
           ).hasNoRecentCollectionReport = true;
         }
       });

@@ -115,20 +115,11 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
       try {
         await connectDB();
         const UserModel = (await import('@/app/api/lib/models/user')).default;
-        dbUser = (await UserModel.findOne({ _id: jwtPayload._id })
+        dbUser = await UserModel.findOne({ _id: jwtPayload._id })
           .select(
             'sessionVersion roles permissions assignedLocations assignedLicencees isEnabled deletedAt multiplier'
           )
-          .lean()) as {
-            sessionVersion?: number;
-            roles?: string[];
-            permissions?: string[];
-            assignedLocations?: string[];
-            assignedLicencees?: string[];
-            isEnabled?: boolean;
-            deletedAt?: Date | null;
-            multiplier?: number | null;
-          } | null;
+          .lean<LeanUserDocument>();
 
         // If user doesn't exist in database (hard deleted), invalidate session
         if (!dbUser) {

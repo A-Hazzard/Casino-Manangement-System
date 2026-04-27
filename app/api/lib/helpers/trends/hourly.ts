@@ -311,10 +311,10 @@ export function processMultipleLocationsHourlyData(
     const hourlyTrends = processSingleLocationHourlyData(locationHourlyData);
 
     const totalRevenue = hourlyTrends.reduce(
-      (sum, item) => sum + item.revenue,
+      (sum, hourlyItem) => sum + hourlyItem.revenue,
       0
     );
-    const peakRevenue = Math.max(...hourlyTrends.map(item => item.revenue));
+    const peakRevenue = Math.max(...hourlyTrends.map(hourlyItem => hourlyItem.revenue));
     const avgRevenue = Math.round(totalRevenue / 24);
 
     locationData[locationId] = {
@@ -392,7 +392,7 @@ export async function getHourlyTrends(
   }
   const prevDays = prevResult.length;
   const prevTotal = prevResult.reduce(
-    (sum: number, d: DailyRevenueItem) => sum + (d.dailyRevenue || 0),
+    (sum: number, dayRevenue: DailyRevenueItem) => sum + (dayRevenue.dailyRevenue || 0),
     0
   );
   const previousPeriodAverage = prevDays > 0 ? prevTotal / prevDays : 0;

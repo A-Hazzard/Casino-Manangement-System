@@ -103,12 +103,12 @@ export default function ReportsLocationsTable({
 
   const filteredLocations = locations.filter(location => {
     if (!searchTerm.trim()) return true;
-    const q = searchTerm.toLowerCase().trim();
+    const searchQuery = searchTerm.toLowerCase().trim();
     const name = String(location.locationName || '').toLowerCase();
     const id = String(
       ((location as Record<string, unknown>).location as string) || ''
     ).toLowerCase();
-    return name.includes(q) || id.includes(q);
+    return name.includes(searchQuery) || id.includes(searchQuery);
   });
 
   const sortedLocations = [...filteredLocations].sort((a, b) => {

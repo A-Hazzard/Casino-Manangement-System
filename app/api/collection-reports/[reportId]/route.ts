@@ -186,22 +186,22 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
         });
 
         if (body.machines && Array.isArray(body.machines)) {
-          const oldMachineIds = existingCollections.map((c) => c.machineId as string) || [];
-          const newMachineIds = (body.machines as { machineId: string }[]).map((m) => m.machineId);
-          const added = (body.machines as { machineId: string; machineName?: string; machineCustomName?: string }[]).filter((m) => !oldMachineIds.includes(m.machineId));
-          const removed = (existingCollections as { machineId: string; machineName?: string; machineCustomName?: string }[]).filter((c) => !newMachineIds.includes(c.machineId));
+          const oldMachineIds = existingCollections.map((collection) => collection.machineId as string) || [];
+          const newMachineIds = (body.machines as { machineId: string }[]).map((machine) => machine.machineId);
+          const added = (body.machines as { machineId: string; machineName?: string; machineCustomName?: string }[]).filter((machine) => !oldMachineIds.includes(machine.machineId));
+          const removed = (existingCollections as { machineId: string; machineName?: string; machineCustomName?: string }[]).filter((collection) => !newMachineIds.includes(collection.machineId));
 
           if (added.length > 0) {
             updateChanges.push({
               field: 'machines_added',
               oldValue: null,
-              newValue: added.map((m) => (m.machineCustomName || m.machineName || m.machineId)).join(', '),
+              newValue: added.map((machine) => (machine.machineCustomName || machine.machineName || machine.machineId)).join(', '),
             });
           }
           if (removed.length > 0) {
             updateChanges.push({
               field: 'machines_removed',
-              oldValue: removed.map((c) => (c.machineCustomName || c.machineName || c.machineId)).join(', '),
+              oldValue: removed.map((collection) => (collection.machineCustomName || collection.machineName || collection.machineId)).join(', '),
               newValue: null,
             });
           }

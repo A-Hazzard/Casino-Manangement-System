@@ -181,8 +181,8 @@ export async function GET(request: NextRequest) {
       const qualityFilters: Record<string, unknown>[] = [];
 
       filters.forEach(filter => {
-        const f = filter.trim();
-        switch (f) {
+        const filterItem = filter.trim();
+        switch (filterItem) {
           // --- Connection Category ---
           case 'LocalServersOnly':
             connectionFilters.push({ isLocalServer: true });

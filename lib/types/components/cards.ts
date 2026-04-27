@@ -1,10 +1,3 @@
-/**
- * Card Props Types
- * Type definitions for card component props throughout the application.
- *
- * Includes props for CabinetCard component displaying cabinet information
- * with metrics, status, location, and action handlers.
- */
 export type CabinetCardProps = {
   _id: string;
   assetNumber?: string;
@@ -29,8 +22,8 @@ export type CabinetCardProps = {
   custom?: { name?: string };
   onEdit?: (cabinet: CabinetCardProps) => void;
   onDelete?: (cabinet: CabinetCardProps) => void;
-  canEditMachines?: boolean; // If false, hide edit button
-  canDeleteMachines?: boolean; // If false, hide delete button
+  canEditMachines?: boolean;
+  canDeleteMachines?: boolean;
   timePeriod?: string;
   offlineTimeLabel?: string;
   actualOfflineTime?: string;

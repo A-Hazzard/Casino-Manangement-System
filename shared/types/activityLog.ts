@@ -18,7 +18,6 @@ export type ActivityLogChange = {
 export type ActivityLog = {
   _id?: string;
   timestamp: Date;
-  // New fields
   userId?: string;
   username?: string;
   action?: string;
@@ -29,7 +28,6 @@ export type ActivityLog = {
   previousData?: Record<string, unknown>;
   newData?: Record<string, unknown>;
   userAgent?: string;
-  // Legacy fields for backward compatibility
   actor?: ActivityLogActor;
   actionType?: string;
   entityType?: string;

@@ -178,8 +178,8 @@ export function useSessions() {
 
             setAllSessions(prev => {
               if (append) {
-                const existingIds = new Set(prev.map(s => s._id));
-                const newSessions = sessions.filter((s: Session) => !existingIds.has(s._id));
+                const existingIds = new Set(prev.map(session => session._id));
+                const newSessions = sessions.filter((session: Session) => !existingIds.has(session._id));
                 return [...prev, ...newSessions];
               }
               return sessions;

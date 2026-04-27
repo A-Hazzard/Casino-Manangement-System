@@ -46,8 +46,8 @@ export function setupAxiosInterceptors() {
           // Clear all authentication-related cookies and storage
           if (typeof window !== 'undefined') {
             // Clear all cookies
-            document.cookie.split(';').forEach((c) => {
-              const cookieName = c.replace(/^ +/, '').split('=')[0];
+            document.cookie.split(';').forEach((cookieString) => {
+              const cookieName = cookieString.replace(/^ +/, '').split('=')[0];
               document.cookie = `${cookieName}=;expires=${new Date(0).toUTCString()};path=/`;
             });
             

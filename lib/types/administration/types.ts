@@ -7,8 +7,8 @@ export type User = {
   isEnabled: boolean;
   roles: string[];
   profilePicture: string | null;
-  assignedLocations?: string[]; // Array of location IDs user has access to
-  assignedLicencees?: string[]; // Array of licencee IDs user has access to
+  assignedLocations?: string[];
+  assignedLicencees?: string[];
   password?: string;
   profile?: {
     firstName?: string;
@@ -31,7 +31,6 @@ export type User = {
       notes?: string;
     };
   };
-  // Session and login tracking
   loginCount?: number;
   lastLoginAt?: Date | string;
   sessionVersion?: number;

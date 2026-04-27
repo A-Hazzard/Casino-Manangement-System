@@ -208,7 +208,7 @@ export function useMobileCollectionModal({
    */
   const getLocationIdFromMachine = useCallback(
     (locationName: string) => {
-      const matchingLoc = locationsRef.current.find(l => l.name === locationName);
+      const matchingLoc = locationsRef.current.find(location => location.name === locationName);
       return matchingLoc ? String(matchingLoc._id) : null;
     },
     []
@@ -449,7 +449,7 @@ export function useMobileCollectionModal({
     });
 
     const totalGross = totalMovementData.reduce(
-      (sum, m) => sum + m.gross,
+      (sum, machineEntry) => sum + machineEntry.gross,
       0
     );
 
@@ -603,14 +603,14 @@ export function useMobileCollectionModal({
     const validationPrevIn = modalState.formData.prevIn !== '' 
       ? Number(modalState.formData.prevIn) 
       : (() => {
-          const s = selectedMachineData.sasMeters?.drop ?? null;
-          return (s !== null && s > 0) ? s : (selectedMachineData.collectionMeters?.metersIn ?? 0);
+          const sasDrop = selectedMachineData.sasMeters?.drop ?? null;
+          return (sasDrop !== null && sasDrop > 0) ? sasDrop : (selectedMachineData.collectionMeters?.metersIn ?? 0);
         })();
     const validationPrevOut = modalState.formData.prevOut !== '' 
       ? Number(modalState.formData.prevOut) 
       : (() => {
-          const s = selectedMachineData.sasMeters?.totalCancelledCredits ?? null;
-          return (s !== null && s > 0) ? s : (selectedMachineData.collectionMeters?.metersOut ?? 0);
+          const sasCancelled = selectedMachineData.sasMeters?.totalCancelledCredits ?? null;
+          return (sasCancelled !== null && sasCancelled > 0) ? sasCancelled : (selectedMachineData.collectionMeters?.metersOut ?? 0);
         })();
     const validation = validateMachineEntry(
       String(selectedMachineData._id),
@@ -703,8 +703,8 @@ export function useMobileCollectionModal({
       // Update state
       setModalState(prev => {
         const newCollectedMachines = isEditing
-          ? prev.collectedMachines.map(m =>
-              m._id === modalState.editingEntryId ? enrichedCollection : m
+          ? prev.collectedMachines.map(collectedEntry =>
+              collectedEntry._id === modalState.editingEntryId ? enrichedCollection : collectedEntry
             )
           : [...prev.collectedMachines, enrichedCollection];
 
@@ -763,8 +763,8 @@ export function useMobileCollectionModal({
       // Sync to Zustand store
       setStoreCollectedMachines(
         isEditing
-          ? modalState.collectedMachines.map(m =>
-              m._id === modalState.editingEntryId ? enrichedCollection : m
+          ? modalState.collectedMachines.map(machineEntry =>
+              machineEntry._id === modalState.editingEntryId ? enrichedCollection : machineEntry
             )
           : [...modalState.collectedMachines, enrichedCollection]
       );
@@ -790,7 +790,7 @@ export function useMobileCollectionModal({
         const ramClear = modalState.formData.ramClear;
         const notes = modalState.formData.notes;
         if (isEditing) {
-          const prevEntry = modalState.collectedMachines.find(m => m._id === modalState.editingEntryId);
+          const prevEntry = modalState.collectedMachines.find(collectedMachine => collectedMachine._id === modalState.editingEntryId);
           const changes: string[] = [];
           if (prevEntry && prevEntry.metersIn !== metersIn) changes.push(`MIn: ${prevEntry.metersIn} → ${metersIn}`);
           if (prevEntry && prevEntry.metersOut !== metersOut) changes.push(`MOut: ${prevEntry.metersOut} → ${metersOut}`);
@@ -946,7 +946,7 @@ export function useMobileCollectionModal({
       try {
         // Find entry data (for logging)
         const entryToDeleteData = modalState.collectedMachines.find(
-          e => e._id === entryId
+          entry => entry._id === entryId
         );
 
         // Delete from database
@@ -955,7 +955,7 @@ export function useMobileCollectionModal({
         // Update local state
         setModalState(prev => {
           const newCollectedMachines = prev.collectedMachines.filter(
-            m => m._id !== entryId
+            machine => machine._id !== entryId
           );
           const newLockedLocationId =
             newCollectedMachines.length === 0
@@ -973,7 +973,7 @@ export function useMobileCollectionModal({
 
         // Sync to Zustand store
         setStoreCollectedMachines(
-          modalState.collectedMachines.filter(m => m._id !== entryId)
+          modalState.collectedMachines.filter(collectedMachine => collectedMachine._id !== entryId)
         );
 
         if (modalState.collectedMachines.length === 1) {
@@ -1057,6 +1057,7 @@ export function useMobileCollectionModal({
         balanceCorrectionReas: financials.balanceCorrectionReason,
         machines: machinesForReport.map(entry => ({
           machineId: entry.machineId,
+          locationId: entry.location || '',
           metersIn: entry.metersIn || 0,
           metersOut: entry.metersOut || 0,
           prevMetersIn: entry.prevIn || 0,
@@ -1066,6 +1067,9 @@ export function useMobileCollectionModal({
               ? entry.timestamp
               : new Date(entry.timestamp),
           locationReportId: reportId,
+          ramClear: entry.ramClear,
+          ramClearMetersIn: entry.ramClearMetersIn,
+          ramClearMetersOut: entry.ramClearMetersOut,
         })),
       };
 
@@ -1164,7 +1168,7 @@ export function useMobileCollectionModal({
     if (
       modalState.collectedMachines.length !== collectedMachines.length ||
       modalState.collectedMachines.some(
-        (m, i) => m._id !== collectedMachines[i]?._id
+        (machine, index) => machine._id !== collectedMachines[index]?._id
       )
     ) {
       isUpdatingFromModalStateRef.current = true;
@@ -1250,7 +1254,7 @@ export function useMobileCollectionModal({
 
       // If turning on advanced SAS and times are null, set defaults
       if (field === 'showAdvancedSas' && value === true) {
-        const location = locationsRef.current.find(l => String(l._id) === selectedLocation);
+        const location = locationsRef.current.find(location => String(location._id) === selectedLocation);
         const machine = selectedMachineData;
 
         if (!newFormData.sasStartTime) {
@@ -1309,14 +1313,14 @@ export function useMobileCollectionModal({
             return await axios.patch(`/api/collection-reports/collections?id=${entry._id}`, updateData);
           })
         );
-        const failed = results.filter(r => r.status === 'rejected').length;
+        const failed = results.filter(result => result.status === 'rejected').length;
         if (failed > 0) {
           toast.error(`${failed} machine${failed > 1 ? 's' : ''} failed to update`);
           return;
         }
         // Refresh local list timestamps
-        const updated = modalState.collectedMachines.map(e => {
-          const newEntry = { ...e } as CollectionDocument;
+        const updated = modalState.collectedMachines.map(entry => {
+          const newEntry = { ...entry } as CollectionDocument;
           if (!newEntry.sasMeters) {
             newEntry.sasMeters = {
               machine: newEntry.machineId || '',

@@ -282,7 +282,7 @@ export async function GET(req: NextRequest) {
       rawLicenceeRels.flatMap(rel => Array.isArray(rel) ? rel : [rel as string])
     ));
     const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean();
-    const licenceeIncludeJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.includeJackpot]));
+    const licenceeIncludeJackpotMap = new Map(licencees.map(licencee => [String(licencee._id), !!licencee.includeJackpot]));
 
     // ============================================================================
     // STEP 7: Calculate gaming day ranges per location
@@ -638,8 +638,8 @@ export async function GET(req: NextRequest) {
     } else {
       // Original parallel batch processing for Today/Yesterday (still fast)
       const BATCH_SIZE = 20;
-      for (let i = 0; i < locations.length; i += BATCH_SIZE) {
-        const batch = locations.slice(i, i + BATCH_SIZE);
+      for (let locationIndex = 0; locationIndex < locations.length; locationIndex += BATCH_SIZE) {
+        const batch = locations.slice(locationIndex, locationIndex + BATCH_SIZE);
 
         // 🚀 OPTIMIZED: Batch queries instead of N+1 per location
         // Step 1: Get all location IDs in batch
@@ -1252,14 +1252,14 @@ export async function GET(req: NextRequest) {
     const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
     if (reviewerMult !== null) {
       const mult = 1 - reviewerMult;
-      filteredMachines = filteredMachines.map(machine => {
-        const m = machine as Record<string, unknown>;
-        const moneyIn = ((m.moneyIn as number) || 0) * mult;
-        const moneyOut = ((m.moneyOut as number) || 0) * mult;
-        const jackpot = ((m.jackpot as number) || 0) * mult;
-        const cancelledCredits = ((m.cancelledCredits as number) || 0) * mult;
+      filteredMachines = filteredMachines.map(machineRecord => {
+        const machineData = machineRecord as Record<string, unknown>;
+        const moneyIn = ((machineData.moneyIn as number) || 0) * mult;
+        const moneyOut = ((machineData.moneyOut as number) || 0) * mult;
+        const jackpot = ((machineData.jackpot as number) || 0) * mult;
+        const cancelledCredits = ((machineData.cancelledCredits as number) || 0) * mult;
         return {
-          ...machine,
+          ...machineRecord,
           moneyIn,
           moneyOut,
           jackpot,

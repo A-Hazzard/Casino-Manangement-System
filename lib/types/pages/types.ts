@@ -1,6 +1,5 @@
 import { GamingMachine } from '@/shared/types/entities';
 
-// Location page types
 export type ExtendedCabinetDetail = GamingMachine & {
   serialNumber: string;
   isOnline?: boolean;
@@ -13,7 +12,6 @@ export type ExtendedCabinetDetail = GamingMachine & {
   lastActivity?: string | Date;
 };
 
-// Administration page types
 export type AddUserForm = {
   username?: string;
   email?: string;

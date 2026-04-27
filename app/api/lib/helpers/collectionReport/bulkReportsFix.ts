@@ -114,7 +114,7 @@ export async function fixAllReportsData(): Promise<{
 
       const totalIssuesFixed = (Object.values(
         reportFixResults.issuesFixed
-      ) as number[]).reduce((sum, val) => sum + val, 0);
+      ) as number[]).reduce((sum, value) => sum + value, 0);
 
       if (totalIssuesFixed > 0) {
         fixResults.reportsFixed++;
@@ -219,7 +219,7 @@ async function checkReportForIssues(reportId: string): Promise<boolean> {
   }
 
   // Check machine history issues
-  const machineIds = [...new Set(collections.map(c => c.machineId))];
+  const machineIds = [...new Set(collections.map(collection => collection.machineId))];
   for (const machineId of machineIds) {
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const machine = (await Machine.findOne({
@@ -227,8 +227,8 @@ async function checkReportForIssues(reportId: string): Promise<boolean> {
     }).lean()) as MachineWithOptionalHistory | null;
     if (machine && machine.collectionMetersHistory) {
       const history = machine.collectionMetersHistory;
-      for (let i = 1; i < history.length; i++) {
-        const entry = history[i];
+      for (let historyIndex = 1; historyIndex < history.length; historyIndex++) {
+        const entry = history[historyIndex];
         if (
           (!entry.prevMetersIn || entry.prevMetersIn === 0) &&
           (!entry.prevMetersOut || entry.prevMetersOut === 0)

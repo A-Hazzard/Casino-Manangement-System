@@ -56,10 +56,10 @@ export async function recalculateMachineCollections(
     return;
   }
 
-  const collections = (await Collections.find({
+  const collections = await Collections.find({
     machineId,
     $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-  }).lean()) as CollectionSnapshot[];
+  }).lean<CollectionSnapshot[]>();
 
   if (!collections.length) {
     return;
@@ -83,8 +83,8 @@ export async function recalculateMachineCollections(
     locationReportId: string;
   }> = [];
 
-  for (let i = 0; i < sorted.length; i++) {
-    const col = sorted[i];
+  for (let collectionIndex = 0; collectionIndex < sorted.length; collectionIndex++) {
+    const col = sorted[collectionIndex];
     historyEntries.push({
       _id: new mongoose.Types.ObjectId(),
       metersIn: Number(col.metersIn ?? 0),

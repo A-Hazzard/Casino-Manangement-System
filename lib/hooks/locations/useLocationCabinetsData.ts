@@ -184,11 +184,11 @@ export function useLocationCabinetsData({
     );
 
     if (selectedGameType && selectedGameType !== 'all') {
-      result = result.filter(c => (c.game || c.installedGame) === selectedGameType);
+      result = result.filter(cabinet => (cabinet.game || cabinet.installedGame) === selectedGameType);
     }
 
     // Remove machines with no identifiable serial / name / ID
-    result = result.filter(c => getSerialNumberIdentifier(c) !== 'N/A');
+    result = result.filter(cabinet => getSerialNumberIdentifier(cabinet) !== 'N/A');
 
     return result;
   }, [sourceCabinets, sortOption, sortOrder, selectedGameType]);

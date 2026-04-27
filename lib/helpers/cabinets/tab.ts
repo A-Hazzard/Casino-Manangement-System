@@ -87,8 +87,8 @@ export const calculateParetoStatement = (
     return { statement: '', details: undefined };
 
   // Filter out machines with zero metrics - only count machines that actually have data
-  const machinesWithData = machines.filter(m => {
-    const value = metricGetter(m);
+  const machinesWithData = machines.filter(machine => {
+    const value = metricGetter(machine);
     return value > 0 && !isNaN(value) && isFinite(value);
   });
 

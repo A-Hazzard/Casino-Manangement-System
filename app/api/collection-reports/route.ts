@@ -375,12 +375,12 @@ export async function POST(req: NextRequest) {
 
         // Add granular machine data to changes for better traceability
         if (body.machines && Array.isArray(body.machines)) {
-          body.machines.forEach((m: Record<string, unknown>, index: number) => {
-            const machineName = m.machineCustomName || m.machineName || m.serialNumber || `Machine ${index + 1}`;
+          body.machines.forEach((machineItem: Record<string, unknown>, index: number) => {
+            const machineName = machineItem.machineCustomName || machineItem.machineName || machineItem.serialNumber || `Machine ${index + 1}`;
             createChanges.push({
               field: `machine_${index}_details`,
               oldValue: null,
-              newValue: `${machineName}: In: ${m.metersIn}, Out: ${m.metersOut}${m.prevIn !== undefined ? ` (Prev: ${m.prevIn} In, ${m.prevOut} Out)` : ''}${m.ramClear ? ', RAM Cleared' : ''}${m.notes ? `, Notes: ${m.notes}` : ''}`,
+              newValue: `${machineName}: In: ${machineItem.metersIn}, Out: ${machineItem.metersOut}${machineItem.prevIn !== undefined ? ` (Prev: ${machineItem.prevIn} In, ${machineItem.prevOut} Out)` : ''}${machineItem.ramClear ? ', RAM Cleared' : ''}${machineItem.notes ? `, Notes: ${machineItem.notes}` : ''}`,
             });
           });
         }

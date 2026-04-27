@@ -408,7 +408,7 @@ export async function GET(request: NextRequest) {
       console.warn('Failed to fetch total locations count:', error);
       // Fallback to counting unique locations from member data
       totalLocationsCount = new Set(
-        memberSummary.map((m: Record<string, unknown>) => m.gamingLocation)
+        memberSummary.map((memberItem: Record<string, unknown>) => memberItem.gamingLocation)
       ).size;
     }
 
@@ -416,10 +416,10 @@ export async function GET(request: NextRequest) {
       totalMembers: totalMembersCount, // Total members excluding date filter
       totalLocations: totalLocationsCount,
       activeMembers: activeMembersCount, // Members who logged in within last 30 days
-      recentMembers: memberSummary.filter((m: Record<string, unknown>) => {
+      recentMembers: memberSummary.filter((memberItem: Record<string, unknown>) => {
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
-        return new Date(m.createdAt as string) >= weekAgo;
+        return new Date(memberItem.createdAt as string) >= weekAgo;
       }).length,
     };
 

@@ -138,7 +138,7 @@ export function calculateDenominationTotal(
   denominations: Denomination[]
 ): number {
   return denominations.reduce(
-    (sum, denom) => sum + denom.denomination * denom.quantity,
+    (sum, denominationItem) => sum + denominationItem.denomination * denominationItem.quantity,
     0
   );
 }
@@ -157,13 +157,13 @@ export function denominationsMatch(
   if (denom1.length !== denom2.length) return false;
 
   // Sort both arrays by denomination for comparison
-  const sorted1 = [...denom1].sort((a, b) => a.denomination - b.denomination);
-  const sorted2 = [...denom2].sort((a, b) => a.denomination - b.denomination);
+  const sorted1 = [...denom1].sort((first, second) => first.denomination - second.denomination);
+  const sorted2 = [...denom2].sort((first, second) => first.denomination - second.denomination);
 
-  for (let i = 0; i < sorted1.length; i++) {
+  for (let denomIndex = 0; denomIndex < sorted1.length; denomIndex++) {
     if (
-      sorted1[i].denomination !== sorted2[i].denomination ||
-      sorted1[i].quantity !== sorted2[i].quantity
+      sorted1[denomIndex].denomination !== sorted2[denomIndex].denomination ||
+      sorted1[denomIndex].quantity !== sorted2[denomIndex].quantity
     ) {
       return false;
     }
@@ -180,9 +180,9 @@ export function denominationsMatch(
  */
 export function formatDenominations(denominations: Denomination[]): string {
   return denominations
-    .filter((d) => d.quantity > 0)
-    .sort((a, b) => b.denomination - a.denomination)
-    .map((d) => `$${d.denomination} × ${d.quantity}`)
+    .filter((denom) => denom.quantity > 0)
+    .sort((firstDenom, secondDenom) => secondDenom.denomination - firstDenom.denomination)
+    .map((denominationItem) => `$${denominationItem.denomination} × ${denominationItem.quantity}`)
     .join(', ');
 }
 
@@ -202,15 +202,15 @@ export function updateDenominationInventory(
   const currentMap = new Map<number, number>();
   
   // Initialize with current values
-  current.forEach(d => currentMap.set(d.denomination, d.quantity));
-  
+  current.forEach(denominationItem => currentMap.set(denominationItem.denomination, denominationItem.quantity));
+
   // Apply adjustments
-  adjustment.forEach(adj => {
-    const currentQty = currentMap.get(adj.denomination) || 0;
+  adjustment.forEach(adjustmentItem => {
+    const currentQty = currentMap.get(adjustmentItem.denomination) || 0;
     if (type === 'add') {
-      currentMap.set(adj.denomination, currentQty + adj.quantity);
+      currentMap.set(adjustmentItem.denomination, currentQty + adjustmentItem.quantity);
     } else {
-      currentMap.set(adj.denomination, Math.max(0, currentQty - adj.quantity));
+      currentMap.set(adjustmentItem.denomination, Math.max(0, currentQty - adjustmentItem.quantity));
     }
   });
   

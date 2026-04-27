@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
             }
           >
         | undefined
-    )?.['gaming-locations']?.resources?.map((r: { _id: string }) => r._id) ||
+    )?.['gaming-locations']?.resources?.map((resource: { _id: string }) => resource._id) ||
       []) as string[];
     const userRoles = (user?.roles || []) as string[];
 

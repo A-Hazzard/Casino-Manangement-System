@@ -44,7 +44,7 @@ export async function calculateCollectionReportTotals(
   let totalSasGross = 0;
   let totalJackpot = 0;
 
-  console.log(`🔄 [Calculations] Processing ${machines.length} machines...`, {
+  console.log('🔄 [Calculations] Processing ' + machines.length + (machines.length === 1 ? ' machine' : ' machines')  , {
     hasCollectionIds: collectionIds.length > 0,
     collectionIdsCount: collectionIds.length,
     includeJackpot: payload.includeJackpot,
@@ -52,16 +52,16 @@ export async function calculateCollectionReportTotals(
 
   // Helper function to query collection by machineId and meters (fallback method)
   const queryCollectionByMachine = async (
-    m: CollectionReportMachineEntry,
+    machineEntry: CollectionReportMachineEntry,
     reportTimestamp: Date
   ) => {
     const minTimestamp = new Date(
       reportTimestamp.getTime() - 24 * 60 * 60 * 1000
     );
     const collectionQuery = {
-      machineId: m.machineId,
-      metersIn: Number(m.metersIn),
-      metersOut: Number(m.metersOut),
+      machineId: machineEntry.machineId,
+      metersIn: Number(machineEntry.metersIn),
+      metersOut: Number(machineEntry.metersOut),
       timestamp: { $gte: minTimestamp },
       $or: [{ locationReportId: '' }, { locationReportId: { $exists: false } }],
     };
@@ -80,11 +80,11 @@ export async function calculateCollectionReportTotals(
   // If we have collection IDs, use them directly (much faster)
   if (collectionIds.length > 0 && collectionIds.length === machines.length) {
     console.log('🔄 [Calculations] Using collection IDs for direct lookup...');
-    for (let i = 0; i < machines.length; i++) {
-      const m = machines[i];
-      const collectionId = collectionIds[i];
+    for (let machineIndex = 0; machineIndex < machines.length; machineIndex++) {
+      const machine = machines[machineIndex];
+      const collectionId = collectionIds[machineIndex];
 
-      if (!m.machineId) continue;
+      if (!machine.machineId) continue;
 
       let collection: CollectionDocument | null = null;
 
@@ -105,10 +105,10 @@ export async function calculateCollectionReportTotals(
       // If direct lookup failed, try query method as fallback
       if (!collection) {
         try {
-          collection = await queryCollectionByMachine(m, reportTimestamp);
+          collection = await queryCollectionByMachine(machine, reportTimestamp);
         } catch (err) {
           console.error(
-            `❌ [Calculations] Error querying collection for machine ${m.machineId}:`,
+            `❌ [Calculations] Error querying collection for machine ${machine.machineId}:`,
             err
           );
         }
@@ -130,11 +130,11 @@ export async function calculateCollectionReportTotals(
     }
   } else {
     // Fallback: Query by machineId and meters (original method)
-    for (const m of machines) {
-      if (!m.machineId) continue;
+    for (const machine of machines) {
+      if (!machine.machineId) continue;
 
       try {
-        const collection = await queryCollectionByMachine(m, reportTimestamp);
+        const collection = await queryCollectionByMachine(machine, reportTimestamp);
 
         if (collection) {
           const moveIn = collection.movement?.metersIn || 0;
@@ -150,7 +150,7 @@ export async function calculateCollectionReportTotals(
         }
       } catch (err) {
         console.error(
-          `❌ [Calculations] Error processing machine ${m.machineId}:`,
+          `❌ [Calculations] Error processing machine ${machine.machineId}:`,
           err
         );
       }
