@@ -10,6 +10,7 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import UserModel from '@/app/api/lib/models/user';
+import type { UserDocument, GamingLocationDocument } from '@shared/types';
 
 /**
  * User role and permission information
@@ -50,6 +51,15 @@ export async function getCollectorsPaginated(
   limit: number,
   licenceeId?: string
 ): Promise<PaginatedCollectors> {
+  if (!page) {
+    console.error('[getCollectorsPaginated] page is required');
+    return { collectors: [], total: 0, page: 1, limit: 0, totalPages: 0 };
+  }
+  if (!limit) {
+    console.error('[getCollectorsPaginated] limit is required');
+    return { collectors: [], total: 0, page: 1, limit: 0, totalPages: 0 };
+  }
+
   const skip = (page - 1) * limit;
 
   // Build filter for collectors
@@ -70,16 +80,14 @@ export async function getCollectorsPaginated(
     .sort({ username: 1 })
     .skip(skip)
     .limit(limit)
-    .lean();
+    .lean<UserDocument[]>();
 
-  const collectors = (users as Array<Record<string, unknown>>).map(user => ({
+  const collectors = users.map(user => ({
     id: String(user._id),
     username: String(user.username || ''),
     email: String(user.emailAddress || ''),
-    firstName: String(
-      (user.profile as Record<string, unknown>)?.firstName || ''
-    ),
-    lastName: String((user.profile as Record<string, unknown>)?.lastName || ''),
+    firstName: String(user.profile?.firstName || ''),
+    lastName: String(user.profile?.lastName || ''),
   }));
 
   return {
@@ -111,6 +119,10 @@ export type CollectionReportsQueryParams = {
 export async function buildCollectionReportsLocationFilter(
   userPermissions: UserPermissions
 ): Promise<string[] | null> {
+  if (!userPermissions) {
+    console.error('[buildCollectionReportsLocationFilter] userPermissions is required');
+    return null;
+  }
   const { roles, licencees, locationPermissions } = userPermissions;
 
     const isAdmin = roles.includes('admin') || roles.includes('developer') || roles.includes('owner');
@@ -154,7 +166,7 @@ export async function buildCollectionReportsLocationFilter(
       },
       { _id: 1 }
     )
-      .lean()
+      .lean<GamingLocationDocument[]>()
       .exec();
 
     const managerLocationIds = managerLocations.map(loc => String(loc._id));
@@ -181,6 +193,10 @@ export function buildCollectionReportsQuery(
   params: CollectionReportsQueryParams,
   locationFilter: string[] | null
 ): Record<string, unknown> {
+  if (!params) {
+    console.error('[buildCollectionReportsQuery] params is required');
+    return {};
+  }
   const query: Record<string, unknown> = {};
 
   if (params.locationReportId) {
@@ -228,6 +244,10 @@ export function extractUserPermissions(userPayload: {
   assignedLocations?: string[];
   assignedLicencees?: string[];
 }): UserPermissions {
+  if (!userPayload) {
+    console.error('[extractUserPermissions] userPayload is required');
+    return { roles: [], licencees: [], locationPermissions: [] };
+  }
   const roles = Array.isArray(userPayload.roles)
     ? (userPayload.roles as string[])
     : [];

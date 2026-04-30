@@ -58,7 +58,7 @@ export function parseSasPyd(pyd: string): SasMetersParsed {
     let idx = 10;
 
     // Loop through exactly 10 meters (as per SAS protocol)
-    for (let i = 0; i < 10; i++) {
+    for (let meterIndex = 0; meterIndex < 10; meterIndex++) {
       // Read meter code (4 chars starting at idx)
       const code = pyd.slice(idx, idx + 4);
 
@@ -107,15 +107,15 @@ export function parseSasPyd(pyd: string): SasMetersParsed {
       }
 
       // Update idx for next meter (special handling for last meter)
-      if (i !== 9) {
+      if (meterIndex !== 9) {
         idx = idx + meterLength + 6;
       } else {
         idx += meterLength;
       }
     }
-  } catch (error) {
-    console.error('Error parsing SAS pyd:', error);
-    return { error: 'Failed to parse pyd: ' + error, pyd };
+  } catch (e) {
+    console.error('[parseSasPyd] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return { error: 'Failed to parse pyd: ' + (e instanceof Error ? e.message : 'Unknown error'), pyd };
   }
 
   return result;

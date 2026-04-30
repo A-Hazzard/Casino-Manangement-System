@@ -13,7 +13,23 @@ Use for **all data filtering and access control** in APIs and pages.
 2. **Licencee filter persists** - Stored in Zustand store + localStorage
 3. **Location access is intersection** - (Licencee locations) ∩ (User assigned locations)
 4. **Session invalidation** - Permissions change = user must re-login
-5. **Role hierarchy** - Developer > Admin > Manager > Collector > Location Admin > Technician
+5. **Role hierarchy** (highest → lowest): Developer (1) → Owner (2) → Admin (3) → Manager (4) → Location Admin (5) → Vault-Manager (6) → Cashier (7) → Technician (8) → Collector (9) → Reviewer (10)
+
+## Reviewer Scale
+
+The `reviewer` role receives scaled-down financial metrics to protect actual business performance data:
+
+```typescript
+// Formula: scale = 1 - multiplier
+// e.g. multiplier = 0.30 → scale = 0.70 → show 70% of actual value
+// If reviewer role absent, multiplier is null, or multiplier is 0 → scale = 1 (no scaling)
+
+import { getReviewerScale } from '@/app/api/lib/utils/reviewerScale';
+const scale = getReviewerScale(user.roles, licenceeMultiplier);
+const displayValue = Math.round(actualValue * scale);
+```
+
+Apply reviewer scale to ALL currency metrics before sending to frontend whenever the requesting user holds the `reviewer` role.
 
 ## User Fields
 
@@ -57,13 +73,19 @@ type Machine = {
 | Role | Licencee Access | Location Access | Dropdown |
 |------|---|---|---|
 | Developer | ALL | ALL | Yes (filter only) |
+| Owner | ALL | ALL | Yes (filter only) |
 | Admin | ALL | ALL | Yes (filter only) |
 | Manager | Assigned only | ALL in assigned licencees | Yes if 2+ licencees |
-| Collector | Assigned only | Intersection | Yes if 2+ licencees |
 | Location Admin | Assigned only | Intersection | Never |
+| Vault-Manager | Assigned only | Intersection | Yes if 2+ licencees |
+| Cashier | Assigned only | Intersection | Never |
 | Technician | Assigned only | Intersection | Yes if 2+ licencees |
+| Collector | Assigned only | Intersection | Yes if 2+ licencees |
+| Reviewer | Assigned only | Intersection | Yes if 2+ licencees |
 
-**Key difference**: Managers see ALL locations for their licencees. Non-managers see ONLY the intersection of (licencee locations) ∩ (assigned locations).
+**Key difference**: Managers see ALL locations for their licencees. All other non-admin roles see ONLY the intersection of (licencee locations) ∩ (assigned locations).
+
+**Reviewer Note**: `reviewer` role additionally has all currency values scaled down — see Reviewer Scale section above.
 
 ## Backend API Pattern
 

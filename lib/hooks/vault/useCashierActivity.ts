@@ -48,41 +48,41 @@ export function useCashierActivity() {
         const combined: CashierActivityItem[] = [];
 
         // Map shifts
-        (shiftsData.shifts || []).forEach((s: CashierShift) => {
+        (shiftsData.shifts || []).forEach((shift: CashierShift) => {
           let actionLabel = 'Shift Activity';
-          if (s.status === 'pending_start') actionLabel = 'Opening Shift Request';
-          else if (s.status === 'active') actionLabel = 'Shift Started';
-          else if (s.status === 'closed') actionLabel = 'Shift Ended';
-          else if (s.status === 'pending_review') actionLabel = 'Shift Pending Review';
-          else if (s.status === 'cancelled') actionLabel = 'Shift Cancelled';
+          if (shift.status === 'pending_start') actionLabel = 'Opening Shift Request';
+          else if (shift.status === 'active') actionLabel = 'Shift Started';
+          else if (shift.status === 'closed') actionLabel = 'Shift Ended';
+          else if (shift.status === 'pending_review') actionLabel = 'Shift Pending Review';
+          else if (shift.status === 'cancelled') actionLabel = 'Shift Cancelled';
 
           combined.push({
-            id: s._id,
+            id: shift._id,
             type: 'shift',
             action: actionLabel,
-            amount: s.openingBalance,
-            status: s.status,
-            timestamp: new Date(s.openedAt || s.createdAt),
-            notes: s.notes,
-            isOutflow: s.status === 'closed'
+            amount: shift.openingBalance,
+            status: shift.status,
+            timestamp: new Date(shift.openedAt || shift.createdAt),
+            notes: shift.notes,
+            isOutflow: shift.status === 'closed'
           });
         });
 
         // Map float requests
-        (requestsData.data || []).forEach((r: FloatRequest) => {
+        (requestsData.data || []).forEach((floatRequest: FloatRequest) => {
           // If it's a pending shift start, it's the initial float
-          const isInitial = r.requestNotes === 'Initial shift float';
+          const isInitial = floatRequest.requestNotes === 'Initial shift float';
 
           combined.push({
-            id: r._id,
+            id: floatRequest._id,
             type: 'float_request',
-            action: isInitial ? 'Initial Float Request' : `Float ${r.type === 'increase' ? 'Increase' : 'Decrease'} Request`,
-            amount: r.requestedAmount,
-            status: r.status,
-            timestamp: new Date(r.requestedAt),
-            notes: r.vmNotes || r.requestNotes,
-            details: r.status === 'denied' ? `Reason: ${r.vmNotes || ''}` : undefined,
-            isOutflow: r.type === 'decrease'
+            action: isInitial ? 'Initial Float Request' : `Float ${floatRequest.type === 'increase' ? 'Increase' : 'Decrease'} Request`,
+            amount: floatRequest.requestedAmount,
+            status: floatRequest.status,
+            timestamp: new Date(floatRequest.requestedAt),
+            notes: floatRequest.vmNotes || floatRequest.requestNotes,
+            details: floatRequest.status === 'denied' ? `Reason: ${floatRequest.vmNotes || ''}` : undefined,
+            isOutflow: floatRequest.type === 'decrease'
           });
         });
 
@@ -98,15 +98,15 @@ export function useCashierActivity() {
           notes?: string;
         };
 
-        (payoutsData.payouts || []).forEach((p: PayoutItem) => {
+        (payoutsData.payouts || []).forEach((payout: PayoutItem) => {
           combined.push({
-            id: p._id,
+            id: payout._id,
             type: 'payout',
-            action: p.type === 'ticket' ? `Ticket Redemption` : `Hand Pay`,
-            amount: p.amount,
+            action: payout.type === 'ticket' ? `Ticket Redemption` : `Hand Pay`,
+            amount: payout.amount,
             status: 'completed',
-            timestamp: new Date(p.timestamp),
-            notes: p.type === 'ticket' ? `Ticket: ${p.ticketNumber}` : `Machine: ${p.machineSerialNumber || p.machineId}${p.notes ? ` - ${p.notes}` : ''}`,
+            timestamp: new Date(payout.timestamp),
+            notes: payout.type === 'ticket' ? `Ticket: ${payout.ticketNumber}` : `Machine: ${payout.machineSerialNumber || payout.machineId}${payout.notes ? ` - ${payout.notes}` : ''}`,
             isOutflow: true
           });
         });

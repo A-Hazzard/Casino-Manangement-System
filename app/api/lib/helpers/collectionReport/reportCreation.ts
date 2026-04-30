@@ -16,21 +16,33 @@
  */
 
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
-import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
+import type { CollectionDocument } from '@/lib/types/collection';
 import mongoose from 'mongoose';
 import { calculateCollectionReportTotals } from './calculations';
+import { generateMongoId } from '../../../../../lib/utils/id';
+import { Meters } from '../../models/meters';
+import type { MetersData, GamingMachine } from '../../../../../shared/types';
+import { Collections } from '../../models/collections';
+import { GamingLocations } from '../../models/gaminglocations';
 
 /**
  * Validates collection report payload
  *
- * @param body - The collection report payload
- * @returns { isValid: boolean; error?: string }
+ * @param {Partial<CreateCollectionReportPayload>} body - The collection report payload
+ * @returns {{ isValid: boolean; error?: string }}
  */
 export function validateCollectionReportPayload(
   body: Partial<CreateCollectionReportPayload>
 ): { isValid: boolean; error?: string } {
+  if (!body) {
+    return { isValid: false, error: 'Invalid payload: body is required' };
+  }
+  if (typeof body !== 'object') {
+    return { isValid: false, error: 'Invalid payload: body must be an object' };
+  }
+
   const requiredFields = [
     'variance',
     'previousBalance',
@@ -66,12 +78,21 @@ export function validateCollectionReportPayload(
 /**
  * Sanitizes string fields in collection report payload
  *
- * @param body - The collection report payload
- * @returns Sanitized payload
+ * @param {CreateCollectionReportPayload} body - The collection report payload
+ * @returns {CreateCollectionReportPayload}
  */
 export function sanitizeCollectionReportPayload(
   body: CreateCollectionReportPayload
 ): CreateCollectionReportPayload {
+  if (!body) {
+    console.error('[sanitizeCollectionReportPayload] body is required');
+    return body;
+  }
+  if (typeof body !== 'object') {
+    console.error('[sanitizeCollectionReportPayload] body must be an object');
+    return body;
+  }
+
   const stringFields = [
     'collector',
     'locationName',
@@ -95,20 +116,26 @@ export function sanitizeCollectionReportPayload(
 /**
  * Updates collection documents with locationReportId
  *
- * @param machines - Array of machines from the payload
- * @param locationReportId - The location report ID
- * @param collectionIds - Optional array of specific collection IDs from the frontend
- * @returns Promise<void>
+ * @param {CreateCollectionReportPayload['machines']} machines - Array of machines from the payload
+ * @param {string} locationReportId - The location report ID
+ * @param {string[]} [collectionIds] - Optional array of specific collection IDs from the frontend
+ * @returns {Promise<void>}
  */
 async function updateCollectionsWithReportId(
-  machines: Array<{
-    machineId?: string;
-    metersIn?: number;
-    metersOut?: number;
-  }>,
+  machines: CreateCollectionReportPayload['machines'],
   locationReportId: string,
   collectionIds?: string[]
 ): Promise<void> {
+  if (!machines || !Array.isArray(machines)) {
+    console.error('[updateCollectionsWithReportId] machines is required');
+    return;
+  }
+
+  if (!locationReportId) {
+    console.error('[updateCollectionsWithReportId] locationReportId is required');
+    return;
+  }
+
   // If we have collectionIds, update them directly by ID (most precise)
   if (collectionIds && collectionIds.length > 0) {
     await Collections.updateMany(
@@ -130,15 +157,15 @@ async function updateCollectionsWithReportId(
   }
 
   // Fallback to fuzzy matching if no IDs provided
-  for (const m of machines) {
-    if (!m.machineId) continue;
+  for (const machine of machines) {
+    if (!machine.machineId) continue;
 
-    const normalizedMetersIn = Number(m.metersIn) || 0;
-    const normalizedMetersOut = Number(m.metersOut) || 0;
+    const normalizedMetersIn = Number(machine.metersIn) || 0;
+    const normalizedMetersOut = Number(machine.metersOut) || 0;
 
     await Collections.updateMany(
       {
-        machineId: m.machineId,
+        machineId: machine.machineId,
         metersIn: normalizedMetersIn,
         metersOut: normalizedMetersOut,
         $or: [
@@ -155,7 +182,7 @@ async function updateCollectionsWithReportId(
       }
     ).catch((err: unknown) => {
       console.warn(
-        `Failed to update collection documents for machine ${m.machineId}:`,
+        `Failed to update collection documents for machine ${machine.machineId}:`,
         err
       );
     });
@@ -163,14 +190,136 @@ async function updateCollectionsWithReportId(
 }
 
 /**
+ * Updates regular and ram clear meters per machine collection
+ * @param {CollectionDocument} collectionDocument - The colllection to be updated for the report
+ * @param {string} [ramClearMeterId] - The ram clear meter ID used for collectionDocument that were ramCleared
+ * @returns {Promise<{success: true}>}
+*/
+export async function updateRegularAndRamClearMeters(collectionDocument: CollectionDocument): Promise<{success: boolean}> {
+  if (!collectionDocument) {
+    console.error('[updateRegularAndRamClearMeters] collectionDocument is required');
+    return {success: false};
+  }
+  if (!collectionDocument._id) {
+    console.error('[updateRegularAndRamClearMeters] collectionDocument._id is required');
+    return {success: false};
+  }
+
+  console.log(`[updateRegularAndRamClearMeters] Processing collection ${collectionDocument._id}`, {
+    ramClearMeterId: collectionDocument.ramClearMeterId,
+    meterId: collectionDocument.meterId,
+    ramClearMetersIn: collectionDocument.ramClearMetersIn,
+    ramClearMetersOut: collectionDocument.ramClearMetersOut,
+    metersIn: collectionDocument.metersIn,
+    metersOut: collectionDocument.metersOut,
+    prevIn: collectionDocument.prevIn,
+    prevOut: collectionDocument.prevOut,
+  });
+
+
+  if(collectionDocument.ramClearMeterId || collectionDocument.meterId){
+    try{
+      const operations = [];
+      let ramClearMovementData = {}
+
+      console.log('[updateRegularAndRamClearMeters] Check RAM clear:', {
+        hasRamClearMeterId: !!collectionDocument.ramClearMeterId,
+        hasMeterId: !!collectionDocument.meterId,
+        ramClearMetersIn: collectionDocument.ramClearMetersIn,
+        hasBoth: !!(collectionDocument.ramClearMetersIn && collectionDocument.ramClearMetersOut),
+      });
+
+      if(collectionDocument.ramClearMetersIn !== undefined && collectionDocument.ramClearMetersOut !== undefined){
+        const prevInVal = collectionDocument.prevIn || 0;
+        const prevOutVal = collectionDocument.prevOut || 0;
+        
+        ramClearMovementData = {
+          'movement.drop': collectionDocument.ramClearMetersIn - prevInVal,
+          'movement.totalCancelledCredits': collectionDocument.ramClearMetersOut - prevOutVal,
+          'drop': collectionDocument.ramClearMetersIn, 
+          'totalCancelledCredits': collectionDocument.ramClearMetersOut 
+        };
+        console.log('[updateRegularAndRamClearMeters] RAM clear movement:', ramClearMovementData);
+      }
+     
+      const movementData = {
+        'movement.drop': collectionDocument.metersIn,
+        'movement.totalCancelledCredits': collectionDocument.metersOut,
+        'drop': collectionDocument.metersIn,
+        'totalCancelledCredits': collectionDocument.metersOut
+      };
+      console.log('[updateRegularAndRamClearMeters] Regular movement:', movementData);
+
+      if (collectionDocument.ramClearMeterId) {
+        console.log('[updateRegularAndRamClearMeters] Adding RAM clear update filter:', { _id: collectionDocument.ramClearMeterId });
+        operations.push({
+          updateOne: {
+            filter: { _id: collectionDocument.ramClearMeterId },
+            update: { $set: ramClearMovementData }
+          }
+        });
+      }
+
+      if (collectionDocument.meterId) {
+console.log('[updateRegularAndRamClearMeters] Adding regular update filter:', { _id: collectionDocument.meterId });
+
+      // Debug: Check if these meters exist
+      const ramCheck = await Meters.findOne({ _id: collectionDocument.ramClearMeterId }).lean();
+      const regCheck = await Meters.findOne({ _id: collectionDocument.meterId }).lean();
+      console.log('[updateRegularAndRamClearMeters] Meter lookup:', {
+        ramExists: !!ramCheck,
+        regExists: !!regCheck,
+        ramId: collectionDocument.ramClearMeterId,
+        regId: collectionDocument.meterId,
+      });
+
+      operations.push({
+          updateOne: {
+            filter: { _id: collectionDocument.meterId },
+            update: { $set: movementData }
+          }
+        });
+      }
+
+      console.log('[updateRegularAndRamClearMeters] Operations:', operations.length);
+
+      if (operations.length > 0) {
+        const result = await Meters.bulkWrite(operations);
+        console.log('[updateRegularAndRamClearMeters] BulkWrite result:', {
+          matchedCount: result.matchedCount,
+          modifiedCount: result.modifiedCount,
+        });
+      }
+      } catch (e) {
+        console.error(
+          '[updateRegularAndRamClearMeters] Error:',
+          e instanceof Error ? e.message : 'Unknown error'
+        );
+        return { success: false };
+      }
+  } else {
+    console.warn('[updateRegularAndRamClearMeters] No meter IDs on collection - skipping');
+  }
+
+  return {success: true};
+}
+
+/**
  * Updates machine collection meters and history for a single machine
  *
- * @param machineId - The machine ID
- * @param metersIn - Meters in value
- * @param metersOut - Meters out value
- * @param collectionTime - Collection timestamp
- * @param locationReportId - The location report ID
- * @returns Promise<void>
+ * CREATION FLOW ONLY — called when user clicks "Create Report" button.
+ * Updates machine.collectionMeters and pushes to collectionMetersHistory.
+ *
+ * Do NOT use for EDIT flow — use PATCH /api/collection-reports/collections/[id]
+ * @see PATCH /api/collection-reports/collections/[id] — for EDIT flow
+ *
+ * @param {string} machineId - The machine ID
+ * @param {number} metersIn - Meters in value
+ * @param {number} metersOut - Meters out value
+ * @param {Date} collectionTime - Collection timestamp
+ * @param {string} locationReportId - The location report ID
+ * @param {string} [collectionId] - Optional collection document ID
+ * @returns {Promise<void>}
  */
 async function updateMachineCollectionData(
   machineId: string,
@@ -180,21 +329,41 @@ async function updateMachineCollectionData(
   locationReportId: string,
   collectionId?: string
 ): Promise<void> {
+  if (!machineId) {
+    console.error('[updateMachineCollectionData] machineId is required');
+    return;
+  }
+
+  if (!locationReportId) {
+    console.error('[updateMachineCollectionData] locationReportId is required');
+    return;
+  }
+
+  if (typeof metersIn !== 'number' || !Number.isFinite(metersIn)) {
+    console.error('[updateMachineCollectionData] metersIn must be a valid number');
+    return;
+  }
+
+  if (typeof metersOut !== 'number' || !Number.isFinite(metersOut)) {
+    console.error('[updateMachineCollectionData] metersOut must be a valid number');
+    return;
+  }
+
+  if (!collectionTime || !(collectionTime instanceof Date)) {
+    console.error('[updateMachineCollectionData] collectionTime must be a valid Date');
+    return;
+  }
+
   // Run initial queries in parallel for better performance
   const [currentMachine, collectionDocument] = await Promise.all([
-    // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    Machine.findOne({ _id: machineId }).lean(),
-    // Find the collection document we just marked as completed
-    // If collectionId is provided, use it directly to avoid ambiguity
-    // Otherwise, match by locationReportId, meters, and collectionTime to ensure we get the correct document
-    collectionId
+    Machine.findOne({ _id: machineId }).lean<GamingMachine>(),
+    collectionId && locationReportId
       ? Collections.findOne({ _id: collectionId, locationReportId })
       : Collections.findOne({
         machineId,
         locationReportId,
         metersIn,
         metersOut,
-        // Also match on collectionTime to ensure we get the exact document that was just updated
         $or: [
           { collectionTime: collectionTime },
           { timestamp: collectionTime },
@@ -204,13 +373,8 @@ async function updateMachineCollectionData(
 
   if (!currentMachine) return;
 
-  const currentMachineData = currentMachine as Record<string, unknown>;
-  const currentCollectionMeters = currentMachineData.collectionMeters as
-    | { metersIn: number; metersOut: number }
-    | undefined;
-  const currentMachineCollectionTime = currentMachineData.collectionTime as
-    | Date
-    | undefined;
+  const currentCollectionMeters = currentMachine.collectionMeters;
+  const currentMachineCollectionTime = currentMachine.collectionTime;
 
   // Determine true previous meters from the latest completed collection
   const previousCompletedCollection = await Collections.findOne({
@@ -226,7 +390,7 @@ async function updateMachineCollectionData(
     ],
   })
     .sort({ collectionTime: -1, timestamp: -1 })
-    .lean();
+    .lean<CollectionDocument>();
 
   const baselinePrevIn =
     previousCompletedCollection?.metersIn ??
@@ -240,12 +404,12 @@ async function updateMachineCollectionData(
   // ============================================================================
   // IDEMPOTENCY CHECK: Check if this history entry already exists
   // ============================================================================
-  const existingHistoryEntry = (currentMachineData.collectionMetersHistory as Record<string, unknown>[] || [])
-    .find((h: Record<string, unknown>) => h.locationReportId === locationReportId);
+  const existingHistoryEntry = (currentMachine.collectionMetersHistory ?? [])
+    .find(entry => entry.locationReportId === locationReportId);
 
-  if (existingHistoryEntry) 
+  if (existingHistoryEntry)
     console.warn(`[updateMachineCollectionData] History entry for report ${locationReportId} already exists on machine ${machineId}. Skipping push.`);
-  
+
 
   // Create collection history entry
   const historyEntry = {
@@ -258,28 +422,8 @@ async function updateMachineCollectionData(
     locationReportId,
   };
 
-  // Prepare all update operations
+// Prepare all update operations
   const updatePromises: Promise<unknown>[] = [];
-
-  // Update collection document with prevIn/prevOut
-  if (collectionDocument?._id) {
-    updatePromises.push(
-      Collections.updateOne(
-        { _id: collectionDocument._id },
-        {
-          $set: {
-            prevIn: baselinePrevIn,
-            prevOut: baselinePrevOut,
-          },
-        }
-      ).catch((err: unknown) => {
-        console.error(
-          `Failed to update prevIn/prevOut for collection ${collectionDocument._id}:`,
-          err
-        );
-      })
-    );
-  }
 
   // Prepare machine update
   const machineSetUpdate: Record<string, unknown> = {
@@ -302,21 +446,16 @@ async function updateMachineCollectionData(
   }
 
   // Update machine collectionMeters + timestamps
-  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
   updatePromises.push(
     Machine.findOneAndUpdate(
       { _id: machineId },
       machineUpdateOps
-    ).catch((err: unknown) => {
-      console.error(
-        `Failed to update collectionMeters and history for machine ${machineId}:`,
-        err
-      );
+    ).catch((err) => {
+      console.error('[updateMachineCollectionData] Error:', err instanceof Error ? err.message : 'Unknown error');
     })
   );
 
-  // Backfill locationReportId for any pre-existing history entries and push new entry
-  // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+  // Backfill locationReportId for any pre-existing history entries
   updatePromises.push(
     Machine.findOneAndUpdate(
       { _id: machineId },
@@ -338,18 +477,14 @@ async function updateMachineCollectionData(
         ],
         new: true,
       }
-    ).catch((err: unknown) => {
-      console.error(`Failed to update history for machine ${machineId}:`, err);
+    ).catch((err) => {
+      console.error('[updateMachineCollectionData] Error:', err instanceof Error ? err.message : 'Unknown error');
     })
   );
 
   // Update gaming location's previousCollectionTime (if needed)
-  const gamingLocationId = currentMachineData.gamingLocation as string;
+  const gamingLocationId = currentMachine.gamingLocation;
   if (gamingLocationId) {
-    const { GamingLocations } = await import(
-      '@/app/api/lib/models/gaminglocations'
-    );
-    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
     updatePromises.push(
       GamingLocations.findOneAndUpdate(
         { _id: gamingLocationId },
@@ -360,28 +495,235 @@ async function updateMachineCollectionData(
           },
         },
         { new: true }
-      ).catch((err: unknown) => {
-        console.error(
-          `Failed to update previousCollectionTime for gaming location ${gamingLocationId}:`,
-          err
-        );
+      ).catch((err) => {
+        console.error('[updateMachineCollectionData] Error:', err instanceof Error ? err.message : 'Unknown error');
       })
     );
   }
 
-  // Execute all updates in parallel
+// Execute all updates in parallel
   await Promise.all(updatePromises);
+}
+
+/**
+ * Append meter IDs to the collections for reference
+ *
+ * @param {CreateCollectionReportPayload['machines'][number]['collectionId']} collectionId - The collection's _id
+ * @param {MetersData[]} meters - Array of meters, either with ram clear or not
+ * @returns {Promise<{ success: boolean }>}
+ */
+async function appendMeterIdsToCollections(
+  collectionId: CreateCollectionReportPayload['machines'][number]["collectionId"],
+  meters: MetersData[]): Promise<{ success: boolean }> {
+  if (!collectionId) {
+    console.error('[appendMeterIdsToCollections] collectionId is required');
+    return { success: false };
+  }
+
+  if (!meters || !Array.isArray(meters) || meters.length === 0) {
+    console.error('[appendMeterIdsToCollections] meters array is required and cannot be empty');
+    return { success: false };
+  }
+
+  try {
+      
+    //Ram clear meters would be of length 2 only
+    if(meters.length == 2){
+      await Collections.updateOne({ _id: collectionId }, 
+        { $set: {
+          ramClearMeterId: meters[0]._id,
+          meterId: meters[1]._id
+        } 
+      })
+
+      return { success: true }
+    }
+
+    await Collections.updateOne({_id: collectionId},
+      { $set: {
+        meterId: meters[0]._id
+      }}
+    )
+
+    return { success: true }
+
+  } catch (e) {
+    console.error(
+      '[appendMeterIdsToCollections] Error:',
+      e instanceof Error ? e.message : 'Unknown error'
+    );
+    return { success: false };
+  }
+}
+
+/**
+ * Creates manual meter objects for each machine in the meters collection
+ *
+ * @param {CreateCollectionReportPayload['machines']} machines - The collection report payload
+ * @returns {Promise<{ success: boolean }>}
+ */
+async function createManualMetersForEachMachine(machines: CreateCollectionReportPayload['machines']): Promise<{ success: boolean }> {
+  if (!machines || !Array.isArray(machines)) {
+    console.warn('[createManualMetersForEachMachine] No machines provided');
+    return { success: true };
+  }
+
+  const metersToCreate: MetersData[] = [];
+
+  console.log(`🔄 [createManualMetersForEachMachine] Starting meter creation for ${machines?.length || 0} machines`);
+ 
+  for (const machine of machines ?? []) {
+    console.log(`🔄 [createManualMetersForEachMachine] Processing machine: ${machine.machineId}, ramClear: ${machine.ramClear}`);
+
+    const collectionId = machine.collectionId;
+
+    const currentMetersIn = machine.metersIn;
+    const currentMetersOut = machine.metersOut;
+    const previousMetersIn = machine.prevMetersIn || 0;
+    const previousMetersOut = machine.prevMetersOut || 0;
+    const ramClearMetersIn = machine.ramClearMetersIn || 0;
+    const ramClearMetersOut = machine.ramClearMetersOut || 0;
+
+    const movementIn = machine.ramClear ? ramClearMetersIn - previousMetersIn : currentMetersIn;
+    const movementOut = machine.ramClear ? ramClearMetersOut - previousMetersOut : currentMetersOut;
+
+    const baseReadAt = new Date();
+    const baseCreatedAt = new Date();
+
+    if (machine.ramClear) {
+      const ramClearMeterId = await generateMongoId();
+      console.log(`🔄 [createManualMetersForEachMachine] Generated RAM clear meter ID: ${ramClearMeterId}`);
+
+      const ramClearMeter = {
+        _id: ramClearMeterId,
+        machine: machine.machineId,
+        location: machine.locationId,
+        movement: {
+          coinIn: 0,
+          coinOut: 0,
+          jackpot: 0,
+          totalHandPaidCancelledCredits: 0,
+          totalCancelledCredits: movementOut,
+          gamesPlayed: 0,
+          gamesWon: 0,
+          currentCredits: 0,
+          totalWonCredits: 0,
+          drop: movementIn,
+        },
+        coinIn: 0,
+        coinOut: 0,
+        jackpot: 0,
+        totalHandPaidCancelledCredits: 0,
+        totalCancelledCredits: ramClearMetersOut,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        currentCredits: 0,
+        totalWonCredits: 0,
+        drop: ramClearMetersIn,
+        isSasCreated: false,
+        isRamClear: true,
+        readAt: baseReadAt,
+        createdAt: baseCreatedAt,
+      };
+
+      metersToCreate.push(ramClearMeter);
+      console.log(`✅ [createManualMetersForEachMachine] Added RAM clear meter`);
+    }
+
+    const currentMeterReadAt = machine.ramClear
+      ? new Date(baseReadAt.getTime() + 1000)
+      : baseReadAt;
+
+    const currentMeterCreatedAt = machine.ramClear
+      ? new Date(baseCreatedAt.getTime() + 1000)
+      : baseCreatedAt;
+
+    const currentMeterId = await generateMongoId();
+    console.log(`🔄 [createManualMetersForEachMachine] Generated current meter ID: ${currentMeterId}`);
+
+    const currentMeter = {
+      _id: currentMeterId,
+      machine: machine.machineId,
+      location: machine.locationId,
+      movement: {
+        coinIn: 0,
+        coinOut: 0,
+        jackpot: 0,
+        totalHandPaidCancelledCredits: 0,
+        totalCancelledCredits: currentMetersOut,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        currentCredits: 0,
+        totalWonCredits: 0,
+        drop: currentMetersIn,
+      },
+      coinIn: 0,
+      coinOut: 0,
+      jackpot: 0,
+      totalHandPaidCancelledCredits: 0,
+      totalCancelledCredits: currentMetersOut,
+      gamesPlayed: 0,
+      gamesWon: 0,
+      currentCredits: 0,
+      totalWonCredits: 0,
+      drop: currentMetersIn,
+      isSasCreated: false,
+      readAt: currentMeterReadAt,
+      createdAt: currentMeterCreatedAt,
+    };
+
+    metersToCreate.push(currentMeter);
+    console.log(`✅ [createManualMetersForEachMachine] Added current meter`);
+
+    // Append meter IDs for this machine only (pass copy of current machine's meters)
+    const meterCount = machine.ramClear ? 2 : 1;
+    const thisMachineMeters = metersToCreate.slice(-meterCount);
+    await appendMeterIdsToCollections(collectionId, thisMachineMeters);
+    console.log(`[createManualMetersForEachMachine] Appended ${meterCount} meter IDs for collection ${collectionId}`);
+  }
+
+  // ============================================================================
+  // INSERT ALL METERS INTO DATABASE
+  // ============================================================================
+  try {
+    if (metersToCreate.length === 0) {
+      console.log('ℹ️ [createManualMetersForEachMachine] No meters to create');
+      return { success: true };
+    }
+
+    console.log(`🔄 [createManualMetersForEachMachine] Inserting ${metersToCreate.length} meters into database.\n\n\n${metersToCreate}`);
+    const createdMeters = await Meters.insertMany(metersToCreate);
+    console.log(`✅ [createManualMetersForEachMachine] Successfully created ${createdMeters.length} meters`);
+    createdMeters.forEach((meter, index) => {
+      console.log(`   Meter ${index + 1}: ID=${(meter as Record<string, unknown>)._id}, machine=${(meter as Record<string, unknown>).machine}`);
+    });
+
+
+
+    return { success: true };
+  } catch (error) {
+    console.error(
+      '[createManualMetersForEachMachine] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    return { success: false };
+  }
 }
 
 /**
  * Creates a collection report and updates all related data
  *
- * @param body - The collection report payload
- * @returns Promise<{ success: boolean; report?: any; error?: string }>
+ * @param {CreateCollectionReportPayload} body - The collection report payload
+ * @returns {Promise<{ success: boolean; report?: unknown; error?: string }>}
  */
 export async function createCollectionReport(
   body: CreateCollectionReportPayload
 ): Promise<{ success: boolean; report?: unknown; error?: string }> {
+  if (!body) {
+    console.error('[createCollectionReport] body is required');
+    return { success: false, error: 'body is required' };
+  }
+
   const startTime = Date.now();
 
   try {
@@ -389,25 +731,30 @@ export async function createCollectionReport(
       locationReportId: body.locationReportId,
       machinesCount: body.machines?.length || 0,
       collectionIdsCount: body.collectionIds?.length || 0,
+      collectionIds: body.collectionIds,
     });
 
-    // Calculate totals on backend
+    // Calculate totals
     console.log('🔄 [createCollectionReport] Calculating totals...');
-    // Transform machines to CollectionReportMachineEntry format if needed
-    const payloadWithMachines: CreateCollectionReportPayload = body.machines
-      ? {
-        ...body,
-        machines: body.machines.map(m => ({
-          machineId: m.machineId,
-          metersIn: m.metersIn,
-          metersOut: m.metersOut,
-          prevMetersIn: (m as unknown as { prevMetersIn?: number }).prevMetersIn ?? 0,
-          prevMetersOut: (m as unknown as { prevMetersOut?: number }).prevMetersOut ?? 0,
-          timestamp: m.timestamp ?? body.timestamp,
-          locationReportId: m.locationReportId ?? body.locationReportId,
-        })),
-      }
+    const payloadWithMachines: CreateCollectionReportPayload = body.machines ? {
+      ...body,
+      machines: body.machines.map(machine => ({
+        collectionId: machine.collectionId,
+        machineId: machine.machineId,
+        locationId: machine.locationId,
+        metersIn: machine.metersIn,
+        metersOut: machine.metersOut,
+        prevMetersIn: (machine as unknown as { prevMetersIn?: number }).prevMetersIn ?? 0,
+        prevMetersOut: (machine as unknown as { prevMetersOut?: number }).prevMetersOut ?? 0,
+        timestamp: machine.timestamp ?? body.timestamp,
+        locationReportId: machine.locationReportId ?? body.locationReportId,
+        ramClear: machine.ramClear,
+        ramClearMetersIn: machine.ramClearMetersIn,
+        ramClearMetersOut: machine.ramClearMetersOut,
+      })), //Summary of Machines added to the collections (api/lib/models/collections.ts)
+    }
       : body;
+    console.log('payloadWithMachines', payloadWithMachines);
     const calculated = await calculateCollectionReportTotals(payloadWithMachines as CreateCollectionReportPayload & { machines?: never; collectionIds?: string[] });
     console.log('✅ [createCollectionReport] Totals calculated:', calculated);
 
@@ -437,23 +784,7 @@ export async function createCollectionReport(
         '🔄 [createCollectionReport] Updating collections with report ID...'
       );
       await updateCollectionsWithReportId(
-        body.machines.map(
-          (m: {
-            machineId: string;
-            metersIn: number | string;
-            metersOut: number | string;
-          }) => ({
-            machineId: m.machineId,
-            metersIn:
-              typeof m.metersIn === 'string'
-                ? parseFloat(m.metersIn)
-                : (m.metersIn ?? 0),
-            metersOut:
-              typeof m.metersOut === 'string'
-                ? parseFloat(m.metersOut)
-                : (m.metersOut ?? 0),
-          })
-        ),
+        body.machines,
         body.locationReportId,
         body.collectionIds
       );
@@ -462,15 +793,15 @@ export async function createCollectionReport(
       );
 
       // Update machine collection data for all machines in parallel
-      const machinesToUpdate = body.machines.filter(m => m.machineId);
+      const machinesToUpdate = body.machines.filter(machine => machine.machineId);
       const collectionIds = body.collectionIds || [];
       console.log(
         `🔄 [createCollectionReport] Updating machine collection data for ${machinesToUpdate.length} machines in parallel...`
       );
-      const machineUpdatePromises = machinesToUpdate.map(async (m, index) => {
+      const machineUpdatePromises = machinesToUpdate.map(async (machine, index) => {
         try {
-          const normalizedMetersIn = Number(m.metersIn) || 0;
-          const normalizedMetersOut = Number(m.metersOut) || 0;
+          const normalizedMetersIn = Number(machine.metersIn) || 0;
+          const normalizedMetersOut = Number(machine.metersOut) || 0;
           const collectionTimestamp = new Date(
             body.timestamp
           );
@@ -478,33 +809,30 @@ export async function createCollectionReport(
           const collectionId = collectionIds[index] || undefined;
 
           console.log(
-            `🔄 [createCollectionReport] Updating machine ${index + 1}/${machinesToUpdate.length}: ${m.machineId}${collectionId ? ` (collectionId: ${collectionId})` : ''}`
+            `🔄 [createCollectionReport] Updating machine ${index + 1}/${machinesToUpdate.length}: ${machine.machineId}${collectionId ? ` (collectionId: ${collectionId})` : ''}`
           );
           await updateMachineCollectionData(
-            m.machineId!,
+            machine.machineId!,
             normalizedMetersIn,
             normalizedMetersOut,
             collectionTimestamp,
             body.locationReportId,
             collectionId
           );
-          return { success: true, machineId: m.machineId };
+          return { success: true, machineId: machine.machineId };
         } catch (machineError) {
-          console.error(
-            `❌ [createCollectionReport] Error updating machine ${m.machineId}:`,
-            machineError
-          );
+          console.error('[createCollectionReport] Error:', machineError instanceof Error ? machineError.message : 'Unknown error');
           return {
             success: false,
-            machineId: m.machineId,
+            machineId: machine.machineId,
             error: machineError,
           };
         }
       });
 
       const machineUpdateResults = await Promise.all(machineUpdatePromises);
-      const successful = machineUpdateResults.filter(r => r.success).length;
-      const failed = machineUpdateResults.filter(r => !r.success).length;
+      const successful = machineUpdateResults.filter(result => result.success).length;
+      const failed = machineUpdateResults.filter(result => !result.success).length;
 
       console.log(
         `✅ [createCollectionReport] Machine collection data updated: ${successful} successful, ${failed} failed`
@@ -513,7 +841,7 @@ export async function createCollectionReport(
       if (failed > 0) {
         console.warn(
           `⚠️ [createCollectionReport] ${failed} machine(s) failed to update:`,
-          machineUpdateResults.filter(r => !r.success).map(r => r.machineId)
+          machineUpdateResults.filter(result => !result.success).map(result => result.machineId)
         );
       }
     }
@@ -523,9 +851,9 @@ export async function createCollectionReport(
       const linkedCols = await Collections.find(
         { locationReportId: body.locationReportId },
         { 'sasMeters.jackpot': 1, _id: 0 }
-      ).lean();
+      ).lean<CollectionDocument[]>();
       const totalJackpot = linkedCols.reduce(
-        (s, c) => s + ((c.sasMeters as { jackpot?: number } | undefined)?.jackpot ?? 0),
+        (sum, col) => sum + (col.sasMeters?.jackpot ?? 0),
         0
       );
       const includeJackpot = Boolean(body.includeJackpot);
@@ -539,8 +867,10 @@ export async function createCollectionReport(
       );
       console.log(`✅ [createCollectionReport] totalVariation stored: ${totalVariation}`);
     } catch (varErr) {
-      console.warn('[createCollectionReport] totalVariation store failed (non-fatal):', varErr);
+      console.error('[createCollectionReport] Error:', varErr instanceof Error ? varErr.message : 'Unknown error');
     }
+
+    await createManualMetersForEachMachine(body.machines);
 
     const duration = Date.now() - startTime;
     console.log(
@@ -548,22 +878,13 @@ export async function createCollectionReport(
     );
 
     return { success: true, report: created };
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : 'Unknown error';
-
-    console.error(
-      `❌ [createCollectionReport] Report creation failed after ${duration}ms:`,
-      {
-        error: errorMessage,
-        errorType:
-          error instanceof Error ? error.constructor.name : typeof error,
-        stack: error instanceof Error ? error.stack : undefined,
-      }
-    );
-
-    return { success: false, error: errorMessage };
-  }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(
+        '[createCollectionReport] Error:',
+        errorMessage
+      );
+      return { success: false, error: errorMessage };
+    }
 }
 

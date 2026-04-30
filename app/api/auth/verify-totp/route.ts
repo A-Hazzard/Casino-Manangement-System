@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * second-factor challenge is required after the user is already logged in.
  *
  * Body fields:
- * @param token {string} Required. The current 6-digit TOTP code from the user's authenticator app.
+ * @param {string} token - Required. The current 6-digit TOTP code from the user's authenticator app.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -51,8 +51,8 @@ export async function POST(req: NextRequest) {
     } else {
       return NextResponse.json({ error: 'Invalid authenticator code' }, { status: 400 });
     }
-  } catch (error: unknown) {
-    console.error('Verify TOTP Error:', error instanceof Error ? error.message : error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (e) {
+    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

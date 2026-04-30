@@ -40,6 +40,7 @@ export type DateRange = {
  * @returns An object containing the calculated start and end dates, or undefined dates for 'All Time'.
  */
 export const getDatesForTimePeriod = (timePeriod: TimePeriod): CustomDate => {
+  if (!timePeriod) { console.error('[getDatesForTimePeriod] timePeriod is required'); return { startDate: undefined, endDate: undefined }; }
   let startDate: Date | undefined;
   let endDate: Date | undefined;
 

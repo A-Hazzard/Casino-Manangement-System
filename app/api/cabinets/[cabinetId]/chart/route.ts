@@ -26,7 +26,7 @@ import {
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { LocationDocument } from '@/lib/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
-import type { GamingMachine } from '@/shared/types/entities';
+import type { GamingMachine, LicenceeDocument } from '@shared/types';
 import { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 /**
@@ -39,21 +39,21 @@ import { NextRequest, NextResponse } from 'next/server';
  * control and applies currency conversion for all roles.
  *
  * URL params:
- * @param machineId   {string} Required (path). The ID of the machine to chart.
+ * @param {string} machineId - Required (path). The ID of the machine to chart.
  *
  * Query params:
- * @param timePeriod  {string} Conditionally required. Predefined window: 'Today',
+ * @param {string} [timePeriod] - Conditionally required. Predefined window: 'Today',
  *                    'Yesterday', '7d', '30d', 'Quarterly', 'All Time', or 'Custom'.
  *                    Required unless startDate + endDate are provided directly.
- * @param startDate   {string} Optional. ISO 8601 date/datetime for the start of a custom
+ * @param {string} [startDate] - Optional. ISO 8601 date/datetime for the start of a custom
  *                    range. Used when timePeriod is 'Custom' or when passed without
  *                    timePeriod.
- * @param endDate     {string} Optional. ISO 8601 date/datetime for the end of a custom
+ * @param {string} [endDate] - Optional. ISO 8601 date/datetime for the end of a custom
  *                    range. Must be paired with startDate.
- * @param currency    {CurrencyCode} Optional. Target display currency for chart values
+ * @param {CurrencyCode} [currency] - Optional. Target display currency for chart values
  *                    (e.g. 'USD', 'TTD'). Defaults to 'USD'. Always applied regardless
  *                    of role.
- * @param granularity {'minute'|'hourly'|'daily'|'weekly'|'monthly'} Optional. Manually
+ * @param {'minute'|'hourly'|'daily'|'weekly'|'monthly'} [granularity] - Optional. Manually
  *                    overrides the auto-detected aggregation bucket size.
  *
  * Flow:
@@ -151,7 +151,7 @@ export async function GET(
           _id: machine.gamingLocation,
         })
           .select('gameDayOffset rel country')
-          .lean() as LocationDocument | null;
+          .lean<LocationDocument>();
 
         if (location) {
           gameDayOffset = location.gameDayOffset ?? 8;
@@ -541,11 +541,11 @@ export async function GET(
       } | null = null;
       if (machine.gamingLocation) {
         try {
-          locationData = (await GamingLocations.findOne({
+          locationData = await GamingLocations.findOne({
             _id: machine.gamingLocation,
           })
             .select('rel country')
-            .lean()) as LocationDocument | null;
+            .lean<LocationDocument>();
         } catch (error) {
           console.warn(
             'Failed to fetch location for currency conversion:',
@@ -563,9 +563,9 @@ export async function GET(
             _id: licenceeId,
           })
             .select('name')
-            .lean();
+            .lean<LicenceeDocument>();
 
-          if (licenceeDoc && !Array.isArray(licenceeDoc) && licenceeDoc.name) {
+          if (licenceeDoc?.name) {
             nativeCurrency = getLicenceeCurrency(licenceeDoc.name);
           }
         } catch (licenceeError) {

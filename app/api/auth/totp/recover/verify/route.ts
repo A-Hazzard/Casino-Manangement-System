@@ -13,7 +13,7 @@ import QRCode from 'qrcode';
  * until the new code is confirmed via POST /api/auth/totp/confirm.
  *
  * Body fields:
- * @param token {string} Required. The recovery token from the emailed link, matched
+ * @param {string} token - Required. The recovery token from the emailed link, matched
  *                       against `totpRecoveryToken` with expiry enforced via `totpRecoveryExpires`.
  */
 export async function POST(req: NextRequest) {
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     // Use totpTempSecret instead of overwriting totpSecret/totpEnabled immediately
     // This allows the user to maintain their current 2FA protection until the new one is verified
-    await UserModel.findOneAndUpdate(
+    const updateResult = await UserModel.findOneAndUpdate(
       { _id: user._id },
       {
         $set: {
@@ -71,6 +71,9 @@ export async function POST(req: NextRequest) {
       },
       { strict: false }
     );
+    if (!updateResult) {
+      return NextResponse.json({ error: 'Failed to save new TOTP secret' }, { status: 500 });
+    }
 
     console.log('[TOTP Verify] Tokens cleared and new secret saved for:', user.username);
 
@@ -80,8 +83,8 @@ export async function POST(req: NextRequest) {
       secret,
       username: user.username
     });
-  } catch (error: unknown) {
-    console.error('TOTP Verify Recovery Error:', error instanceof Error ? error.message : error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (e) {
+    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

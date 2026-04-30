@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import type { GamingLocationDocument } from '@/shared/types';
 import {
   getUserAccessibleLicenceesFromToken,
   getUserLocationFilter,
@@ -113,7 +114,7 @@ export async function GET(req: NextRequest) {
       name: 1,
     })
       .sort({ name: 1 })
-      .lean();
+      .lean<GamingLocationDocument[]>();
 
     // ============================================================================
     // STEP 6: Return locations with id and name

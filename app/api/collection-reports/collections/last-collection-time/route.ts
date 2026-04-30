@@ -11,6 +11,7 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { createSuccessResponse, createErrorResponse } from '@/app/api/lib/utils/apiResponse';
+import type { CollectionDocument } from '@/lib/types/collection';
 import { NextRequest } from 'next/server';
  
 /**
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
       { collectionTime: 1, metersIn: 1, metersOut: 1 }
     )
       .sort({ collectionTime: -1 })
-      .lean();
+      .lean<CollectionDocument | null>();
 
     return createSuccessResponse(
       { 

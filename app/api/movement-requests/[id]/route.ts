@@ -99,13 +99,19 @@ export async function DELETE(
           { status: 403 }
         );
       }
-      await MovementRequest.deleteOne({ _id: id });
+      const deleteResult = await MovementRequest.deleteOne({ _id: id });
+      if (deleteResult.deletedCount === 0) {
+        return NextResponse.json({ success: false, message: 'Failed to delete movement request' }, { status: 500 });
+      }
     } else {
-      await MovementRequest.findOneAndUpdate(
+      const softDeleted = await MovementRequest.findOneAndUpdate(
         { _id: id },
         { deletedAt: new Date() },
         { new: true }
       );
+      if (!softDeleted) {
+        return NextResponse.json({ success: false, message: 'Failed to soft-delete movement request' }, { status: 500 });
+      }
     }
 
     // ============================================================================

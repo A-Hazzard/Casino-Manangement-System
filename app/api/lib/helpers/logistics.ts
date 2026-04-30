@@ -10,6 +10,7 @@
 import type { MovementRequestStatus } from '@/shared/types/movement';
 import type { LogisticsEntry } from '@/shared/types/reports';
 import { MovementRequest } from '../models/movementrequests';
+import type { MovementRequestDocument } from '@shared/types';
 
 /**
  * Maps MovementRequestStatus to LogisticsEntry status
@@ -20,6 +21,10 @@ import { MovementRequest } from '../models/movementrequests';
 function mapMovementStatusToLogisticsStatus(
   status: MovementRequestStatus
 ): 'pending' | 'completed' | 'in-progress' | 'cancelled' {
+  if (!status) {
+    console.error('[mapMovementStatusToLogisticsStatus] status is required');
+    return 'pending';
+  }
   switch (status) {
     case 'pending':
       return 'pending';
@@ -41,6 +46,10 @@ function buildLogisticsFilters(
   searchTerm?: string | null,
   statusFilter?: string | null
 ): Record<string, unknown> {
+  if (statusFilter && typeof statusFilter !== 'string') {
+    console.error('[buildLogisticsFilters] statusFilter must be a string');
+    return {};
+  }
   const filters: Record<string, unknown> = {};
 
   if (searchTerm) {
@@ -73,11 +82,15 @@ function transformToLogisticsEntries(
     locationFrom?: string;
     locationTo?: string;
     createdAt?: Date;
-    status: MovementRequestStatus;
+    status: MovementRequestStatus | undefined;
     createdBy?: string;
     reason?: string;
   }>
 ): LogisticsEntry[] {
+  if (!Array.isArray(logisticsData)) {
+    console.error('[transformToLogisticsEntries] logisticsData must be an array');
+    return [];
+  }
   return logisticsData.map(item => ({
     id: String(item._id),
     machineId: item.cabinetIn || String(item._id),
@@ -86,7 +99,7 @@ function transformToLogisticsEntries(
     toLocationName: item.locationTo || '',
     moveDate:
       item.createdAt?.toISOString() || new Date().toISOString(),
-    status: mapMovementStatusToLogisticsStatus(item.status),
+    status: mapMovementStatusToLogisticsStatus(item.status as MovementRequestStatus),
     movedBy: item.createdBy || 'Unknown',
     reason: item.reason || 'Movement request',
   }));
@@ -103,14 +116,18 @@ export async function getLogisticsData(
   searchTerm?: string | null,
   statusFilter?: string | null
 ): Promise<LogisticsEntry[]> {
+  if (searchTerm && typeof searchTerm !== 'string') {
+    console.error('[getLogisticsData] searchTerm must be a string');
+    return [];
+  }
   const filters = buildLogisticsFilters(searchTerm, statusFilter);
 
   const logisticsData = await MovementRequest.find(filters)
     .sort({ createdAt: -1 })
     .limit(100)
-    .lean();
+    .lean<MovementRequestDocument[]>();
 
-  return transformToLogisticsEntries(logisticsData);
+  return transformToLogisticsEntries(logisticsData as Parameters<typeof transformToLogisticsEntries>[0]);
 }
 
 

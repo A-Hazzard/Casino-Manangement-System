@@ -42,9 +42,12 @@ const PayoutSchema = new Schema(
     transactionId: { type: String, required: true }, // Link to vaultTransactions
 
     notes: { type: String },
+    cashierName: { type: String },
+    status: { type: String },
     createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date },
   },
-  { timestamps: false } // Use createdAt only
+  { timestamps: true } // Use createdAt and updatedAt
 );
 
 // Indexes for performance

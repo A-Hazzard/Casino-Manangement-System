@@ -27,6 +27,7 @@ import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion'
 import { convertFromUSD } from '@/lib/helpers/rates';
 import type { LocationDocument } from '@/lib/types/common';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
+import type { CountryDocument, GamingMachine, LicenceeDocument } from '@shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { MachineAggregationMatchStage } from '@/shared/types/mongo';
 import { formatDistanceToNow } from 'date-fns';
@@ -267,7 +268,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Get all locations with their gameDayOffset
-  const locations = (await GamingLocations.find(matchStage).lean()) as unknown as LocationDocument[];
+  const locations = await GamingLocations.find(matchStage).lean<LocationDocument[]>();
   console.warn(`[API] Found ${locations.length} locations`);
 
   if (locations.length === 0) {
@@ -281,8 +282,8 @@ export async function GET(req: NextRequest) {
     const licenceeIds = Array.from(new Set(
       rawLicenceeRels.flatMap(rel => Array.isArray(rel) ? rel : [rel as string])
     ));
-    const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean();
-    const licenceeIncludeJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.includeJackpot]));
+    const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean<LicenceeDocument[]>();
+    const licenceeIncludeJackpotMap = new Map(licencees.map(licencee => [String(licencee._id), !!licencee.includeJackpot]));
 
     // ============================================================================
     // STEP 7: Calculate gaming day ranges per location
@@ -424,7 +425,7 @@ export async function GET(req: NextRequest) {
       }
 
       console.warn(`[API] Finding machines with smibStatus: ${smibStatus}`);
-      const allLocationMachines = await Machine.find(machineMatchQuery).lean();
+      const allLocationMachines = await Machine.find(machineMatchQuery).lean<GamingMachine[]>();
       console.warn(`[API] Found ${allLocationMachines.length} machines matching SMIB/GameType filters`);
 
       if (allLocationMachines.length > 0) {
@@ -638,8 +639,8 @@ export async function GET(req: NextRequest) {
     } else {
       // Original parallel batch processing for Today/Yesterday (still fast)
       const BATCH_SIZE = 20;
-      for (let i = 0; i < locations.length; i += BATCH_SIZE) {
-        const batch = locations.slice(i, i + BATCH_SIZE);
+      for (let locationIndex = 0; locationIndex < locations.length; locationIndex += BATCH_SIZE) {
+        const batch = locations.slice(locationIndex, locationIndex + BATCH_SIZE);
 
         // 🚀 OPTIMIZED: Batch queries instead of N+1 per location
         // Step 1: Get all location IDs in batch
@@ -752,7 +753,7 @@ export async function GET(req: NextRequest) {
         }
 
         console.warn(`[API] [Batch] Finding machines for ${batchLocationIds.length} locations with smibStatus: ${smibStatus}`);
-        const batchAllMachines = await Machine.find(batchMachineMatchQuery).lean();
+        const batchAllMachines = await Machine.find(batchMachineMatchQuery).lean<GamingMachine[]>();
         console.warn(`[API] [Batch] Found ${batchAllMachines.length} machines`);
 
         if (batchAllMachines.length === 0) {
@@ -958,7 +959,7 @@ export async function GET(req: NextRequest) {
             // Get serialNumber with fallback to custom.name
             const machineRecord = machine as Record<string, unknown>;
             const serialNumber = String(machineRecord.serialNumber || '').trim();
-            const customData = (machine.custom || machine.Custom || {}) as Record<string, unknown>;
+            const customData = (machine.custom || {}) as Record<string, unknown>;
             const customName = String(customData.name || '').trim();
             const finalSerialNumber = serialNumber || customName || '';
 
@@ -1131,7 +1132,7 @@ export async function GET(req: NextRequest) {
         },
         { _id: 1, name: 1, includeJackpot: 1 }
       )
-        .lean()
+        .lean<LicenceeDocument[]>()
         .exec();
 
       // Create maps of licencee ID to name and includeJackpot
@@ -1146,7 +1147,7 @@ export async function GET(req: NextRequest) {
       // Get country details for currency mapping
       const { getCountryCurrency, getLicenceeCurrency, convertToUSD } =
         await import('@/lib/helpers/rates');
-      const countriesData = await Countries.find({}).lean();
+      const countriesData = await Countries.find({}).lean<CountryDocument[]>();
       const countryIdToName = new Map<string, string>();
       countriesData.forEach(country => {
         if (country._id && country.name) {
@@ -1252,14 +1253,14 @@ export async function GET(req: NextRequest) {
     const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
     if (reviewerMult !== null) {
       const mult = 1 - reviewerMult;
-      filteredMachines = filteredMachines.map(machine => {
-        const m = machine as Record<string, unknown>;
-        const moneyIn = ((m.moneyIn as number) || 0) * mult;
-        const moneyOut = ((m.moneyOut as number) || 0) * mult;
-        const jackpot = ((m.jackpot as number) || 0) * mult;
-        const cancelledCredits = ((m.cancelledCredits as number) || 0) * mult;
+      filteredMachines = filteredMachines.map(machineRecord => {
+        const machineData = machineRecord as Record<string, unknown>;
+        const moneyIn = ((machineData.moneyIn as number) || 0) * mult;
+        const moneyOut = ((machineData.moneyOut as number) || 0) * mult;
+        const jackpot = ((machineData.jackpot as number) || 0) * mult;
+        const cancelledCredits = ((machineData.cancelledCredits as number) || 0) * mult;
         return {
-          ...machine,
+          ...machineRecord,
           moneyIn,
           moneyOut,
           jackpot,

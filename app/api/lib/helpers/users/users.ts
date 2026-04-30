@@ -8,6 +8,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { LeanUserDocument } from '../../../../../shared/types/auth';
 import { CurrentUser, OriginalUserType } from '../../../../../shared/types/users';
+import type { CashierShiftDocument } from '@shared/types';
 import { connectDB } from '../../middleware/db';
 import { apiLogger, LogContext } from '../../services/loggerService';
 import { comparePassword, hashPassword } from '../../utils/validation';
@@ -19,6 +20,11 @@ import { logActivity } from '../activityLogger';
 function validateDatabaseContext(
   tokenPayload: Record<string, unknown>
 ): boolean {
+  if (!tokenPayload || typeof tokenPayload !== 'object') {
+    console.error('[validateDatabaseContext] tokenPayload is required and must be an object');
+    return false;
+  }
+
   if (!tokenPayload.dbContext) {
     console.warn(
       'JWT token missing database context - forcing re-authentication'
@@ -115,20 +121,11 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
       try {
         await connectDB();
         const UserModel = (await import('@/app/api/lib/models/user')).default;
-        dbUser = (await UserModel.findOne({ _id: jwtPayload._id })
+        dbUser = await UserModel.findOne({ _id: jwtPayload._id })
           .select(
             'sessionVersion roles permissions assignedLocations assignedLicencees isEnabled deletedAt multiplier'
           )
-          .lean()) as {
-            sessionVersion?: number;
-            roles?: string[];
-            permissions?: string[];
-            assignedLocations?: string[];
-            assignedLicencees?: string[];
-            isEnabled?: boolean;
-            deletedAt?: Date | null;
-            multiplier?: number | null;
-          } | null;
+          .lean<LeanUserDocument>();
 
         // If user doesn't exist in database (hard deleted), invalidate session
         if (!dbUser) {
@@ -285,7 +282,7 @@ export async function getAllUsers() {
       ],
     },
     '-password'
-  ).lean(); // Get plain JavaScript objects instead of Mongoose documents
+  ).lean<LeanUserDocument[]>();
 }
 
 /**
@@ -293,13 +290,18 @@ export async function getAllUsers() {
  * This is used when filtering for deleted users
  */
 export async function getDeletedUsers() {
-  const year2025Start = new Date('2025-01-01T00:00:00.000Z');
-  return await UserModel.find(
-    {
-      deletedAt: { $gte: year2025Start },
-    },
-    '-password'
-  ).lean();
+  try {
+    const year2025Start = new Date('2025-01-01T00:00:00.000Z');
+    return await UserModel.find(
+      {
+        deletedAt: { $gte: year2025Start },
+      },
+      '-password'
+    ).lean<LeanUserDocument[]>();
+  } catch (error) {
+    console.error('[getDeletedUsers] Error:', error);
+    throw error;
+  }
 }
 
 /**
@@ -310,13 +312,18 @@ export async function getDeletedUsers() {
 export async function getUserByEmail(
   email: string
 ): Promise<LeanUserDocument | null> {
+  if (!email || typeof email !== 'string') {
+    console.error('[getUserByEmail] email is required and must be a string');
+    return null;
+  }
+
   try {
     await connectDB();
     return (await UserModel.findOne({
       emailAddress: email,
-    }).lean()) as LeanUserDocument | null;
+    }).lean<LeanUserDocument>());
   } catch (error) {
-    console.error('Error getting user by email:', error);
+    console.error('[getUserByEmail] Error:', error);
     throw error;
   }
 }
@@ -324,13 +331,18 @@ export async function getUserByEmail(
 export async function getUserByUsername(
   username: string
 ): Promise<LeanUserDocument | null> {
+  if (!username || typeof username !== 'string') {
+    console.error('[getUserByUsername] username is required and must be a string');
+    return null;
+  }
+
   try {
     await connectDB();
     return (await UserModel.findOne({
       username,
-    }).lean()) as LeanUserDocument | null;
+    }).lean<LeanUserDocument>());
   } catch (error) {
-    console.error('Error getting user by username:', error);
+    console.error('[getUserByUsername] Error:', error);
     throw error;
   }
 }
@@ -338,7 +350,12 @@ export async function getUserByUsername(
 export async function getUserById(
   userId: string
 ): Promise<LeanUserDocument | null> {
-  return (await UserModel.findOne({ _id: userId }, '-password').lean()) as LeanUserDocument | null;
+  if (!userId || typeof userId !== 'string') {
+    console.error('[getUserById] userId is required and must be a string');
+    return null;
+  }
+
+  return await UserModel.findOne({ _id: userId }, '-password').lean<LeanUserDocument>();
 }
 
 /**
@@ -360,6 +377,15 @@ export async function createUser(
   },
   request: NextRequest
 ) {
+  if (!data || typeof data !== 'object' || !request) {
+    console.error('[createUser] data (object) and request are required');
+    throw new Error('Invalid parameters provided');
+  }
+
+  if (!data.username || !data.emailAddress || !data.password) {
+    console.error('[createUser] username, emailAddress, and password are required');
+    throw new Error('Missing required fields: username, emailAddress, password');
+  }
   const {
     username,
     emailAddress,
@@ -541,7 +567,7 @@ export async function createUser(
       tempPassword: tempPassword || null, // Store plain text temp password
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
     });
-  } catch (dbError: unknown) {
+  } catch (dbError) {
     // Handle MongoDB duplicate key errors (E11000)
     if (
       dbError &&
@@ -551,6 +577,8 @@ export async function createUser(
     ) {
       const errorMessage =
         dbError instanceof Error ? dbError.message : String(dbError);
+
+      console.error('[createUser] MongoDB duplicate key error:', errorMessage);
 
       // Parse the error message to determine which field caused the conflict
       if (
@@ -610,6 +638,11 @@ export async function updateUser(
   updateFields: Record<string, unknown>,
   request: NextRequest
 ) {
+  if (!_id || typeof _id !== 'string' || !updateFields || typeof updateFields !== 'object' || !request) {
+    console.error('[updateUser] _id (string), updateFields (object), and request are required');
+    throw new Error('Invalid parameters provided');
+  }
+  
   // Find user with password field included (needed for password verification and history)
   const user = await UserModel.findOne({ _id }).select('+password +previousPasswords');
   if (!user) {
@@ -1257,7 +1290,7 @@ export async function updateUser(
     updatedUser = await UserModel.findOneAndUpdate({ _id }, updateOperation, {
       new: true,
     });
-  } catch (dbError: unknown) {
+  } catch (dbError) {
     // Handle MongoDB duplicate key errors (E11000)
     if (
       dbError &&
@@ -1267,6 +1300,8 @@ export async function updateUser(
     ) {
       const errorMessage =
         dbError instanceof Error ? dbError.message : String(dbError);
+
+      console.error('[updateUser] MongoDB duplicate key error:', errorMessage);
 
       // Parse the error message to determine which field caused the conflict
       if (
@@ -1318,6 +1353,11 @@ export async function updateUser(
  * Deletes a user with activity logging (soft delete)
  */
 export async function deleteUser(_id: string, request: NextRequest) {
+  if (!_id || typeof _id !== 'string' || !request) {
+    console.error('[deleteUser] _id (string) and request are required');
+    throw new Error('Invalid parameters provided');
+  }
+
   // Get the user to be deleted first to check their roles
   const userToDelete = await UserModel.findOne({ _id });
   if (!userToDelete) {
@@ -1434,6 +1474,11 @@ function calculateUserChanges(
   originalUser: OriginalUserType,
   updateFields: Record<string, unknown>
 ) {
+  if (!originalUser || !updateFields || typeof updateFields !== 'object') {
+    console.error('[calculateUserChanges] originalUser and updateFields (object) are required');
+    return [];
+  }
+
   const changes: Array<{ field: string; oldValue: string; newValue: string }> =
     [];
 
@@ -1761,16 +1806,16 @@ export async function handleCashiersRequest(
     getAllUsers(),
     CashierShiftModel.find({
       status: { $in: ['active', 'pending_review', 'pending_start'] }
-    }).lean()
+    }).lean<CashierShiftDocument[]>()
   ]);
 
   // Create a map of active shift data by cashier ID
   const shiftMap = new Map<string, { status: string; balance: number; denominations: unknown[]; discrepancy: number }>();
-  allActiveShifts.forEach((shift: Record<string, unknown>) => {
+  allActiveShifts.forEach(shift => {
     shiftMap.set(String(shift.cashierId), {
       status: String(shift.status),
       balance: (shift.status === 'active' || shift.status === 'pending_review')
-        ? ((shift.currentBalance as number) || (shift.openingBalance as number) || 0)
+        ? (shift.currentBalance || shift.openingBalance || 0)
         : ((shift.openingBalance as number) || 0),
       denominations: (shift.lastSyncedDenominations as unknown[]) ?? (shift.openingDenominations as unknown[]) ?? [],
       discrepancy: (shift.discrepancy as number) || 0

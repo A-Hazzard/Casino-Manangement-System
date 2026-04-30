@@ -23,6 +23,7 @@ class APILogger {
   }
 
   private formatMessage(result: LogResult): string {
+    if (!result) { console.error('[formatMessage] result is required'); return ''; }
     const duration = `${result.duration}ms`;
     const timestamp = `[${result.timestamp}]`;
     const level = `[${this.getLogLevel(result.success)}]`;
@@ -46,6 +47,8 @@ class APILogger {
     message: string,
     data?: Record<string, unknown>
   ): void {
+    if (!context) { console.error('[logSuccess] context is required'); return; }
+    if (!message) { console.error('[logSuccess] message is required'); return; }
     const result: LogResult = {
       success: true,
       message,
@@ -62,6 +65,8 @@ class APILogger {
   }
 
   logError(context: LogContext, message: string, error?: string): void {
+    if (!context) { console.error('[logError] context is required'); return; }
+    if (!message) { console.error('[logError] message is required'); return; }
     const result: LogResult = {
       success: false,
       message,
@@ -75,6 +80,8 @@ class APILogger {
   }
 
   createContext(request: NextRequest, endpoint: string): LogContext {
+    if (!request) { console.error('[createContext] request is required'); return {} as LogContext; }
+    if (!endpoint) { console.error('[createContext] endpoint is required'); return {} as LogContext; }
     const url = new URL(request.url);
     const params = Object.fromEntries(url.searchParams.entries());
 

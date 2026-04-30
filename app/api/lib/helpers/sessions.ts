@@ -25,6 +25,10 @@ export type SessionGetParams = {
 export function buildSessionMatchQuery(
   params: Pick<SessionGetParams, 'search' | 'dateFilter' | 'startDateParam' | 'endDateParam'>
 ): Record<string, unknown> {
+  if (!params || typeof params !== 'object') {
+    console.error('[buildSessionMatchQuery] params is required');
+    return {};
+  }
   const query: Record<string, unknown> = {};
 
   if (params.search) {
@@ -86,6 +90,10 @@ export function buildSessionBasePipeline(
   query: Record<string, unknown>,
   licencee: string
 ): PipelineStage[] {
+  if (!query || typeof query !== 'object') {
+    console.error('[buildSessionBasePipeline] query is required');
+    return [];
+  }
   return [
     { $match: query },
     { $lookup: { from: 'machines', localField: 'machineId', foreignField: '_id', as: 'machine' } },
@@ -112,6 +120,14 @@ export function buildSessionFullPipeline(
   basePipeline: PipelineStage[],
   params: Pick<SessionGetParams, 'sortBy' | 'sortOrder' | 'page' | 'limit' | 'search'>
 ): PipelineStage[] {
+  if (!Array.isArray(basePipeline)) {
+    console.error('[buildSessionFullPipeline] basePipeline must be an array');
+    return [];
+  }
+  if (!params) {
+    console.error('[buildSessionFullPipeline] params is required');
+    return [];
+  }
   const { sortBy, sortOrder, page, limit, search } = params;
 
   return [

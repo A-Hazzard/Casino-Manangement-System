@@ -19,7 +19,7 @@ import {
   getCountryCurrency,
 } from '@/lib/helpers/rates';
 import { getDatesForTimePeriod } from '@/lib/utils/date';
-import type { TimePeriod } from '@/shared/types';
+import type { CountryDocument, GamingLocationDocument, LicenceeDocument, TimePeriod } from '@/shared/types';
 import type { StackedData } from '@/shared/types/analytics';
 import type { CurrencyCode } from '@/shared/types/currency';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
@@ -48,6 +48,11 @@ function buildMachineHourlyPipeline(
   targetMachines: string[],
   licencee: string | null
 ): PipelineStage[] {
+  if (!startDate || !endDate || !Array.isArray(targetLocations) || !Array.isArray(targetMachines)) {
+    console.error('[buildMachineHourlyPipeline] startDate, endDate, targetLocations (array), and targetMachines (array) are required');
+    return [];
+  }
+
   const pipeline: PipelineStage[] = [
     {
       $match: {
@@ -143,6 +148,11 @@ function buildMachineHourlyPipeline(
 function groupHourlyDataByLocation(
   hourlyData: HourlyDataItem[]
 ): Record<string, HourlyDataItem[]> {
+  if (!Array.isArray(hourlyData)) {
+    console.error('[groupHourlyDataByLocation] hourlyData must be an array');
+    return {};
+  }
+
   const locationHourlyData: Record<string, HourlyDataItem[]> = {};
   hourlyData.forEach(item => {
     const locationKey = item.location;
@@ -161,6 +171,11 @@ function formatHourlyTrends(
   hourlyData: HourlyDataItem[],
   locationHourlyData: Record<string, HourlyDataItem[]>
 ): StackedData[] {
+  if (!Array.isArray(hourlyData) || typeof locationHourlyData !== 'object') {
+    console.error('[formatHourlyTrends] hourlyData (array) and locationHourlyData (object) are required');
+    return [];
+  }
+
   return Array.from({ length: 24 }, (_, hour) => {
     const hourData = hourlyData.filter(item => item.hour === hour);
     const stackedData: StackedData = {
@@ -210,6 +225,11 @@ function calculateHourlyTotals(
   string,
   { handle: number; winLoss: number; jackpot: number; plays: number }
 > {
+  if (!Array.isArray(hourlyTrends)) {
+    console.error('[calculateHourlyTotals] hourlyTrends must be an array');
+    return {};
+  }
+
   return hourlyTrends.reduce(
     (acc, item) => {
       Object.keys(item).forEach(key => {
@@ -241,6 +261,11 @@ async function getLocationCurrenciesForMachineHourly(
     country?: unknown;
   }>
 ): Promise<Map<string, string>> {
+  if (!Array.isArray(locationsData)) {
+    console.error('[getLocationCurrenciesForMachineHourly] locationsData must be an array');
+    return new Map();
+  }
+
   const licenceesData = await Licencee.find(
     {
       $or: [
@@ -250,7 +275,7 @@ async function getLocationCurrenciesForMachineHourly(
     },
     { _id: 1, name: 1 }
   )
-    .lean()
+    .lean<LicenceeDocument[]>()
     .exec();
 
   const licenceeIdToName = new Map<string, string>();
@@ -258,7 +283,7 @@ async function getLocationCurrenciesForMachineHourly(
     licenceeIdToName.set(String(lic._id), lic.name as string);
   });
 
-  const countriesData = await Countries.find({}).lean();
+  const countriesData = await Countries.find({}).lean<CountryDocument[]>();
   const countryIdToName = new Map<string, string>();
   countriesData.forEach(country => {
     if (country._id && country.name) {
@@ -302,6 +327,11 @@ function convertHourlyTrendsCurrency(
   locationCurrencies: Map<string, string>,
   displayCurrency: CurrencyCode
 ): StackedData[] {
+  if (!Array.isArray(hourlyTrends) || !(locationCurrencies instanceof Map) || !displayCurrency) {
+    console.error('[convertHourlyTrendsCurrency] hourlyTrends (array), locationCurrencies (Map), and displayCurrency are required');
+    return [];
+  }
+
   return hourlyTrends.map(hourData => {
     const converted: StackedData = { hour: hourData.hour };
     Object.keys(hourData).forEach(key => {
@@ -348,6 +378,11 @@ function convertTotalsCurrency(
   string,
   { handle: number; winLoss: number; jackpot: number; plays: number }
 > {
+  if (typeof totals !== 'object' || !(locationCurrencies instanceof Map) || !displayCurrency) {
+    console.error('[convertTotalsCurrency] totals (object), locationCurrencies (Map), and displayCurrency are required');
+    return {};
+  }
+
   const convertedTotals: Record<
     string,
     { handle: number; winLoss: number; jackpot: number; plays: number }
@@ -400,6 +435,11 @@ export async function getMachineHourlyData(
   currency: CurrencyCode;
   converted: boolean;
 }> {
+  if (!timePeriod || !displayCurrency) {
+    console.error('[getMachineHourlyData] timePeriod and displayCurrency are required');
+    throw new Error('[getMachineHourlyData] timePeriod and displayCurrency are required');
+  }
+
   // Get date range
   let startDate: Date | undefined, endDate: Date | undefined;
   if (startDateParam && endDateParam) {
@@ -457,7 +497,7 @@ export async function getMachineHourlyData(
     { _id: { $in: locationStringIds } },
     { _id: 1, name: 1, rel: 1, country: 1 }
   )
-    .lean()
+    .lean<GamingLocationDocument[]>()
     .exec();
 
   const locationNames: Record<string, string> = {};

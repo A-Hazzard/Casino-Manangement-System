@@ -194,13 +194,9 @@ export async function POST(request: NextRequest) {
         },
         { status: 201 }
       );
-    } catch (e: unknown) {
-      console.error('[Cashier Direct Open] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[Cashier Direct Open] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }

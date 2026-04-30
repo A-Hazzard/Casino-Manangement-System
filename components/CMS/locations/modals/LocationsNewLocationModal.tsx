@@ -51,6 +51,7 @@ export default function LocationsNewLocationModal({
     profitShare: '',
     licencee: '',
     isLocalServer: false,
+    noSMIBLocation: false,
     latitude: '',
     longitude: '',
     dayStartTime: '08:00', // Default to 8:00 AM
@@ -163,6 +164,7 @@ export default function LocationsNewLocationModal({
         profitShare: '',
         licencee: '',
         isLocalServer: false,
+        noSMIBLocation: false,
         latitude: '',
         longitude: '',
         dayStartTime: '08:00',
@@ -392,6 +394,7 @@ export default function LocationsNewLocationModal({
           licencee: formData.licencee,
         },
         isLocalServer: formData.isLocalServer,
+        noSMIBLocation: formData.noSMIBLocation,
         geoCoords: {
           latitude: parseFloat(formData.latitude) || 0,
           longitude: parseFloat(formData.longitude) || 0,
@@ -499,11 +502,13 @@ export default function LocationsNewLocationModal({
           {/* Country and Profit Share - Mobile: Stacked, Desktop: Side by side */}
           <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-medium text-grayHighlight">
+              <label htmlFor="country" className="mb-2 block text-sm font-medium text-grayHighlight">
                 Country
               </label>
               <select
+                id="country"
                 name="country"
+                title="Select country"
                 value={formData.country}
                 onChange={e => handleSelectChange('country', e.target.value)}
                 className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
@@ -523,7 +528,7 @@ export default function LocationsNewLocationModal({
               </select>
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-grayHighlight">
+              <label htmlFor="profitShare" className="mb-2 block text-sm font-medium text-grayHighlight">
                 Profit Share (%)
               </label>
               <Input
@@ -554,42 +559,68 @@ export default function LocationsNewLocationModal({
             </div>
           </div>
 
-          {/* Licencee */}
-          <div className="mb-4">
-            <label className="mb-2 block text-sm font-medium text-grayHighlight">
-              Licencee <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="licencee"
-              value={formData.licencee}
-              onChange={e => handleSelectChange('licencee', e.target.value)}
-              className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
-              required
-            >
-              <option value="">Select Licencee</option>
-              {licenceesLoading ? (
-                <option value="" disabled>
-                  Loading licencees...
-                </option>
-              ) : (
-                licencees.map(licencee => (
-                  <option key={licencee._id} value={licencee._id}>
-                    {licencee.name}
+          {/* Licencee and Day Start Time - Mobile: Stacked, Desktop: Side by side */}
+          <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label htmlFor="licencee" className="mb-2 block text-sm font-medium text-grayHighlight">
+                Licencee <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="licencee"
+                name="licencee"
+                title="Select licencee"
+                value={formData.licencee}
+                onChange={e => handleSelectChange('licencee', e.target.value)}
+                className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+                required
+              >
+                <option value="">Select Licencee</option>
+                {licenceesLoading ? (
+                  <option value="" disabled>
+                    Loading licencees...
                   </option>
-                ))
-              )}
+                ) : (
+                  licencees.map(licencee => (
+                    <option key={licencee._id} value={licencee._id}>
+                      {licencee.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            {/* Day Start Time */}
+            <div>
+              <label htmlFor="dayStartTime" className="mb-2 block text-sm font-medium text-grayHighlight">
+                Day Start Time
+              </label>
+              <select
+                id="dayStartTime"
+                name="dayStartTime"
+                title="Select day start time"
+                value={formData.dayStartTime}
+                onChange={e => handleSelectChange('dayStartTime', e.target.value)}
+              className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
+            >
+              {timeOptions.map((option, index) => (
+                <option key={`${option.value}-${index}`} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
+          </div>
           </div>
 
           {/* Day Start Time */}
-          <div className="mb-4">
-            <label className="mb-2 block text-sm font-medium text-grayHighlight">
-              Day Start Time
-            </label>
-            <select
-              name="dayStartTime"
-              value={formData.dayStartTime}
-              onChange={e => handleSelectChange('dayStartTime', e.target.value)}
+            <div className="mb-4">
+              <label htmlFor="dayStartTime" className="mb-2 block text-sm font-medium text-grayHighlight">
+                Day Start Time
+              </label>
+              <select
+                id="dayStartTime"
+                name="dayStartTime"
+                value={formData.dayStartTime}
+                onChange={e => handleSelectChange('dayStartTime', e.target.value)}
               className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
             >
               {timeOptions.map((option, index) => (
@@ -688,10 +719,12 @@ export default function LocationsNewLocationModal({
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                    <Label htmlFor="pointsRatioMethod" className="mb-2 block text-sm font-medium text-grayHighlight">
                       Points Ratio Method
                     </Label>
                     <select
+                      id="pointsRatioMethod"
+                      title="Select points ratio method"
                       value={formData.locationMembershipSettings.pointsRatioMethod}
                       onChange={e => handleMembershipSettingsChange('pointsRatioMethod', e.target.value)}
                       className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
@@ -783,6 +816,21 @@ export default function LocationsNewLocationModal({
             {/* No SMIB Location Checkbox */}
             <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
               <Checkbox
+                id="noSMIBLocation"
+                checked={formData.noSMIBLocation}
+                onCheckedChange={checked =>
+                  handleCheckboxChange('noSMIBLocation', checked === true)
+                }
+                className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+              />
+              <Label htmlFor="noSMIBLocation" className="flex-1 text-sm font-medium">
+                No SMIB Location
+              </Label>
+            </div>
+
+            {/* Local Server Checkbox */}
+            <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+              <Checkbox
                 id="isLocalServer"
                 checked={formData.isLocalServer}
                 onCheckedChange={checked =>
@@ -790,12 +838,8 @@ export default function LocationsNewLocationModal({
                 }
                 className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
               />
-
-              <Label
-                htmlFor="isLocalServer"
-                className="flex-1 text-sm font-medium"
-              >
-                No SMIB Location
+              <Label htmlFor="isLocalServer" className="flex-1 text-sm font-medium">
+                Local Server
               </Label>
             </div>
 

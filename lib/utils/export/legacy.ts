@@ -185,12 +185,12 @@ export class ExportUtils {
 
     // Footer
     const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
+    for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
+      doc.setPage(pageNumber);
       doc.setFontSize(8);
       doc.setTextColor(127, 140, 141);
       doc.text(
-        `Page ${i} of ${pageCount} | Evolution1 CMS Reports`,
+        `Page ${pageNumber} of ${pageCount} | Evolution1 CMS Reports`,
         15,
         doc.internal.pageSize.height - 10
       );

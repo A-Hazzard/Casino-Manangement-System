@@ -16,6 +16,7 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import { Machine } from '@/app/api/lib/models/machines';
+import type { GamingMachine, MachineEventDocument } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -199,7 +200,7 @@ export async function GET(request: NextRequest) {
       .sort({ date: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .lean();
+      .lean<MachineEventDocument[]>();
 
     // ============================================================================
     // STEP 7: Try alternative machine identifiers if no events found
@@ -207,13 +208,9 @@ export async function GET(request: NextRequest) {
     // If no events found with direct machine ID, try alternative matching
     if (events.length === 0) {
       // Get machine document for alternative identifiers
-      const machineDoc = (await Machine.findOne({ _id: machineId })
+      const machineDoc = await Machine.findOne({ _id: machineId })
         .select('machineId relayId serialNumber')
-        .lean()) as {
-          machineId?: string;
-          relayId?: string;
-          serialNumber?: string;
-        } | null;
+        .lean<GamingMachine>();
 
       if (machineDoc) {
         // Try alternative identifiers in order of specificity
@@ -230,7 +227,7 @@ export async function GET(request: NextRequest) {
             .sort({ date: -1 })
             .skip((page - 1) * limit)
             .limit(limit)
-            .lean();
+            .lean<MachineEventDocument[]>();
 
           if (altEvents.length > 0) {
             events = altEvents;

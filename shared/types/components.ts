@@ -1,7 +1,3 @@
-// Generic component prop types for reusable UI components
-/**
- * Generic data table props for reusable table components
- */
 export type DataTableProps<T> = {
   data: T[];
   loading: boolean;
@@ -15,7 +11,6 @@ export type DataTableProps<T> = {
   hasNextPage?: boolean;
   hasPrevPage?: boolean;
   limit?: number;
-  // Common table functionality
   onEdit?: (item: T) => void;
   onDelete?: (item: T) => void;
   onView?: (item: T) => void;

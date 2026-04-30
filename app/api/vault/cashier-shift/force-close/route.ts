@@ -90,10 +90,13 @@ export async function POST(request: NextRequest) {
       const hasBlocking = allShifts.some(
         s => s.status === 'active' || s.status === 'pending_review'
       );
-      await VaultShiftModel.updateOne(
+      const vaultCloseResult = await VaultShiftModel.updateOne(
         { _id: cashierShift.vaultShiftId },
         { canClose: !hasBlocking }
       );
+      if (vaultCloseResult.modifiedCount === 0) {
+        console.warn(`[force-close] Vault shift ${cashierShift.vaultShiftId} not found or not modified`);
+      }
 
       await logActivity({
         userId: payload._id,
@@ -107,13 +110,9 @@ export async function POST(request: NextRequest) {
         success: true,
         message: 'Shift force closed',
       });
-    } catch (e: unknown) {
-      console.error('[Cashier Force Close] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[Cashier Force Close] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }

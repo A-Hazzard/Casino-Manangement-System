@@ -46,6 +46,11 @@ export function validateTimePeriod(timePeriod: string | null): string | null {
  * @returns User metrics object or null if not found
  */
 export async function getUserMetrics(userId: string): Promise<unknown | null> {
+  if (!userId || typeof userId !== 'string') {
+    console.error('[getUserMetrics] userId is required and must be a string');
+    return null;
+  }
+
   const db = await connectDB();
   if (!db) {
     throw new Error('Database connection failed');

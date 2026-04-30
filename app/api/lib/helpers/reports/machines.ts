@@ -18,6 +18,7 @@ import {
   getCountryCurrency,
 } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
+import type { CountryDocument, GamingLocationDocument, LicenceeDocument } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { formatDistanceToNow } from 'date-fns';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
@@ -28,10 +29,10 @@ import { NextResponse } from 'next/server';
  * Build a map of licenceeId -> includeJackpot boolean
  */
 async function buildLicenceeJackpotMap(): Promise<Map<string, boolean>> {
-  const licencees = await Licencee.find({}, { _id: 1, includeJackpot: 1 }).lean();
+  const licencees = await Licencee.find({}, { _id: 1, includeJackpot: 1 }).lean<LicenceeDocument[]>();
   const map = new Map<string, boolean>();
-  licencees.forEach((l) => {
-    map.set(String(l._id), Boolean(l.includeJackpot));
+  licencees.forEach((licenceeItem) => {
+    map.set(String(licenceeItem._id), Boolean(licenceeItem.includeJackpot));
   });
   return map;
 }
@@ -50,6 +51,23 @@ export async function getMachineStats(
   timePeriod: string = 'Today',
   reviewerMult: number | null = null
 ) {
+  if (!machineMatchStage) {
+    console.error('[getMachineStats] machineMatchStage is required');
+    throw new Error('[getMachineStats] machineMatchStage is required');
+  }
+  if (!locationMatchStage) {
+    console.error('[getMachineStats] locationMatchStage is required');
+    throw new Error('[getMachineStats] locationMatchStage is required');
+  }
+  if (!displayCurrency) {
+    console.error('[getMachineStats] displayCurrency is required');
+    throw new Error('[getMachineStats] displayCurrency is required');
+  }
+  if (!timePeriod) {
+    console.error('[getMachineStats] timePeriod is required');
+    throw new Error('[getMachineStats] timePeriod is required');
+  }
+
   const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000);
 
   // Build base aggregation pipeline that respects the location/machine filter
@@ -108,7 +126,7 @@ export async function getMachineStats(
   // Compute per-location gaming day ranges to match the same logic used by the locations page
   const locationsForRange = await GamingLocations.find(locationMatchStage)
     .select('gameDayOffset _id')
-    .lean();
+    .lean<GamingLocationDocument[]>();
   const gamingDayRanges = getGamingDayRangesForLocations(
     locationsForRange as unknown as { _id: string; gameDayOffset?: number }[],
     timePeriod,
@@ -265,7 +283,7 @@ export async function getMachineStats(
   let convertedTotals = totals;
 
   if (isAdminOrDev && shouldApplyCurrencyConversion(licencee)) {
-    const licencees = await Licencee.find({}).lean();
+    const licencees = await Licencee.find({}).lean<LicenceeDocument[]>();
     const licenceeIdToCurrency = new Map<string, string>();
     licencees.forEach(licencee => {
       if (licencee._id) {
@@ -276,7 +294,7 @@ export async function getMachineStats(
       }
     });
 
-    const countriesData = await Countries.find({}).lean();
+    const countriesData = await Countries.find({}).lean<CountryDocument[]>();
     const countryIdToName = new Map<string, string>();
     countriesData.forEach(country => {
       if (country._id && country.name) {
@@ -432,9 +450,22 @@ export async function getOverviewMachines(
   searchTerm?: string,
   reviewerMult: number | null = null
 ) {
+  if (!machineMatchStage) {
+    console.error('[getOverviewMachines] machineMatchStage is required');
+    throw new Error('[getOverviewMachines] machineMatchStage is required');
+  }
+  if (!locationMatchStage) {
+    console.error('[getOverviewMachines] locationMatchStage is required');
+    throw new Error('[getOverviewMachines] locationMatchStage is required');
+  }
+  if (!timePeriod) {
+    console.error('[getOverviewMachines] timePeriod is required');
+    throw new Error('[getOverviewMachines] timePeriod is required');
+  }
+
   const searchLower = searchTerm?.toLowerCase().trim();
   // Fetch locations to get gaming day ranges
-  const locationsWithOffset = await GamingLocations.find(locationMatchStage).select('gameDayOffset _id').lean();
+  const locationsWithOffset = await GamingLocations.find(locationMatchStage).select('gameDayOffset _id').lean<GamingLocationDocument[]>();
   const gamingDayRanges = getGamingDayRangesForLocations(locationsWithOffset as unknown as { _id: string; gameDayOffset?: number }[], timePeriod, startDate, endDate);
 
   const aggregationPipeline: PipelineStage[] = [
@@ -701,6 +732,15 @@ export async function getAllMachines(
   locationMatchStage: Record<string, unknown>,
   reviewerMult: number | null = null
 ) {
+  if (!searchParams) {
+    console.error('[getAllMachines] searchParams is required');
+    throw new Error('[getAllMachines] searchParams is required');
+  }
+  if (!locationMatchStage) {
+    console.error('[getAllMachines] locationMatchStage is required');
+    throw new Error('[getAllMachines] locationMatchStage is required');
+  }
+
   const searchTerm = searchParams.get('search');
   const machineMatchStage: Record<string, unknown> = {
     $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
@@ -914,13 +954,26 @@ export async function getOfflineMachines(
   searchTerm?: string,
   reviewerMult: number | null = null
 ) {
+  if (!searchParams) {
+    console.error('[getOfflineMachines] searchParams is required');
+    throw new Error('[getOfflineMachines] searchParams is required');
+  }
+  if (!locationMatchStage) {
+    console.error('[getOfflineMachines] locationMatchStage is required');
+    throw new Error('[getOfflineMachines] locationMatchStage is required');
+  }
+  if (!timePeriod) {
+    console.error('[getOfflineMachines] timePeriod is required');
+    throw new Error('[getOfflineMachines] timePeriod is required');
+  }
+
   const searchLower = searchTerm?.toLowerCase().trim();
   // Fetch locations to get gaming day ranges (also used to build aceEnabled exclusion set)
-  const locationsWithOffset = await GamingLocations.find(locationMatchStage).select('gameDayOffset _id aceEnabled').lean();
+  const locationsWithOffset = await GamingLocations.find(locationMatchStage).select('gameDayOffset _id aceEnabled').lean<GamingLocationDocument[]>();
   const gamingDayRanges = getGamingDayRangesForLocations(locationsWithOffset as unknown as { _id: string; gameDayOffset?: number }[], timePeriod, startDate, endDate);
 
   // Build list of aceEnabled location IDs so they are excluded from the offline results
-  const aceEnabledLocIds = (locationsWithOffset as unknown as { _id: unknown; aceEnabled?: boolean }[])
+  const aceEnabledLocIds = locationsWithOffset
     .filter(loc => loc.aceEnabled === true)
     .map(loc => String(loc._id));
 

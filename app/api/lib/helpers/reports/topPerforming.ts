@@ -23,6 +23,11 @@ export async function getTopPerformingMetrics(
   customStartDate?: Date,
   customEndDate?: Date
 ) {
+  if (!activeTab || !timePeriod) {
+    console.error('[getTopPerformingMetrics] activeTab and timePeriod are required');
+    return [];
+  }
+
   const filter: QueryFilter = {};
 
   // Align date filtering with gaming-day logic used by location aggregation,
@@ -63,6 +68,10 @@ function aggregateMetersForTop5Locations(
   filter: QueryFilter,
   licencee?: string
 ): PipelineStage[] {
+  if (!filter || typeof filter !== 'object') {
+    console.error('[aggregateMetersForTop5Locations] filter is required');
+    return [];
+  }
   return [
     { $match: filter },
     {
@@ -140,6 +149,10 @@ function aggregateMetersForTop5Machines(
   filter: QueryFilter,
   licencee?: string
 ): PipelineStage[] {
+  if (!filter || typeof filter !== 'object') {
+    console.error('[aggregateMetersForTop5Machines] filter is required');
+    return [];
+  }
   return [
     { $match: filter },
     {

@@ -35,7 +35,7 @@ export function filterCollectionReports(
   );
   console.warn(`[filterCollectionReports] reports count: ${reports.length}`);
 
-  const filtered = reports.filter((r, index) => {
+  const filtered = reports.filter((report, index) => {
     // Location matching logic
     const isAllLocations = selectedLocation === 'all';
     let matchesLocation = false;
@@ -50,22 +50,22 @@ export function filterCollectionReports(
         locationNameForLog = 'all';
       } else {
         const selectedNames = locations
-          .filter(l => selectedLocation.includes(l._id))
-          .map(l => l.name);
-        matchesLocation = selectedNames.includes(r.location);
+          .filter(location => selectedLocation.includes(location._id))
+          .map(location => location.name);
+        matchesLocation = selectedNames.includes(report.location);
         locationNameForLog = selectedNames.join(', ');
       }
     } else {
-      const foundLocation = locations.find(l => l._id === selectedLocation);
+      const foundLocation = locations.find(location => location._id === selectedLocation);
       const locationName = foundLocation?.name;
-      matchesLocation = r.location === locationName;
+      matchesLocation = report.location === locationName;
       locationNameForLog = locationName || '';
     }
 
     // Log first few reports for debugging
     if (index < 3) {
       console.warn(`[filterCollectionReports] Report ${index + 1}:`);
-      console.warn(`  - Report location: "${r.location}"`);
+      console.warn(`  - Report location: "${report.location}"`);
       console.warn(`  - Selected location: "${selectedLocation}"`);
       console.warn(`  - Is all locations: ${isAllLocations}`);
       console.warn(`  - Found location name: "${locationNameForLog}"`);
@@ -74,11 +74,11 @@ export function filterCollectionReports(
 
     const matchesSearch =
       !search ||
-      r.collector.toLowerCase().includes(search.toLowerCase()) ||
-      r.location.toLowerCase().includes(search.toLowerCase()) ||
-      r.locationReportId.toLowerCase().includes(search.toLowerCase()) ||
-      r._id.toLowerCase().includes(search.toLowerCase());
-    const uncollectedStr = String(r.uncollected).trim();
+      report.collector.toLowerCase().includes(search.toLowerCase()) ||
+      report.location.toLowerCase().includes(search.toLowerCase()) ||
+      report.locationReportId.toLowerCase().includes(search.toLowerCase()) ||
+      report._id.toLowerCase().includes(search.toLowerCase());
+    const uncollectedStr = String(report.uncollected).trim();
     const matchesUncollected =
       !showUncollectedOnly || Number(uncollectedStr) > 0;
 
@@ -86,7 +86,7 @@ export function filterCollectionReports(
     if (dateRange?.from && dateRange?.to) {
       let reportDate: Date | null = null;
       try {
-        reportDate = parse(r.time, 'dd LLL yyyy, hh:mm:ss a', new Date());
+        reportDate = parse(report.time, 'dd LLL yyyy, hh:mm:ss a', new Date());
         if (isNaN(reportDate.getTime())) reportDate = null;
       } catch {
         reportDate = null;

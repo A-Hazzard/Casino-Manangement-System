@@ -13,18 +13,9 @@
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { calculateSasMetrics } from '../creation';
+import type { CollectionDocument } from '@/lib/types/collection';
 
 type RepairMode = 'dry-run' | 'commit';
-
-type CollectionDocument = {
-  _id: unknown;
-  machineId: string;
-  timestamp: Date;
-  sasMeters?: {
-    sasStartTime?: string;
-    sasEndTime?: string;
-  };
-};
 
 type RepairResult = {
   _id: string;
@@ -76,15 +67,23 @@ export async function repairSasTimesForCollections(
   changed: number;
   results: RepairResult[];
 }> {
+  if (!filter) {
+    console.error('[repairSasTimesForCollections] filter is required');
+    return { success: false, mode, count: 0, changed: 0, results: [] };
+  }
+  if (!mode) {
+    console.error('[repairSasTimesForCollections] mode is required');
+    return { success: false, mode, count: 0, changed: 0, results: [] };
+  }
   // Fetch target collections and sort chronologically (oldest first)
-  const collections = (await Collections.find(filter)
+  const collections = await Collections.find(filter)
     .sort({ timestamp: 1 })
-    .lean()) as CollectionDocument[];
+    .lean<CollectionDocument[]>();
 
   const results: RepairResult[] = [];
 
-  for (const c of collections) {
-    const repairResult = await repairSingleCollectionSasTimes(c, mode);
+  for (const collection of collections) {
+    const repairResult = await repairSingleCollectionSasTimes(collection, mode);
     results.push(repairResult);
   }
 
@@ -115,12 +114,12 @@ async function repairSingleCollectionSasTimes(
   const currentEnd = normalizedTimestamp;
 
   // Find previous collection for this machine strictly before current timestamp
-  const previous = (await Collections.findOne({
+  const previous = await Collections.findOne({
     machineId: collection.machineId,
     timestamp: { $lt: currentEnd },
   })
     .sort({ timestamp: -1 })
-    .lean()) as CollectionDocument | null;
+    .lean<CollectionDocument>();
 
   // Previous collection also normalized to 8AM Trinidad
   let newStart = previous

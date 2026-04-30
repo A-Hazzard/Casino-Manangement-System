@@ -47,6 +47,19 @@ function buildWinLossTrendsPipeline(
   licencee?: string | null,
   locationIds?: string | null
 ): PipelineStage[] {
+  if (!timePeriod) {
+    console.error('[buildWinLossTrendsPipeline] timePeriod is required');
+    return [];
+  }
+  if (!startDate) {
+    console.error('[buildWinLossTrendsPipeline] startDate is required');
+    return [];
+  }
+  if (!endDate) {
+    console.error('[buildWinLossTrendsPipeline] endDate is required');
+    return [];
+  }
+
   const pipeline: PipelineStage[] = [
     {
       $match: {
@@ -139,6 +152,19 @@ function buildPlaysTrendsPipeline(
   licencee?: string | null,
   locationIds?: string | null
 ): PipelineStage[] {
+  if (!timePeriod) {
+    console.error('[buildPlaysTrendsPipeline] timePeriod is required');
+    return [];
+  }
+  if (!startDate) {
+    console.error('[buildPlaysTrendsPipeline] startDate is required');
+    return [];
+  }
+  if (!endDate) {
+    console.error('[buildPlaysTrendsPipeline] endDate is required');
+    return [];
+  }
+
   const pipeline: PipelineStage[] = [
     {
       $match: {
@@ -220,6 +246,11 @@ export async function getWinLossTrends(
   licencee?: string | null,
   locationIds?: string | null
 ): Promise<WinLossTrendItem[]> {
+  if (!timePeriod) {
+    console.error('[getWinLossTrends] timePeriod is required');
+    return [];
+  }
+
   const { startDate, endDate } = getDatesForTimePeriod(timePeriod);
   if (!startDate || !endDate) {
     return [];
@@ -255,6 +286,11 @@ export async function getPlaysTrends(
   licencee?: string | null,
   locationIds?: string | null
 ): Promise<PlaysTrendItem[]> {
+  if (!timePeriod) {
+    console.error('[getPlaysTrends] timePeriod is required');
+    return [];
+  }
+
   const { startDate, endDate } = getDatesForTimePeriod(timePeriod);
   if (!startDate || !endDate) {
     return [];
@@ -313,6 +349,12 @@ function calculateHourlyRevenueDateRange(
   startDate?: string | null,
   endDate?: string | null
 ): { start: Date; end: Date } {
+  if (!timePeriod) {
+    console.error('[calculateHourlyRevenueDateRange] timePeriod is required');
+    const now = new Date();
+    return { start: now, end: now };
+  }
+
   const now = new Date();
 
   if (timePeriod === 'Custom' && startDate && endDate) {
@@ -359,6 +401,19 @@ function buildHourlyRevenuePipeline(
   start: Date,
   end: Date
 ): PipelineStage[] {
+  if (!locationId) {
+    console.error('[buildHourlyRevenuePipeline] locationId is required');
+    return [];
+  }
+  if (!start) {
+    console.error('[buildHourlyRevenuePipeline] start is required');
+    return [];
+  }
+  if (!end) {
+    console.error('[buildHourlyRevenuePipeline] end is required');
+    return [];
+  }
+
   return [
     // Stage 1: Filter collection reports by location, date range, and exclude deleted records
     {
@@ -411,6 +466,11 @@ function buildHourlyRevenuePipeline(
 function formatHourlyRevenueData(
   hourlyData: HourlyDataItem[]
 ): HourlyRevenueItem[] {
+  if (!Array.isArray(hourlyData)) {
+    console.error('[formatHourlyRevenueData] hourlyData must be an array');
+    return [];
+  }
+
   return Array.from({ length: 24 }, (_, hour) => {
     const hourData = hourlyData.find(d => d._id === hour);
     return {
@@ -437,6 +497,15 @@ export async function getHourlyRevenue(
   startDate?: string | null,
   endDate?: string | null
 ): Promise<HourlyRevenueItem[]> {
+  if (!locationId) {
+    console.error('[getHourlyRevenue] locationId is required');
+    return [];
+  }
+  if (!timePeriod) {
+    console.error('[getHourlyRevenue] timePeriod is required');
+    return [];
+  }
+
   const { start, end } = calculateHourlyRevenueDateRange(
     timePeriod,
     startDate,
@@ -476,6 +545,19 @@ function buildHandleTrendsPipeline(
   licencee?: string | null,
   locationIds?: string | null
 ): PipelineStage[] {
+  if (!timePeriod) {
+    console.error('[buildHandleTrendsPipeline] timePeriod is required');
+    return [];
+  }
+  if (!startDate) {
+    console.error('[buildHandleTrendsPipeline] startDate is required');
+    return [];
+  }
+  if (!endDate) {
+    console.error('[buildHandleTrendsPipeline] endDate is required');
+    return [];
+  }
+
   const pipeline: PipelineStage[] = [
     {
       $match: {
@@ -557,6 +639,11 @@ export async function getHandleTrends(
   licencee?: string | null,
   locationIds?: string | null
 ): Promise<HandleTrendItem[]> {
+  if (!timePeriod) {
+    console.error('[getHandleTrends] timePeriod is required');
+    return [];
+  }
+
   const { startDate, endDate } = getDatesForTimePeriod(timePeriod);
   if (!startDate || !endDate) {
     return [];
@@ -604,6 +691,19 @@ function buildJackpotTrendsPipeline(
   licencee?: string | null,
   locationIds?: string | null
 ): PipelineStage[] {
+  if (!timePeriod) {
+    console.error('[buildJackpotTrendsPipeline] timePeriod is required');
+    return [];
+  }
+  if (!startDate) {
+    console.error('[buildJackpotTrendsPipeline] startDate is required');
+    return [];
+  }
+  if (!endDate) {
+    console.error('[buildJackpotTrendsPipeline] endDate is required');
+    return [];
+  }
+
   const pipeline: PipelineStage[] = [
     {
       $match: {
@@ -685,6 +785,11 @@ export async function getJackpotTrends(
   licencee?: string | null,
   locationIds?: string | null
 ): Promise<JackpotTrendItem[]> {
+  if (!timePeriod) {
+    console.error('[getJackpotTrends] timePeriod is required');
+    return [];
+  }
+
   const { startDate, endDate } = getDatesForTimePeriod(timePeriod);
   if (!startDate || !endDate) {
     return [];

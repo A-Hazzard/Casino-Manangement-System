@@ -15,6 +15,7 @@ import type {
   EnrichedVaultTransactionOverview,
 } from '@/shared/types/vault';
 import type { UserOverview } from '@/shared/types/models';
+import type { CashierShiftDocument, VaultShiftDocument, VaultTransactionDocument } from '@shared/types';
 
 /**
  * Main GET handler for global vault overview.
@@ -57,14 +58,11 @@ export async function GET(request: NextRequest) {
           { 'rel.licencee': licenceeId },
         ];
 
-      const locations = (await GamingLocations.find(locationQuery, {
+      const locations = await GamingLocations.find(locationQuery, {
         _id: 1,
         name: 1,
         gameDayOffset: 1,
-      }).lean()) as unknown as Pick<
-        LocationDocument,
-        '_id' | 'name' | 'gameDayOffset'
-      >[];
+      }).lean<LocationDocument[]>();
       const locationIds = locations.map(loc => String(loc._id));
       const locationNameMap = locations.reduce(
         (acc, loc) => {
@@ -116,23 +114,23 @@ export async function GET(request: NextRequest) {
         VaultShiftModel.find({
           locationId: { $in: locationIds },
           status: 'active',
-        }).lean(),
+        }).lean<VaultShiftDocument[]>(),
         CashierShiftModel.find({
           locationId: { $in: locationIds },
           status: 'pending_review',
-        }).lean(),
+        }).lean<CashierShiftDocument[]>(),
         CashierShiftModel.find({
           locationId: { $in: locationIds },
           status: { $in: ['active', 'pending_start'] },
-        }).lean(),
+        }).lean<CashierShiftDocument[]>(),
         FloatRequestModel.find({
           locationId: { $in: locationIds },
           status: 'pending',
-        }).lean(),
+        }).lean<Record<string, unknown>[]>(),
         VaultTransactionModel.find({ locationId: { $in: locationIds } })
           .sort({ timestamp: -1 })
           .limit(20)
-          .lean(),
+          .lean<VaultTransactionDocument[]>(),
       ])) as unknown as [
         VaultShiftOverview[],
         CashierShiftOverview[],
@@ -172,10 +170,10 @@ export async function GET(request: NextRequest) {
         payouts = 0,
         payoutsCount = 0;
 
-      const filteredTransactions = (await VaultTransactionModel.find({
+      const filteredTransactions = await VaultTransactionModel.find({
         locationId: { $in: locationIds },
         timestamp: { $gte: rangeStart, $lte: rangeEnd },
-      }).lean()) as unknown as VaultTransactionOverview[];
+      }).lean<VaultTransactionDocument[]>() as unknown as VaultTransactionOverview[];
       filteredTransactions.forEach(tx => {
         if (tx.to?.type === 'vault') totalIn += tx.amount;
         if (tx.from?.type === 'vault') totalOut += tx.amount;
@@ -229,8 +227,8 @@ export async function GET(request: NextRequest) {
         const users = await UserModel.find(
           { _id: { $in: Array.from(userIds) } },
           { 'profile.firstName': 1, 'profile.lastName': 1, username: 1 }
-        ).lean();
-        userMap = (users as unknown as UserOverview[]).reduce(
+        ).lean<UserOverview[]>();
+        userMap = users.reduce(
           (acc, u) => {
             acc[String(u._id)] = u;
             return acc;

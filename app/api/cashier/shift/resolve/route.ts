@@ -187,8 +187,11 @@ async function updateVaultCanClose(vaultShiftId: string) {
     shift => shift.status === 'active' || shift.status === 'pending_review'
   );
 
-  await VaultShiftModel.updateOne(
+  const vaultUpdateResult = await VaultShiftModel.updateOne(
     { _id: vaultShiftId },
     { canClose: !hasActiveOrPending }
   );
+  if (vaultUpdateResult.modifiedCount === 0) {
+    console.warn(`[updateVaultCanClose] Vault shift ${vaultShiftId} not found or not modified`);
+  }
 }

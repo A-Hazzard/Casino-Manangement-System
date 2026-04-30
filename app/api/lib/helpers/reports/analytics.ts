@@ -14,6 +14,7 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD } from '@/lib/helpers/rates';
+import type { CountryDocument, LicenceeDocument } from '@/shared/types';
 import type { MachineAnalytics } from '@/shared/types/reports';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { subDays } from 'date-fns';
@@ -34,6 +35,10 @@ function buildMachineAnalyticsPipeline(
   selectedLicencee?: string,
   limit?: number
 ): PipelineStage[] {
+  if (allowedLocationIds !== 'all' && !Array.isArray(allowedLocationIds)) {
+    console.error('[buildMachineAnalyticsPipeline] allowedLocationIds must be array or "all"');
+    return [];
+  }
   const pipeline: PipelineStage[] = [];
 
   // Stage 1: Filter machines by allowed locations (supports legacy field names)
@@ -129,6 +134,11 @@ export async function getMachineAnalytics(
   selectedLicencee?: string,
   limit?: number
 ): Promise<MachineAnalytics[]> {
+  if (allowedLocationIds === undefined || allowedLocationIds === null) {
+    console.error('[getMachineAnalytics] allowedLocationIds is required');
+    return [];
+  }
+
   const pipeline = buildMachineAnalyticsPipeline(
     allowedLocationIds,
     selectedLocation,
@@ -172,6 +182,10 @@ export type MachineStatsResult = {
 function buildMachineStatsMatchStage(
   allowedLocationIds: string[] | 'all'
 ): Record<string, unknown> {
+  if (allowedLocationIds !== 'all' && !Array.isArray(allowedLocationIds)) {
+    console.error('[buildMachineStatsMatchStage] allowedLocationIds must be array or "all"');
+    return {};
+  }
   const matchStage: Record<string, unknown> = {
     $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
   };
@@ -192,6 +206,11 @@ function buildMachineStatsMatchStage(
 export async function getMachineStatsForAnalytics(
   allowedLocationIds: string[] | 'all'
 ): Promise<MachineStatsResult> {
+  if (allowedLocationIds === undefined || allowedLocationIds === null) {
+    console.error('[getMachineStatsForAnalytics] allowedLocationIds is required');
+    throw new Error('[getMachineStatsForAnalytics] allowedLocationIds is required');
+  }
+
   const db = await connectDB();
   if (!db) {
     throw new Error('Database connection failed');
@@ -351,6 +370,10 @@ export type DashboardAnalyticsResult = {
  * @returns Aggregation pipeline stages
  */
 function buildDashboardAnalyticsPipeline(licencee: string, includeJackpot: boolean = false): PipelineStage[] {
+  if (!licencee) {
+    console.error('[buildDashboardAnalyticsPipeline] licencee is required');
+    return [];
+  }
   const onlineThreshold = new Date(Date.now() - 3 * 60 * 1000);
   return [
     {
@@ -441,7 +464,12 @@ function buildDashboardAnalyticsPipeline(licencee: string, includeJackpot: boole
 export async function getDashboardAnalytics(
   licencee: string
 ): Promise<DashboardAnalyticsResult> {
-  const licenceeDoc = (await Licencee.findOne({ _id: licencee }).lean()) as Record<string, unknown> | null;
+  if (!licencee) {
+    console.error('[getDashboardAnalytics] licencee is required');
+    return { totalDrop: 0, totalCancelledCredits: 0, totalGross: 0, totalMachines: 0, onlineMachines: 0, sasMachines: 0 };
+  }
+
+  const licenceeDoc = await Licencee.findOne({ _id: licencee }).lean<Record<string, unknown> | null>();
   const includeJackpot = !!licenceeDoc?.includeJackpot;
 
   const pipeline = buildDashboardAnalyticsPipeline(licencee, includeJackpot);
@@ -473,6 +501,18 @@ function buildChartsPipeline(
   endDate: Date,
   includeJackpot: boolean = false
 ): PipelineStage[] {
+  if (!licenceeId) {
+    console.error('[buildChartsPipeline] licenceeId is required');
+    return [];
+  }
+  if (!startDate) {
+    console.error('[buildChartsPipeline] startDate is required');
+    return [];
+  }
+  if (!endDate) {
+    console.error('[buildChartsPipeline] endDate is required');
+    return [];
+  }
   return [
     // Stage 1: Filter meter records by date range
     {
@@ -565,6 +605,14 @@ function applyChartsCurrencyConversion(
   licencee: string | null,
   displayCurrency: CurrencyCode
 ): Array<Record<string, unknown>> {
+  if (!Array.isArray(series)) {
+    console.error('[applyChartsCurrencyConversion] series must be an array');
+    return series || [];
+  }
+  if (!displayCurrency) {
+    console.error('[applyChartsCurrencyConversion] displayCurrency is required');
+    return series || [];
+  }
   if (!shouldApplyCurrencyConversion(licencee)) {
     return series;
   }
@@ -605,12 +653,25 @@ export async function getChartsData(
   currency: CurrencyCode;
   converted: boolean;
 }> {
+  if (!licencee) {
+    console.error('[getChartsData] licencee is required');
+    return { series: [], currency: displayCurrency || 'USD', converted: false };
+  }
+  if (!period) {
+    console.error('[getChartsData] period is required');
+    return { series: [], currency: displayCurrency || 'USD', converted: false };
+  }
+  if (!displayCurrency) {
+    console.error('[getChartsData] displayCurrency is required');
+    return { series: [], currency: displayCurrency || 'USD', converted: false };
+  }
+
   const endDate = new Date();
   const startDate =
     period === 'last7days' ? subDays(endDate, 7) : subDays(endDate, 30);
   const licenceeId = licencee;
 
-  const licenceeDoc2 = (await Licencee.findOne({ _id: licencee }).lean()) as Record<string, unknown> | null;
+  const licenceeDoc2 = await Licencee.findOne({ _id: licencee }).lean<Record<string, unknown> | null>();
   const includeJackpot = !!licenceeDoc2?.includeJackpot;
 
   const chartsPipeline = buildChartsPipeline(licenceeId, startDate, endDate, includeJackpot);
@@ -665,6 +726,15 @@ export async function getTopLocationsAnalytics(
   currency: CurrencyCode;
   converted: boolean;
 }> {
+  if (!licencee) {
+    console.error('[getTopLocationsAnalytics] licencee is required');
+    return { topLocations: [], currency: displayCurrency || 'USD', converted: false };
+  }
+  if (!displayCurrency) {
+    console.error('[getTopLocationsAnalytics] displayCurrency is required');
+    return { topLocations: [], currency: displayCurrency || 'USD', converted: false };
+  }
+
   const locationsPipeline: PipelineStage[] = [
     {
       $lookup: {
@@ -795,7 +865,7 @@ export async function getTopLocationsAnalytics(
   const licenceesForTopLocationsSettings = await Licencee.find(
     { _id: { $in: topLocationLicenceeIds } },
     { _id: 1, includeJackpot: 1 }
-  ).lean();
+  ).lean<LicenceeDocument[]>();
   const licenceeSettingsMap = new Map(
     licenceesForTopLocationsSettings.map(l => [String(l._id), !!(l as { includeJackpot?: boolean }).includeJackpot])
   );
@@ -855,7 +925,7 @@ export async function getTopLocationsAnalytics(
       },
       { _id: 1, name: 1 }
     )
-      .lean()
+      .lean<LicenceeDocument[]>()
       .exec();
 
     const licenceeIdToName = new Map<string, string>();
@@ -863,7 +933,7 @@ export async function getTopLocationsAnalytics(
       licenceeIdToName.set(String(lic._id), lic.name as string);
     });
 
-    const countriesData = await Countries.find({}).lean();
+    const countriesData = await Countries.find({}).lean<CountryDocument[]>();
     const countryIdToName = new Map<string, string>();
     countriesData.forEach(country => {
       if (country._id && country.name) {

@@ -30,6 +30,7 @@ import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { TimePeriod } from '@/shared/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
+import type { CountryDocument, GamingMachine, LicenceeDocument } from '@shared/types';
 import type { AggregatedLocation } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -77,6 +78,7 @@ export async function GET(request: NextRequest) {
 
     const machineTypeFilter = searchParams.get('machineTypeFilter');
     const onlineStatus = searchParams.get('onlineStatus')?.toLowerCase() || 'all';
+    const showArchived = searchParams.get('archived') === 'true' || searchParams.get('includeDeleted') === 'true';
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -119,18 +121,20 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 5: Build location match filter
     // ============================================================================
-    const locationMatch: {
-      $and: Array<Record<string, unknown>>;
-      [key: string]: unknown;
-    } = {
-      $and: [
-        {
+    const deletionFilter = showArchived
+      ? { deletedAt: { $gte: new Date('2025-01-01') } }
+      : {
           $or: [
             { deletedAt: null },
             { deletedAt: { $lt: new Date('2025-01-01') } },
           ],
-        },
-      ],
+        };
+
+    const locationMatch: {
+      $and: Array<Record<string, unknown>>;
+      [key: string]: unknown;
+    } = {
+      $and: [deletionFilter],
     };
 
     if (search) {
@@ -181,8 +185,8 @@ export async function GET(request: NextRequest) {
       const qualityFilters: Record<string, unknown>[] = [];
 
       filters.forEach(filter => {
-        const f = filter.trim();
-        switch (f) {
+        const filterItem = filter.trim();
+        switch (filterItem) {
           // --- Connection Category ---
           case 'LocalServersOnly':
             connectionFilters.push({ isLocalServer: true });
@@ -285,10 +289,14 @@ export async function GET(request: NextRequest) {
                     { $eq: ['$gamingLocation', '$$id'] },
                   ],
                 },
-                $or: [
-                  { deletedAt: null },
-                  { deletedAt: { $lte: new Date('1971-01-01') } },
-                ],
+                ...(showArchived
+                  ? { deletedAt: { $gte: new Date('2025-01-01') } }
+                  : {
+                      $or: [
+                        { deletedAt: null },
+                        { deletedAt: { $lt: new Date('2025-01-01') } },
+                      ],
+                    }),
               },
             },
             {
@@ -377,17 +385,21 @@ export async function GET(request: NextRequest) {
               { gamingLocation: { $in: matchingLocations.map(l => l._id) } },
             ],
           },
-          {
-            $or: [
-              { deletedAt: null },
-              { deletedAt: { $lte: new Date('1971-01-01') } },
-            ],
-          },
+          ...(showArchived
+            ? [{ deletedAt: { $gte: new Date('2025-01-01') } }]
+            : [
+                {
+                  $or: [
+                    { deletedAt: null },
+                    { deletedAt: { $lt: new Date('2025-01-01') } },
+                  ],
+                },
+              ]),
         ],
       },
       { _id: 1, gamingLocation: 1, lastActivity: 1, isSasMachine: 1 }
     )
-      .lean()
+      .lean<GamingMachine[]>()
       .exec();
 
     // Step 5: Group machines by location
@@ -474,7 +486,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch licencee settings for all locations
     const licenceeIds = Array.from(new Set(matchingLocations.map(loc => loc.rel?.licencee).filter(Boolean)));
-    const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean();
+    const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean<LicenceeDocument[]>();
     const licenceeIncludeJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.includeJackpot]));
 
     // Step 8: Combine results and create the initial AggregatedLocation objects
@@ -590,7 +602,7 @@ export async function GET(request: NextRequest) {
         },
         { _id: 1, name: 1 }
       )
-        .lean()
+        .lean<LicenceeDocument[]>()
         .exec();
 
       // Create a map of licencee ID to name
@@ -603,7 +615,7 @@ export async function GET(request: NextRequest) {
 
       // Get country details for currency mapping (for unassigned locations)
       const { getCountryCurrency } = await import('@/lib/helpers/rates');
-      const countriesData = await Countries.find({}).lean();
+      const countriesData = await Countries.find({}).lean<CountryDocument[]>();
 
       // Create a map of country ID to name
       const countryIdToName = new Map<string, string>();

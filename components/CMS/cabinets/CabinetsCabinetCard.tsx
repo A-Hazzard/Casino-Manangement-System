@@ -27,7 +27,7 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import gsap from 'gsap';
-import { Clock, ExternalLink, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Clock, ExternalLink, Eye, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
@@ -276,36 +276,67 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
 
       {/* Action Buttons - Fixed at bottom */}
       <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
-        <Button
-          onClick={handleViewClick}
-          variant="outline"
-          size="sm"
-          className="flex flex-1 items-center justify-center gap-1.5 text-xs"
-        >
-          <Eye className="h-3.5 w-3.5" />
-          <span>View</span>
-        </Button>
-        {props.canEditMachines !== false && (
-          <Button
-            onClick={() => props.onEdit?.(props)}
-            variant="outline"
-            size="sm"
-            className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            <span>Edit</span>
-          </Button>
-        )}
-        {props.canDeleteMachines !== false && (
-          <Button
-            onClick={() => props.onDelete?.(props)}
-            variant="outline"
-            size="sm"
-            className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete</span>
-          </Button>
+        {isArchived ? (
+          /* Archived view: Restore (all managers) and Delete (developers only) */
+          <>
+            {props.canDeleteMachines !== false && (
+              <Button
+                onClick={() => props.onRestore?.(props)}
+                variant="outline"
+                size="sm"
+                className="flex flex-1 items-center justify-center gap-1.5 text-xs text-green-600 hover:bg-green-50 hover:text-green-700"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Restore</span>
+              </Button>
+            )}
+            {props.canPermanentlyDeleteMachines && (
+              <Button
+                onClick={() => props.onDelete?.(props)}
+                variant="outline"
+                size="sm"
+                className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete</span>
+              </Button>
+            )}
+          </>
+        ) : (
+          /* Active view: View, Edit, Delete */
+          <>
+            <Button
+              onClick={handleViewClick}
+              variant="outline"
+              size="sm"
+              className="flex flex-1 items-center justify-center gap-1.5 text-xs"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span>View</span>
+            </Button>
+            {props.canEditMachines !== false && (
+              <Button
+                onClick={() => props.onEdit?.(props)}
+                variant="outline"
+                size="sm"
+                className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                <span>Edit</span>
+              </Button>
+            )}
+            {props.canDeleteMachines !== false && (
+              <Button
+                onClick={() => props.onDelete?.(props)}
+                variant="outline"
+                size="sm"
+                className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete</span>
+              </Button>
+            )}
+          </>
         )}
       </div>
     </div>

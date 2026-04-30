@@ -23,6 +23,10 @@ export function generateTOTPSecret(): string {
  * @returns boolean indicating if the token is valid.
  */
 export function verifyTOTPCode(token: string, secret: string): boolean {
+  if (!token || !secret) {
+    console.error('[verifyTOTPCode] token and secret are required');
+    return false;
+  }
   try {
     const result = verifySync({
       token,
@@ -49,6 +53,10 @@ export function verifyTOTPCode(token: string, secret: string): boolean {
  * @param secret The user's secret.
  */
 export function generateOTPAuthURI(user: string, issuer: string, secret: string): string {
+  if (!user || !issuer || !secret) {
+    console.error('[generateOTPAuthURI] user, issuer, and secret are required');
+    return '';
+  }
   return generateURI({
     secret,
     label: user,

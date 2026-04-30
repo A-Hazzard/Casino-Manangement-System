@@ -277,13 +277,18 @@ for await (const doc of results) {
 }
 ```
 
+## Trinidad Time = UTC-4
+
+All gaming day calculations must account for Trinidad time (UTC-4). The 8 AM start means 12:00 UTC. When computing "current time before gaming day start", convert the current UTC time to Trinidad local time first.
+
 ## Common Mistakes - AVOID
 
 ❌ Using calendar day (midnight to midnight)
 ❌ Not checking current time for "Today" calculation
 ❌ Using `||` instead of `??` for offset (treats 0 as falsy)
 ❌ Sending full timestamp from frontend (should be date-only)
-❌ Applying gaming day offset to collection reports
+❌ Applying gaming day offset to collection reports (use actual collection timestamp instead)
+❌ Applying gaming day offset to user sessions or activity logs
 ❌ Hardcoding offset value (always use `location.gameDayOffset`)
 ❌ Not handling timezone conversion to Trinidad (UTC-4)
 

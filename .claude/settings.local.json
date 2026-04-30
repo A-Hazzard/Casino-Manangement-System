@@ -1,6 +1,13 @@
 {
   "permissions": {
     "allow": [
+      "Edit",
+      "Write",
+      "Bash(git *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(wc *)",
+      "Bash(bun run check)",
       "Bash(bun run type-check)",
       "Bash(bun run:*)",
       "Bash(xargs grep:*)",

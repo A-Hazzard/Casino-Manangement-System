@@ -270,15 +270,59 @@ function LocationsContent() {
 )}
 ```
 
+## React Import Rule
+
+```typescript
+// ❌ WRONG — never import the React namespace
+import React from 'react';
+import * as React from 'react';
+
+// ✅ CORRECT — named imports only
+import { useState, useEffect, useMemo, useCallback, FC } from 'react';
+```
+
+## TypeScript Rules in Components
+
+```typescript
+// ❌ WRONG
+interface PageProps {
+  title: string;
+}
+const count = items.reduce((s, c) => s + c.value, 0);
+
+// ✅ CORRECT — type not interface, no single-letter vars
+type PageProps = {
+  title: string;
+};
+const count = items.reduce((sum, item) => sum + item.value, 0);
+```
+
+## Skeleton Loader Requirement
+
+Every page and modal with async data **MUST** have a dedicated skeleton in `components/ui/skeletons/`. Never use a generic spinner or "Loading..." text.
+
+```typescript
+// ✅ CORRECT
+if (loading) return <LocationsTabSkeleton />;
+
+// ❌ WRONG
+if (loading) return <div>Loading...</div>;
+if (loading) return <Spinner />;
+```
+
 ## Code Review Checklist
 
 - ✅ page.tsx is thin wrapper only (<150 lines)
 - ✅ Complex logic extracted to helpers or hooks
 - ✅ Component has section comments
-- ✅ Hooks, handlers, effects organized in order
+- ✅ Section order: Hooks → Computed → Handlers → Effects → Render
 - ✅ Render section is last
 - ✅ JSX has meaningful comments for major sections
 - ✅ No dense JSX blocks without spacing
 - ✅ Responsive behavior marked with breakpoint comments
 - ✅ Component under 500 lines
 - ✅ Sub-components extracted if needed
+- ✅ No React namespace import
+- ✅ `type` not `interface` for all props/types
+- ✅ No single-letter variable names
+- ✅ Skeleton loader used (not spinner/text) for async loading

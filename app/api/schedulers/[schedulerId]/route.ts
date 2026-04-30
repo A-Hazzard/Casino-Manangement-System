@@ -13,6 +13,7 @@ import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLog
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import Scheduler from '@/app/api/lib/models/scheduler';
+import type { SchedulerDocument } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 const MANAGE_ROLES = ['manager', 'admin', 'location admin', 'owner', 'developer'];
@@ -30,12 +31,12 @@ type RouteContext = { params: Promise<{ schedulerId: string }> };
  * location admin, owner, or developer role.
  *
  * Path params:
- * @param schedulerId {string}  Required. The ID of the schedule to update.
+ * @param {string} schedulerId - Required. The ID of the schedule to update.
  *
  * Body fields:
- * @param startTime   {string}  Optional. ISO 8601 date-time string for the new start time.
- * @param endTime     {string}  Optional. ISO 8601 date-time string for the new end time.
- * @param status      {string}  Optional. New status value for the schedule.
+ * @param {string} [startTime] - Optional. ISO 8601 date-time string for the new start time.
+ * @param {string} [endTime] - Optional. ISO 8601 date-time string for the new end time.
+ * @param {string} [status] - Optional. New status value for the schedule.
  */
 export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
@@ -75,7 +76,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     console.log(`[Scheduler PATCH] Request — schedulerId: ${schedulerId}, fields: ${Object.keys(updateData).join(', ')}`);
 
     // Pre-fetch for before-state
-    const existingScheduler = await Scheduler.findOne({ _id: schedulerId, deletedAt: { $exists: false } }).lean();
+    const existingScheduler = await Scheduler.findOne({ _id: schedulerId, deletedAt: { $exists: false } }).lean<SchedulerDocument>();
     if (!existingScheduler) {
       return NextResponse.json(
         { success: false, error: 'Not found', message: 'Schedule not found', timestamp: new Date().toISOString() },
@@ -142,7 +143,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
  * manager, admin, location admin, owner, or developer role.
  *
  * Path params:
- * @param schedulerId {string}  Required. The ID of the schedule to delete.
+ * @param {string} schedulerId - Required. The ID of the schedule to delete.
  */
 export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {

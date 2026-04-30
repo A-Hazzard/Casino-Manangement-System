@@ -264,22 +264,29 @@ app/api/
 ## Import Path Aliases
 
 ```typescript
-// In tsconfig.json
-{
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./*"],           // Root paths
-      "@/shared/*": ["shared/*"], // Shared code
-    }
-  }
-}
+// Two aliases defined in tsconfig.json:
+// @/*     → project root (e.g. @/lib/utils/..., @/components/..., @/app/api/...)
+// @shared/* → shared/ directory (shorthand for shared types/utils)
 
-// Usage
-import { type User } from '@/shared/types/entities';    // Shared types
-import { useLocationData } from '@/lib/helpers/locations'; // Frontend helpers
-import { Button } from '@/components/ui/Button';         // Components
-import { User } from '@/app/api/lib/models/user';       // Models (backend only)
+// ✅ CORRECT — always use aliases, never relative paths for cross-directory imports
+import { type User } from '@/shared/types/entities';         // Shared types
+import { useLocationData } from '@/lib/helpers/locations';   // Frontend helpers
+import { Button } from '@/components/ui/Button';             // Components
+import { User } from '@/app/api/lib/models/user';            // Models (backend only)
+import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+
+// ❌ WRONG — relative paths are fragile
+import { type User } from '../../../shared/types/entities';
+```
+
+**Always `type` keyword for types — never `interface`:**
+
+```typescript
+// ✅
+export type ReportParams = { startDate: string; endDate: string };
+
+// ❌
+export interface ReportParams { startDate: string; endDate: string }
 ```
 
 ## File Naming Conventions

@@ -18,6 +18,7 @@ import {
   getCountryCurrency,
   getLicenceeCurrency,
 } from '@/lib/helpers/rates';
+import type { CountryDocument, LicenceeDocument } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { AggregatedLocation } from '@/shared/types/entities';
 import type { LocationDocument } from '@/lib/types/common';
@@ -41,6 +42,14 @@ export async function applyLocationsCurrencyConversion(
   displayCurrency: CurrencyCode,
   isAdminOrDev: boolean
 ): Promise<AggregatedLocation[]> {
+  if (!Array.isArray(paginatedData)) {
+    console.error('[applyLocationsCurrencyConversion] paginatedData must be an array');
+    return paginatedData ?? [];
+  }
+  if (!displayCurrency) {
+    console.error('[applyLocationsCurrencyConversion] displayCurrency is required');
+    return paginatedData ?? [];
+  }
   if (!isAdminOrDev || !shouldApplyCurrencyConversion(licencee)) {
     return paginatedData;
   }
@@ -56,22 +65,22 @@ export async function applyLocationsCurrencyConversion(
       ],
     })
       .select('_id name')
-      .lean();
+      .lean<LicenceeDocument[]>();
 
     // Create a map of licencee ID to name
     const licenceeIdToName = new Map<string, string>();
-    licenceesData.forEach((lic: { _id: unknown; name?: string }) => {
-      if (lic._id && lic.name) {
-        licenceeIdToName.set(String(lic._id), lic.name);
+    licenceesData.forEach((licenceeData: { _id: unknown; name?: string }) => {
+      if (licenceeData._id && licenceeData.name) {
+        licenceeIdToName.set(String(licenceeData._id), licenceeData.name);
       }
     });
 
     // Get country details for currency mapping
-    const countriesData = await Countries.find({}).lean();
+    const countriesData = await Countries.find({}).lean<CountryDocument[]>();
     const countryIdToName = new Map<string, string>();
-    countriesData.forEach((country: { _id: unknown; name?: string }) => {
-      if (country._id && country.name) {
-        countryIdToName.set(String(country._id), country.name);
+    countriesData.forEach((countryData: { _id: unknown; name?: string }) => {
+      if (countryData._id && countryData.name) {
+        countryIdToName.set(String(countryData._id), countryData.name);
       }
     });
 
@@ -109,8 +118,11 @@ export async function applyLocationsCurrencyConversion(
 
       return convertedLocation;
     });
-  } catch (error) {
-    console.error(`❌ Currency conversion failed:`, error);
+    } catch (error) {
+    console.error(
+      '[applyLocationsCurrencyConversion] Currency conversion failed:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     return paginatedData;
   }
 }
@@ -131,6 +143,14 @@ export async function handleSummaryMode(
   displayCurrency: string,
   perfStart: number
 ) {
+  if (!Array.isArray(locations)) {
+    console.error('[handleSummaryMode] locations must be an array');
+    return NextResponse.json({ data: [], currency: displayCurrency ?? 'USD' });
+  }
+  if (!displayCurrency) {
+    console.error('[handleSummaryMode] displayCurrency is required');
+    return NextResponse.json({ data: [], currency: displayCurrency ?? 'USD' });
+  }
   const allLocationIds = locations.map(loc => String(loc._id));
   // Build a set of aceEnabled location IDs so online count can be overridden after aggregation
   const aceEnabledLocIds = new Set(

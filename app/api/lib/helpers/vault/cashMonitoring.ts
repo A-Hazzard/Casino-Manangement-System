@@ -11,6 +11,7 @@
 
 import { Denomination } from '@/app/api/lib/models/denominations';
 import type { DenominationBreakdown } from '@/shared/types/vault';
+import type { DenominationDocument } from '@shared/types';
 
 /**
  * Calculate total cash on premises for a location
@@ -25,6 +26,11 @@ export async function calculateTotalCashOnPremises(
   totalCash: number;
   denominationBreakdown: DenominationBreakdown;
 }> {
+  if (!locationId || typeof locationId !== 'string') {
+    console.error('[calculateTotalCashOnPremises] locationId is required and must be a string');
+    return { totalCash: 0, denominationBreakdown: {} };
+  }
+
   const matchStage: Record<string, unknown> = {
     locationId,
   };
@@ -38,7 +44,7 @@ export async function calculateTotalCashOnPremises(
 
   const denominations = await Denomination.find(matchStage)
     .sort({ date: -1 })
-    .lean();
+    .lean<DenominationDocument[]>();
 
   const breakdown: DenominationBreakdown = {};
   let totalCash = 0;
@@ -65,6 +71,11 @@ export async function getDenominationBreakdown(
   locationId: string,
   dateRange?: { start: Date; end: Date }
 ): Promise<DenominationBreakdown> {
+  if (!locationId || typeof locationId !== 'string') {
+    console.error('[getDenominationBreakdown] locationId is required and must be a string');
+    return {};
+  }
+
   const result = await calculateTotalCashOnPremises(locationId, dateRange);
   return result.denominationBreakdown;
 }

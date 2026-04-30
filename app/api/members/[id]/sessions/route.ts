@@ -19,19 +19,20 @@ import {
 } from '@/app/api/lib/helpers/currency/helper';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
+import type { MachineSessionDocument } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Helper function to calculate ISO week number
  */
 function getWeekNumber(date: Date): number {
-  const d = new Date(
+  const adjustedDate = new Date(
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
   );
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  const dayNum = adjustedDate.getUTCDay() || 7;
+  adjustedDate.setUTCDate(adjustedDate.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(adjustedDate.getUTCFullYear(), 0, 1));
+  return Math.ceil(((adjustedDate.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
 /**
@@ -43,24 +44,24 @@ function getWeekNumber(date: Date): number {
  * day, week, or month and returns a single aggregated page.
  *
  * URL params:
- * @param id          {string} Required (path). The string `_id` of the member whose sessions are fetched.
+ * @param {string} id - Required (path). The string `_id` of the member whose sessions are fetched.
  *
  * Query params:
- * @param page        {number} Optional. 1-based page number for individual session pagination (default: 1).
+ * @param {number} [page] - Optional. 1-based page number for individual session pagination (default: 1).
  *                             Ignored when `filter` is not `session`.
- * @param limit       {number} Optional. Number of sessions per page (default: 10).
+ * @param {number} [limit] - Optional. Number of sessions per page (default: 10).
  *                             Ignored when `filter` is not `session`.
- * @param filter      {string} Optional. Controls result shape. `session` (default) returns individual rows;
+ * @param {string} [filter] - Optional. Controls result shape. `session` (default) returns individual rows;
  *                             `day`, `week`, or `month` collapses sessions into aggregate groups.
- * @param displayCurrency {string} Optional. ISO currency code to convert financial metrics into
+ * @param {string} [displayCurrency] - Optional. ISO currency code to convert financial metrics into
  *                             (e.g. `"TTD"`, `"USD"`). Resolved via `getCurrencyFromQuery`.
- * @param licencee    {string} Optional. Licencee ID used to look up the currency conversion rate
+ * @param {string} [licencee] - Optional. Licencee ID used to look up the currency conversion rate
  *                             for the location. If absent, conversion is skipped.
- * @param startDate   {string} Optional. ISO date string for the start of a custom date range.
+ * @param {string} [startDate] - Optional. ISO date string for the start of a custom date range.
  *                             Must be paired with `endDate`; filters `startTime >= startDate`.
- * @param endDate     {string} Optional. ISO date string for the end of a custom date range.
+ * @param {string} [endDate] - Optional. ISO date string for the end of a custom date range.
  *                             Must be paired with `startDate`; filters `startTime < endDate + 1 day`.
- * @param timePeriod  {string} Optional. Preset time window applied when `startDate`/`endDate` are absent.
+ * @param {string} [timePeriod] - Optional. Preset time window applied when `startDate`/`endDate` are absent.
  *                             Accepted values: `today`, `yesterday`, `7d`, `30d`, `all time`.
  */
 export async function GET(
@@ -152,7 +153,7 @@ export async function GET(
         .sort({ startTime: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
-        .lean();
+        .lean<MachineSessionDocument[]>();
 
       const processedSessions = sessions.map(session => {
         let duration = null;
@@ -193,7 +194,7 @@ export async function GET(
         const coinOut = session.endMeters?.movement?.coinOut || 0;
 
         // Calculate won/less (coin out - coin in)
-        const wonLess = coinOut - coinIn;
+        const wonLess = Number(coinOut) - Number(coinIn);
 
         // Calculate bet (coin in)
         const bet = coinIn;
@@ -265,7 +266,7 @@ export async function GET(
       // ============================================================================
       const allSessions = await MachineSession.find(query)
         .sort({ startTime: -1 })
-        .lean();
+        .lean<MachineSessionDocument[]>();
 
       const groupedSessions = new Map();
 
@@ -350,7 +351,7 @@ export async function GET(
           const jackpot = session.endMeters?.movement?.jackpot || 0;
           const coinIn = session.endMeters?.movement?.coinIn || 0;
           const coinOut = session.endMeters?.movement?.coinOut || 0;
-          const wonLess = coinOut - coinIn;
+          const wonLess = Number(coinOut) - Number(coinIn);
           const bet = coinIn;
           const won = coinOut;
 

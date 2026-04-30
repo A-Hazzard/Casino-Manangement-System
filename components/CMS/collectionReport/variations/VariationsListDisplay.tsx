@@ -117,11 +117,11 @@ export function VariationsListDisplay({
   );
 
   // Desktop/Full table view (always hidden on mobile)
-  const totalMeterGross = variationMachines.reduce((sum, m) => sum + (Number(m.meterGross) || 0), 0);
-  const totalSasGross = variationMachines.reduce((sum, m) => sum + (Number(m.sasGross) || 0), 0);
-  const totalVariation = variationMachines.reduce((sum, m) => {
-    const v = typeof m.variation === 'number' ? m.variation : Number(m.variation) || 0;
-    return sum + v;
+  const totalMeterGross = variationMachines.reduce((sum, machineItem) => sum + (Number(machineItem.meterGross) || 0), 0);
+  const totalSasGross = variationMachines.reduce((sum, machineItem) => sum + (Number(machineItem.sasGross) || 0), 0);
+  const totalVariation = variationMachines.reduce((sum, machineItem) => {
+    const variationValue = typeof machineItem.variation === 'number' ? machineItem.variation : Number(machineItem.variation) || 0;
+    return sum + variationValue;
   }, 0);
 
   return (

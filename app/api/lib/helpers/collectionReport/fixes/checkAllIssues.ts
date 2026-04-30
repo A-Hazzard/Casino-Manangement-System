@@ -9,6 +9,8 @@ import { Collections } from '@/app/api/lib/models/collections';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Machine } from '@/app/api/lib/models/machines';
 import { calculateMovement } from '@/lib/utils/movement';
+import type { CollectionDocument } from '@/lib/types/collection';
+import type { GamingMachine, CollectionReportDocument } from '@shared/types';
 
 /**
  * Checks issues for a specific report or machine
@@ -50,9 +52,9 @@ export async function checkAllIssues(
   let reports;
   if (machineId) {
     // For machine-specific checks, find reports that contain this machine
-    const collections = await Collections.find({ machineId }).lean();
+    const collections = await Collections.find({ machineId }).lean<CollectionDocument[]>();
     const locationReportIds = [
-      ...new Set(collections.map(c => c.locationReportId).filter(Boolean)),
+      ...new Set(collections.map(collection => collection.locationReportId).filter(Boolean)),
     ];
     reports = await CollectionReport.find({
       locationReportId: { $in: locationReportIds },
@@ -98,21 +100,19 @@ export async function checkAllIssues(
         ],
       })
         .sort({ collectionTime: -1, timestamp: -1 })
-        .lean();
+        .lean<CollectionDocument>();
     }
 
     // Check each collection for issues
     for (const collection of collections) {
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const machine = await Machine.findOne({ _id: collection.machineId }).lean();
+      const machine = await Machine.findOne({ _id: collection.machineId }).lean<GamingMachine>();
 
       if (machine) {
-        const machineData = machine as Record<string, unknown>;
-        const currentCollectionMeters =
-          (machineData.collectionMeters as Record<string, unknown>) || {
-            metersIn: 0,
-            metersOut: 0,
-          };
+        const currentCollectionMeters = machine.collectionMeters || {
+          metersIn: 0,
+          metersOut: 0,
+        };
 
         // Check prevIn/prevOut accuracy
         const actualPreviousCollection = await Collections.findOne({
@@ -139,7 +139,7 @@ export async function checkAllIssues(
           ],
         })
           .sort({ collectionTime: -1, timestamp: -1 })
-          .lean();
+          .lean<CollectionDocument>();
 
         if (actualPreviousCollection) {
           const expectedPrevIn = actualPreviousCollection.metersIn || 0;
@@ -164,10 +164,8 @@ export async function checkAllIssues(
           mostRecentCollectionForMachine._id === collection._id;
 
         if (isThisMostRecent) {
-          const machineMetersIn =
-            (currentCollectionMeters.metersIn as number) || 0;
-          const machineMetersOut =
-            (currentCollectionMeters.metersOut as number) || 0;
+          const machineMetersIn = currentCollectionMeters.metersIn || 0;
+          const machineMetersOut = currentCollectionMeters.metersOut || 0;
 
           if (
             machineMetersIn !== collection.metersIn ||
@@ -212,7 +210,7 @@ export async function checkAllIssues(
       if (collection.locationReportId) {
         const reportExists = await CollectionReport.findOne({
           locationReportId: collection.locationReportId,
-        }).lean();
+        }).lean<CollectionReportDocument>();
 
         if (!reportExists) {
           issueCount++;
@@ -248,14 +246,10 @@ export async function checkAllIssues(
 
     for (const machineIdToCheck of machineIds) {
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const machine = await Machine.findOne({ _id: machineIdToCheck }).lean();
+      const machine = await Machine.findOne({ _id: machineIdToCheck }).lean<GamingMachine>();
 
       if (machine) {
-        const machineData = machine as Record<string, unknown>;
-        const history =
-          (machineData.collectionMetersHistory as Array<
-            Record<string, unknown>
-          >) || [];
+        const history = machine.collectionMetersHistory || [];
         let hasMachineHistoryIssues = false;
 
         // Check for orphaned entries
@@ -263,11 +257,11 @@ export async function checkAllIssues(
           if (entry.locationReportId) {
             const collectionsExist = await Collections.findOne({
               locationReportId: entry.locationReportId,
-            }).lean();
+            }).lean<CollectionDocument>();
 
             const reportExists = await CollectionReport.findOne({
               locationReportId: entry.locationReportId,
-            }).lean();
+            }).lean<CollectionReportDocument>();
 
             if (!collectionsExist || !reportExists) {
               hasMachineHistoryIssues = true;
@@ -281,7 +275,7 @@ export async function checkAllIssues(
           const dateMap = new Map<string, number>();
           for (const entry of history) {
             if (entry.timestamp) {
-              const date = new Date(entry.timestamp as string)
+              const date = new Date(entry.timestamp)
                 .toISOString()
                 .split('T')[0];
               const count = dateMap.get(date) || 0;
@@ -299,8 +293,8 @@ export async function checkAllIssues(
           reportIssues[report._id.toString()].issueCount++;
           reportIssues[report._id.toString()].hasIssues = true;
           const machineName = String(
-            machineData.serialNumber ||
-              (machineData.custom as Record<string, unknown>)?.name ||
+            machine.serialNumber ||
+              machine.custom?.name ||
               machineIdToCheck
           );
           if (
@@ -337,7 +331,7 @@ export async function checkAllIssues(
   } else if (reportId) {
     const collections = await Collections.find({
       locationReportId: reportId,
-    }).lean();
+    }).lean<CollectionDocument[]>();
     machineIdsToCheck = [
       ...new Set(collections.map(c => String(c.machineId)).filter(Boolean)),
     ];
@@ -346,17 +340,13 @@ export async function checkAllIssues(
   if (machineIdsToCheck.length > 0) {
     for (const machId of machineIdsToCheck) {
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const machine = await Machine.findOne({ _id: machId }).lean();
+      const machine = await Machine.findOne({ _id: machId }).lean<GamingMachine>();
 
       if (machine) {
-        const machineData = machine as Record<string, unknown>;
-        const history =
-          (machineData.collectionMetersHistory as Array<
-            Record<string, unknown>
-          >) || [];
+        const history = machine.collectionMetersHistory || [];
         const machineName = String(
-          machineData.serialNumber ||
-            (machineData.custom as Record<string, unknown>)?.name ||
+          machine.serialNumber ||
+            machine.custom?.name ||
             machId
         );
 
@@ -371,9 +361,8 @@ export async function checkAllIssues(
         const locationReportIdMap = new Map<string, number>();
         for (const entry of history) {
           if (entry.locationReportId) {
-            const reportId = entry.locationReportId as string;
-            const count = locationReportIdMap.get(reportId) || 0;
-            locationReportIdMap.set(reportId, count + 1);
+            const count = locationReportIdMap.get(entry.locationReportId) || 0;
+            locationReportIdMap.set(entry.locationReportId, count + 1);
           }
         }
 
@@ -391,16 +380,16 @@ export async function checkAllIssues(
         // Check for orphaned entries
         for (const entry of history) {
           if (entry.locationReportId) {
-            const reportId = entry.locationReportId as string;
+            const reportId = entry.locationReportId;
 
             const collectionExists = await Collections.findOne({
               machineId: machId,
               locationReportId: reportId,
-            }).lean();
+            }).lean<CollectionDocument>();
 
             const reportExists = await CollectionReport.findOne({
               locationReportId: reportId,
-            }).lean();
+            }).lean<CollectionReportDocument>();
 
             if (!collectionExists && !reportExists) {
               issues.push({

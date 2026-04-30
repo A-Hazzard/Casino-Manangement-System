@@ -32,6 +32,11 @@ type UserForScale = {
  * getReviewerScale({ roles: ['reviewer'], multiplier: 0   }) // → 1
  */
 export function getReviewerScale(user: UserForScale): number {
+  if (!user || typeof user !== 'object') {
+    console.error('[getReviewerScale] user is required and must be an object');
+    return 1;
+  }
+
   const multiplier = user.multiplier ?? 0;
   const isReviewer = (user.roles as string[])?.includes('reviewer') ?? false;
   return isReviewer && multiplier ? 1 - multiplier : 1;
@@ -84,6 +89,14 @@ export function scaleMachineValues(
   values: MachineValuesInput,
   scale: number
 ): MachineValuesScaled {
+  if (!values || typeof values !== 'object' || typeof scale !== 'number') {
+    console.error('[scaleMachineValues] values (object) and scale (number) are required');
+    return {
+      drop: 0, cancelled: 0, meterGross: 0, jackpot: 0,
+      netGross: 0, sasGross: 0, variation: 0
+    };
+  }
+
   const {
     drop,
     cancelled,
@@ -134,6 +147,11 @@ export function scaleReportFinancials<T extends ReportFinancials>(
   report: T,
   scale: number
 ): T {
+  if (!report || typeof report !== 'object' || typeof scale !== 'number') {
+    console.error('[scaleReportFinancials] report (object) and scale (number) are required');
+    return report;
+  }
+
   if (scale === 1) return report;
 
   return {

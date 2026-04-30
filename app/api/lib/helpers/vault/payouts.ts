@@ -17,26 +17,33 @@ import { type PayoutDocument } from '@/shared/types/models';
 
 /**
  * Get payout by ID
- * @param id - Payout ID
- * @returns Payout document or null
+ * @param {string} id - Payout ID
+ * @returns {Promise<PayoutDocument | null>} Payout document or null
  */
 export async function getPayoutById(
   id: string
 ): Promise<PayoutDocument | null> {
-  const payout = await CashDeskPayout.findOne({ _id: id }).lean();
-  return payout as unknown as PayoutDocument | null;
+  if (!id) {
+    console.error('[getPayoutById] id is required');
+    return null;
+  }
+  return await CashDeskPayout.findOne({ _id: id }).lean<PayoutDocument>();
 }
 
 /**
  * Update payout
- * @param id - Payout ID
- * @param updateData - Update data
- * @returns Updated payout document or null
+ * @param {string} id - Payout ID
+ * @param {UpdatePayoutRequest} updateData - Update data
+ * @returns {Promise<PayoutDocument | null>} Updated payout document or null
  */
 export async function updatePayout(
   id: string,
   updateData: UpdatePayoutRequest
 ): Promise<PayoutDocument | null> {
+  if (!id || !updateData) {
+    console.error('[updatePayout] id and updateData are required');
+    return null;
+  }
   const updated = await CashDeskPayout.findOneAndUpdate(
     { _id: id },
     {
@@ -46,25 +53,29 @@ export async function updatePayout(
       },
     },
     { new: true }
-  ).lean();
+  ).lean<PayoutDocument>();
 
-  return updated as unknown as PayoutDocument | null;
+  return updated;
 }
 
 /**
  * Transform payout for API response
- * @param payout - Payout document
- * @returns Transformed payout object
+ * @param {PayoutDocument} payout - Payout document
+ * @returns {Record<string, unknown>} Transformed payout object
  */
 export function transformPayoutForResponse(
   payout: PayoutDocument
 ): Record<string, unknown> {
+  if (!payout) {
+    console.error('[transformPayoutForResponse] payout is required');
+    return {};
+  }
   return {
     _id: payout._id,
     cashierId: payout.cashierId,
     cashierName: payout.cashierName,
     amount: payout.amount,
-    shiftId: payout.shiftId,
+    shiftId: payout.cashierShiftId,
     locationId: payout.locationId,
     status: payout.status,
     notes: payout.notes,

@@ -75,6 +75,10 @@ function extractPortFromUri(uri?: string): string | null {
  */
 function formatCommunicationMode(comsMode?: number): string {
   if (comsMode === undefined) return 'No Value Provided';
+  if (typeof comsMode !== 'number') {
+    console.error('[formatCommunicationMode] comsMode must be a number');
+    return 'No Value Provided';
+  }
   if (comsMode === 0) return 'sas';
   if (comsMode === 1) return 'non sas';
   if (comsMode === 2) return 'IGT';
@@ -88,6 +92,10 @@ function formatCommunicationMode(comsMode?: number): string {
  * @returns MQTT configuration object
  */
 export function extractMQTTConfig(cabinet: MachineDocument): MQTTConfig {
+  if (!cabinet || typeof cabinet !== 'object') {
+    console.error('[extractMQTTConfig] cabinet is required');
+    return {} as MQTTConfig;
+  }
   return {
     smibId: cabinet.relayId || cabinet.smibBoard || 'No Value Provided',
     netMode:

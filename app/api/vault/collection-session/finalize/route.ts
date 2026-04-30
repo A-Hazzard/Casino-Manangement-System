@@ -69,8 +69,16 @@ export async function POST(request: NextRequest) {
           });
       }
 
-      await VaultTransactionModel.insertMany(txs);
-      if (scs.length > 0) await SoftCountModel.insertMany(scs);
+      const txsResult = await VaultTransactionModel.insertMany(txs);
+      if (txsResult.length !== txs.length) {
+        console.error(`[collection-session/finalize] Only ${txsResult.length}/${txs.length} transactions inserted`);
+      }
+      if (scs.length > 0) {
+        const scsResult = await SoftCountModel.insertMany(scs);
+        if (scsResult.length !== scs.length) {
+          console.error(`[collection-session/finalize] Only ${scsResult.length}/${scs.length} soft counts inserted`);
+        }
+      }
 
       const activeVaultShift = await VaultShiftModel.findOne({ _id: vaultShiftId });
       if (!activeVaultShift || activeVaultShift.status !== 'active')
@@ -99,13 +107,9 @@ export async function POST(request: NextRequest) {
         success: true,
         totalCollected: session.totalCollected,
       });
-    } catch (e: unknown) {
-      console.error('[FinalizeCollection] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[FinalizeCollection] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }

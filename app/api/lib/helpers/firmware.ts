@@ -29,6 +29,10 @@ export type FirmwareFileData = {
 export async function downloadFirmwareFromGridFS(
   fileId: string | ObjectId
 ): Promise<Buffer> {
+  if (!fileId) {
+    console.error('[downloadFirmwareFromGridFS] fileId is required');
+    throw new Error('[downloadFirmwareFromGridFS] fileId is required');
+  }
   const db = await connectDB();
   if (!db) {
     throw new Error('Database connection failed');
@@ -49,10 +53,10 @@ export async function downloadFirmwareFromGridFS(
       chunks.push(chunk);
     }
   } catch (err) {
-    console.error(`Error downloading from GridFS: ${err instanceof Error ? err.message : String(err)}`, { 
-      fileId: fileId.toString(),
-      bucketName: 'firmwares'
-    });
+    console.error(
+      '[downloadFirmwareFromGridFS] Error:',
+      err instanceof Error ? err.message : 'Unknown error'
+    );
     throw err;
   }
 
@@ -68,6 +72,10 @@ export async function downloadFirmwareFromGridFS(
 export async function findFirmwareById(
   firmwareId: string
 ): Promise<FirmwareFileData | null> {
+  if (!firmwareId) {
+    console.error('[findFirmwareById] firmwareId is required');
+    return null;
+  }
   await connectDB();
   
   // Use .lean<Firmware>() to get a typed object
@@ -92,6 +100,10 @@ export async function findFirmwareById(
 export async function findFirmwareByVersion(
   version: string
 ): Promise<FirmwareFileData | null> {
+  if (!version) {
+    console.error('[findFirmwareByVersion] version is required');
+    return null;
+  }
   await connectDB();
   
   const firmwareDoc = await FirmwareModel.findOne({

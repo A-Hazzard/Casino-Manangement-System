@@ -19,6 +19,11 @@ export async function finalizeFloatRequest(
   username: string,
   customNotes?: string
 ) {
+  if (!requestId || typeof requestId !== 'string' || !userId || typeof userId !== 'string' || !username || typeof username !== 'string') {
+    console.error('[finalizeFloatRequest] requestId (string), userId (string), and username (string) are required');
+    throw new Error('Invalid parameters provided');
+  }
+
   const floatRequest = await FloatRequestModel.findOne({ _id: requestId });
   if (!floatRequest) throw new Error('Float request not found');
 

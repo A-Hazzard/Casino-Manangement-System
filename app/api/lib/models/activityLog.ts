@@ -18,6 +18,8 @@ const ActivityLogSchema = new Schema(
         'create',
         'update',
         'delete',
+        'restore',
+        'archive',
         'view',
         'download',
         'login_success',

@@ -293,14 +293,14 @@ export function useCabinetsPageData() {
         );
         if (data) {
           setChartData(
-            data.map(d => ({
-              xValue: d.time || d.day,
-              day: d.day,
-              time: d.time ?? '',
-              moneyIn: d.moneyIn,
-              moneyOut: d.moneyOut,
-              gross: d.gross,
-              netGross: d.netGross,
+            data.map(dataItem => ({
+              xValue: dataItem.time || dataItem.day,
+              day: dataItem.day,
+              time: dataItem.time ?? '',
+              moneyIn: dataItem.moneyIn,
+              moneyOut: dataItem.moneyOut,
+              gross: dataItem.gross,
+              netGross: dataItem.netGross,
             }))
           );
         }

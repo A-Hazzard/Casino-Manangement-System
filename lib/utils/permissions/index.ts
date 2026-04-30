@@ -26,6 +26,7 @@ export {
   canManageLocations,
   canViewArchivedMachines,
   canPermanentlyDeleteMachines,
+  canPermanentlyDeleteLocations,
 } from './client';
 
 // Server-side permission utilities

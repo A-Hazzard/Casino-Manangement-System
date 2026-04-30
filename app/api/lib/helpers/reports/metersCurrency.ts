@@ -16,6 +16,7 @@ import type { CurrencyCode } from '@/shared/types/currency';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 import { Countries } from '@/app/api/lib/models/countries';
 import { Licencee } from '@/app/api/lib/models/licencee';
+import type { CountryDocument, LicenceeDocument } from '@/shared/types';
 import type { LocationWithGamingDay, TransformedMeterData } from './meters';
 
 /**
@@ -40,9 +41,14 @@ export async function buildCurrencyMaps(
   countryNameMap: Map<string, string>;
   locationDetailsMap: Map<string, LocationDetails>;
 }> {
+  if (!Array.isArray(locationsData)) {
+    console.error('[buildCurrencyMaps] locationsData is required');
+    return { licenceeMap: new Map(), countryNameMap: new Map(), locationDetailsMap: new Map() };
+  }
+
   // Fetch licencee mappings
   const allLicencees = await Licencee.find({}, { _id: 1, name: 1, country: 1 })
-    .lean()
+    .lean<LicenceeDocument[]>()
     .exec();
 
   const licenceeMap = new Map<string, string>();
@@ -59,7 +65,7 @@ export async function buildCurrencyMaps(
     { _id: { $in: countryIds } },
     { _id: 1, name: 1 }
   )
-    .lean()
+    .lean<CountryDocument[]>()
     .exec();
 
   const countryNameMap = new Map<string, string>();
@@ -97,6 +103,10 @@ function getNativeCurrencyForLocation(
   locationDetails: LocationDetails | undefined,
   licenceeMap: Map<string, string>
 ): CurrencyCode {
+  if (!locationDetails || !licenceeMap) {
+    console.error('[getNativeCurrencyForLocation] locationDetails and licenceeMap are required');
+    return 'USD';
+  }
   if (!locationDetails) {
     return 'USD';
   }
@@ -128,6 +138,10 @@ function convertMeterDataCurrency(
   nativeCurrency: CurrencyCode,
   displayCurrency: CurrencyCode
 ): TransformedMeterData {
+  if (!item || !nativeCurrency || !displayCurrency) {
+    console.error('[convertMeterDataCurrency] item, nativeCurrency, and displayCurrency are required');
+    return item || {} as TransformedMeterData;
+  }
   // Only convert if native currency differs from display currency
   if (nativeCurrency === displayCurrency) {
     return item;
@@ -177,6 +191,11 @@ export function applyCurrencyConversion(
   licenceeMap: Map<string, string>,
   displayCurrency: CurrencyCode
 ): TransformedMeterData[] {
+  if (!Array.isArray(data) || !locationDetailsMap || !licenceeMap || !displayCurrency) {
+    console.error('[applyCurrencyConversion] data, locationDetailsMap, licenceeMap, and displayCurrency are required');
+    return data || [];
+  }
+
   return data.map(item => {
     const locationDetails = locationDetailsMap.get(item.locationId);
     const nativeCurrency = getNativeCurrencyForLocation(

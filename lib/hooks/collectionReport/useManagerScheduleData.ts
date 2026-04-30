@@ -30,7 +30,7 @@ export function useManagerScheduleData(
   // Permission
   // ============================================================================
   const canManage = useMemo(
-    () => user?.roles?.some((r: string) => MANAGE_ROLES.includes(r)) ?? false,
+    () => user?.roles?.some((role: string) => MANAGE_ROLES.includes(role)) ?? false,
     [user]
   );
 

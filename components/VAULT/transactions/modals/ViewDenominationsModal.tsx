@@ -33,25 +33,25 @@ export default function ViewDenominationsModal({
 
         <div className="max-h-[75vh] overflow-y-auto p-6 space-y-6 custom-scrollbar">
           <div className="grid grid-cols-2 gap-3">
-            {denominations.map((d) => (
+            {denominations.map((denominationItem) => (
               <div 
-                key={d.denomination} 
+                key={denominationItem.denomination} 
                 className={cn(
                   "flex items-center justify-between p-3 rounded-xl border transition-all",
-                  d.quantity > 0 ? "bg-white border-violet-100 shadow-sm" : "bg-gray-50/50 border-gray-100 opacity-60"
+                  denominationItem.quantity > 0 ? "bg-white border-violet-100 shadow-sm" : "bg-gray-50/50 border-gray-100 opacity-60"
                 )}
               >
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 font-black text-[10px]",
-                    d.quantity > 0 ? "text-violet-600 border border-violet-100" : "text-gray-400 border border-transparent"
+                    denominationItem.quantity > 0 ? "text-violet-600 border border-violet-100" : "text-gray-400 border border-transparent"
                   )}>
-                    ${d.denomination}
+                    ${denominationItem.denomination}
                   </div>
                   <span className="text-[10px] font-black uppercase text-gray-400">Bills</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-black text-gray-900 leading-none">x{d.quantity}</span>
+                  <span className="text-sm font-black text-gray-900 leading-none">x{denominationItem.quantity}</span>
                 </div>
               </div>
             ))}

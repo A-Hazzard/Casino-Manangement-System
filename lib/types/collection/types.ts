@@ -1,24 +1,12 @@
-/**
- * Collection Types
- * Types for collection modal, machine data, and collection operations.
- *
- * Includes types for:
- * - Collection modal state and data
- * - Machine financial data (meters in/out, money in/out)
- * - Location and machine selection
- * - Collection time management
- * - Collection history and records
- * - Collection views and tabs
- */
 export type CollectionReportMachineEntry = {
   machineId: string;
   machineName: string;
-  collectionTime: string; // Should be ISO string e.g., new Date().toISOString()
+  collectionTime: string;
   metersIn: number | string;
   metersOut: number | string;
   notes?: string;
   useCustomTime: boolean;
-  selectedDate: string; // Store date as string e.g. YYYY-MM-DD
+  selectedDate: string;
   timeHH: string;
   timeMM: string;
   ramClear?: boolean;
@@ -47,6 +35,8 @@ export type CollectionMovement = {
 
 export type CollectionDocument = {
   _id: string;
+  ramClearMeterId?: string;
+  meterId?: string;
   isCompleted: boolean;
   metersIn: number;
   metersOut: number;
@@ -77,14 +67,12 @@ export type CollectionDocument = {
   __v: number;
 };
 
-// Collection Creation Types
 export type CreateCollectionPayload = {
   machineId: string;
   location: string;
   collector: string;
   metersIn: number;
   metersOut: number;
-  // CRITICAL: Include prevIn and prevOut for proper meter tracking
   prevIn?: number;
   prevOut?: number;
   timestamp?: Date | string;
@@ -126,7 +114,6 @@ export type PreviousCollectionMeters = {
   collectionTime?: Date;
 };
 
-// Collection view and tab types
 export type CollectionView = 'collection' | 'monthly' | 'manager' | 'collector';
 
 export type CollectionTab = {
@@ -134,6 +121,5 @@ export type CollectionTab = {
   label: string;
   icon: string;
   description?: string;
-  /** false when this tab is under maintenance */
   available?: boolean;
 };

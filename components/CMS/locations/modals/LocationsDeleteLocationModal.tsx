@@ -1,10 +1,10 @@
 /**
  * Locations Delete Location Modal Component
  *
- * Modal for confirming and handling location archival or permanent deletion.
- * - Developers see a choice: Archive or Permanently Delete
- * - Non-developers always archive (soft delete)
- * - Both paths require a confirmation step
+ * Modal for confirming and handling location archival.
+ * - Developers see the option to archive locations
+ * - All other authorized users (admin, manager, location admin, owner) can archive
+ * - Only developers can permanently delete locations (via API, not UI)
  *
  * @module components/locations/LocationsDeleteLocationModal
  */
@@ -16,12 +16,10 @@ import { useLocationsActionsStore } from '@/lib/store/locationActionsStore';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { useUserStore } from '@/lib/store/userStore';
-import Image from 'next/image';
-import deleteIcon from '@/public/deleteIcon.svg';
-import { Archive, Loader2, Trash2, X } from 'lucide-react';
+import { Archive, Loader2, X } from 'lucide-react';
 import { gsap } from 'gsap';
 
-type ModalStep = 'choose' | 'confirmArchive' | 'confirmDelete';
+type ModalStep = 'choose' | 'confirmArchive';
 
 export default function LocationsDeleteLocationModal({
   onDelete,
@@ -41,6 +39,10 @@ export default function LocationsDeleteLocationModal({
     return roles.map((r: string) => r.toLowerCase()).includes('developer');
   }, [user]);
 
+  const canPermanentlyDelete = useMemo(() => {
+    return isDeveloper;
+  }, [isDeveloper]);
+
   useEffect(() => {
     if (isDeleteModalOpen && modalRef.current && backdropRef.current) {
       gsap.fromTo(
@@ -54,10 +56,13 @@ export default function LocationsDeleteLocationModal({
         { opacity: 1, duration: 0.3, ease: 'power2.out' }
       );
       setLoading(false);
-      // Developers see the choice step; non-developers go straight to archive confirmation
-      setStep(isDeveloper ? 'choose' : 'confirmArchive');
+      if (canPermanentlyDelete) {
+        setStep('choose');
+      } else {
+        setStep('confirmArchive');
+      }
     }
-  }, [isDeleteModalOpen, isDeveloper]);
+  }, [isDeleteModalOpen, canPermanentlyDelete]);
 
   const getUserDisplayName = () => {
     if (!user) return 'Unknown User';
@@ -133,37 +138,6 @@ export default function LocationsDeleteLocationModal({
     }
   };
 
-  const handlePermanentDelete = async () => {
-    const location = selectedLocation as Record<string, unknown>;
-    if (!location?.location) return;
-
-    setLoading(true);
-    try {
-      await axios.delete(
-        `/api/locations?id=${location.location}&hardDelete=true`
-      );
-
-      await logActivity(
-        'delete',
-        'location',
-        location.location as string,
-        (location.locationName as string) || 'Unknown Location',
-        `Permanently deleted location: ${location.locationName as string}`,
-        location,
-        null
-      );
-
-      toast.success('Location permanently deleted');
-      onDelete();
-      closeDeleteModal();
-    } catch (error) {
-      console.error('Error deleting location:', error);
-      toast.error('Failed to delete location');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleClose = () => {
     if (!loading) {
       closeDeleteModal();
@@ -194,7 +168,6 @@ export default function LocationsDeleteLocationModal({
               <h2 className="text-xl font-bold text-buttonActive">
                 {step === 'choose' && 'Remove Location'}
                 {step === 'confirmArchive' && 'Archive Location'}
-                {step === 'confirmDelete' && 'Delete Location'}
               </h2>
               <Button
                 variant="ghost"
@@ -242,24 +215,6 @@ export default function LocationsDeleteLocationModal({
                       </p>
                     </div>
                   </button>
-
-                  {/* Permanent delete option */}
-                  <button
-                    onClick={() => setStep('confirmDelete')}
-                    className="group flex items-center gap-4 rounded-lg border-2 border-red-200 bg-red-50 p-4 text-left transition-all hover:border-red-400 hover:bg-red-100"
-                  >
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-200 text-red-700 transition-colors group-hover:bg-red-300">
-                      <Trash2 className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-red-800">
-                        Permanently Delete
-                      </p>
-                      <p className="text-xs text-red-700/80">
-                        Remove forever. This cannot be undone.
-                      </p>
-                    </div>
-                  </button>
                 </div>
               </div>
             )}
@@ -285,30 +240,7 @@ export default function LocationsDeleteLocationModal({
                 <p className="text-sm text-grayHighlight">
                   The location will be hidden from active views but can be
                   found under the &quot;Archived&quot; status filter.
-                </p>
-              </div>
-            )}
-
-            {/* ── Step 2b: Confirm Permanent Delete ── */}
-            {step === 'confirmDelete' && (
-              <div className="text-center">
-                <div className="mb-4 flex justify-center">
-                  <Image src={deleteIcon} alt="Delete" width={64} height={64} />
-                </div>
-                <p className="mb-4 text-lg font-semibold text-grayHighlight">
-                  Are you sure you want to permanently delete
-                  {locationName && (
-                    <span className="font-bold text-buttonActive">
-                      {' '}
-                      {locationName}
-                    </span>
-                  )}
-                  ?
-                </p>
-                <p className="text-sm text-red-600 font-medium">
-                  This action cannot be undone. The location and all its data
-                  will be permanently removed from the system.
-                </p>
+</p>
               </div>
             )}
           </div>
@@ -341,37 +273,6 @@ export default function LocationsDeleteLocationModal({
                       <>
                         <Archive className="mr-2 h-4 w-4" />
                         Archive
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      isDeveloper ? setStep('choose') : handleClose()
-                    }
-                    className="bg-buttonInactive text-primary-foreground hover:bg-buttonInactive/90"
-                    disabled={loading}
-                  >
-                    {isDeveloper ? 'Back' : 'Cancel'}
-                  </Button>
-                </>
-              )}
-
-              {step === 'confirmDelete' && (
-                <>
-                  <Button
-                    onClick={handlePermanentDelete}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Permanently Delete
                       </>
                     )}
                   </Button>

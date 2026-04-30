@@ -12,28 +12,9 @@
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
-import type { MachineWithOptionalHistory } from '@/app/api/lib/types';
+import type { CollectionDocument } from '@/lib/types/collection';
+import type { CollectionReportDocument, GamingMachine } from '@shared/types';
 import { fixReportIssues } from './fixOperations';
-
-type CollectionDocument = {
-  _id: unknown;
-  machineId?: string;
-  collectionTime?: Date;
-  timestamp: Date;
-  metersIn: number;
-  metersOut: number;
-  prevIn: number;
-  prevOut: number;
-  locationReportId?: string;
-  deletedAt?: Date;
-  isCompleted?: boolean;
-};
-
-type ReportDocument = {
-  locationReportId: string;
-  timestamp: Date;
-  location?: string;
-};
 
 /**
  * Fix all collection reports with data integrity issues
@@ -61,9 +42,9 @@ export async function fixAllReportsData(): Promise<{
   console.warn('🔧 Starting fix all reports...');
 
   // Get all collection reports
-  const reports = (await CollectionReport.find({}).sort({
-    timestamp: -1,
-  })) as ReportDocument[];
+  const reports = await CollectionReport.find({})
+    .sort({ timestamp: -1 })
+    .lean<CollectionReportDocument[]>();
 
   console.warn(`📊 Found ${reports.length} total reports to check`);
 
@@ -86,7 +67,8 @@ export async function fixAllReportsData(): Promise<{
   console.warn('🔍 Checking reports for issues...');
 
   for (const report of reports) {
-    const reportId = report.locationReportId;
+    const reportId = report.locationReportId || '';
+    if (!reportId) continue;
     const hasIssues = await checkReportForIssues(reportId);
 
     if (hasIssues) {
@@ -106,7 +88,7 @@ export async function fixAllReportsData(): Promise<{
       if (!report) continue;
 
       console.warn(
-        `\n🔧 Fixing report: ${reportId} (${(report as ReportDocument).location || 'Unknown'})`
+        `\n🔧 Fixing report: ${reportId} (${report.location || 'Unknown'})`
       );
 
       // Use the comprehensive fix function from fixReportOperations
@@ -114,14 +96,14 @@ export async function fixAllReportsData(): Promise<{
 
       const totalIssuesFixed = (Object.values(
         reportFixResults.issuesFixed
-      ) as number[]).reduce((sum, val) => sum + val, 0);
+      ) as number[]).reduce((sum, value) => sum + value, 0);
 
       if (totalIssuesFixed > 0) {
         fixResults.reportsFixed++;
         fixResults.totalIssuesFixed += totalIssuesFixed;
         fixResults.details.push({
           reportId,
-          reportName: (report as ReportDocument).location || reportId,
+          reportName: report.location || reportId,
           issuesFixed: totalIssuesFixed,
         });
 
@@ -130,7 +112,7 @@ export async function fixAllReportsData(): Promise<{
         );
       }
     } catch (error) {
-      console.error(`❌ Error fixing report ${reportId}:`, error);
+      console.error('[fixAllReportsData] Error:', error instanceof Error ? error.message : 'Unknown error');
       fixResults.errors.push({
         reportId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -161,14 +143,18 @@ export async function fixAllReportsData(): Promise<{
  * @returns True if report has issues, false otherwise
  */
 async function checkReportForIssues(reportId: string): Promise<boolean> {
-  const collections = (await Collections.find({
+  if (!reportId) {
+    console.error('[checkReportForIssues] reportId is required');
+    return false;
+  }
+  const collections = await Collections.find({
     locationReportId: reportId,
-  })) as CollectionDocument[];
+  }).lean<CollectionDocument[]>();
 
   // Check prevIn/prevOut issues
   for (const collection of collections) {
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const machine = await Machine.findOne({ _id: collection.machineId }).lean();
+    const machine = await Machine.findOne({ _id: collection.machineId }).lean<GamingMachine>();
 
     if (machine) {
       // Find the actual previous collection to get correct prevIn/prevOut values
@@ -196,7 +182,7 @@ async function checkReportForIssues(reportId: string): Promise<boolean> {
         ],
       })
         .sort({ collectionTime: -1, timestamp: -1 })
-        .lean()) as CollectionDocument | null;
+        .lean<CollectionDocument>());
 
       if (actualPreviousCollection) {
         const expectedPrevIn = actualPreviousCollection.metersIn || 0;
@@ -219,16 +205,16 @@ async function checkReportForIssues(reportId: string): Promise<boolean> {
   }
 
   // Check machine history issues
-  const machineIds = [...new Set(collections.map(c => c.machineId))];
+  const machineIds = [...new Set(collections.map(collection => collection.machineId))];
   for (const machineId of machineIds) {
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const machine = (await Machine.findOne({
+    const machine = await Machine.findOne({
       _id: machineId,
-    }).lean()) as MachineWithOptionalHistory | null;
+    }).lean<GamingMachine>();
     if (machine && machine.collectionMetersHistory) {
       const history = machine.collectionMetersHistory;
-      for (let i = 1; i < history.length; i++) {
-        const entry = history[i];
+      for (let historyIndex = 1; historyIndex < history.length; historyIndex++) {
+        const entry = history[historyIndex];
         if (
           (!entry.prevMetersIn || entry.prevMetersIn === 0) &&
           (!entry.prevMetersOut || entry.prevMetersOut === 0)

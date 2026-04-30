@@ -255,10 +255,10 @@ export default function AppSidebar({
           );
 
           if (data?.success && data?.user) {
-            const u = data.user;
-            if (u.profilePicture) setAvatarUrl(u.profilePicture as string);
-            if (u.username) setDisplayName(u.username as string);
-            if (u.email) setEmail(u.email as string);
+            const userData = data.user;
+            if (userData.profilePicture) setAvatarUrl(userData.profilePicture as string);
+            if (userData.username) setDisplayName(userData.username as string);
+            if (userData.email) setEmail(userData.email as string);
           } else {
             // If API call fails but user exists in store, use store data
             if (user?.emailAddress) {

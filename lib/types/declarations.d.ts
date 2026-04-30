@@ -1,14 +1,3 @@
-/**
- * Type Declarations
- * TypeScript module declarations for custom hooks and components.
- *
- * Provides type definitions for:
- * - useCabinetDetails hook
- * - AccountingDetails component
- * Ensures proper TypeScript support across the application.
- */
-
-// Allow TypeScript to recognize our hook
 declare module '@/lib/hooks/useCabinetDetails' {
   import { MutableRefObject } from 'react';
   import { GamingMachine as CabinetDetail } from '@/shared/types/entities';
@@ -35,7 +24,6 @@ declare module '@/lib/hooks/useCabinetDetails' {
   export default useCabinetDetails;
 }
 
-// Allow TypeScript to recognize our component
 declare module '@/components/cabinetDetails/AccountingDetails' {
   import { FC } from 'react';
   import {
@@ -49,8 +37,8 @@ declare module '@/components/cabinetDetails/AccountingDetails' {
     activeMetricsTabContent: string;
     setActiveMetricsTabContent: (tab: string) => void;
     activeMetricsFilter?: TimePeriod;
-    disableCurrencyConversion?: boolean; // For specific cabinet pages
-    onDataRefresh?: () => Promise<void>; // Optional callback to refresh parent data after auto-fix
+    disableCurrencyConversion?: boolean;
+    onDataRefresh?: () => Promise<void>;
   };
 
   export const AccountingDetails: FC<AccountingDetailsProps>;

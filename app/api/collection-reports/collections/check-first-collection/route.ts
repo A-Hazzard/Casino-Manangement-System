@@ -11,6 +11,7 @@
 
 import { Collections } from '@/app/api/lib/models/collections';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import type { CollectionDocument } from '@/lib/types/collection';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
       machineId: machineId,
     })
       .select('_id')
-      .lean();
+      .lean<CollectionDocument | null>();
 
     // ============================================================================
     // STEP 5: Determine if this would be the first collection

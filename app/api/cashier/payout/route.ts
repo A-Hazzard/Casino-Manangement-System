@@ -7,15 +7,15 @@
  * Requires the vault shift to be reconciled before any payout can proceed.
  *
  * Body fields:
- * @param cashierShiftId {string}  Required. The ID of the cashier's active shift.
- * @param type           {string}  Required. Payout type: 'ticket' or 'hand_pay'.
- * @param amount         {number}  Required. Payout amount; must be > 0 and ≤ current float balance.
- * @param ticketNumber   {string}  Conditional. Required when type is 'ticket'.
- * @param printedAt      {string}  Optional. ISO timestamp when the ticket was printed; stored for audit.
- * @param machineId      {string}  Conditional. Required when type is 'hand_pay'; used to look up
+ * @param {string} cashierShiftId - Required. The ID of the cashier's active shift.
+ * @param {string} type - Required. Payout type: 'ticket' or 'hand_pay'.
+ * @param {number} amount - Required. Payout amount; must be > 0 and ≤ current float balance.
+ * @param {string} [ticketNumber] - Conditional. Required when type is 'ticket'.
+ * @param {string} [printedAt] - Optional. ISO timestamp when the ticket was printed; stored for audit.
+ * @param {string} [machineId] - Conditional. Required when type is 'hand_pay'; used to look up
  *   machine serial number.
- * @param reason         {string}  Optional. Description of the hand-pay reason; stored for audit.
- * @param notes          {string}  Optional. Free-text notes attached to the payout record.
+ * @param {string} [reason] - Optional. Description of the hand-pay reason; stored for audit.
+ * @param {string} [notes] - Optional. Free-text notes attached to the payout record.
  *
  * ---
  *
@@ -26,11 +26,11 @@
  * that pre-date the serial field for backward compatibility.
  *
  * Query parameters:
- * @param cashierShiftId {string} Optional. Filter payouts to a specific shift.
- * @param cashierId      {string} Optional. VM only — filter by a specific cashier's user ID.
- * @param limit          {number} Optional. Maximum records to return. Defaults to 20.
- * @param startDate      {string} Optional. ISO date string lower bound on payout timestamp.
- * @param endDate        {string} Optional. ISO date string upper bound on payout timestamp.
+ * @param {string} [cashierShiftId] - Optional. Filter payouts to a specific shift.
+ * @param {string} [cashierId] - Optional. VM only — filter by a specific cashier's user ID.
+ * @param {number} [limit] - Optional. Maximum records to return. Defaults to 20.
+ * @param {string} [startDate] - Optional. ISO date string lower bound on payout timestamp.
+ * @param {string} [endDate] - Optional. ISO date string upper bound on payout timestamp.
  *
  * @module app/api/cashier/payout/route
  */
@@ -43,6 +43,7 @@ import PayoutModel from '@/app/api/lib/models/payout';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { generateMongoId } from '@/lib/utils/id';
+import type { GamingMachine, PayoutDocument } from '@shared/types';
 import type { CreatePayoutRequest } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -134,8 +135,7 @@ export async function POST(request: NextRequest) {
     // STEP 3.7: Fetch Machine Serial if Hand Pay
     let machineSerialNumber = '';
     if (type === 'hand_pay' && machineId) {
-      interface MachineResult { _id: string; origSerialNumber?: string; custom?: { name?: string } }
-      const machine = await Machine.findOne({ _id: machineId }, { origSerialNumber: 1, 'custom.name': 1 }).lean() as unknown as MachineResult | null;
+      const machine = await Machine.findOne({ _id: machineId }, { origSerialNumber: 1, 'custom.name': 1 }).lean<GamingMachine>();
       machineSerialNumber = machine?.custom?.name || machine?.origSerialNumber || machineId;
     }
 
@@ -200,12 +200,9 @@ export async function POST(request: NextRequest) {
       newBalance: shift.currentBalance
     }, { status: 201 });
 
-  } catch (error: unknown) {
-    console.error('Error processing payout:', error instanceof Error ? error.message : error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (e) {
+    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -259,14 +256,13 @@ export async function GET(request: NextRequest) {
     const payouts = await PayoutModel.find(query)
       .sort({ timestamp: -1 })
       .limit(limit)
-      .lean();
+      .lean<PayoutDocument[]>();
 
     // Backward compatibility: Populate machineSerialNumber if missing
     const handPayPayouts = payouts.filter(p => p.type === 'hand_pay' && !p.machineSerialNumber && p.machineId);
     if (handPayPayouts.length > 0) {
       const machineIds = [...new Set(handPayPayouts.map(p => p.machineId))];
-      interface MachineResult { _id: string; origSerialNumber?: string; custom?: { name?: string } }
-      const machines = await Machine.find({ _id: { $in: machineIds } }, { origSerialNumber: 1, 'custom.name': 1 }).lean() as unknown as MachineResult[];
+      const machines = await Machine.find({ _id: { $in: machineIds } }, { origSerialNumber: 1, 'custom.name': 1 }).lean<GamingMachine[]>();
       const machineMap = machines.reduce((acc, m) => {
         acc[String(m._id)] = m?.custom?.name || m?.origSerialNumber || String(m._id);
         return acc;
@@ -284,11 +280,8 @@ export async function GET(request: NextRequest) {
       payouts
     });
 
-  } catch (error: unknown) {
-    console.error('Error fetching payouts:', error instanceof Error ? error.message : error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (e) {
+    console.error('[GET] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

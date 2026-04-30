@@ -7,6 +7,7 @@
 
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { getGamingDayRange } from '@/lib/utils/gamingDayRange';
+import type { GamingLocationDocument } from '@shared/types';
 
 /**
  * Gets the correct attribution date for a transaction.
@@ -18,11 +19,16 @@ import { getGamingDayRange } from '@/lib/utils/gamingDayRange';
  * @returns {Date} The date to use for transaction attribution
  */
 export async function getAttributionDate(openedAt: Date, locationId: string): Promise<Date> {
+  if (!openedAt || !(openedAt instanceof Date) || !locationId || typeof locationId !== 'string') {
+    console.error('[getAttributionDate] openedAt (Date) and locationId (string) are required');
+    return new Date();
+  }
+
   const now = new Date();
 
   // Fetch location for offset
-  const location = await GamingLocations.findById(locationId).select('gameDayOffset').lean();
-  const gameDayOffset = (location as Record<string, unknown>)?.gameDayOffset as number ?? 8;
+  const location = await GamingLocations.findOne({ _id: locationId }).select('gameDayOffset').lean<GamingLocationDocument>();
+  const gameDayOffset = location?.gameDayOffset ?? 8;
 
   // Get ranges for NOW and OPENED_AT
   const currentRange = getGamingDayRange(now, gameDayOffset);
@@ -42,9 +48,14 @@ export async function getAttributionDate(openedAt: Date, locationId: string): Pr
  * Checks if a shift is stale based on gaming day logic
  */
 export async function isShiftStaleBackend(openedAt: Date, locationId: string): Promise<boolean> {
+  if (!openedAt || !(openedAt instanceof Date) || !locationId || typeof locationId !== 'string') {
+    console.error('[isShiftStaleBackend] openedAt (Date) and locationId (string) are required');
+    return false;
+  }
+
   const now = new Date();
-  const location = await GamingLocations.findById(locationId).select('gameDayOffset').lean();
-  const gameDayOffset = (location as Record<string, unknown>)?.gameDayOffset as number ?? 8;
+  const location = await GamingLocations.findOne({ _id: locationId }).select('gameDayOffset').lean<GamingLocationDocument>();
+  const gameDayOffset = location?.gameDayOffset ?? 8;
 
   const currentRange = getGamingDayRange(now, gameDayOffset);
   const shiftRange = getGamingDayRange(openedAt, gameDayOffset);

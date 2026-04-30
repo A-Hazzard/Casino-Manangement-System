@@ -10,20 +10,32 @@ import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { recalculateMachineCollections } from './recalculation';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
+import type { CollectionDocument } from '@/lib/types/collection';
+import { GamingLocations } from '../../models/gaminglocations';
+import { CollectionReportDocument } from '../../types';
+import { Meters } from '../../models/meters';
 
 /**
  * Updates collection report timestamp and cascades changes to related collections and gaming locations
  *
- * @param reportId - The collection report ID
- * @param newTimestamp - The new timestamp to apply
- * @param locationId - The location ID associated with the report
- * @returns Promise<void>
+ * @param {string} reportId - The collection report ID
+ * @param {Date} newTimestamp - The new timestamp to apply
+ * @param {string} [locationId] - The location ID associated with the report
+ * @returns {Promise<void>}
  */
 async function cascadeTimestampUpdate(
   reportId: string,
   newTimestamp: Date,
   locationId?: string
 ): Promise<void> {
+  if (!reportId) {
+    console.error('[cascadeTimestampUpdate] reportId is required');
+    return;
+  }
+  if (!newTimestamp) {
+    console.error('[cascadeTimestampUpdate] newTimestamp is required');
+    return;
+  }
   // Update all collections with the new timestamp
   const collections = await Collections.find({
     locationReportId: reportId,
@@ -48,9 +60,6 @@ async function cascadeTimestampUpdate(
       latestReport &&
       latestReport.locationReportId === reportId
     ) {
-      const GamingLocations = (
-        await import('@/app/api/lib/models/gaminglocations')
-      ).GamingLocations;
       // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
       await GamingLocations.findOneAndUpdate({ _id: locationId }, {
         previousCollectionTime: newTimestamp,
@@ -63,12 +72,16 @@ async function cascadeTimestampUpdate(
 /**
  * Gets all machine IDs affected by a collection report
  *
- * @param reportId - The collection report ID
- * @returns Promise<string[]> - Array of machine IDs
+ * @param {string} reportId - The collection report ID
+ * @returns {Promise<string[]>} - Array of machine IDs
  */
 async function getAffectedMachineIds(
   reportId: string
 ): Promise<string[]> {
+  if (!reportId) {
+    console.error('[getAffectedMachineIds] reportId is required');
+    return [];
+  }
   try {
     const machineIds = await Collections.distinct('machineId', {
       locationReportId: reportId,
@@ -87,12 +100,16 @@ async function getAffectedMachineIds(
 /**
  * Recalculates collections for multiple machines
  *
- * @param machineIds - Array of machine IDs to recalculate
- * @returns Promise<void>
+ * @param {string[]} machineIds - Array of machine IDs to recalculate
+ * @returns {Promise<void>}
  */
 async function recalculateMultipleMachineCollections(
   machineIds: string[]
 ): Promise<void> {
+  if (!machineIds?.length) {
+    console.error('[recalculateMultipleMachineCollections] machineIds is required and cannot be empty');
+    return;
+  }
   for (const machineId of machineIds) {
     try {
       await recalculateMachineCollections(machineId);
@@ -107,14 +124,18 @@ async function recalculateMultipleMachineCollections(
 }
 
 /**
- * Removes collection history entries from machines for a given report ID
+ * Removes collection history entries associated with a specific report ID from all machines
  *
- * @param reportId - The collection report ID
- * @returns Promise<number> - Number of machines updated
+ * @param {string} reportId - The report ID (locationReportId or _id) to remove
+ * @returns {Promise<{ success: boolean; removedCount: number; error?: string }>}
  */
 export async function removeCollectionHistoryFromMachines(
   reportId: string
-): Promise<number> {
+): Promise<{ success: boolean; removedCount: number; error?: string }> {
+  if (!reportId) {
+    console.error('[removeCollectionHistoryFromMachines] reportId is required');
+    return { success: false, removedCount: 0, error: 'reportId is required' };
+  }
   try {
     // Try to remove by locationReportId first (new format)
     let updateResult = await Machine.updateMany(
@@ -148,24 +169,36 @@ export async function removeCollectionHistoryFromMachines(
       );
     }
 
-    return updateResult.modifiedCount;
-  } catch (error) {
-    console.error('Failed to remove collection history entries:', error);
-    return 0;
+    return {
+      success: true,
+      removedCount: updateResult.modifiedCount,
+    };
+   } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : 'Unknown error';
+    console.error('[removeCollectionHistoryFromMachines] Error:', errorMsg);
+    return { success: false, removedCount: 0, error: errorMsg };
   }
 }
 
 /**
  * Finds the previous collection for a machine to determine revert values
  *
- * @param machineId - The machine ID
- * @param currentCollectionTime - The current collection timestamp
- * @returns Promise<{ metersIn: number; metersOut: number } | null>
+ * @param {string} machineId - The machine ID
+ * @param {Date} currentCollectionTime - The current collection timestamp
+ * @returns {Promise<{ metersIn: number; metersOut: number } | null>}
  */
 async function findPreviousCollectionForRevert(
   machineId: string,
   currentCollectionTime: Date
 ): Promise<{ metersIn: number; metersOut: number } | null> {
+  if (!machineId) {
+    console.error('[findPreviousCollectionForRevert] machineId is required');
+    return null;
+  }
+  if (!currentCollectionTime) {
+    console.error('[findPreviousCollectionForRevert] currentCollectionTime is required');
+    return null;
+  }
   const previousCollection = await Collections.findOne({
     machineId,
     $and: [
@@ -182,7 +215,7 @@ async function findPreviousCollectionForRevert(
     ],
   })
     .sort({ collectionTime: -1, timestamp: -1 })
-    .lean();
+    .lean<CollectionDocument>();
 
   if (previousCollection) {
     return {
@@ -197,57 +230,78 @@ async function findPreviousCollectionForRevert(
 /**
  * Reverts collection meters for machines associated with a collection report
  *
- * @param collections - Array of collections to revert
- * @returns Promise<void>
+ * @param {Array<{ machineId?: string; collectionTime?: Date; timestamp?: Date }>} collections - Array of collections to revert
+ * @returns {Promise<{ success: boolean; revertedCount: number; errors: string[] }>}
  */
 export async function revertMachineCollectionMeters(
   collections: Array<{ machineId?: string; collectionTime?: Date; timestamp?: Date }>
-): Promise<void> {
-  for (const collection of collections) {
+): Promise<{ success: boolean; revertedCount: number; errors: string[] }> {
+  if (!collections?.length) {
+    console.error('[revertMachineCollectionMeters] collections is required and cannot be empty');
+    return { success: false, revertedCount: 0, errors: ['Collections array is required and cannot be empty'] };
+  }
+
+  const errors: string[] = [];
+  let revertedCount = 0;
+
+  for(const collection of collections){
     if (!collection.machineId) {
       continue;
     }
 
     try {
-      const collectionTime =
-        collection.collectionTime || collection.timestamp || new Date();
-      const previousCollection = await findPreviousCollectionForRevert(
-        collection.machineId,
-        collectionTime
-      );
+      const collectionTime = collection.collectionTime || collection.timestamp || new Date();
+      const previousCollection = await findPreviousCollectionForRevert(collection.machineId, collectionTime);
 
       const revertToMetersIn = previousCollection?.metersIn || 0;
       const revertToMetersOut = previousCollection?.metersOut || 0;
 
-      // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-      await Machine.findOneAndUpdate({ _id: collection.machineId }, {
+      const updateResult = await Machine.findOneAndUpdate({ _id: collection.machineId }, {
         $set: {
           'collectionMeters.metersIn': revertToMetersIn,
           'collectionMeters.metersOut': revertToMetersOut,
           updatedAt: new Date(),
         },
       });
+
+      if (!updateResult) {
+        errors.push(`Failed to revert meters for machine ${collection.machineId}: machine not found`);
+        continue;
+      }
+
+      revertedCount++;
     } catch (error) {
-      console.error(
-        `Failed to revert collection meters for machine ${collection.machineId}:`,
-        error
-      );
-      // Continue with other machines even if one fails
+      const errorMsg = `Failed to revert collection meters for machine ${collection.machineId}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      console.error(`[revertMachineCollectionMeters] ${errorMsg}`);
+      errors.push(errorMsg);
     }
   }
-}
 
+  return {
+    success: errors.length === 0,
+    revertedCount,
+    errors,
+  };
+}
 /**
  * Updates a collection report with the provided data
  *
- * @param reportId - The collection report ID
- * @param updateData - The data to update
- * @returns Promise<{ success: boolean; data?: unknown; error?: string }>
+ * @param {string} reportId - The collection report ID
+ * @param {Partial<CreateCollectionReportPayload>} updateData - The data to update
+ * @returns {Promise<{ success: boolean; data?: unknown; error?: string }>}
  */
 export async function updateCollectionReport(
   reportId: string,
   updateData: Partial<CreateCollectionReportPayload>
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
+  if (!reportId) {
+    console.error('[updateCollectionReport] reportId is required');
+    return { success: false, error: 'Missing required parameters' };
+  }
+  if (!updateData) {
+    console.error('[updateCollectionReport] updateData is required');
+    return { success: false, error: 'Missing required parameters' };
+  }
   const existingReport = await CollectionReport.findOne({
     locationReportId: reportId,
   });
@@ -310,9 +364,9 @@ export async function updateCollectionReport(
     const linkedCols = await Collections.find(
       { locationReportId: reportId },
       { 'sasMeters.jackpot': 1, _id: 0 }
-    ).lean();
+    ).lean<CollectionDocument[]>();
     const totalJackpot = linkedCols.reduce(
-      (s, c) => s + ((c.sasMeters as { jackpot?: number } | undefined)?.jackpot ?? 0),
+      (sum, collection) => sum + (collection.sasMeters?.jackpot ?? 0),
       0
     );
     const totalGross = typeof updateData.totalGross === 'number'
@@ -336,10 +390,52 @@ export async function updateCollectionReport(
     console.warn('[updateCollectionReport] totalVariation update failed (non-fatal):', varErr);
   }
 
+  const finalReport = await CollectionReport.findOne({ locationReportId: reportId });
+
   return {
     success: true,
-    data: updatedReport,
+    data: finalReport ?? updatedReport,
   };
 }
 
+
+/**
+ * Find & Delete Meters per collection report being deleted
+ * @param {string} locationReportId - Unique identifier for the CR
+ * @returns {Promise<{success: boolean; error?: string}>} - Returns success or error message
+ */
+export async function deleteManualMetersPerCollection(
+  locationReportId: CollectionReportDocument["locationReportId"]
+): Promise<{success: boolean; error?: string}> {
+  if (!locationReportId) {
+    console.error("[deleteManualMetersPerCollection] locationReportId is required");
+    return {success: false, error: 'locationReportId is required'};
+  }
+
+  try {
+    const collections = await Collections.find({ locationReportId }).lean<CollectionDocument[]>();
+
+    for (const collection of collections) {
+      if (collection.ramClearMeterId) {
+        const ramClearResult = await Meters.findOneAndDelete({ _id: collection.ramClearMeterId, isRamClear: true });
+        if (!ramClearResult) {
+          console.warn(`[deleteManualMetersPerCollection] ramClear meter ${collection.ramClearMeterId} not found — may have already been deleted`);
+        }
+      }
+
+      if (!collection.meterId) continue;
+
+      const meterResult = await Meters.findOneAndDelete({ _id: collection.meterId });
+      if (!meterResult) {
+        console.warn(`[deleteManualMetersPerCollection] meter ${collection.meterId} not found — may have already been deleted`);
+      }
+    }
+  } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : 'Unknown error';
+    console.error('[deleteManualMetersPerCollection] Error:', errorMsg);
+    return {success: false, error: errorMsg};
+  }
+
+  return {success: true};
+}
 

@@ -2,6 +2,7 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
 import { send2FARecoveryEmail } from '@/lib/services/emailService';
+import type { LeanUserDocument } from 'shared/types/auth';
 import { nanoid } from 'nanoid';
 import { NextResponse } from 'next/server';
 
@@ -74,11 +75,11 @@ export async function POST() {
         },
       },
       { new: true, strict: false }
-    ).lean();
+    ).lean<LeanUserDocument & { totpRecoveryToken?: unknown }>();
 
     if (
       !updatedUser ||
-      (updatedUser as Record<string, unknown>).totpRecoveryToken !== token
+      updatedUser.totpRecoveryToken !== token
     ) {
       console.error(
         '[TOTP VM Recovery] Update failed - token not reflected in DB. UpdatedUser:',
@@ -106,14 +107,8 @@ export async function POST() {
         { status: 500 }
       );
     }
-  } catch (error: unknown) {
-    console.error(
-      'TOTP VM Recovery Error:',
-      error instanceof Error ? error.message : error
-    );
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (e) {
+    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

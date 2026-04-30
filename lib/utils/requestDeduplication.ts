@@ -23,6 +23,7 @@ const inFlightRequests = new Map<
  * @returns Normalized URL key for deduplication
  */
 function normalizeRequestKey(url: string): string {
+  if (!url) { console.error('[normalizeRequestKey] url is required'); return ''; }
   try {
     const [basePath, queryString] = url.split('?');
     if (!queryString) return url;
@@ -54,8 +55,9 @@ function normalizeRequestKey(url: string): string {
       .join('&');
 
     return sortedParams ? `${basePath}?${sortedParams}` : basePath;
-  } catch {
+  } catch (e) {
     // If parsing fails, return original URL
+    console.error('[normalizeRequestKey] Error:', e instanceof Error ? e.message : 'Unknown error');
     return url;
   }
 }
@@ -73,6 +75,8 @@ export async function deduplicateRequest<T>(
   key: RequestKey,
   requestFn: (signal: AbortSignal) => RequestPromise<T>
 ): Promise<T> {
+  if (!key) { console.error('[deduplicateRequest] key is required'); return Promise.reject(new Error('[deduplicateRequest] key is required')); }
+  if (!requestFn) { console.error('[deduplicateRequest] requestFn is required'); return Promise.reject(new Error('[deduplicateRequest] requestFn is required')); }
   // Normalize the key to ignore cache-busting and pagination params
   const normalizedKey = normalizeRequestKey(key);
 
@@ -91,25 +95,26 @@ export async function deduplicateRequest<T>(
       inFlightRequests.delete(normalizedKey);
       return result;
     })
-    .catch(error => {
+    .catch(e => {
       // Remove from map on error
       inFlightRequests.delete(normalizedKey);
       
       // Silently handle abort errors - don't re-throw them
       // Abort errors are expected when switching filters and should not propagate
-      if (axios.isCancel && axios.isCancel(error)) {
+      if (axios.isCancel && axios.isCancel(e)) {
         // Return a rejected promise that resolves to undefined (silent abort)
         // This prevents the error from propagating to the caller
         return Promise.reject(new Error('ABORT_SILENT')); // Special marker for silent abort
       }
       
-      if (isAbortError(error)) {
+      if (isAbortError(e)) {
         // Return a rejected promise that resolves to undefined (silent abort)
         return Promise.reject(new Error('ABORT_SILENT')); // Special marker for silent abort
       }
       
+      console.error('[deduplicateRequest] Error:', e instanceof Error ? e.message : 'Unknown error');
       // Re-throw actual errors (not aborts) so caller can handle them
-      throw error;
+      throw e;
     });
 
   // Store in-flight request with normalized key

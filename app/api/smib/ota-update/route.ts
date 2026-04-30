@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       // ============================================================================
       // STEP 8: Update firmwareUpdatedAt timestamp
       // ============================================================================
-      await Machine.updateOne(
+      const updateResult = await Machine.updateOne(
         {
           $or: [{ relayId }, { smibBoard: relayId }],
         },
@@ -134,6 +134,9 @@ export async function POST(request: NextRequest) {
           },
         }
       );
+      if (updateResult.modifiedCount === 0) {
+        console.warn(`[SMIB OTA Update] No machine found with relayId: ${relayId}`);
+      }
     } catch {
       return NextResponse.json(
         {

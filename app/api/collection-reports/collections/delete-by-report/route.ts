@@ -17,6 +17,7 @@ import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Machine } from '@/app/api/lib/models/machines';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import type { CollectionDocument } from '@/lib/types/collection';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -55,13 +56,13 @@ export async function DELETE(request: NextRequest) {
     // ============================================================================
     // STEP 4: Find all collections with this locationReportId
     // ============================================================================
-    const collections = await Collections.find({ locationReportId }).lean();
+    const collections = await Collections.find({ locationReportId }).lean<CollectionDocument[]>();
 
     // ============================================================================
     // STEP 5: Get machine IDs from collections
     // ============================================================================
     const machineIds = [
-      ...new Set(collections.map(c => c.machineId).filter(Boolean)),
+      ...new Set(collections.map(collection => collection.machineId).filter(Boolean)),
     ];
 
     // ============================================================================
@@ -72,7 +73,7 @@ export async function DELETE(request: NextRequest) {
         if (collection.machineId) {
           // Revert machine collectionMeters to the previous values from the collection
           // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-          await Machine.findOneAndUpdate(
+          const machineRevertResult = await Machine.findOneAndUpdate(
             { _id: collection.machineId },
             {
               $set: {
@@ -86,8 +87,9 @@ export async function DELETE(request: NextRequest) {
             },
             { new: true }
           );
-
-          // Machine updated successfully
+          if (!machineRevertResult) {
+            console.warn(`[delete-by-report] Machine ${collection.machineId} not found for meter revert`);
+          }
         }
       } catch (error) {
         console.error(
@@ -116,7 +118,7 @@ export async function DELETE(request: NextRequest) {
     // ============================================================================
     const remainingCollections = await Collections.find({
       locationReportId,
-    }).lean();
+    }).lean<CollectionDocument[]>();
 
     // ============================================================================
     // STEP 10: Return success response

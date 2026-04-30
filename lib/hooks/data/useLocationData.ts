@@ -190,6 +190,8 @@ export function useLocationData({
       });
 
       const result = await makeRequest(async signal => {
+        const isSearchingArchived = selectedStatus === 'Archived';
+
         // Only use backend search if debounced search term exists
         if (debouncedSearchTerm.trim()) {
           const effectiveLicencee = selectedLicencee || '';
@@ -204,7 +206,8 @@ export function useLocationData({
               : undefined,
             signal,
             currentFilters,
-            selectedStatus
+            selectedStatus === 'Archived' ? undefined : selectedStatus,
+            isSearchingArchived
           );
           return { data: searchData, pagination: undefined };
         }

@@ -23,6 +23,7 @@ import type {
   PreviousCollectionMeters,
   MovementCalculation,
 } from "@/lib/types/collection";
+import type { GamingMachine, MeterDocument, CollectionDocument, GamingLocationDocument } from "@shared/types";
 
 // ============================================================================
 // Machine Identifier Operations
@@ -35,18 +36,15 @@ async function getMachineIdentifier(machineId: string): Promise<string> {
   await connectDB();
 
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const machine = await Machine.findOne({ _id: machineId }).lean();
+  const machine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
   if (!machine) {
     throw new Error(`Machine not found: ${machineId}`);
   }
 
-  // Safely access machine properties with type assertion
-  const machineData = machine as Record<string, unknown>;
-
   // Priority: serialNumber -> customName -> machineId
   return (
-    (machineData.serialNumber as string) ||
-    (machineData.customName as string) ||
+    machine.serialNumber ||
+    (machine.custom?.name) ||
     machineId
   );
 }
@@ -64,6 +62,18 @@ export async function calculateSasMetrics(
   sasStartTime: Date,
   sasEndTime: Date
 ): Promise<SasMetricsCalculation> {
+  if (!machineId) {
+    console.error('[calculateSasMetrics] machineId is required');
+    return { drop: 0, totalCancelledCredits: 0, gross: 0, sasStartTime: '', sasEndTime: '', gamesPlayed: 0, jackpot: 0 };
+  }
+  if (!sasStartTime) {
+    console.error('[calculateSasMetrics] sasStartTime is required');
+    return { drop: 0, totalCancelledCredits: 0, gross: 0, sasStartTime: '', sasEndTime: '', gamesPlayed: 0, jackpot: 0 };
+  }
+  if (!sasEndTime) {
+    console.error('[calculateSasMetrics] sasEndTime is required');
+    return { drop: 0, totalCancelledCredits: 0, gross: 0, sasStartTime: '', sasEndTime: '', gamesPlayed: 0, jackpot: 0 };
+  }
   // NOTE: Manual overrides (prevIn/prevOut) from the collection form only affect movement/gross.
   // SAS metrics (drop, cancelled credits, gross) are derived strictly from the Meters collection deltas.
   await connectDB();
@@ -76,7 +86,7 @@ export async function calculateSasMetrics(
     readAt: { $gte: sasStartTime, $lte: sasEndTime },
   })
     .sort({ readAt: 1 })
-    .lean();
+    .lean<MeterDocument[]>();
 
   if (metersInPeriod.length === 0) {
     // No meters found in period, return zero values
@@ -94,19 +104,19 @@ export async function calculateSasMetrics(
   // Sum all movement fields (daily deltas) within the SAS time period
   // This is the correct approach when machines only have movement data, not cumulative data
   const drop = metersInPeriod.reduce(
-    (sum, meter) => sum + (meter.movement?.drop || 0),
+    (sum, meterItem) => sum + (meterItem.movement?.drop || 0),
     0
   );
   const totalCancelledCredits = metersInPeriod.reduce(
-    (sum, meter) => sum + (meter.movement?.totalCancelledCredits || 0),
+    (sum, meterItem) => sum + (meterItem.movement?.totalCancelledCredits || 0),
     0
   );
   const gamesPlayed = metersInPeriod.reduce(
-    (sum, meter) => sum + (meter.movement?.gamesPlayed || 0),
+    (sum, meterItem) => sum + (meterItem.movement?.gamesPlayed || 0),
     0
   );
   const jackpot = metersInPeriod.reduce(
-    (sum, meter) => sum + (meter.movement?.jackpot || 0),
+    (sum, meterItem) => sum + (meterItem.movement?.jackpot || 0),
     0
   );
 
@@ -146,6 +156,10 @@ export async function getSasTimePeriod(
   customStartTime?: Date,
   customEndTime?: Date
 ): Promise<{ sasStartTime: Date; sasEndTime: Date }> {
+  if (!machineId) {
+    console.error('[getSasTimePeriod] machineId is required');
+    throw new Error('[getSasTimePeriod] machineId is required');
+  }
   await connectDB();
 
   // If custom times are provided, use them
@@ -175,10 +189,9 @@ export async function getSasTimePeriod(
 
     // Get machine data once to avoid multiple queries
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const machine = await Machine.findOne({ _id: machineId }).lean();
-    const machineData = machine as Record<string, unknown> | null;
-    const machineCustomName = machineData?.customName as string;
-    const machineName = machineData?.name as string;
+    const machine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
+    const machineCustomName = machine?.custom?.name;
+    const machineName = machine?.serialNumber;
 
     // CRITICAL FIX: Use a more restrictive time filter to avoid race conditions
     // Only look for collections that are at least 1 minute before the current collection time
@@ -192,7 +205,7 @@ export async function getSasTimePeriod(
         timestamp: { $lt: minTimeBuffer }, // Use buffer instead of sasEndTime
       })
         .sort({ timestamp: -1 })
-        .lean();
+        .lean<CollectionDocument>();
     }
 
     // Second try: machineCustomName (if machineId didn't work)
@@ -206,7 +219,7 @@ export async function getSasTimePeriod(
         timestamp: { $lt: minTimeBuffer }, // Use buffer instead of sasEndTime
       })
         .sort({ timestamp: -1 })
-        .lean();
+        .lean<CollectionDocument>();
     }
 
     // Third try: machineName (if machineCustomName didn't work)
@@ -216,10 +229,10 @@ export async function getSasTimePeriod(
         timestamp: { $lt: minTimeBuffer }, // Use buffer instead of sasEndTime
       })
         .sort({ timestamp: -1 })
-        .lean();
+        .lean<CollectionDocument>();
     }
 
-    if (previousCollection) {
+    if (previousCollection && previousCollection.timestamp) {
       // Use the previous collection's timestamp as the SAS start time
       sasStartTime = new Date(previousCollection.timestamp);
 
@@ -286,9 +299,9 @@ export async function getSasTimePeriod(
         `⚠️ No previous collection found for machine ${machineId} using any identifier (machineId, machineCustomName, machineName)`
       );
 
-      if (machineData?.collectionTime) {
+      if (machine?.collectionTime) {
         const machineCollectionTime = new Date(
-          machineData.collectionTime as Date
+          machine.collectionTime as Date
         );
         // Only use machine collectionTime if it's before the current collection time
         if (machineCollectionTime < sasEndTime) {
@@ -331,10 +344,7 @@ export async function getSasTimePeriod(
       );
     }
   } catch (error) {
-    console.error(
-      ` Error finding previous collection for machine ${machineId}:`,
-      error
-    );
+    console.error('[getSasTimePeriod] Error:', error instanceof Error ? error.message : 'Unknown error');
     // Final fallback: 24 hours before current collection time
     sasStartTime = new Date(sasEndTime.getTime() - 24 * 60 * 60 * 1000);
     console.warn(`🆘 Using emergency fallback for machine ${machineId}:`, {
@@ -370,13 +380,10 @@ async function getPreviousCollectionMeters(
   await connectDB();
 
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const machine = await Machine.findOne({ _id: machineId }).lean();
+  const machine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
   if (!machine) {
     throw new Error(`Machine not found: ${machineId}`);
   }
-
-  // Safely access machine properties with type assertion
-  const machineData = machine as Record<string, unknown>;
 
   // CRITICAL: Look for the actual previous collection to get correct prevIn/prevOut
   // This is more reliable than using machine.collectionMeters which might be outdated
@@ -393,7 +400,7 @@ async function getPreviousCollectionMeters(
     ]
   })
     .sort({ timestamp: -1 })
-    .lean();
+    .lean<CollectionDocument>();
 
   let prevMetersIn = 0;
   let prevMetersOut = 0;
@@ -404,7 +411,7 @@ async function getPreviousCollectionMeters(
     prevMetersIn = previousCollection.metersIn || 0;
     prevMetersOut = previousCollection.metersOut || 0;
     collectionTime = previousCollection.timestamp ? new Date(previousCollection.timestamp) : undefined;
-    
+
     console.warn("🔍 Found previous collection for prev meters:", {
       machineId,
       previousCollectionId: previousCollection._id,
@@ -417,13 +424,10 @@ async function getPreviousCollectionMeters(
     // Priority: sasMeters.drop / sasMeters.totalCancelledCredits (set via the Edit Cabinet modal)
     // Fallback:  collectionMeters.metersIn / metersOut (legacy field)
     // Last resort: 0
-    const sasMeters = machineData.sasMeters as Record<string, unknown> | undefined;
-    const collectionMeters = machineData.collectionMeters as Record<string, unknown> | undefined;
-
-    const sasIn = (sasMeters?.drop as number) ?? null;
-    const sasOut = (sasMeters?.totalCancelledCredits as number) ?? null;
-    const legacyIn = (collectionMeters?.metersIn as number) ?? null;
-    const legacyOut = (collectionMeters?.metersOut as number) ?? null;
+    const sasIn = (machine.sasMeters?.drop as number | undefined) ?? null;
+    const sasOut = (machine.sasMeters?.coinOut as number | undefined) ?? null;
+    const legacyIn = machine.collectionMeters?.metersIn ?? null;
+    const legacyOut = machine.collectionMeters?.metersOut ?? null;
 
     // Use sasMeters if present and non-zero, otherwise fall back to collectionMeters, then 0
     prevMetersIn = (sasIn !== null && sasIn > 0) ? sasIn : (legacyIn ?? 0);
@@ -440,7 +444,7 @@ async function getPreviousCollectionMeters(
     });
 
     // Get previousCollectionTime from gaming location, not machine
-    const gamingLocationId = machineData.gamingLocation as string;
+    const gamingLocationId = machine.gamingLocation;
     if (gamingLocationId) {
       const GamingLocations = (
         await import("@/app/api/lib/models/gaminglocations")
@@ -448,12 +452,11 @@ async function getPreviousCollectionMeters(
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
       const gamingLocation = await GamingLocations.findOne({
         _id: gamingLocationId,
-      }).lean();
+      }).lean<GamingLocationDocument>();
       if (gamingLocation) {
-        const locationData = gamingLocation as Record<string, unknown>;
-        const previousCollectionTime = locationData.previousCollectionTime;
+        const previousCollectionTime = gamingLocation.previousCollectionTime;
         collectionTime = previousCollectionTime
-          ? new Date(previousCollectionTime as string)
+          ? new Date(previousCollectionTime)
           : undefined;
       }
     }
@@ -486,7 +489,7 @@ async function updateMachineCollectionMeters(
 
   // Get current machine data to access previous meters for history
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const currentMachine = await Machine.findOne({ _id: machineId }).lean();
+  const currentMachine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
   if (!currentMachine) {
     throw new Error(`Machine with ID ${machineId} not found`);
   }
@@ -553,40 +556,40 @@ function validateCollectionPayload(payload: unknown): {
     return { isValid: false, errors };
   }
 
-  const p = payload as Record<string, unknown>;
+  const payloadRecord = payload as Record<string, unknown>;
 
-  if (!p.machineId) {
+  if (!payloadRecord.machineId) {
     errors.push("Machine ID is required");
   }
 
-  if (!p.location) {
+  if (!payloadRecord.location) {
     errors.push("Location is required");
   }
 
-  if (!p.collector) {
+  if (!payloadRecord.collector) {
     errors.push("Collector is required");
   }
 
-  if (typeof p.metersIn !== "number" || p.metersIn < 0) {
+  if (typeof payloadRecord.metersIn !== "number" || payloadRecord.metersIn < 0) {
     errors.push("Meters In must be a valid non-negative number");
   }
 
-  if (typeof p.metersOut !== "number" || p.metersOut < 0) {
+  if (typeof payloadRecord.metersOut !== "number" || payloadRecord.metersOut < 0) {
     errors.push("Meters Out must be a valid non-negative number");
   }
 
-  if (p.sasStartTime) {
-    if (!(p.sasStartTime instanceof Date)) {
+  if (payloadRecord.sasStartTime) {
+    if (!(payloadRecord.sasStartTime instanceof Date)) {
       errors.push("SAS Start Time must be a valid Date object");
-    } else if (isNaN(p.sasStartTime.getTime())) {
+    } else if (isNaN(payloadRecord.sasStartTime.getTime())) {
       errors.push("SAS Start Time is an invalid Date");
     }
   }
 
-  if (p.sasEndTime) {
-    if (!(p.sasEndTime instanceof Date)) {
+  if (payloadRecord.sasEndTime) {
+    if (!(payloadRecord.sasEndTime instanceof Date)) {
       errors.push("SAS End Time must be a valid Date object");
-    } else if (isNaN(p.sasEndTime.getTime())) {
+    } else if (isNaN(payloadRecord.sasEndTime.getTime())) {
       errors.push("SAS End Time is an invalid Date");
     }
   }

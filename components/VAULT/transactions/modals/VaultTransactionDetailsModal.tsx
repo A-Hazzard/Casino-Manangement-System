@@ -229,11 +229,11 @@ export default function VaultTransactionDetailsModal({
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-gray-100 bg-white">
-                        {(transaction as ExtendedTransactionView).machineDetails!.map((m: MachineDetail, idx: number) => (
+                        {(transaction as ExtendedTransactionView).machineDetails!.map((machineDetailItem: MachineDetail, idx: number) => (
                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                              <td className="px-3 py-2.5 font-semibold text-gray-900">{m.identifier || 'N/A'}</td>
-                              <td className="px-3 py-2.5 text-gray-600 truncate max-w-[150px]">{m.game || <span className="text-red-600 italic">no game provided</span>}</td>
-                              <td className="px-3 py-2.5 text-gray-600">{m.gameType || 'N/A'}</td>
+                              <td className="px-3 py-2.5 font-semibold text-gray-900">{machineDetailItem.identifier || 'N/A'}</td>
+                              <td className="px-3 py-2.5 text-gray-600 truncate max-w-[150px]">{machineDetailItem.game || <span className="text-red-600 italic">no game provided</span>}</td>
+                              <td className="px-3 py-2.5 text-gray-600">{machineDetailItem.gameType || 'N/A'}</td>
                            </tr>
                         ))}
                      </tbody>

@@ -61,6 +61,18 @@ async function calculateSasMetricsFromMeters(
   sasStartTime: Date,
   sasEndTime: Date
 ): Promise<CollectionSasMetrics | null> {
+  if (!machineId) {
+    console.error('[calculateSasMetricsFromMeters] machineId is required');
+    return null;
+  }
+  if (!sasStartTime) {
+    console.error('[calculateSasMetricsFromMeters] sasStartTime is required');
+    return null;
+  }
+  if (!sasEndTime) {
+    console.error('[calculateSasMetricsFromMeters] sasEndTime is required');
+    return null;
+  }
   // Fetch all meters within SAS period
   const metersInPeriod = await Meters.find({
     machine: machineId,
@@ -200,6 +212,10 @@ export async function syncReportMeters(reportId: string): Promise<{
   results: MeterSyncResult[];
   totals: { drop: number; cancelled: number; gross: number };
 }> {
+  if (!reportId) {
+    console.error('[syncReportMeters] reportId is required');
+    return { updatedCollections: 0, results: [], totals: { drop: 0, cancelled: 0, gross: 0 } };
+  }
   const collections = await Collections.find({
     locationReportId: reportId,
   });

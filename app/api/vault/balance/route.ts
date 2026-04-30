@@ -9,7 +9,9 @@ import UserModel from '@/app/api/lib/models/user';
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import type { VaultShift, VaultReconciliation } from '@/shared/types/vault';
+import type { CashierShiftDocument, GamingLocationDocument, VaultShiftDocument } from '@shared/types';
+import type { LeanUserDocument } from 'shared/types/auth';
+import type { VaultReconciliation } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 import { isShiftStaleBackend } from '../../lib/helpers/vault/gamingDay';
 import { GamingLocations } from '../../lib/models/gaminglocations';
@@ -41,18 +43,18 @@ export async function GET(request: NextRequest) {
           { status: 400 }
         );
 
-      const activeShift = (await VaultShiftModel.findOne({
+      const activeShift = await VaultShiftModel.findOne({
         locationId,
         status: 'active',
-      }).lean()) as unknown as VaultShift | null;
+      }).lean<VaultShiftDocument>();
 
       if (!activeShift) {
-        const lastClosed = (await VaultShiftModel.findOne({
+        const lastClosed = await VaultShiftModel.findOne({
           locationId,
           status: 'closed',
         })
           .sort({ closedAt: -1 })
-          .lean()) as unknown as VaultShift | null;
+          .lean<VaultShiftDocument>();
         const lastReconTime = lastClosed?.reconciliations?.length
           ? new Date(
               Math.max(
@@ -100,13 +102,10 @@ export async function GET(request: NextRequest) {
           : activeShift.openedAt
         : lastReconTime || null;
 
-      const vaultManager = (await UserModel.findOne(
+      const vaultManager = await UserModel.findOne(
         { _id: activeShift.vaultManagerId },
         { profile: 1, username: 1 }
-      ).lean()) as unknown as {
-        profile?: { firstName?: string; lastName?: string };
-        username?: string;
-      } | null;
+      ).lean<LeanUserDocument>();
       const managerName = vaultManager?.profile?.firstName
         ? `${vaultManager.profile.firstName} ${vaultManager.profile.lastName}`
         : vaultManager?.username || 'Unknown';
@@ -115,19 +114,19 @@ export async function GET(request: NextRequest) {
         vaultShiftId: activeShift._id,
         status: { $in: ['active', 'pending_review', 'pending_start'] },
       });
-      const activeCashiersData = (await CashierShiftModel.find(
+      const activeCashiersData = await CashierShiftModel.find(
         { locationId, status: { $in: ['active', 'pending_review'] } },
         { currentBalance: 1 }
-      ).lean()) as unknown as Array<{ currentBalance?: number }>;
+      ).lean<CashierShiftDocument[]>();
       const totalCashierFloats = activeCashiersData.reduce(
         (sum, s) => sum + (s.currentBalance || 0),
         0
       );
 
-      const locationInfo = (await GamingLocations.findOne(
+      const locationInfo = await GamingLocations.findOne(
         { _id: locationId },
         { gameDayOffset: 1 }
-      ).lean()) as unknown as { gameDayOffset?: number } | null;
+      ).lean<GamingLocationDocument>();
       const { rangeStart, rangeEnd } = getGamingDayRangeForPeriod(
         'Today',
         locationInfo?.gameDayOffset ?? 8

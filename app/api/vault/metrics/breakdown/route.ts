@@ -10,6 +10,7 @@ import type { TimePeriod } from '@/app/api/lib/types';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 import type { LocationDocument } from '@/lib/types/common';
+import type { VaultTransactionDocument } from '@shared/types';
 
 /**
  * Main GET handler for vault metrics breakdown
@@ -46,10 +47,10 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const locationInfo = (await GamingLocations.findOne(
+      const locationInfo = await GamingLocations.findOne(
         { _id: locationId },
         { gameDayOffset: 1 }
-      ).lean()) as Pick<LocationDocument, 'gameDayOffset'> | null;
+      ).lean<LocationDocument>();
       const gameDayOffset = locationInfo?.gameDayOffset ?? 8;
       const timePeriod = searchParams.get('timePeriod') || 'Today';
       const startDateParam = searchParams.get('startDate');
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
 
       const transactions = await VaultTransactionModel.find(query)
         .sort({ timestamp: -1 })
-        .lean();
+        .lean<VaultTransactionDocument[]>();
       return NextResponse.json({ success: true, data: transactions });
     } catch (error: unknown) {
       console.error('[Vault Metrics Breakdown API] Error:', error);

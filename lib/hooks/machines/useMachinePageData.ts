@@ -60,7 +60,7 @@ export function useMachinePageData() {
   const canManageMachines = useMemo(() => {
     const roles = user?.roles || [];
     if (roles.includes('collector')) return false;
-    return ['developer', 'admin', 'manager', 'location admin', 'technician'].some(r => roles.includes(r));
+    return ['developer', 'admin', 'manager', 'location admin', 'technician'].some(role => roles.includes(role));
   }, [user]);
 
   const handleTabChange = useCallback((tab: string) => {

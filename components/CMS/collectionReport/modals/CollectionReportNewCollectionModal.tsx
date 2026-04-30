@@ -328,13 +328,8 @@ export default function CollectionReportNewCollectionModal({
                         setCurrentRamClearMetersIn('');
                         setCurrentRamClearMetersOut('');
                       } else {
-                        // Keep RAM clear inputs empty by default for manual entry
-                        setCurrentRamClearMetersIn('');
-                        setCurrentRamClearMetersOut('');
-                        
-                        // Default the main inputs to 0 as the machine is now post-clear
-                        setCurrentMetersIn('0');
-                        setCurrentMetersOut('0');
+                        setCurrentRamClearMetersIn(currentMetersIn);
+                        setCurrentRamClearMetersOut(currentMetersOut);
                       }
                     }}
                     onPrevInChange={setPrevIn}
@@ -509,6 +504,9 @@ export default function CollectionReportNewCollectionModal({
                   sasEndTime: entry.sasMeters?.sasEndTime || undefined,
                   prevMetersIn: entry.prevIn || 0,
                   prevMetersOut: entry.prevOut || 0,
+                  // Pass movementGross to override meter gross calculation
+                  // This ensures variation = 0 when properly calculated from meter readings
+                  movementGross: (entry as { movement?: { gross?: number } }).movement?.gross,
                 }));
 
                 // Get locationId from store state, fallback to first entry's location field

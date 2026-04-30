@@ -14,24 +14,31 @@ import { type ShiftDocument } from '@/shared/types/models';
 
 /**
  * Get shift by ID
- * @param id - Shift ID
- * @returns Shift document or null
+ * @param {string} id - Shift ID
+ * @returns {Promise<ShiftDocument | null>} Shift document or null
  */
 export async function getShiftById(
   id: string
 ): Promise<ShiftDocument | null> {
-  const shift = await Shift.findOne({ _id: id }).lean();
-  return shift as unknown as ShiftDocument | null;
+  if (!id) {
+    console.error('[getShiftById] id is required');
+    return null;
+  }
+  return await Shift.findOne({ _id: id }).lean<ShiftDocument>();
 }
 
 /**
  * Transform shift for API response
- * @param shift - Shift document
- * @returns Transformed shift object
+ * @param {ShiftDocument} shift - Shift document
+ * @returns {Record<string, unknown>} Transformed shift object
  */
 export function transformShiftForResponse(
   shift: ShiftDocument
 ): Record<string, unknown> {
+  if (!shift) {
+    console.error('[transformShiftForResponse] shift is required');
+    return {};
+  }
   return {
     _id: shift._id,
     role: shift.role,

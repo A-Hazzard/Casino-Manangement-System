@@ -34,6 +34,7 @@ import {
   buildCurrencyMaps,
 } from '@/app/api/lib/helpers/reports/metersCurrency';
 import { Licencee } from '@/app/api/lib/models/licencee';
+import type { LicenceeDocument } from '@shared/types';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -182,10 +183,10 @@ export async function GET(req: NextRequest) {
     });
 
     // Fetch licencee includeJackpot settings
-    const licencees = await Licencee.find({}, { _id: 1, includeJackpot: 1 }).lean().exec();
+    const licencees = await Licencee.find({}, { _id: 1, includeJackpot: 1 }).lean<LicenceeDocument[]>().exec();
     const licenceeSettingsMap = new Map<string, boolean>();
-    licencees.forEach((l) => {
-      licenceeSettingsMap.set(String(l._id), Boolean(l.includeJackpot));
+    licencees.forEach((licencee) => {
+      licenceeSettingsMap.set(String(licencee._id), Boolean(licencee.includeJackpot));
     });
 
     // Calculate gaming day ranges for all locations
@@ -209,7 +210,7 @@ export async function GET(req: NextRequest) {
       return createEmptyResponse(params, queryStartDate, queryEndDate);
     }
 
-    const machineIds = machinesData.map(m => m._id);
+    const machineIds = machinesData.map(machine => machine._id);
 
     // ============================================================================
     // STEP 6: Get last meter document per machine

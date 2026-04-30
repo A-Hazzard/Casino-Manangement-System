@@ -29,6 +29,8 @@ import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { LocationFilter } from '@/lib/types/location';
+import type { LicenceeDocument } from '@shared/types';
+import type { LeanUserDocument } from 'shared/types/auth';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -200,13 +202,9 @@ export async function GET(req: NextRequest) {
       const UserModel = (await import('../lib/models/user')).default;
       const testUserResult = await UserModel.findOne({
         _id: testUserId,
-      }).lean();
+      }).lean<LeanUserDocument>();
       if (testUserResult && !Array.isArray(testUserResult)) {
-        const testUser = testUserResult as {
-          roles?: string[];
-          assignedLocations?: string[];
-          assignedLicencees?: string[];
-        };
+        const testUser = testUserResult;
         userRoles = (testUser.roles || []) as string[];
         userLocationPermissions = Array.isArray(testUser.assignedLocations)
           ? testUser.assignedLocations.map((id: string) => String(id))
@@ -265,7 +263,7 @@ export async function GET(req: NextRequest) {
           const licenceeDoc = await Licencee.findOne(
             { _id: resolvedLicencee },
             { name: 1 }
-          ).lean();
+          ).lean<LicenceeDocument>();
           if (licenceeDoc && !Array.isArray(licenceeDoc) && licenceeDoc.name) {
             const { getLicenceeCurrency } = await import('@/lib/helpers/rates');
             displayCurrency = getLicenceeCurrency(licenceeDoc.name);

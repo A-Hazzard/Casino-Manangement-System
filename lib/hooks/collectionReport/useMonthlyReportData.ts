@@ -102,9 +102,9 @@ export function useMonthlyReportData(selectedLicencee: string | null, activeTab:
       const valB = b[sortField];
 
       // Helper to parse currency string to number
-      const parseVal = (v: string) => {
-        if (v === '-' || !v) return -Infinity;
-        const num = parseFloat(v.replace(/[$,]/g, ''));
+      const parseVal = (value: string) => {
+        if (value === '-' || !value) return -Infinity;
+        const num = parseFloat(value.replace(/[$,]/g, ''));
         return isNaN(num) ? -Infinity : num;
       };
 

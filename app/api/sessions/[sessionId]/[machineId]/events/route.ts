@@ -153,8 +153,8 @@ export async function GET(
           hasPrevPage: page > 1,
         },
         filters: {
-          eventTypes: data.eventTypes.map((e: { _id: string }) => e._id).filter(Boolean),
-          events: data.events.map((e: { _id: string }) => e._id).filter(Boolean),
+          eventTypes: data.eventTypes.map((eventItem: { _id: string }) => eventItem._id).filter(Boolean),
+          events: data.events.map((eventItem: { _id: string }) => eventItem._id).filter(Boolean),
           games: games.filter(Boolean),
         },
       },

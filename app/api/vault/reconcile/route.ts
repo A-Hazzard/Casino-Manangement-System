@@ -147,11 +147,10 @@ export async function POST(request: NextRequest) {
         transaction: transaction.toObject(),
         adjustment: adj,
       });
-    } catch (e: unknown) {
-      console.error('[Vault Reconcile] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
+    } catch (e) {
+      console.error('[Vault Reconcile] Error:', e instanceof Error ? e.message : 'Unknown error');
       return NextResponse.json(
-        { success: false, error: message },
+        { success: false, error: 'Internal server error' },
         { status: 500 }
       );
     }

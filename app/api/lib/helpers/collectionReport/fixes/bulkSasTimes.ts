@@ -14,42 +14,8 @@ import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { calculateMovement } from '@/lib/utils/movement';
-
-type CollectionDocument = {
-  _id: unknown;
-  machineId?: string;
-  timestamp: Date;
-  metersIn: number;
-  metersOut: number;
-  prevIn: number;
-  prevOut: number;
-  movement: {
-    metersIn: number;
-    metersOut: number;
-    gross: number;
-  };
-  sasMeters?: {
-    drop?: number;
-    totalCancelledCredits?: number;
-    gross?: number;
-    gamesPlayed?: number;
-    jackpot?: number;
-    sasStartTime?: string | Date;
-    sasEndTime?: string | Date;
-  };
-  ramClear?: boolean;
-  ramClearMetersIn?: number;
-  ramClearMetersOut?: number;
-  createdAt?: Date;
-  locationReportId?: string;
-  deletedAt?: Date;
-};
-
-type ReportDocument = {
-  locationReportId: string;
-  timestamp: Date;
-  locationName?: string;
-};
+import type { CollectionDocument } from '@/lib/types/collection';
+import type { CollectionReportDocument } from '@shared/types';
 
 /**
  * Fix SAS times for all collection reports
@@ -82,9 +48,9 @@ export async function fixAllSasTimesData(): Promise<{
   console.warn(`🔧 Starting bulk SAS time fix for all reports...`);
 
   // Get all collection reports, sorted by timestamp
-  const allReports = (await CollectionReport.find({})
+  const allReports = await CollectionReport.find({})
     .sort({ timestamp: 1 })
-    .lean()) as ReportDocument[];
+    .lean<CollectionReportDocument[]>();
 
   console.warn(`📋 Found ${allReports.length} collection reports to process`);
 
@@ -142,10 +108,7 @@ export async function fixAllSasTimesData(): Promise<{
             );
           }
         } catch (collectionError) {
-          console.error(
-            `      ❌ Error fixing collection ${collection._id}:`,
-            collectionError
-          );
+          console.error('[fixAllSasTimesData] Error:', collectionError instanceof Error ? collectionError.message : 'Unknown error');
           totalErrors++;
           errors.push(
             `Collection ${collection._id}: ${
@@ -160,7 +123,7 @@ export async function fixAllSasTimesData(): Promise<{
       if (reportHasIssues && collectionsFixedInReport > 0) {
         totalReportsFixed++;
         totalCollectionsFixed += collectionsFixedInReport;
-        fixedReports.push(report.locationReportId);
+        fixedReports.push(report.locationReportId || '');
         console.warn(
           `   ✅ Fixed ${collectionsFixedInReport} collections in report ${report.locationReportId}`
         );
@@ -174,10 +137,7 @@ export async function fixAllSasTimesData(): Promise<{
 
       totalReportsProcessed++;
     } catch (reportError) {
-      console.error(
-        `❌ Error processing report ${report.locationReportId}:`,
-        reportError
-      );
+      console.error('[fixAllSasTimesData] Error:', reportError instanceof Error ? reportError.message : 'Unknown error');
       totalErrors++;
       errors.push(
         `Report ${report.locationReportId}: ${
@@ -224,13 +184,25 @@ export async function fixAllSasTimesData(): Promise<{
 async function checkCollectionIssues(
   collection: CollectionDocument,
   machineId: string,
-  report: ReportDocument
+  report: CollectionReportDocument
 ): Promise<{
   hasIssues: boolean;
   hasInvertedSasTimes: boolean;
   hasPrevMismatch: boolean;
   hasMovementMismatch: boolean;
 }> {
+  if (!collection) {
+    console.error('[checkCollectionIssues] collection is required');
+    return { hasIssues: false, hasInvertedSasTimes: false, hasPrevMismatch: false, hasMovementMismatch: false };
+  }
+  if (!machineId) {
+    console.error('[checkCollectionIssues] machineId is required');
+    return { hasIssues: false, hasInvertedSasTimes: false, hasPrevMismatch: false, hasMovementMismatch: false };
+  }
+  if (!report) {
+    console.error('[checkCollectionIssues] report is required');
+    return { hasIssues: false, hasInvertedSasTimes: false, hasPrevMismatch: false, hasMovementMismatch: false };
+  }
   let hasIssues = false;
   let hasInvertedSasTimes = false;
   let hasPrevMismatch = false;
@@ -342,7 +314,7 @@ async function checkCollectionIssues(
 async function fixCollection(
   collection: CollectionDocument,
   machineId: string,
-  report: ReportDocument
+  report: CollectionReportDocument
 ): Promise<void> {
   console.warn(`      🔧 Fixing collection ${collection._id}...`);
 
@@ -406,7 +378,7 @@ async function fixCollection(
 async function fixPrevInOut(
   collection: CollectionDocument,
   machineId: string,
-  report: ReportDocument
+  report: CollectionReportDocument
 ): Promise<{ correctPrevIn: number; correctPrevOut: number }> {
   let correctPrevIn = collection.prevIn;
   let correctPrevOut = collection.prevOut;
@@ -491,10 +463,7 @@ async function recalculateMovement(
 
     return updatedMovement;
   } catch (calcError) {
-    console.error(
-      `      ❌ Error calculating movement for ${collection._id}:`,
-      calcError
-    );
+    console.error('[recalculateMovement] Error:', calcError instanceof Error ? calcError.message : 'Unknown error');
     // Return original movement if calculation fails
     return collection.movement;
   }
@@ -541,8 +510,12 @@ async function fixSasTimes(
  * @returns Total number of history entries rebuilt
  */
 async function rebuildAllMachineHistories(
-  allReports: ReportDocument[]
+  allReports: CollectionReportDocument[]
 ): Promise<number> {
+  if (!allReports || !Array.isArray(allReports)) {
+    console.error('[rebuildAllMachineHistories] allReports is required');
+    return 0;
+  }
   let totalHistoryRebuilt = 0;
 
   try {
@@ -622,10 +595,7 @@ async function rebuildAllMachineHistories(
           `    ✅ Rebuilt history for machine ${machineId}: ${newHistory.length} entries`
         );
       } catch (machineError) {
-        console.error(
-          `    ❌ Error rebuilding history for machine ${machineId}:`,
-          machineError
-        );
+        console.error('[rebuildAllMachineHistories] Error:', machineError instanceof Error ? machineError.message : 'Unknown error');
       }
     }
 
@@ -633,7 +603,7 @@ async function rebuildAllMachineHistories(
       `    🎉 Total collectionMetersHistory entries rebuilt: ${totalHistoryRebuilt}`
     );
   } catch (historyError) {
-    console.error(`❌ Error rebuilding collectionMetersHistory:`, historyError);
+    console.error('[rebuildAllMachineHistories] Error:', historyError instanceof Error ? historyError.message : 'Unknown error');
   }
 
   return totalHistoryRebuilt;

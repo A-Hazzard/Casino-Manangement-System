@@ -53,6 +53,11 @@ export function getCurrentDbConnectionString(): string {
 export async function generateAccessToken(
   payload: Omit<JwtPayload, 'iat' | 'exp' | 'jti'>
 ): Promise<string> {
+  if (!payload || typeof payload !== 'object') {
+    console.error('[generateAccessToken] payload is required and must be an object');
+    throw new Error('Invalid parameters provided');
+  }
+
   const secret = getJwtSecret();
   // Use sessionId from payload if provided, otherwise generate new one
   const sessionId = payload.sessionId || crypto.randomUUID();
@@ -85,6 +90,11 @@ export async function generateRefreshToken(
   userId: string,
   sessionId: string
 ): Promise<string> {
+  if (!userId || typeof userId !== 'string' || !sessionId || typeof sessionId !== 'string') {
+    console.error('[generateRefreshToken] userId (string) and sessionId (string) are required');
+    throw new Error('Invalid parameters provided');
+  }
+
   const secret = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET;
   if (!secret) {
     throw new Error(

@@ -296,10 +296,7 @@ async function fixCollectionSasTimes(
         }
       );
     } catch (machineUpdateError) {
-      console.error(
-        `Failed to update machine history for machine ${machineId}:`,
-        machineUpdateError
-      );
+      console.error('[fixCollectionSasTimes] Error:', machineUpdateError instanceof Error ? machineUpdateError.message : 'Unknown error');
     }
 
     return { success: true };
@@ -327,6 +324,10 @@ export async function fixSasTimesForReport(reportId: string): Promise<{
   futureReportsAffected: number;
   error?: string;
 }> {
+  if (!reportId) {
+    console.error('[fixSasTimesForReport] reportId is required');
+    return { success: false, totalFixedCount: 0, totalSkippedCount: 0, totalHistoryFixedCount: 0, errors: [], processedReports: [], futureReportsAffected: 0, error: 'reportId is required' };
+  }
   // Find current collection report
   const currentReport = await CollectionReport.findOne({
     locationReportId: reportId,
@@ -449,8 +450,8 @@ function hasCollectionHistoryIssues(machine: {
   }
 
   // Check if any entry (except first) has prevIn/prevOut as 0 or undefined
-  for (let i = 1; i < machine.collectionMetersHistory.length; i++) {
-    const entry = machine.collectionMetersHistory[i];
+  for (let historyIndex = 1; historyIndex < machine.collectionMetersHistory.length; historyIndex++) {
+    const entry = machine.collectionMetersHistory[historyIndex];
     const prevIn = entry.prevIn || 0;
     const prevOut = entry.prevOut || 0;
 
@@ -479,6 +480,10 @@ export async function fixCollectionHistoryForReport(reportId: string): Promise<{
   totalMachinesInReport: number;
   error?: string;
 }> {
+  if (!reportId) {
+    console.error('[fixCollectionHistoryForReport] reportId is required');
+    return { success: false, totalHistoryRebuilt: 0, machinesFixedCount: 0, machinesWithIssues: 0, totalMachinesInReport: 0, error: 'reportId is required' };
+  }
   const report = await CollectionReport.findOne({
     locationReportId: reportId,
   });
@@ -539,7 +544,7 @@ export async function fixCollectionHistoryForReport(reportId: string): Promise<{
         }
       }
     } catch (machineError) {
-      console.error(`Error processing machine ${machineId}:`, machineError);
+      console.error('[fixCollectionHistoryForReport] Error:', machineError instanceof Error ? machineError.message : 'Unknown error');
     }
   }
 

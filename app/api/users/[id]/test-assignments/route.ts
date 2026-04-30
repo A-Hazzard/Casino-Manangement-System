@@ -8,13 +8,13 @@
  * simulate the session-invalidation behaviour that real assignment changes trigger.
  *
  * Route parameters:
- * @param id              {string}   Required. The user document ID extracted from the URL path
+ * @param {string} id - Required. The user document ID extracted from the URL path
  *   (/api/users/[id]/test-assignments).
  *
  * Body fields:
- * @param assignedLocations  {string[]} Optional. Full replacement list of location IDs to assign.
+ * @param {string[]} [assignedLocations] - Optional. Full replacement list of location IDs to assign.
  *   Pass an empty array to clear all locations.
- * @param assignedLicencees  {string[]} Optional. Full replacement list of licencee IDs to assign.
+ * @param {string[]} [assignedLicencees] - Optional. Full replacement list of licencee IDs to assign.
  *   Pass an empty array to clear all licencees.
  *
  * @module app/api/users/[id]/test-assignments/route
@@ -23,6 +23,7 @@
 import UserModel from '@/app/api/lib/models/user';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
+import type { LeanUserDocument } from 'shared/types/auth';
 
 export async function PATCH(
   request: NextRequest
@@ -90,28 +91,18 @@ export async function PATCH(
       updateOperation.$inc = updateInc;
     }
 
-    const updatedUser = await UserModel.findOneAndUpdate(
+    const userDoc = await UserModel.findOneAndUpdate(
       { _id: userId },
       updateOperation,
       { new: true }
-    ).lean();
+    ).lean<LeanUserDocument>();
 
-    if (!updatedUser || Array.isArray(updatedUser)) {
+    if (!userDoc) {
       return NextResponse.json(
         { success: false, message: 'User not found' },
         { status: 404 }
       );
     }
-
-    // Type guard: ensure updatedUser is a single document, not an array
-    const userDoc = updatedUser as {
-      _id: string;
-      username?: string;
-      emailAddress?: string;
-      assignedLocations?: string[];
-      assignedLicencees?: string[];
-      sessionVersion?: number;
-    };
 
     // ============================================================================
     // STEP 5: Return updated user data

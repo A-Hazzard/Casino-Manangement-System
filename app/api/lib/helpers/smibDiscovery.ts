@@ -10,6 +10,7 @@
 import { GamingLocations } from '../models/gaminglocations';
 import { Machine } from '../models/machines';
 import { differenceInMinutes } from 'date-fns';
+import type { GamingLocationDocument } from '@shared/types';
 
 /**
  * Lean machine type for SMIB discovery
@@ -107,13 +108,10 @@ export async function discoverSMIBDevices(): Promise<SMIBDiscoveryResult> {
     _id: { $in: locationIds },
   })
     .select('_id name')
-    .lean();
+    .lean<GamingLocationDocument[]>();
 
   const locationMap = new Map(
-    locations.map(loc => [
-      (loc._id as unknown as { toString: () => string }).toString(),
-      loc.name as string,
-    ])
+    locations.map(loc => [loc._id, loc.name])
   );
 
   // Build SMIB device list

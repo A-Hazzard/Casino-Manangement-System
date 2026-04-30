@@ -120,8 +120,8 @@ export async function POST(
 
     // Process in batches of 10 for parallel execution
     const BATCH_SIZE = 10;
-    for (let i = 0; i < uniqueRelayIds.length; i += BATCH_SIZE) {
-      const batch = uniqueRelayIds.slice(i, i + BATCH_SIZE);
+    for (let relayIndex = 0; relayIndex < uniqueRelayIds.length; relayIndex += BATCH_SIZE) {
+      const batch = uniqueRelayIds.slice(relayIndex, relayIndex + BATCH_SIZE);
 
       await Promise.allSettled(
         batch.map(async (relayId: string) => {
@@ -138,10 +138,13 @@ export async function POST(
             // ============================================================================
             // STEP 7: Update machine firmwareUpdatedAt timestamps
             // ============================================================================
-            await Machine.updateOne(
+            const machineOtaUpdate = await Machine.updateOne(
               { $or: [{ relayId }, { smibBoard: relayId }] },
               { $set: { 'smibConfig.ota.firmwareUpdatedAt': new Date() } }
             );
+            if (machineOtaUpdate.modifiedCount === 0) {
+              console.warn(`[smib-ota] No machine found with relayId: ${relayId}`);
+            }
           } catch (error) {
             results.failed++;
             results.errors.push({

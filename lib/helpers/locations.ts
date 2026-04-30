@@ -102,7 +102,8 @@ export const searchAllLocations = async (
   customDateRange?: { from: Date; to: Date },
   signal?: AbortSignal,
   machineTypeFilter?: string,
-  onlineStatus?: string
+  onlineStatus?: string,
+  archived?: boolean
 ): Promise<AggregatedLocation[]> => {
   try {
     const params: Record<string, string> = {};
@@ -116,6 +117,7 @@ export const searchAllLocations = async (
     }
     if (machineTypeFilter) params.machineTypeFilter = machineTypeFilter;
     if (onlineStatus) params.onlineStatus = onlineStatus;
+    if (archived) params.archived = 'true';
 
     const response = await axios.get('/api/locations/search-all', {
       params,

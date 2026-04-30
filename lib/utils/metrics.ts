@@ -78,7 +78,8 @@ export async function switchFilter(
       setTotals(null);
       setChartData([]);
     }
-  } catch {
+  } catch (e) {
+    console.error('[switchFilter] Error:', e instanceof Error ? e.message : 'Unknown error');
     // Error handled by caller or silently failed for UI
   }
 }

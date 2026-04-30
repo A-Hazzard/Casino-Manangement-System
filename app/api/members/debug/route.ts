@@ -13,6 +13,7 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
+import type { CasinoMember } from '@shared/types';
 import { NextResponse } from 'next/server';
 
 /**
@@ -52,7 +53,7 @@ export async function GET() {
     // ============================================================================
     // STEP 3: Fetch sample members for inspection
     // ============================================================================
-    const sampleMembers = await Member.find({}).limit(5).lean();
+    const sampleMembers = await Member.find({}).limit(5).lean<CasinoMember[]>();
 
     // ============================================================================
     // STEP 4: Return debug information

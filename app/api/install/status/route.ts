@@ -14,6 +14,7 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
+import type { LeanUserDocument } from '@/shared/types/auth';
 import { NextResponse } from 'next/server';
 
 /**
@@ -30,7 +31,7 @@ export async function GET() {
     // ============================================================================
     // STEP 2: Check for any existing user (lean + limit 1 for performance)
     // ============================================================================
-    const existingUser = await UserModel.findOne({}).select('_id').lean();
+    const existingUser = await UserModel.findOne({}).select('_id').lean<LeanUserDocument | null>();
 
     // ============================================================================
     // STEP 3: Return initialization status

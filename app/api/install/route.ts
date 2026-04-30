@@ -20,6 +20,7 @@ import { Licencee } from '@/app/api/lib/models/licencee';
 import UserModel from '@/app/api/lib/models/user';
 import { generateUniqueLicenceKey } from '@/app/api/lib/utils/licenceKey';
 import { hashPassword } from '@/app/api/lib/utils/validation';
+import type { LeanUserDocument } from '@/shared/types/auth';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextResponse } from 'next/server';
 
@@ -41,7 +42,7 @@ export async function GET() {
     const [existingUser, existingCountryCount, existingLicenceeCount] = await Promise.all([
       UserModel.findOne({
         $or: [{ username: 'admin' }, { emailAddress: 'admin@gmail.com' }],
-      }).lean(),
+      }).lean<LeanUserDocument | null>(),
       Countries.countDocuments({
         name: { $in: ['Trinidad & Tobago', 'Guyana', 'Barbados', 'St. Lucia'] },
       }),

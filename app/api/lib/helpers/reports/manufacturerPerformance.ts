@@ -52,6 +52,10 @@ function calculateManufacturerDateRange(
   startDate?: string | null,
   endDate?: string | null
 ): { startDate: Date; endDate: Date } {
+  if (!timePeriod || typeof timePeriod !== 'string') {
+    console.error('[calculateManufacturerDateRange] timePeriod is required and must be a string');
+    return { startDate: new Date(), endDate: new Date() };
+  }
   let startDateFilter: Date | undefined;
   let endDateFilter: Date | undefined;
 
@@ -88,6 +92,10 @@ function buildManufacturerPerformancePipeline(
   endDate: Date,
   licencee?: string | null
 ): PipelineStage[] {
+  if (!locationId || !startDate || !endDate) {
+    console.error('[buildManufacturerPerformancePipeline] locationId, startDate, and endDate are required');
+    return [];
+  }
   const pipeline: PipelineStage[] = [
     {
       $match: {
@@ -190,6 +198,10 @@ function calculateManufacturerTotals(
   totalCancelledCredits: number;
   totalGross: number;
 } {
+  if (!Array.isArray(manufacturerData)) {
+    console.error('[calculateManufacturerTotals] manufacturerData must be an array');
+    return { totalMachines: 0, totalHandle: 0, totalWin: 0, totalDrop: 0, totalCancelledCredits: 0, totalGross: 0 };
+  }
   return manufacturerData.reduce(
     (acc, item) => {
       acc.totalMachines += item.totalMachines;
@@ -222,6 +234,10 @@ function calculateManufacturerPercentages(
   manufacturerData: ManufacturerDataItem[],
   totals: ReturnType<typeof calculateManufacturerTotals>
 ): ManufacturerPerformanceItem[] {
+  if (!Array.isArray(manufacturerData) || !totals) {
+    console.error('[calculateManufacturerPercentages] manufacturerData and totals are required');
+    return [];
+  }
   return manufacturerData.map(item => ({
     manufacturer: item._id || 'Unknown',
     floorPositions:
@@ -271,6 +287,11 @@ export async function getManufacturerPerformance(
   endDate?: string | null,
   licencee?: string | null
 ): Promise<ManufacturerPerformanceItem[]> {
+  if (!locationId || !timePeriod) {
+    console.error('[getManufacturerPerformance] locationId and timePeriod are required');
+    return [];
+  }
+
   const { startDate: startDateFilter, endDate: endDateFilter } =
     calculateManufacturerDateRange(timePeriod, startDate, endDate);
 

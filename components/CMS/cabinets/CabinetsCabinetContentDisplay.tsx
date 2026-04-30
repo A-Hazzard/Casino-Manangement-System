@@ -94,7 +94,7 @@ export const CabinetsCabinetContentDisplay = ({
 }: CabinetsCabinetContentDisplayProps) => {
   const tableRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
-  const { openEditModal, openDeleteModal } = useCabinetsActionsStore();
+  const { openEditModal, openDeleteModal, openRestoreModal } = useCabinetsActionsStore();
   const user = useUserStore(state => state.user);
   const licenceeName =
     selectedLicencee && selectedLicencee !== 'all'
@@ -144,6 +144,16 @@ export const CabinetsCabinetContentDisplay = ({
       'location admin',
       'technician',
     ].some(role => userRoles.includes(role));
+  }, [user]);
+
+  /**
+   * Determines if the user can permanently delete machines.
+   * Only developers can permanently delete machines.
+   */
+  const canPermanentlyDeleteMachines = useMemo(() => {
+    if (!user || !user.roles) return false;
+    const userRoles = user.roles || [];
+    return ['developer'].some(role => userRoles.includes(role));
   }, [user]);
 
   const shouldHideFinancials = useMemo(() => {
@@ -220,6 +230,13 @@ export const CabinetsCabinetContentDisplay = ({
     const machine = paginatedCabinets.find(c => c._id === machineProps._id);
     if (machine) {
       openDeleteModal(machine);
+    }
+  };
+
+  const handleRestore = (machineProps: Machine) => {
+    const machine = paginatedCabinets.find(c => c._id === machineProps._id);
+    if (machine) {
+      openRestoreModal(machine);
     }
   };
 
@@ -334,8 +351,11 @@ export const CabinetsCabinetContentDisplay = ({
           onSort={(column: string) => onSort(column as CabinetSortOption)}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onRestore={handleRestore}
           canEditMachines={canEditMachines}
           canDeleteMachines={canDeleteMachines}
+          canViewArchived={canDeleteMachines}
+          canPermanentlyDeleteMachines={canPermanentlyDeleteMachines}
           enableHeaderSorting={enableHeaderSorting}
           showSortIcons={showSortIcons}
           hideFinancials={shouldHideFinancials}
@@ -381,8 +401,10 @@ export const CabinetsCabinetContentDisplay = ({
                 actualOfflineTime={machine.actualOfflineTime}
                 onEdit={() => handleEdit(machine)}
                 onDelete={() => handleDelete(machine)}
+                onRestore={() => handleRestore(machine)}
                 canEditMachines={canEditMachines}
                 canDeleteMachines={canDeleteMachines}
+                canPermanentlyDeleteMachines={canPermanentlyDeleteMachines}
                 hideFinancials={shouldHideFinancials}
                 includeJackpot={machine.includeJackpot ?? includeJackpot}
               />

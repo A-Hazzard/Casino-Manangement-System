@@ -17,7 +17,7 @@ export function useVaultLicencee() {
   const { selectedLicencee, setSelectedLicencee } = useDashBoardStore();
 
   const isAdminOrDev = useMemo(() => {
-    return user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
+    return user?.roles?.some(role => ['admin', 'developer'].includes(role.toLowerCase()));
   }, [user?.roles]);
 
   const effectiveLicenceeId = useMemo(() => {

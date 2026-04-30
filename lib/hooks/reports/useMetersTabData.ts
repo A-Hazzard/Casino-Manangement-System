@@ -262,10 +262,10 @@ export function useMetersTabData({
         });
 
         if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
-          const formatLocalDate = (d: Date) => {
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
+          const formatLocalDate = (date: Date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
           };
           params.append('startDate', formatLocalDate(customDateRange.startDate));
@@ -312,14 +312,14 @@ export function useMetersTabData({
           setAllMetersData(prev => {
             const existingIds = new Set(
               prev.map(
-                m =>
-                  m.machineId || ((m as Record<string, unknown>)._id as string)
+                meterData =>
+                  meterData.machineId || ((meterData as Record<string, unknown>)._id as string)
               )
             );
             const uniqueNewMeters = newMetersData.filter(
-              (m: MetersReportData) => {
+              (meterData: MetersReportData) => {
                 const id =
-                  m.machineId || ((m as Record<string, unknown>)._id as string);
+                  meterData.machineId || ((meterData as Record<string, unknown>)._id as string);
                 return !existingIds.has(id);
               }
             );
@@ -490,10 +490,10 @@ export function useMetersTabData({
           });
 
           if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
-            const formatLocalDate = (d: Date) => {
-              const year = d.getFullYear();
-              const month = String(d.getMonth() + 1).padStart(2, '0');
-              const day = String(d.getDate()).padStart(2, '0');
+            const formatLocalDate = (date: Date) => {
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
               return `${year}-${month}-${day}`;
             };
             params.append('startDate', formatLocalDate(customDateRange.startDate));

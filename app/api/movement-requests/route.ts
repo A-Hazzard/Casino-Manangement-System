@@ -15,6 +15,7 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { MovementRequest } from '@/app/api/lib/models/movementrequests';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import type { GamingLocationDocument } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -171,7 +172,7 @@ export async function GET(req: NextRequest) {
         const licenceeLocations = await GamingLocations.find(
           { 'rel.licencee': licencee },
           { _id: 1, name: 1 }
-        ).lean();
+        ).lean<GamingLocationDocument[]>();
 
         const licenceeLocationIds = licenceeLocations.map((loc: { _id: unknown }) =>
           String(loc._id)
@@ -190,7 +191,7 @@ export async function GET(req: NextRequest) {
       const locations = await GamingLocations.find(
         {},
         { _id: 1, name: 1 }
-      ).lean();
+      ).lean<GamingLocationDocument[]>();
       const idToName = Object.fromEntries(
         locations.map(l => [String(l._id), l.name])
       );
@@ -198,21 +199,21 @@ export async function GET(req: NextRequest) {
       // ============================================================================
       // STEP 7: Transform requests with location names and map legacy statuses
       // ============================================================================
-      const transformed = requests.map((r: Record<string, unknown>) => {
+      const transformed = requests.map((requestItem: Record<string, unknown>) => {
         // Map legacy statuses to purely pending/completed
-        const mappedStatus = r.status as string;
+        const mappedStatus = requestItem.status as string;
         let finalStatus = mappedStatus;
         if (mappedStatus === 'approved') finalStatus = 'completed';
         if (mappedStatus === 'in progress') finalStatus = 'pending';
         if (mappedStatus === 'rejected') finalStatus = 'completed'; // Or pending? Leave rejected as pending for safety if it shouldn't be completed
 
         return {
-          ...r,
+          ...requestItem,
           status: finalStatus === 'approved' ? 'completed' : finalStatus === 'in progress' ? 'pending' : (finalStatus || 'pending'),
-          locationFrom: idToName[String(r.locationFrom)] || String(r.locationFrom),
-          locationTo: idToName[String(r.locationTo)] || String(r.locationTo),
-          recipientName: r.recipientName || r.requestTo, // Fallback
-          creatorName: r.creatorName || r.createdBy // Fallback
+          locationFrom: idToName[String(requestItem.locationFrom)] || String(requestItem.locationFrom),
+          locationTo: idToName[String(requestItem.locationTo)] || String(requestItem.locationTo),
+          recipientName: requestItem.recipientName || requestItem.requestTo, // Fallback
+          creatorName: requestItem.creatorName || requestItem.createdBy // Fallback
         };
       });
 

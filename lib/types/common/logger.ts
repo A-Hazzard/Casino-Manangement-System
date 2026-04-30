@@ -1,11 +1,3 @@
-/**
- * Logger Types
- * Types for API logging functionality and structured logging.
- *
- * Defines log context (endpoint, method, user info) and log result
- * structure with success status, timing, and error information.
- */
-
 export type LogContext = {
   endpoint: string;
   method: string;

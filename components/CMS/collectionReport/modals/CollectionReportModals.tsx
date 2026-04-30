@@ -45,6 +45,7 @@ type CollectionReportModalsProps = {
   showEditDesktop: boolean;
   editingReportId: string | null;
   showDeleteConfirm: boolean;
+  isDeleting?: boolean;
   locationsWithMachines: CollectionReportLocationWithMachines[];
   onCloseNewMobile: () => void;
   onCloseNewDesktop: () => void;
@@ -60,8 +61,9 @@ export default function CollectionReportModals({
   showNewCollectionDesktop,
   showEditMobile,
   showEditDesktop,
-  editingReportId,
+editingReportId,
   showDeleteConfirm,
+  isDeleting,
   locationsWithMachines,
   onCloseNewMobile,
   onCloseNewDesktop,
@@ -109,7 +111,7 @@ export default function CollectionReportModals({
         message="Are you sure you want to delete this collection report? This will also delete all associated collections, remove them from machine history, and revert collection meters to their previous values. This action cannot be undone."
         confirmText="Yes, Delete"
         cancelText="Cancel"
-        isLoading={false}
+        isLoading={isDeleting}
       />
     </>
   );

@@ -20,6 +20,7 @@ import {
   getCountryCurrency,
 } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
+import type { CountryDocument, GamingLocationDocument, GamingMachine, LicenceeDocument } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 // Functions accept 'any' for db parameter to handle version differences
@@ -81,6 +82,11 @@ export function validateCustomDateRange(
   startDate?: string | null,
   endDate?: string | null
 ): string | null {
+  if (!timePeriod) {
+    console.error('[validateCustomDateRange] timePeriod is required');
+    return 'timePeriod is required';
+  }
+
   if (timePeriod === 'Custom') {
     if (!startDate || !endDate) {
       return 'Custom startDate and endDate are required';
@@ -117,6 +123,11 @@ function determineAggregationGranularity(
   endDateParam?: string | null,
   manualGranularity?: 'hourly' | 'minute' | 'daily' | 'weekly'
 ): { useHourly: boolean; useMinute: boolean } {
+  if (!timePeriod) {
+    console.error('[determineAggregationGranularity] timePeriod is required');
+    return { useHourly: false, useMinute: false };
+  }
+
   // If manual granularity is specified, use it (but only for Today/Yesterday or appropriate custom ranges)
   if (manualGranularity) {
     if (manualGranularity === 'minute') {
@@ -182,6 +193,11 @@ function filterLocationsByPermissions(
   isManager: boolean,
   userLocationPermissions: string[]
 ): LocationData[] {
+  if (!Array.isArray(locations) || !Array.isArray(userLocationPermissions)) {
+    console.error('[filterLocationsByPermissions] locations and userLocationPermissions must be arrays');
+    return [];
+  }
+
   if (licencee) {
     if (!isAdmin && !isManager) {
       if (userLocationPermissions.length === 0) {
@@ -208,6 +224,11 @@ function filterLocationsByPermissions(
 function buildMachinesByLocationMap(
   machineDocs: Array<{ _id: unknown; gamingLocation?: unknown }>
 ): Map<string, string[]> {
+  if (!Array.isArray(machineDocs)) {
+    console.error('[buildMachinesByLocationMap] machineDocs must be an array');
+    return new Map();
+  }
+
   const machinesByLocation = new Map<string, string[]>();
 
   for (const machine of machineDocs) {
@@ -242,6 +263,11 @@ function buildLocationMetricsPipeline(
   shouldUseHourly: boolean,
   shouldUseMinute?: boolean
 ): PipelineStage[] {
+  if (!Array.isArray(machineIds) || !rangeStart || !rangeEnd) {
+    console.error('[buildLocationMetricsPipeline] machineIds (array), rangeStart, and rangeEnd are required');
+    return [];
+  }
+
   return [
     {
       $match: {
@@ -343,6 +369,11 @@ async function processLocationMetricsSingleAggregation(
   shouldUseHourly: boolean,
   shouldUseMinute?: boolean
 ): Promise<MeterTrendMetric[]> {
+  if (!Array.isArray(locations) || !(machinesByLocation instanceof Map) || !(gamingDayRanges instanceof Map)) {
+    console.error('[processLocationMetricsSingleAggregation] locations (array), machinesByLocation (Map), and gamingDayRanges (Map) are required');
+    return [];
+  }
+
   // Note: Avoid verbose logs here — this path runs for 7d/30d and can be hot.
 
   // Get global date range (earliest start, latest end) for initial query
@@ -569,10 +600,15 @@ async function processLocationMetricsBatches(
   shouldUseMinute?: boolean,
   batchSize: number = 20
 ): Promise<MeterTrendMetric[]> {
+  if (!Array.isArray(locations) || !(machinesByLocation instanceof Map) || !(gamingDayRanges instanceof Map)) {
+    console.error('[processLocationMetricsBatches] locations (array), machinesByLocation (Map), and gamingDayRanges (Map) are required');
+    return [];
+  }
+
   const metricsPerLocation: MeterTrendMetric[] = [];
 
-  for (let i = 0; i < locations.length; i += batchSize) {
-    const batch = locations.slice(i, i + batchSize);
+  for (let locationIndex = 0; locationIndex < locations.length; locationIndex += batchSize) {
+    const batch = locations.slice(locationIndex, locationIndex + batchSize);
     const batchResults = await Promise.all(
       batch.map(async location => {
         const locationId = String(location._id);
@@ -659,6 +695,11 @@ async function loadCurrencyMetadata(
   licenceeIdToName: Map<string, string>;
   countryIdToName: Map<string, string>;
 }> {
+  if (!Array.isArray(metricsPerLocation)) {
+    console.error('[loadCurrencyMetadata] metricsPerLocation must be an array');
+    return { licenceeIdToName: new Map(), countryIdToName: new Map() };
+  }
+
   const licenceeIdToName = new Map<string, string>();
   const countryIdToName = new Map<string, string>();
 
@@ -688,7 +729,7 @@ async function loadCurrencyMetadata(
       },
       { name: 1 }
     )
-      .lean()
+      .lean<LicenceeDocument[]>()
       .exec();
 
     licenceeDocs.forEach(doc => {
@@ -722,7 +763,7 @@ async function loadCurrencyMetadata(
       },
       { name: 1 }
     )
-      .lean()
+      .lean<CountryDocument[]>()
       .exec();
 
     countryDocs.forEach(doc => {
@@ -751,6 +792,11 @@ function aggregateMetricsWithConversion(
   countryIdToName: Map<string, string>,
   reviewerMult: number | null
 ): AggregatedMetric[] {
+  if (!Array.isArray(metricsPerLocation) || !(licenceeIdToName instanceof Map) || !(countryIdToName instanceof Map)) {
+    console.error('[aggregateMetricsWithConversion] metricsPerLocation (array), licenceeIdToName (Map), and countryIdToName (Map) are required');
+    return [];
+  }
+
   const aggregatedMap = new Map<string, AggregatedMetric>();
 
   const accumulator = (
@@ -898,6 +944,11 @@ export async function getMeterTrends(
   userLocationPermissions: string[],
   userMultiplier: number | null = null
 ): Promise<AggregatedMetric[]> {
+  if (!params || !Array.isArray(userRoles) || !Array.isArray(userLocationPermissions)) {
+    console.error('[getMeterTrends] params, userRoles, and userLocationPermissions are required');
+    return [];
+  }
+
   const {
     timePeriod,
     licencee,
@@ -952,7 +1003,7 @@ export async function getMeterTrends(
     country: 1,
     geoCoords: 1,
     rel: 1,
-  }).lean();
+  }).lean<GamingLocationDocument[]>();
 
   const isManager = userRoles.includes('manager');
   const isAdmin =
@@ -1108,7 +1159,7 @@ export async function getMeterTrends(
   const machineDocs = await Machine.find(
     machineQuery,
     { _id: 1, gamingLocation: 1, 'gameConfig.accountingDenomination': 1 }
-  ).lean();
+  ).lean<GamingMachine[]>();
   
   const denomMap = new Map<string, number>();
   machineDocs.forEach(m => {

@@ -207,15 +207,15 @@ export default function VaultActivityLogPageContent() {
   };
 
   const formatTimestamp = (ts: string | Date) => {
-    const d = new Date(ts);
+    const dateValue = new Date(ts);
     return (
       <div className="flex flex-col">
         <span className="text-sm font-black text-gray-900 tracking-tight leading-none mb-1">
-          {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          {dateValue.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </span>
         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
           <span className="h-1 w-1 rounded-full bg-gray-300" />
-          {d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+          {dateValue.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
         </span>
       </div>
     );

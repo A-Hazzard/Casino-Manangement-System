@@ -154,7 +154,7 @@ export function useEditCollectionModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [hasUnsavedEdits, setHasUnsavedEdits] = useState(false);
-  const [showUnsavedChangesWarning, setShowUnsavedChangesWarning] =
+  const [, setShowUnsavedChangesWarning] =
     useState(false);
   const [isFirstCollection, setIsFirstCollection] = useState(false);
 
@@ -254,10 +254,10 @@ export function useEditCollectionModal({
 
       if (newVal) {
         const location = locations.find(
-          l => String(l._id) === selectedLocationId
+          location => String(location._id) === selectedLocationId
         );
         const machineEntry = collectedMachineEntries.find(
-          e => String(e.machineId) === selectedMachineId
+          entry => String(entry.machineId) === selectedMachineId
         );
         const machineInfo = machinesOfSelectedLocation.find(
           m => String(m._id) === selectedMachineId
@@ -362,7 +362,7 @@ export function useEditCollectionModal({
    * Selected location object from locations array
    */
   const selectedLocation = useMemo(
-    () => locations.find(l => String(l._id) === selectedLocationId),
+    () => locations.find(location => String(location._id) === selectedLocationId),
     [locations, selectedLocationId]
   );
 
@@ -527,7 +527,7 @@ export function useEditCollectionModal({
   const setSelectedLocationId = (id: string) =>
     setStoreSelectedLocation(
       id,
-      locations.find(l => String(l._id) === id)?.name || ''
+      locations.find(location => String(location._id) === id)?.name || ''
     );
   const setSelectedLocationName = (name: string) =>
     setStoreSelectedLocation(selectedLocationId, name);
@@ -644,7 +644,7 @@ export function useEditCollectionModal({
     async (entryId: string) => {
       if (isProcessing) return;
 
-      const entryToEdit = collectedMachineEntries.find(e => e._id === entryId);
+      const entryToEdit = collectedMachineEntries.find(entry => entry._id === entryId);
       if (entryToEdit) {
         // Set editing state
         setEditingEntryId(entryId);
@@ -858,7 +858,7 @@ export function useEditCollectionModal({
       if (capturedEditingEntryId) {
         // Find the existing collection to get its locationReportId
         const existingEntry = collectedMachineEntries.find(
-          e => e._id === capturedEditingEntryId
+          entry => entry._id === capturedEditingEntryId
         );
 
         // Update existing collection
@@ -952,7 +952,7 @@ export function useEditCollectionModal({
 
         // Log the update with before/after field comparison
         const existingForLog = capturedEntries.find(
-          e => e._id === capturedEditingEntryId
+          entry => entry._id === capturedEditingEntryId
         );
         if (existingForLog && selectedLocationName) {
           const machineName =
@@ -1425,7 +1425,7 @@ export function useEditCollectionModal({
       // Check if user has unsaved form changes for currently selected machine
       if (editingEntryId && machineForDataEntry) {
         const editingEntry = collectedMachineEntries.find(
-          e => e._id === editingEntryId
+          entry => entry._id === editingEntryId
         );
         if (editingEntry) {
           const formMetersIn = currentMetersIn ? Number(currentMetersIn) : 0;
@@ -1499,6 +1499,9 @@ export function useEditCollectionModal({
       // now handles the confirmation before this function is called.
 
       setIsProcessing(true);
+
+      // Clear unsaved edits flag BEFORE async operations (prevents race with close handler)
+      setHasUnsavedEdits(false);
       try {
         // PHASE 1: Detect machine meter changes and call batch update API
         const changes: Array<{
@@ -1510,10 +1513,13 @@ export function useEditCollectionModal({
           prevMetersOut: number;
           collectionId: string;
           timestamp: Date;
+          ramClear?: boolean;
+          ramClearMetersIn?: number;
+          ramClearMetersOut?: number;
         }> = [];
 
         for (const current of collectedMachineEntries) {
-          const original = originalCollections.find(o => o._id === current._id);
+          const original = originalCollections.find(originalCollection => originalCollection._id === current._id);
           if (original) {
             // Check if meters or collection time changed
             const metersInChanged = current.metersIn !== original.metersIn;
@@ -1552,6 +1558,9 @@ export function useEditCollectionModal({
                   : current.timestamp
                     ? new Date(current.timestamp)
                     : new Date(),
+                ramClear: current.ramClear,
+                ramClearMetersIn: current.ramClearMetersIn,
+                ramClearMetersOut: current.ramClearMetersOut,
               });
             }
           } else {
@@ -1569,6 +1578,9 @@ export function useEditCollectionModal({
                 : current.timestamp
                   ? new Date(current.timestamp)
                   : new Date(),
+              ramClear: current.ramClear,
+              ramClearMetersIn: current.ramClearMetersIn,
+              ramClearMetersOut: current.ramClearMetersOut,
             });
           }
         }
@@ -1645,8 +1657,12 @@ export function useEditCollectionModal({
           totalDrop: totals.drop,
           totalCancelled: totals.cancelledCredits,
           totalGross: totals.gross,
-          totalSasGross: totals.sasGross,
+          totalSasGross: reconciliationData?.machines.reduce(
+            (sum: number, machineData) => sum + (Number(machineData.sasGross) || 0),
+            0
+          ) ?? totals.sasGross,
           machinesCollected: collectedMachineEntries.length.toString(),
+          includeJackpot: reportData?.includeJackpot ?? false,
         };
 
         await updateCollectionReport(reportId, updateData);
@@ -1719,7 +1735,7 @@ export function useEditCollectionModal({
           );
         })
       );
-      const failed = results.filter(r => r.status === 'rejected').length;
+      const failed = results.filter(result => result.status === 'rejected').length;
       if (failed > 0) {
         toast.error(
           `${failed} machine${failed > 1 ? 's' : ''} failed to update`
@@ -1771,7 +1787,7 @@ export function useEditCollectionModal({
   useEffect(() => {
     if (show && selectedLocationId && !hasSetCollectionTimeFromReport) {
       const location = locationsRef.current.find(
-        l => String(l._id) === selectedLocationId
+        location => String(location._id) === selectedLocationId
       );
       if (location?.gameDayOffset !== undefined) {
         const defaultTime = calculateDefaultCollectionTime(
@@ -1861,8 +1877,8 @@ export function useEditCollectionModal({
     // Create a hash of entry IDs and key values to detect actual changes
     const entriesHash = collectedMachineEntries
       .map(
-        e =>
-          `${e._id}:${e.metersIn}:${e.metersOut}:${e.prevIn}:${e.prevOut}:${e.ramClear ? '1' : '0'}`
+        entry =>
+          `${entry._id}:${entry.metersIn}:${entry.metersOut}:${entry.prevIn}:${entry.prevOut}:${entry.ramClear ? '1' : '0'}`
       )
       .join('|');
 
@@ -1976,7 +1992,7 @@ export function useEditCollectionModal({
   useEffect(() => {
     if (show && selectedLocationId) {
       const location = locationsRef.current.find(
-        l => String(l._id) === selectedLocationId
+        location => String(location._id) === selectedLocationId
       );
       if (location) {
         if (selectedLocationName !== location.name) {
@@ -2001,7 +2017,7 @@ export function useEditCollectionModal({
           // Set location from report - resolve BOTH id and name immediately
           if (reportData.locationName) {
             const matchingLoc = locationsRef.current.find(
-              l => l.name === reportData.locationName
+              location => location.name === reportData.locationName
             );
             if (matchingLoc) {
               // Set both id and name together so the dropdown shows correctly
@@ -2112,7 +2128,7 @@ export function useEditCollectionModal({
 
     let hasChanges = false;
     for (const current of collectedMachineEntries) {
-      const original = originalCollections.find(o => o._id === current._id);
+      const original = originalCollections.find(originalCollection => originalCollection._id === current._id);
       if (original) {
         if (
           current.metersIn !== original.metersIn ||
@@ -2328,6 +2344,11 @@ export function useEditCollectionModal({
     debouncedValidateMeterInputs,
   ]);
 
+  // Function to clear unsaved edits synchronously (for use before submission)
+  const clearUnsavedEdits = useCallback(() => {
+    setHasUnsavedEdits(false);
+  }, [setHasUnsavedEdits]);
+
   return {
     // State
     reportData,
@@ -2358,8 +2379,7 @@ export function useEditCollectionModal({
     setHasChanges,
     hasUnsavedEdits,
     setHasUnsavedEdits,
-    showUnsavedChangesWarning,
-    setShowUnsavedChangesWarning,
+    clearUnsavedEdits,
     editingEntryId,
     setEditingEntryId,
     showUpdateConfirmation,

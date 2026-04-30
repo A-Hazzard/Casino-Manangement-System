@@ -1,9 +1,6 @@
 import type { TimePeriod } from './common';
 import type { CurrencyCode } from './currency';
 
-/**
- * Parsed and validated request parameters for meters report
- */
 export type ParsedMetersReportParams = {
   timePeriod: TimePeriod;
   customStartDate: Date | undefined;
@@ -19,9 +16,6 @@ export type ParsedMetersReportParams = {
   granularity?: 'hourly' | 'minute';
 };
 
-/**
- * Individual data record for meters report
- */
 export type MetersReportData = {
   machineId: string;
   metersIn: number;
@@ -37,15 +31,11 @@ export type MetersReportData = {
   locationId: string;
   createdAt: string;
   machineDocumentId: string;
-  // Optional fields for export logic
   customName?: string;
   serialNumber?: string;
   game?: string;
 };
 
-/**
- * Hourly/Minute chart data point
- */
 export type MetersHourlyChartData = {
   day: string;
   hour: string;
@@ -54,9 +44,6 @@ export type MetersHourlyChartData = {
   coinOut: number;
 };
 
-/**
- * Standard response format for meters report API
- */
 export type MetersReportResponse = {
   data: MetersReportData[];
   totalCount: number;

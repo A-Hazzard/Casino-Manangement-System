@@ -32,7 +32,6 @@ import {
 } from '../profileValidation';
 import { getUserByEmail, getUserByUsername } from '../users/users';
 
-// Type for lean user object from database (includes all fields that exist on actual DB object)
 type LeanUserObject = LeanUserDocument & {
   roles?: string[];
   sessionVersion?: number;
@@ -509,7 +508,10 @@ export async function authenticateUser(
       invalidProfileReasons: profileInvalid ? invalidReasons : undefined,
     };
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error(
+      '[authenticateUser] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
 
     // Try to get user info for error logging if available
     let userIdForLog = 'unknown';
@@ -550,6 +552,10 @@ export async function authenticateUser(
 export async function refreshAccessToken(
   refreshToken: string
 ): Promise<AuthResult> {
+  if (!refreshToken) {
+    console.error('[refreshAccessToken] refreshToken is required');
+    return { success: false, message: 'Refresh token is required.' };
+  }
   try {
     const { verifyRefreshToken } = await import('@/lib/utils/auth');
     const payload = await verifyRefreshToken(refreshToken);
@@ -597,7 +603,10 @@ export async function refreshAccessToken(
 
     return { success: true, token: accessToken };
   } catch (error) {
-    console.error('Token refresh error:', error);
+    console.error(
+      '[refreshAccessToken] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     return { success: false, message: 'Token refresh failed.' };
   }
 }
@@ -608,6 +617,10 @@ export async function refreshAccessToken(
 export async function sendPasswordResetEmail(
   email: string
 ): Promise<{ success: boolean; message: string }> {
+  if (!email) {
+    console.error('[sendPasswordResetEmail] email is required');
+    return { success: false, message: 'Email is required.' };
+  }
   try {
     const user = await getUserByEmail(email);
     if (!user) {
@@ -625,7 +638,10 @@ export async function sendPasswordResetEmail(
       message: 'Password reset email functionality is currently disabled.',
     };
   } catch (error) {
-    console.error('Password reset email error:', error);
+    console.error(
+      '[sendPasswordResetEmail] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     return { success: false, message: 'Failed to process password reset request.' };
   }
 }

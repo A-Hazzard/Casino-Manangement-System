@@ -8,6 +8,8 @@ import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { NextRequest, NextResponse } from 'next/server';
 import { GamingLocations } from '../../lib/models/gaminglocations';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import type { GamingMachine, GamingLocationDocument, VaultTransactionDocument } from '@shared/types';
+import type { LeanUserDocument } from 'shared/types/auth';
 
 /**
  * Main GET handler for vault transactions.
@@ -99,7 +101,7 @@ export async function GET(request: NextRequest) {
           .sort({ timestamp: -1 })
           .skip(skip)
           .limit(limit)
-          .lean(),
+          .lean<VaultTransactionDocument[]>(),
         VaultTransactionModel.countDocuments(query),
       ]);
 
@@ -107,14 +109,14 @@ export async function GET(request: NextRequest) {
         transactions as unknown as ExtendedVaultTransaction[];
       if (locationId === 'all' || !locationId) {
         const locIds = transactions.map(tx => tx.locationId);
-        const locations = (await GamingLocations.find(
+        const locations = await GamingLocations.find(
           { _id: { $in: locIds } },
           { _id: 1, name: 1 }
         )
-          .lean()
+          .lean<GamingLocationDocument[]>()
           .then(loc =>
-          loc.map(l => ({ _id: String(l._id), name: l.name as string }))
-          )) as { _id: string; name: string }[];
+            loc.map(l => ({ _id: String(l._id), name: l.name }))
+          );
         const nMap = locations.reduce(
           (acc, loc) => {
             acc[loc._id] = loc.name;
@@ -149,7 +151,7 @@ export async function GET(request: NextRequest) {
                 { _id: { $in: Array.from(uIds) } },
                 { 'profile.firstName': 1, 'profile.lastName': 1, username: 1 }
               )
-              .lean()
+              .lean<LeanUserDocument[]>()
               .then(users =>
                 users.reduce(
                   (acc, u) => {
@@ -171,7 +173,7 @@ export async function GET(request: NextRequest) {
                 gameType: 1,
               }
             )
-              .lean()
+              .lean<GamingMachine[]>()
               .then(machines =>
                 machines.reduce(
                   (acc, m) => {
@@ -199,21 +201,21 @@ export async function GET(request: NextRequest) {
           actor: { type: string; id?: string } | undefined
         ) => {
           if (actor?.type === 'cashier' && actor.id) {
-            const c = userMap[actor.id] as
+            const cashierData = userMap[actor.id] as
               | { profile?: { firstName?: string; lastName?: string } }
               | undefined;
-            return c?.profile?.firstName
-              ? `Cashier (${c.profile.firstName} ${c.profile.lastName})`
+            return cashierData?.profile?.firstName
+              ? `Cashier (${cashierData.profile.firstName} ${cashierData.profile.lastName})`
               : `Cashier (${actor.id})`;
           }
           if (actor?.type === 'machine' && actor.id) {
-            const m = machineMap[actor.id] as
+            const machineData = machineMap[actor.id] as
               | { serialNumber?: string; custom?: { name?: string } }
               | undefined;
-            return m
+            return machineData
               ? `Machine (${
-                  String(m.serialNumber || '').trim() ||
-                  String(m.custom?.name || '').trim() ||
+                  String(machineData.serialNumber || '').trim() ||
+                  String(machineData.custom?.name || '').trim() ||
                   actor.id
                 })`
               : `Machine (${actor.id})`;
@@ -234,7 +236,7 @@ export async function GET(request: NextRequest) {
 
         if (aMIds.size > 0) {
           res.machineDetails = Array.from(aMIds).map(id => {
-            const m = machineMap[id] as
+            const machineData = machineMap[id] as
               | {
                   serialNumber?: string;
                   custom?: { name?: string };
@@ -243,16 +245,16 @@ export async function GET(request: NextRequest) {
                   gameType?: string;
                 }
               | undefined;
-            if (!m) return { identifier: id, game: 'N/A', gameType: 'N/A' };
-            const sn = String(m.serialNumber || '').trim();
-            const nm = String(m.custom?.name || '').trim();
-            const g = String(m.game || m.installedGame || '');
-            const gt = String(m.gameType || '');
+            if (!machineData) return { identifier: id, game: 'N/A', gameType: 'N/A' };
+            const sn = String(machineData.serialNumber || '').trim();
+            const nm = String(machineData.custom?.name || '').trim();
+            const game = String(machineData.game || machineData.installedGame || '');
+            const gameType = String(machineData.gameType || '');
             const main = sn || nm || 'N/A';
             return {
               identifier: nm && nm !== main ? `${main} (${nm})` : main,
-              game: g.trim(),
-              gameType: gt.trim(),
+              game: game.trim(),
+              gameType: gameType.trim(),
             };
           });
         }

@@ -9,6 +9,7 @@ import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { TimePeriod } from '@/app/api/lib/types';
+import type { GamingMachine, LicenceeDocument } from '@shared/types';
 import { LocationDocument, TransformedCabinet } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
@@ -22,37 +23,37 @@ import { NextRequest, NextResponse } from 'next/server';
  * page header name lookups.
  *
  * URL params:
- * @param locationId  {string} Required (path). The `_id` of the location.
+ * @param {string} locationId - Required (path). The `_id` of the location.
  *
  * Query params — mode selectors (mutually exclusive, checked in order):
- * @param nameOnly    {'true'} Returns only `{ _id, name, licenceeId, includeJackpot }`.
+ * @param {'true'} [nameOnly] - Returns only `{ _id, name, licenceeId, includeJackpot }`.
  *                             Used by the page header to resolve a location name from its ID
  *                             without loading all cabinet data.
- * @param basicInfo   {'true'} Returns the full location document (no machines).
+ * @param {'true'} [basicInfo] - Returns the full location document (no machines).
  *                             Used when the page only needs location settings (e.g. gameDayOffset,
  *                             membershipEnabled) without the cabinet metrics payload.
  *
  * Query params — cabinet list mode (used when neither nameOnly nor basicInfo is set):
- * @param timePeriod  {TimePeriod} Required in list mode. Defines the aggregation window for
+ * @param {TimePeriod} [timePeriod] - Required in list mode. Defines the aggregation window for
  *                                 financial metrics (Today, Yesterday, Week, Month, All Time, Custom).
  *                                 Maps to a gaming-day-aware date range using the location's gameDayOffset.
- * @param startDate   {string}     Required when timePeriod='Custom'. ISO date string (YYYY-MM-DD or full ISO).
+ * @param {string} [startDate] - Required when timePeriod='Custom'. ISO date string (YYYY-MM-DD or full ISO).
  *                                 Start of the custom aggregation window.
- * @param endDate     {string}     Required when timePeriod='Custom'. ISO date string. End of the window.
- * @param licencee    {string}     Optional. Validates that the requesting user's licencee matches the
+ * @param {string} [endDate] - Required when timePeriod='Custom'. ISO date string. End of the window.
+ * @param {string} [licencee] - Optional. Validates that the requesting user's licencee matches the
  *                                 location's licencee — used as an extra access guard for non-admin users.
- * @param search      {string}     Optional. Filters cabinets by serial number, relayId, smibBoard,
+ * @param {string} [search] - Optional. Filters cabinets by serial number, relayId, smibBoard,
  *                                 custom name, or machine ID (case-insensitive substring match).
  *                                 Prefix-matching results are ranked first.
- * @param onlineStatus {'online'|'offline'|'never-online'|'all'} Optional. Filters cabinets by their
+ * @param {'online'|'offline'|'never-online'|'all'} [onlineStatus] - Optional. Filters cabinets by their
  *                                 connectivity status. Online = last activity within 3 minutes.
  *                                 Ignored for ACE-enabled locations (all machines treated as online).
- * @param smibStatus  {'smib'|'no-smib'|'all'} Optional. Filters cabinets by whether they have a
+ * @param {'smib'|'no-smib'|'all'} [smibStatus] - Optional. Filters cabinets by whether they have a
  *                                 SMIB board or relayId configured.
- * @param includeArchived {'true'} Optional. When 'true', includes soft-deleted machines in the results.
+ * @param {'true'} [includeArchived] - Optional. When 'true', includes soft-deleted machines in the results.
  *                                 Used by the Archived Cabinets view within a location.
- * @param page        {number}     Optional. Page number for pagination (default: 1).
- * @param limit       {number}     Optional. Number of cabinets per page. When omitted, all matching
+ * @param {number} [page] - Optional. Page number for pagination (default: 1).
+ * @param {number} [limit] - Optional. Number of cabinets per page. When omitted, all matching
  *                                 cabinets are returned unpaginated.
  */
 export async function GET(request: NextRequest) {
@@ -71,13 +72,10 @@ export async function GET(request: NextRequest) {
       const basicInfo = searchParams.get('basicInfo') === 'true';
 
       if (nameOnly) {
-        const location = (await GamingLocations.findOne(
+        const location = await GamingLocations.findOne(
           { _id: locationId },
           { _id: 1, name: 1, 'rel.licencee': 1 }
-        ).lean()) as unknown as Pick<
-          LocationDocument,
-          '_id' | 'name' | 'rel'
-        > | null;
+        ).lean<LocationDocument>();
         if (!location)
           return NextResponse.json(
             { success: false, message: 'Not found' },
@@ -95,10 +93,8 @@ export async function GET(request: NextRequest) {
           const licDoc = await Licencee.findOne(
             { _id: licIdArr[0] },
             { includeJackpot: 1 }
-          ).lean();
-          includeJackpot = Boolean(
-            (licDoc as unknown as { includeJackpot?: boolean })?.includeJackpot
-          );
+          ).lean<LicenceeDocument>();
+          includeJackpot = Boolean(licDoc?.includeJackpot);
         }
 
         return NextResponse.json({
@@ -124,9 +120,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const locationCheck = (await GamingLocations.findOne({
+      const locationCheck = await GamingLocations.findOne({
         _id: locationId,
-      }).lean()) as unknown as LocationDocument | null;
+      }).lean<LocationDocument>();
       if (!locationCheck)
         return NextResponse.json(
           { success: false, message: 'Not found' },
@@ -141,10 +137,8 @@ export async function GET(request: NextRequest) {
           const licDoc = await Licencee.findOne(
             { _id: firstLicId },
             { includeJackpot: 1 }
-          ).lean();
-          includeJackpot = Boolean(
-            (licDoc as unknown as { includeJackpot?: boolean })?.includeJackpot
-          );
+          ).lean<LicenceeDocument>();
+          includeJackpot = Boolean(licDoc?.includeJackpot);
         }
         return NextResponse.json({
           success: true,
@@ -194,10 +188,8 @@ export async function GET(request: NextRequest) {
         const licDoc = await Licencee.findOne(
           { _id: Array.isArray(locLicId) ? locLicId[0] : locLicId },
           { includeJackpot: 1 }
-        ).lean();
-        includeJackpotSetting = !!(
-          licDoc as unknown as { includeJackpot?: boolean }
-        )?.includeJackpot;
+        ).lean<LicenceeDocument>();
+        includeJackpotSetting = !!licDoc?.includeJackpot;
       }
 
       const reviewerScale = getReviewerScale(userPayload as { multiplier?: number | null; roles?: string[] });
@@ -287,7 +279,7 @@ export async function GET(request: NextRequest) {
         sasMeters: 1,
         assetStatus: 1,
         deletedAt: 1,
-      }).lean();
+      }).lean<GamingMachine[]>();
       if (!machines.length)
         return NextResponse.json({
           success: true,

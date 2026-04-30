@@ -14,6 +14,19 @@ export function createSuccessResponse<T>(
   message?: string,
   status: number = 200
 ): NextResponse<ApiResponse<T>> {
+  if (data === undefined || data === null) {
+    console.error('[createSuccessResponse] data is required');
+    return NextResponse.json(
+      {
+        success: false,
+        data: null as unknown as T,
+        error: 'Data is required',
+        timestamp: new Date().toISOString(),
+      },
+      { status: 400 }
+    ) as NextResponse<ApiResponse<T>>;
+  }
+
   return NextResponse.json(
     {
       success: true,
@@ -34,6 +47,18 @@ export function createErrorResponse(
   code?: string,
   details?: Record<string, unknown>
 ): NextResponse<ApiErrorResponse> {
+  if (!error || typeof error !== 'string') {
+    console.error('[createErrorResponse] error is required and must be a string');
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Error message is required',
+        timestamp: new Date().toISOString(),
+      },
+      { status: 400 }
+    ) as NextResponse<ApiErrorResponse>;
+  }
+
   return NextResponse.json(
     {
       success: false,

@@ -12,8 +12,8 @@ import { NextRequest, NextResponse } from 'next/server';
  * on a 2FA recovery notification raised by a cashier.
  *
  * Body fields:
- * @param userId         {string} Required. The `_id` of the user whose 2FA should be reset.
- * @param notificationId {string} Optional. The `_id` of the VaultNotification to mark as
+ * @param {string} userId - Required. The `_id` of the user whose 2FA should be reset.
+ * @param {string} [notificationId] - Optional. The `_id` of the VaultNotification to mark as
  *                                actioned once the reset completes.
  */
 export async function POST(req: NextRequest) {
@@ -46,17 +46,22 @@ export async function POST(req: NextRequest) {
     await user.save();
 
     // 3. Mark notification as actioned if provided
-    if (notificationId) await VaultNotificationModel.findOneAndUpdate(
-      { _id: notificationId },
-      {
-        status: 'actioned',
-        actionedAt: new Date(),
+    if (notificationId) {
+      const notifResult = await VaultNotificationModel.findOneAndUpdate(
+        { _id: notificationId },
+        {
+          status: 'actioned',
+          actionedAt: new Date(),
+        }
+      );
+      if (!notifResult) {
+        console.warn(`[TOTP Reset] Notification ${notificationId} not found`);
       }
-    );
+    }
 
     return NextResponse.json({ success: true, message: '2FA has been reset for the user' });
-  } catch (error: unknown) {
-    console.error('TOTP Reset Error:', error instanceof Error ? error.message : error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (e) {
+    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

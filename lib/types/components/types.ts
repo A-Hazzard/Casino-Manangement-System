@@ -1,4 +1,3 @@
-// UI Component types
 import type { ExtendedCabinetDetail } from '@/lib/types/pages';
 import type { MachineMovementRecord } from '@/shared/types/reports';
 import type { AggregatedLocation } from '@/shared/types';
@@ -32,7 +31,6 @@ export type UploadSmibDataModalProps = {
   onRefresh?: () => void;
 };
 
-// Modal Props Types
 export type NewLocationModalProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -92,7 +90,6 @@ export type ReportsLocationsRevenueTableProps = {
   className?: string;
 };
 
-// SyncButtonProps remains here as it is truly reusable
 export type SyncButtonProps = {
   onClick: () => void;
   isSyncing?: boolean;
@@ -153,14 +150,13 @@ export type LocationsCabinetGridProps = {
   showArchived?: boolean;
 };
 
-// Collector schedule types
 export type CollectorSchedule = {
   _id: string;
   collectorName: string;
-  collector?: string; // Collector name/ID
+  collector?: string;
   locationName: string;
   locationId: string;
-  location?: string; // Location name/ID
+  location?: string;
   scheduledDate: string;
   startTime: string | Date;
   endTime: string | Date;

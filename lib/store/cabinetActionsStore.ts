@@ -5,10 +5,13 @@ type CabinetsActionsState = {
   selectedCabinet: GamingMachine | null;
   isEditModalOpen: boolean;
   isDeleteModalOpen: boolean;
+  isRestoreModalOpen: boolean;
   openEditModal: (cabinet: GamingMachine) => void;
   openDeleteModal: (cabinet: GamingMachine) => void;
+  openRestoreModal: (cabinet: GamingMachine) => void;
   closeEditModal: () => void;
   closeDeleteModal: () => void;
+  closeRestoreModal: () => void;
 };
 
 // Define a no-op version for SSR
@@ -16,10 +19,13 @@ const dummyState: CabinetsActionsState = {
   selectedCabinet: null,
   isEditModalOpen: false,
   isDeleteModalOpen: false,
+  isRestoreModalOpen: false,
   openEditModal: () => {},
   openDeleteModal: () => {},
+  openRestoreModal: () => {},
   closeEditModal: () => {},
   closeDeleteModal: () => {},
+  closeRestoreModal: () => {},
 };
 
 // Make sure store is created only on client-side
@@ -28,14 +34,19 @@ const createStore = () => {
     selectedCabinet: null,
     isEditModalOpen: false,
     isDeleteModalOpen: false,
+    isRestoreModalOpen: false,
     openEditModal: cabinet =>
       set({ selectedCabinet: cabinet, isEditModalOpen: true }),
     openDeleteModal: cabinet =>
       set({ selectedCabinet: cabinet, isDeleteModalOpen: true }),
+    openRestoreModal: cabinet =>
+      set({ selectedCabinet: cabinet, isRestoreModalOpen: true }),
     closeEditModal: () =>
       set({ selectedCabinet: null, isEditModalOpen: false }),
     closeDeleteModal: () =>
       set({ selectedCabinet: null, isDeleteModalOpen: false }),
+    closeRestoreModal: () =>
+      set({ selectedCabinet: null, isRestoreModalOpen: false }),
   }));
 };
 
@@ -51,10 +62,10 @@ const getClientStore = () => {
 };
 
 /**
- * Zustand store for managing cabinets actions (edit/delete modals).
+ * Zustand store for managing cabinets actions (edit/delete/restore modals).
  *
  * - Tracks selected cabinet and modal open/close state.
- * - Provides actions to open/close edit and delete modals.
+ * - Provides actions to open/close edit, delete, and restore modals.
  * - Returns a dummy state for SSR.
  *
  * @returns Zustand hook for accessing and updating cabinets actions state.
@@ -62,4 +73,3 @@ const getClientStore = () => {
 // Use this store only on client side
 export const useCabinetsActionsStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);
-

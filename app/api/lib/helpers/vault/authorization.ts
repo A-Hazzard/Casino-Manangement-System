@@ -26,6 +26,11 @@ export async function canManageTransactions(
   },
   locationId: string
 ): Promise<boolean> {
+  if (!user || typeof user !== 'object' || !locationId || typeof locationId !== 'string') {
+    console.error('[canManageTransactions] user (object) and locationId (string) are required');
+    return false;
+  }
+
   if (!user.roles || user.roles.length === 0) {
     return false;
   }
@@ -83,6 +88,11 @@ export async function canEditFloatRequest(
     locationId: string;
   }
 ): Promise<boolean> {
+  if (!user || typeof user !== 'object' || !floatRequest || typeof floatRequest !== 'object') {
+    console.error('[canEditFloatRequest] user (object) and floatRequest (object) are required');
+    return false;
+  }
+
   if (!user.roles || user.roles.length === 0) {
     return false;
   }

@@ -1,7 +1,5 @@
-// Shared common types used across frontend and backend
 import { Types } from 'mongoose';
 
-// Time period type for analytics
 export type TimePeriod =
   | 'Today'
   | 'Yesterday'
@@ -14,7 +12,6 @@ export type TimePeriod =
   | 'Custom'
   | 'LastHour';
 
-// Chart granularity type for time-based chart aggregation
 export type ChartGranularity =
   | 'minute'
   | 'hourly'
@@ -23,13 +20,11 @@ export type ChartGranularity =
   | 'monthly'
   | 'yearly';
 
-// Custom date range type for API responses
 export type CustomDate = {
   startDate?: Date;
   endDate?: Date;
 };
 
-// MongoDB-specific types
 export type DateRangeFilter = {
   $gte?: Date;
   $lte?: Date;
@@ -39,19 +34,18 @@ export type MongoDBQueryValue = string | number | boolean | Date | object | null
 
 export type QueryFilter = Record<string, MongoDBQueryValue>;
 
-// MongoDB related types
 export type MongooseId = string | Types.ObjectId;
 
 export type SasMeters = {
   coinIn: number;
   coinOut: number;
-  drop: number; // Money physically inserted (Money In)
+  drop: number;
   jackpot: number;
   gamesPlayed: number;
   gamesWon: number;
   currentCredits: number;
-  totalCancelledCredits?: number; // Manual payouts (Money Out)
-  totalHandPaidCancelledCredits?: number; // Total hand paid cancelled credits
+  totalCancelledCredits?: number;
+  totalHandPaidCancelledCredits?: number;
   totalWonCredits?: number;
   gross?: number;
   sasStartTime?: string;
@@ -71,7 +65,6 @@ export type SasMeters = {
   [key: string]: unknown;
 };
 
-// Alias for backward compatibility
 export type MeterData = SasMeters;
 
 export type CollectionMetersHistoryEntry = {

@@ -37,6 +37,14 @@ function convertFinancialFields<T extends Record<string, unknown>>(
   fromCurrency: CurrencyCode,
   toCurrency: CurrencyCode
 ): T {
+  if (!data || typeof data !== 'object') {
+    console.error('[convertFinancialFields] data must be an object');
+    return data;
+  }
+  if (!fromCurrency || !toCurrency) {
+    console.error('[convertFinancialFields] fromCurrency and toCurrency are required');
+    return data;
+  }
   if (fromCurrency === toCurrency) {
     return data;
   }
@@ -69,6 +77,11 @@ export async function applyCurrencyConversionToMetrics<T>(
   licencee: string | null,
   displayCurrency: CurrencyCode
 ): Promise<T> {
+  if (!displayCurrency) {
+    console.error('[applyCurrencyConversionToMetrics] displayCurrency is required');
+    return data;
+  }
+
   // No conversion needed if not in "All Licencee" mode
   if (!shouldApplyCurrencyConversion(licencee)) {
     return data;
@@ -118,6 +131,11 @@ export async function applyCurrencyConversionToMetrics<T>(
  * @returns Currency code or 'USD' as default
  */
 export function getCurrencyFromQuery(searchParams: URLSearchParams): CurrencyCode {
+  if (!searchParams) {
+    console.error('[getCurrencyFromQuery] searchParams is required');
+    return 'USD';
+  }
+
   const currency = searchParams.get('currency');
   const validCurrencies: CurrencyCode[] = ['USD', 'TTD', 'GYD', 'BBD'];
   return validCurrencies.includes(currency as CurrencyCode)

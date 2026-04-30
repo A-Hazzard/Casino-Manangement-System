@@ -14,6 +14,7 @@ import {
   getCountryCurrency,
   getLicenceeCurrency,
 } from '@/lib/helpers/rates';
+import type { CountryDocument, GamingLocationDocument, LicenceeDocument } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 
 // Define the type for top performing items (matches the one in lib/types/index.ts)
@@ -46,6 +47,11 @@ export async function convertTopPerformingCurrency(
   data: TopPerformingItem[],
   displayCurrency: CurrencyCode
 ): Promise<TopPerformingItem[]> {
+  if (!Array.isArray(data) || !displayCurrency || typeof displayCurrency !== 'string') {
+    console.error('[convertTopPerformingCurrency] data must be an array and displayCurrency must be a string');
+    return data || [];
+  }
+
   // Always convert when this function is called
   // Each machine's native currency is determined by its location's licencee
 
@@ -58,7 +64,7 @@ export async function convertTopPerformingCurrency(
       ],
     },
     { _id: 1, name: 1 }
-  ).lean();
+  ).lean<LicenceeDocument[]>();
 
   const licenceeIdToName = new Map<string, string>();
   licenceesData.forEach(lic => {
@@ -67,7 +73,7 @@ export async function convertTopPerformingCurrency(
     }
   });
 
-  const countriesData = await Countries.find({}).lean();
+  const countriesData = await Countries.find({}).lean<CountryDocument[]>();
   const countryIdToName = new Map<string, string>();
   countriesData.forEach(country => {
     if (country._id && country.name) {
@@ -88,7 +94,7 @@ export async function convertTopPerformingCurrency(
   const locationsData = await GamingLocations.find(
     { _id: { $in: Array.from(locationIds) } },
     { _id: 1, 'rel.licencee': 1, country: 1 }
-  ).lean();
+  ).lean<GamingLocationDocument[]>();
 
   const locationDetails = new Map<
     string,

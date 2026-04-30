@@ -143,6 +143,7 @@ export default function CollectionReportMobileNewCollectionModal({
       sasEndTime: entry.sasMeters?.sasEndTime || undefined,
       prevMetersIn: entry.prevIn || 0,
       prevMetersOut: entry.prevOut || 0,
+      movementGross: (entry as { movement?: { gross?: number } }).movement?.gross,
     }));
 
     const locationIdToUse = lockedLocationId || selectedLocation || '';
@@ -485,12 +486,34 @@ export default function CollectionReportMobileNewCollectionModal({
                                         .get(`/api/collection-reports/collections/last-collection-time?machineId=${String(machine._id)}`)
                                         .then(res => {
                                           const lastTime = res.data?.data?.collectionTime;
-                                          setStoreFormData({ sasStartTime: lastTime ? new Date(lastTime) : null });
+                                          if (lastTime) {
+                                            setStoreFormData({ sasStartTime: new Date(lastTime) });
+                                          } else {
+                                            const loc = locations.find(l => String(l._id) === (lockedLocationId || selectedLocation));
+                                            const gameDayOffset = loc?.gameDayOffset ?? 8;
+                                            const now = new Date();
+                                            const currentGamingDayStart = new Date(now);
+                                            if (now.getHours() < gameDayOffset) {
+                                              currentGamingDayStart.setDate(currentGamingDayStart.getDate() - 1);
+                                            }
+                                            currentGamingDayStart.setHours(gameDayOffset, 0, 0, 0);
+                                            setStoreFormData({ sasStartTime: new Date(currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000) });
+                                          }
                                         })
                                         .catch(() => {
-                                          // Fallback: use machine's own collectionTime if available
-                                          const fallback = machine.collectionTime ? new Date(machine.collectionTime) : null;
-                                          setStoreFormData({ sasStartTime: fallback });
+                                          if (machine.collectionTime) {
+                                            setStoreFormData({ sasStartTime: new Date(machine.collectionTime) });
+                                          } else {
+                                            const loc = locations.find(l => String(l._id) === (lockedLocationId || selectedLocation));
+                                            const gameDayOffset = loc?.gameDayOffset ?? 8;
+                                            const now = new Date();
+                                            const currentGamingDayStart = new Date(now);
+                                            if (now.getHours() < gameDayOffset) {
+                                              currentGamingDayStart.setDate(currentGamingDayStart.getDate() - 1);
+                                            }
+                                            currentGamingDayStart.setHours(gameDayOffset, 0, 0, 0);
+                                            setStoreFormData({ sasStartTime: new Date(currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000) });
+                                          }
                                         });
                                       setStoreFormData({
                                         metersIn: '',
@@ -504,14 +527,14 @@ export default function CollectionReportMobileNewCollectionModal({
                                         sasEndTime: null,
                                         collectionTime: new Date(),
                                         prevIn: (() => {
-                                          const s = machine.sasMeters?.drop ?? null;
-                                          const l = machine.collectionMeters?.metersIn;
-                                          return (l !== null && l !== undefined && l > 0) ? l.toString() : ((s !== null && s > 0) ? s.toString() : '');
+                                          const sasDrop = machine.sasMeters?.drop ?? null;
+                                          const collectionIn = machine.collectionMeters?.metersIn;
+                                          return (collectionIn !== null && collectionIn !== undefined && collectionIn > 0) ? collectionIn.toString() : ((sasDrop !== null && sasDrop > 0) ? sasDrop.toString() : '');
                                         })(),
                                         prevOut: (() => {
-                                          const s = machine.sasMeters?.totalCancelledCredits ?? null;
-                                          const l = machine.collectionMeters?.metersOut;
-                                          return (l !== null && l !== undefined && l > 0) ? l.toString() : ((s !== null && s > 0) ? s.toString() : '');
+                                          const sasCancelled = machine.sasMeters?.totalCancelledCredits ?? null;
+                                          const collectionOut = machine.collectionMeters?.metersOut;
+                                          return (collectionOut !== null && collectionOut !== undefined && collectionOut > 0) ? collectionOut.toString() : ((sasCancelled !== null && sasCancelled > 0) ? sasCancelled.toString() : '');
                                         })(),
                                       });
                                       pushNavigation('form');
@@ -633,11 +656,22 @@ export default function CollectionReportMobileNewCollectionModal({
             }}
             onAddMachine={addMachineToList}
             autoFillRamClearMeters={checked => {
-              setStoreFormData({
-                ramClear: checked,
-                ramClearMetersIn: checked ? storeFormData.metersIn : '',
-                ramClearMetersOut: checked ? storeFormData.metersOut : '',
-              });
+              const update = checked
+                ? {
+                    ramClear: true,
+                    ramClearMetersIn: storeFormData.metersIn,
+                    ramClearMetersOut: storeFormData.metersOut,
+                  }
+                : {
+                    ramClear: false,
+                    ramClearMetersIn: '',
+                    ramClearMetersOut: '',
+                  };
+              setStoreFormData(update);
+              setModalState(prev => ({
+                ...prev,
+                formData: { ...prev.formData, ...update },
+              }));
             }}
             onCollectedAmountChange={value => {
               setStoreFinancials({ collectedAmount: value });
@@ -767,6 +801,7 @@ export default function CollectionReportMobileNewCollectionModal({
                     <p className="text-sm text-gray-500 mt-1">Detailed comparison between Sas data and manual meter entry</p>
                   </div>
                   <button 
+                    title="close"
                     onClick={toggleMinimize}
                     className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-900"
                   >

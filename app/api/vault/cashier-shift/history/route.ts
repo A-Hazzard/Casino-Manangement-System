@@ -4,6 +4,7 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
+import type { CashierShiftDocument } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
             reviewedBy: 1,
             reviewedAt: 1,
           })
-          .lean(),
+          .lean<CashierShiftDocument[]>(),
         CashierShiftModel.countDocuments(query),
       ]);
 
@@ -81,13 +82,9 @@ export async function GET(request: NextRequest) {
           hasMore: total > skip + shifts.length,
         },
       });
-    } catch (e: unknown) {
-      console.error('[Cashier Shift History] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[Cashier Shift History] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }

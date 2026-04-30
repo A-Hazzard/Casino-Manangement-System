@@ -3,6 +3,7 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Firmware } from '@/app/api/lib/models/firmware';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import type { FirmwareDocument } from '@/shared/types';
 import { GridFSBucket, type Db } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import { Readable } from 'stream';
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
         $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
       };
 
-      const firmwares = await Firmware.find(query).sort({ createdAt: -1 }).lean();
+      const firmwares = await Firmware.find(query).sort({ createdAt: -1 }).lean<FirmwareDocument[]>();
       const duration = Date.now() - startTime;
       if (duration > 1000) console.warn(`[Firmwares GET API] Completed in ${duration}ms`);
       return NextResponse.json(firmwares);

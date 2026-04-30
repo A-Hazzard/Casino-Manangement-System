@@ -29,8 +29,9 @@ import { UserRole } from './permissions';
  * @returns The appropriate redirect path.
  */
 export function getDefaultRedirectPathFromRoles(userRoles: UserRole[]): string {
-  if (!userRoles || userRoles.length === 0) return '/cabinets'; 
-
+  if (!Array.isArray(userRoles)) { console.error('[getDefaultRedirectPathFromRoles] userRoles is required'); return '/cabinets'; }
+  if (userRoles.length === 0) return '/cabinets'; 
+  
   // Priority 1: Developer always goes to Dashboard
   if (userRoles.includes('developer')) {
     return '/';
@@ -77,8 +78,9 @@ export function getDefaultRedirectPathFromRoles(userRoles: UserRole[]): string {
 export function getRedirectDestinationNameFromRoles(
   userRoles: string[]
 ): string {
-  if (!userRoles || userRoles.length === 0) return 'Machines';
-
+  if (!Array.isArray(userRoles)) { console.error('[getRedirectDestinationNameFromRoles] userRoles is required'); return 'Machines'; }
+  if (userRoles.length === 0) return 'Machines';
+  
   // Priority 1: Developer always goes to Dashboard
   if (userRoles.includes('developer')) {
     return 'Dashboard';

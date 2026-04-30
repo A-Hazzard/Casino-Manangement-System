@@ -15,6 +15,14 @@ import { SoftCountModel } from '@/app/api/lib/models/softCount';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRange } from '@/lib/utils/gamingDayRange';
+import type {
+  CashierShiftDocument,
+  GamingLocationDocument,
+  GamingMachine,
+  SoftCountDocument,
+  VaultShiftDocument,
+  VaultTransactionDocument,
+} from '@/shared/types';
 import { Machine } from '../../models/machines';
 import { Meters } from '../../models/meters';
 
@@ -81,9 +89,14 @@ export async function generateEndOfDayReport(
   locationId: string,
   date: Date
 ): Promise<EndOfDayReport> {
+  if (!locationId || typeof locationId !== 'string' || !date || !(date instanceof Date)) {
+    console.error('[generateEndOfDayReport] locationId (string) and date (Date) are required');
+    throw new Error('Invalid parameters provided');
+  }
+
   // Fetch location to get gameDayOffset
-  const location = await GamingLocations.findOne({ _id: locationId }).select('gameDayOffset').lean();
-  const gameDayOffset = (location as Record<string, unknown> | null)?.gameDayOffset as number ?? 8; // Default to 8 AM if not set
+  const location = await GamingLocations.findOne({ _id: locationId }).select('gameDayOffset').lean<GamingLocationDocument | null>();
+  const gameDayOffset = location?.gameDayOffset ?? 8; // Default to 8 AM if not set
 
   // Calculate start and end of day using gaming day logic
   const { rangeStart, rangeEnd } = getGamingDayRange(date, gameDayOffset);
@@ -103,7 +116,7 @@ export async function generateEndOfDayReport(
         openedAt: { $gte: rangeStart, $lte: rangeEnd }
       }
     ]
-  }).sort({ openedAt: 1 }).lean();
+  }).sort({ openedAt: 1 }).lean<VaultShiftDocument[]>();
 
   let vaultSystemBalance = 0;
   let vaultPhysicalCount = 0;
@@ -121,21 +134,22 @@ export async function generateEndOfDayReport(
 
     // The current/latest system balance is from the newest shift (last in sorted array)
     const latestShift = vaultShifts[vaultShifts.length - 1];
+    const latestShiftDoc = latestShift as VaultShiftDocument & { currentBalance?: number; currentDenominations?: Array<{ denomination: number; quantity: number }> };
     if (latestShift.status === 'closed') {
       vaultSystemBalance = latestShift.closingBalance || 0;
     } else {
-      vaultSystemBalance = latestShift.currentBalance ?? latestShift.openingBalance;
+      vaultSystemBalance = latestShiftDoc.currentBalance ?? latestShift.openingBalance ?? 0;
     }
-    vaultPhysicalCount = vaultSystemBalance; // For EOD, we report the consolidated balance
+    vaultPhysicalCount = vaultSystemBalance;
 
     // Aggregate denominations and variance from all relevant shifts
     vaultDenominations = latestShift.status === 'closed'
-      ? (latestShift.closingDenominations || [])
-      : (latestShift.currentDenominations || latestShift.openingDenominations || []);
+      ? (latestShift.closingDenominations || []).map(d => ({ denomination: d.denomination, quantity: d.quantity }))
+      : (latestShiftDoc.currentDenominations || (latestShift.openingDenominations || []).map(d => ({ denomination: d.denomination, quantity: d.quantity })));
 
     // Sum variance from all shifts in the range
     vaultShifts.forEach(s => {
-      ((s as { reconciliations?: Array<{ newBalance: number; previousBalance: number }> }).reconciliations || []).forEach(r => {
+      (s.reconciliations || []).forEach(r => {
         vaultVariance += (r.newBalance - r.previousBalance);
       });
     });
@@ -145,19 +159,19 @@ export async function generateEndOfDayReport(
       locationId,
       status: 'active',
       openedAt: { $lt: rangeStart }
-    }).select('openedAt').lean();
+    }).select('openedAt').lean<VaultShiftDocument | null>();
 
     if (prevActive) {
       previousShiftActive = true;
-      previousShiftDate = (prevActive as Record<string, unknown>).openedAt as Date;
+      previousShiftDate = prevActive.openedAt as Date;
     }
   }
 
   // Transform denominations
   const denominationBreakdown: Record<string, number> = {};
-  vaultDenominations.forEach((d: { denomination: number; quantity: number }) => {
-    const key = String(d.denomination);
-    denominationBreakdown[key] = (denominationBreakdown[key] || 0) + (d.quantity || 0);
+  vaultDenominations.forEach((denomItem: { denomination: number; quantity: number }) => {
+    const key = String(denomItem.denomination);
+    denominationBreakdown[key] = (denominationBreakdown[key] || 0) + (denomItem.quantity || 0);
   });
 
   // ============================================================================
@@ -170,27 +184,31 @@ export async function generateEndOfDayReport(
       { closedAt: { $gte: rangeStart, $lte: rangeEnd } },
       { status: 'active', openedAt: { $gte: rangeStart, $lte: rangeEnd } }
     ]
-  }).lean();
+  }).lean<CashierShiftDocument[]>();
 
-  const cashierFloats = cashierShifts.map((shift: Record<string, unknown>) => ({
-    _id: String(shift._id),
-    cashierName: (shift.cashierName as string) || (shift.cashierUsername as string) || 'Unknown',
-    status: shift.status as string,
-    balance: shift.status === 'closed' ? (shift.closingBalance as number || 0) : (shift.currentBalance as number || shift.openingBalance as number || 0),
-  }));
+  type CashierShiftWithName = CashierShiftDocument & { cashierName?: string; cashierUsername?: string };
+  const cashierFloats = cashierShifts.map((shift) => {
+    const shiftWithName = shift as CashierShiftWithName;
+    return {
+      _id: String(shift._id),
+      cashierName: shiftWithName.cashierName || shiftWithName.cashierUsername || 'Unknown',
+      status: shift.status,
+      balance: shift.status === 'closed' ? (shift.closingBalance || 0) : (shift.currentBalance || shift.openingBalance || 0),
+    };
+  });
 
-  const totalCashierFloat = cashierFloats.reduce((sum, c) => sum + c.balance, 0);
+const totalCashierFloat = cashierFloats.reduce((sum, cashierFloatItem) => sum + cashierFloatItem.balance, 0);
 
-  // ============================================================================
-  // 3. Machine Counts (Drops)
-  // ============================================================================
-  const machinesMatchQuery = {
+// ============================================================================
+// 3. Machine Counts (Drops)
+// ============================================================================
+const machinesMatchQuery = {
     gamingLocation: locationId,
     deletedAt: { $exists: false }
   };
-  const allMachines = await Machine.find(machinesMatchQuery).select('_id assetNumber custom.name').lean();
+  const allMachines = await Machine.find(machinesMatchQuery).select('_id assetNumber custom.name').lean<GamingMachine[]>();
 
-  const machineIds = allMachines.map(m => String(m._id));
+  const machineIds = allMachines.map(machine => String(machine._id));
 
   const machineMeters = await Meters.aggregate([
     {
@@ -212,36 +230,37 @@ export async function generateEndOfDayReport(
   const softCounts = await SoftCountModel.find({
     locationId,
     countedAt: { $gte: rangeStart, $lte: rangeEnd }
-  }).sort({ countedAt: 1 }).lean();
+  }).sort({ countedAt: 1 }).lean<SoftCountDocument[]>();
 
   const midDaySoftCounts: EndOfDayReport['midDaySoftCounts'] = [];
   const endOfDaySoftCounts: EndOfDayReport['endOfDaySoftCounts'] = [];
 
-  softCounts.forEach((sc: Record<string, unknown>) => {
-    const mId = sc.machineId as string;
-    const machine = allMachines.find((m: Record<string, unknown>) => String(m._id) === mId);
+  softCounts.forEach((softCount) => {
+    const machineId = softCount.machineId;
+    if (!machineId) return;
+    const machine = allMachines.find((machineItem) => machineItem._id === machineId);
     if (!machine) return;
 
-    const machineDrop = dropMap.get(mId) || 0;
-    const variance = (sc.amount as number) - machineDrop;
+    const machineDrop = dropMap.get(machineId) || 0;
+    const variance = softCount.amount - machineDrop;
 
     const entry = {
-      machineId: mId,
-      location: ((machine.custom as Record<string, unknown>)?.name as string || machine.assetNumber as string || 'Floor'),
-      amount: sc.amount as number,
-      countedAt: sc.countedAt as Date,
+      machineId: machineId,
+      location: (machine.custom?.name as string | undefined) || machine.assetNumber || 'Floor',
+      amount: softCount.amount,
+      countedAt: softCount.countedAt as Date,
       variance
     };
 
-    if (sc.isEndOfDay) {
+    if (softCount.isEndOfDay) {
       endOfDaySoftCounts.push(entry);
     } else {
       midDaySoftCounts.push(entry);
     }
   });
 
-  const totalMachineBalance = endOfDaySoftCounts.reduce((sum, s) => sum + s.amount, 0) +
-    midDaySoftCounts.reduce((sum, s) => sum + s.amount, 0);
+  const totalMachineBalance = endOfDaySoftCounts.reduce((sum, endItem) => sum + endItem.amount, 0) +
+    midDaySoftCounts.reduce((sum, midItem) => sum + midItem.amount, 0);
 
   // ============================================================================
   // 4. Aggregations & Metrics (Sum all shifts for the day)
@@ -252,28 +271,27 @@ export async function generateEndOfDayReport(
       $gte: rangeStart,
       $lte: rangeEnd
     },
-  }).lean();
+  }).lean<VaultTransactionDocument[]>();
 
   let totalCashIn = 0;
   let totalCashOut = 0;
   let totalPayouts = 0;
   let expenses = 0;
 
-  transactions.forEach((tx) => {
-    const vtx = tx as unknown as { type: string; amount: number; to?: { type: string }; from?: { type: string } };
-    if (vtx.type === 'vault_reconciliation') return;
+  transactions.forEach((vaultTransaction) => {
+    if ((vaultTransaction.type as string) === 'vault_reconciliation') return;
 
-    if (vtx.to?.type === 'vault') {
-      totalCashIn += vtx.amount;
+    if (vaultTransaction.to?.type === 'vault') {
+      totalCashIn += vaultTransaction.amount;
     }
-    if (vtx.from?.type === 'vault') {
-      totalCashOut += vtx.amount;
+    if (vaultTransaction.from?.type === 'vault') {
+      totalCashOut += vaultTransaction.amount;
     }
-    if (vtx.type === 'expense') {
-      expenses += vtx.amount;
+    if (vaultTransaction.type === 'expense') {
+      expenses += vaultTransaction.amount;
     }
-    if (vtx.type === 'payout') {
-      totalPayouts += vtx.amount;
+    if (vaultTransaction.type === 'payout') {
+      totalPayouts += vaultTransaction.amount;
     }
   });
 
@@ -315,6 +333,11 @@ export async function generateEndOfDayReport(
  * @returns CSV string
  */
 export function exportReportToCSV(report: EndOfDayReport): string {
+  if (!report || typeof report !== 'object') {
+    console.error('[exportReportToCSV] report is required and must be an object');
+    return '';
+  }
+
   const lines: string[] = [];
 
   // Header

@@ -55,6 +55,7 @@ type CollectionReportEditCollectionModalProps = {
   reportId: string;
   locations: CollectionReportLocationWithMachines[];
   onRefresh: () => void;
+  hasUnsavedEdits?: boolean;
 };
 
 // === Wrappers to isolate hook lifecycle ===
@@ -68,14 +69,23 @@ type WrapperProps = {
   gameDayOffset?: number;
   /** Called whenever the machine-form open/closed state changes */
   onMachineEditingChange?: (editing: boolean) => void;
+  /** True when there are unsaved changes (meter edits) */
+  hasUnsavedEdits?: boolean;
+  /** Ref to track if there are unsaved edits (set by hooks) */
+  unsavedEditsRef?: React.MutableRefObject<boolean>;
 };
 
-function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gameDayOffset, onMachineEditingChange }: WrapperProps) {
+function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gameDayOffset, onMachineEditingChange, unsavedEditsRef }: WrapperProps) {
   const desktopHook = useEditCollectionModal({ show, reportId, locations, onRefresh, onClose });
   const variation = useCollectionReportVariationCheck();
   const [variationsCollapsibleExpanded, setVariationsCollapsibleExpanded] = useState(false);
   const [showVariationPopover, setShowVariationPopover] = useState(false);
   const [showVariationsConfirmation, setShowVariationsConfirmation] = useState(false);
+
+  // Sync desktop hook's hasUnsavedEdits up to parent via ref
+  useEffect(() => {
+    unsavedEditsRef && (unsavedEditsRef.current = desktopHook.hasUnsavedEdits);
+  }, [desktopHook.hasUnsavedEdits, unsavedEditsRef]);
 
   // Notify outer component when a machine form opens/closes
   useEffect(() => {
@@ -214,12 +224,29 @@ function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gam
         cancelText="Cancel"
         isLoading={false}
       />
+
+      {/* Machine Rollover/Ramclear Warning */}
+      <InfoConfirmationDialog
+        isOpen={desktopHook.showMachineRolloverWarning}
+        onClose={desktopHook.handleCancelMachineRollover}
+        onConfirm={desktopHook.handleConfirmMachineRollover}
+        title="Rollover/Ramclear Warning"
+        message="This machine has a meters value less than its previous value. This typically indicates a rollover or RAM clear situation. Are you sure you want to update this machine?"
+        confirmText="Yes, Update Machine"
+        cancelText="Cancel"
+        isLoading={false}
+      />
     </>
   );
 }
 
-function MobileEditWrapper({ show, reportId, locations, onRefresh, onClose, onMachineEditingChange }: WrapperProps) {
+function MobileEditWrapper({ show, reportId, locations, onRefresh, onClose, onMachineEditingChange, unsavedEditsRef }: WrapperProps) {
   const mobileHook = useMobileEditCollectionModal({ show, reportId, locations, onRefresh, onClose });
+
+  // Sync mobile hook's hasUnsavedEdits up to parent via ref
+  useEffect(() => {
+    unsavedEditsRef && (unsavedEditsRef.current = mobileHook.modalState.hasUnsavedEdits);
+  }, [mobileHook.modalState.hasUnsavedEdits, unsavedEditsRef]);
   const variation = useCollectionReportVariationCheck();
   const [showVariationPopover, setShowVariationPopover] = useState(false);
   const [showVariationsConfirmation, setShowVariationsConfirmation] = useState(false);
@@ -361,13 +388,24 @@ export default function CollectionReportEditCollectionModal({
 
   // True while a machine edit form is open inside the modal
   const isMachineEditingRef = useRef(false);
+  // True when there are unsaved meter changes
+  const hasUnsavedEditsRef = useRef(false);
   const handleMachineEditingChange = useCallback((editing: boolean) => {
     isMachineEditingRef.current = editing;
   }, []);
 
+  // Update parent about unsaved changes state (for potential external tracking)
+  useEffect(() => {
+    // Parent can read this ref if needed
+  }, [hasUnsavedEditsRef.current]);
+
   const handleCloseAttempt = useCallback(() => {
     if (isMachineEditingRef.current) {
       toast.warning('Save or cancel your current machine edit first.');
+      return;
+    }
+    if (hasUnsavedEditsRef.current) {
+      toast.warning('You have unsaved changes. Please submit the report first.');
       return;
     }
     onClose();
@@ -404,6 +442,7 @@ export default function CollectionReportEditCollectionModal({
             onRefresh={onRefresh}
             onClose={handleCloseAttempt}
             onMachineEditingChange={handleMachineEditingChange}
+            unsavedEditsRef={hasUnsavedEditsRef}
           />
         ) : (
           <DesktopEditWrapper
@@ -414,6 +453,7 @@ export default function CollectionReportEditCollectionModal({
             onClose={handleCloseAttempt}
             gameDayOffset={gameDayOffset}
             onMachineEditingChange={handleMachineEditingChange}
+            unsavedEditsRef={hasUnsavedEditsRef}
           />
         )}
       </DialogContent>

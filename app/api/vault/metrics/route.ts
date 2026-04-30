@@ -12,6 +12,7 @@ import type { TimePeriod } from '@/app/api/lib/types';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 import type { LocationDocument } from '@/lib/types/common';
+import type { CashierShiftDocument, VaultTransactionDocument } from '@shared/types';
 
 /**
  * Main GET handler for vault metrics
@@ -49,10 +50,10 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const locationInfo = (await GamingLocations.findOne(
+      const locationInfo = await GamingLocations.findOne(
         { _id: locationId },
         { gameDayOffset: 1 }
-      ).lean()) as Pick<LocationDocument, 'gameDayOffset'> | null;
+      ).lean<LocationDocument>();
       const gameDayOffset = locationInfo?.gameDayOffset ?? 8;
       const timePeriod = searchParams.get('timePeriod') || 'Today';
       const startDateParam = searchParams.get('startDate');
@@ -70,11 +71,11 @@ export async function GET(request: NextRequest) {
           VaultTransactionModel.find({
             locationId,
             timestamp: { $gte: rangeStart, $lte: rangeEnd },
-          }).lean(),
+          }).lean<VaultTransactionDocument[]>(),
           CashierShiftModel.find(
             { locationId, status: { $in: ['active', 'pending_review'] } },
             { currentBalance: 1 }
-          ).lean(),
+          ).lean<CashierShiftDocument[]>(),
           Meters.aggregate([
             {
               $match: {
@@ -98,8 +99,8 @@ export async function GET(request: NextRequest) {
         payoutsCount = 0;
       transactions.forEach(tx => {
         if (['vault_reconciliation', 'vault_open'].includes(tx.type)) return;
-        if (tx.to.type === 'vault') totalCashIn += tx.amount;
-        if (tx.from.type === 'vault') totalCashOut += tx.amount;
+        if (tx.to && tx.to.type === 'vault') totalCashIn += tx.amount;
+        if (tx.from && tx.from.type === 'vault') totalCashOut += tx.amount;
         if (tx.type === 'expense') expenses += tx.amount;
         if (tx.type === 'payout') {
           payouts += tx.amount;

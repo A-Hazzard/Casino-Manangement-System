@@ -28,6 +28,8 @@ const SOURCE_URI = 'mongodb://sunny1:87ydaiuhdsia2e@147.182.210.65:32017/sas-pro
 const EXPORT_DIR = path.join(process.cwd(), 'migration_exports');
 const TIMEZONE_OFFSET = -4;
 
+import type { CountryDocument, GamingMachine, MeterDocument, VaultShiftDocument, VaultTransactionDocument } from '@shared/types';
+import type { LeanUserDocument } from 'shared/types/auth';
 import type {
   LeanLicencee,
   LeanLocation,
@@ -87,13 +89,13 @@ export async function POST(request: Request) {
 
         // 1. Export Licencees
         log('🏢 Fetching licencees...');
-        const licencees = (await Licencee.find({}).lean()) as unknown as LeanLicencee[];
+        const licencees = await Licencee.find({}).lean<LeanLicencee[]>();
         if (licencees.length > 0) {
             await fs.writeFile(path.join(EXPORT_DIR, 'licencees.json'), JSON.stringify(licencees, null, 2));
             log(`   ✅ ${licencees.length} Licencees exported.`);
         }
 
-        const targetLicencee = licencees.find((l) => l.name === licenceeName);
+        const targetLicencee = licencees.find((licencee) => licencee.name === licenceeName);
         const targetLicenceeId = targetLicencee?._id?.toString();
 
         if (!targetLicenceeId) {
@@ -103,7 +105,7 @@ export async function POST(request: Request) {
 
         // 2. Export Countries
         log('🌍 Fetching countries...');
-        const countries = await Countries.find({}).lean();
+        const countries = await Countries.find({}).lean<CountryDocument[]>();
         if (countries.length > 0) {
             await fs.writeFile(path.join(EXPORT_DIR, 'countries.json'), JSON.stringify(countries, null, 2));
             log(`   ✅ ${countries.length} Countries exported.`);
@@ -111,7 +113,7 @@ export async function POST(request: Request) {
 
         // 3. Export Locations
         log('📍 Fetching locations...');
-        const locations = (await GamingLocations.find({}).lean()) as unknown as LeanLocation[];
+        const locations = await GamingLocations.find({}).lean<LeanLocation[]>();
         const locationOffsets = new Map<string, number>();
         const targetLocationIds: string[] = [];
         
@@ -132,7 +134,7 @@ export async function POST(request: Request) {
         log(`🎰 Fetching machines for ${licenceeName}...`);
         const machines = await Machine.find({
             gamingLocation: { $in: targetLocationIds }
-        }).lean();
+        }).lean<GamingMachine[]>();
 
         if (machines.length > 0) {
             await fs.writeFile(path.join(EXPORT_DIR, 'machines.json'), JSON.stringify(machines, null, 2));
@@ -145,10 +147,10 @@ export async function POST(request: Request) {
         
         if (migrateMeters && machines.length > 0) {
             log('📊 Fetching meters...');
-            const machineIds = (machines as unknown as LeanMachine[]).map((m) => m._id.toString());
-            
+            const machineIds = (machines as unknown as LeanMachine[]).map((machine) => machine._id.toString());
+
             for (const machineId of machineIds) {
-                const machineObj = (machines as unknown as LeanMachine[]).find((m) => m._id.toString() === machineId);
+                const machineObj = (machines as unknown as LeanMachine[]).find((machine) => machine._id.toString() === machineId);
                 if (!machineObj) continue;
 
                 const locId = machineObj.gamingLocation?.toString();
@@ -160,7 +162,7 @@ export async function POST(request: Request) {
                     const meters = await Meters.find({
                         machine: machineId,
                         readAt: { $gte: range.rangeStart, $lte: range.rangeEnd }
-                    }).lean();
+                    }).lean<MeterDocument[]>();
 
                     if (meters.length > 0) {
                         allMeters.push(...meters);
@@ -177,7 +179,7 @@ export async function POST(request: Request) {
 
         // 6. Export Users
         log('👥 Fetching users...');
-        const users = await UserModel.find({}).lean();
+        const users = await UserModel.find({}).lean<LeanUserDocument[]>();
         if (users.length > 0) {
             await fs.writeFile(path.join(EXPORT_DIR, 'users.json'), JSON.stringify(users, null, 2));
             log(`   ✅ ${users.length} Users exported.`);
@@ -185,8 +187,8 @@ export async function POST(request: Request) {
 
         // 7. Export Vault Data
         log('🔐 Fetching vault data...');
-        const vaultShifts = await VaultShiftModel.find({ locationId: { $in: targetLocationIds } }).lean();
-        const vaultTransactions = await VaultTransactionModel.find({ locationId: { $in: targetLocationIds } }).lean();
+        const vaultShifts = await VaultShiftModel.find({ locationId: { $in: targetLocationIds } }).lean<VaultShiftDocument[]>();
+        const vaultTransactions = await VaultTransactionModel.find({ locationId: { $in: targetLocationIds } }).lean<VaultTransactionDocument[]>();
         
         if (vaultShifts.length > 0) {
             await fs.writeFile(path.join(EXPORT_DIR, 'vault_shifts.json'), JSON.stringify(vaultShifts, null, 2));

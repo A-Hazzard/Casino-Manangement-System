@@ -50,6 +50,7 @@ type LocationDetails = {
     licencee: string;
   };
   isLocalServer?: boolean;
+  noSMIBLocation?: boolean;
   geoCoords?: {
     latitude: number;
     longitude: number;
@@ -202,6 +203,7 @@ export default function LocationsEditLocationModal({
     profitShare: '',
     licencee: '',
     isLocalServer: false,
+    noSMIBLocation: false,
     latitude: '',
     longitude: '',
     dayStartTime: '08:00', // Default to 8:00 AM
@@ -360,6 +362,7 @@ export default function LocationsEditLocationModal({
         profitShare: '', // Will be loaded from locationDetails
         licencee: selectedLocation.rel?.licencee || '', // Use licencee from selectedLocation
         isLocalServer: selectedLocation.isLocalServer || false,
+        noSMIBLocation: selectedLocation.noSMIBLocation || false,
         latitude: selectedLocation.geoCoords?.latitude?.toString() ||
                   selectedLocation.geoCoords?.lat?.toString() || '',
         longitude: selectedLocation.geoCoords?.longitude?.toString() ||
@@ -521,6 +524,7 @@ export default function LocationsEditLocationModal({
         profitShare: locationDetails.profitShare?.toString() || '',
         licencee: locationDetails.rel?.licencee || '',
         isLocalServer: locationDetails.isLocalServer || false,
+        noSMIBLocation: locationDetails.noSMIBLocation || false,
         latitude: locationDetails.geoCoords?.latitude?.toString() || '',
         longitude: locationDetails.geoCoords?.longitude?.toString() || '',
         dayStartTime: dayStartTime,
@@ -727,6 +731,7 @@ export default function LocationsEditLocationModal({
           licencee: originalFormData.licencee,
         },
         isLocalServer: originalFormData.isLocalServer,
+        noSMIBLocation: originalFormData.noSMIBLocation,
         geoCoords:
           originalFormData.latitude && originalFormData.longitude
             ? {
@@ -753,6 +758,7 @@ export default function LocationsEditLocationModal({
           licencee: formData.licencee,
         },
         isLocalServer: formData.isLocalServer,
+        noSMIBLocation: formData.noSMIBLocation,
         geoCoords:
           latitude !== undefined &&
           longitude !== undefined &&
@@ -1006,14 +1012,16 @@ export default function LocationsEditLocationModal({
             <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* Country */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-grayHighlight">
+                <label htmlFor="edit-country" className="mb-2 block text-sm font-medium text-grayHighlight">
                   Country
                 </label>
                 {countriesLoading || (locationDetailsLoading && !formData.country) ? (
                   <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
                 ) : (
                   <select
+                    id="edit-country"
                     name="country"
+                    title="Select country"
                     value={formData.country}
                     onChange={e =>
                       handleSelectChange('country', e.target.value)
@@ -1072,14 +1080,16 @@ export default function LocationsEditLocationModal({
 
             {/* Licencee */}
             <div className="mb-4">
-              <label className="mb-2 block text-sm font-medium text-grayHighlight">
+              <label htmlFor="edit-licencee" className="mb-2 block text-sm font-medium text-grayHighlight">
                 Licencee <span className="text-red-500">*</span>
               </label>
               {licenceesLoading ? (
                 <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
               ) : (
                 <select
+                  id="edit-licencee"
                   name="licencee"
+                  title="Select licencee"
                   value={formData.licencee}
                   onChange={e => handleSelectChange('licencee', e.target.value)}
                   className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
@@ -1097,14 +1107,16 @@ export default function LocationsEditLocationModal({
 
             {/* Day Start Time */}
             <div className="mb-4">
-              <label className="mb-2 block text-sm font-medium text-grayHighlight">
+              <label htmlFor="edit-dayStartTime" className="mb-2 block text-sm font-medium text-grayHighlight">
                 Day Start Time
               </label>
               {locationDetailsLoading && !formData.dayStartTime ? (
                 <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
               ) : (
                 <select
+                  id="edit-dayStartTime"
                   name="dayStartTime"
+                  title="Select day start time"
                   value={
                     timeOptions.find(
                       opt => opt.displayValue === formData.dayStartTime
@@ -1241,13 +1253,15 @@ export default function LocationsEditLocationModal({
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                      <Label className="mb-2 block text-sm font-medium text-grayHighlight">
+                      <Label htmlFor="edit-pointsRatioMethod" className="mb-2 block text-sm font-medium text-grayHighlight">
                         Points Ratio Method
                       </Label>
                       {locationDetailsLoading ? (
                         <div className="h-12 w-full animate-pulse rounded bg-gray-200" />
                       ) : (
                         <select
+                          id="edit-pointsRatioMethod"
+                          title="Select points ratio method"
                           value={formData.locationMembershipSettings.pointsRatioMethod}
                           onChange={e => handleMembershipSettingsChange('pointsRatioMethod', e.target.value)}
                           className="h-12 w-full rounded-md border border-gray-300 bg-white px-3 text-base text-gray-700 focus:border-buttonActive focus:ring-buttonActive"
@@ -1359,6 +1373,20 @@ export default function LocationsEditLocationModal({
             <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
                 <Checkbox
+                  id="noSMIBLocation"
+                  checked={formData.noSMIBLocation}
+                  onCheckedChange={checked =>
+                    handleCheckboxChange('noSMIBLocation', checked === true)
+                  }
+                  className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
+                />
+                <Label htmlFor="noSMIBLocation" className="flex-1 text-sm font-medium">
+                  No SMIB Location
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-3 rounded-lg bg-gray-50 p-3">
+                <Checkbox
                   id="isLocalServer"
                   checked={formData.isLocalServer}
                   onCheckedChange={checked =>
@@ -1366,11 +1394,8 @@ export default function LocationsEditLocationModal({
                   }
                   className="h-5 w-5 border-buttonActive text-grayHighlight focus:ring-buttonActive"
                 />
-                <Label
-                  htmlFor="isLocalServer"
-                  className="flex-1 text-sm font-medium"
-                >
-                  No SMIB Location
+                <Label htmlFor="isLocalServer" className="flex-1 text-sm font-medium">
+                  Local Server
                 </Label>
               </div>
 

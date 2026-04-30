@@ -15,10 +15,10 @@ import {
   type CollectionData,
   type FixResults,
   type HistoryEntry,
-  type MachineData,
 } from '@/shared/types/reports';
 import { calculateMovement } from '@/lib/utils/movement';
 import { calculateSasMetrics } from './creation';
+import type { GamingMachine, CollectionReportDocument } from '@shared/types';
 
 /**
  * Safely get machine ID from collection, checking multiple sources
@@ -65,7 +65,7 @@ export async function fixReportIssues(
     // Fix specific machine history issues
     targetCollections = await Collections.find({
       machineId: machineId,
-    }).lean();
+    }).lean<CollectionData[]>();
 
     // Create a dummy report object for the fix process
     targetReport = {
@@ -78,7 +78,7 @@ export async function fixReportIssues(
     // reportId from URL is always locationReportId (UUID string)
     const report = await CollectionReport.findOne({
       locationReportId: reportId,
-    }).lean();
+    }).lean<CollectionReportDocument>();
 
     if (!report) {
       throw new Error('Report not found');
@@ -86,7 +86,7 @@ export async function fixReportIssues(
 
     targetReport = {
       _id: report._id.toString(),
-      locationReportId: report.locationReportId,
+      locationReportId: report.locationReportId ?? report._id.toString(),
       timestamp: report.timestamp,
     };
 
@@ -95,25 +95,25 @@ export async function fixReportIssues(
       locationReportId: targetReport.locationReportId,
     })
       .sort({ timestamp: 1 })
-      .lean();
+      .lean<CollectionData[]>();
   } else {
     // Fix most recent report
     const foundReport = await CollectionReport.findOne({})
       .sort({ timestamp: -1 })
-      .lean();
+      .lean<CollectionReportDocument>();
     if (!foundReport) {
       throw new Error('No reports found');
     }
 
     targetReport = {
       _id: foundReport._id.toString(),
-      locationReportId: foundReport.locationReportId,
+      locationReportId: foundReport.locationReportId ?? foundReport._id.toString(),
       timestamp: foundReport.timestamp,
     };
 
     targetCollections = await Collections.find({
       locationReportId: targetReport.locationReportId,
-    }).lean();
+    }).lean<CollectionData[]>();
   }
 
   const totalCollections = targetCollections.length;
@@ -145,8 +145,8 @@ export async function fixReportIssues(
   // 🚀 OPTIMIZED: Parallel batch processing for much faster execution
   const BATCH_SIZE = 50; // Process 50 collections in parallel
 
-  for (let i = 0; i < targetCollections.length; i += BATCH_SIZE) {
-    const batch = targetCollections.slice(i, i + BATCH_SIZE);
+  for (let collectionIndex = 0; collectionIndex < targetCollections.length; collectionIndex += BATCH_SIZE) {
+    const batch = targetCollections.slice(collectionIndex, collectionIndex + BATCH_SIZE);
 
     // Process batch in parallel
     await Promise.all(
@@ -194,7 +194,7 @@ export async function fixReportIssues(
       fixResults.collectionsProcessed % 500 === 0
     ) {
       const totalIssues = (Object.values(fixResults.issuesFixed) as number[]).reduce(
-        (sum, val) => sum + val,
+        (sum, value) => sum + value,
         0
       );
       console.log(
@@ -207,7 +207,7 @@ export async function fixReportIssues(
 
   // Final progress for Phase 1
   const totalIssuesPhase1 = (Object.values(fixResults.issuesFixed) as number[]).reduce(
-    (sum, val) => sum + val,
+    (sum, value) => sum + value,
     0
   );
   console.log(
@@ -222,8 +222,8 @@ export async function fixReportIssues(
   let lastPhase2Log = 0;
 
   // 🚀 OPTIMIZED: Parallel batch processing for Phase 2
-  for (let i = 0; i < targetCollections.length; i += BATCH_SIZE) {
-    const batch = targetCollections.slice(i, i + BATCH_SIZE);
+  for (let collectionIndex = 0; collectionIndex < targetCollections.length; collectionIndex += BATCH_SIZE) {
+    const batch = targetCollections.slice(collectionIndex, collectionIndex + BATCH_SIZE);
 
     // Process batch in parallel
     await Promise.all(
@@ -285,7 +285,7 @@ export async function fixReportIssues(
   console.log('✅ FIX COMPLETED');
   console.log(`${'='.repeat(80)}`);
   const totalIssuesFixed = (Object.values(fixResults.issuesFixed) as number[]).reduce(
-    (sum, val) => sum + val,
+    (sum, value) => sum + value,
     0
   );
   console.log(`\n📊 Summary:`);
@@ -311,8 +311,8 @@ export async function fixReportIssues(
   // Log errors if any
   if (fixResults.errors.length > 0) {
     console.log('⚠️  Errors encountered:');
-    fixResults.errors.slice(0, 5).forEach((err: { collectionId: string; error: string; machineId?: string }) => {
-      console.log(`   - Collection ${err.collectionId}: ${err.error}`);
+    fixResults.errors.slice(0, 5).forEach((errorItem: { collectionId: string; error: string; machineId?: string }) => {
+      console.log(`   - Collection ${errorItem.collectionId}: ${errorItem.error}`);
     });
     if (fixResults.errors.length > 5) {
       console.log(`   ... and ${fixResults.errors.length - 5} more errors`);
@@ -331,6 +331,15 @@ async function fixSasTimesIssues(
   collection: CollectionData,
   fixResults: FixResults
 ) {
+  if (!collection) {
+    console.error('[fixSasTimesIssues] collection is required');
+    return;
+  }
+  if (!fixResults) {
+    console.error('[fixSasTimesIssues] fixResults is required');
+    return;
+  }
+
   // 🔧 FIX: Get machine ID with fallback to sasMeters.machine (outside try to be accessible in catch)
   const actualMachineId = getMachineIdFromCollection(collection);
   const actualMachineCustomName = collection.machineCustomName;
@@ -381,7 +390,7 @@ async function fixSasTimesIssues(
       _id: { $ne: collection._id },
     })
       .sort({ timestamp: -1, collectionTime: -1 })
-      .lean();
+      .lean<CollectionData>();
 
     // 🔧 FIX: Better SAS time calculation with improved logging
     const expectedSasStartTime = previousCollection
@@ -472,6 +481,15 @@ async function fixMovementCalculationIssues(
   collection: CollectionData,
   fixResults: FixResults
 ) {
+  if (!collection) {
+    console.error('[fixMovementCalculationIssues] collection is required');
+    return;
+  }
+  if (!fixResults) {
+    console.error('[fixMovementCalculationIssues] fixResults is required');
+    return;
+  }
+
   try {
     // Recalculate movement with current values
     const previousMeters = {
@@ -524,8 +542,8 @@ async function fixMovementCalculationIssues(
 
       fixResults.issuesFixed.movementCalculationsFixed++;
     }
-  } catch {
-    // Error tracked - continue
+  } catch (error) {
+    console.error('[fixMovementCalculationIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
   }
 }
 
@@ -537,6 +555,15 @@ async function fixPrevMetersIssues(
   fixResults: FixResults,
   updateMachineMeters: boolean = true
 ) {
+  if (!collection) {
+    console.error('[fixPrevMetersIssues] collection is required');
+    return;
+  }
+  if (!fixResults) {
+    console.error('[fixPrevMetersIssues] fixResults is required');
+    return;
+  }
+
   try {
     // Check for previous meters mismatch (same logic as issue detection)
     if (collection.prevIn !== undefined && collection.prevOut !== undefined) {
@@ -585,7 +612,7 @@ async function fixPrevMetersIssues(
         ],
       })
         .sort({ collectionTime: -1, timestamp: -1 })
-        .lean();
+        .lean<CollectionData>();
 
       if (actualPreviousCollection) {
         // There IS a previous collection, so prevIn/prevOut should match its meters
@@ -654,8 +681,8 @@ async function fixPrevMetersIssues(
         fixResults.issuesFixed.prevMetersFixed++;
       }
     }
-  } catch {
-    // Error tracked - continue
+  } catch (error) {
+    console.error('[fixPrevMetersIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
   }
 }
 
@@ -666,6 +693,15 @@ async function fixMachineCollectionMetersIssues(
   collection: CollectionData,
   fixResults: FixResults
 ) {
+  if (!collection) {
+    console.error('[fixMachineCollectionMetersIssues] collection is required');
+    return;
+  }
+  if (!fixResults) {
+    console.error('[fixMachineCollectionMetersIssues] fixResults is required');
+    return;
+  }
+
   try {
     // 🔧 FIX: Get machine ID with fallback
     const machineId = getMachineIdFromCollection(collection);
@@ -674,21 +710,17 @@ async function fixMachineCollectionMetersIssues(
     }
 
     // Get the machine's current collectionMeters
-    const machine = await Machine.findOne({ _id: machineId }).lean();
+    const machine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
     if (!machine) {
       return; // Skip silently
     }
 
-    const machineData = machine as Record<string, unknown>;
-    const collectionMeters = (machineData.collectionMeters as Record<
-      string,
-      unknown
-    >) || {
+    const collectionMeters = machine.collectionMeters || {
       metersIn: 0,
       metersOut: 0,
     };
-    const currentMachineMetersIn = (collectionMeters.metersIn as number) || 0;
-    const currentMachineMetersOut = (collectionMeters.metersOut as number) || 0;
+    const currentMachineMetersIn = collectionMeters.metersIn || 0;
+    const currentMachineMetersOut = collectionMeters.metersOut || 0;
     const expectedMetersIn = collection.metersIn || 0;
     const expectedMetersOut = collection.metersOut || 0;
     // Check if machine's collectionMeters match the collection's current meters
@@ -712,8 +744,8 @@ async function fixMachineCollectionMetersIssues(
       fixResults.issuesFixed.machineCollectionMetersFixed =
         (fixResults.issuesFixed.machineCollectionMetersFixed || 0) + 1;
     }
-  } catch {
-    // Error tracked - continue
+  } catch (error) {
+    console.error('[fixMachineCollectionMetersIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
   }
 }
 
@@ -724,6 +756,15 @@ async function fixCollectionHistoryIssues(
   collection: CollectionData,
   fixResults: FixResults
 ) {
+  if (!collection) {
+    console.error('[fixCollectionHistoryIssues] collection is required');
+    return;
+  }
+  if (!fixResults) {
+    console.error('[fixCollectionHistoryIssues] fixResults is required');
+    return;
+  }
+
   try {
     // Ensure collection has proper locationReportId
     if (
@@ -733,7 +774,7 @@ async function fixCollectionHistoryIssues(
       // Get the report for this collection
       const report = await CollectionReport.findOne({
         locationReportId: collection.locationReportId || { $exists: false },
-      }).lean();
+      }).lean<CollectionReportDocument>();
 
       if (report) {
         // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
@@ -750,8 +791,8 @@ async function fixCollectionHistoryIssues(
         fixResults.issuesFixed.historyEntriesFixed++;
       }
     }
-  } catch {
-    // Error tracked - continue
+  } catch (error) {
+    console.error('[fixCollectionHistoryIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
   }
 }
 
@@ -772,6 +813,15 @@ async function fixMachineHistoryIssues(
   collection: CollectionData,
   fixResults: FixResults
 ) {
+  if (!collection) {
+    console.error('[fixMachineHistoryIssues] collection is required');
+    return;
+  }
+  if (!fixResults) {
+    console.error('[fixMachineHistoryIssues] fixResults is required');
+    return;
+  }
+
   try {
     // 🔧 FIX: Get machine ID with fallback
     const machineId = getMachineIdFromCollection(collection);
@@ -780,14 +830,13 @@ async function fixMachineHistoryIssues(
       return; // Skip silently
     }
 
-    const machine = (await Machine.findOne({
+    const machine = await Machine.findOne({
       _id: machineId,
-    }).lean()) as MachineData | null;
+    }).lean<MachineWithHistory>();
     if (!machine) {
       return; // Skip silently
     }
-    const machineWithHistory = machine as unknown as MachineWithHistory;
-    const currentHistory = machineWithHistory.collectionMetersHistory || [];
+    const currentHistory = machine.collectionMetersHistory || [];
 
     // Find history entry by locationReportId (unique identifier)
     const historyEntry = currentHistory.find(
@@ -868,8 +917,8 @@ async function fixMachineHistoryIssues(
         },
       }
     );
-  } catch {
-    // Error tracked - continue
+  } catch (error) {
+    console.error('[fixMachineHistoryIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
   }
 }
 
@@ -881,6 +930,15 @@ async function fixMachineHistoryEntryIssues(
   collection: CollectionData,
   fixResults: FixResults
 ) {
+  if (!collection) {
+    console.error('[fixMachineHistoryEntryIssues] collection is required');
+    return;
+  }
+  if (!fixResults) {
+    console.error('[fixMachineHistoryEntryIssues] fixResults is required');
+    return;
+  }
+
   try {
     // 🔧 FIX: Get machine ID with fallback
     const machineId = getMachineIdFromCollection(collection);
@@ -888,19 +946,18 @@ async function fixMachineHistoryEntryIssues(
       return; // Skip silently
     }
 
-    const machine = (await Machine.findOne({
+    const machine = await Machine.findOne({
       _id: machineId,
-    }).lean()) as MachineData | null;
+    }).lean<MachineWithHistory>();
     if (!machine) {
       return; // Skip silently
     }
 
-    const machineWithHistory = machine as unknown as MachineWithHistory;
-    const history = machineWithHistory.collectionMetersHistory || [];
+    const history = machine.collectionMetersHistory || [];
 
     // Check each history entry for prevIn/prevOut issues
-    for (let i = 1; i < history.length; i++) {
-      const entry = history[i];
+    for (let historyIndex = 1; historyIndex < history.length; historyIndex++) {
+      const entry = history[historyIndex];
       const prevIn = entry.prevMetersIn || 0;
       const prevOut = entry.prevMetersOut || 0;
 
@@ -910,25 +967,25 @@ async function fixMachineHistoryEntryIssues(
         (prevOut === 0 || prevOut === undefined || prevOut === null)
       ) {
         // Get the expected values from the previous entry
-        const expectedPrevIn = i > 0 ? history[i - 1]?.metersIn || 0 : 0;
-        const expectedPrevOut = i > 0 ? history[i - 1]?.metersOut || 0 : 0;
+        const expectedPrevIn = historyIndex > 0 ? history[historyIndex - 1]?.metersIn || 0 : 0;
+        const expectedPrevOut = historyIndex > 0 ? history[historyIndex - 1]?.metersOut || 0 : 0;
 
         // Update the specific history entry using array filters
         await Machine.findOneAndUpdate(
           { _id: machineId }, // 🔧 FIX: Use machineId from helper
           {
             $set: {
-              [`collectionMetersHistory.${i}.prevMetersIn`]: expectedPrevIn,
-              [`collectionMetersHistory.${i}.prevMetersOut`]: expectedPrevOut,
+              [`collectionMetersHistory.${historyIndex}.prevMetersIn`]: expectedPrevIn,
+              [`collectionMetersHistory.${historyIndex}.prevMetersOut`]: expectedPrevOut,
             },
           }
         );
 
         // Verify the update was successful
-        const updatedMachine = (await Machine.findOne({
+        const updatedMachine = await Machine.findOne({
           _id: machineId,
-        }).lean()) as MachineWithHistory | null;
-        const updatedEntry = updatedMachine?.collectionMetersHistory?.[i];
+        }).lean<MachineWithHistory>();
+        const updatedEntry = updatedMachine?.collectionMetersHistory?.[historyIndex];
 
         if (
           updatedEntry &&
@@ -939,8 +996,8 @@ async function fixMachineHistoryEntryIssues(
         }
       }
     }
-  } catch {
-    // Error tracked - continue
+  } catch (error) {
+    console.error('[fixMachineHistoryEntryIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
   }
 }
 
@@ -952,6 +1009,15 @@ async function fixMachineHistoryOrphanedAndDuplicates(
   fixResults: FixResults,
   isMachineSpecific: boolean = false
 ) {
+  if (!reportIdOrMachineId) {
+    console.error('[fixMachineHistoryOrphanedAndDuplicates] reportIdOrMachineId is required');
+    return;
+  }
+  if (!fixResults) {
+    console.error('[fixMachineHistoryOrphanedAndDuplicates] fixResults is required');
+    return;
+  }
+
   try {
     if (isMachineSpecific) {
       // Get all collections for this machine
@@ -977,7 +1043,7 @@ async function fixMachineHistoryOrphanedAndDuplicates(
       }
 
       // Get unique machine IDs
-      const machineIds = [...new Set(collections.map(c => c.machineId))];
+      const machineIds = [...new Set(collections.map(collection => collection.machineId))];
       await processMachinesForHistoryFix(
         machineIds,
         collections as unknown as Record<string, unknown>[],
@@ -985,6 +1051,7 @@ async function fixMachineHistoryOrphanedAndDuplicates(
       );
     }
   } catch (error) {
+    console.error('[fixMachineHistoryOrphanedAndDuplicates] Error:', error instanceof Error ? error.message : 'Unknown error');
     fixResults.errors.push({
       collectionId: 'machine-history-cleanup',
       error: error instanceof Error ? error.message : String(error),
@@ -1000,16 +1067,26 @@ async function processMachinesForHistoryFix(
   collections: Record<string, unknown>[],
   fixResults: FixResults
 ) {
+  if (!Array.isArray(machineIds)) {
+    console.error('[processMachinesForHistoryFix] machineIds is required');
+    return;
+  }
+  if (!Array.isArray(collections)) {
+    console.error('[processMachinesForHistoryFix] collections is required');
+    return;
+  }
+  if (!fixResults) {
+    console.error('[processMachinesForHistoryFix] fixResults is required');
+    return;
+  }
+
   try {
     for (const machineId of machineIds) {
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const machine = await Machine.findOne({ _id: machineId }).lean();
+      const machine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
       if (!machine) continue;
 
-      const machineData = machine as Record<string, unknown>;
-      const history =
-        (machineData.collectionMetersHistory as Record<string, unknown>[]) ||
-        [];
+      const history = (machine.collectionMetersHistory || []) as Record<string, unknown>[];
 
       if (history.length === 0) continue;
       let cleanedHistory = [...history];
@@ -1019,7 +1096,7 @@ async function processMachinesForHistoryFix(
       // First, get ALL collections for this machine across all reports
       const allMachineCollections = await Collections.find({
         machineId: machineId,
-      }).lean();
+      }).lean<CollectionData[]>();
 
       // Also check if collection reports exist
       const { CollectionReport } = await import(
@@ -1042,7 +1119,7 @@ async function processMachinesForHistoryFix(
         // Check if the collection report itself exists
         const hasReport = await CollectionReport.findOne({
           locationReportId: entry.locationReportId,
-        }).lean();
+        }).lean<CollectionReportDocument>();
 
         if (!hasCollections || !hasReport) {
           hasChanges = true;
@@ -1248,6 +1325,7 @@ async function processMachinesForHistoryFix(
       }
     }
   } catch (error) {
+    console.error('[processMachinesForHistoryFix] Error:', error instanceof Error ? error.message : 'Unknown error');
     fixResults.errors.push({
       collectionId: 'machine-history-cleanup',
       error: error instanceof Error ? error.message : String(error),

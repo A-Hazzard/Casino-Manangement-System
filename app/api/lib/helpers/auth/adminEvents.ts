@@ -10,6 +10,7 @@
  */
 
 import { ActivityLog } from '@/app/api/lib/models/activityLog';
+import type { ActivityLogDocument } from '@shared/types';
 
 type TimeRange = '1h' | '24h' | '7d' | '30d';
 
@@ -120,7 +121,7 @@ export async function getAuthEvents(
     .skip(skip)
     .limit(limit)
     .select('-__v')
-    .lean();
+    .lean<ActivityLogDocument[]>();
 
   const total = await ActivityLog.countDocuments(filters);
 

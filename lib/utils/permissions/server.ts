@@ -45,8 +45,8 @@ function getUserFromStore(): MinimalUserPayload | null {
       roles: (user.roles || []) as UserRole[],
       enabled: user.isEnabled !== false,
     };
-  } catch (error) {
-    console.error('Failed to read user store:', error);
+  } catch (e) {
+    console.error('[getUserFromStore] Error:', e instanceof Error ? e.message : 'Unknown error');
     return null;
   }
 }
@@ -90,8 +90,8 @@ async function getCurrentUserFromDb(): Promise<MinimalUserPayload | null> {
     }
 
     return null;
-  } catch (error) {
-    console.error('Error fetching user from database:', error);
+  } catch (e) {
+    console.error('[getCurrentUserFromDb] Error:', e instanceof Error ? e.message : 'Unknown error');
     return null;
   }
 }
@@ -208,6 +208,7 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
  */
 export async function hasAdminAccessDb(): Promise<boolean> {
   const userData = await getCurrentUserFromDb();
+  if (!userData) { console.error('[hasAdminAccessDb] userData is required'); return false; }
 
   if (!userData || !userData.enabled) {
     return false;
@@ -230,5 +231,6 @@ export async function hasAdminAccessDb(): Promise<boolean> {
 export async function shouldShowNavigationLinkDb(
   page: PageName
 ): Promise<boolean> {
+  if (!page) { console.error('[shouldShowNavigationLinkDb] page is required'); return false; }
   return await hasPageAccessDb(page);
 }

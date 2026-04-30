@@ -34,6 +34,14 @@ export async function fetchFloatRequests(
   params: FloatRequestQueryParams,
   allowedLocationIds: string[] | 'all'
 ) {
+  if (!params || typeof params !== 'object' || !allowedLocationIds) {
+    console.error('[fetchFloatRequests] params (object) and allowedLocationIds are required');
+    return {
+      floatRequests: [],
+      pagination: { page: 1, limit: 20, totalCount: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false }
+    };
+  }
+
   const {
     page = 1,
     limit = 20,
@@ -101,14 +109,14 @@ export async function fetchFloatRequests(
 
   // Execute query
   const [floatRequests, totalCount] = await Promise.all([
-    FloatRequest.find(matchStage).sort(sort).skip(skip).limit(limit).lean(),
+    FloatRequest.find(matchStage).sort(sort).skip(skip).limit(limit).lean<FloatRequestDocument[]>(),
     FloatRequest.countDocuments(matchStage),
   ]);
 
   const totalPages = Math.ceil(totalCount / limit);
 
   return {
-    floatRequests: floatRequests as unknown as FloatRequestDocument[],
+    floatRequests,
     pagination: {
       page,
       limit,
@@ -128,8 +136,12 @@ export async function fetchFloatRequests(
 export async function getFloatRequestById(
   id: string
 ): Promise<FloatRequestDocument | null> {
-  const request = await FloatRequest.findOne({ _id: id }).lean();
-  return request as unknown as FloatRequestDocument | null;
+  if (!id || typeof id !== 'string') {
+    console.error('[getFloatRequestById] id is required and must be a string');
+    return null;
+  }
+
+  return await FloatRequest.findOne({ _id: id }).lean<FloatRequestDocument>();
 }
 
 // ============================================================================
@@ -168,6 +180,11 @@ export function validateFloatRequestStatusTransition(
   currentStatus: string,
   newStatus: string
 ): string | null {
+  if (!currentStatus || typeof currentStatus !== 'string' || !newStatus || typeof newStatus !== 'string') {
+    console.error('[validateFloatRequestStatusTransition] currentStatus and newStatus are required and must be strings');
+    return 'Invalid status parameters';
+  }
+
   const validTransitions: Record<string, string[]> = {
     PENDING: ['APPROVED', 'REJECTED'],
     APPROVED: ['ACKNOWLEDGED'],
@@ -192,6 +209,11 @@ export function validateFloatRequestStatusTransition(
 export function checkDualAcknowledgment(
   request: FloatRequestDocument
 ): boolean {
+  if (!request || typeof request !== 'object') {
+    console.error('[checkDualAcknowledgment] request is required and must be an object');
+    return false;
+  }
+
   return (
     request.acknowledgedByCashier === true &&
     request.acknowledgedByManager === true
@@ -212,6 +234,11 @@ export async function createFloatRequest(
   data: CreateFloatRequestRequest,
   cashier: { _id: string; profile?: { firstName?: string; lastName?: string } }
 ): Promise<FloatRequestDocument> {
+  if (!data || typeof data !== 'object' || !cashier || typeof cashier !== 'object') {
+    console.error('[createFloatRequest] data (object) and cashier (object) are required');
+    throw new Error('Invalid parameters provided');
+  }
+
   // Calculate requested total amount
   const requestedTotalAmount = calculateDenominationTotal(data.requestedDenom);
 
@@ -272,7 +299,12 @@ export async function approveFloatRequest(
   approvedDenom: Denomination[] | undefined,
   manager: { _id: string }
 ): Promise<FloatRequestDocument | null> {
-  const request = await FloatRequest.findOne({ _id: id }).lean();
+  if (!id || typeof id !== 'string' || !manager || typeof manager !== 'object') {
+    console.error('[approveFloatRequest] id (string) and manager (object) are required');
+    throw new Error('Invalid parameters provided');
+  }
+
+  const request = await FloatRequest.findOne({ _id: id }).lean<FloatRequestDocument>();
   if (!request) {
     throw new Error('Float request not found');
   }
@@ -307,9 +339,9 @@ export async function approveFloatRequest(
       },
     },
     { new: true }
-  ).lean();
+  ).lean<FloatRequestDocument>();
 
-  return updated as unknown as FloatRequestDocument | null;
+  return updated;
 }
 
 /**
@@ -324,7 +356,12 @@ export async function rejectFloatRequest(
   reason: string,
   manager: { _id: string }
 ): Promise<FloatRequestDocument | null> {
-  const request = await FloatRequest.findOne({ _id: id }).lean();
+  if (!id || typeof id !== 'string' || !reason || typeof reason !== 'string' || !manager || typeof manager !== 'object') {
+    console.error('[rejectFloatRequest] id (string), reason (string), and manager (object) are required');
+    throw new Error('Invalid parameters provided');
+  }
+
+  const request = await FloatRequest.findOne({ _id: id }).lean<FloatRequestDocument>();
   if (!request) {
     throw new Error('Float request not found');
   }
@@ -352,9 +389,9 @@ export async function rejectFloatRequest(
       },
     },
     { new: true }
-  ).lean();
+  ).lean<FloatRequestDocument>();
 
-  return updated as unknown as FloatRequestDocument | null;
+  return updated;
 }
 
 /**
@@ -367,20 +404,25 @@ export async function editFloatRequest(
   id: string,
   editedDenom: Denomination[]
 ): Promise<FloatRequestDocument | null> {
-  const request = await FloatRequest.findOne({ _id: id }).lean();
+  if (!id || typeof id !== 'string' || !Array.isArray(editedDenom)) {
+    console.error('[editFloatRequest] id (string) and editedDenom (array) are required');
+    throw new Error('Invalid parameters provided');
+  }
+
+  const request = await FloatRequest.findOne({ _id: id }).lean<FloatRequestDocument>();
   if (!request) {
     throw new Error('Float request not found');
   }
 
   const requestDoc = request as unknown as FloatRequestDocument;
 
-  // Can only edit FLOAT_DECREASE requests
-  if (requestDoc.type !== 'FLOAT_DECREASE') {
-    throw new Error('Only FLOAT_DECREASE requests can be edited');
+  // Can only edit decrease requests
+  if (requestDoc.type !== 'decrease') {
+    throw new Error('Only decrease requests can be edited');
   }
 
-  // Can only edit if status is PENDING
-  if (requestDoc.status !== 'PENDING') {
+  // Can only edit if status is pending
+  if (requestDoc.status !== 'pending') {
     throw new Error('Can only edit requests with PENDING status');
   }
 
@@ -399,9 +441,9 @@ export async function editFloatRequest(
       },
     },
     { new: true }
-  ).lean();
+  ).lean<FloatRequestDocument>();
 
-  return updated as unknown as FloatRequestDocument | null;
+  return updated;
 }
 
 /**
@@ -416,7 +458,12 @@ export async function acknowledgeFloatRequest(
   userRole: 'cashier' | 'vault-manager',
   user: { _id: string }
 ): Promise<FloatRequestDocument | null> {
-  const request = await FloatRequest.findOne({ _id: id }).lean();
+  if (!id || typeof id !== 'string' || !userRole || !user || typeof user !== 'object') {
+    console.error('[acknowledgeFloatRequest] id (string), userRole, and user (object) are required');
+    throw new Error('Invalid parameters provided');
+  }
+
+  const request = await FloatRequest.findOne({ _id: id }).lean<FloatRequestDocument>();
   if (!request) {
     throw new Error('Float request not found');
   }
@@ -447,14 +494,10 @@ export async function acknowledgeFloatRequest(
     { _id: id },
     { $set: update },
     { new: true }
-  ).lean();
+  ).lean<FloatRequestDocument>();
 
-  const updatedDoc = updated as unknown as FloatRequestDocument;
-
-  // Check if both parties have acknowledged
-  if (updatedDoc.acknowledgedByCashier && updatedDoc.acknowledgedByManager) {
-    // Update status to ACKNOWLEDGED
-    const finalUpdated = await FloatRequest.findOneAndUpdate(
+  if (updated?.acknowledgedByCashier && updated?.acknowledgedByManager) {
+    return await FloatRequest.findOneAndUpdate(
       { _id: id },
       {
         $set: {
@@ -464,12 +507,10 @@ export async function acknowledgeFloatRequest(
         },
       },
       { new: true }
-    ).lean();
-
-    return finalUpdated as unknown as FloatRequestDocument | null;
+    ).lean<FloatRequestDocument>();
   }
 
-  return updatedDoc;
+  return updated;
 }
 
 // ============================================================================
@@ -484,6 +525,11 @@ export async function acknowledgeFloatRequest(
 export function transformFloatRequestForResponse(
   request: FloatRequestDocument
 ): Record<string, unknown> {
+  if (!request || typeof request !== 'object') {
+    console.error('[transformFloatRequestForResponse] request is required and must be an object');
+    return {};
+  }
+
   return {
     _id: request._id,
     type: request.type,

@@ -22,12 +22,7 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
-import {
-  convertFromUSD,
-  convertToUSD,
-  getCountryCurrency,
-  getLicenceeCurrency,
-} from '@/lib/helpers/rates';
+import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import type {
   LocationDocument,
   MachineDocument,
@@ -35,7 +30,38 @@ import type {
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { TimePeriod } from '@/shared/types/common';
+import type { LicenceeDocument } from '@/shared/types';
+import {
+  convertFromUSD,
+  convertToUSD,
+  getCountryCurrency,
+  getLicenceeCurrency,
+} from '@/lib/helpers/rates';
 import { NextRequest, NextResponse } from 'next/server';
+
+
+type MachineUpdateFields = {
+  serialNumber?: string;
+  game?: string;
+  manufacturer?: string;
+  manuf?: string;
+  assetStatus?: string;
+  cabinetType?: string;
+  gameConfig?: { accountingDenomination?: number };
+  collectionMultiplier?: string;
+  collectorDenomination?: number;
+  isSasMachine?: boolean;
+  relayId?: string;
+  smibBoard?: string;
+  smbId?: string;
+  updatedAt?: Date;
+  collectionMeters?: object;
+  collectionTime?: Date;
+  smibConfig?: object;
+  smibVersion?: string;
+  'custom.name'?: string;
+  [key: string]: string | number | boolean | Date | object | undefined;
+};
 
 /**
  * GET /api/cabinets/[cabinetId]
@@ -43,13 +69,13 @@ import { NextRequest, NextResponse } from 'next/server';
  * Returns a single cabinet document augmented with aggregated financial metrics.
  * 
  * URL params:
- * @param cabinetId   {string} Required (path). The ID of the machine to retrieve.
+ * @param {string} cabinetId - Required (path). The ID of the machine to retrieve.
  *
  * Query params:
- * @param timePeriod  {TimePeriod} Optional. Window for metrics (e.g. 'Today', '7d').
- * @param startDate   {string} Optional. Custom range start (ISO 8601).
- * @param endDate     {string} Optional. Custom range end (ISO 8601).
- * @param currency    {CurrencyCode} Optional. Target display currency.
+ * @param {TimePeriod} [timePeriod] - Optional. Window for metrics (e.g. 'Today', '7d').
+ * @param {string} [startDate] - Optional. Custom range start (ISO 8601).
+ * @param {string} [endDate] - Optional. Custom range end (ISO 8601).
+ * @param {CurrencyCode} [currency] - Optional. Target display currency.
  */
 export async function GET(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -67,7 +93,7 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // STEP 1: Fetch and Validate Machine
       // ============================================================================
-      const machine = (await Machine.findOne({ _id: cabinetId }).lean()) as MachineDocument;
+      const machine = await Machine.findOne({ _id: cabinetId }).lean<MachineDocument>();
       if (!machine) {
         return NextResponse.json({ success: false, error: 'Cabinet not found' }, { status: 404 });
       }
@@ -86,14 +112,14 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // STEP 2: Fetch Location and Licensee Settings
       // ============================================================================
-      const location = (await GamingLocations.findOne({ _id: locationId }).select('name gameDayOffset rel aceEnabled country').lean()) as LocationDocument | null;
+      const location = await GamingLocations.findOne({ _id: locationId }).select('name gameDayOffset rel aceEnabled country').lean<LocationDocument>();
       const gameDayOffset = location?.gameDayOffset ?? 8;
       const aceEnabled = location?.aceEnabled === true;
 
       let includeJackpot = false;
       const licenceeId = Array.isArray(location?.rel?.licencee) ? location.rel.licencee[0] : location?.rel?.licencee;
       if (licenceeId) {
-        const licDoc = await Licencee.findOne({ _id: licenceeId }, { includeJackpot: 1 }).lean() as { includeJackpot?: boolean } | null;
+        const licDoc = await Licencee.findOne({ _id: licenceeId }, { includeJackpot: 1 }).lean<LicenceeDocument>();
         includeJackpot = Boolean(licDoc?.includeJackpot);
       }
 
@@ -160,8 +186,8 @@ export async function GET(request: NextRequest) {
       if (displayCurrency && !isStaff && (metrics.moneyIn !== 0 || metrics.moneyOut !== 0)) {
         let nativeCurrency: CurrencyCode = 'USD';
         if (licenceeId) {
-          const lic = await Licencee.findOne({ _id: licenceeId }, { name: 1 }).lean() as { name: string } | null;
-          if (lic) nativeCurrency = getLicenceeCurrency(lic.name);
+          const lic = await Licencee.findOne({ _id: licenceeId }, { name: 1 }).lean<LicenceeDocument>();
+          if (lic?.name) nativeCurrency = getLicenceeCurrency(lic.name);
         } else if (location?.country) {
           nativeCurrency = getCountryCurrency(location.country);
         }
@@ -192,8 +218,8 @@ export async function GET(request: NextRequest) {
       };
 
       return NextResponse.json({ success: true, data: transformed });
-    } catch (error) {
-      console.error('[Cabinet API GET] Error:', error);
+    } catch (e) {
+      console.error('[GET /cabinets/[cabinetId]] Error:', e instanceof Error ? e.message : 'Unknown error');
       return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
     }
   });
@@ -214,7 +240,7 @@ export async function PUT(request: NextRequest) {
       if (!originalCabinet) return NextResponse.json({ success: false, error: 'Cabinet not found' }, { status: 404 });
 
       // Build update fields (standardized mapping)
-      const updateFields: Record<string, string | number | boolean | Date | object> = { updatedAt: new Date() };
+      const updateFields: Partial<MachineUpdateFields> = { updatedAt: new Date() };
       if (data.assetNumber) updateFields.serialNumber = data.assetNumber;
       if (data.installedGame) updateFields.game = data.installedGame;
       if (data.gameType) updateFields.gameType = data.gameType;
@@ -235,37 +261,61 @@ export async function PUT(request: NextRequest) {
 
       // Cascade updates to Collections
       if (data.assetNumber && data.assetNumber !== originalCabinet.serialNumber) {
-        await Collections.updateMany({ machineId: cabinetId }, { $set: { serialNumber: data.assetNumber } });
+        const serialUpdateResult = await Collections.updateMany({ machineId: cabinetId }, { $set: { serialNumber: data.assetNumber } });
+        if (serialUpdateResult.modifiedCount === 0) {
+          console.warn(`[PUT /cabinets/${cabinetId}] No collections updated for serialNumber cascade`);
+        }
       }
       if (data.installedGame && data.installedGame !== originalCabinet.game) {
-        await Collections.updateMany({ machineId: cabinetId }, { $set: { machineName: data.installedGame } });
+        const gameUpdateResult = await Collections.updateMany({ machineId: cabinetId }, { $set: { machineName: data.installedGame } });
+        if (gameUpdateResult.modifiedCount === 0) {
+          console.warn(`[PUT /cabinets/${cabinetId}] No collections updated for machineName cascade`);
+        }
       }
 
       return NextResponse.json({ success: true, data: updatedMachine });
-    } catch (_id) {
+    } catch (e) {
+      console.error('[PUT /cabinets/[cabinetId]] Error:', e instanceof Error ? e.message : 'Unknown error');
       return NextResponse.json({ success: false, error: 'Failed to update' }, { status: 500 });
     }
   });
 }
 
-/**
- * PATCH /api/cabinets/[cabinetId]
- */
+ /**
+  * PATCH /api/cabinets/[cabinetId]
+  */
 export async function PATCH(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const cabinetId = pathname.split('/').pop() || '';
 
-  return withApiAuth(request, async () => {
+  return withApiAuth(request, async ({ user: currentUser }) => {
     try {
       await connectDB();
       const data = await request.json();
 
       if (data.action === 'restore') {
         const restored = await Machine.findOneAndUpdate({ _id: cabinetId }, { $unset: { deletedAt: 1 }, $set: { updatedAt: new Date() } }, { new: true });
+
+        if (currentUser && currentUser.emailAddress) {
+          await logActivity({
+            action: 'restore',
+            details: `Restored machine "${restored?.assetNumber || restored?.serialNumber || cabinetId}"`,
+            ipAddress: request.headers.get('x-forwarded-for') || undefined,
+            userAgent: request.headers.get('user-agent') || undefined,
+            userId: currentUser._id,
+            username: currentUser.emailAddress,
+            metadata: {
+              resource: 'machine',
+              resourceId: cabinetId,
+              resourceName: restored?.assetNumber || restored?.serialNumber || 'Unknown Machine',
+            },
+          });
+        }
+
         return NextResponse.json({ success: true, data: restored });
       }
 
-      const updateFields: Record<string, string | number | boolean | Date | object> = { updatedAt: new Date() };
+      const updateFields: Partial<MachineUpdateFields> = { updatedAt: new Date() };
       if (data.collectionMeters) updateFields.collectionMeters = data.collectionMeters;
       if (data.collectionTime) updateFields.collectionTime = data.collectionTime;
       if (data.smibConfig) updateFields.smibConfig = data.smibConfig;
@@ -274,15 +324,16 @@ export async function PATCH(request: NextRequest) {
 
       const patched = await Machine.findOneAndUpdate({ _id: cabinetId }, { $set: updateFields }, { new: true });
       return NextResponse.json({ success: true, data: patched });
-    } catch (_id) {
-       return NextResponse.json({ success: false, error: 'Patch failed' }, { status: 500 });
+    } catch (e) {
+      console.error('[PATCH /cabinets/[cabinetId]] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Patch failed' }, { status: 500 });
     }
   });
 }
 
-/**
- * DELETE /api/cabinets/[cabinetId]
- */
+ /**
+  * DELETE /api/cabinets/[cabinetId]
+  */
 export async function DELETE(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const cabinetId = pathname.split('/').pop() || '';
@@ -292,13 +343,20 @@ export async function DELETE(request: NextRequest) {
     try {
       await connectDB();
       if (hardDelete && isAdminOrDev) {
-        await Machine.deleteOne({ _id: cabinetId });
+        const deleteResult = await Machine.deleteOne({ _id: cabinetId });
+        if (deleteResult.deletedCount === 0) {
+          return NextResponse.json({ success: false, error: 'Cabinet not found or already deleted' }, { status: 404 });
+        }
       } else {
-        await Machine.findOneAndUpdate({ _id: cabinetId }, { $set: { deletedAt: new Date(), updatedAt: new Date() } });
+        const softDeleted = await Machine.findOneAndUpdate({ _id: cabinetId }, { $set: { deletedAt: new Date(), updatedAt: new Date() } });
+        if (!softDeleted) {
+          return NextResponse.json({ success: false, error: 'Cabinet not found' }, { status: 404 });
+        }
       }
       return NextResponse.json({ success: true, message: 'Deleted' });
-    } catch (_id) {
-       return NextResponse.json({ success: false, error: 'Delete failed' }, { status: 500 });
+    } catch (e) {
+      console.error('[DELETE /cabinets/[cabinetId]] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Delete failed' }, { status: 500 });
     }
   });
 }

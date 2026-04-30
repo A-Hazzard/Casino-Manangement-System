@@ -2,17 +2,8 @@ import { type MachineData, type MachineStats } from './machines';
 import type { AggregatedLocation } from '@/shared/types/entities';
 export type { MachineData, MachineStats, AggregatedLocation };
 
-/**
- * Reports Shared Types
- * Comprehensive types for report generation, views, and data structures used across frontend and backend.
- */
-
-// Report navigation types
 export type ReportView = 'machines' | 'locations' | 'meters' | 'sas-evaluation' | 'revenue-analysis' | 'Cabinets' | 'overview';
 
-/**
- * Dashboard totals for financial reporting
- */
 export type DashboardTotals = {
   moneyIn: number;
   moneyOut: number;
@@ -21,7 +12,6 @@ export type DashboardTotals = {
   netGross?: number;
 };
 
-// Top performing metrics tabs
 export type TopPerformingTab = 'locations' | 'Cabinets';
 
 export type ReportTab = {
@@ -29,11 +19,9 @@ export type ReportTab = {
   label: string;
   icon?: string;
   description?: string;
-  /** false when this tab is under maintenance */
   available?: boolean;
 };
 
-// Logistics entry type for movement/logistics tracking
 export type LogisticsEntry = {
   id: string;
   machineId: string;
@@ -46,7 +34,6 @@ export type LogisticsEntry = {
   reason: string;
 };
 
-// Machine analytics type for performance reporting
 export type MachineAnalytics = {
   _id: string;
   name: string;
@@ -57,7 +44,6 @@ export type MachineAnalytics = {
   hasSas: boolean;
 };
 
-// Report configuration type for report generation
 export type ReportConfig = {
   title: string;
   reportType: 'locationPerformance' | 'machineRevenue' | 'fullFinancials';
@@ -172,7 +158,6 @@ export type ScheduledReport = {
   createdAt: string;
 };
 
-// Customer analytics types
 export type CustomerMetrics = {
   totalCustomers: number;
   activeCustomers: number;
@@ -212,7 +197,6 @@ export type Alert = {
   machineId?: string;
 };
 
-// Compliance types
 export type ComplianceMetrics = {
   totalChecks: number;
   passedChecks: number;
@@ -230,7 +214,6 @@ export type ComplianceMetrics = {
   }>;
 };
 
-// Dashboard widget types
 export type DashboardWidget = {
   id: string;
   type: 'chart' | 'table' | 'metric' | 'alert';
@@ -241,7 +224,6 @@ export type DashboardWidget = {
   visible: boolean;
 };
 
-// User report preferences
 export type UserReportPreferences = {
   userId: string;
   defaultView: ReportView;
@@ -259,7 +241,6 @@ export type UserReportPreferences = {
   };
 };
 
-// Report generation status
 export type ReportGenerationStatus = {
   id: string;
   status: 'pending' | 'in-progress' | 'completed' | 'failed';
@@ -273,7 +254,6 @@ export type ReportGenerationStatus = {
   };
 };
 
-// Performance comparison types
 export type PerformanceComparison = {
   baseline: {
     period: string;
@@ -293,9 +273,6 @@ export type PerformanceComparison = {
   >;
 };
 
-/**
- * Single data point in a location trend
- */
 export type LocationTrendPoint = {
   day: string;
   time?: string;
@@ -314,9 +291,6 @@ export type LocationTrendPoint = {
     | undefined;
 };
 
-/**
- * Trend data structure for location performance
- */
 export type LocationTrendsResponse = {
   trends: LocationTrendPoint[];
   totals: Record<
@@ -336,9 +310,6 @@ export type LocationTrendsResponse = {
   isHourly?: boolean;
 };
 
-/**
- * Combined result for SAS Evaluation dashboard
- */
 export type SASReportResult = {
   metricsTotals: DashboardTotals | null;
   locations: AggregatedLocation[];
@@ -539,7 +510,6 @@ export type TopMachinesCriteria =
   | 'locationName'
   | 'machineId';
 
-// Real-time metrics type
 export type RealTimeMetrics = {
   totalMachines: number;
   onlineMachines: number;

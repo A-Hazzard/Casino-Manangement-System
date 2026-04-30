@@ -14,7 +14,6 @@ export type { MongooseId };
 export type { SasMeters };
 export type { CollectionMetersHistoryEntry };
 
-// Export entities types
 export * from './entities';
 
 export type {
@@ -22,9 +21,43 @@ export type {
   AuthResult,
 } from './auth';
 
-// Export API types
 export * from './api';
 
-// Export component types
 export * from './components';
+
+export type {
+  AcceptedBillDocument,
+  ActivityLogDocument,
+  CashDeskPayoutDocument,
+  CashierShiftDocument,
+  CollectionReportDocument,
+  CollectionDocument,
+  CountryDocument,
+  DenominationDocument,
+  FeedbackDocument,
+  FirmwareDocument,
+  FloatRequestDocument,
+  FloatRequestsDocument,
+  GamingLocationDocument,
+  LocationDocument,
+  InterLocationTransferDocument,
+  LicenceeDocument,
+  MachineEventDocument,
+  MachineSessionDocument,
+  MemberDocument,
+  MeterDocument,
+  MovementRequestDocument,
+  PayoutDocument,
+  SchedulerDocument,
+  ShiftDocument,
+  SoftCountDocument,
+  UserDocument,
+  UserOverview,
+  VaultCollectionSessionDocument,
+  VaultNotificationDocument,
+  VaultShiftDocument,
+  VaultTransactionDocument,
+  LeanLicencee,
+  LeanMachine,
+} from './models';
 

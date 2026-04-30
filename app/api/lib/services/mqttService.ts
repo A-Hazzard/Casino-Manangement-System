@@ -124,24 +124,20 @@ class MQTTService {
                 callbacks.forEach(callback => {
                   try {
                     callback(payload);
-                  } catch (callbackError) {
+                  } catch (e) {
                     console.error(
-                      `❌ [MQTT Service] Callback error for relayId ${relayId}:`,
-                      callbackError
+                      `[sendCommunicationModeUpdate] Error:`,
+                      e instanceof Error ? e.message : 'Unknown error'
                     );
                   }
                 });
               }
             }
             // Silently ignore messages for SMIBs we're not monitoring (no callbacks)
-          } catch (error) {
+          } catch (e) {
             console.error(
-              '❌ [MQTT Service] Error parsing server message:',
-              error
-            );
-            console.error(
-              '❌ [MQTT Service] Raw message that failed to parse:',
-              message.toString()
+              '[handleIncomingMessage] Error:',
+              e instanceof Error ? e.message : 'Unknown error'
             );
           }
         }
@@ -171,7 +167,7 @@ class MQTTService {
         }, 10000);
       });
     } catch (error) {
-      console.error('❌ Failed to connect to MQTT:', error);
+      console.error('[MQTTService] Error:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   }
@@ -183,6 +179,8 @@ class MQTTService {
     cabinetId: string,
     command: string
   ): Promise<void> {
+    if (!cabinetId) { console.error('[sendMachineControlCommand] cabinetId is required'); return; }
+    if (!command) { console.error('[sendMachineControlCommand] command is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -229,6 +227,8 @@ class MQTTService {
     cabinetId: string,
     smibConfig: SmibConfig
   ): Promise<void> {
+    if (!cabinetId) { console.error('[sendSMIBConfigUpdate] cabinetId is required'); return; }
+    if (!smibConfig) { console.error('[sendSMIBConfigUpdate] smibConfig is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -260,7 +260,7 @@ class MQTTService {
         });
       });
     } catch (error) {
-      console.error('❌ Error sending SMIB config update:', error);
+      console.error('[MQTTService] Error:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
     }
   }
@@ -276,6 +276,8 @@ class MQTTService {
       netStaPwd: string;
     }
   ): Promise<void> {
+    if (!cabinetId) { console.error('[sendNetworkConfigUpdate] cabinetId is required'); return; }
+    if (!networkConfig) { console.error('[sendNetworkConfigUpdate] networkConfig is required'); return; }
     const smibConfig: SmibConfig = {
       net: {
         netMode: networkConfig.netMode,
@@ -294,6 +296,8 @@ class MQTTService {
     cabinetId: string,
     comsMode: number
   ): Promise<void> {
+    if (!cabinetId) { console.error('[sendCommunicationModeUpdate] cabinetId is required'); return; }
+    if (comsMode === undefined || comsMode === null) { console.error('[sendCommunicationModeUpdate] comsMode is required'); return; }
     const smibConfig: SmibConfig = {
       coms: {
         comsMode: comsMode,
@@ -307,6 +311,7 @@ class MQTTService {
    * Subscribe to a topic
    */
   async subscribe(topic: string): Promise<void> {
+    if (!topic) { console.error('[subscribe] topic is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -331,6 +336,7 @@ class MQTTService {
    * Build publish/topic string using configured prefix
    */
   private buildPublishTopic(relayId: string): string {
+    if (!relayId) { console.error('[buildPublishTopic] relayId is required'); return ''; }
     return `${this.config.mqttPubTopic}${relayId}`;
   }
 
@@ -338,6 +344,7 @@ class MQTTService {
    * Set up message handler
    */
   onMessage(callback: (topic: string, message: Buffer) => void): void {
+    if (!callback) { console.error('[onMessage] callback is required'); return; }
     if (this.client) {
       this.client.on('message', callback);
     }
@@ -360,7 +367,7 @@ class MQTTService {
         console.log(`   - ${this.config.mqttSubTopic}`);
         console.log(`   - sas/server`);
       } catch (error) {
-        console.error('❌ Failed to subscribe to server topics:', error);
+        console.error('[MQTTService] Error:', error instanceof Error ? error.message : 'Unknown error');
       }
     }
   }
@@ -372,6 +379,8 @@ class MQTTService {
     relayId: string,
     callback: ConfigCallback
   ): Promise<void> {
+    if (!relayId) { console.error('[subscribeToConfig] relayId is required'); return; }
+    if (!callback) { console.error('[subscribeToConfig] callback is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -402,6 +411,9 @@ class MQTTService {
     component: string,
     callback: ConfigCallback
   ): Promise<void> {
+    if (!relayId) { console.error('[subscribeAndRequestConfig] relayId is required'); return; }
+    if (!component) { console.error('[subscribeAndRequestConfig] component is required'); return; }
+    if (!callback) { console.error('[subscribeAndRequestConfig] callback is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -456,6 +468,7 @@ class MQTTService {
    * Unsubscribe callback for specific relayId
    */
   unsubscribeFromConfig(relayId: string): void {
+    if (!relayId) { console.error('[unsubscribeFromConfig] relayId is required'); return; }
     const normalizedRelayId = relayId.toLowerCase().trim();
     if (this.configCallbacks.has(normalizedRelayId)) {
       this.configCallbacks.delete(normalizedRelayId);
@@ -469,6 +482,8 @@ class MQTTService {
    * Unsubscribe specific callback for relayId (for multiple clients)
    */
   unsubscribeCallback(relayId: string, callback: ConfigCallback): void {
+    if (!relayId) { console.error('[unsubscribeCallback] relayId is required'); return; }
+    if (!callback) { console.error('[unsubscribeCallback] callback is required'); return; }
     const normalizedRelayId = relayId.toLowerCase().trim();
 
     if (this.configCallbacks.has(normalizedRelayId)) {
@@ -489,6 +504,8 @@ class MQTTService {
    * Request current configuration from SMIB
    */
   async requestConfig(relayId: string, component: string): Promise<void> {
+    if (!relayId) { console.error('[requestConfig] relayId is required'); return; }
+    if (!component) { console.error('[requestConfig] component is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
       console.log('✅ MQTT client connected');
@@ -526,6 +543,8 @@ class MQTTService {
    * Publish configuration update to SMIB
    */
   async publishConfig(relayId: string, config: object): Promise<void> {
+    if (!relayId) { console.error('[publishConfig] relayId is required'); return; }
+    if (!config) { console.error('[publishConfig] config is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -563,6 +582,8 @@ class MQTTService {
     relayId: string,
     callback: ConfigCallback
   ): Promise<void> {
+    if (!relayId) { console.error('[subscribeToServerData] relayId is required'); return; }
+    if (!callback) { console.error('[subscribeToServerData] callback is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -578,8 +599,8 @@ class MQTTService {
         try {
           const payload = JSON.parse(message.toString());
           callback(payload);
-        } catch (error) {
-          console.error('❌ Error parsing server data message:', error);
+        } catch (e) {
+          console.error('[subscribeToServerData] Error:', e instanceof Error ? e.message : 'Unknown error');
         }
       }
     };
@@ -623,6 +644,8 @@ class MQTTService {
    * @param otaURL - Base URL where firmware files are hosted
    */
   async configureOTAUrl(relayId: string, otaURL: string): Promise<void> {
+    if (!relayId) { console.error('[configureOTAUrl] relayId is required'); return; }
+    if (!otaURL) { console.error('[configureOTAUrl] otaURL is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -664,6 +687,8 @@ class MQTTService {
     relayId: string,
     firmwareBinUrl: string
   ): Promise<void> {
+    if (!relayId) { console.error('[sendOTAUpdateCommand] relayId is required'); return; }
+    if (!firmwareBinUrl) { console.error('[sendOTAUpdateCommand] firmwareBinUrl is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -701,6 +726,7 @@ class MQTTService {
    * Response will be published on the configured server topic for the relayId
    */
   async getFirmwareVersion(relayId: string): Promise<void> {
+    if (!relayId) { console.error('[getFirmwareVersion] relayId is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -737,6 +763,7 @@ class MQTTService {
    * @returns true if callbacks are registered, false otherwise
    */
   hasCallbacksForRelayId(relayId: string): boolean {
+    if (!relayId) { console.error('[hasCallbacksForRelayId] relayId is required'); return false; }
     const normalizedRelayId = relayId.toLowerCase().trim();
     const callbacks = this.configCallbacks.get(normalizedRelayId);
     return !!callbacks && callbacks.length > 0;
@@ -747,6 +774,7 @@ class MQTTService {
    * @param relayId - The SMIB relay ID
    */
   async requestMeterData(relayId: string): Promise<void> {
+    if (!relayId) { console.error('[requestMeterData] relayId is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -808,6 +836,7 @@ class MQTTService {
    * @param relayId - The SMIB relay ID
    */
   async restartSmib(relayId: string): Promise<void> {
+    if (!relayId) { console.error('[restartSmib] relayId is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -843,6 +872,7 @@ class MQTTService {
    * @param relayId - The SMIB relay ID
    */
   async sendClearNvs(relayId: string): Promise<void> {
+    if (!relayId) { console.error('[sendClearNvs] relayId is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -882,6 +912,7 @@ class MQTTService {
    * @param relayId - The SMIB relay ID
    */
   async sendClearNvsMeters(relayId: string): Promise<void> {
+    if (!relayId) { console.error('[sendClearNvsMeters] relayId is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -921,6 +952,7 @@ class MQTTService {
    * @param relayId - The SMIB relay ID
    */
   async sendClearNvsBv(relayId: string): Promise<void> {
+    if (!relayId) { console.error('[sendClearNvsBv] relayId is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }
@@ -960,6 +992,7 @@ class MQTTService {
    * @param relayId - The SMIB relay ID
    */
   async sendClearNvsDoor(relayId: string): Promise<void> {
+    if (!relayId) { console.error('[sendClearNvsDoor] relayId is required'); return; }
     if (!this.client || !this.isConnected) {
       await this.connect();
     }

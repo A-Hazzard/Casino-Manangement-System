@@ -32,6 +32,10 @@ const EMAIL_REGEX = /\S+@\S+\.\S+/;
 export function validateEmail(
   emailAddress: UserDocument['emailAddress']
 ): boolean {
+  if (!emailAddress || typeof emailAddress !== 'string') {
+    console.error('[validateEmail] emailAddress is required and must be a string');
+    return false;
+  }
   return EMAIL_REGEX.test(emailAddress);
 }
 
@@ -39,6 +43,9 @@ export function validateEmail(
  * Checks if a string looks like an email address.
  */
 export function containsEmailPattern(value: string): boolean {
+  if (!value || typeof value !== 'string') {
+    return false;
+  }
   return EMAIL_REGEX.test(value.trim());
 }
 
@@ -88,7 +95,7 @@ export function validatePassword(password: UserDocument['password']): boolean {
  * @param password - The password to validate.
  * @returns Object with validation result and feedback.
  */
-export function validatePasswordStrength(password: string): {
+export type PasswordStrengthResult = {
   isValid: boolean;
   score: number; // 0-4 scale
   feedback: string[];
@@ -99,7 +106,19 @@ export function validatePasswordStrength(password: string): {
     number: boolean;
     special: boolean;
   };
-} {
+};
+
+export function validatePasswordStrength(password: string): PasswordStrengthResult {
+  if (!password || typeof password !== 'string') {
+    console.error('[validatePasswordStrength] password is required and must be a string');
+    return {
+      isValid: false,
+      score: 0,
+      feedback: ['Password is required'],
+      requirements: { length: false, uppercase: false, lowercase: false, number: false, special: false }
+    };
+  }
+
   const feedback: string[] = [];
   const requirements = {
     length: password.length >= 8,

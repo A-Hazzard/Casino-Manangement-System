@@ -368,9 +368,9 @@ export const useCabinetData = ({
             setAllCabinets(scaledCabinets);
           } else {
             setAllCabinets((prev: Cabinet[]) => {
-              const existingIds = new Set(prev.map(c => c._id));
+              const existingIds = new Set(prev.map(cabinet => cabinet._id));
               const uniqueNew = scaledCabinets.filter(
-                (c: Cabinet) => !existingIds.has(c._id)
+                (cabinet: Cabinet) => !existingIds.has(cabinet._id)
               );
               return [...prev, ...uniqueNew];
             });

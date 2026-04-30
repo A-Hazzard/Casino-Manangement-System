@@ -1,13 +1,3 @@
-/**
- * Store Types
- * Types for Zustand stores across the application.
- *
- * Includes types for:
- * - Dashboard store (filters, data, loading states, currency)
- * - User store (authentication payload, actions)
- * - Firmware actions store (modals and selected firmware)
- * Used by various Zustand store implementations for state management.
- */
 import { TimePeriod } from '@/shared/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { Firmware } from '@/shared/types/entities';
@@ -21,7 +11,6 @@ import type {
     TopPerformingData,
 } from '../index';
 
-// Firmware actions state type
 export type FirmwareActionsState = {
   selectedFirmware: Firmware | null;
   isDeleteModalOpen: boolean;
@@ -90,11 +79,9 @@ export type DashBoardStore = {
   selectedLicencee: string;
   setSelectedLicencee: (state: string) => void;
 
-  // Sorting for top performing data
   sortBy: 'totalDrop' | 'totalWin';
   setSortBy: (state: 'totalDrop' | 'totalWin') => void;
 
-  // Currency support
   displayCurrency: CurrencyCode;
   setDisplayCurrency: (state: CurrencyCode) => void;
   isAllLicencee: boolean;

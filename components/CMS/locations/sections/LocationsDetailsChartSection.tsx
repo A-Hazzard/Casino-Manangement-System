@@ -80,6 +80,7 @@ export default function LocationsDetailsChartSection({
             </label>
             <select
               id="chart-granularity-location"
+              title="Select chart granularity"
               value={chartGranularity}
               onChange={e =>
                 onGranularityChange(

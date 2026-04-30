@@ -12,6 +12,7 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { ActivityLog } from '@/app/api/lib/models/activityLog';
 import { Machine } from '@/app/api/lib/models/machines';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import type { ActivityLogDocument, GamingMachine } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +31,7 @@ const OBJECT_ID_REGEX = /^[a-fA-F0-9]{24}$/;
  * Restricted to developer role.
  *
  * Query params:
- * @param limit {number}  Optional. Maximum logs to process per call (default 100, max 500).
+ * @param {number} [limit] - Optional. Maximum logs to process per call (default 100, max 500).
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ userRoles }) => {
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
     const logsToResolve = await ActivityLog.find(
       { resourceName: { $regex: /^[a-fA-F0-9]{24}$/ }, deletedAt: null },
       { _id: 1, resourceName: 1 }
-    ).limit(limit).lean();
+    ).limit(limit).lean<ActivityLogDocument[]>();
 
     // Collect unique ObjectIDs
     const objectIds = [...new Set(logsToResolve.map(l => String(l.resourceName)).filter(n => OBJECT_ID_REGEX.test(n)))];
@@ -67,13 +68,13 @@ export async function GET(request: NextRequest) {
     const machines = await Machine.find(
       { _id: { $in: objectIds } },
       { _id: 1, serialNumber: 1, 'custom.name': 1 }
-    ).lean();
+    ).lean<GamingMachine[]>();
 
     const machineNameMap = new Map<string, string>();
     for (const machine of machines) {
       const id = String(machine._id);
-      const serial = (machine.serialNumber as string | undefined)?.trim() || '';
-      const customName = ((machine.custom as { name?: string } | undefined)?.name || '').trim();
+      const serial = machine.serialNumber?.trim() || '';
+      const customName = (machine.custom?.name || '').trim();
       const displayName = serial || customName || id;
       machineNameMap.set(id, displayName);
     }

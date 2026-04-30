@@ -88,6 +88,9 @@ export async function GET(req: NextRequest) {
           rawLicenceeParam,
           includeMachines
         );
+        if (!result || (result.locations && Array.isArray(result.locations) && result.locations.length === 0)) {
+          console.warn('[Collection Reports GET] No locations found or fetch failed');
+        }
         return NextResponse.json(result);
       } catch (error: unknown) {
         const duration = Date.now() - startTime;
@@ -140,6 +143,13 @@ export async function GET(req: NextRequest) {
         locationName || locationIds || (locationId ? [locationId] : undefined),
         licencee
       );
+      // Check for error returns (helpers return '-' or [] on failure)
+      if (summary.drop === '-' && summary.gross === '-') {
+        console.warn('[Collection Reports GET] Failed to fetch summary');
+      }
+      if (details.length === 0) {
+        console.warn('[Collection Reports GET] No details found for location report');
+      }
       return NextResponse.json({ summary, details });
     }
 
@@ -219,12 +229,21 @@ export async function GET(req: NextRequest) {
       locationIds || (locationId ? [locationId] : undefined)
     );
 
+    if (!reports || !Array.isArray(reports)) {
+      console.error('[Collection Reports GET] Failed to fetch reports');
+      return NextResponse.json({ error: 'Failed to fetch reports' }, { status: 500 });
+    }
+
     // Filter reports by allowed locations if needed
     // Note: Collection reports store location NAME in the location field, not ID
     let paginatedReports = reports;
     if (allowedLocationIds !== 'all') {
       const allowedLocationNames =
         await getLocationNamesFromIds(allowedLocationIds);
+      if (!Array.isArray(allowedLocationNames)) {
+        console.error('[Collection Reports GET] Failed to fetch location names');
+        return NextResponse.json({ error: 'Failed to fetch location names' }, { status: 500 });
+      }
       paginatedReports = reports.filter(report => {
         const reportLocationName = String(report.location);
         return allowedLocationNames.includes(reportLocationName);
@@ -375,12 +394,12 @@ export async function POST(req: NextRequest) {
 
         // Add granular machine data to changes for better traceability
         if (body.machines && Array.isArray(body.machines)) {
-          body.machines.forEach((m: Record<string, unknown>, index: number) => {
-            const machineName = m.machineCustomName || m.machineName || m.serialNumber || `Machine ${index + 1}`;
+          body.machines.forEach((machineItem: Record<string, unknown>, index: number) => {
+            const machineName = machineItem.machineCustomName || machineItem.machineName || machineItem.serialNumber || `Machine ${index + 1}`;
             createChanges.push({
               field: `machine_${index}_details`,
               oldValue: null,
-              newValue: `${machineName}: In: ${m.metersIn}, Out: ${m.metersOut}${m.prevIn !== undefined ? ` (Prev: ${m.prevIn} In, ${m.prevOut} Out)` : ''}${m.ramClear ? ', RAM Cleared' : ''}${m.notes ? `, Notes: ${m.notes}` : ''}`,
+              newValue: `${machineName}: In: ${machineItem.metersIn}, Out: ${machineItem.metersOut}${machineItem.prevIn !== undefined ? ` (Prev: ${machineItem.prevIn} In, ${machineItem.prevOut} Out)` : ''}${machineItem.ramClear ? ', RAM Cleared' : ''}${machineItem.notes ? `, Notes: ${machineItem.notes}` : ''}`,
             });
           });
         }

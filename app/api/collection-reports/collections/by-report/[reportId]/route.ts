@@ -66,18 +66,14 @@ export async function GET(
     // ============================================================================
     // STEP 5: Try to find collections by locationReportId
     // ============================================================================
-    let collections = (await Collections.find({
+    let collections = await Collections.find({
       locationReportId: reportId,
-    }).lean()) as CollectionDocument[];
+    }).lean<CollectionDocument[]>();
 
-    // ============================================================================
-    // STEP 6: Fallback to finding collections by location name if needed
-    // ============================================================================
-    // If no collections found by locationReportId, try by location name
     if (collections.length === 0 && collectionReport.locationName) {
-      collections = (await Collections.find({
+      collections = await Collections.find({
         location: collectionReport.locationName,
-      }).lean()) as CollectionDocument[];
+      }).lean<CollectionDocument[]>();
     }
 
     // ============================================================================

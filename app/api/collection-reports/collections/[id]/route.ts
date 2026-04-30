@@ -14,62 +14,69 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { recalculateMachineCollections } from '@/app/api/lib/helpers/collectionReport/recalculation';
+import { updateRegularAndRamClearMeters } from '@/app/api/lib/helpers/collectionReport/reportCreation';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import type { PreviousCollectionMeters } from '@/lib/types/collection';
+import type { CollectionDocument, PreviousCollectionMeters } from '@/lib/types/collection';
+import type { GamingMachine } from '@/shared/types';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { calculateMovement } from '@/lib/utils/movement';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * PATCH /api/collections/[id]
+ * PATCH /api/collection-reports/collections/[id]
  *
- * Updates a single collection document and triggers all dependent recalculations.
- * When meter or timestamp fields change, movement/softMeters are recalculated,
- * sasMeters are re-derived (including a full SAS time-range query when the timestamp
- * moves), the machine's collectionMetersHistory is kept in sync, and a cascade
- * recalculation is run across all other collections for the same machine. Every
- * update is recorded in the activity log.
+ * EDITS a single collection document (NOT creation flow).
+ * Used when user edits a collection entry in the UI to correct values.
  *
- * URL params:
- * @param id                  {string} Required (path). The _id of the collection to update.
+ * Key behaviors:
+ * - Updates collection document with edited values (metersIn, metersOut, prevIn, prevOut, notes, etc.)
+ * - Recalculates movement and SAS metrics when meters change
+ * - Recalculates SAS time ranges when timestamp changes
+ * - Updates machine collectionMetersHistory entry
+ * - Does NOT update machine.collectionMeters (only creation flow does this)
+ * - Calls updateRegularAndRamClearMeters with fully updated document
+ *
+ * @see updateMachineCollectionData — for CREATION flow (updates machine meters)
+ *
+ * @param {string} id - Required (path). The _id of the collection to update.
  *
  * Body fields:
- * @param metersIn            {number}        Optional. New meter-in reading. Triggers movement
+ * @param {number} [metersIn] - Optional. New meter-in reading. Triggers movement
  *                                            recalculation and cascade.
- * @param metersOut           {number}        Optional. New meter-out reading. Triggers movement
+ * @param {number} [metersOut] - Optional. New meter-out reading. Triggers movement
  *                                            recalculation and cascade.
- * @param sasEndTime          {string|Date}   Optional. Override for sasMeters.sasEndTime.
+ * @param {string|Date} [sasEndTime] - Optional. Override for sasMeters.sasEndTime.
  *                                            Supplied at the top level but mapped internally to
  *                                            sasMeters.sasEndTime via dot-notation to avoid
  *                                            Mongoose strict-mode stripping.
- * @param sasStartTime        {string|Date}   Optional. Override for sasMeters.sasStartTime.
+ * @param {string|Date} [sasStartTime] - Optional. Override for sasMeters.sasStartTime.
  *                                            Same top-level → nested mapping as sasEndTime.
- * @param timestamp           {string|Date}   Optional. Collection timestamp. When changed,
+ * @param {string|Date} [timestamp] - Optional. Collection timestamp. When changed,
  *                                            the full SAS time range is recalculated from
  *                                            scratch (using sasStartTime/sasEndTime from this
  *                                            same request if also provided, otherwise reset).
  *                                            Triggers movement recalculation and cascade.
- * @param collectionTime      {string|Date}   Optional. Alternative collection timestamp field.
+ * @param {string|Date} [collectionTime] - Optional. Alternative collection timestamp field.
  *                                            Treated identically to timestamp for recalculation
  *                                            purposes.
- * @param ramClear            {boolean}       Optional. Flags that a RAM-clear occurred.
+ * @param {boolean} [ramClear] - Optional. Flags that a RAM-clear occurred.
  *                                            Triggers movement recalculation and cascade.
- * @param ramClearMetersIn    {number}        Optional. Post-RAM-clear meter-in value used when
+ * @param {number} [ramClearMetersIn] - Optional. Post-RAM-clear meter-in value used when
  *                                            computing softMeters. Triggers cascade.
- * @param ramClearMetersOut   {number}        Optional. Post-RAM-clear meter-out value used when
+ * @param {number} [ramClearMetersOut] - Optional. Post-RAM-clear meter-out value used when
  *                                            computing softMeters. Triggers cascade.
- * @param ramClearCoinIn      {number}        Optional. Post-RAM-clear coin-in value; triggers
+ * @param {number} [ramClearCoinIn] - Optional. Post-RAM-clear coin-in value; triggers
  *                                            cascade recalculation.
- * @param ramClearCoinOut     {number}        Optional. Post-RAM-clear coin-out value; triggers
+ * @param {number} [ramClearCoinOut] - Optional. Post-RAM-clear coin-out value; triggers
  *                                            cascade recalculation.
- * @param notes               {string}        Optional. Free-text notes on the collection entry.
- * @param prevIn              {number}        Optional. Override for the previous meter-in value
+ * @param {string} [notes] - Optional. Free-text notes on the collection entry.
+ * @param {number} [prevIn] - Optional. Override for the previous meter-in value
  *                                            used in movement calculation. Defaults to the
  *                                            collection document's stored prevIn.
- * @param prevOut             {number}        Optional. Override for the previous meter-out value
+ * @param {number} [prevOut] - Optional. Override for the previous meter-out value
  *                                            used in movement calculation. Defaults to the
  *                                            collection document's stored prevOut.
  *
@@ -114,7 +121,7 @@ export async function PATCH(
     // ============================================================================
     // STEP 3.5: Fetch original collection BEFORE update for activity logging
     // ============================================================================
-    const originalCollectionForLog = await Collections.findOne({ _id: collectionId }).lean();
+    const originalCollectionForLog = await Collections.findOne({ _id: collectionId }).lean<CollectionDocument | null>();
 
     // ============================================================================
     // STEP 4: Remove immutable _id field if present
@@ -387,10 +394,10 @@ export async function PATCH(
           sasTimeRangeRecalculated: updateData.timestamp !== undefined,
         });
 
-        // ============================================================================
-        // STEP 7: Update machine collectionMetersHistory if needed
-        // ============================================================================
-        // (This step is handled later in the code)
+        // Update regular and RAM clear meters with the fully updated collection document
+        if (finalUpdatedCollection) {
+          await updateRegularAndRamClearMeters(finalUpdatedCollection);
+        }
 
         return NextResponse.json({
           success: true,
@@ -418,17 +425,15 @@ export async function PATCH(
         // CRITICAL: Use findOne with _id instead of findById (repo rule)
         const currentMachine = await Machine.findOne({
           _id: updatedCollection.machineId,
-        }).lean();
+        }).lean<GamingMachine | null>();
         if (currentMachine) {
-          const currentMachineData = currentMachine as Record<string, unknown>;
-          const currentCollectionMeters =
-            currentMachineData.collectionMeters as
-              | { metersIn: number; metersOut: number }
-              | undefined;
+          const currentCollectionMeters = currentMachine.collectionMeters as
+            | { metersIn: number; metersOut: number }
+            | undefined;
 
           // Check if there's already a history entry with the same locationReportId
           const existingHistoryEntry = (
-            currentMachine as {
+            currentMachine as GamingMachine & {
               collectionMetersHistory?: Array<{
                 locationReportId: string;
                 prevMetersIn?: number;
@@ -526,7 +531,7 @@ export async function PATCH(
             // This ensures proper timing and prevents premature meter updates
 
             // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-            await Machine.findOneAndUpdate(
+            const historyUpdateResult = await Machine.findOneAndUpdate(
               { _id: updatedCollection.machineId },
               { $set: updateData },
               {
@@ -538,6 +543,9 @@ export async function PATCH(
                 new: true,
               }
             );
+            if (!historyUpdateResult) {
+              console.warn(`[Collections PATCH] Machine ${updatedCollection.machineId} not found for history update`);
+            }
 
             console.warn('Updated existing collectionMetersHistory entry:', {
               machineId: updatedCollection.machineId,
@@ -639,19 +647,24 @@ export async function PATCH(
 
     // Get the final updated collection (with movement if recalculated)
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    let finalCollection = await Collections.findOne({ _id: collectionId }).lean();
+    let finalCollection = await Collections.findOne({ _id: collectionId }).lean<CollectionDocument>();
     if (shouldCascade && updatedCollection.machineId) {
       try {
         await recalculateMachineCollections(
           String(updatedCollection.machineId)
         );
-        finalCollection = await Collections.findOne({ _id: collectionId }).lean();
+        finalCollection = await Collections.findOne({ _id: collectionId }).lean<CollectionDocument>();
       } catch (recalcError) {
         console.error(
           'Failed to recalculate machine collections:',
           recalcError
         );
       }
+    }
+
+    // Update regular and RAM clear meters with the fully updated collection document
+    if (finalCollection) {
+      await updateRegularAndRamClearMeters(finalCollection);
     }
 
     // ============================================================================

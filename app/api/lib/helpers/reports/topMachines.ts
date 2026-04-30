@@ -26,6 +26,11 @@ function calculateTopMachinesDateRange(
   startDate?: string | null,
   endDate?: string | null
 ): { start: Date; end: Date } {
+  if (!timePeriod || typeof timePeriod !== 'string') {
+    console.error('[calculateTopMachinesDateRange] timePeriod is required and must be a string');
+    const now = new Date();
+    return { start: now, end: now };
+  }
   const now = new Date();
 
   if (timePeriod === 'Custom' && startDate && endDate) {
@@ -74,6 +79,10 @@ function buildTopMachinesPipeline(
   start: Date,
   end: Date
 ): PipelineStage[] {
+  if (!locationId || !start || !end) {
+    console.error('[buildTopMachinesPipeline] locationId, start, and end are required');
+    return [];
+  }
   return [
     {
       $match: {
@@ -158,6 +167,11 @@ export async function getTopMachinesByLocation(
   startDate?: string | null,
   endDate?: string | null
 ): Promise<unknown[]> {
+  if (!locationId || !timePeriod) {
+    console.error('[getTopMachinesByLocation] locationId and timePeriod are required');
+    return [];
+  }
+
   const { start, end } = calculateTopMachinesDateRange(
     timePeriod,
     startDate,
@@ -193,6 +207,10 @@ function buildTopMachinesDetailedPipeline(
   locationIds?: string | null,
   limit: number = 5
 ): PipelineStage[] {
+  if (!startDate || !endDate) {
+    console.error('[buildTopMachinesDetailedPipeline] startDate and endDate are required');
+    return [];
+  }
   const pipeline: PipelineStage[] = [
     {
       $match: {
@@ -447,6 +465,11 @@ export async function getTopMachinesDetailed(
   locationIds?: string | null,
   limit: number = 5
 ): Promise<unknown[]> {
+  if (!timePeriod) {
+    console.error('[getTopMachinesDetailed] timePeriod is required');
+    return [];
+  }
+
   const { startDate, endDate } = getDatesForTimePeriod(
     timePeriod as TimePeriod
   );

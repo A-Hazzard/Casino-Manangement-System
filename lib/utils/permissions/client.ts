@@ -47,6 +47,8 @@ export const hasPageAccess = (
   userRoles: UserRole[],
   page: PageName
 ): boolean => {
+  if (!Array.isArray(userRoles)) { console.error('[hasPageAccess] userRoles is required'); return false; }
+  if (!page) { console.error('[hasPageAccess] page is required'); return false; }
   const pagePermissions: Record<PageName, UserRole[]> = {
     dashboard: ['developer', 'owner', 'admin', 'manager', 'location admin'],
     machines: [
@@ -147,6 +149,9 @@ export const hasTabAccess = (
   page: string,
   tab: string
 ): boolean => {
+  if (!Array.isArray(userRoles)) { console.error('[hasTabAccess] userRoles is required'); return false; }
+  if (!page) { console.error('[hasTabAccess] page is required'); return false; }
+  if (!tab) { console.error('[hasTabAccess] tab is required'); return false; }
   const tabPermissions: Record<string, UserRole[]> = {
     'administration-users': [
       'developer',
@@ -198,6 +203,7 @@ export const hasTabAccess = (
  * @returns boolean indicating if user has admin access
  */
 export const hasAdminAccess = (userRoles: UserRole[]): boolean => {
+  if (!Array.isArray(userRoles)) { console.error('[hasAdminAccess] userRoles is required'); return false; }
   return (
     userRoles.includes('developer') ||
     userRoles.includes('owner') ||
@@ -211,6 +217,7 @@ export const hasAdminAccess = (userRoles: UserRole[]): boolean => {
  * @returns boolean indicating if user has manager access
  */
 export const hasManagerAccess = (userRoles: UserRole[]): boolean => {
+  if (!Array.isArray(userRoles)) { console.error('[hasManagerAccess] userRoles is required'); return false; }
   return HIGH_PRIORITY_ROLES.some((role: UserRole) => userRoles.includes(role));
 };
 
@@ -224,6 +231,8 @@ export const shouldShowNavigationLink = (
   userRoles: UserRole[],
   page: PageName
 ): boolean => {
+  if (!Array.isArray(userRoles)) { console.error('[shouldShowNavigationLink] userRoles is required'); return false; }
+  if (!page) { console.error('[shouldShowNavigationLink] page is required'); return false; }
   // Special cases for direct link access
   if (page === 'location-details' || page === 'member-details') {
     return false; // These are accessed via direct links only
@@ -527,4 +536,18 @@ export const canPermanentlyDeleteMachines = (
   return ['developer', 'owner', 'admin'].some(role =>
     userRoles.includes(role as UserRole)
   );
+};
+
+/**
+ * Check if user can permanently delete locations
+ * @param userRoles - Array of user's roles
+ * @returns boolean indicating if user can permanently delete locations
+ */
+export const canPermanentlyDeleteLocations = (
+  userRoles: UserRole[] | undefined
+): boolean => {
+  if (!userRoles || userRoles.length === 0) return false;
+
+  // Only developers can permanently delete locations
+  return ['developer'].some(role => userRoles.includes(role as UserRole));
 };

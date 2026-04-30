@@ -34,9 +34,10 @@ import {
     ExternalLink,
     HelpCircle,
     Home,
+    MonitorOff,
     Search,
     Server,
-} from 'lucide-react';
+ } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 type ReportsLocationsTableProps = {
@@ -103,12 +104,12 @@ export default function ReportsLocationsTable({
 
   const filteredLocations = locations.filter(location => {
     if (!searchTerm.trim()) return true;
-    const q = searchTerm.toLowerCase().trim();
+    const searchQuery = searchTerm.toLowerCase().trim();
     const name = String(location.locationName || '').toLowerCase();
     const id = String(
       ((location as Record<string, unknown>).location as string) || ''
     ).toLowerCase();
-    return name.includes(q) || id.includes(q);
+    return name.includes(searchQuery) || id.includes(searchQuery);
   });
 
   const sortedLocations = [...filteredLocations].sort((a, b) => {
@@ -238,11 +239,20 @@ export default function ReportsLocationsTable({
               {Boolean(
                 (location as { hasSmib?: boolean }).hasSmib ||
                   !(location as { noSMIBLocation?: boolean }).noSMIBLocation
-              ) && (
+              ) && !(location as { noSMIBLocation?: boolean }).noSMIBLocation && (
                 <div className="group relative inline-flex flex-shrink-0">
                   <Server className="h-4 w-4 text-blue-600" />
                   <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                     SMIB Location
+                  </div>
+                </div>
+              )}
+              {/* No SMIB Icon - Show if location is marked as no SMIB */}
+              {Boolean((location as { noSMIBLocation?: boolean }).noSMIBLocation) && (
+                <div className="group relative inline-flex flex-shrink-0">
+                  <MonitorOff className="h-4 w-4 text-gray-500" />
+                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                    No SMIB Location
                   </div>
                 </div>
               )}
@@ -625,73 +635,82 @@ export default function ReportsLocationsTable({
                                 ) : null;
                               })()}
                             </button>
-                          ) : (
-                            <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
-                              <span>{location.locationName}</span>
-                              {/* SMIB Icon - Show if location has SMIB machines */}
-                              {Boolean(
-                                (location as { hasSmib?: boolean }).hasSmib ||
-                                  !(location as { noSMIBLocation?: boolean })
-                                    .noSMIBLocation
-                              ) && (
-                                <div className="group relative inline-flex flex-shrink-0">
-                                  <Server className="h-4 w-4 text-blue-600" />
-                                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                                    SMIB Location
-                                  </div>
-                                </div>
-                              )}
-                              {/* Local Server Icon */}
-                              {Boolean(
-                                (location as { isLocalServer?: boolean })
-                                  .isLocalServer
-                              ) && (
-                                <div className="group relative inline-flex flex-shrink-0">
-                                  <Home className="h-4 w-4 text-purple-600" />
-                                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                                    Local Server
-                                  </div>
-                                </div>
-                              )}
-                              {/* Unknown Type Icon - Show if location doesn't match any known type */}
-                              {(() => {
-                                const hasSmib = Boolean(
-                                  (location as { hasSmib?: boolean }).hasSmib ||
-                                    !(location as { noSMIBLocation?: boolean })
-                                      .noSMIBLocation
-                                );
-                                const isLocalServer = Boolean(
-                                  (location as { isLocalServer?: boolean })
-                                    .isLocalServer
-                                );
-                                const hasMembership = Boolean(
-                                  (
-                                    location as {
-                                      membershipEnabled?: boolean;
-                                    }
-                                  ).membershipEnabled ||
-                                    (
-                                      location as {
-                                        enableMembership?: boolean;
-                                      }
-                                    ).enableMembership
-                                );
+                           ) : (
+                             <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                               <span>{location.locationName}</span>
+                               {/* SMIB Icon - Show if location has SMIB machines */}
+                               {Boolean(
+                                 (location as { hasSmib?: boolean }).hasSmib ||
+                                   !(location as { noSMIBLocation?: boolean })
+                                     .noSMIBLocation
+                               ) && !(location as { noSMIBLocation?: boolean }).noSMIBLocation && (
+                                 <div className="group relative inline-flex flex-shrink-0">
+                                   <Server className="h-4 w-4 text-blue-600" />
+                                   <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                     SMIB Location
+                                   </div>
+                                 </div>
+                               )}
+                               {/* No SMIB Icon */}
+                               {Boolean((location as { noSMIBLocation?: boolean }).noSMIBLocation) && (
+                                 <div className="group relative inline-flex flex-shrink-0">
+                                   <MonitorOff className="h-4 w-4 text-gray-500" />
+                                   <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                     No SMIB Location
+                                   </div>
+                                 </div>
+                               )}
+                               {/* Local Server Icon */}
+                               {Boolean(
+                                 (location as { isLocalServer?: boolean })
+                                   .isLocalServer
+                               ) && (
+                                 <div className="group relative inline-flex flex-shrink-0">
+                                   <Home className="h-4 w-4 text-purple-600" />
+                                   <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                     Local Server
+                                   </div>
+                                 </div>
+                               )}
+                               {/* Unknown Type Icon - Show if location doesn't match any known type */}
+                               {(() => {
+                                 const hasSmib = Boolean(
+                                   (location as { hasSmib?: boolean }).hasSmib ||
+                                     !(location as { noSMIBLocation?: boolean })
+                                       .noSMIBLocation
+                                 ) && !(location as { noSMIBLocation?: boolean }).noSMIBLocation;
+                                 const isLocalServer = Boolean(
+                                   (location as { isLocalServer?: boolean })
+                                     .isLocalServer
+                                 );
+                                 const hasMembership = Boolean(
+                                   (
+                                     location as {
+                                       membershipEnabled?: boolean;
+                                     }
+                                   ).membershipEnabled ||
+                                     (
+                                       location as {
+                                         enableMembership?: boolean;
+                                       }
+                                     ).enableMembership
+                                 );
 
-                                // Show unknown icon if location doesn't match any known type
-                                const isUnknownType =
-                                  !hasSmib && !isLocalServer && !hasMembership;
+                                 // Show unknown icon if location doesn't match any known type
+                                 const isUnknownType =
+                                   !hasSmib && !isLocalServer && !hasMembership && !(location as { noSMIBLocation?: boolean }).noSMIBLocation;
 
-                                return isUnknownType ? (
-                                  <div className="group relative inline-flex flex-shrink-0">
-                                    <HelpCircle className="h-4 w-4 text-gray-500" />
-                                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                                      Unknown location type
-                                    </div>
-                                  </div>
-                                ) : null;
-                              })()}
-                            </div>
-                          )}
+                                 return isUnknownType ? (
+                                   <div className="group relative inline-flex flex-shrink-0">
+                                     <HelpCircle className="h-4 w-4 text-gray-500" />
+                                     <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                       Unknown location type
+                                     </div>
+                                   </div>
+                                 ) : null;
+                               })()}
+                             </div>
+                           )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-left">
                           <Badge

@@ -9,6 +9,7 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
+import type { GamingLocationDocument } from '@shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -104,7 +105,7 @@ export async function GET(req: NextRequest) {
         const aceEnabledLocs = await GamingLocations.find(
           { aceEnabled: true },
           { _id: 1 }
-        ).lean();
+        ).lean<GamingLocationDocument[]>();
         const aceEnabledLocIds = aceEnabledLocs.map(loc => String(loc._id));
 
         if (onlineStatus === 'online') {

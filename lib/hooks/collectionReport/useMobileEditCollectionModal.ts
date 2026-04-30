@@ -18,6 +18,7 @@ import type {
   CollectionReportMachineSummary,
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
+import type { VariationsCheckResponse } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
 import { calculateCabinetMovement } from '@/lib/utils/movement';
 import axios, { type AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -210,7 +211,7 @@ export function useMobileEditCollectionModal({
     });
 
     const totalGross = totalMovementData.reduce(
-      (sum, m) => sum + m.gross,
+      (sum, machineEntry) => sum + machineEntry.gross,
       0
     );
 
@@ -294,7 +295,7 @@ export function useMobileEditCollectionModal({
   // State transitions
   const transitions = {
     selectLocation: (locationId: string) => {
-      const location = locations.find(l => String(l._id) === locationId);
+      const location = locations.find(location => String(location._id) === locationId);
       const locationName = location?.name || '';
 
       // Update local state
@@ -345,14 +346,14 @@ export function useMobileEditCollectionModal({
           sasEndTime: null,
           collectionTime: prev.formData.collectionTime || new Date(),
           prevIn: (() => {
-            const s = machine.sasMeters?.drop ?? null;
-            const l = machine.collectionMeters?.metersIn;
-            return (l !== null && l !== undefined && l > 0) ? l.toString() : ((s !== null && s > 0) ? s.toString() : '');
+            const sasDrop = machine.sasMeters?.drop ?? null;
+            const collectionIn = machine.collectionMeters?.metersIn;
+            return (collectionIn !== null && collectionIn !== undefined && collectionIn > 0) ? collectionIn.toString() : ((sasDrop !== null && sasDrop > 0) ? sasDrop.toString() : '');
           })(),
           prevOut: (() => {
-            const s = machine.sasMeters?.totalCancelledCredits ?? null;
-            const l = machine.collectionMeters?.metersOut;
-            return (l !== null && l !== undefined && l > 0) ? l.toString() : ((s !== null && s > 0) ? s.toString() : '');
+            const sasCancelled = machine.sasMeters?.totalCancelledCredits ?? null;
+            const collectionOut = machine.collectionMeters?.metersOut;
+            return (collectionOut !== null && collectionOut !== undefined && collectionOut > 0) ? collectionOut.toString() : ((sasCancelled !== null && sasCancelled > 0) ? sasCancelled.toString() : '');
           })(),
         },
       }));
@@ -444,7 +445,7 @@ export function useMobileEditCollectionModal({
    */
   const getLocationIdFromMachine = useCallback(
     (locationName: string) => {
-      const matchingLoc = locations.find(l => l.name === locationName);
+      const matchingLoc = locations.find(location => location.name === locationName);
       return matchingLoc ? String(matchingLoc._id) : null;
     },
     [locations]
@@ -454,7 +455,16 @@ export function useMobileEditCollectionModal({
 
   // Add or update machine in collection list
   const addMachineToList = useCallback(async () => {
-    if (!modalState.selectedMachineData || modalState.isProcessing) return;
+    console.log('[addMachineToList] Called:', { 
+      selectedMachineData: !!modalState.selectedMachineData, 
+      isProcessing: modalState.isProcessing,
+      editingEntryId: modalState.editingEntryId 
+    });
+    
+    if (!modalState.selectedMachineData || modalState.isProcessing) {
+      console.log('[addMachineToList] Early return - no selected machine or processing');
+      return;
+    }
 
     // Use full validation on submit — use sasMeters as baseline for rollover check, fall back to collectionMeters
     // Full validation — prioritize manual overrides from formData
@@ -462,16 +472,16 @@ export function useMobileEditCollectionModal({
     const valPrevIn = modalState.formData.prevIn !== '' 
       ? Number(modalState.formData.prevIn)
       : (() => {
-          const s = msd.sasMeters?.drop ?? null;
-          const l = msd.collectionMeters?.metersIn;
-          return (l !== null && l !== undefined && l > 0) ? l : ((s !== null && s > 0) ? s : 0);
+          const sasDrop = msd.sasMeters?.drop ?? null;
+          const collectionIn = msd.collectionMeters?.metersIn;
+          return (collectionIn !== null && collectionIn !== undefined && collectionIn > 0) ? collectionIn : ((sasDrop !== null && sasDrop > 0) ? sasDrop : 0);
         })();
     const valPrevOut = modalState.formData.prevOut !== '' 
       ? Number(modalState.formData.prevOut)
       : (() => {
-          const s = msd.sasMeters?.totalCancelledCredits ?? null;
-          const l = msd.collectionMeters?.metersOut;
-          return (l !== null && l !== undefined && l > 0) ? l : ((s !== null && s > 0) ? s : 0);
+          const sasCancelled = msd.sasMeters?.totalCancelledCredits ?? null;
+          const collectionOut = msd.collectionMeters?.metersOut;
+          return (collectionOut !== null && collectionOut !== undefined && collectionOut > 0) ? collectionOut : ((sasCancelled !== null && sasCancelled > 0) ? sasCancelled : 0);
         })();
     const validation = validateMachineEntry(
       String(msd._id),
@@ -536,7 +546,7 @@ export function useMobileEditCollectionModal({
           : undefined,
         locationReportId: isEditing
           ? modalState.collectedMachines.find(
-            c => c._id === modalState.editingEntryId
+            collectedEntry => collectedEntry._id === modalState.editingEntryId
           )?.locationReportId || reportId
           : reportId,
         isCompleted: false,
@@ -560,8 +570,8 @@ export function useMobileEditCollectionModal({
 
       // Calculate new state values
       const newCollectedMachines = isEditing
-        ? modalState.collectedMachines.map(m =>
-          m._id === modalState.editingEntryId ? createdCollection : m
+        ? modalState.collectedMachines.map(machineEntry =>
+          machineEntry._id === modalState.editingEntryId ? createdCollection : machineEntry
         )
         : [...modalState.collectedMachines, createdCollection];
 
@@ -587,7 +597,7 @@ export function useMobileEditCollectionModal({
         const ramClear = modalState.formData.ramClear;
         const notes = modalState.formData.notes;
         if (isEditing) {
-          const prevEntry = modalState.collectedMachines.find(m => m._id === modalState.editingEntryId);
+          const prevEntry = modalState.collectedMachines.find(collectedMachine => collectedMachine._id === modalState.editingEntryId);
           const changes: string[] = [];
           if (prevEntry && prevEntry.metersIn !== metersIn) changes.push(`MIn: ${prevEntry.metersIn} → ${metersIn}`);
           if (prevEntry && prevEntry.metersOut !== metersOut) changes.push(`MOut: ${prevEntry.metersOut} → ${metersOut}`);
@@ -702,27 +712,21 @@ export function useMobileEditCollectionModal({
       try {
         await axios.delete(`/api/collection-reports/collections?id=${entryId}`);
 
-        // Calculate new state values
+// Calculate new state values
         const newCollectedMachines = modalState.collectedMachines.filter(
-          m => m._id !== entryId
+          machine => machine._id !== entryId
         );
         const newLockedLocationId =
           newCollectedMachines.length === 0
             ? undefined
             : modalState.lockedLocationId;
 
-        // Update Zustand store first
-        setStoreCollectedMachines(newCollectedMachines);
-        if (newLockedLocationId !== modalState.lockedLocationId) {
-          setStoreLockedLocation(newLockedLocationId);
-        }
-
         // Update local UI state
         setModalState(prev => ({
           ...prev,
           collectedMachines: newCollectedMachines,
           originalCollections: prev.originalCollections.filter(
-            m => m._id !== entryId
+            machine => machine._id !== entryId
           ),
           lockedLocationId: newLockedLocationId,
           isProcessing: false,
@@ -751,21 +755,21 @@ export function useMobileEditCollectionModal({
       );
 
       if (!machine && entry.location) {
-        const location = locations.find(loc => loc.name === entry.location);
-        if (location && location.machines) {
-          machine = location.machines.find(
+        const foundLocation = locations.find(loc => loc.name === entry.location);
+        if (foundLocation && foundLocation.machines) {
+          machine = foundLocation.machines.find(
             m => String(m._id) === entry.machineId
           );
 
           setModalState(prev => ({
             ...prev,
-            availableMachines: location.machines || [],
-            selectedLocation: String(location._id),
-            selectedLocationName: location.name,
+            availableMachines: foundLocation.machines || [],
+            selectedLocation: String(foundLocation._id),
+            selectedLocationName: foundLocation.name,
           }));
 
-          setStoreAvailableMachines(location.machines || []);
-          setStoreSelectedLocation(String(location._id), location.name);
+          setStoreAvailableMachines(foundLocation.machines || []);
+          setStoreSelectedLocation(String(foundLocation._id), foundLocation.name);
         }
       }
 
@@ -823,7 +827,7 @@ export function useMobileEditCollectionModal({
   ]);
 
   // Update collection report handler
-  const updateCollectionReportHandler = useCallback(async (reconciliationData?: unknown) => {
+  const updateCollectionReportHandler = useCallback(async (reconciliationData?: VariationsCheckResponse) => {
     if (
       collectedMachines.length === 0 ||
       !selectedLocationId ||
@@ -835,7 +839,7 @@ export function useMobileEditCollectionModal({
     // Validation checks for unsaved changes
     if (modalState.editingEntryId && modalState.selectedMachineData) {
       const editingEntry = collectedMachines.find(
-        e => e._id === modalState.editingEntryId
+        entry => entry._id === modalState.editingEntryId
       );
       if (editingEntry) {
         const formMetersIn = modalState.formData.metersIn
@@ -874,6 +878,9 @@ export function useMobileEditCollectionModal({
       return;
     }
 
+    // Clear unsaved edits flag BEFORE async operations (prevents race with close handler)
+    setModalState(prev => ({ ...prev, hasUnsavedEdits: false }));
+
     setModalState(prev => ({ ...prev, isProcessing: true }));
 
     try {
@@ -902,7 +909,7 @@ export function useMobileEditCollectionModal({
 
       for (const current of collectedMachines) {
         const original = modalState.originalCollections.find(
-          o => o._id === current._id
+          originalEntry => originalEntry._id === current._id
         );
         if (original) {
           const metersInChanged = current.metersIn !== original.metersIn;
@@ -961,6 +968,37 @@ export function useMobileEditCollectionModal({
         });
       }
 
+      // Calculate totals from collected machines for proper API update
+      const totalMovementData = collectedMachines.map(entry => {
+        const movement = calculateCabinetMovement(
+          entry.metersIn || 0,
+          entry.metersOut || 0,
+          entry.prevIn || 0,
+          entry.prevOut || 0,
+          entry.ramClear || false,
+          undefined,
+          undefined,
+          entry.ramClearMetersIn,
+          entry.ramClearMetersOut
+        );
+        return {
+          drop: movement.metersIn,
+          cancelledCredits: movement.metersOut,
+          gross: movement.gross,
+          sasGross: entry.sasMeters?.gross || 0,
+        };
+      });
+
+      const totals = totalMovementData.reduce(
+        (prev, curr) => ({
+          drop: prev.drop + curr.drop,
+          cancelledCredits: prev.cancelledCredits + curr.cancelledCredits,
+          gross: prev.gross + curr.gross,
+          sasGross: prev.sasGross + curr.sasGross,
+        }),
+        { drop: 0, cancelledCredits: 0, gross: 0, sasGross: 0 }
+      );
+
       // Update collection report financials
       const payload = {
         variance: Number(modalState.financials.variance) || 0,
@@ -979,10 +1017,13 @@ export function useMobileEditCollectionModal({
         locationName: selectedLocationName,
         locationReportId: reportId,
         location: selectedLocationId || '',
-        totalDrop: 0,
-        totalCancelled: 0,
-        totalGross: 0,
-        totalSasGross: 0,
+        totalDrop: totals.drop,
+        totalCancelled: totals.cancelledCredits,
+        totalGross: totals.gross,
+        totalSasGross: reconciliationData?.machines.reduce(
+          (sum: number, machineData) => sum + (Number(machineData.sasGross) || 0),
+          0
+        ) ?? totals.sasGross,
         timestamp: new Date().toISOString(),
         reconciliation: reconciliationData || null,
         varianceReason: modalState.financials.varianceReason,
@@ -991,6 +1032,7 @@ export function useMobileEditCollectionModal({
         balanceCorrectionReas: modalState.financials.balanceCorrectionReason,
         machines: collectedMachines.map(entry => ({
           machineId: entry.machineId,
+          locationId: entry.location || '',
           metersIn: entry.metersIn || 0,
           metersOut: entry.metersOut || 0,
           prevMetersIn: entry.prevIn || 0,
@@ -1000,6 +1042,9 @@ export function useMobileEditCollectionModal({
               ? entry.timestamp
               : new Date(entry.timestamp),
           locationReportId: entry.locationReportId || reportId,
+          ramClear: entry.ramClear,
+          ramClearMetersIn: entry.ramClearMetersIn,
+          ramClearMetersOut: entry.ramClearMetersOut,
         })),
       };
 
@@ -1173,6 +1218,47 @@ export function useMobileEditCollectionModal({
     }
   }, [modalState.selectedLocation, modalState.lockedLocationId, show, setStoreAvailableMachines]);
 
+  // Detect unsaved changes (dirty state tracking)
+  useEffect(() => {
+    if (
+      modalState.originalCollections.length === 0 ||
+      collectedMachines.length === 0
+    ) {
+      if (modalState.hasUnsavedEdits) {
+        setModalState(prev => ({ ...prev, hasUnsavedEdits: false }));
+      }
+      return;
+    }
+
+    let hasChanges = false;
+    for (const current of collectedMachines) {
+      const original = modalState.originalCollections.find(
+        orig => orig._id === current._id
+      );
+      if (original) {
+        if (
+          current.metersIn !== original.metersIn ||
+          current.metersOut !== original.metersOut ||
+          (current.timestamp &&
+            original.timestamp &&
+            new Date(current.timestamp).getTime() !==
+              new Date(original.timestamp).getTime()) ||
+          (current.collectionTime &&
+            original.collectionTime &&
+            new Date(current.collectionTime).getTime() !==
+              new Date(original.collectionTime).getTime())
+        ) {
+          hasChanges = true;
+          break;
+        }
+      }
+    }
+
+    if (hasChanges !== modalState.hasUnsavedEdits) {
+      setModalState(prev => ({ ...prev, hasUnsavedEdits: hasChanges }));
+    }
+  }, [collectedMachines, modalState.originalCollections]);
+
 
 
   // Reset modal state when modal opens - home screen shows machine cards grid directly
@@ -1188,10 +1274,16 @@ export function useMobileEditCollectionModal({
     }
   }, [show]);
 
+  // Function to clear unsaved edits (exposed for parent components)
+  const clearUnsavedEdits = useCallback(() => {
+    setModalState(prev => ({ ...prev, hasUnsavedEdits: false }));
+  }, [setModalState]);
+
   return {
     // State
     modalState,
     setModalState,
+    clearUnsavedEdits,
     updateAllSasStartDate,
     setUpdateAllSasStartDate,
     updateAllSasEndDate,
@@ -1321,17 +1413,17 @@ export function useMobileEditCollectionModal({
             return await axios.patch(`/api/collection-reports/collections?id=${entry._id}`, patchData);
           })
         );
-        const failed = results.filter(r => r.status === 'rejected').length;
+        const failed = results.filter(result => result.status === 'rejected').length;
         if (failed > 0) {
           toast.error(`${failed} machine${failed > 1 ? 's' : ''} failed to update`);
           return;
         }
 
         // Sync local state
-        const updated = modalState.collectedMachines.map(e => ({
-          ...e,
+        const updated = modalState.collectedMachines.map(entry => ({
+          ...entry,
           sasMeters: {
-            ...e.sasMeters,
+            ...entry.sasMeters,
             ...(startTimeISO ? { sasStartTime: startTimeISO } : {}),
             ...(endTimeISO ? { sasEndTime: endTimeISO } : {}),
           }

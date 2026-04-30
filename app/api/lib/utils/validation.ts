@@ -10,6 +10,11 @@ import bcrypt from 'bcryptjs';
 export function validateEmail(
   emailAddress: UserDocument['emailAddress']
 ): boolean {
+  if (!emailAddress || typeof emailAddress !== 'string') {
+    console.error('[validateEmail] emailAddress is required and must be a string');
+    return false;
+  }
+
   return /\S+@\S+\.\S+/.test(emailAddress);
 }
 
@@ -19,6 +24,11 @@ export function validateEmail(
  * @returns Promise resolving to the hashed password string.
  */
 export async function hashPassword(password: string): Promise<string> {
+  if (!password || typeof password !== 'string') {
+    console.error('[hashPassword] password is required and must be a string');
+    throw new Error('Invalid password');
+  }
+
   const saltRounds = 12;
   return await bcrypt.hash(password, saltRounds);
 }
@@ -33,6 +43,11 @@ export async function comparePassword(
   password: string,
   hashedPassword: string
 ): Promise<boolean> {
+  if (!password || typeof password !== 'string' || !hashedPassword || typeof hashedPassword !== 'string') {
+    console.error('[comparePassword] password and hashedPassword are required and must be strings');
+    return false;
+  }
+
   return await bcrypt.compare(password, hashedPassword);
 }
 

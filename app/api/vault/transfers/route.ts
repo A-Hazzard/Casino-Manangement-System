@@ -8,6 +8,7 @@ import { generateMongoId } from '@/lib/utils/id';
 import type { CreateInterLocationTransferRequest } from '@/shared/types/vault';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
+import type { InterLocationTransferDocument } from '@shared/types';
 
 /**
  * POST /api/vault/transfers
@@ -156,7 +157,7 @@ export async function GET(request: NextRequest) {
           .sort({ createdAt: -1 })
           .skip(skip)
           .limit(limit)
-          .lean(),
+          .lean<InterLocationTransferDocument[]>(),
         InterLocationTransferModel.countDocuments(query),
       ]);
 

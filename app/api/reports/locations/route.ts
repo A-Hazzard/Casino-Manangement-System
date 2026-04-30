@@ -10,6 +10,7 @@ import {
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
+import type { GamingMachine, LicenceeDocument } from '@shared/types';
 import type { LocationDocument } from '@/lib/types/common';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
@@ -118,7 +119,7 @@ export async function GET(req: NextRequest) {
           const licenceeDoc = await Licencee.findOne(
             { _id: resolvedLicencee },
             { name: 1 }
-          ).lean();
+          ).lean<LicenceeDocument>();
           if (licenceeDoc && !Array.isArray(licenceeDoc) && licenceeDoc.name) {
             displayCurrency = getLicenceeCurrency(licenceeDoc.name);
           }
@@ -198,15 +199,15 @@ export async function GET(req: NextRequest) {
 
         // Machine type filters (SMIB, No SMIB, Local Server, Membership, Coordinates)
         if (machineTypeFilter) {
-          const filters = machineTypeFilter.split(',').filter(f => f.trim() !== '');
+          const filters = machineTypeFilter.split(',').filter(type => type.trim() !== '');
 
           const connectionFilters: Record<string, unknown>[] = [];
           const featureFilters: Record<string, unknown>[] = [];
           const qualityFilters: Record<string, unknown>[] = [];
 
           filters.forEach(filter => {
-            const f = filter.trim();
-            switch (f) {
+            const filterItem = filter.trim();
+            switch (filterItem) {
               case 'LocalServersOnly':
                 connectionFilters.push({ isLocalServer: true });
                 break;
@@ -268,9 +269,9 @@ export async function GET(req: NextRequest) {
         // ============================================================================
         // STEP 4: Fetch locations and calculate metrics
         // ============================================================================
-        const locations = (await GamingLocations.find(
+        const locations = await GamingLocations.find(
           locationMatchStage
-        ).lean()) as unknown as LocationDocument[];
+        ).lean<LocationDocument[]>();
 
         if (searchParams.get('summary') === 'true') {
           return await handleSummaryMode(locations, displayCurrency, perfStart);
@@ -296,7 +297,7 @@ export async function GET(req: NextRequest) {
           machineMatch.deletedAt = { $gte: new Date('2025-01-01') };
         }
 
-        const allMachinesData = await Machine.find(machineMatch).lean();
+        const allMachinesData = await Machine.find(machineMatch).lean<GamingMachine[]>();
         const allMachineIds = allMachinesData.map(m => String(m._id));
 
         const locationToMachines = new Map<string, Record<string, unknown>[]>();
@@ -386,7 +387,7 @@ export async function GET(req: NextRequest) {
               new Set(locations.map(l => l.rel?.licencee).filter(Boolean))
             ),
           },
-        }).lean();
+        }).lean<LicenceeDocument[]>();
         const licenceeIncludeJackpotMap = new Map(
           licencees.map(l => [String(l._id), !!l.includeJackpot])
         );

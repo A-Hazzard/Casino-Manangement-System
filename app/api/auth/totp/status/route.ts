@@ -34,14 +34,8 @@ export async function GET() {
       role: user.roles?.[0] || 'cashier',
       email: user.emailAddress,
     });
-  } catch (error: unknown) {
-    console.error(
-      'TOTP Status Error:',
-      error instanceof Error ? error.message : error
-    );
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (e) {
+    console.error('[GET] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

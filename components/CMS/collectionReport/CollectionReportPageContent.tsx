@@ -84,6 +84,7 @@ const CollectionReportPageContent: FC = () => {
     showEditDesktop,
     editingReportId,
     showDeleteConfirmation,
+    isDeleting,
     filters,
     handleTabChange,
     handleRefresh,
@@ -424,6 +425,7 @@ const CollectionReportPageContent: FC = () => {
         showEditDesktop={showEditDesktop}
         editingReportId={editingReportId}
         showDeleteConfirm={showDeleteConfirmation}
+        isDeleting={isDeleting}
         locationsWithMachines={locationsWithMachines}
         onCloseNewMobile={() => setShowNewCollectionMobile(false)}
         onCloseNewDesktop={() => setShowNewCollectionDesktop(false)}

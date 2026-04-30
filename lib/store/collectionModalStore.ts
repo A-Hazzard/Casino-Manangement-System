@@ -200,8 +200,8 @@ const createStore = () => {
 
   updateCollectedMachine: (machineId, updates) =>
     set(state => ({
-      collectedMachines: state.collectedMachines.map(m =>
-        m._id === machineId ? { ...m, ...updates } : m
+      collectedMachines: state.collectedMachines.map(machine =>
+        machine._id === machineId ? { ...machine, ...updates } : machine
       ),
     })),
 

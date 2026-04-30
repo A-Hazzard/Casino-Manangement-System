@@ -3,6 +3,7 @@ import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest } from 'next/server';
 import { Countries } from '../models/countries';
 import { Licencee } from '../models/licencee';
+import type { CountryDocument, LicenceeDocument } from '@shared/types';
 import { generateUniqueLicenceKey } from '../utils/licenceKey';
 import { calculateChanges, logActivity } from './activityLogger';
 import { getUserFromServer } from './users';
@@ -13,6 +14,10 @@ import { getUserFromServer } from './users';
 export async function formatLicenceesForResponse(
   licencees: Record<string, unknown>[]
 ) {
+  if (!Array.isArray(licencees)) {
+    console.error('[formatLicenceesForResponse] licencees is required');
+    return [];
+  }
   const countryIds = Array.from(
     new Set(
       licencees
@@ -31,10 +36,10 @@ export async function formatLicenceesForResponse(
     const countries = await Countries.find(
       { _id: { $in: countryIds } },
       { _id: 1, name: 1 }
-    ).lean();
+    ).lean<CountryDocument[]>();
 
     countries.forEach(country => {
-      countryNameMap.set(country._id as string, country.name as string);
+      countryNameMap.set(country._id, country.name);
     });
   }
 
@@ -101,7 +106,7 @@ export async function getAllLicencees() {
     }
   )
     .sort({ name: 1 })
-    .lean();
+    .lean<LicenceeDocument[]>();
 }
 
 /**
@@ -119,6 +124,14 @@ export async function createLicencee(
   },
   request: NextRequest
 ) {
+  if (!data) {
+    console.error('[createLicencee] data is required');
+    throw new Error('[createLicencee] data is required');
+  }
+  if (!request) {
+    console.error('[createLicencee] request is required');
+    throw new Error('[createLicencee] request is required');
+  }
   const { name, description, country, startDate, expiryDate, includeJackpot, gameDayOffset } =
     data;
   const currentUser = await getUserFromServer();
@@ -166,7 +179,10 @@ export async function createLicencee(
         },
       });
     } catch (logError) {
-      console.error('Failed to log activity:', logError);
+      console.error(
+        '[createLicencee] Failed to log activity:',
+        logError instanceof Error ? logError.message : 'Unknown error'
+      );
     }
   }
 
@@ -196,6 +212,14 @@ export async function updateLicencee(
   },
   request: NextRequest
 ) {
+  if (!data?._id) {
+    console.error('[updateLicencee] data._id is required');
+    throw new Error('[updateLicencee] data._id is required');
+  }
+  if (!request) {
+    console.error('[updateLicencee] request is required');
+    throw new Error('[updateLicencee] request is required');
+  }
   const {
     _id,
     name,
@@ -211,18 +235,7 @@ export async function updateLicencee(
   } = data;
 
   const currentUser = await getUserFromServer();
-  const originalLicencee = (await Licencee.findOne({ _id }).lean()) as {
-    _id: string;
-    name: string;
-    description?: string;
-    country: string;
-    startDate?: Date;
-    expiryDate?: Date;
-    prevStartDate?: Date;
-    prevExpiryDate?: Date;
-    isPaid?: boolean;
-    licenceKey?: string;
-  } | null;
+  const originalLicencee = await Licencee.findOne({ _id }).lean<LicenceeDocument>();
 
   if (!originalLicencee) {
     throw new Error('Licencee not found');
@@ -354,7 +367,10 @@ export async function updateLicencee(
         },
       });
     } catch (logError) {
-      console.error('Failed to log activity:', logError);
+      console.error(
+        '[updateLicencee] Failed to log activity:',
+        logError instanceof Error ? logError.message : 'Unknown error'
+      );
     }
   }
 
@@ -369,6 +385,14 @@ export async function updateLicencee(
  * Soft deletes a licencee with activity logging
  */
 export async function deleteLicencee(_id: string, request: NextRequest) {
+  if (!_id) {
+    console.error('[deleteLicencee] _id is required');
+    throw new Error('[deleteLicencee] _id is required');
+  }
+  if (!request) {
+    console.error('[deleteLicencee] request is required');
+    throw new Error('[deleteLicencee] request is required');
+  }
   const currentUser = await getUserFromServer();
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
   const licenceeToDelete = await Licencee.findOne({ _id });
@@ -445,7 +469,10 @@ export async function deleteLicencee(_id: string, request: NextRequest) {
         },
       });
     } catch (logError) {
-      console.error('Failed to log activity:', logError);
+      console.error(
+        '[deleteLicencee] Failed to log activity:',
+        logError instanceof Error ? logError.message : 'Unknown error'
+      );
     }
   }
 

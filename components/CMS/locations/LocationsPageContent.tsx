@@ -89,6 +89,11 @@ export default function LocationsPageContent() {
     );
   }, [user]);
 
+  const isDeveloper = useMemo(() => {
+    const roles = user?.roles || [];
+    return roles.map((r: string) => r.toLowerCase()).includes('developer');
+  }, [user]);
+
   // ============================================================================
   // Event Handlers
   // ============================================================================
@@ -253,6 +258,7 @@ export default function LocationsPageContent() {
                     onRestore={location => handleRestore(location)}
                     showArchived={locationsPageData.selectedStatus === 'Archived'}
                     canManageLocations={canManageLocations}
+                    isDeveloper={isDeveloper}
                   />
                 ))}
               </div>
@@ -264,6 +270,7 @@ export default function LocationsPageContent() {
                   onLocationClick={handleLocationClick}
                   showArchived={locationsPageData.selectedStatus === 'Archived'}
                   canManageLocations={canManageLocations}
+                  isDeveloper={isDeveloper}
                   onAction={(action, loc) => {
                     if (action === 'edit') openEditModal(loc);
                     if (action === 'delete') openDeleteModal(loc);

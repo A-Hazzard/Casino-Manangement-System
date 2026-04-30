@@ -1,8 +1,3 @@
-/**
- * MongoDB Model Types
- * Type definitions for all Mongoose models in the application.
- * Use Pick<> to select only the fields you need when querying.
- */
 import type { Denomination } from './vault';
 
 export type AcceptedBillDocument = {
@@ -26,32 +21,62 @@ export type ActivityLogDocument = {
     | 'create'
     | 'update'
     | 'delete'
+    | 'restore'
+    | 'archive'
     | 'view'
+    | 'download'
     | 'login_success'
     | 'login_failed'
+    | 'login_blocked'
+    | 'login_error'
     | 'logout'
-    | 'password_change'
-    | 'permission_change'
-    | string;
+    | 'password_reset'
+    | 'account_locked'
+    | 'account_unlocked'
+    | 'cancel'
+    | 'sms_success'
+    | 'sms_failed';
   resource:
     | 'user'
-    | 'member'
-    | 'machine'
-    | 'vault'
-    | 'location'
     | 'licencee'
-    | 'shift'
-    | 'report'
+    | 'member'
+    | 'location'
+    | 'machine'
+    | 'session'
     | 'collection'
-    | string;
-  resourceId?: string;
+    | 'firmware'
+    | 'auth'
+    | 'feedback'
+    | 'collection-report'
+    | 'report'
+    | 'system'
+    | 'vault'
+    | 'cashier_shift'
+    | 'smib'
+    | 'movement_request'
+    | 'sms';
+  resourceId: string;
   resourceName?: string;
+  membershipLog?: boolean;
   details?: string;
   previousData?: unknown;
   newData?: unknown;
   ipAddress?: string;
   userAgent?: string;
+  actor?: {
+    id?: string;
+    email?: string;
+    role?: string;
+  };
+  actionType?: string;
+  entity?: {
+    id?: string;
+    name?: string;
+  };
+  entityType?: string; // Entity type for backward compatibility
   changes?: Array<{ field: string; oldValue: unknown; newValue: unknown }>;
+  description?: string;
+  deletedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 };
@@ -60,14 +85,15 @@ export type CashDeskPayoutDocument = {
   _id: string;
   amount: number;
   type: 'Ticket' | 'Hand-Pay' | 'Cash-Desk';
-  machineSerialNumber: string;
+  machineSerialNumber?: string;
   memberName?: string;
   cashierId: string;
   cashierName: string;
   locationId: string;
   location: string;
-  shiftId?: string;
+  shiftId: string;
   ticketNumber?: string;
+  imageUrl?: string;
   verified: boolean;
   verifiedAt?: Date;
   deletedAt?: Date;
@@ -79,81 +105,116 @@ export type CashierShiftDocument = {
   _id: string;
   locationId: string;
   cashierId: string;
-  vaultShiftId?: string;
+  vaultShiftId: string;
   status:
     | 'pending_start'
     | 'active'
     | 'closed'
     | 'pending_review'
     | 'cancelled';
-  openedAt?: Date;
+  openedAt: Date;
   closedAt?: Date;
-  openingBalance?: number;
+  openingBalance: number;
+  openingDenominations?: Array<{ denomination: number; quantity: number }>;
   closingBalance?: number;
-  openingDenominations?: Array<{ value: number; count: number }>;
-  closingDenominations?: Array<{ value: number; count: number }>;
+  closingDenominations?: Array<{ denomination: number; quantity: number }>;
+  lastSyncedDenominations?: Array<{ denomination: number; quantity: number }>;
   cashierEnteredBalance?: number;
+  cashierEnteredDenominations?: Array<{ denomination: number; quantity: number }>;
   expectedClosingBalance?: number;
   discrepancy?: number;
-  currentBalance?: number;
+  discrepancyResolved?: boolean;
+  vmReviewNotes?: string;
+  vmAdjustedBalance?: number;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  currentBalance: number;
   payoutsTotal?: number;
   payoutsCount?: number;
+  floatAdjustmentsTotal?: number;
   createdAt: Date;
   updatedAt: Date;
 };
 
 export type CollectionReportDocument = {
   _id: string;
-  variance?: number;
-  previousBalance?: number;
-  currentBalance?: number;
-  amountToCollect?: number;
-  amountCollected?: number;
-  amountUncollected?: number;
-  partnerProfit?: number;
-  taxes?: number;
-  advance?: number;
+  variance: number;
+  previousBalance: number;
+  currentBalance: number;
+  amountToCollect: number;
+  amountCollected: number;
+  amountUncollected: number;
+  partnerProfit: number;
+  taxes: number;
+  advance: number;
   collector?: string;
   collectorName?: string;
   location: string;
-  locationName?: string;
-  locationReportId?: string;
-  totalDrop?: number;
-  totalCancelled?: number;
-  totalGross?: number;
-  totalSasGross?: number;
+  locationName: string;
+  locationReportId: string;
+  totalDrop: number;
+  totalCancelled: number;
+  totalGross: number;
+  totalSasGross: number;
   timestamp: Date;
   includeJackpot?: boolean;
+  reasonShortagePayment?: string;
+  balanceCorrection?: number;
+  balanceCorrectionReas?: string;
+  varianceReason?: string;
+  previousCollectionTime?: Date;
+  locationProfitPerc?: number;
+  machinesCollected?: string;
+  totalVariation?: number;
   createdAt: Date;
   updatedAt: Date;
+  __v?: number;
 };
 
 export type CollectionDocument = {
   _id: string;
+  ramClearMeterId?: string;
+  meterId?: string;
   isCompleted?: boolean;
   metersIn?: number;
   metersOut?: number;
+  prevIn?: number;
+  prevOut?: number;
   softMetersIn?: number;
   softMetersOut?: number;
+  notes?: string;
+  locationReportId?: string;
   sasMeters?: {
+    machine?: string;
     drop?: number;
+    totalCancelledCredits?: number;
     gross?: number;
+    gamesPlayed?: number;
     jackpot?: number;
-    games?: number;
-    coinIn?: number;
-    coinOut?: number;
+    sasStartTime?: string;
+    sasEndTime?: string;
   };
-  movement?: Record<string, unknown>;
+  movement?: {
+    metersIn?: number;
+    metersOut?: number;
+    gross?: number;
+  };
   machineId?: string;
   machineName?: string;
   machineCustomName?: string;
+  custom?: { name?: string };
+  game?: string;
   location?: string;
   collector?: string;
   timestamp?: Date;
   collectionTime?: Date;
   ramClear?: boolean;
+  ramClearMetersIn?: number;
+  ramClearMetersOut?: number;
+  serialNumber?: string;
   createdAt: Date;
   updatedAt: Date;
+  __v?: number;
 };
 
 export type CountryDocument = {
@@ -169,7 +230,7 @@ export type DenominationDocument = {
   value: number;
   amount: number;
   locationId: string;
-  date?: Date;
+  date: Date;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -177,12 +238,14 @@ export type DenominationDocument = {
 export type FeedbackDocument = {
   _id: string;
   email: string;
-  category: 'bug' | 'suggestion' | 'feature-request' | 'question' | 'other';
+  category: 'bug' | 'suggestion' | 'general-review' | 'feature-request' | 'performance' | 'ui-ux' | 'other';
   description: string;
-  submittedAt?: Date;
+  submittedAt: Date;
   status: 'pending' | 'reviewed' | 'resolved';
+  archived?: boolean;
   reviewedBy?: string;
   reviewedAt?: Date;
+  notes?: string;
   username?: string;
   userId?: string;
   firstName?: string;
@@ -215,39 +278,46 @@ export type FirmwareDocument = {
 export type FloatRequestDocument = {
   _id: string;
   locationId: string;
-  location?: string;
   cashierId: string;
   cashierName?: string;
   cashierShiftId?: string;
-  shiftId?: string;
   vaultShiftId?: string;
-  type: 'increase' | 'decrease' | 'FLOAT_INCREASE' | 'FLOAT_DECREASE';
+  type: 'increase' | 'decrease';
   requestedAmount: number;
-  requestedTotalAmount?: number;
-  totalAmount?: number;
   requestedDenominations?: Denomination[];
   requestedDenom?: Denomination[];
-  status: 'pending' | 'approved' | 'denied' | 'cancelled' | 'completed' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'ACKNOWLEDGED';
+  requestNotes?: string;
+  requestedAt: Date;
+  requestedFloatAt?: Date;
+  shiftId?: string;
+  status: 'pending' | 'approved' | 'approved_vm' | 'denied' | 'edited' | 'cancelled';
+  requestedTotalAmount?: number;
+  totalAmount?: number;
+  location?: string;
   approvedAmount?: number;
-  approvedTotalAmount?: number;
   approvedDenominations?: Denomination[];
   approvedDenom?: Denomination[];
+  approvedTotalAmount?: number;
+  approvedFloatAt?: Date;
+  approvedBy?: string;
+  rejectedBy?: string;
+  rejectionReason?: string;
+  processedBy?: string;
+  processedAt?: Date;
+  vmNotes?: string;
   transactionId?: string;
   notificationSent?: boolean;
   notificationSentAt?: Date;
+  notificationReadAt?: Date;
+  notificationDismissedAt?: Date;
   acknowledgedByCashier?: boolean;
   acknowledgedByManager?: boolean;
   acknowledgedAt?: Date;
-  rejectionReason?: string;
-  approvedBy?: string;
-  rejectedBy?: string;
   auditLog?: Array<{
     action: string;
     performedBy: string;
     timestamp: Date;
   }>;
-  requestedFloatAt?: Date;
-  approvedFloatAt?: Date;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
@@ -257,22 +327,28 @@ export type FloatRequestsDocument = {
   _id: string;
   type: 'FLOAT_INCREASE' | 'FLOAT_DECREASE';
   cashierId: string;
-  cashierName: string;
+  cashierName?: string;
   requestedDenom?: unknown;
   requestedTotalAmount: number;
-  shiftId?: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED' | 'CANCELLED';
+  requestedFloatAt?: Date;
+  shiftId: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CONFIRMED' | 'ACKNOWLEDGED';
+  totalAmount?: number;
   locationId: string;
   location?: string;
   approvedDenom?: unknown;
   approvedTotalAmount?: number;
+  approvedFloatAt?: Date;
   approvedBy?: string;
   rejectedBy?: string;
+  rejectionReason?: string;
   acknowledgedByCashier?: boolean;
   acknowledgedByManager?: boolean;
+  acknowledgedAt?: Date;
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  __v?: number;
 };
 
 export type GamingLocationDocument = {
@@ -282,9 +358,6 @@ export type GamingLocationDocument = {
   address?: {
     street?: string;
     city?: string;
-    state?: string;
-    postalCode?: string;
-    country?: string;
   };
   rel?: {
     licencee?: string;
@@ -301,17 +374,17 @@ export type GamingLocationDocument = {
     longtitude?: number;
   };
   membershipEnabled?: boolean;
+  aceEnabled?: boolean;
   enableMembership?: boolean;
   locationMembershipSettings?: Record<string, unknown>;
-  status?: string;
-  noSMIBLocation?: boolean;
   billValidatorOptions?: Record<string, unknown>;
+  status?: string;
   statusHistory?: Array<{
     status: string;
     changedAt: Date;
     changedBy?: string;
   }>;
-  [key: string]: unknown;
+  noSMIBLocation?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -323,12 +396,12 @@ export type InterLocationTransferDocument = {
   _id: string;
   fromLocationId: string;
   toLocationId: string;
-  fromLocationName?: string;
-  toLocationName?: string;
+  fromLocationName: string;
+  toLocationName: string;
   amount: number;
-  denominations?: Array<{ value: number; count: number }>;
+  denominations?: Array<{ denomination: number; quantity: number }>;
   status: 'pending' | 'approved' | 'completed' | 'cancelled';
-  requestedBy?: string;
+  requestedBy: string;
   approvedBy?: string;
   approvedAt?: Date;
   completedAt?: Date;
@@ -342,21 +415,25 @@ export type LicenceeDocument = {
   _id: string;
   name: string;
   country?: string;
+  description?: string;
+  currency?: string;
   startDate?: Date;
   expiryDate?: Date;
+  prevStartDate?: Date;
+  prevExpiryDate?: Date;
   isPaid?: boolean;
-  licenceKey?: string;
+  licenceKey: string;
   status?: string;
-  geoCoords?: {
-    latitude?: number;
-    longitude?: number;
-    zoom?: number;
-  };
-  includeJackpot?: boolean;
-  gameDayOffset?: number;
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  geoCoords?: {
+    latitude?: number;
+    longitude?: number;
+    zoomRatio?: number;
+  };
+  includeJackpot?: boolean;
+  gameDayOffset?: number;
 };
 
 export type MachineDocument = {
@@ -368,7 +445,6 @@ export type MachineDocument = {
   game?: string;
   gameType?: string;
   manufacturer?: string;
-  manuf?: string;
   gamingLocation?: string;
   cabinetType?: string;
   assetStatus?: string;
@@ -379,10 +455,31 @@ export type MachineDocument = {
     coinOut?: number;
     jackpot?: number;
     drop?: number;
-    games?: number;
-    billIn?: Record<string, number>;
+    gamesPlayed?: number;
+    totalCancelledCredits?: number;
+    totalHandPaidCancelledCredits?: number;
+    moneyOut?: number;
+    slotDoorOpened?: number;
+    powerReset?: number;
+    totalWonCredits?: number;
+    currentCredits?: number;
+    gamesWon?: number;
   };
-  billMeters?: Record<string, number>;
+  billMeters?: {
+    dollar1?: number;
+    dollar2?: number;
+    dollar5?: number;
+    dollar10?: number;
+    dollar20?: number;
+    dollar50?: number;
+    dollar100?: number;
+    dollar500?: number;
+    dollar1000?: number;
+    dollar2000?: number;
+    dollar5000?: number;
+    dollarTotal?: number;
+    dollarTotalUnknown?: number;
+  };
   collectionMeters?: {
     metersIn?: number;
     metersOut?: number;
@@ -397,7 +494,40 @@ export type MachineDocument = {
     lockMachine?: boolean;
     lockBvOnLogOut?: boolean;
   };
-  smibConfig?: Record<string, unknown>;
+  smibConfig?: {
+    mqtt?: {
+      mqttSecure?: number;
+      mqttQOS?: number;
+      mqttURI?: string;
+      mqttSubTopic?: string;
+      mqttPubTopic?: string;
+      mqttCfgTopic?: string;
+      mqttIdleTimeS?: number;
+      mqttUsername?: string;
+      mqttPassword?: string;
+      updatedAt?: Date;
+    };
+    net?: {
+      netMode?: number;
+      netStaSSID?: string;
+      netStaPwd?: string;
+      netStaChan?: number;
+      updatedAt?: Date;
+    };
+    coms?: {
+      comsAddr?: number;
+      comsMode?: number;
+      comsRateMs?: number;
+      comsRTE?: number;
+      comsGPC?: number;
+      updatedAt?: Date;
+    };
+    ota?: {
+      otaURL?: string;
+      updatedAt?: Date;
+      firmwareUpdatedAt?: Date;
+    };
+  };
   smibVersion?: {
     firmware?: string;
     version?: string;
@@ -414,12 +544,13 @@ export type MachineDocument = {
   collectorDenomination?: number;
   sessionHistory?: Array<{
     location: string;
-    movedAt: Date;
-    movedBy?: string;
+    date: Date;
+    reason?: string;
+    performedBy?: string;
+    _id?: string;
   }>;
   maintenanceHistory?: Array<{
     date: Date;
-    type: string;
     description: string;
     performedBy?: string;
   }>;
@@ -428,28 +559,49 @@ export type MachineDocument = {
   restricted?: number;
   sasVersion?: string;
   uaccount?: number;
-  isCronosMachine?: boolean;
   isSasMachine?: boolean;
   playableBalance?: number;
-  protocols?: string[];
+  protocols?: Array<{ protocol: string; version: string }>;
   gameNumber?: string;
   numberOfEnabledGames?: number;
   enabledGameNumbers?: string[];
   noOfGames?: number;
-  viewingAccountDenomination?: Array<number>;
+  viewingAccountDenomination?: Array<{
+    asOf?: Date;
+    denomination?: number;
+    meters?: string[];
+    user?: { role?: string };
+  }>;
   viewingAccountDenominationHistory?: Array<{
-    denomination: number;
-    changedAt: Date;
+    asOf?: Date;
+    denomination?: number;
+    meters?: string[];
+    user?: { role?: string };
   }>;
   lastBillMeterAt?: Date;
   lastSasMeterAt?: Date;
-  validationId?: string;
-  sequenceNumber?: string;
   origSerialNumber?: string;
-  orig?: Record<string, unknown>;
+  orig?: {
+    meters?: {
+      coinIn?: string;
+      coinOut?: string;
+      drop?: string;
+      jackpot?: string;
+      gamesPlayed?: string;
+      moneyOut?: string;
+      slotDoorOpened?: string;
+      powerReset?: string;
+    };
+    deletedAt?: number;
+  };
   curProcess?: { name?: string; next?: string };
   tasks?: {
-    pendingHandpay?: { amount?: number; at?: Date };
+    pendingHandpay?: {
+      name?: string;
+      steps?: Array<{ name?: string }>;
+      currentStepIndex?: number;
+      retryAttempts?: number;
+    };
   };
   collectionMetersHistory?: Array<{
     _id: string;
@@ -462,14 +614,25 @@ export type MachineDocument = {
   }>;
   billValidator?: {
     balance?: number;
-    notes?: Array<unknown>;
+    notes?: Array<{ _id?: string; denomination?: number; quantity?: number }>;
   };
-  operationsWhileIdle?: Record<string, unknown>;
+  operationsWhileIdle?: { extendedMeters?: Date };
   isSunBoxDevice?: boolean;
   gamingBoard?: string;
+  machineMembershipSettings?: {
+    isPointsAllowed?: boolean;
+    isFreePlayAllowed?: boolean;
+    pointsAwardMethod?: string;
+    freePlayAmount?: number;
+    freePlayCreditsTimeout?: number;
+  };
+  machineType?: string;
+  machineStatus?: string;
+  selectedDenomination?: { drop?: number; totalCancelledCredits?: number };
   deletedAt?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
+  __v?: number;
 };
 
 export type MachineEventDocument = {
@@ -486,12 +649,33 @@ export type MachineEventDocument = {
   eventType?: string;
   eventLogLevel?: string;
   eventSuccess?: boolean;
-  message?: { text?: string; timestamp?: Date };
+  message?: {
+    incomingMessage?: {
+      typ?: string;
+      rly?: string;
+      mac?: string;
+      pyd?: string;
+    };
+    serialNumber?: string;
+    game?: string;
+    gamingLocation?: string;
+  };
   sequence?: Array<{
-    timestamp?: Date;
-    level?: string;
-    message?: string;
+    message?: {
+      typ?: string;
+      rly?: string;
+      mac?: string;
+      tkn?: string;
+      pyd?: string;
+    };
+    description?: string;
+    logLevel?: string;
+    success?: boolean;
+    createdAt?: Date;
   }>;
+  cabinetId?: string;
+  gameName?: string;
+  __v?: number;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -540,19 +724,18 @@ export type MemberDocument = {
   profile?: {
     firstName?: string;
     lastName?: string;
-    email?: string;
-    dob?: string;
     gender?: string;
-    address?: {
-      street?: string;
-      city?: string;
-      state?: string;
-      postalCode?: string;
-      country?: string;
+    dob?: string;
+    email?: string;
+    address?: string;
+    occupation?: string;
+    identification?: {
+      number?: string;
+      type?: string;
     };
   };
   phoneNumber?: string;
-  gamingLocation?: string;
+  gamingLocation: string;
   machineId?: string;
   machineSerialNumber?: string;
   currentSession?: string;
@@ -567,13 +750,201 @@ export type MemberDocument = {
   gamesWon?: number;
   avgBet?: number;
   billsIn?: number;
-  startMeters?: Record<string, unknown>;
-  endMeters?: Record<string, unknown>;
-  startBillMeters?: Record<string, number>;
-  endBillMeters?: Record<string, number>;
-  locationMembershipSettings?: Record<string, unknown>;
-  smsCode?: string;
+  startMeters?: {
+    _id?: string;
+    machine?: string;
+    location?: string;
+    movement?: {
+      coinIn?: number;
+      coinOut?: number;
+      jackpot?: number;
+      totalHandPaidCancelledCredits?: number;
+      totalCancelledCredits?: number;
+      gamesPlayed?: number;
+      gamesWon?: number;
+      currentCredits?: number;
+      totalWonCredits?: number;
+      drop?: number;
+    };
+    coinIn?: number;
+    coinOut?: number;
+    jackpot?: number;
+    totalHandPaidCancelledCredits?: number;
+    totalCancelledCredits?: number;
+    gamesPlayed?: number;
+    gamesWon?: number;
+    currentCredits?: number;
+    totalWonCredits?: number;
+    drop?: number;
+    readAt?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+  };
+  endMeters?: {
+    _id?: string;
+    machine?: string;
+    location?: string;
+    movement?: {
+      coinIn?: number;
+      coinOut?: number;
+      jackpot?: number;
+      totalHandPaidCancelledCredits?: number;
+      totalCancelledCredits?: number;
+      gamesPlayed?: number;
+      gamesWon?: number;
+      currentCredits?: number;
+      totalWonCredits?: number;
+      drop?: number;
+    };
+    coinIn?: number;
+    coinOut?: number;
+    jackpot?: number;
+    totalHandPaidCancelledCredits?: number;
+    totalCancelledCredits?: number;
+    gamesPlayed?: number;
+    gamesWon?: number;
+    currentCredits?: number;
+    totalWonCredits?: number;
+    drop?: number;
+    readAt?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+  };
+  startBillMeters?: {
+    _id?: string;
+    machineSession?: string;
+    machine?: string;
+    location?: string;
+    movement?: {
+      dollar1?: number;
+      dollar2?: number;
+      dollar5?: number;
+      dollar10?: number;
+      dollar20?: number;
+      dollar50?: number;
+      dollar100?: number;
+      dollar500?: number;
+      dollar1000?: number;
+      dollar2000?: number;
+      dollar5000?: number;
+      dollarTotal?: number;
+      dollarTotalUnknown?: number;
+    };
+    dollar1?: number;
+    dollar2?: number;
+    dollar5?: number;
+    dollar10?: number;
+    dollar20?: number;
+    dollar50?: number;
+    dollar100?: number;
+    dollar500?: number;
+    dollar1000?: number;
+    dollar2000?: number;
+    dollar5000?: number;
+    dollarTotal?: number;
+    dollarTotalUnknown?: number;
+    readAt?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+  };
+  endBillMeters?: {
+    _id?: string;
+    machineSession?: string;
+    machine?: string;
+    location?: string;
+    movement?: {
+      dollar1?: number;
+      dollar2?: number;
+      dollar5?: number;
+      dollar10?: number;
+      dollar20?: number;
+      dollar50?: number;
+      dollar100?: number;
+      dollar500?: number;
+      dollar1000?: number;
+      dollar2000?: number;
+      dollar5000?: number;
+      dollarTotal?: number;
+      dollarTotalUnknown?: number;
+    };
+    dollar1?: number;
+    dollar2?: number;
+    dollar5?: number;
+    dollar10?: number;
+    dollar20?: number;
+    dollar50?: number;
+    dollar100?: number;
+    dollar500?: number;
+    dollar1000?: number;
+    dollar2000?: number;
+    dollar5000?: number;
+    dollarTotal?: number;
+    dollarTotalUnknown?: number;
+    readAt?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+  };
+  intermediateMeters?: {
+    _id?: string;
+    machine?: string;
+    location?: string;
+    movement?: {
+      coinIn?: number;
+      coinOut?: number;
+      jackpot?: number;
+      totalHandPaidCancelledCredits?: number;
+      totalCancelledCredits?: number;
+      gamesPlayed?: number;
+      gamesWon?: number;
+      currentCredits?: number;
+      totalWonCredits?: number;
+      drop?: number;
+    };
+    coinIn?: number;
+    coinOut?: number;
+    jackpot?: number;
+    totalHandPaidCancelledCredits?: number;
+    totalCancelledCredits?: number;
+    gamesPlayed?: number;
+    gamesWon?: number;
+    currentCredits?: number;
+    totalWonCredits?: number;
+    drop?: number;
+    readAt?: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+  };
+  locationMembershipSettings?: {
+    locationLimit?: number;
+    freePlayAmount?: number;
+    enablePoints?: boolean;
+    enableFreePlays?: boolean;
+    pointsRatioMethod?: string;
+    pointMethodValue?: number;
+    gamesPlayedRatio?: number;
+    pointsMethodGameTypes?: string[];
+    freePlayGameTypes?: string[];
+    freePlayCreditsTimeout?: number;
+  };
+  smsCode?: number;
   smsCodeTime?: Date;
+  areaCode?: string;
+  authType?: number;
+  lastPwUpdatedAt?: Date;
+  lastfplAwardAt?: Date;
+  memberId?: string;
+  numFailedLoginAttempts?: number;
+  relayId?: string;
+  status?: string;
+  ucardId?: string;
+  ulock?: number;
+  upassFull?: number;
+  user?: string;
+  utype?: number;
+  uvalid?: number;
+  freePlayAwardId?: number;
+  gameName?: string;
+  endTime?: Date;
   deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -611,43 +982,43 @@ export type MeterDocument = {
 
 export type MovementRequestDocument = {
   _id: string;
-  variance?: number;
-  previousBalance?: number;
-  currentBalance?: number;
-  amountToCollect?: number;
-  amountCollected?: number;
-  amountUncollected?: number;
-  partnerProfit?: number;
-  taxes?: number;
-  advance?: number;
-  locationName?: string;
-  locationFrom?: string;
-  locationTo?: string;
-  locationId?: string;
+  variance: number;
+  previousBalance: number;
+  currentBalance: number;
+  amountToCollect: number;
+  amountCollected: number;
+  amountUncollected: number;
+  partnerProfit: number;
+  taxes: number;
+  advance: number;
+  locationName: string;
+  locationFrom: string;
+  locationTo: string;
+  locationId: string;
   locationFromId?: string;
   locationToId?: string;
-  createdBy?: string;
-  movementType?: string;
-  installationType?: string;
+  createdBy: string;
+  requestTo: string;
+  movementType: string;
+  installationType: string;
   reason?: string;
   selectedMachines?: string[];
-  status?: 'pending' | 'completed' | 'cancelled';
-  timestamp?: Date;
+  cabinetIn?: string;
+  status: 'pending' | 'completed' | 'cancelled';
+  timestamp: Date;
+  createdAt: Date;
+  updatedAt: Date;
   approvedBy?: string;
   approvedBySecond?: string;
   deletedAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
 };
 
 export type PayoutDocument = {
   _id: string;
   locationId: string;
-  location?: string;
   cashierId: string;
+  cashierShiftId: string;
   cashierName?: string;
-  cashierShiftId?: string;
-  shiftId?: string;
   type: 'ticket' | 'hand_pay';
   amount: number;
   ticketNumber?: string;
@@ -658,12 +1029,12 @@ export type PayoutDocument = {
   reason?: string;
   validated?: boolean;
   validationMethod?: string;
-  status?: string;
-  timestamp?: Date;
-  cashierFloatBefore?: number;
-  cashierFloatAfter?: number;
+  timestamp: Date;
+  cashierFloatBefore: number;
+  cashierFloatAfter: number;
   transactionId: string;
   notes?: string;
+  status?: string;
   createdAt: Date;
   updatedAt?: Date;
 };
@@ -671,27 +1042,28 @@ export type PayoutDocument = {
 export type SchedulerDocument = {
   _id: string;
   creator: string;
-  collector?: string;
+  collector: string;
   location: string;
-  startTime?: Date;
-  endTime?: Date;
-  status?: 'pending' | 'completed' | 'canceled';
+  startTime: Date;
+  endTime: Date;
+  status: 'pending' | 'completed' | 'canceled';
+  deletedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 };
 
 export type ShiftDocument = {
   _id: string;
-  role?: 'cashier' | 'vault-manager';
-  userId?: string;
+  role: 'cashier' | 'vault-manager';
+  userId: string;
   userName?: string;
   startDenom?: unknown;
   endDenom?: unknown;
-  startedShiftAt?: Date;
+  startedShiftAt: Date;
   closedShiftAt?: Date;
-  locationId?: string;
+  locationId: string;
   location?: string;
-  status?: 'Open' | 'Close';
+  status: 'Open' | 'Close';
   notes?: string;
   deletedAt?: Date;
   createdAt: Date;
@@ -701,10 +1073,10 @@ export type ShiftDocument = {
 export type SoftCountDocument = {
   _id: string;
   locationId: string;
-  countedAt?: Date;
+  countedAt: Date;
   amount: number;
-  denominations?: Array<{ value: number; count: number }>;
-  countedBy?: string;
+  denominations?: Array<{ denomination: number; quantity: number }>;
+  countedBy: string;
   machineId?: string;
   transactionId: string;
   notes?: string;
@@ -729,16 +1101,19 @@ export type UserDocument = {
     gender?: string;
     address?: {
       street?: string;
-      city?: string;
-      state?: string;
+      town?: string;
+      region?: string;
       postalCode?: string;
       country?: string;
     };
     identification?: {
-      type?: string;
-      number?: string;
+      dateOfBirth?: Date;
+      idType?: string;
+      idNumber?: string;
+      notes?: string;
     };
-    phone?: string;
+    phoneNumber?: string;
+    notes?: string;
   };
   profilePicture?: string;
   assignedLocations?: string[];
@@ -748,6 +1123,7 @@ export type UserDocument = {
   totpEnabled?: boolean;
   totpRecoveryToken?: string;
   totpRecoveryExpires?: Date;
+  totpTempSecret?: string;
   sessionVersion?: number;
   loginCount?: number;
   lastLoginAt?: Date;
@@ -759,30 +1135,31 @@ export type UserDocument = {
   updatedAt: Date;
 };
 
-/**
- * Minimal User representation for summary/overview displays.
- */
 export type UserOverview = Pick<UserDocument, '_id' | 'profile' | 'username'>;
 
 export type VaultCollectionSessionDocument = {
   _id: string;
   locationId: string;
-  vaultShiftId?: string;
+  vaultShiftId: string;
   type: 'machine_collection' | 'soft_count';
   status: 'active' | 'completed' | 'cancelled';
   isEndOfDay?: boolean;
   startedBy?: string;
   entries?: Array<{
-    machineId?: string;
+    machineId: string;
+    machineName?: string;
     source?: 'manual' | 'meter';
-    totalAmount?: number;
-    denominations?: Array<{ value: number; count: number }>;
+    totalAmount: number;
+    expectedDrop?: number;
+    denominations?: Array<{ denomination: number; quantity: number }>;
     meters?: {
       billIn?: number;
       ticketIn?: number;
       totalIn?: number;
     };
     variance?: number;
+    notes?: string;
+    isEndOfDay?: boolean;
     collectedAt?: Date;
   }>;
   totalCollected?: number;
@@ -796,16 +1173,17 @@ export type VaultNotificationDocument = {
   locationId: string;
   type:
     | 'float_request'
+    | 'shift_review'
     | 'system_alert'
     | 'low_balance'
     | '2fa_recovery_request';
-  recipientId?: string;
-  recipientRole?: string;
+  recipientId: string;
+  recipientRole: string;
   title: string;
   message: string;
   urgent?: boolean;
-  relatedEntityType?: string;
-  relatedEntityId?: string;
+  relatedEntityType: string;
+  relatedEntityId: string;
   metadata?: unknown;
   status: 'unread' | 'read' | 'actioned' | 'dismissed' | 'cancelled';
   readAt?: Date;
@@ -823,21 +1201,20 @@ export type VaultShiftDocument = {
   locationId: string;
   vaultManagerId: string;
   status: 'active' | 'closed';
-  openedAt?: Date;
+  openedAt: Date;
   closedAt?: Date;
-  openingBalance?: number;
-  openingDenominations?: Array<{ value: number; count: number }>;
-  currentDenominations?: Array<{ value: number; count: number }>;
+  openingBalance: number;
+  openingDenominations?: Array<{ denomination: number; quantity: number }>;
+  currentDenominations?: Array<{ denomination: number; quantity: number }>;
   closingBalance?: number;
-  closingDenominations?: Array<{ value: number; count: number }>;
+  closingDenominations?: Array<{ denomination: number; quantity: number }>;
   reconciliations?: Array<{
-    timestamp?: Date;
+    timestamp: Date;
     previousBalance: number;
     newBalance: number;
+    denominations?: Array<{ denomination: number; quantity: number }>;
     reason: string;
-    comment?: string;
-    commentedBy?: string;
-    commentedAt?: Date;
+    comment: string;
   }>;
   canClose?: boolean;
   isReconciled?: boolean;
@@ -851,23 +1228,24 @@ export type VaultTransactionDocument = {
   timestamp: Date;
   type:
     | 'vault_open'
-    | 'payout'
+    | 'vault_close'
+    | 'vault_reconciliation'
+    | 'cashier_shift_open'
+    | 'cashier_shift_close'
     | 'float_increase'
-    | 'machine_collection'
-    | 'expense'
     | 'float_decrease'
-    | 'cash_in'
-    | 'cash_out'
-    | 'transfer_in'
-    | 'transfer_out'
-    | 'inter_location_transfer'
-    | 'reconciliation';
-  from?: { type: string; id: string };
-  to?: { type: string; id: string };
+    | 'payout'
+    | 'machine_collection'
+    | 'soft_count'
+    | 'expense'
+    | 'add_cash'
+    | 'remove_cash';
+  from: { type: string; id?: string };
+  to: { type: string; id?: string };
   fromName?: string;
   toName?: string;
   amount: number;
-  denominations?: Array<{ value: number; count: number }>;
+  denominations?: Array<{ denomination: number; quantity: number }>;
   vaultBalanceBefore?: number;
   vaultBalanceAfter?: number;
   cashierBalanceBefore?: number;
@@ -876,50 +1254,49 @@ export type VaultTransactionDocument = {
   cashierShiftId?: string;
   floatRequestId?: string;
   payoutId?: string;
-  performedBy?: string;
+  performedBy: string;
   performedByName?: string;
   notes?: string;
   reason?: string;
   auditComment?: string;
+  attachmentId?: unknown;
+  attachmentName?: string;
   bankDetails?: {
     bankName?: string;
     accountNumber?: string;
-    routingNumber?: string;
+    accountType?: string;
+    transit?: string;
+    branch?: string;
+    nameOnAccount?: string;
   };
   expenseDetails?: {
     vendor?: string;
     invoiceNumber?: string;
-    machineDetails?: string;
+    serviceProvider?: string;
+    machineDetails?: Array<{
+      identifier?: string;
+      game?: string;
+      gameType?: string;
+    }>;
     machineIds?: string[];
     isMachineRepair?: boolean;
+    billerName?: string;
+    billingPeriod?: string;
+    referenceNumber?: string;
     description?: string;
   };
-  attachmentId?: unknown;
-  attachmentName?: string | unknown;
   isVoid?: boolean;
   voidReason?: string;
   voidedBy?: string;
   voidedAt?: Date;
   createdAt: Date;
-  [key: string]: unknown;
 };
 
-// --- Lean Types for Migration and Summaries ---
-
-/**
- * Lean representation of a Licencee, typically used for lists or migration.
- */
 export type LeanLicencee = Pick<LicenceeDocument, '_id' | 'name'>;
 
-/**
- * Lean representation of a Gaming Location, with essential fields for migration.
- */
 export type LeanLocation = Pick<
   GamingLocationDocument,
   '_id' | 'gameDayOffset' | 'rel'
 > & { licencee?: string };
 
-/**
- * Lean representation of a Machine, with basic location metadata.
- */
 export type LeanMachine = Pick<MachineDocument, '_id' | 'gamingLocation'>;

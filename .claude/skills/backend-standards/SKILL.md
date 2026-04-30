@@ -282,14 +282,93 @@ const machines = await Machine.find(query).lean(); // ✅ Good
 const count = await Machine.countDocuments(query); // ✅ No lean needed
 ```
 
-## Type Safety & DTOs
+## Cookie Security
 
-Refer to [`type-safety.md`](mdc:.instructions/rules/type-safety.md) for detailed rules.
+**NEVER hardcode `secure: true`. Always use the helper:**
+
+```typescript
+// ❌ WRONG
+response.cookies.set('token', value, {
+  httpOnly: true,
+  secure: true,       // Hardcoded — breaks local dev
+  sameSite: 'lax',
+});
+
+// ✅ CORRECT
+import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
+
+const cookieOptions = getAuthCookieOptions();
+// secure is derived from process.env.COOKIE_SECURE at runtime
+// sameSite is always 'lax'
+response.cookies.set('token', value, { ...cookieOptions, httpOnly: true });
+```
+
+## CollectionReport: isEditing Transactional State
+
+**The `isEditing` flag controls whether a report is safe to use in financial reporting:**
+
+| State | `isEditing` | Meaning | Use in reports? |
+|-------|-------------|---------|----------------|
+| Checked Out | `true` | Collections being modified, machine histories NOT synced | ❌ Never |
+| Finalized | `false` | Machine histories synchronized, fully auditable | ✅ Always |
+
+```typescript
+// ✅ Only query finalized reports for financial data
+const reports = await CollectionReport.find({
+  isEditing: false,  // State 3: Finalized only
+  locationId: { $in: allowedLocationIds },
+});
+```
+
+## Collection Data Invariants
+
+### prevIn / prevOut Priority
+
+```typescript
+// ✅ CORRECT priority order:
+// 1st: actual metersIn from the machine's previous completed collection
+// 2nd: machine.collectionMeters values (fallback)
+const prevIn =
+  previousCompletedCollection?.metersIn
+  ?? machine.collectionMeters?.in
+  ?? 0;
+
+// ❌ WRONG — machine defaults should never be primary source
+const prevIn = machine.collectionMeters?.in ?? 0;
+```
+
+### movement.gross Is Fixed
+
+- `movement.gross` is ground truth and FIXED once saved
+- Recalculation ONLY allowed in the "Add Entry" phase
+- After save, never recalculate `movement.gross` on existing reports
+
+### Synchronization Rule
+
+`locationReportId` and `isCompleted` MUST always be updated together in the same operation.
+
+## Financial Reviewer Scale
+
+The `reviewer` role sees scaled-down currency metrics to protect actual business data:
+
+```typescript
+import { getReviewerScale } from '@/app/api/lib/utils/reviewerScale';
+
+// Formula: scale = 1 - multiplier
+// e.g. multiplier 0.30 → scale = 0.70 → revenue * 0.70 shown to reviewer
+// If reviewer role missing, multiplier null, or multiplier === 0 → scale = 1 (no scaling)
+
+const scale = getReviewerScale(user.roles, licenceeMultiplier);
+const displayRevenue = Math.round(actualRevenue * scale);
+```
+
+## Type Safety & DTOs
 
 **Key Backend Rules:**
 1. **Explicit Return Types**: All API helpers must have explicit return type annotations.
 2. **DTO Mapping**: When returning data to the frontend, ensure the mapped object matches a type defined in `shared/types/`.
-3. **Zero `any`**: Use `unknown` or specific interfaces for database query results.
+3. **Zero `any`**: Use `unknown` or specific types for database query results. Never `interface` — always `type`.
+4. **String IDs only**: All `_id` fields are strings. Never use `ObjectId` in models or comparisons.
 
 ## Code Review Checklist
 
@@ -297,10 +376,15 @@ Refer to [`type-safety.md`](mdc:.instructions/rules/type-safety.md) for detailed
 - ✅ Using `findOne()` not `findById()`
 - ✅ Using `findOneAndUpdate()` not `findByIdAndUpdate()`
 - ✅ Licencee/location filtering applied
-- ✅ Soft-deleted records filtered out
+- ✅ Soft-deleted records filtered out (`$or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }]`)
 - ✅ Both `licencee` spellings supported
 - ✅ Proper error handling with HTTP status codes
 - ✅ `.lean()` used for read-only queries
 - ✅ Aggregation pipelines properly structured
 - ✅ No direct `db.collection()` access
 - ✅ String IDs used (not ObjectId)
+- ✅ `getAuthCookieOptions()` used for cookies (never hardcode `secure: true`)
+- ✅ `isEditing: false` filter on CollectionReport queries used for financial reporting
+- ✅ prevIn/prevOut uses actual previous collection first, machine.collectionMeters as fallback
+- ✅ Reviewer scale applied for `reviewer` role users
+- ✅ `type` keyword used (never `interface`)

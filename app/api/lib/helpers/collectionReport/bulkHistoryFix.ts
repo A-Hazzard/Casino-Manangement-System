@@ -12,25 +12,9 @@
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
-
-type CollectionDocument = {
-  _id: unknown;
-  machineId?: string;
-  locationReportId?: string;
-  timestamp: Date;
-  metersIn: number;
-  metersOut: number;
-  createdAt?: Date;
-  deletedAt?: Date;
-};
-
-type MachineDocument = {
-  _id: string;
-  collectionMetersHistory?: Array<{
-    prevMetersIn?: number;
-    prevMetersOut?: number;
-  }>;
-};
+import type { CollectionDocument } from '@/lib/types/collection';
+import type { GamingMachine } from '@shared/types';
+import type { CollectionReportDocument } from '@shared/types';
 
 /**
  * Fix all collection history issues across all collection reports
@@ -58,7 +42,7 @@ export async function fixAllCollectionHistoryData(): Promise<{
   // Get all collection reports, sorted chronologically
   const allReports = await CollectionReport.find({})
     .sort({ timestamp: 1 })
-    .lean();
+    .lean<CollectionReportDocument[]>();
 
   console.warn(`📊 Found ${allReports.length} collection reports to process`);
 
@@ -70,9 +54,9 @@ export async function fixAllCollectionHistoryData(): Promise<{
   // Get all unique machine IDs from all reports
   const allMachineIds = new Set<string>();
   for (const report of allReports) {
-    const reportCollections = (await Collections.find({
+    const reportCollections = await Collections.find({
       locationReportId: report.locationReportId,
-    })) as CollectionDocument[];
+    }).lean<CollectionDocument[]>();
     reportCollections.forEach(collection => {
       if (collection.machineId) {
         allMachineIds.add(collection.machineId);
@@ -88,12 +72,12 @@ export async function fixAllCollectionHistoryData(): Promise<{
       console.warn(`🔧 Processing machine: ${machineId}`);
 
       // Get all collections for this machine, sorted by timestamp
-      const machineCollections = (await Collections.find({
+      const machineCollections = await Collections.find({
         machineId: machineId,
         deletedAt: { $exists: false },
       })
         .sort({ timestamp: 1 })
-        .lean()) as CollectionDocument[];
+        .lean<CollectionDocument[]>();
 
       if (machineCollections.length === 0) {
         console.warn(`   ⚠️ No collections found for machine ${machineId}`);
@@ -106,9 +90,7 @@ export async function fixAllCollectionHistoryData(): Promise<{
 
       // Check if this machine actually has collectionMetersHistory issues
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const machine = (await Machine.findOne({
-        _id: machineId,
-      })) as MachineDocument | null;
+      const machine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
       if (
         !machine ||
         !machine.collectionMetersHistory ||
@@ -179,10 +161,7 @@ export async function fixAllCollectionHistoryData(): Promise<{
         );
       }
     } catch (machineError) {
-      console.error(
-        `   ❌ Error processing machine ${machineId}:`,
-        machineError
-      );
+      console.error('[fixAllCollectionHistoryData] Error:', machineError instanceof Error ? machineError.message : 'Unknown error');
       errors.push({
         machineId,
         error:
@@ -220,11 +199,15 @@ export async function fixAllCollectionHistoryData(): Promise<{
  * @param machine - Machine document with collectionMetersHistory
  * @returns True if issues found, false otherwise
  */
-function checkMachineHistoryForIssues(machine: MachineDocument): boolean {
+function checkMachineHistoryForIssues(machine: GamingMachine): boolean {
+  if (!machine) {
+    console.error('[checkMachineHistoryForIssues] machine is required');
+    return false;
+  }
   if (!machine.collectionMetersHistory) return false;
 
-  for (let i = 1; i < machine.collectionMetersHistory.length; i++) {
-    const entry = machine.collectionMetersHistory[i];
+  for (let historyIndex = 1; historyIndex < machine.collectionMetersHistory.length; historyIndex++) {
+    const entry = machine.collectionMetersHistory[historyIndex];
     const prevMetersIn = entry.prevMetersIn || 0;
     const prevMetersOut = entry.prevMetersOut || 0;
 
@@ -263,6 +246,10 @@ function rebuildHistoryForMachine(collections: CollectionDocument[]): Array<{
   timestamp: Date;
   createdAt: Date;
 }> {
+  if (!collections || !Array.isArray(collections)) {
+    console.error('[rebuildHistoryForMachine] collections is required');
+    return [];
+  }
   return collections.map((collection, index) => {
     let prevIn = 0;
     let prevOut = 0;

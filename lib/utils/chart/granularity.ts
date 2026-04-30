@@ -22,6 +22,7 @@ export function getDefaultChartGranularity(
   startDate?: Date | string,
   endDate?: Date | string
 ): 'minute' | 'hourly' | 'daily' | 'weekly' | 'monthly' {
+  if (!timePeriod) { console.error('[getDefaultChartGranularity] timePeriod is required'); return 'hourly'; }
   const HOURS_THRESHOLD = 5;
 
   // For predefined periods, calculate the actual time range
@@ -145,7 +146,8 @@ export function getGranularityFromDataPoints(
         if (!isNaN(timestamp.getTime())) {
           timestamps.push(timestamp);
         }
-      } catch {
+      } catch (e) {
+        console.error('[getGranularityFromDataPoints] Error:', e instanceof Error ? e.message : 'Unknown error');
         // Skip invalid timestamps
         console.warn('Invalid timestamp in data:', {
           day: item.day,
@@ -160,8 +162,8 @@ export function getGranularityFromDataPoints(
   }
 
   // Find earliest and latest timestamps
-  const earliest = new Date(Math.min(...timestamps.map(t => t.getTime())));
-  const latest = new Date(Math.max(...timestamps.map(t => t.getTime())));
+  const earliest = new Date(Math.min(...timestamps.map(timestamp => timestamp.getTime())));
+  const latest = new Date(Math.max(...timestamps.map(timestamp => timestamp.getTime())));
 
   // Calculate hours difference
   const hoursDiff = (latest.getTime() - earliest.getTime()) / (1000 * 60 * 60);

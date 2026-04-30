@@ -17,7 +17,8 @@
  * Hides .00 decimals but shows .01 and above.
  */
 export function formatCurrency(value: number): string {
-  if (isNaN(value)) {
+  if (typeof value !== 'number' || isNaN(value)) {
+    console.error('[formatCurrency] value must be a valid number');
     return '$0';
   }
 

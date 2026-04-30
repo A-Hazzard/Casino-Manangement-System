@@ -29,17 +29,14 @@ export function calculateDefaultCollectionTime(
   targetDate?: Date
 ): Date {
   const baseDate = targetDate || new Date();
-
-  // Default to 10 AM if no gameDayOffset provided
   const offsetHour = gameDayOffset ?? 10;
 
-  // Create a new date at the offset hour
   const collectionTime = new Date(
     baseDate.getFullYear(),
     baseDate.getMonth(),
     baseDate.getDate(),
     offsetHour,
-    0, // Start at 00 minutes
+    0,
     0,
     0
   );

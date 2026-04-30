@@ -100,6 +100,7 @@ export function isAbortError(error: unknown): boolean {
  * Classify error types for better error handling
  */
 export function classifyError(error: unknown): ApiError {
+  if (!error) { console.error('[classifyError] error is required'); return { message: 'Unknown error', isConnectionError: false }; }
   // Handle Axios errors with response status
   if (error && typeof error === 'object' && 'response' in error) {
     const axiosError = error as {
@@ -226,6 +227,7 @@ export function isRetryableError(error: ApiError): boolean {
  * Get user-friendly error message
  */
 export function getUserFriendlyErrorMessage(error: ApiError): string {
+  if (!error) { console.error('[getUserFriendlyErrorMessage] error is required'); return 'An unexpected error occurred. Please try again.'; }
   if (error.isTimeoutError) {
     return 'The request is taking longer than expected. This usually happens when the server is busy. Please try again in a moment.';
   }

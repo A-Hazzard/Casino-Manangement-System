@@ -22,13 +22,14 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import type { TimePeriod } from '@/app/api/lib/types';
 import { resolveLicenceeId } from '@/lib/utils/licencee';
 import { PipelineStage } from 'mongoose';
+import type { GamingLocationDocument } from '@shared/types';
 
 /**
  * Fetches locations with machines for collection reports
  *
- * @param rawLicenceeParam - Raw licencee parameter (supports both spellings)
- * @param includeMachines - Whether to include machines in the result
- * @returns Promise<{ locations: unknown[] }>
+ * @param {string | null} [rawLicenceeParam] - Raw licencee parameter (supports both spellings)
+ * @param {boolean} [includeMachines] - Whether to include machines in the result
+ * @returns {Promise<{ locations: unknown[] }>}
  */
 export async function fetchLocationsWithMachines(
   rawLicenceeParam?: string | null,
@@ -188,10 +189,10 @@ export async function fetchLocationsWithMachines(
 /**
  * Calculates date range for a time period in Trinidad time
  *
- * @param timePeriod - The time period (Today, Yesterday, 7d, 30d, All Time, Custom)
- * @param startDateStr - Custom start date string (for Custom period)
- * @param endDateStr - Custom end date string (for Custom period)
- * @returns Promise<{ startDate?: Date; endDate?: Date }>
+ * @param {TimePeriod} [timePeriod] - The time period (Today, Yesterday, 7d, 30d, All Time, Custom)
+ * @param {string | null} [startDateStr] - Custom start date string (for Custom period)
+ * @param {string | null} [endDateStr] - Custom end date string (for Custom period)
+ * @returns {{ startDate?: Date; endDate?: Date }}
  */
 export function calculateDateRangeForTimePeriod(
   timePeriod?: TimePeriod,
@@ -291,16 +292,29 @@ export function calculateDateRangeForTimePeriod(
 /**
  * Determines allowed location IDs based on user role and permissions
  *
- * @param userRoles - User roles array
- * @param userLicencees - User accessible licencees
- * @param userLocationPermissions - User location permissions
- * @returns Promise<string[] | 'all'>
+ * @param {string[]} userRoles - User roles array
+ * @param {string[]} userLicencees - User accessible licencees
+ * @param {string[]} userLocationPermissions - User location permissions
+ * @returns {Promise<string[] | 'all'>}
  */
 export async function determineAllowedLocationIds(
   userRoles: string[],
   userLicencees: string[],
   userLocationPermissions: string[]
 ): Promise<string[] | 'all'> {
+  if (!Array.isArray(userRoles)) {
+    console.error('[determineAllowedLocationIds] userRoles is required');
+    return [];
+  }
+  if (!Array.isArray(userLicencees)) {
+    console.error('[determineAllowedLocationIds] userLicencees is required');
+    return [];
+  }
+  if (!Array.isArray(userLocationPermissions)) {
+    console.error('[determineAllowedLocationIds] userLocationPermissions is required');
+    return [];
+  }
+
   const hasAllLocationAccess =
     userRoles.includes('admin') ||
     userRoles.includes('developer') ||
@@ -339,7 +353,7 @@ export async function determineAllowedLocationIds(
       },
       { _id: 1 }
     )
-      .lean()
+      .lean<GamingLocationDocument[]>()
       .exec();
 
     return managerLocations.map(loc => String(loc._id));
@@ -377,7 +391,7 @@ export async function determineAllowedLocationIds(
       },
       { _id: 1 }
     )
-      .lean()
+      .lean<GamingLocationDocument[]>()
       .exec();
 
     return licenceeLocations.map(loc => String(loc._id));
@@ -390,12 +404,17 @@ export async function determineAllowedLocationIds(
 /**
  * Gets location names from location IDs
  *
- * @param locationIds - Array of location IDs
- * @returns Promise<string[]>
+ * @param {string[]} locationIds - Array of location IDs
+ * @returns {Promise<string[]>}
  */
 export async function getLocationNamesFromIds(
   locationIds: string[]
 ): Promise<string[]> {
+  if (!Array.isArray(locationIds)) {
+    console.error('[getLocationNamesFromIds] locationIds is required');
+    return [];
+  }
+
   if (locationIds.length === 0) {
     return [];
   }
@@ -413,19 +432,19 @@ export async function getLocationNamesFromIds(
     },
     { _id: 1, name: 1 }
   )
-    .lean()
+    .lean<GamingLocationDocument[]>()
     .exec();
 
-  return locations.map(loc => String(loc.name));
+  return locations.map(location => String(location.name));
 }
 
 /**
  * Aggregates the sum of totalDrop, totalCancelled, totalGross, and totalSasGross for all documents in the date range (and optional locationName filter).
- * @param startDate - Start date for filtering.
- * @param endDate - End date for filtering.
- * @param locationName - Optional location name to filter.
- * @param licencee - Optional licencee to filter.
- * @returns Promise<{ drop: string; cancelledCredits: string; gross: string; sasGross: string; }> Aggregated sums for the summary table.
+ * @param {Date} startDate - Start date for filtering.
+ * @param {Date} endDate - End date for filtering.
+ * @param {string | string[]} [locationFilter] - Optional location name to filter.
+ * @param {string} [licencee] - Optional licencee to filter.
+ * @returns {Promise<{ drop: string; cancelledCredits: string; gross: string; sasGross: string; }>} Aggregated sums for the summary table.
  */
 export async function getMonthlyCollectionReportSummary(
   startDate: Date,
@@ -438,6 +457,14 @@ export async function getMonthlyCollectionReportSummary(
   gross: string;
   sasGross: string;
 }> {
+  if (!startDate) {
+    console.error('[getMonthlyCollectionReportSummary] startDate is required');
+    return { drop: '-', cancelledCredits: '-', gross: '-', sasGross: '-' };
+  }
+  if (!endDate) {
+    console.error('[getMonthlyCollectionReportSummary] endDate is required');
+    return { drop: '-', cancelledCredits: '-', gross: '-', sasGross: '-' };
+  }
   const match: Record<string, unknown> = {
     timestamp: { $gte: startDate, $lte: endDate },
   };
@@ -531,11 +558,11 @@ export async function getMonthlyCollectionReportSummary(
 
 /**
  * Aggregates by locationName, summing totalDrop, totalCancelled, totalGross, and totalSasGross for each locationName in the date range (and optional locationName filter).
- * @param startDate - Start date for filtering.
- * @param endDate - End date for filtering.
- * @param locationName - Optional location name to filter.
- * @param licencee - Optional licencee to filter.
- * @returns Promise<Array<{ location: string; drop: string; win: string; gross: string; sasGross: string }>> Aggregated data per location for the details table.
+ * @param {Date} startDate - Start date for filtering.
+ * @param {Date} endDate - End date for filtering.
+ * @param {string | string[]} [locationFilter] - Optional location name to filter.
+ * @param {string} [licencee] - Optional licencee to filter.
+ * @returns {Promise<Array<{ location: string; drop: string; win: string; gross: string; sasGross: string }>>} Aggregated data per location for the details table.
  */
 export async function getMonthlyCollectionReportByLocation(
   startDate: Date,
@@ -551,6 +578,14 @@ export async function getMonthlyCollectionReportByLocation(
     sasGross: string;
   }>
 > {
+  if (!startDate) {
+    console.error('[getMonthlyCollectionReportByLocation] startDate is required');
+    return [];
+  }
+  if (!endDate) {
+    console.error('[getMonthlyCollectionReportByLocation] endDate is required');
+    return [];
+  }
   const match: Record<string, unknown> = {
     timestamp: { $gte: startDate, $lte: endDate },
   };
@@ -641,7 +676,7 @@ export async function getMonthlyCollectionReportByLocation(
         $or: [{ _id: { $in: filterArray } }, { name: { $in: filterArray } }],
       },
       { name: 1 }
-    ).lean();
+    ).lean<GamingLocationDocument[]>();
 
     const existingNames = new Set(result.map(r => r._id));
 

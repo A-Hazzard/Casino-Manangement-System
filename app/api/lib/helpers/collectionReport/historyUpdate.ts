@@ -23,6 +23,9 @@ export type MachineChange = {
   prevMetersOut: number;
   collectionId: string;
   timestamp?: Date;
+  ramClear?: boolean;
+  ramClearMetersIn?: number;
+  ramClearMetersOut?: number;
 };
 
 export type UpdateHistoryPayload = {
@@ -55,6 +58,15 @@ export async function updateReportMachineHistories(
   failed: number;
   errors: Array<{ machineId: string; error: string }>;
 }> {
+  if (!reportId) {
+    console.error('[updateReportMachineHistories] reportId is required');
+    throw new Error('[updateReportMachineHistories] reportId is required');
+  }
+  if (!Array.isArray(changes)) {
+    console.error('[updateReportMachineHistories] changes is required');
+    throw new Error('[updateReportMachineHistories] changes is required');
+  }
+
   // Verify report exists
   const report = await CollectionReport.findOne({
     locationReportId: reportId,
@@ -78,7 +90,7 @@ export async function updateReportMachineHistories(
     try {
       await processSingleMachineChange(reportId, change, results);
     } catch (error) {
-      console.error(`Error updating machine ${change.machineId}:`, error);
+      console.error('[updateReportMachineHistories] Error:', error instanceof Error ? error.message : 'Unknown error');
       results.failed++;
       results.errors.push({
         machineId: change.machineId,
@@ -110,6 +122,18 @@ async function processSingleMachineChange(
     errors: Array<{ machineId: string; error: string }>;
   }
 ): Promise<void> {
+  if (!reportId) {
+    console.error('[processSingleMachineChange] reportId is required');
+    return;
+  }
+  if (!change) {
+    console.error('[processSingleMachineChange] change is required');
+    return;
+  }
+  if (!results) {
+    console.error('[processSingleMachineChange] results is required');
+    return;
+  }
   const { machineId, collectionId } = change;
 
   // Verify the collection exists and belongs to this report
@@ -167,6 +191,9 @@ async function processSingleMachineChange(
         prevOut: Number(change.prevMetersOut),
         collectionTime: change.timestamp ? new Date(change.timestamp) : undefined,
         timestamp: change.timestamp ? new Date(change.timestamp) : undefined,
+        ramClear: change.ramClear,
+        ramClearMetersIn: change.ramClearMetersIn,
+        ramClearMetersOut: change.ramClearMetersOut,
         updatedAt: new Date(),
       },
     },
@@ -195,7 +222,7 @@ async function processSingleMachineChange(
     await recalculateMachineCollections(machineId);
     console.warn(`🔄 Recalculation cascade completed for machine ${machineId}`);
   } catch (recalcError) {
-    console.error(`❌ Recalculation failed for machine ${machineId}:`, recalcError);
+    console.error('[processSingleMachineChange] Error:', recalcError instanceof Error ? recalcError.message : 'Unknown error');
     // Continue even if cascade fails, as the current report entry is already synced
   }
 

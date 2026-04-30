@@ -4,7 +4,7 @@ import { GamingLocations } from '../models/gaminglocations';
 import { Licencee } from '../models/licencee';
 import UserModel from '../models/user';
 import { getUserFromServer } from './users';
-import type { LocationDocument } from '@/lib/types/common';
+import type { UserDocument, GamingLocationDocument, LicenceeDocument } from '@shared/types';
 
 /**
  * Gets the licencees a user can access from JWT token
@@ -42,19 +42,16 @@ export async function getUserAccessibleLicenceesFromToken(userPayloadOverride?: 
 
     if ((needsRoleHydration || needsLicenceeHydration) && userId) {
       try {
-        const dbUser = (await UserModel.findOne(
+        const dbUser = await UserModel.findOne(
           { _id: userId },
           { roles: 1, assignedLicencees: 1 }
         )
-          .lean()
-          .exec()) as {
-          roles?: unknown;
-          assignedLicencees?: string[];
-        } | null;
+          .lean<UserDocument>()
+          .exec();
 
         if (dbUser) {
           if (needsRoleHydration) {
-            roles = (dbUser.roles as string[]) || [];
+            roles = dbUser.roles || [];
             if (roles.length === 0) {
               console.warn(
                 '[getUserAccessibleLicenceesFromToken] User has no roles stored in DB - treating as non-admin'
@@ -73,7 +70,7 @@ export async function getUserAccessibleLicenceesFromToken(userPayloadOverride?: 
       } catch (error) {
         console.error(
           '[getUserAccessibleLicenceesFromToken] Failed to hydrate user details from DB:',
-          error
+          error instanceof Error ? error.message : 'Unknown error'
         );
       }
     }
@@ -103,7 +100,7 @@ export async function getUserAccessibleLicenceesFromToken(userPayloadOverride?: 
         },
         { _id: 1, name: 1 }
       )
-        .lean()
+        .lean<LicenceeDocument[]>()
         .exec();
 
       const idSet = new Set(licenceeDocs.map(doc => String(doc._id)));
@@ -133,7 +130,7 @@ export async function getUserAccessibleLicenceesFromToken(userPayloadOverride?: 
     } catch (error) {
       console.error(
         '[getUserAccessibleLicenceesFromToken] Failed to normalize licencee identifiers:',
-        error
+        error instanceof Error ? error.message : 'Unknown error'
       );
       return uniqueValues;
     }
@@ -163,7 +160,7 @@ async function getLicenceeLocationFilter(
     throw new Error('Database connection failed');
   }
 
-  const locations = (await GamingLocations.find(
+  const locations = await GamingLocations.find(
     {
       $and: [
         {
@@ -178,7 +175,7 @@ async function getLicenceeLocationFilter(
       ],
     },
     { _id: 1 }
-  ).lean()) as unknown as Pick<LocationDocument, '_id'>[];
+  ).lean<GamingLocationDocument[]>();
 
   return locations.map(loc => String(loc._id));
 }
@@ -193,11 +190,11 @@ async function getLicenceeLocationFilter(
  * - Location Admin: See ONLY their assigned locations (no licencee filtering - assigned locations are source of truth)
  * - Collector/Technician: See only intersection of licencee locations + their assigned locations
  *
- * @param userAccessibleLicencees - Licencees the user has access to ('all' for admins)
- * @param selectedLicenceeFilter - The licencee filter selected in the UI (optional)
- * @param userLocationPermissions - Specific locations the user can access
- * @param userRoles - User's roles (to determine if they're a manager)
- * @returns Array of location IDs or 'all' for admins with no restrictions
+ * @param {'all' | string[]} userAccessibleLicencees - Licencees the user has access to ('all' for admins)
+ * @param {string} [selectedLicenceeFilter] - The licencee filter selected in the UI (optional)
+ * @param {string[]} userLocationPermissions - Specific locations the user can access
+ * @param {User['roles']} [userRoles] - User's roles (to determine if they're a manager)
+ * @returns {Promise<string[] | 'all'>} Array of location IDs or 'all' for admins with no restrictions
  */
 export async function getUserLocationFilter(
   userAccessibleLicencees: 'all' | string[],
@@ -205,6 +202,14 @@ export async function getUserLocationFilter(
   userLocationPermissions: string[],
   userRoles: User['roles'] = []
 ): Promise<string[] | 'all'> {
+  if (!userAccessibleLicencees) {
+    console.error('[getUserLocationFilter] userAccessibleLicencees is required');
+    return [];
+  }
+  if (!Array.isArray(userLocationPermissions)) {
+    console.error('[getUserLocationFilter] userLocationPermissions must be an array');
+    return [];
+  }
   // Check if user is admin, manager, or location admin
   const isAdmin = userAccessibleLicencees === 'all';
   const isManager = userRoles.includes('manager');
@@ -259,7 +264,7 @@ export async function getUserLocationFilter(
           ],
         },
         { _id: 1 }
-      ).lean();
+      ).lean<LicenceeDocument>();
 
       if (licenceeDoc && !Array.isArray(licenceeDoc)) {
         licenceeId = String(licenceeDoc._id);
@@ -285,7 +290,7 @@ export async function getUserLocationFilter(
         ],
       },
       { _id: 1 }
-    ).lean();
+    ).lean<GamingLocationDocument[]>();
     licenceeLocations = locations.map(loc => String(loc._id));
   } else {
     // Get all locations from user's licencees
@@ -351,12 +356,16 @@ export async function getUserLocationFilter(
 
 /**
  * Checks if a user has access to a specific location ID
- * @param locationId - The location ID to check access for
- * @returns Promise resolving to true if user has access, false otherwise
+ * @param {string} locationId - The location ID to check access for
+ * @returns {Promise<boolean>} Promise resolving to true if user has access, false otherwise
  */
 export async function checkUserLocationAccess(
   locationId: string
 ): Promise<boolean> {
+  if (!locationId) {
+    console.error('[checkUserLocationAccess] locationId is required');
+    return false;
+  }
   try {
     const user = await getUserFromServer();
     if (!user) return false;
@@ -389,7 +398,10 @@ export async function checkUserLocationAccess(
     const normalizedLocationId = String(locationId);
     return allowedLocationIds.includes(normalizedLocationId);
   } catch (error) {
-    console.error('Error checking location access:', error);
+    console.error(
+      '[checkUserLocationAccess] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     return false;
   }
 }

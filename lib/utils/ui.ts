@@ -22,7 +22,8 @@ type CabinetSortOption =
  */
 export const animateTableRows = (
   tableRef: RefObject<HTMLDivElement | null>
-) => {
+): void => {
+  if (!tableRef) { console.error('[animateTableRows] tableRef is required'); return; }
   if (tableRef.current) {
     const tableRows = tableRef.current.querySelectorAll('tbody tr');
     gsap.fromTo(
@@ -68,8 +69,12 @@ export const filterAndSortCabinets = (
   searchTerm: string,
   sortOption: CabinetSortOption,
   sortOrder: 'asc' | 'desc'
-) => {
-  if (!allCabinets || allCabinets.length === 0) {
+): Cabinet[] => {
+  if (!Array.isArray(allCabinets)) { console.error('[filterAndSortCabinets] allCabinets is required'); return []; }
+  if (!searchTerm) { console.error('[filterAndSortCabinets] searchTerm is required'); return []; }
+  if (!sortOption) { console.error('[filterAndSortCabinets] sortOption is required'); return []; }
+  if (!sortOrder) { console.error('[filterAndSortCabinets] sortOrder is required'); return []; }
+  if (allCabinets.length === 0) {
     return [];
   }
 

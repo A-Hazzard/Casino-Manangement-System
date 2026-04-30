@@ -7,25 +7,25 @@
  * POST /api/countries — Create a new country entry. Admin/developer/owner only.
  *
  * Body fields (POST):
- * @param name       {string} Required. Full country name (e.g. 'Trinidad and Tobago').
- * @param alpha2     {string} Required. ISO 3166-1 alpha-2 code (e.g. 'TT'); stored
+ * @param {string} name - Required. Full country name (e.g. 'Trinidad and Tobago').
+ * @param {string} alpha2 - Required. ISO 3166-1 alpha-2 code (e.g. 'TT'); stored
  *   uppercased and used as the document _id.
- * @param alpha3     {string} Required. ISO 3166-1 alpha-3 code (e.g. 'TTO'); stored uppercased.
- * @param isoNumeric {string} Required. ISO 3166-1 numeric code (e.g. '780').
+ * @param {string} alpha3 - Required. ISO 3166-1 alpha-3 code (e.g. 'TTO'); stored uppercased.
+ * @param {string} isoNumeric - Required. ISO 3166-1 numeric code (e.g. '780').
  *
  * PUT /api/countries — Update an existing country. Admin/developer/owner only.
  *
  * Body fields (PUT):
- * @param _id        {string} Required. The country document ID (alpha-2 code).
- * @param name       {string} Optional. Updated country name.
- * @param alpha2     {string} Optional. Updated alpha-2 code; stored uppercased.
- * @param alpha3     {string} Optional. Updated alpha-3 code; stored uppercased.
- * @param isoNumeric {string} Optional. Updated numeric code.
+ * @param {string} _id - Required. The country document ID (alpha-2 code).
+ * @param {string} [name] - Optional. Updated country name.
+ * @param {string} [alpha2] - Optional. Updated alpha-2 code; stored uppercased.
+ * @param {string} [alpha3] - Optional. Updated alpha-3 code; stored uppercased.
+ * @param {string} [isoNumeric] - Optional. Updated numeric code.
  *
  * DELETE /api/countries — Soft-delete a country (sets deletedAt). Admin/developer only.
  *
  * Query parameters (DELETE):
- * @param id {string} Required. The country document ID to soft-delete.
+ * @param {string} id - Required. The country document ID to soft-delete.
  *
  * @module app/api/countries/route
  */
@@ -34,6 +34,7 @@ import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLog
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Countries } from '@/app/api/lib/models/countries';
+import type { CountryDocument } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET() {
@@ -55,7 +56,7 @@ export async function GET() {
       ],
     })
       .sort({ name: 1 })
-      .lean();
+      .lean<CountryDocument[]>();
 
     // ============================================================================
     // STEP 3: Return countries list
@@ -204,7 +205,7 @@ export async function PUT(req: NextRequest) {
     // ============================================================================
     // STEP 3: Pre-fetch existing country for before-state
     // ============================================================================
-    const existingCountry = await Countries.findOne({ _id }).lean();
+    const existingCountry = await Countries.findOne({ _id }).lean<CountryDocument | null>();
     if (!existingCountry) {
       return NextResponse.json(
         { error: 'Country not found' },

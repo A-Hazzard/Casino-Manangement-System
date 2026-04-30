@@ -25,6 +25,10 @@ type CasinoLocation = {
 };
 
 function applyFilters(config: ReportConfig): GamingMachine[] {
+  if (!config || typeof config !== 'object') {
+    console.error('[applyFilters] config is required');
+    return [];
+  }
   // TODO: Replace with actual MongoDB query
   let filteredMachines: GamingMachine[] = [];
 
@@ -67,6 +71,14 @@ function createReportableRow(
   location: CasinoLocation | undefined,
   fields: string[]
 ): Reportable {
+  if (!machine) {
+    console.error('[createReportableRow] machine is required');
+    return {};
+  }
+  if (!Array.isArray(fields)) {
+    console.error('[createReportableRow] fields must be an array');
+    return {};
+  }
   const row: Reportable = {};
   for (const fieldId of fields) {
     switch (fieldId) {
@@ -117,6 +129,11 @@ function createReportableRow(
 }
 
 export function generateReportData(config: ReportConfig): ReportData {
+  if (!config) {
+    console.error('[generateReportData] config is required');
+    throw new Error('[generateReportData] config is required');
+  }
+
   const filteredMachines = applyFilters(config);
 
   const tableData: Reportable[] = filteredMachines.map(machine => {
@@ -132,12 +149,12 @@ export function generateReportData(config: ReportConfig): ReportData {
       { label: 'Total Machines Analyzed', value: filteredMachines.length },
       {
         label: 'Total Handle',
-        value: filteredMachines.reduce((sum, m) => sum + (m.coinIn || 0), 0),
+        value: filteredMachines.reduce((sum, machine) => sum + (machine.coinIn || 0), 0),
       },
       {
         label: 'Total Win',
         value: filteredMachines.reduce(
-          (sum, m) => sum + ((m.coinIn || 0) - (m.coinOut || 0)),
+          (sum, machine) => sum + ((machine.coinIn || 0) - (machine.coinOut || 0)),
           0
         ),
       },

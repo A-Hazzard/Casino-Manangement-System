@@ -41,8 +41,12 @@ const FloatRequestSchema = new Schema(
     // Request details
     requestedAmount: { type: Number, required: true, min: 0 },
     requestedDenominations: [DenominationSchema],
+    requestedDenom: [DenominationSchema],
     requestNotes: { type: String },
     requestedAt: { type: Date, required: true, default: Date.now },
+    requestedFloatAt: { type: Date },
+    shiftId: { type: String },
+    location: { type: String },
 
     // Approval workflow
     status: {
@@ -52,8 +56,15 @@ const FloatRequestSchema = new Schema(
       required: true,
       index: true,
     },
+    requestedTotalAmount: { type: Number, min: 0 },
+    totalAmount: { type: Number, min: 0 },
     approvedAmount: { type: Number, min: 0 },
     approvedDenominations: [DenominationSchema],
+    approvedTotalAmount: { type: Number, min: 0 },
+    approvedFloatAt: { type: Date },
+    approvedBy: { type: String },
+    rejectedBy: { type: String },
+    rejectionReason: { type: String },
     processedBy: { type: String }, // VM user ID
     processedAt: { type: Date },
     vmNotes: { type: String },
@@ -66,6 +77,10 @@ const FloatRequestSchema = new Schema(
     notificationSentAt: { type: Date },
     notificationReadAt: { type: Date },
     notificationDismissedAt: { type: Date },
+
+    acknowledgedByCashier: { type: Boolean, default: false },
+    acknowledgedByManager: { type: Boolean, default: false },
+    acknowledgedAt: { type: Date },
 
     // Audit trail
     auditLog: [

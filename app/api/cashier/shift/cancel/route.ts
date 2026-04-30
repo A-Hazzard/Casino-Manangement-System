@@ -78,7 +78,7 @@ export async function POST() {
           );
         }
 
-        await FloatRequestModel.updateOne(
+        const floatUpdateResult = await FloatRequestModel.updateOne(
           { _id: floatRequest._id },
           {
             status: 'cancelled',
@@ -94,10 +94,13 @@ export async function POST() {
             },
           }
         );
+        if (floatUpdateResult.modifiedCount === 0) {
+          return NextResponse.json({ success: false, error: 'Failed to cancel float request' }, { status: 500 });
+        }
       }
 
       // Update the pending shift to cancelled
-      await CashierShiftModel.updateOne(
+      const cancelResult = await CashierShiftModel.updateOne(
         { _id: shiftId },
         {
           status: 'cancelled',
@@ -105,6 +108,9 @@ export async function POST() {
           notes: 'Shift opening request cancelled by cashier',
         }
       );
+      if (cancelResult.modifiedCount === 0) {
+        return NextResponse.json({ success: false, error: 'Failed to cancel shift' }, { status: 500 });
+      }
 
       // Audit Activity
       await logActivity({
@@ -121,7 +127,7 @@ export async function POST() {
       });
     } else if (currentStatus === 'pending_review') {
       // Revert to Active
-      await CashierShiftModel.updateOne(
+      const revertResult = await CashierShiftModel.updateOne(
         { _id: shiftId },
         {
           status: 'active',
@@ -132,6 +138,9 @@ export async function POST() {
           $set: { notes: 'Close request cancelled by cashier' },
         }
       );
+      if (revertResult.modifiedCount === 0) {
+        return NextResponse.json({ success: false, error: 'Failed to revert shift to active' }, { status: 500 });
+      }
 
       // Mark Shift Review Notification as cancelled
       try {

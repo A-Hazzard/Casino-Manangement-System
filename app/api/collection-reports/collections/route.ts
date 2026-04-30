@@ -32,6 +32,7 @@ import type {
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
+import type { GamingMachine } from '@shared/types';
 import type { LocationDocument } from '@/lib/types/common';
 
 // Ensure this route is handled by Node.js runtime (not Edge)
@@ -152,11 +153,11 @@ export async function GET(req: NextRequest) {
       // Get location names from location IDs
       const GamingLocations = (await import('@/app/api/lib/models/gaminglocations'))
         .GamingLocations;
-      const locations = (await GamingLocations.find({
+      const locations = await GamingLocations.find({
         _id: { $in: allowedLocationIds },
       })
         .select('name')
-        .lean()) as unknown as Pick<LocationDocument, 'name'>[];
+        .lean<LocationDocument[]>();
 
       allowedLocationNames = locations.map(loc => loc.name);
       
@@ -208,11 +209,11 @@ export async function GET(req: NextRequest) {
         // Get location names from location IDs
         const GamingLocations = (await import('@/app/api/lib/models/gaminglocations'))
           .GamingLocations;
-        const locations = (await GamingLocations.find({
+        const locations = await GamingLocations.find({
           _id: { $in: allowedLocationIds },
         })
           .select('name')
-          .lean()) as unknown as Pick<LocationDocument, 'name'>[];
+          .lean<LocationDocument[]>();
 
         const locationNames = locations.map(loc => loc.name);
 
@@ -251,7 +252,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 7: Execute query
     // ============================================================================
-    const collections = (await query.lean()) as CollectionDocument[];
+    const collections = await query.lean<CollectionDocument[]>();
 
     // ============================================================================
     // STEP 8: Return collections
@@ -380,7 +381,7 @@ export async function POST(req: NextRequest) {
     // ============================================================================
     // Get machine details for additional fields
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const machine = await Machine.findOne({ _id: payload.machineId }).lean();
+    const machine = await Machine.findOne({ _id: payload.machineId }).lean<GamingMachine>();
     if (!machine) {
       console.error('[Collections API POST] 404 — machine not found:', payload.machineId);
       return NextResponse.json({ error: 'Machine not found' }, { status: 404 });
@@ -706,16 +707,16 @@ export async function PATCH(req: NextRequest) {
           _id: { $ne: id },
         })
           .sort({ timestamp: -1 })
-          .lean();
+          .lean<CollectionDocument>();
 
         if (previousCollection) {
           if (!prevInProvided) updateData.prevIn = previousCollection.metersIn ?? 0;
           if (!prevOutProvided) updateData.prevOut = previousCollection.metersOut ?? 0;
         } else {
           // No previous collection — first collection for the machine.
-          const editMachine = (await Machine.findOne({
+          const editMachine = await Machine.findOne({
             _id: originalCollection.machineId,
-          }).lean()) as Record<string, unknown> | null;
+          }).lean<GamingMachine>();
           const sasM = editMachine?.sasMeters as Record<string, unknown> | undefined;
           const colM = editMachine?.collectionMeters as Record<string, unknown> | undefined;
 
@@ -970,7 +971,10 @@ export async function DELETE(req: NextRequest) {
     // STEP 5: Delete collection document
     // ============================================================================
     // CRITICAL: Use findOneAndDelete with _id instead of findByIdAndDelete (repo rule)
-    await Collections.findOneAndDelete({ _id: id });
+    const deletedCollection = await Collections.findOneAndDelete({ _id: id });
+    if (!deletedCollection) {
+      return NextResponse.json({ error: 'Failed to delete collection' }, { status: 500 });
+    }
 
     // ============================================================================
     // STEP 6: Revert machine collectionMeters and remove history entry
@@ -1002,10 +1006,13 @@ export async function DELETE(req: NextRequest) {
         }
 
         // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-        await Machine.findOneAndUpdate(
+        const machineRevertResult = await Machine.findOneAndUpdate(
           { _id: collectionToDelete.machineId },
           updateOperation
         );
+        if (!machineRevertResult) {
+          console.warn(`[Collections DELETE] Machine ${collectionToDelete.machineId} not found for meter revert`);
+        }
       } catch (machineUpdateError) {
         console.error(
           'Failed to revert machine collectionMeters or remove history:',

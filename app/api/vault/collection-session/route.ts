@@ -51,13 +51,9 @@ export async function GET(request: NextRequest) {
         createdAt: -1,
       });
       return NextResponse.json({ success: true, session });
-    } catch (e: unknown) {
-      console.error('[CollectionSession GET] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[CollectionSession GET] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }
@@ -192,13 +188,9 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({ success: true, session });
-    } catch (e: unknown) {
-      console.error('[CollectionSession POST] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[CollectionSession POST] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }

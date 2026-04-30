@@ -54,13 +54,25 @@ export async function DELETE(
       | 'hard';
 
     if (deleteType === 'hard') {
-      await ActivityLog.deleteOne({ _id: id });
+      const deleteResult = await ActivityLog.deleteOne({ _id: id });
+      if (deleteResult.deletedCount === 0) {
+        return NextResponse.json(
+          { success: false, message: 'Activity log not found' },
+          { status: 404 }
+        );
+      }
     } else {
-      await ActivityLog.findOneAndUpdate(
+      const updateResult = await ActivityLog.findOneAndUpdate(
         { _id: id },
         { deletedAt: new Date() },
         { new: true }
       );
+      if (!updateResult) {
+        return NextResponse.json(
+          { success: false, message: 'Activity log not found' },
+          { status: 404 }
+        );
+      }
     }
 
     return NextResponse.json({ success: true });

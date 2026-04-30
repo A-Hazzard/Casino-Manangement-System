@@ -96,24 +96,26 @@ export async function investigateSpecificMachine(machineId: string): Promise<{
     prevMetersIssues: number;
   };
 }> {
+  if (!machineId) {
+    console.error('[investigateSpecificMachine] machineId is required');
+    throw new Error('[investigateSpecificMachine] machineId is required');
+  }
   console.warn(`🔍 Investigating machine: ${machineId}`);
 
   // Get machine document
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const machine = (await Machine.findOne({ _id: machineId }).lean()) as
-    | MachineWithHistory
-    | null;
+  const machine = await Machine.findOne({ _id: machineId }).lean<MachineWithHistory | null>();
   if (!machine) {
     throw new Error('Machine not found');
   }
 
   // Get all collections for this machine, sorted by timestamp
-  const collections = (await Collections.find({
+  const collections = await Collections.find({
     machineId: machineId,
     $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
   })
     .sort({ timestamp: 1 })
-    .lean()) as CollectionDocument[];
+    .lean<CollectionDocument[]>();
 
   console.warn(
     `📊 Found ${collections.length} collections for machine ${machineId}`
@@ -144,11 +146,11 @@ export async function investigateSpecificMachine(machineId: string): Promise<{
     issues: issues,
     summary: {
       totalIssues: issues.length,
-      fieldNameIssues: issues.filter((i: HistoryAnalysisEntry) =>
-        i.issues.some((issue: string) => issue.includes('prevIn/prevOut'))
+      fieldNameIssues: issues.filter((historyEntry: HistoryAnalysisEntry) =>
+        historyEntry.issues.some((issue: string) => issue.includes('prevIn/prevOut'))
       ).length,
-      prevMetersIssues: issues.filter((i: HistoryAnalysisEntry) =>
-        i.issues.some((issue: string) => issue.includes('prevMeters'))
+      prevMetersIssues: issues.filter((historyEntry: HistoryAnalysisEntry) =>
+        historyEntry.issues.some((issue: string) => issue.includes('prevMeters'))
       ).length,
     },
   };
@@ -181,6 +183,10 @@ export async function investigateReportMachines(reportId: string): Promise<{
     machinesWithIssues: number;
   };
 }> {
+  if (!reportId) {
+    console.error('[investigateReportMachines] reportId is required');
+    throw new Error('[investigateReportMachines] reportId is required');
+  }
   console.warn(`🔍 Investigating all machines in report: ${reportId}`);
 
   // Find collection report
@@ -193,9 +199,9 @@ export async function investigateReportMachines(reportId: string): Promise<{
   }
 
   // Find all collections for this report
-  const collections = (await Collections.find({
+  const collections = await Collections.find({
     locationReportId: reportId,
-  }).lean()) as CollectionDocument[];
+  }).lean<CollectionDocument[]>();
 
   if (collections.length === 0) {
     return {
@@ -242,7 +248,10 @@ export async function investigateReportMachines(reportId: string): Promise<{
       machineInvestigations.push(investigation);
       totalIssues += investigation.summary.totalIssues;
     } catch (error) {
-      console.error(`Error investigating machine ${machineId}:`, error);
+      console.error(
+        `[investigateReportMachines] Error investigating machine ${machineId}:`,
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       machineInvestigations.push({
         machineId: machineId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -281,9 +290,7 @@ async function investigateMachineInternal(
 ): Promise<MachineInvestigationResult> {
   // Get machine document
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const machine = (await Machine.findOne({ _id: machineId }).lean()) as
-    | MachineWithHistory
-    | null;
+  const machine = await Machine.findOne({ _id: machineId }).lean<MachineWithHistory | null>();
   if (!machine) {
     throw new Error('Machine not found');
   }
@@ -305,11 +312,11 @@ async function investigateMachineInternal(
     issues: issues,
     summary: {
       totalIssues: issues.length,
-      fieldNameIssues: issues.filter((i: HistoryAnalysisEntry) =>
-        i.issues.some((issue: string) => issue.includes('prevIn/prevOut'))
+      fieldNameIssues: issues.filter((historyEntry: HistoryAnalysisEntry) =>
+        historyEntry.issues.some((issue: string) => issue.includes('prevIn/prevOut'))
       ).length,
-      prevMetersIssues: issues.filter((i: HistoryAnalysisEntry) =>
-        i.issues.some((issue: string) => issue.includes('prevMeters'))
+      prevMetersIssues: issues.filter((historyEntry: HistoryAnalysisEntry) =>
+        historyEntry.issues.some((issue: string) => issue.includes('prevMeters'))
       ).length,
     },
   };
@@ -332,13 +339,17 @@ function analyzeCollectionHistory(
   historyAnalysis: HistoryAnalysisEntry[];
   issues: HistoryAnalysisEntry[];
 } {
+  if (!Array.isArray(history)) {
+    console.error('[analyzeCollectionHistory] history must be an array');
+    return { historyAnalysis: [], issues: [] };
+  }
   const historyAnalysis: HistoryAnalysisEntry[] = [];
   const issues: HistoryAnalysisEntry[] = [];
 
-  for (let i = 0; i < history.length; i++) {
-    const entry = history[i];
+  for (let historyIndex = 0; historyIndex < history.length; historyIndex++) {
+    const entry = history[historyIndex];
     const analysis: HistoryAnalysisEntry = {
-      entryIndex: i,
+      entryIndex: historyIndex,
       entryId: entry._id,
       metersIn: entry.metersIn,
       metersOut: entry.metersOut,
@@ -359,8 +370,8 @@ function analyzeCollectionHistory(
     }
 
     // Check for zero/undefined prevMeters values
-    if (i > 0) {
-      const prevEntry = history[i - 1];
+    if (historyIndex > 0) {
+      const prevEntry = history[historyIndex - 1];
       const expectedPrevIn = prevEntry?.metersIn || 0;
       const expectedPrevOut = prevEntry?.metersOut || 0;
 
@@ -425,6 +436,14 @@ function matchCollectionsWithHistory(
   } | null;
   issues: string[];
 }> {
+  if (!Array.isArray(collections)) {
+    console.error('[matchCollectionsWithHistory] collections must be an array');
+    return [];
+  }
+  if (!Array.isArray(history)) {
+    console.error('[matchCollectionsWithHistory] history must be an array');
+    return [];
+  }
   return collections.map(collection => {
     const matchingHistoryEntry = history.find(
       entry =>

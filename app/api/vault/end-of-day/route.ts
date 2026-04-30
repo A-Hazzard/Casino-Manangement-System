@@ -43,10 +43,9 @@ export async function GET(request: NextRequest) {
 
       const report = await generateEndOfDayReport(locId, new Date(dateStr));
       return NextResponse.json({ success: true, data: report });
-    } catch (e: unknown) {
-      console.error('[EndOfDay GET] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
-      return NextResponse.json({ error: message }, { status: 500 });
+    } catch (e) {
+      console.error('[EndOfDay GET] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   });
 }
@@ -98,10 +97,9 @@ export async function POST(request: NextRequest) {
         });
       }
       return NextResponse.json({ success: true, data: report });
-    } catch (e: unknown) {
-      console.error('[EndOfDay POST] Error:', e);
-      const message = e instanceof Error ? e.message : 'Unknown error';
-      return NextResponse.json({ error: message }, { status: 500 });
+    } catch (e) {
+      console.error('[EndOfDay POST] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   });
 }

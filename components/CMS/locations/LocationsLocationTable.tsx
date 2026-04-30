@@ -37,9 +37,11 @@ import {
     HelpCircle,
     Home,
     MapPinOff,
+    MonitorOff,
     RotateCcw,
     Server,
-} from 'lucide-react';
+ } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/shared/ui/tooltip';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
@@ -58,6 +60,7 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
   onAction,
   formatCurrency,
   canManageLocations = true,
+  isDeveloper = false,
   selectedFilters = [],
   showArchived = false,
 }) => {
@@ -163,103 +166,105 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                       </button>
                       {/* Status icons row */}
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {/* SMIB Icon */}
-                        {Boolean(
-                          (location as { hasSmib?: boolean }).hasSmib ||
-                            !(location as { noSMIBLocation?: boolean })
-                              .noSMIBLocation
-                        ) && (
-                          <div className="group relative inline-flex flex-shrink-0">
-                            <Server className="h-4 w-4 text-blue-600" />
-                            <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                              SMIB Location
-                            </div>
-                          </div>
-                        )}
-                        {/* Local Server Icon */}
-                        {Boolean(
-                          (location as { isLocalServer?: boolean })
-                            .isLocalServer
-                        ) && (
-                          <div className="group relative inline-flex flex-shrink-0">
-                            <Home className="h-4 w-4 text-purple-600" />
-                            <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                              Local Server
-                            </div>
-                          </div>
-                        )}
-                        {/* Membership Icon */}
-                        {Boolean(
-                          (location as { membershipEnabled?: boolean })
-                            .membershipEnabled
-                        ) && (
-                          <div className="group relative inline-flex flex-shrink-0">
-                            <BadgeCheck className="h-4 w-4 text-green-600" />
-                            <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                              Membership enabled
-                            </div>
-                          </div>
-                        )}
-                        {/* Warning Icon - No recent collection report */}
-                        {selectedFilters.some(f => f === 'NoSMIBLocation') &&
-                          Boolean(
-                            (
-                              location as {
-                                hasNoRecentCollectionReport?: boolean;
-                              }
-                            ).hasNoRecentCollectionReport
-                          ) && (
-                            <div className="group relative inline-flex flex-shrink-0">
-                              <FileWarning className="h-4 w-4 text-red-600" />
-                              <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                                No collection report in past 3 months
-                              </div>
-                            </div>
-                          )}
-                        {/* Missing Coordinates Icon */}
-                        {hasMissingCoordinates(loc) && (
-                          <div className="group relative inline-flex flex-shrink-0">
-                            <MapPinOff className="h-4 w-4 text-red-600" />
-                            <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                              This location&apos;s coordinates have not been set
-                            </div>
-                          </div>
-                        )}
-                        {/* Unknown Type Icon */}
-                        {(() => {
-                          const hasSmib = Boolean(
+                        <TooltipProvider delayDuration={200}>
+                          {/* SMIB Icon */}
+                          {Boolean(
                             (location as { hasSmib?: boolean }).hasSmib ||
-                              !(location as { noSMIBLocation?: boolean })
-                                .noSMIBLocation
-                          );
-                          const isLocalServer = Boolean(
-                            (location as { isLocalServer?: boolean })
-                              .isLocalServer
-                          );
-                          const hasMembership = Boolean(
-                            (
-                              location as {
-                                membershipEnabled?: boolean;
-                              }
-                            ).membershipEnabled
-                          );
-                          const hasMissingCoords = hasMissingCoordinates(loc);
+                              !(location as { noSMIBLocation?: boolean }).noSMIBLocation
+                          ) && !(location as { noSMIBLocation?: boolean }).noSMIBLocation && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex flex-shrink-0">
+                                  <Server className="h-4 w-4 text-blue-600" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">SMIB Location</TooltipContent>
+                            </Tooltip>
+                          )}
+                          {/* No SMIB Icon */}
+                          {Boolean((location as { noSMIBLocation?: boolean }).noSMIBLocation) && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex flex-shrink-0">
+                                  <MonitorOff className="h-4 w-4 text-gray-500" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">No SMIB Location</TooltipContent>
+                            </Tooltip>
+                          )}
+                          {/* Local Server Icon */}
+                          {Boolean((location as { isLocalServer?: boolean }).isLocalServer) && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex flex-shrink-0">
+                                  <Home className="h-4 w-4 text-purple-600" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">Local Server</TooltipContent>
+                            </Tooltip>
+                          )}
+                          {/* Membership Icon */}
+                          {Boolean((location as { membershipEnabled?: boolean }).membershipEnabled) && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex flex-shrink-0">
+                                  <BadgeCheck className="h-4 w-4 text-green-600" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">Membership enabled</TooltipContent>
+                            </Tooltip>
+                          )}
+                          {/* Warning Icon - No recent collection report */}
+                          {selectedFilters.some(f => f === 'NoSMIBLocation') &&
+                            Boolean((location as { hasNoRecentCollectionReport?: boolean }).hasNoRecentCollectionReport) && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex flex-shrink-0">
+                                  <FileWarning className="h-4 w-4 text-red-600" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">No collection report in past 3 months</TooltipContent>
+                            </Tooltip>
+                          )}
+                          {/* Missing Coordinates Icon */}
+                          {hasMissingCoordinates(loc) && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex flex-shrink-0">
+                                  <MapPinOff className="h-4 w-4 text-red-600" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">This location&apos;s coordinates have not been set</TooltipContent>
+                            </Tooltip>
+                          )}
+                          {/* Unknown Type Icon */}
+                          {(() => {
+                            const hasSmib = Boolean(
+                              (location as { hasSmib?: boolean }).hasSmib ||
+                                !(location as { noSMIBLocation?: boolean }).noSMIBLocation
+                            ) && !(location as { noSMIBLocation?: boolean }).noSMIBLocation;
+                            const isLocalServer = Boolean((location as { isLocalServer?: boolean }).isLocalServer);
+                            const hasMembership = Boolean((location as { membershipEnabled?: boolean }).membershipEnabled);
+                            const hasMissingCoords = hasMissingCoordinates(loc);
+                            const isUnknownType =
+                              !hasSmib &&
+                              !isLocalServer &&
+                              !hasMembership &&
+                              !hasMissingCoords &&
+                              !(location as { noSMIBLocation?: boolean }).noSMIBLocation;
 
-                          const isUnknownType =
-                            !hasSmib &&
-                            !isLocalServer &&
-                            !hasMembership &&
-                            !hasMissingCoords;
-
-                          return isUnknownType ? (
-                            <div className="group relative inline-flex flex-shrink-0">
-                              <HelpCircle className="h-4 w-4 text-gray-500" />
-                              <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                                Unknown location type
-                              </div>
-                            </div>
-                          ) : null;
-                        })()}
+                            return isUnknownType ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex flex-shrink-0">
+                                    <HelpCircle className="h-4 w-4 text-gray-500" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">Unknown location type</TooltipContent>
+                              </Tooltip>
+                            ) : null;
+                          })()}
+                        </TooltipProvider>
                       </div>
 
                       {/* Row 2: Status badges - machine online/offline and member count */}
@@ -376,9 +381,9 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                   <TableCell>
                     <div className="flex items-center justify-center gap-2">
                       {showArchived ? (
-                        /* Archived view: show Restore and Delete */
-                        canManageLocations && (
-                          <>
+                        /* Archived view: Restore (all managers) - Delete icon only for developers */
+                        <>
+                          {canManageLocations && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -391,6 +396,8 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                             >
                               <RotateCcw className="h-4 w-4" />
                             </Button>
+                          )}
+                          {isDeveloper && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -409,8 +416,8 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                                 className="h-4 w-4"
                               />
                             </Button>
-                          </>
-                        )
+                          )}
+                        </>
                       ) : (
                         /* Active view: show View, Edit, Delete */
                         <>

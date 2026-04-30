@@ -14,6 +14,8 @@ import { Machine } from '@/app/api/lib/models/machines';
 import User from '@/app/api/lib/models/user';
 import { generateMongoId } from '@/lib/utils/id';
 import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
+import type { ActivityLogDocument, GamingLocationDocument, GamingMachine } from '@/shared/types';
+import type { LeanUserDocument } from '@/shared/types/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -25,20 +27,20 @@ import { NextRequest, NextResponse } from 'next/server';
  * filters the results are ranked by relevance.
  *
  * Query params:
- * @param page          {number}  Optional. Page number for pagination (default 1).
- * @param limit         {number}  Optional. Records per page (default 50).
- * @param userId        {string}  Optional. Filter by the acting user's ID.
- * @param username      {string}  Optional. Case-insensitive regex match on username.
- * @param email         {string}  Optional. Case-insensitive regex match on actor.email.
- * @param action        {string}  Optional. Exact match on action type (e.g. 'CREATE', 'UPDATE').
- * @param resource      {string}  Optional. Filter by resource type (e.g. 'machine', 'user').
- * @param resourceId    {string}  Optional. Filter by the ID of the affected resource.
- * @param membershipLog {string}  Optional. 'true' or 'false' — filter membership-related logs.
- * @param startDate     {string}  Optional. ISO date string; include logs at or after this timestamp.
- * @param endDate       {string}  Optional. ISO date string; include logs at or before this timestamp.
- * @param search        {string}  Optional. Full-text search across username, email, resourceName, details, description, and IDs.
- * @param sortBy        {string}  Optional. Field to sort by (default 'timestamp').
- * @param sortOrder     {string}  Optional. 'asc' or 'desc' (default 'desc').
+ * @param {number} [page] - Optional. Page number for pagination (default 1).
+ * @param {number} [limit] - Optional. Records per page (default 50).
+ * @param {string} [userId] - Optional. Filter by the acting user's ID.
+ * @param {string} [username] - Optional. Case-insensitive regex match on username.
+ * @param {string} [email] - Optional. Case-insensitive regex match on actor.email.
+ * @param {string} [action] - Optional. Exact match on action type (e.g. 'CREATE', 'UPDATE').
+ * @param {string} [resource] - Optional. Filter by resource type (e.g. 'machine', 'user').
+ * @param {string} [resourceId] - Optional. Filter by the ID of the affected resource.
+ * @param {string} [membershipLog] - Optional. 'true' or 'false' — filter membership-related logs.
+ * @param {string} [startDate] - Optional. ISO date string; include logs at or after this timestamp.
+ * @param {string} [endDate] - Optional. ISO date string; include logs at or before this timestamp.
+ * @param {string} [search] - Optional. Full-text search across username, email, resourceName, details, description, and IDs.
+ * @param {string} [sortBy] - Optional. Field to sort by (default 'timestamp').
+ * @param {string} [sortOrder] - Optional. 'asc' or 'desc' (default 'desc').
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ user: currentUser, userRoles, isAdminOrDev }) => {
@@ -101,9 +103,9 @@ export async function GET(request: NextRequest) {
     if (isManager && (userWithEntities.assignedLicencees?.length ?? 0) > 0) {
       const currentUserLicencees = userWithEntities.assignedLicencees;
       const [locations, machines, users] = await Promise.all([
-        GamingLocations.find({ 'rel.licencee': { $in: currentUserLicencees } }).select('_id').lean(),
-        Machine.find({}).select('_id gamingLocation').lean(),
-        User.find({ assignedLicencees: { $in: currentUserLicencees } }).select('_id').lean(),
+        GamingLocations.find({ 'rel.licencee': { $in: currentUserLicencees } }).select('_id').lean<GamingLocationDocument[]>(),
+        Machine.find({}).select('_id gamingLocation').lean<GamingMachine[]>(),
+        User.find({ assignedLicencees: { $in: currentUserLicencees } }).select('_id').lean<LeanUserDocument[]>(),
       ]);
 
       const locationIds = locations.map(l => String(l._id));
@@ -120,9 +122,9 @@ export async function GET(request: NextRequest) {
       ];
     } else if (isLocationAdmin && (userWithEntities.assignedLocations?.length ?? 0) > 0) {
       const currentUserLocations = userWithEntities.assignedLocations?.map((id: string) => String(id)) ?? [];
-      const machines = await Machine.find({ gamingLocation: { $in: currentUserLocations } }).select('_id').lean();
+      const machines = await Machine.find({ gamingLocation: { $in: currentUserLocations } }).select('_id').lean<GamingMachine[]>();
       const machineIds = machines.map(m => String(m._id));
-      const users = await User.find({ assignedLocations: { $in: currentUserLocations } }).select('_id').lean();
+      const users = await User.find({ assignedLocations: { $in: currentUserLocations } }).select('_id').lean<LeanUserDocument[]>();
       const userIds = users.map(u => String(u._id));
 
       filter.$or = [
@@ -160,7 +162,7 @@ export async function GET(request: NextRequest) {
       [logs, totalCount] = await Promise.all([ActivityLog.aggregate(pipeline), ActivityLog.countDocuments(filter)]);
     } else {
       [logs, totalCount] = await Promise.all([
-        ActivityLog.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+        ActivityLog.find(filter).sort(sort).skip(skip).limit(limit).lean<ActivityLogDocument[]>(),
         ActivityLog.countDocuments(filter),
       ]);
     }
@@ -187,19 +189,19 @@ export async function GET(request: NextRequest) {
  * API routes after performing auditable operations.
  *
  * Body fields:
- * @param action        {string}  Required. The action performed (e.g. 'CREATE', 'UPDATE', 'DELETE').
- * @param resource      {string}  Required. The resource type affected (e.g. 'machine', 'user').
- * @param resourceId    {string}  Required. The ID of the affected resource.
- * @param userId        {string}  Required. ID of the user performing the action.
- * @param username      {string}  Required. Username (or email) of the actor.
- * @param userRole      {string}  Optional. Role of the acting user, stored in actor.role.
- * @param resourceName  {string}  Optional. Human-readable name of the affected resource.
- * @param details       {string}  Optional. Free-text description of what changed.
- * @param description   {string}  Optional. Short summary line for display.
- * @param actor         {object}  Optional. Full actor object `{ id, email, role }` — overrides derived actor.
- * @param changes       {Array}   Optional. Explicit list of `{ field, oldValue, newValue }` change records.
- * @param previousData  {object}  Optional. Full document state before the change (auto-diffs with newData if both provided).
- * @param newData       {object}  Optional. Full document state after the change (auto-diffs with previousData if both provided).
+ * @param {string} action - Required. The action performed (e.g. 'CREATE', 'UPDATE', 'DELETE').
+ * @param {string} resource - Required. The resource type affected (e.g. 'machine', 'user').
+ * @param {string} resourceId - Required. The ID of the affected resource.
+ * @param {string} userId - Required. ID of the user performing the action.
+ * @param {string} username - Required. Username (or email) of the actor.
+ * @param {string} [userRole] - Optional. Role of the acting user, stored in actor.role.
+ * @param {string} [resourceName] - Optional. Human-readable name of the affected resource.
+ * @param {string} [details] - Optional. Free-text description of what changed.
+ * @param {string} [description] - Optional. Short summary line for display.
+ * @param {object} [actor] - Optional. Full actor object `{ id, email, role }` — overrides derived actor.
+ * @param {Array} [changes] - Optional. Explicit list of `{ field, oldValue, newValue }` change records.
+ * @param {object} [previousData] - Optional. Full document state before the change (auto-diffs with newData if both provided).
+ * @param {object} [newData] - Optional. Full document state after the change (auto-diffs with previousData if both provided).
  */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async () => {

@@ -101,6 +101,7 @@ export function useCollectionReportPageData() {
   const [editingReportId, setEditingReportId] = useState<string | null>(null);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // ==========================================================================
   // Debounced Values
@@ -211,7 +212,7 @@ export function useCollectionReportPageData() {
     const isManager = userRoles.includes('manager');
 
     if (isDeveloper) {
-      return new Set(allReports.map(r => r.locationReportId));
+      return new Set(allReports.map(report => report.locationReportId));
     }
 
     if (isOwner || isAdmin || isManager) {
@@ -314,7 +315,7 @@ export function useCollectionReportPageData() {
           activeMetricsFilter === 'Custom'
             ? { from: customDateRange.startDate, to: customDateRange.endDate }
             : undefined,
-          activeMetricsFilter === 'Custom' ? 'Custom' : undefined,
+          activeMetricsFilter || undefined,
           batch,
           ITEMS_PER_BATCH,
           0,
@@ -326,9 +327,9 @@ export function useCollectionReportPageData() {
 
         if (result) {
           setAllReports(prev => {
-            const existingIds = new Set(prev.map(r => r._id));
+            const existingIds = new Set(prev.map(report => report._id));
             const uniqueNewReports = result.data.filter(
-              (r: CollectionReportRow) => !existingIds.has(r._id)
+              (report: CollectionReportRow) => !existingIds.has(report._id)
             );
             return [...prev, ...uniqueNewReports];
           });
@@ -422,6 +423,7 @@ export function useCollectionReportPageData() {
    */
   const confirmDelete = async () => {
     if (!reportToDelete) return;
+    setIsDeleting(true);
     try {
       await axios.delete(`/api/collection-reports/${reportToDelete}`);
       toast.success('Report deleted');
@@ -429,6 +431,7 @@ export function useCollectionReportPageData() {
     } catch {
       toast.error('Failed to delete report');
     } finally {
+      setIsDeleting(false);
       setShowDeleteConfirmation(false);
       setReportToDelete(null);
     }
@@ -465,9 +468,9 @@ export function useCollectionReportPageData() {
   useEffect(() => {
     fetchAllGamingLocations(selectedLicencee || undefined).then(locs => {
       // Map to standardized location format
-      const formatted = locs.map(l => ({
-        _id: String(l.id),
-        name: l.name,
+      const formatted = locs.map(loc => ({
+        _id: String(loc.id),
+        name: loc.name,
       }));
       setLocations(formatted);
       // Initialize metadata array as empty, modals will handle their own rich fetching
@@ -587,6 +590,7 @@ export function useCollectionReportPageData() {
     showEditDesktop,
     editingReportId,
     showDeleteConfirmation,
+    isDeleting,
     editableReportIds,
     // Tab Handlers
     handleTabChange,
@@ -612,9 +616,9 @@ export function useCollectionReportPageData() {
       const locs = await fetchAllGamingLocations(
         selectedLicencee || undefined
       );
-      const formatted = locs.map(l => ({
-        _id: String(l.id),
-        name: l.name,
+      const formatted = locs.map(loc => ({
+        _id: String(loc.id),
+        name: loc.name,
       }));
       setLocations(formatted);
       setLocationsWithMachines([]);

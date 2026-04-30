@@ -17,6 +17,7 @@ import fs from 'fs';
 import { GridFSBucket } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
+import type { FirmwareDocument } from '@shared/types';
 
 /**
  * GET /api/firmwares/[id]/serve
@@ -27,7 +28,7 @@ import path from 'path';
  * automatically deleted from disk after 30 minutes.
  *
  * URL params:
- * @param id {string} Required (path). The MongoDB ID of the Firmware document to serve.
+ * @param {string} id - Required (path). The MongoDB ID of the Firmware document to serve.
  */
 export async function GET(
   request: NextRequest
@@ -51,7 +52,7 @@ export async function GET(
     // ============================================================================
     // STEP 3: Find firmware document
     // ============================================================================
-    const firmwareDoc = await Firmware.findOne({ _id: id }).lean();
+    const firmwareDoc = await Firmware.findOne({ _id: id }).lean<FirmwareDocument>();
     if (!firmwareDoc) {
       return NextResponse.json(
         { error: 'Firmware not found' },
@@ -59,9 +60,9 @@ export async function GET(
       );
     }
 
-    const firmware = firmwareDoc as unknown as {
-      fileId: Parameters<GridFSBucket['openDownloadStream']>[0];
-      fileName: string;
+    const firmware = {
+      fileId: firmwareDoc.fileId as Parameters<GridFSBucket['openDownloadStream']>[0],
+      fileName: firmwareDoc.fileName ?? '',
     };
 
     // ============================================================================

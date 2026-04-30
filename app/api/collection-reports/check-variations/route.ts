@@ -5,8 +5,8 @@
  * before a collection report is submitted. Developer/admin only maintenance route.
  *
  * Body fields:
- * @param locationId      {string}   Required. ID of the gaming location; used to look up the licencee's `includeJackpot` setting.
- * @param machines        {Array}    Required. Array of machine meter snapshots to check. Each entry must include:
+ * @param {string} locationId - Required. ID of the gaming location; used to look up the licencee's `includeJackpot` setting.
+ * @param {Array} machines - Required. Array of machine meter snapshots to check. Each entry must include:
  *   - `machineId`        {string}   Required. Machine identifier.
  *   - `metersIn`         {number}   Required. Current coin-in meter reading.
  *   - `metersOut`        {number}   Required. Current coin-out meter reading.
@@ -16,7 +16,7 @@
  *   - `prevMetersIn`     {number}   Optional. Previous coin-in reading used to calculate meter gross.
  *   - `prevMetersOut`    {number}   Optional. Previous coin-out reading used to calculate meter gross.
  *   - `movementGross`    {number}   Optional. Pre-calculated movement gross from a saved collection; overrides raw-meter calculation (ensures RAM-clear entries match report page).
- * @param includeJackpot  {boolean}  Optional. When true, subtracts jackpot from SAS gross. Defaults to the licencee setting if omitted.
+ * @param {boolean} [includeJackpot] - Optional. When true, subtracts jackpot from SAS gross. Defaults to the licencee setting if omitted.
  */
 
 import type { NextRequest } from 'next/server';
@@ -24,7 +24,8 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { createSuccessResponse, createErrorResponse } from '@/app/api/lib/utils/apiResponse';
 import { Machine } from '@/app/api/lib/models/machines';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import type { MongooseId } from '@/shared/types';
+import type { GamingMachine, LicenceeDocument, MongooseId } from '@/shared/types';
+import type { GamingLocationDocument } from '@shared/types';
 interface CheckVariationsRequest {
   locationId: string;
   machines: Array<{
@@ -110,15 +111,15 @@ export async function POST(request: NextRequest) {
       const location = await GamingLocations.findOne(
         { _id: locationId as unknown as MongooseId },
         { 'rel.licencee': 1 }
-      ).lean() as { rel?: { licencee?: string } } | null;
+      ).lean<GamingLocationDocument>();
 
       const licenceeId = location?.rel?.licencee;
       if (licenceeId) {
         const { Licencee } = await import('@/app/api/lib/models/licencee');
-        const licenceeDoc = (await Licencee.findOne(
+        const licenceeDoc = await Licencee.findOne(
           { _id: licenceeId },
           { includeJackpot: 1 }
-        ).lean()) as Record<string, unknown> | null;
+        ).lean<LicenceeDocument>();
         includeJackpot = Boolean(licenceeDoc?.includeJackpot);
       }
     } catch (err) {
@@ -127,31 +128,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch machine details (name, game) for display
-    const machineIds = machines.map(m => m.machineId as unknown as MongooseId);
+    const machineIds = machines.map(machine => machine.machineId as unknown as MongooseId);
     const machineDetails = await Machine.find(
       { _id: { $in: machineIds } },
       { machineId: 1, serialNumber: 1, custom: 1, game: 1, machineCustomName: 1, machineName: 1 }
-    ).lean() as Array<{
-      _id: string;
-      machineId?: string;
-      serialNumber?: string;
-      custom?: { name?: string };
-      game?: string;
-      machineCustomName?: string;
-      machineName?: string;
-    }>;
+    ).lean<GamingMachine[]>();
 
-    const machineDetailsMap = new Map(machineDetails.map(m => [m._id, m]));
+    const machineDetailsMap = new Map(machineDetails.map(machineDetail => [machineDetail._id, machineDetail]));
 
     // Fetch SAS meter data for machines with SAS time ranges
     const { Meters } = await import('@/app/api/lib/models/meters');
 
     const meterQueries = machines
-      .filter(m => m.sasStartTime && m.sasEndTime)
-      .map(m => ({
-        machineId: m.machineId,
-        startTime: new Date(m.sasStartTime!),
-        endTime: new Date(m.sasEndTime!),
+      .filter(machine => machine.sasStartTime && machine.sasEndTime)
+      .map(machine => ({
+        machineId: machine.machineId,
+        startTime: new Date(machine.sasStartTime!),
+        endTime: new Date(machine.sasEndTime!),
       }));
 
     const allMeterData: Array<{
@@ -165,9 +158,9 @@ export async function POST(request: NextRequest) {
       const cursor = Meters.aggregate([
         {
           $match: {
-            $or: meterQueries.map(q => ({
-              machine: q.machineId,
-              readAt: { $gte: q.startTime, $lte: q.endTime },
+            $or: meterQueries.map(query => ({
+              machine: query.machineId,
+              readAt: { $gte: query.startTime, $lte: query.endTime },
             })),
           },
         },
@@ -188,12 +181,12 @@ export async function POST(request: NextRequest) {
 
     // Create lookup map
     const meterDataMap = new Map(
-      allMeterData.map(m => [
-        m._id,
+      allMeterData.map(meterData => [
+        meterData._id,
         {
-          drop: m.totalDrop,
-          cancelled: m.totalCancelled,
-          jackpot: m.totalJackpot,
+          drop: meterData.totalDrop,
+          cancelled: meterData.totalCancelled,
+          jackpot: meterData.totalJackpot,
         },
       ])
     );
@@ -207,14 +200,12 @@ export async function POST(request: NextRequest) {
 
       // Use provided machine name if it exists, otherwise build it
       let machineName = machine.machineName;
-      
+
       if (!machineName) {
         // Get display name components from DB fetch results
         const serialNumber = (machineDetail?.serialNumber || '').trim();
         const customName = (
           machineDetail?.custom?.name ||
-          machineDetail?.machineCustomName ||
-          machineDetail?.machineName ||
           ''
         ).trim();
         const game = (machineDetail?.game || '').trim();

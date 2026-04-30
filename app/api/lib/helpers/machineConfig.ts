@@ -23,6 +23,10 @@ export function buildMachineConfigUpdateFields(
   smibConfig?: Record<string, unknown>,
   smibVersion?: Record<string, unknown>
 ): Record<string, unknown> {
+  if (!machine || typeof machine !== 'object') {
+    console.error('[buildMachineConfigUpdateFields] machine is required');
+    return {};
+  }
   const updateFields: Record<string, unknown> = {
     updatedAt: new Date(),
   };
@@ -53,6 +57,10 @@ export function buildMachineConfigUpdateFields(
 export async function findMachineByRelayId(
   relayId: string
 ): Promise<Awaited<ReturnType<typeof Machine.findOne>> | null> {
+  if (!relayId) {
+    console.error('[findMachineByRelayId] relayId is required');
+    return null;
+  }
   return await Machine.findOne({
     $or: [{ relayId }, { smibBoard: relayId }],
   });
@@ -69,6 +77,14 @@ export async function updateMachineConfiguration(
   machineId: string,
   updateFields: Record<string, unknown>
 ): Promise<Awaited<ReturnType<typeof Machine.findOneAndUpdate>> | null> {
+  if (!machineId) {
+    console.error('[updateMachineConfiguration] machineId is required');
+    return null;
+  }
+  if (!updateFields) {
+    console.error('[updateMachineConfiguration] updateFields is required');
+    return null;
+  }
   return await Machine.findOneAndUpdate(
     { _id: machineId },
     updateFields,

@@ -620,11 +620,11 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
         );
 
         // Calculate hourly transaction volume for "Peak Hour" and "Transaction Volume" chart
-        const hourlyStats = new Array(24).fill(0).map((_, i) => {
-          const h = i % 12 || 12;
-          const meridiem = i < 12 ? 'AM' : 'PM';
+        const hourlyStats = new Array(24).fill(0).map((_, index) => {
+          const hour12 = index % 12 || 12;
+          const meridiem = index < 12 ? 'AM' : 'PM';
           return {
-            time: `${h}:00 ${meridiem}`,
+            time: `${hour12}:00 ${meridiem}`,
             transactions: 0,
             amount: 0,
             cashOut: 0, // Track cash out specific amount
@@ -686,15 +686,15 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
         let runningCashOut = 0;
 
         const balanceTrend = hourlyStats
-          .filter(h => h.transactions > 0 || h.amount > 0 || h.cashOut > 0)
-          .map(h => {
-            runningBalance += h.amount;
-            runningCashOut += h.cashOut;
+          .filter(hourStats => hourStats.transactions > 0 || hourStats.amount > 0 || hourStats.cashOut > 0)
+          .map(hourStats => {
+            runningBalance += hourStats.amount;
+            runningCashOut += hourStats.cashOut;
             return {
-              time: h.time,
+              time: hourStats.time,
               balance: runningBalance,
               cashOut: runningCashOut,
-              transactions: h.transactions,
+              transactions: hourStats.transactions,
             };
           });
 
@@ -961,9 +961,9 @@ export async function fetchFloatTransactionsData(
     // Create user map for name resolution
     const userMap = new Map<string, string>();
     if (usersData?.success && Array.isArray(usersData.users)) {
-      usersData.users.forEach((u: Record<string, unknown>) => {
-        if (u._id && u.username) {
-          userMap.set(String(u._id), String(u.username));
+      usersData.users.forEach((userItem: Record<string, unknown>) => {
+        if (userItem._id && userItem.username) {
+          userMap.set(String(userItem._id), String(userItem.username));
         }
       });
     }
@@ -1249,7 +1249,7 @@ export async function handleAddCash(data: {
       { denomination: 10, quantity: data.breakdown.ten },
       { denomination: 5, quantity: data.breakdown.five },
       { denomination: 1, quantity: data.breakdown.one },
-    ].filter(d => d.quantity > 0);
+    ].filter(denomination => denomination.quantity > 0);
 
     const response = await fetch('/api/vault/add-cash', {
       method: 'POST',
@@ -1297,7 +1297,7 @@ export async function handleRemoveCash(data: {
       { denomination: 10, quantity: data.breakdown.ten },
       { denomination: 5, quantity: data.breakdown.five },
       { denomination: 1, quantity: data.breakdown.one },
-    ].filter(d => d.quantity > 0);
+    ].filter(denomination => denomination.quantity > 0);
 
     const response = await fetch('/api/vault/remove-cash', {
       method: 'POST',
@@ -1714,7 +1714,7 @@ function generateTempPassword(): string {
   const chars =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
   let password = '';
-  for (let i = 0; i < 12; i++) {
+  for (let charIndex = 0; charIndex < 12; charIndex++) {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return password;
@@ -1781,27 +1781,27 @@ export function calculateEndOfDayMetrics(reportData: {
   );
 
   const totalDenominationCount = Object.values(denominationBreakdown).reduce(
-    (sum, count) => sum + count,
+    (sum, countItem) => sum + countItem,
     0
   );
 
   const midDaySum = midDaySoftCounts.reduce(
-    (sum, m) => sum + (m.amount || 0),
+    (sum, softCountItem) => sum + (softCountItem.amount || 0),
     0
   );
   const endOfDaySum = endOfDaySoftCounts.reduce(
-    (sum, m) => sum + (m.amount || 0),
+    (sum, softCountItem) => sum + (softCountItem.amount || 0),
     0
   );
   const totalMachineBalance = midDaySum + endOfDaySum;
 
   const totalCashierFloat = cashierFloats.reduce(
-    (sum, f) => sum + (f.balance || 0),
+    (sum, floatItem) => sum + (floatItem.balance || 0),
     0
   );
 
   const totalFloatRequests = floatRequests.reduce(
-    (sum, r) => sum + (r.requestedAmount || 0),
+    (sum, requestItem) => sum + (requestItem.requestedAmount || 0),
     0
   );
 
@@ -2018,7 +2018,7 @@ export function getTransactionTypeBadge(type: string): {
       return {
         label: type
           .split('_')
-          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
           .join(' '),
         icon: 'none',
         className: 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-50',

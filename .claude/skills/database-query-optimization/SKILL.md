@@ -234,6 +234,50 @@ for await (const doc of cursor) {
 - **No timeouts**: All queries complete within maxTimeMS
 - **Memory efficient**: Use cursors to prevent memory issues
 
+## Soft Delete in Aggregation Pipelines
+
+When querying collections that support soft-delete, add the filter to `$match`:
+
+```typescript
+// ✅ CORRECT - Filter soft-deleted documents in aggregation
+const pipeline: PipelineStage[] = [
+  {
+    $match: {
+      location: { $in: locationIds },
+      readAt: { $gte: startDate, $lte: endDate },
+      $or: [
+        { deletedAt: null },
+        { deletedAt: { $lt: new Date('2025-01-01') } },
+      ],
+    },
+  },
+  // ...
+];
+
+// ❌ WRONG - Missing soft-delete filter returns archived records
+const pipeline: PipelineStage[] = [
+  { $match: { location: { $in: locationIds } } },
+];
+```
+
+## Descriptive Variable Names in Pipelines
+
+No single-letter variables in pipeline building, iteration, or in-memory processing:
+
+```typescript
+// ❌ WRONG
+for await (const d of cursor) {
+  results.push(d);
+}
+const s = results.reduce((s, r) => s + r.totalDrop, 0);
+
+// ✅ CORRECT
+for await (const doc of cursor) {
+  results.push(doc);
+}
+const totalDrop = results.reduce((sum, result) => sum + result.totalDrop, 0);
+```
+
 ## Query Checklist
 
 - ✅ Using `.cursor({ batchSize: 1000 })` for Meters
@@ -245,3 +289,5 @@ for await (const doc of cursor) {
 - ✅ `maxTimeMS` set appropriately
 - ✅ Proper error handling
 - ✅ Results combined in memory when needed
+- ✅ Soft-delete filter applied where relevant
+- ✅ No single-letter variable names

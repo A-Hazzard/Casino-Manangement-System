@@ -47,7 +47,7 @@ async function closeConnection() {
     try {
       await mongooseCache.conn.close();
     } catch (err) {
-      console.error('[DB] Error closing connection:', err);
+      console.error('[closeConnection] Error:', err instanceof Error ? err.message : 'Unknown error');
     }
     mongooseCache.conn = null;
     mongooseCache.promise = null;
@@ -107,18 +107,7 @@ export async function connectDB(): Promise<mongo.Db> {
       .catch(err => {
         mongooseCache.promise = null;
         mongooseCache.connectionString = null;
-        // Log connection errors but don't throw to prevent app crashes
-        if (err.name === 'MongooseServerSelectionError') {
-          console.warn(
-            '🔧 MongoDB server selection timeout - database may be unavailable'
-          );
-        } else if (err.name === 'MongooseTimeoutError') {
-          console.warn(
-            '⏰ MongoDB connection timeout - database may be slow or unavailable'
-          );
-        } else {
-          console.warn('⚠️ MongoDB connection error:', err.message);
-        }
+        console.error('[connectDB] Error:', err instanceof Error ? err.message : 'Unknown error');
         throw err;
       });
   }

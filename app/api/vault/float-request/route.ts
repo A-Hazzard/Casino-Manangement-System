@@ -212,13 +212,9 @@ export async function GET(request: NextRequest) {
           totalPages: Math.ceil(total / limit),
         },
       });
-    } catch (error: unknown) {
-      console.error('[Float List API] Error:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[GET] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }
@@ -306,13 +302,9 @@ export async function POST(request: NextRequest) {
         message: 'Float request submitted',
         floatRequest: floatRequest.toObject(),
       });
-    } catch (error: unknown) {
-      console.error('[Float Create API] Error:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[Float Create API] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }
@@ -366,10 +358,13 @@ export async function DELETE(request: NextRequest) {
         const VaultNotificationModel = (
           await import('@/app/api/lib/models/vaultNotification')
         ).default;
-        await VaultNotificationModel.deleteMany({
+        const notifDeleteResult = await VaultNotificationModel.deleteMany({
           relatedEntityId: requestId,
           relatedEntityType: 'float_request',
         });
+        if (notifDeleteResult.deletedCount === 0) {
+          console.warn(`[float-request cancel] No notifications found to delete for requestId: ${requestId}`);
+        }
       } catch (e) {
         console.error('Notification cleanup failed:', e);
       }
@@ -378,13 +373,9 @@ export async function DELETE(request: NextRequest) {
         success: true,
         message: 'Request cancelled successfully',
       });
-    } catch (error: unknown) {
-      console.error('[Float Cancel API] Error:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[Float Cancel API] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }

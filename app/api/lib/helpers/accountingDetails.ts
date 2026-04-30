@@ -5,6 +5,10 @@ import type {
 import { CollectionReportData } from '@/lib/types/api';
 import type { CollectionMetersHistoryEntry } from '@/shared/types';
 import type { TimePeriod } from '@/shared/types/common';
+import type {
+  CollectionReportDocument,
+  GamingMachine,
+} from '@/shared/types';
 import { AcceptedBill } from '../models/acceptedBills';
 import { CollectionReport } from '../models/collectionReport';
 import { Collections } from '../models/collections';
@@ -55,18 +59,16 @@ async function getAcceptedBillsByMachine(
       }
     }
 
-    const result = (await AcceptedBill.find(
-      query
-    ).lean()) as AcceptedBillType[];
+    const result = await AcceptedBill.find(query).lean<AcceptedBillType[]>();
 
     return result;
-  } catch (error) {
-    console.error(
-      '[API] getAcceptedBillsByMachine: error fetching data',
-      error
-    );
-    return [];
-  }
+    } catch (error) {
+      console.error(
+        '[getAcceptedBillsByMachine] Error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      return [];
+    }
 }
 
 /**
@@ -103,9 +105,7 @@ async function getMachineEventsByMachine(
       }
     }
 
-    const result = (await MachineEvent.find(
-      query
-    ).lean()) as MachineEventType[];
+    const result = await MachineEvent.find(query).lean<MachineEventType[]>();
 
     // If no results, return empty array
     if (!result || result.length === 0) {
@@ -138,10 +138,7 @@ async function getCollectionMetersHistoryByMachine(
     const query = { _id: machineId };
     const projection = { collectionMetersHistory: 1 };
 
-    const machine = (await Machine.findOne(query, projection).lean()) as Record<
-      string,
-      unknown
-    >;
+    const machine = await Machine.findOne(query, projection).lean<Record<string, unknown>>();
 
     let result = (machine?.collectionMetersHistory ||
       []) as CollectionMetersHistoryEntry[];
@@ -160,13 +157,13 @@ async function getCollectionMetersHistoryByMachine(
     }
 
     return result;
-  } catch (error) {
-    console.error(
-      '[API] getCollectionMetersHistoryByMachine: error fetching data',
-      error
-    );
-    return [];
-  }
+    } catch (error) {
+      console.error(
+        '[getCollectionMetersHistoryByMachine] Error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      return [];
+    }
 }
 
 /**
@@ -180,12 +177,16 @@ export async function getAccountingDetails(
   machineId: string,
   timePeriod?: string | null
 ) {
+  if (!machineId) {
+    console.error('[getAccountingDetails] machineId is required');
+    return { acceptedBills: [], machineEvents: [], collectionMetersHistory: [], machine: null };
+  }
   const [acceptedBills, machineEvents, collectionMetersHistory, machine] =
     await Promise.all([
       getAcceptedBillsByMachine(machineId, timePeriod),
       getMachineEventsByMachine(machineId, timePeriod),
       getCollectionMetersHistoryByMachine(machineId, timePeriod),
-      Machine.findOne({ _id: machineId }).lean(),
+      Machine.findOne({ _id: machineId }).lean<GamingMachine>(),
     ]);
 
   return { acceptedBills, machineEvents, collectionMetersHistory, machine };
@@ -201,9 +202,13 @@ export async function getCollectionReportById(
   reportId: string,
   currentUser: UserWithMultiplier
 ): Promise<CollectionReportData | null> {
+  if (!reportId || !currentUser) {
+    console.error('[getCollectionReportById] reportId and currentUser are required');
+    return null;
+  }
   const report = await CollectionReport.findOne({
     locationReportId: reportId,
-  }).lean();
+  }).lean<CollectionReportDocument>();
   if (!report) return null;
 
   // Get multiplier from user for reviewer calculations
@@ -348,12 +353,12 @@ export async function getCollectionReportById(
   // Do NOT use sasMeters.machine (display identifier) — it's inconsistent.
   const meterQueries = collections
     .filter(
-      c => c.machineId && c.sasMeters?.sasStartTime && c.sasMeters?.sasEndTime
+      collection => collection.machineId && collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime
     )
-    .map(c => ({
-      machineId: c.machineId as string,
-      startTime: new Date(c.sasMeters!.sasStartTime!),
-      endTime: new Date(c.sasMeters!.sasEndTime!),
+    .map(collection => ({
+      machineId: collection.machineId as string,
+      startTime: new Date(collection.sasMeters!.sasStartTime!),
+      endTime: new Date(collection.sasMeters!.sasEndTime!),
     }));
 
   // Build a single aggregation to get all meter data grouped by machine
@@ -409,26 +414,26 @@ export async function getCollectionReportById(
   );
 
   // Calculate location metrics from actual collections using the same logic as individual machines
-  const totalDrop = collections.reduce((sum, col) => {
-    return sum + ((col.metersIn || 0) - (col.prevIn || 0));
+  const totalDrop = collections.reduce((sum, collection) => {
+    return sum + ((collection.metersIn || 0) - (collection.prevIn || 0));
   }, 0);
 
-  const totalCancelled = collections.reduce((sum, col) => {
-    return sum + ((col.metersOut || 0) - (col.prevOut || 0));
+  const totalCancelled = collections.reduce((sum, collection) => {
+    return sum + ((collection.metersOut || 0) - (collection.prevOut || 0));
   }, 0);
 
-  const totalMetersGross = collections.reduce((sum, col) => {
+  const totalMetersGross = collections.reduce((sum, collection) => {
     // Prefer stored movement.gross; fall back to raw delta calculation for older documents
-    const storedGross = col.movement?.gross;
+    const storedGross = collection.movement?.gross;
     if (storedGross !== undefined && storedGross !== null) {
       return sum + storedGross;
     }
     // Fallback: same formula as the main list page aggregation
     return (
       sum +
-      ((col.metersIn || 0) -
-        (col.prevIn || 0) -
-        ((col.metersOut || 0) - (col.prevOut || 0)))
+      ((collection.metersIn || 0) -
+        (collection.prevIn || 0) -
+        ((collection.metersOut || 0) - (collection.prevOut || 0)))
     );
   }, 0);
 
@@ -436,28 +441,28 @@ export async function getCollectionReportById(
   let includeJackpot = false;
   try {
     if (report.location) {
-      const location = (await GamingLocations.findOne(
+      const location = await GamingLocations.findOne(
         { _id: report.location },
         { 'rel.licencee': 1 }
-      ).lean()) as { rel?: { licencee?: string } } | null;
+      ).lean<{ rel?: { licencee?: string } } | null>();
 
       const licenceeId = location?.rel?.licencee;
 
       if (licenceeId) {
         const { Licencee } = await import('@/app/api/lib/models/licencee');
-        const licenceeDoc = (await Licencee.findOne(
+        const licenceeDoc = await Licencee.findOne(
           { _id: licenceeId },
           { includeJackpot: 1 }
-        ).lean()) as Record<string, unknown> | null;
+        ).lean<Record<string, unknown> | null>();
         includeJackpot = Boolean(licenceeDoc?.includeJackpot);
       }
     }
-  } catch (err) {
-    console.warn(
-      '[Collection Report] Could not fetch licencee includeJackpot:',
-      err
-    );
-  }
+    } catch (err) {
+      console.error(
+        '[getCollectionReportById] Could not fetch licencee includeJackpot:',
+        err instanceof Error ? err.message : 'Unknown error'
+      );
+    }
 
   // Calculate total SAS gross and jackpot from meter data map
   let totalSasGross = 0;
@@ -502,24 +507,27 @@ export async function getCollectionReportById(
       });
       totalMachinesForLocation = totalMachinesCount;
     }
-  } catch (error) {
-    console.warn('Could not count total machines for location:', error);
-    // Keep the fallback value
-  }
+    } catch (error) {
+      console.error(
+        '[getAccountingDetails] Could not count total machines for location:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+      // Keep the fallback value
+    }
 
   // Map location metrics (use calculated values for core metrics, keep report values for financial fields)
   const locationMetrics = {
     droppedCancelled: `${formatSmartDecimal(totalDrop * scale)} / ${formatSmartDecimal(totalCancelled * scale)}`,
     metersGross: totalMetersGross * scale,
-    jackpot: collections.reduce((sum, col) => {
-      const meterData = meterDataMap.get(col.machineId);
-      return sum + (meterData?.jackpot ?? col.sasMeters?.jackpot ?? 0);
+    jackpot: collections.reduce((sum, collection) => {
+      const meterData = meterDataMap.get(collection.machineId);
+      return sum + (meterData?.jackpot ?? collection.sasMeters?.jackpot ?? 0);
     }, 0) * scale,
     netGross:
       (totalMetersGross -
-      collections.reduce((sum, col) => {
-        const meterData = meterDataMap.get(col.machineId);
-        return sum + (meterData?.jackpot ?? col.sasMeters?.jackpot ?? 0);
+      collections.reduce((sum, collection) => {
+        const meterData = meterDataMap.get(collection.machineId);
+        return sum + (meterData?.jackpot ?? collection.sasMeters?.jackpot ?? 0);
       }, 0)) * scale,
     variation: totalVariation * scale,
     sasGross: totalSasGross * scale,
@@ -568,8 +576,8 @@ export async function getCollectionReportById(
   };
 
   return {
-    reportId: report.locationReportId,
-    locationName: report.locationName,
+    reportId: report.locationReportId || '',
+    locationName: report.locationName || '',
     collectionDate: report.timestamp
       ? new Date(report.timestamp).toISOString()
       : '-',

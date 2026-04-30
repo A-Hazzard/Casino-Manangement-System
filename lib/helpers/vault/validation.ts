@@ -47,14 +47,14 @@ export function validateVaultDenominations(
 
   // Convert arrays to maps for easier comparison
   const requestedMap: DenominationMap = {};
-  requestedDenominations.forEach(d => {
-    requestedMap[d.denomination.toString()] = d.quantity;
+  requestedDenominations.forEach(denomination => {
+    requestedMap[denomination.denomination.toString()] = denomination.quantity;
   });
 
   const vaultMap: DenominationMap = {};
-  vaultDenominations.forEach(d => {
-    vaultMap[d.denomination.toString()] = d.quantity;
-    available[d.denomination.toString()] = d.quantity;
+  vaultDenominations.forEach(denomination => {
+    vaultMap[denomination.denomination.toString()] = denomination.quantity;
+    available[denomination.denomination.toString()] = denomination.quantity;
   });
 
   // Check each requested denomination
@@ -106,7 +106,7 @@ export function calculateDenominationTotal(
   denominations: Denomination[]
 ): number {
   return denominations.reduce(
-    (total, d) => total + d.denomination * d.quantity,
+    (sum, denominationItem) => sum + denominationItem.denomination * denominationItem.quantity,
     0
   );
 }
@@ -134,24 +134,24 @@ export function validateDenominationStructure(
   }
 
   // Validate each denomination
-  denominations.forEach((d, index) => {
+  denominations.forEach((denominationItem, index) => {
     // Check if denomination value is valid
-    if (!validDenominations.includes(d.denomination)) {
+    if (!validDenominations.includes(denominationItem.denomination)) {
       errors.push(
-        `Invalid denomination at index ${index}: $${d.denomination}`
+        `Invalid denomination at index ${index}: $${denominationItem.denomination}`
       );
     }
 
     // Check if quantity is valid
-    if (d.quantity < 0) {
+    if (denominationItem.quantity < 0) {
       errors.push(
-        `Invalid quantity at index ${index}: ${d.quantity} (must be >= 0)`
+        `Invalid quantity at index ${index}: ${denominationItem.quantity} (must be >= 0)`
       );
     }
 
-    if (!Number.isInteger(d.quantity)) {
+    if (!Number.isInteger(denominationItem.quantity)) {
       errors.push(
-        `Invalid quantity at index ${index}: ${d.quantity} (must be an integer)`
+        `Invalid quantity at index ${index}: ${denominationItem.quantity} (must be an integer)`
       );
     }
   });
@@ -178,13 +178,13 @@ export function calculateDenominationDifference(
   after: Denomination[]
 ): Denomination[] {
   const beforeMap: DenominationMap = {};
-  before.forEach(d => {
-    beforeMap[d.denomination.toString()] = d.quantity;
+  before.forEach(denomination => {
+    beforeMap[denomination.denomination.toString()] = denomination.quantity;
   });
 
   const afterMap: DenominationMap = {};
-  after.forEach(d => {
-    afterMap[d.denomination.toString()] = d.quantity;
+  after.forEach(denomination => {
+    afterMap[denomination.denomination.toString()] = denomination.quantity;
   });
 
   const difference: Denomination[] = [];
@@ -217,9 +217,9 @@ export function calculateDenominationDifference(
  */
 export function formatDenominations(denominations: Denomination[]): string {
   return denominations
-    .filter(d => d.quantity > 0)
-    .sort((a, b) => b.denomination - a.denomination)
-    .map(d => `$${d.denomination} × ${d.quantity}`)
+    .filter(denominationItem => denominationItem.quantity > 0)
+    .sort((first, second) => second.denomination - first.denomination)
+    .map(denominationItem => `$${denominationItem.denomination} × ${denominationItem.quantity}`)
     .join(', ');
 }
 
@@ -248,8 +248,8 @@ export function denominationArrayToMap(
   denominations: Denomination[]
 ): DenominationMap {
   const map: DenominationMap = {};
-  denominations.forEach(d => {
-    map[d.denomination.toString()] = d.quantity;
+  denominations.forEach(denomination => {
+    map[denomination.denomination.toString()] = denomination.quantity;
   });
   return map;
 }

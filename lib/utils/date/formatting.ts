@@ -22,6 +22,7 @@ import { format, isValid, parseISO } from 'date-fns';
  * @returns Formatted string representation
  */
 function formatProfileObject(profile: Record<string, unknown>): string {
+  if (!profile) { console.error('[formatProfileObject] profile is required'); return 'Empty profile'; }
   const parts = [];
 
   // Handle basic profile fields
@@ -74,18 +75,44 @@ function formatProfileObject(profile: Record<string, unknown>): string {
  */
 export function formatDate(date: Date | string | number | undefined): string {
   if (!date) return '-';
-  const d =
+  const dateObj =
     typeof date === 'string' || typeof date === 'number'
       ? new Date(date)
       : date;
 
-  if (!(d instanceof Date) || isNaN(d.getTime())) return '-';
+  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return '-';
 
-  return d.toLocaleDateString(undefined, {
+  return dateObj.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
+}
+
+/**
+ * Formats a date string (ISO format) to a readable date string
+ * @param dateString - ISO date string or Date object
+ * @param fallback - Value to return if date is invalid
+ * @returns Formatted date string
+ */
+export function formatDateString(
+  dateString: string | Date | undefined | null,
+  fallback: string = '-'
+): string {
+  if (!dateString) return fallback;
+  try {
+    const date =
+      typeof dateString === 'string' ? new Date(dateString) : dateString;
+    if (!(date instanceof Date) || isNaN(date.getTime())) return fallback;
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch (e) {
+    console.error('[formatDateString] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return fallback;
+  }
 }
 
 /**
@@ -123,14 +150,14 @@ export function formatDateWithOrdinal(
   date: Date | string | number | undefined
 ): string {
   if (!date) return 'Unknown';
-  const d =
+  const dateObj =
     typeof date === 'string' || typeof date === 'number'
       ? new Date(date)
       : date;
 
-  if (!(d instanceof Date) || isNaN(d.getTime())) return 'Unknown';
+  if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return 'Unknown';
 
-  return format(d, 'MMM do yyyy h:mm a');
+  return format(dateObj, 'MMM do yyyy h:mm a');
 }
 
 /**
@@ -171,33 +198,9 @@ export function safeFormatDate(
         hour12: true,
       }
     );
-  } catch {
+  } catch (e) {
+    console.error('[safeFormatDate] Error:', e instanceof Error ? e.message : 'Unknown error');
     return '-';
-  }
-}
-
-/**
- * Formats a date string or Date object to a readable format
- * @param dateInput - Date string, Date object, or timestamp
- * @returns Formatted date string or "Invalid Date" if parsing fails
- */
-export function formatDateString(dateInput: string | Date | number): string {
-  try {
-    const date = new Date(dateInput);
-    if (isNaN(date.getTime())) {
-      return 'Invalid Date';
-    }
-
-    return date.toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  } catch {
-    return 'Invalid Date';
   }
 }
 
@@ -241,12 +244,13 @@ export function formatValue(value: unknown, fieldName?: string): string {
           // For timestamp fields, show date and time
           return format(date, "MMMM d, yyyy 'at' h:mm a");
         }
-      } catch {
-        // Fall through to handle as regular string
+      } catch (e) {
+        console.error('[formatValue] Error:', e instanceof Error ? e.message : 'Unknown error');
+        // Fall through to handle as regular string.
       }
     }
 
-    // Check if it's a simple date string (YYYY-MM-DD)
+  // Check if it's a simple date string (YYYY-MM-DD)
     const simpleDateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (typeof value === 'string' && simpleDateRegex.test(value)) {
       try {
@@ -299,8 +303,8 @@ export function formatValue(value: unknown, fieldName?: string): string {
 
       // Check for movement object
       if (fieldName === 'movement' || ('metersIn' in value && 'metersOut' in value && 'gross' in value)) {
-        const m = value as Record<string, unknown>;
-        return `In: ${m.metersIn}, Out: ${m.metersOut}, Gross: ${m.gross}`;
+        const movementData = value as Record<string, unknown>;
+        return `In: ${movementData.metersIn}, Out: ${movementData.metersOut}, Gross: ${movementData.gross}`;
       }
 
       // Check if it's a profile object (has profile-like properties)

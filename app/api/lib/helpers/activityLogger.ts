@@ -15,6 +15,10 @@ export async function logActivity(params: {
   username?: string;
   membershipLog?: boolean;
 }): Promise<string> {
+  if (!params?.action || !params?.details) {
+    console.error('[logActivity] action and details are required');
+    throw new Error('[logActivity] action and details are required');
+  }
   try {
     // Extract resource info from metadata if available (ensure lowercase)
     const resource = (
@@ -82,7 +86,10 @@ export async function logActivity(params: {
     console.warn('✅ Activity logged successfully:', activityLog._id);
     return activityLog._id;
   } catch (error) {
-    console.error('❌ Failed to log activity:', error);
+    console.error(
+      '[logActivity] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     // Re-throw the error to ensure the calling code knows logging failed
     throw error;
   }
@@ -93,14 +100,18 @@ export async function logActivity(params: {
  * Only compares fields that exist in the newObj (update payload).
  * This prevents logging all fields as changed when only specific fields are updated.
  *
- * @param oldObj - The original object
- * @param newObj - The updated object (should only contain fields being updated)
- * @returns Array of changes
+ * @param {Record<string, unknown>} oldObj - The original object
+ * @param {Record<string, unknown>} newObj - The updated object (should only contain fields being updated)
+ * @returns {ActivityLogChange[]} Array of changes
  */
 export function calculateChanges(
   oldObj: Record<string, unknown>,
   newObj: Record<string, unknown>
 ): ActivityLogChange[] {
+  if (!oldObj || typeof oldObj !== 'object' || !newObj || typeof newObj !== 'object') {
+    console.error('[calculateChanges] oldObj and newObj are required objects');
+    return [];
+  }
   const changes: ActivityLogChange[] = [];
 
   // Only check fields that are present in newObj (the update payload)

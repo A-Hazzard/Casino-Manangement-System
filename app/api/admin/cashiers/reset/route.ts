@@ -28,7 +28,7 @@ interface ResetPasswordRequest {
  * further restricted to cashiers within their shared licencees.
  *
  * Body fields:
- * @param cashierId {string}  Required. The ID of the cashier user whose password will be reset.
+ * @param {string} cashierId - Required. The ID of the cashier user whose password will be reset.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -156,11 +156,8 @@ export async function POST(request: NextRequest) {
         email: cashierData.emailAddress,
       },
     });
-  } catch (error: unknown) {
-    console.error('Error resetting cashier password:', error instanceof Error ? error.message : error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (e) {
+    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -31,6 +31,11 @@ class UserCache {
    * Get cached user data.
    */
   get(key: string): unknown | null {
+    if (!key || typeof key !== 'string') {
+      console.error('[UserCache.get] key is required and must be a string');
+      return null;
+    }
+
     const cached = this.cache.get(key);
     if (!cached) return null;
 
@@ -48,6 +53,11 @@ class UserCache {
    * Set cached user data.
    */
   set(key: string, data: unknown, ttl: number = this.DEFAULT_TTL): void {
+    if (!key || typeof key !== 'string' || data === undefined || typeof ttl !== 'number') {
+      console.error('[UserCache.set] key (string), data, and ttl (number) are required');
+      return;
+    }
+
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -73,6 +83,9 @@ class UserCache {
    * Check if cache entry exists and is valid.
    */
   has(key: string): boolean {
+    if (!key || typeof key !== 'string') {
+      return false;
+    }
     return this.get(key) !== null;
   }
 
@@ -80,10 +93,15 @@ class UserCache {
    * Get cache statistics.
    */
   getStats(): { size: number; keys: string[] } {
-    return {
-      size: this.cache.size,
-      keys: Array.from(this.cache.keys()),
-    };
+    try {
+      return {
+        size: this.cache.size,
+        keys: Array.from(this.cache.keys()),
+      };
+    } catch (error) {
+      console.error('[UserCache.getStats] Error:', error);
+      return { size: 0, keys: [] };
+    }
   }
 }
 

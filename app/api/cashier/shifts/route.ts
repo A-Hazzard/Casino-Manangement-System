@@ -8,15 +8,15 @@
  * to include cashierName and locationName for display.
  *
  * Query parameters:
- * @param status     {string}  Optional. Single status value or comma-separated list
+ * @param {string} [status] - Optional. Single status value or comma-separated list
  *   (e.g. 'pending_review' or 'active,pending_review') to filter by shift status.
- * @param locationId {string}  Optional. Restrict results to a specific location.
- * @param cashierId  {string}  Optional. Filter by cashier user ID. Ignored for non-VM
+ * @param {string} [locationId] - Optional. Restrict results to a specific location.
+ * @param {string} [cashierId] - Optional. Filter by cashier user ID. Ignored for non-VM
  *   callers — they always see only their own shifts.
- * @param limit      {number}  Optional. Maximum number of results to return. Defaults to 20.
- * @param startDate  {string}  Optional. ISO date string; only return shifts created on or
+ * @param {number} [limit] - Optional. Maximum number of results to return. Defaults to 20.
+ * @param {string} [startDate] - Optional. ISO date string; only return shifts created on or
  *   after this date.
- * @param endDate    {string}  Optional. ISO date string; only return shifts created on or
+ * @param {string} [endDate] - Optional. ISO date string; only return shifts created on or
  *   before this date.
  *
  * @module app/api/cashier/shifts/route
@@ -179,11 +179,8 @@ export async function GET(request: NextRequest) {
       success: true,
       shifts,
     });
-  } catch (error: unknown) {
-    console.error('Error fetching cashier shifts:', error instanceof Error ? error.message : error);
-    return NextResponse.json(
-      { success: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (e) {
+    console.error('[GET] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

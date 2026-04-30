@@ -6,6 +6,7 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import type { VaultShiftDocument } from '@shared/types';
 import { validateDenominations } from '@/lib/helpers/vault/calculations';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
@@ -42,15 +43,12 @@ export async function POST(request: NextRequest) {
         );
 
       if (openingBalance === undefined || !denominations?.length) {
-        const lastClosed = (await VaultShiftModel.findOne({
+        const lastClosed = await VaultShiftModel.findOne({
           locationId,
           status: 'closed',
         })
           .sort({ closedAt: -1 })
-          .lean()) as unknown as {
-          closingBalance?: number;
-          closingDenominations?: Array<{ value: number; count: number }>;
-        } | null;
+          .lean<VaultShiftDocument>();
         openingBalance = lastClosed?.closingBalance ?? 0;
         denominations = lastClosed?.closingDenominations ?? [];
       }

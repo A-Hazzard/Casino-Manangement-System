@@ -51,14 +51,8 @@ export async function POST() {
       qrCodeUrl,
       secret, // Also provide the text secret for manual entry
     });
-  } catch (error: unknown) {
-    console.error(
-      'TOTP Setup Error:',
-      error instanceof Error ? error.message : error
-    );
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (e) {
+    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

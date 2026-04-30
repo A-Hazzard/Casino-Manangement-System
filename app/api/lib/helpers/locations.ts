@@ -3,6 +3,7 @@
  * Utilities for building MongoDB query filters and resolving licencee IDs for location data.
  */
 import { Licencee } from '@/app/api/lib/models/licencee';
+import type { LicenceeDocument } from '@shared/types';
 
 export type LocationQueryFilterParams = {
   licencee: string | null;
@@ -42,7 +43,7 @@ async function resolveLicenceeId(licenceeFilter: string): Promise<string> {
         ],
       },
       { _id: 1 }
-    ).lean();
+    ).lean<LicenceeDocument>();
     if (lDoc && !Array.isArray(lDoc)) resId = String(lDoc._id);
   } catch {}
   return resId;
@@ -75,6 +76,10 @@ async function appendLicenceeFilter(
 export async function buildLocationQueryFilter(
   params: LocationQueryFilterParams
 ): Promise<Record<string, unknown>> {
+  if (!params || typeof params !== 'object') {
+    console.error('[buildLocationQueryFilter] params is required');
+    return {};
+  }
   const {
     licencee,
     forceAll,

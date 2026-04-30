@@ -11,6 +11,8 @@
 
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
+import type { CollectionDocument } from '@/lib/types/collection';
+import type { GamingMachine } from '@shared/types';
 
 type CollectionRecord = Record<string, unknown>;
 type HistoryEntry = Record<string, unknown>;
@@ -27,8 +29,8 @@ type HistoryEntry = Record<string, unknown>;
  * 6. Update machine with new history and corrected collection meters
  * 7. Return detailed results for each machine processed
  *
- * @param targetMachineId - Optional machine ID to fix specific machine
- * @returns Object containing processing summary and detailed results
+ * @param {string | null} [targetMachineId] - Optional machine ID to fix specific machine
+ * @returns {Promise<{ totalMachinesProcessed: number; machinesFixed: number; totalDuplicatesRemoved: number; totalHistoryEntriesRebuilt: number; detailedResults: Array<{ machineId: string; machineName: string; issues: string[]; actions: string[]; duplicatesRemoved: number; historyEntriesRebuilt: number }> }>} Object containing processing summary and detailed results
  */
 export async function fixMachineCollectionHistory(
   targetMachineId?: string | null
@@ -111,7 +113,7 @@ export async function fixMachineCollectionHistory(
           collectionTime: 1,
           timestamp: 1,
         })
-        .lean();
+        .lean<CollectionDocument[]>();
 
       console.warn(
         `   📊 Found ${actualCollections.length} actual collections`
@@ -125,12 +127,17 @@ export async function fixMachineCollectionHistory(
 
         // Clear the collection history if no actual collections exist
         // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-        await Machine.findOneAndUpdate(
+        const clearResult = await Machine.findOneAndUpdate(
           { _id: machineId },
           {
             $unset: { collectionMetersHistory: 1 },
           }
         );
+
+        if (!clearResult) {
+          console.error(`[fixMachineCollectionHistory] Failed to clear history for machine ${machineId}`);
+          issues.push('Failed to clear collection history');
+        }
 
         actions.push('Cleared empty collection history');
         detailedResults.push({
@@ -171,14 +178,19 @@ export async function fixMachineCollectionHistory(
             `   🗑️ Found ${duplicateCollections.length} duplicate collections to remove`
           );
 
-          // Remove duplicate collections from database
-          for (const duplicateGroup of duplicateCollections) {
-            const idsToRemove = duplicateGroup.duplicates.map(d => d._id);
-            await Collections.deleteMany({ _id: { $in: idsToRemove } });
-            console.warn(
-              `   ✅ Removed ${duplicateGroup.duplicates.length} duplicates for timestamp ${duplicateGroup.timestamp}`
-            );
-          }
+           // Remove duplicate collections from database
+           for (const duplicateGroup of duplicateCollections) {
+             const idsToRemove = duplicateGroup.duplicates.map(d => d._id);
+             const deleteResult = await Collections.deleteMany({ _id: { $in: idsToRemove } });
+             if (deleteResult.deletedCount === 0) {
+               console.error(`[fixMachineCollectionHistory] Failed to delete duplicates for timestamp ${duplicateGroup.timestamp}`);
+               issues.push(`Failed to delete duplicate collections for timestamp ${duplicateGroup.timestamp}`);
+             } else {
+               console.warn(
+                 `   ✅ Removed ${deleteResult.deletedCount} duplicates for timestamp ${duplicateGroup.timestamp}`
+               );
+             }
+           }
 
           // Refresh actual collections after deduplication
           actualCollections = await Collections.find({
@@ -189,7 +201,7 @@ export async function fixMachineCollectionHistory(
               collectionTime: 1,
               timestamp: 1,
             })
-            .lean();
+            .lean<CollectionDocument[]>();
 
           actions.push(
             `Removed ${duplicateCollections.reduce(
@@ -223,9 +235,8 @@ export async function fixMachineCollectionHistory(
         // CRITICAL: Use findOne with _id instead of findById (repo rule)
         const currentMachineState = await Machine.findOne({
           _id: machineId,
-        }).lean();
-        const machineState = currentMachineState as CollectionRecord | null;
-        const currentCollectionMeters = machineState?.collectionMeters as
+        }).lean<GamingMachine>();
+        const currentCollectionMeters = currentMachineState?.collectionMeters as
           | { metersIn: number; metersOut: number }
           | undefined;
 
@@ -247,7 +258,7 @@ export async function fixMachineCollectionHistory(
         }
 
         // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-        await Machine.findOneAndUpdate(
+        const updateResult = await Machine.findOneAndUpdate(
           { _id: machineId },
           {
             $set: {
@@ -265,6 +276,11 @@ export async function fixMachineCollectionHistory(
             },
           }
         );
+
+        if (!updateResult) {
+          console.error(`[fixMachineCollectionHistory] Failed to update history for machine ${machineId}`);
+          issues.push('Failed to update collection history');
+        }
 
         actions.push(
           `Rebuilt ${newHistory.length} history entries from actual collections`
@@ -292,10 +308,7 @@ export async function fixMachineCollectionHistory(
         historyEntriesRebuilt,
       });
     } catch (machineError) {
-      console.error(
-        `   ❌ Error processing machine ${machineId}:`,
-        machineError
-      );
+      console.error('[fixMachineCollectionHistory] Error:', machineError instanceof Error ? machineError.message : 'Unknown error');
       detailedResults.push({
         machineId,
         machineName,
@@ -340,9 +353,9 @@ export async function fixMachineCollectionHistory(
  * - Chronological order issues
  * - Incorrect previous meter values
  *
- * @param actualCollections - Array of actual collection documents
- * @param currentHistory - Current collection history entries
- * @returns Object with hasIssues flag and array of issue descriptions
+ * @param {Array<CollectionRecord>} actualCollections - Array of actual collection documents
+ * @param {Array<HistoryEntry>} currentHistory - Current collection history entries
+ * @returns {{ hasIssues: boolean; issues: string[] }} Object with hasIssues flag and array of issue descriptions
  */
 function analyzeCollectionHistory(
   actualCollections: Array<CollectionRecord>,
@@ -351,6 +364,14 @@ function analyzeCollectionHistory(
   hasIssues: boolean;
   issues: string[];
 } {
+  if (!actualCollections) {
+    console.error('[analyzeCollectionHistory] actualCollections is required');
+    return { hasIssues: false, issues: [] };
+  }
+  if (!currentHistory) {
+    console.error('[analyzeCollectionHistory] currentHistory is required');
+    return { hasIssues: false, issues: [] };
+  }
   const issues: string[] = [];
   let hasIssues = false;
 
@@ -424,9 +445,9 @@ function analyzeCollectionHistory(
   );
 
   let isChronologicallyCorrect = true;
-  for (let i = 0; i < sortedHistory.length; i++) {
+  for (let entryIndex = 0; entryIndex < sortedHistory.length; entryIndex++) {
     if (
-      JSON.stringify(sortedHistory[i]) !== JSON.stringify(currentHistory[i])
+      JSON.stringify(sortedHistory[entryIndex]) !== JSON.stringify(currentHistory[entryIndex])
     ) {
       isChronologicallyCorrect = false;
       break;
@@ -440,9 +461,9 @@ function analyzeCollectionHistory(
 
   // Check previous meter values accuracy
   let incorrectPrevValues = 0;
-  for (let i = 1; i < currentHistory.length; i++) {
-    const currentEntry = currentHistory[i];
-    const prevEntry = currentHistory[i - 1];
+  for (let historyIndex = 1; historyIndex < currentHistory.length; historyIndex++) {
+    const currentEntry = currentHistory[historyIndex];
+    const prevEntry = currentHistory[historyIndex - 1];
 
     if (
       currentEntry.prevMetersIn !== prevEntry.metersIn ||
@@ -473,8 +494,8 @@ function analyzeCollectionHistory(
  *   3. Prefer entries with earlier creation time
  * - Return groups of duplicates to remove
  *
- * @param actualCollections - Array of actual collection documents
- * @returns Array of duplicate groups with timestamp, duplicates to remove, and entry to keep
+ * @param {Array<CollectionRecord>} actualCollections - Array of actual collection documents
+ * @returns {Array<{ timestamp: string; duplicates: Array<CollectionRecord>; keepEntry: CollectionRecord }>} Array of duplicate groups with timestamp, duplicates to remove, and entry to keep
  */
 function findDuplicateCollections(
   actualCollections: Array<CollectionRecord>
@@ -483,6 +504,10 @@ function findDuplicateCollections(
   duplicates: Array<CollectionRecord>;
   keepEntry: CollectionRecord;
 }> {
+  if (!actualCollections) {
+    console.error('[findDuplicateCollections] actualCollections is required');
+    return [];
+  }
   // Group collections by timestamp
   const timestampGroups: Record<string, Array<CollectionRecord>> = {};
   actualCollections.forEach(collection => {
@@ -557,12 +582,16 @@ function findDuplicateCollections(
  * - For each collection, calculating prevIn/prevOut from the previous collection
  * - First collection has prevIn/prevOut of 0
  *
- * @param actualCollections - Array of actual collection documents (already sorted chronologically)
- * @returns Array of history entries with correct previous meter values
+ * @param {Array<CollectionRecord>} actualCollections - Array of actual collection documents (already sorted chronologically)
+ * @returns {Array<HistoryEntry>} Array of history entries with correct previous meter values
  */
 function rebuildHistoryFromCollections(
   actualCollections: Array<CollectionRecord>
 ): Array<HistoryEntry> {
+  if (!actualCollections) {
+    console.error('[rebuildHistoryFromCollections] actualCollections is required');
+    return [];
+  }
   return actualCollections.map((collection, index) => {
     let prevMetersIn = 0;
     let prevMetersOut = 0;

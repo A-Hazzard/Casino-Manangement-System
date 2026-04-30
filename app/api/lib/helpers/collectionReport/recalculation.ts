@@ -46,20 +46,21 @@ function getObjectIdTime(collection: CollectionSnapshot): number {
  * Retrieves all collections of a machine in chronological order and updates machine collectionMetersHistory.
  * No longer cascades/recalculates subsequent collections' meters — it only updates the Machine doc.
  *
- * @param machineId - The machine to update history for.
- * @param anchorCollectionId - Unused (kept for compatibility with callers).
+ * @param {string | null} [machineId] - The machine to update history for.
+ * @param {string} [anchorCollectionId] - Unused (kept for compatibility with callers).
  */
 export async function recalculateMachineCollections(
   machineId?: string | null
 ) {
   if (!machineId) {
+    console.error('[recalculateMachineCollections] machineId is required');
     return;
   }
 
-  const collections = (await Collections.find({
+  const collections = await Collections.find({
     machineId,
     $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
-  }).lean()) as CollectionSnapshot[];
+  }).lean<CollectionSnapshot[]>();
 
   if (!collections.length) {
     return;
@@ -83,8 +84,8 @@ export async function recalculateMachineCollections(
     locationReportId: string;
   }> = [];
 
-  for (let i = 0; i < sorted.length; i++) {
-    const col = sorted[i];
+  for (let collectionIndex = 0; collectionIndex < sorted.length; collectionIndex++) {
+    const col = sorted[collectionIndex];
     historyEntries.push({
       _id: new mongoose.Types.ObjectId(),
       metersIn: Number(col.metersIn ?? 0),
@@ -117,4 +118,3 @@ export async function recalculateMachineCollections(
     { new: true }
   );
 }
-

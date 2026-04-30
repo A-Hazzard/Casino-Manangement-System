@@ -47,6 +47,13 @@ export async function withApiAuth(
     bypassDb?: boolean;
   } = {}
 ): Promise<NextResponse> {
+  if (!req || !handler) {
+    console.error('[withApiAuth] req and handler are required');
+    return NextResponse.json(
+      { success: false, error: 'Missing required parameters' },
+      { status: 400 }
+    );
+  }
   try {
     // 1. Connect to Database (unless bypassed)
     let db: mongo.Db | undefined;
@@ -83,9 +90,9 @@ export async function withApiAuth(
       db,
     });
 
-  } catch (error: Error | unknown) {
+  } catch (error) {
     const message = error instanceof Error ? error.message : 'Internal Server Error';
-    console.error('[API Wrapper Error]:', message);
+    console.error('[withApiAuth] Error:', message);
     return NextResponse.json(
       { success: false, error: message },
       { status: 500 }

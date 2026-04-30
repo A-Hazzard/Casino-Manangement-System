@@ -45,6 +45,11 @@ function getPreviousPeriod(
   endDate: Date,
   days: number
 ): { prevStart: Date; prevEnd: Date } {
+  if (!startDate || !endDate || typeof days !== 'number') {
+    console.error('[getPreviousPeriod] startDate, endDate, and days are required');
+    return { prevStart: new Date(), prevEnd: new Date() };
+  }
+
   const prevEnd = new Date(startDate.getTime() - 1);
   const prevStart = new Date(
     prevEnd.getTime() - days * 24 * 60 * 60 * 1000 + 1
@@ -65,6 +70,12 @@ function calculateHourlyTrendsDateRange(
   startDateParam?: string | null,
   endDateParam?: string | null
 ): { startDate: Date; endDate: Date } {
+  if (!timePeriod) {
+    console.error('[calculateHourlyTrendsDateRange] timePeriod is required');
+    const now = new Date();
+    return { startDate: now, endDate: now };
+  }
+
   let startDate: Date | undefined;
   let endDate: Date | undefined;
 
@@ -99,6 +110,11 @@ function buildCurrentPeriodRevenuePipeline(
   startDate: Date,
   endDate: Date
 ): PipelineStage[] {
+  if (!Array.isArray(targetLocations) || !startDate || !endDate) {
+    console.error('[buildCurrentPeriodRevenuePipeline] targetLocations (array), startDate, and endDate are required');
+    return [];
+  }
+
   return [
     {
       $match: {
@@ -135,6 +151,11 @@ function buildPreviousPeriodPipeline(
   prevStart: Date,
   prevEnd: Date
 ): PipelineStage[] {
+  if (!Array.isArray(targetLocations) || !prevStart || !prevEnd) {
+    console.error('[buildPreviousPeriodPipeline] targetLocations (array), prevStart, and prevEnd are required');
+    return [];
+  }
+
   return [
     {
       $match: {
@@ -175,6 +196,11 @@ function buildHourlyTrendsPipeline(
   endDate: Date,
   licencee?: string | null
 ): PipelineStage[] {
+  if (!Array.isArray(targetLocations) || !startDate || !endDate) {
+    console.error('[buildHourlyTrendsPipeline] targetLocations (array), startDate, and endDate are required');
+    return [];
+  }
+
   const pipeline: PipelineStage[] = [
     {
       $match: {
@@ -258,6 +284,11 @@ function buildHourlyTrendsPipeline(
 export function processSingleLocationHourlyData(
   hourlyData: HourlyDataItem[]
 ): Array<{ hour: string; revenue: number }> {
+  if (!Array.isArray(hourlyData)) {
+    console.error('[processSingleLocationHourlyData] hourlyData is required');
+    return [];
+  }
+
   return Array.from({ length: 24 }, (_, hour) => {
     const hourData = hourlyData.find(item => item.hour === hour);
     const revenue = hourData ? hourData.revenue : 0;
@@ -287,6 +318,11 @@ export function processMultipleLocationsHourlyData(
     avgRevenue: number;
   }
 > {
+  if (!Array.isArray(hourlyData) || !Array.isArray(targetLocations)) {
+    console.error('[processMultipleLocationsHourlyData] hourlyData and targetLocations are required');
+    return {};
+  }
+
   const locationData: Record<
     string,
     {
@@ -311,10 +347,10 @@ export function processMultipleLocationsHourlyData(
     const hourlyTrends = processSingleLocationHourlyData(locationHourlyData);
 
     const totalRevenue = hourlyTrends.reduce(
-      (sum, item) => sum + item.revenue,
+      (sum, hourlyItem) => sum + hourlyItem.revenue,
       0
     );
-    const peakRevenue = Math.max(...hourlyTrends.map(item => item.revenue));
+    const peakRevenue = Math.max(...hourlyTrends.map(hourlyItem => hourlyItem.revenue));
     const avgRevenue = Math.round(totalRevenue / 24);
 
     locationData[locationId] = {
@@ -352,6 +388,11 @@ export async function getHourlyTrends(
   hourlyData: HourlyDataItem[];
   targetLocations: string[];
 }> {
+  if (!timePeriod) {
+    console.error('[getHourlyTrends] timePeriod is required');
+    return { currentPeriodRevenue: 0, previousPeriodAverage: 0, hourlyData: [], targetLocations: [] };
+  }
+
   const { startDate, endDate } = calculateHourlyTrendsDateRange(
     timePeriod,
     startDateParam,
@@ -392,7 +433,7 @@ export async function getHourlyTrends(
   }
   const prevDays = prevResult.length;
   const prevTotal = prevResult.reduce(
-    (sum: number, d: DailyRevenueItem) => sum + (d.dailyRevenue || 0),
+    (sum: number, dayRevenue: DailyRevenueItem) => sum + (dayRevenue.dailyRevenue || 0),
     0
   );
   const previousPeriodAverage = prevDays > 0 ? prevTotal / prevDays : 0;

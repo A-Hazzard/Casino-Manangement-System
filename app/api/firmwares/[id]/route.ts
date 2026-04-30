@@ -123,11 +123,14 @@ export async function DELETE(
     // ============================================================================
     // STEP 4: Soft delete firmware
     // ============================================================================
-    await Firmware.findOneAndUpdate(
+    const softDeletedFirmware = await Firmware.findOneAndUpdate(
       { _id: id },
       { deletedAt: new Date() },
       { new: true }
     );
+    if (!softDeletedFirmware) {
+      return NextResponse.json({ success: false, error: 'Failed to delete firmware' }, { status: 500 });
+    }
 
     // Log activity
     const currentUser = await getUserFromServer();

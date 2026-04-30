@@ -69,10 +69,18 @@ export type ProfileLike = {
 };
 
 function normalizeNullable(value: NullableString): string {
+  if (value && typeof value !== 'string') {
+    console.error('[normalizeNullable] value must be a string or null');
+    return '';
+  }
   return value?.trim() ?? '';
 }
 
 function extractPhone(profile?: ProfileLike['profile']): string {
+  if (profile && typeof profile !== 'object') {
+    console.error('[extractPhone] profile must be an object or undefined');
+    return '';
+  }
   const candidates: Array<NullableString> = [
     profile?.phoneNumber,
     profile?.contact?.phone,
@@ -96,6 +104,10 @@ export function getInvalidProfileFields(
   user: ProfileLike,
   options: ValidationOptions = {}
 ): ProfileValidationResult {
+  if (!user || typeof user !== 'object') {
+    console.error('[getInvalidProfileFields] user is required');
+    return { invalidFields: {}, reasons: {} };
+  }
 
   const username = normalizeNullable(user.username);
   const firstName = normalizeNullable(user.profile?.firstName);

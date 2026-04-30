@@ -18,6 +18,7 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Countries } from '@/app/api/lib/models/countries';
+import type { CountryDocument, LicenceeDocument } from '@shared/types';
 import type { UpdateLocationData } from '@/shared/types/entities';
 import type { LocationDocument } from '@/shared/types/models';
 import { generateMongoId } from '@/lib/utils/id';
@@ -33,18 +34,18 @@ import { apiLogger } from '../lib/services/loggerService';
  * Used by the Locations page list view, dashboard licencee selector, and map pin rendering.
  *
  * Query params:
- * @param licencee      {string}  Optional. Filter results to locations belonging to this licencee ID.
+ * @param {string} [licencee] - Optional. Filter results to locations belonging to this licencee ID.
  *                                When omitted, all licencees the user can access are included.
- * @param minimal       {'1'}     Optional. When '1', returns a lightweight projection
+ * @param {'1'} [minimal] - Optional. When '1', returns a lightweight projection
  *                                (id, name, geoCoords, licencee ref only). Used by the dashboard
  *                                map and dropdowns.
- * @param compact       {'1'}     Optional. When '1', returns a legacy-compatible lightweight array
+ * @param {'1'} [compact] - Optional. When '1', returns a legacy-compatible lightweight array
  *                                (id, name, licenceeId). Used for fast dropdowns and profile settings.
- * @param forceAll      {'true'|'1'} Optional. Bypasses the per-location access filter so all
+ * @param {'true'|'1'} [forceAll] - Optional. Bypasses the per-location access filter so all
  *                                locations under the accessible licencees are returned. Admin/dev
  *                                only — non-admins receive 403 if this filter would expose
  *                                locations outside their assignedLocations.
- * @param archived      {'true'}  Optional. When 'true', includes soft-deleted (archived) locations
+ * @param {'true'} [archived] - Optional. When 'true', includes soft-deleted (archived) locations
  *                                in the results. Used by the Archived Locations view.
  *
  * Flow:
@@ -87,18 +88,17 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const locationsRaw = await GamingLocations.find(queryFilter)
+      const locations = await GamingLocations.find(queryFilter)
         .sort({ name: 1 })
-        .lean();
-      const locations = locationsRaw as unknown as LocationDocument[];
+        .lean<LocationDocument[]>();
 
       // Normal rich response
       const allLicenceeIds = Array.from(
         new Set(
           locations
-            .map(loc => {
-              const l = loc.rel?.licencee;
-              return Array.isArray(l) ? l[0] : l;
+            .map(location => {
+              const licenceeRef = location.rel?.licencee;
+              return Array.isArray(licenceeRef) ? licenceeRef[0] : licenceeRef;
             })
             .filter(Boolean)
         )
@@ -107,24 +107,24 @@ export async function GET(request: NextRequest) {
       const licenceeDocs = await Licencee.find(
         { _id: { $in: allLicenceeIds } },
         { includeJackpot: 1 }
-      ).lean();
+      ).lean<LicenceeDocument[]>();
       const jackpotMap = new Map(
-        licenceeDocs.map(l => [String(l._id), !!l.includeJackpot])
+        licenceeDocs.map(licenceeDoc => [String(licenceeDoc._id), !!licenceeDoc.includeJackpot])
       );
 
-      const results = locations.map(loc => {
-        const lRaw = loc.rel?.licencee;
-        const lId = Array.isArray(lRaw)
-          ? lRaw[0]
-            ? String(lRaw[0])
+      const results = locations.map(location => {
+        const licenceeRef = location.rel?.licencee;
+        const licenceeId = Array.isArray(licenceeRef)
+          ? licenceeRef[0]
+            ? String(licenceeRef[0])
             : null
-          : lRaw
-            ? String(lRaw)
+          : licenceeRef
+            ? String(licenceeRef)
             : null;
         return {
-          ...loc,
-          licenceeId: lId,
-          includeJackpot: lId ? jackpotMap.get(lId) || false : false,
+          ...location,
+          licenceeId: licenceeId,
+          includeJackpot: licenceeId ? jackpotMap.get(licenceeId) || false : false,
         };
       });
 
@@ -151,23 +151,24 @@ export async function GET(request: NextRequest) {
  * Triggered by the "Add Location" modal on the Locations page.
  *
  * Body fields:
- * @param name                      {string}   Required. Display name of the location.
- * @param country                   {string}   Optional. Country ID (must exist in Countries collection).
- * @param address                   {object}   Optional. `{ street, city }` — physical address for display.
- * @param rel.licencee              {string[]} Optional. Licencee IDs this location belongs to.
+ * @param {string} name - Required. Display name of the location.
+ * @param {string} [country] - Optional. Country ID (must exist in Countries collection).
+ * @param {object} [address] - Optional. `{ street, city }` — physical address for display.
+ * @param {string[]} [rel.licencee] - Optional. Licencee IDs this location belongs to.
  *                                             Controls which licencee users can see this location.
- * @param profitShare               {number}   Optional. Percentage profit split for this location (default 50).
- * @param gameDayOffset             {number}   Optional. Hour at which the gaming day starts (default 8 = 8 AM Trinidad time).
+ * @param {number} [profitShare] - Optional. Percentage profit split for this location (default 50).
+ * @param {number} [gameDayOffset] - Optional. Hour at which the gaming day starts (default 8 = 8 AM Trinidad time).
  *                                             Used by all financial metric queries for this location.
- * @param isLocalServer             {boolean}  Optional. Whether this location runs a local SMIB server.
- * @param geoCoords                 {object}   Optional. `{ latitude, longitude }` — used for map pin placement.
- * @param billValidatorOptions      {object}   Optional. Per-denomination bill validator enable flags
+ * @param {boolean} [isLocalServer] - Optional. Whether this location runs a local SMIB server.
+ * @param {boolean} [noSMIBLocation] - Optional. Marks the location as having no SMIB hardware (filter flag).
+ * @param {object} [geoCoords] - Optional. `{ latitude, longitude }` — used for map pin placement.
+ * @param {object} [billValidatorOptions] - Optional. Per-denomination bill validator enable flags
  *                                             (denom1–denom10000). Controls which bill denominations
  *                                             are accepted at this location.
- * @param membershipEnabled         {boolean}  Optional. Enables the player membership/loyalty system.
- * @param aceEnabled                {boolean}  Optional. Enables ACE (always-online) mode — machines
+ * @param {boolean} [membershipEnabled] - Optional. Enables the player membership/loyalty system.
+ * @param {boolean} [aceEnabled] - Optional. Enables ACE (always-online) mode — machines
  *                                             at this location are treated as always online.
- * @param locationMembershipSettings {object}  Optional. Detailed membership config: points ratio,
+ * @param {object} [locationMembershipSettings] - Optional. Detailed membership config: points ratio,
  *                                             free play amounts, game type restrictions, etc.
  */
 export async function POST(request: NextRequest) {
@@ -184,6 +185,7 @@ export async function POST(request: NextRequest) {
         gameDayOffset,
         rel,
         isLocalServer,
+        noSMIBLocation,
         geoCoords,
         billValidatorOptions,
         membershipEnabled,
@@ -198,7 +200,7 @@ export async function POST(request: NextRequest) {
         );
 
       if (country) {
-        const countryDoc = await Countries.findOne({ _id: country }).lean();
+        const countryDoc = await Countries.findOne({ _id: country }).lean<CountryDocument>();
         if (!countryDoc)
           return NextResponse.json(
             { success: false, message: 'Invalid country' },
@@ -219,6 +221,7 @@ export async function POST(request: NextRequest) {
         profitShare: profitShare || 50,
         gameDayOffset: gameDayOffset ?? 8,
         isLocalServer: isLocalServer || false,
+        noSMIBLocation: noSMIBLocation || false,
         geoCoords: {
           latitude: geoCoords?.latitude || 0,
           longitude: geoCoords?.longitude || 0,
@@ -298,22 +301,23 @@ export async function POST(request: NextRequest) {
  * Triggered by the "Edit Location" modal on the Locations page.
  *
  * Body fields:
- * @param locationName              {string}   Required. The `_id` of the location to update (field name is
+ * @param {string} locationName - Required. The `_id` of the location to update (field name is
  *                                             `locationName` for legacy reasons — it is the location ID).
- * @param name                      {string}   Optional. New display name.
- * @param country                   {string}   Optional. New country ID.
- * @param address                   {object}   Optional. `{ street, city }` — updated physical address.
- * @param rel.licencee              {string[]} Optional. Updated licencee IDs. Changing this affects
+ * @param {string} [name] - Optional. New display name.
+ * @param {string} [country] - Optional. New country ID.
+ * @param {object} [address] - Optional. `{ street, city }` — updated physical address.
+ * @param {string[]} [rel.licencee] - Optional. Updated licencee IDs. Changing this affects
  *                                             which users can see this location.
- * @param profitShare               {number}   Optional. Updated profit split percentage.
- * @param gameDayOffset             {number}   Optional. Updated gaming day start hour. Affects how
+ * @param {number} [profitShare] - Optional. Updated profit split percentage.
+ * @param {number} [gameDayOffset] - Optional. Updated gaming day start hour. Affects how
  *                                             "Today" and period queries are calculated for this location.
- * @param isLocalServer             {boolean}  Optional. Updated local server flag.
- * @param geoCoords                 {object}   Optional. Updated `{ latitude, longitude }` map coordinates.
- * @param billValidatorOptions      {object}   Optional. Updated per-denomination bill validator flags.
- * @param membershipEnabled         {boolean}  Optional. Toggle player membership system on/off.
- * @param aceEnabled                {boolean}  Optional. Toggle ACE always-online mode on/off.
- * @param locationMembershipSettings {object}  Optional. Updated membership configuration.
+ * @param {boolean} [isLocalServer] - Optional. Updated local server flag.
+ * @param {boolean} [noSMIBLocation] - Optional. Updated no-SMIB flag.
+ * @param {object} [geoCoords] - Optional. Updated `{ latitude, longitude }` map coordinates.
+ * @param {object} [billValidatorOptions] - Optional. Updated per-denomination bill validator flags.
+ * @param {boolean} [membershipEnabled] - Optional. Toggle player membership system on/off.
+ * @param {boolean} [aceEnabled] - Optional. Toggle ACE always-online mode on/off.
+ * @param {object} [locationMembershipSettings] - Optional. Updated membership configuration.
  */
 export async function PUT(request: NextRequest) {
   return withApiAuth(request, async ({ user: currentUser, isAdminOrDev }) => {
@@ -330,6 +334,7 @@ export async function PUT(request: NextRequest) {
         gameDayOffset,
         rel,
         isLocalServer,
+        noSMIBLocation,
         geoCoords,
         billValidatorOptions,
         membershipEnabled,
@@ -370,6 +375,8 @@ export async function PUT(request: NextRequest) {
         updateData.gameDayOffset = gameDayOffset;
       if (typeof isLocalServer === 'boolean')
         updateData.isLocalServer = isLocalServer;
+      if (typeof noSMIBLocation === 'boolean')
+        updateData.noSMIBLocation = noSMIBLocation;
 
       if (geoCoords && geoCoords.latitude && geoCoords.longitude) {
         updateData.geoCoords = {
@@ -441,8 +448,8 @@ export async function PUT(request: NextRequest) {
  * Restricted to admin/developer roles. Triggered by the delete action on the Locations page.
  *
  * Query params:
- * @param id         {string}  Required. The `_id` of the location to delete.
- * @param hardDelete {'true'}  Optional. When 'true', permanently removes the location and all its
+ * @param {string} id - Required. The `_id` of the location to delete.
+ * @param {'true'} [hardDelete] - Optional. When 'true', permanently removes the location and all its
  *                             machines from the database. Only available to developer/owner roles.
  *                             Without this flag, a soft-delete (sets `deletedAt`) is performed,
  *                             which moves the location to the Archived view instead of deleting it.
@@ -476,18 +483,37 @@ export async function DELETE(request: NextRequest) {
       const archiveTimestamp = new Date();
 
       if (hardDelete && isDev) {
-        await GamingLocations.deleteOne({ _id: id });
-        await Machine.deleteMany({ gamingLocation: id });
+        const deleteLocationResult = await GamingLocations.deleteOne({ _id: id });
+        if (deleteLocationResult.deletedCount === 0) {
+          return NextResponse.json(
+            { success: false, message: 'Location not found' },
+            { status: 404 }
+          );
+        }
+        const deleteMachinesResult = await Machine.deleteMany({ gamingLocation: id });
+        if (deleteMachinesResult.deletedCount === 0) {
+          console.warn(`[Locations DELETE] No machines found for location ${id}`);
+        }
       } else {
-        await GamingLocations.findOneAndUpdate(
+        const archiveLocationResult = await GamingLocations.findOneAndUpdate(
           { _id: id },
-          { deletedAt: archiveTimestamp }
+          { deletedAt: archiveTimestamp },
+          { new: true }
         );
+        if (!archiveLocationResult) {
+          return NextResponse.json(
+            { success: false, message: 'Location not found' },
+            { status: 404 }
+          );
+        }
         // Archive all machines belonging to this location
-        await Machine.updateMany(
+        const archiveMachinesResult = await Machine.updateMany(
           { gamingLocation: id },
           { deletedAt: archiveTimestamp }
         );
+        if (archiveMachinesResult.modifiedCount === 0) {
+          console.warn(`[Locations DELETE] No machines archived for location ${id}`);
+        }
       }
 
       if (currentUser && currentUser.emailAddress) {
@@ -526,8 +552,8 @@ export async function DELETE(request: NextRequest) {
  * Restricted to admin/developer roles. Triggered by the "Restore" button in the Archived Locations view.
  *
  * Body fields:
- * @param id     {string}    Required. The `_id` of the location to restore.
- * @param action {'restore'} Required. Must be exactly `'restore'` — guards against accidental partial updates.
+ * @param {string} id - Required. The `_id` of the location to restore.
+ * @param {'restore'} action - Required. Must be exactly `'restore'` — guards against accidental partial updates.
  */
 export async function PATCH(request: NextRequest) {
   return withApiAuth(request, async ({ user: currentUser, isAdminOrDev }) => {
@@ -550,19 +576,29 @@ export async function PATCH(request: NextRequest) {
           { status: 404 }
         );
 
-      await GamingLocations.findOneAndUpdate(
+      const restoreLocationResult = await GamingLocations.findOneAndUpdate(
         { _id: id },
-        { $unset: { deletedAt: 1 } }
+        { $unset: { deletedAt: 1 } },
+        { new: true }
       );
+      if (!restoreLocationResult) {
+        return NextResponse.json(
+          { success: false, message: 'Location not found' },
+          { status: 404 }
+        );
+      }
       // Restore all machines belonging to this location
-      await Machine.updateMany(
+      const restoreMachinesResult = await Machine.updateMany(
         { gamingLocation: id },
         { $unset: { deletedAt: 1 } }
       );
+      if (restoreMachinesResult.modifiedCount === 0) {
+        console.warn(`[Locations PATCH] No machines restored for location ${id}`);
+      }
 
       if (currentUser && currentUser.emailAddress) {
         await logActivity({
-          action: 'RESTORE',
+          action: 'restore',
           details: `Restored location "${location.name}"`,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,

@@ -12,6 +12,7 @@
 
 import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import type { GamingMachine } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -21,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * the SMIB management panel needs to display per-machine config and online status.
  *
  * URL params:
- * @param locationId {string} Required (path). The location whose SMIB configs to retrieve.
+ * @param {string} locationId - Required (path). The location whose SMIB configs to retrieve.
  */
 export async function GET(
   request: NextRequest
@@ -50,7 +51,7 @@ export async function GET(
       ],
     })
       .select('_id serialNumber game relayId smibBoard smibConfig lastActivity')
-      .lean();
+      .lean<GamingMachine[]>();
 
     if (machines.length === 0) {
       return NextResponse.json({

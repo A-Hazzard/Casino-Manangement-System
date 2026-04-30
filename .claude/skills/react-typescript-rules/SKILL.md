@@ -39,6 +39,21 @@ import { type LocationData } from '@/shared/types/entities';
 const data: LocationData = await fetchData();
 ```
 
+### Avoid `Record` Type (Rule 13)
+
+Prefer specific types over generic `Record` types. `Record<string, unknown>` obscures type clarity.
+
+```typescript
+// ❌ WRONG — lazy Record type
+const updateFields: Record<string, unknown> = {};
+
+// ✅ CORRECT — specific type or Pick
+type MachineUpdateFields = Partial<Pick<MachineDocument, 'serialNumber' | 'game' | 'assetStatus'>> & {
+  updatedAt: Date;
+};
+const updateFields: MachineUpdateFields = { updatedAt: new Date() };
+```
+
 ### Shared Types Structure
 
 Use appropriate directories:
@@ -59,9 +74,9 @@ types/               # Application-wide/Global types
 ### Type Organization Rules
 
 1. **Always import from type files**, never define inline
-2. **Prefer `type` over `interface`** for all data structures
+2. **`type` over `interface` — always**: Never use `interface` for data structures
 3. **Explicit Return Types** are required for all helpers and API functions
-4. **Explicity Unions over Enums**: Use `'active' | 'inactive'` instead of `enum Status`
+4. **Explicit Unions over Enums**: Use `'active' | 'inactive'` instead of `enum Status`
 5. **Check dependencies before deleting types** - use grep to find usages
 6. **Avoid type duplication** - import and re-export from shared types
 
@@ -189,12 +204,12 @@ const count = data.length;
 ```typescript
 import { FC, ComponentPropsWithoutRef, ReactNode } from 'react';
 
-// Option 1: FC with explicit props type
-interface MyComponentProps {
+// ✅ Use type, never interface
+type MyComponentProps = {
   title: string;
   onClose: () => void;
   children: ReactNode;
-}
+};
 
 const MyComponent: FC<MyComponentProps> = ({ title, onClose, children }) => {
   return (
@@ -206,7 +221,7 @@ const MyComponent: FC<MyComponentProps> = ({ title, onClose, children }) => {
   );
 };
 
-// Option 2: ComponentPropsWithoutRef for extending HTML elements
+// ComponentPropsWithoutRef for extending HTML elements
 type ButtonProps = ComponentPropsWithoutRef<'button'> & {
   variant?: 'primary' | 'secondary';
 };
@@ -214,6 +229,99 @@ type ButtonProps = ComponentPropsWithoutRef<'button'> & {
 const Button: FC<ButtonProps> = ({ variant = 'primary', ...props }) => {
   return <button className={`btn-${variant}`} {...props} />;
 };
+```
+
+## Explicit Enumerations (Rule 9)
+
+Prefer string literal unions or `const enum` over numeric enums for better readability and serializability.
+
+```typescript
+// ✅ CORRECT
+type ReportStatus = 'pending' | 'completed' | 'cancelled';
+type GameType = 'slot' | 'roulette' | 'poker';
+```
+
+```typescript
+// ❌ WRONG — numeric enum, less readable in JSON/API
+enum ReportStatus {
+  Pending = 0,
+  Completed = 1,
+  Cancelled = 2,
+}
+```
+
+## JSDoc Type Documentation (Rule 12)
+
+All JSDoc `@param` and `@returns` annotations MUST include proper TypeScript type annotations in curly braces.
+
+### Rule
+1. Always use `{Type}` format for parameter types
+2. Match types to actual function signatures (use imported types when available)
+3. Use `[paramName]` syntax for optional parameters
+4. Do NOT add types to inline comments or module-level JSDoc blocks
+
+### Example
+```typescript
+// ❌ WRONG — missing type braces
+/**
+ * @param body - The payload
+ * @returns { isValid: boolean }
+ */
+
+// ✅ CORRECT — proper type annotations
+/**
+ * @param {Partial<CreateCollectionReportPayload>} body - The payload
+ * @returns {{ isValid: boolean; error?: string }}
+ */
+```
+
+## No Single-Letter Variables
+
+**Never use single-letter names in components or hooks:**
+
+```typescript
+// ❌ WRONG
+const total = items.reduce((s, c) => s + c.revenue, 0);
+items.map((i) => <Row key={i.id} item={i} />);
+
+// ✅ CORRECT
+const total = items.reduce((sum, item) => sum + item.revenue, 0);
+items.map((item) => <Row key={item.id} item={item} />);
+```
+
+## Component Structure Order
+
+**Components must follow this exact section order:**
+
+```typescript
+export default function ComponentName(props: ComponentProps) {
+  // ============================================================================
+  // 1. Hooks & State
+  // ============================================================================
+  const [data, setData] = useState<Item[]>([]);
+
+  // ============================================================================
+  // 2. Computed Values
+  // ============================================================================
+  const total = useMemo(() => data.reduce((sum, item) => sum + item.value, 0), [data]);
+
+  // ============================================================================
+  // 3. Event Handlers
+  // ============================================================================
+  const handleSubmit = useCallback(() => { ... }, [data]);
+
+  // ============================================================================
+  // 4. Effects
+  // ============================================================================
+  useEffect(() => { ... }, [data]);
+
+  // ============================================================================
+  // 5. Render
+  // ============================================================================
+  return (
+    // JSX
+  );
+}
 ```
 
 ## Type Checking

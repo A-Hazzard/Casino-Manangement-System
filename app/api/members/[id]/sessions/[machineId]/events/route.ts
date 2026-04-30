@@ -13,6 +13,7 @@
 
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import type { MachineEventDocument } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -23,17 +24,17 @@ import { NextRequest, NextResponse } from 'next/server';
  * values so the frontend can populate filter dropdowns without a separate request.
  *
  * URL params:
- * @param machineId   {string} Required (path). The string `_id` of the machine whose events are fetched.
+ * @param {string} machineId - Required (path). The string `_id` of the machine whose events are fetched.
  *
  * Query params:
- * @param eventType   {string} Optional. Exact match filter on the event's `eventType` field
+ * @param {string} [eventType] - Optional. Exact match filter on the event's `eventType` field
  *                             (e.g. `"GAME_EVENT"`, `"CASH_EVENT"`).
- * @param event       {string} Optional. Case-insensitive partial-match filter on the event `description`
+ * @param {string} [event] - Optional. Case-insensitive partial-match filter on the event `description`
  *                             field (applied as a regex).
- * @param game        {string} Optional. Case-insensitive partial-match filter on `gameName`
+ * @param {string} [game] - Optional. Case-insensitive partial-match filter on `gameName`
  *                             (applied as a regex).
- * @param page        {number} Optional. 1-based page number (default: 1).
- * @param limit       {number} Optional. Number of events per page (default: 10).
+ * @param {number} [page] - Optional. 1-based page number (default: 1).
+ * @param {number} [limit] - Optional. Number of events per page (default: 10).
  */
 export async function GET(
   request: NextRequest
@@ -91,7 +92,7 @@ export async function GET(
       .sort({ date: -1 })
       .skip(skip)
       .limit(limit)
-      .lean();
+      .lean<MachineEventDocument[]>();
 
     // ============================================================================
     // STEP 5: Get total count for pagination

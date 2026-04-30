@@ -21,7 +21,7 @@ import {
 } from '@/lib/helpers/rates';
 import { getDatesForTimePeriod } from '@/lib/utils/date';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
-import type { TimePeriod } from '@/shared/types';
+import type { CountryDocument, GamingLocationDocument, GamingMachine, LicenceeDocument, TimePeriod } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { LocationTrendPoint, LocationTrendsResponse } from '@/shared/types/reports';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
@@ -59,6 +59,11 @@ function determineAggregationGranularity(
   useWeekly: boolean;
   useDaily: boolean;
 } {
+  if (!timePeriod) {
+    console.error('[determineAggregationGranularity] timePeriod is required');
+    return { useHourly: false, useMinute: false, useMonthly: false, useYearly: false, useWeekly: false, useDaily: true };
+  }
+
   // If granularity is manually specified, use it
   if (manualGranularity) {
     if (manualGranularity === 'minute') {
@@ -215,6 +220,11 @@ function buildLocationTrendsPipeline(
   shouldUseDaily?: boolean,
   matchingMachineIds?: string[]
 ): PipelineStage[] {
+  if (!Array.isArray(targetLocations) || !queryStartDate || !queryEndDate) {
+    console.error('[buildLocationTrendsPipeline] targetLocations (array), queryStartDate, and queryEndDate are required');
+    return [];
+  }
+
   const matchStage: Record<string, unknown> = {
     readAt: { $gte: queryStartDate, $lte: queryEndDate },
     location: { $in: targetLocations },
@@ -440,6 +450,11 @@ async function getLocationCurrencies(
     country?: unknown;
   }>
 ): Promise<Map<string, string>> {
+  if (!Array.isArray(locationsData)) {
+    console.error('[getLocationCurrencies] locationsData must be an array');
+    return new Map();
+  }
+
   const licenceesData = await Licencee.find(
     {
       $or: [
@@ -449,7 +464,7 @@ async function getLocationCurrencies(
     },
     { _id: 1, name: 1 }
   )
-    .lean()
+    .lean<LicenceeDocument[]>()
     .exec();
 
   const licenceeIdToName = new Map<string, string>();
@@ -457,7 +472,7 @@ async function getLocationCurrencies(
     licenceeIdToName.set(String(lic._id), lic.name as string);
   });
 
-  const countriesData = await Countries.find({}).lean();
+  const countriesData = await Countries.find({}).lean<CountryDocument[]>();
   const countryIdToName = new Map<string, string>();
   countriesData.forEach(country => {
     if (country._id && country.name) {
@@ -495,6 +510,11 @@ function convertDailyTrendItems(
   locationCurrencies: Map<string, string>,
   displayCurrency: CurrencyCode
 ): DailyTrendItem[] {
+  if (!Array.isArray(dailyData) || !(locationCurrencies instanceof Map) || !displayCurrency) {
+    console.error('[convertDailyTrendItems] dailyData (array), locationCurrencies (Map), and displayCurrency are required');
+    return [];
+  }
+
   return dailyData.map(item => {
     const nativeCurrency = locationCurrencies.get(item.location) || 'USD';
     
@@ -529,6 +549,11 @@ function convertDailyTrendsToLocationTrends(
   convertedData: DailyTrendItem[],
   targetLocations: string[]
 ): LocationTrendPoint[] {
+  if (!Array.isArray(convertedData) || !Array.isArray(targetLocations)) {
+    console.error('[convertDailyTrendsToLocationTrends] convertedData and targetLocations must be arrays');
+    return [];
+  }
+
   // Group by day and time
   const trendsMap = new Map<string, LocationTrendPoint>();
 
@@ -587,6 +612,11 @@ function formatDailyTrends(
   queryStartDate: Date,
   queryEndDate: Date
 ): LocationTrendPoint[] {
+  if (!Array.isArray(convertedData) || !Array.isArray(targetLocations) || !queryStartDate || !queryEndDate) {
+    console.error('[formatDailyTrends] convertedData (array), targetLocations (array), queryStartDate, and queryEndDate are required');
+    return [];
+  }
+
   const trends: LocationTrendPoint[] = [];
   const current = new Date(queryStartDate);
   current.setUTCHours(0, 0, 0, 0);
@@ -630,6 +660,11 @@ function formatWeeklyTrends(
   queryStartDate: Date,
   queryEndDate: Date
 ): LocationTrendPoint[] {
+  if (!Array.isArray(convertedData) || !Array.isArray(targetLocations) || !queryStartDate || !queryEndDate) {
+    console.error('[formatWeeklyTrends] convertedData (array), targetLocations (array), queryStartDate, and queryEndDate are required');
+    return [];
+  }
+
   const trends: LocationTrendPoint[] = [];
 
   const current = new Date(queryStartDate);
@@ -676,6 +711,11 @@ function formatMonthlyTrends(
   queryStartDate: Date,
   queryEndDate: Date
 ): LocationTrendPoint[] {
+  if (!Array.isArray(convertedData) || !Array.isArray(targetLocations) || !queryStartDate || !queryEndDate) {
+    console.error('[formatMonthlyTrends] convertedData (array), targetLocations (array), queryStartDate, and queryEndDate are required');
+    return [];
+  }
+
   const trends: LocationTrendPoint[] = [];
 
   const current = new Date(queryStartDate);
@@ -734,6 +774,11 @@ function calculateLocationTotals(
     netGross: number;
   }
 > {
+  if (!Array.isArray(convertedData) || !Array.isArray(targetLocations)) {
+    console.error('[calculateLocationTotals] convertedData and targetLocations must be arrays');
+    return {};
+  }
+
   const totals: Record<
     string,
     {
@@ -836,6 +881,11 @@ export async function getLocationTrends(
     maxDate: string;
   };
 }> {
+  if (!locationIds || !timePeriod) {
+    console.error('[getLocationTrends] locationIds and timePeriod are required');
+    throw new Error('[getLocationTrends] locationIds and timePeriod are required');
+  }
+
   const targetLocations = locationIds.split(',').map(id => id.trim());
 
   // Get date range
@@ -869,7 +919,7 @@ export async function getLocationTrends(
     { _id: { $in: validLocationIds } },
     { _id: 1, name: 1, gameDayOffset: 1, rel: 1, country: 1 }
   )
-    .lean()
+    .lean<GamingLocationDocument[]>()
     .exec();
 
   if (!locationsData || locationsData.length === 0) {
@@ -1025,7 +1075,7 @@ export async function getLocationTrends(
     machineQuery.$and = andClauses;
   }
 
-  const matchingMachines = await Machine.find(machineQuery).select('_id').lean();
+  const matchingMachines = await Machine.find(machineQuery).select('_id').lean<GamingMachine[]>();
   const matchingMachineIds = matchingMachines.map(m => String(m._id));
 
   console.log(`[Location Trends] Query — period: ${timePeriod}, locations: ${validLocationIds.length}, granularity: ${granularity ?? 'auto'}, window: ${queryStartDate.toISOString()} → ${queryEndDate.toISOString()}`);

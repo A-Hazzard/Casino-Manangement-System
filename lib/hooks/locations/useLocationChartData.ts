@@ -214,6 +214,19 @@ export function useLocationChartData({
     }
   }, [activeMetricsFilter, dataSpan]);
 
+  // Stable key derived from customDateRange so the fetch effect doesn't re-run
+  // on every render due to a new object reference from the store.
+  const dateRangeKey = useMemo(() => {
+    if (!customDateRange?.startDate || !customDateRange?.endDate) return '';
+    const start = customDateRange.startDate instanceof Date
+      ? customDateRange.startDate.getTime()
+      : new Date(customDateRange.startDate).getTime();
+    const end = customDateRange.endDate instanceof Date
+      ? customDateRange.endDate.getTime()
+      : new Date(customDateRange.endDate).getTime();
+    return `${start}-${end}`;
+  }, [customDateRange?.startDate, customDateRange?.endDate]);
+
   // Fetch chart data
   // This effect should only run when core parameters change, not when granularity/selector change
   useEffect(() => {
@@ -438,13 +451,13 @@ export function useLocationChartData({
           // Calculate data span from transformed data
           // For hourly data, use day + time to get accurate timestamps
           const timestamps: Date[] = [];
-          transformedData.forEach(d => {
-            if (d.day && d.time) {
+          transformedData.forEach(dataPoint => {
+            if (dataPoint.day && dataPoint.time) {
               try {
-                const timeParts = d.time.split(':');
+                const timeParts = dataPoint.time.split(':');
                 const hours = parseInt(timeParts[0] || '0', 10);
                 const minutes = parseInt(timeParts[1] || '0', 10);
-                const dateStr = d.day.split('T')[0]; // Get YYYY-MM-DD part
+                const dateStr = dataPoint.day.split('T')[0]; // Get YYYY-MM-DD part
                 const timestamp = new Date(
                   `${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
                 );
@@ -453,13 +466,13 @@ export function useLocationChartData({
                 }
               } catch {
                 // Fallback to day only
-                const dayDate = new Date(d.day);
+                const dayDate = new Date(dataPoint.day);
                 if (!isNaN(dayDate.getTime())) {
                   timestamps.push(dayDate);
                 }
               }
-            } else if (d.day) {
-              const dayDate = new Date(d.day);
+            } else if (dataPoint.day) {
+              const dayDate = new Date(dataPoint.day);
               if (!isNaN(dayDate.getTime())) {
                 timestamps.push(dayDate);
               }
@@ -468,10 +481,10 @@ export function useLocationChartData({
 
           if (timestamps.length > 0) {
             const minDate = new Date(
-              Math.min(...timestamps.map(t => t.getTime()))
+              Math.min(...timestamps.map(timestamp => timestamp.getTime()))
             );
             const maxDate = new Date(
-              Math.max(...timestamps.map(t => t.getTime()))
+              Math.max(...timestamps.map(timestamp => timestamp.getTime()))
             );
             setDataSpan({
               minDate: minDate.toISOString(),
@@ -529,7 +542,7 @@ export function useLocationChartData({
     locationId,
     selectedLicencee,
     activeMetricsFilter,
-    customDateRange,
+    dateRangeKey,
     displayCurrency,
     chartGranularity, // Include chartGranularity to trigger refetch when monthly/weekly is selected for Quarterly/All Time
     activeView,

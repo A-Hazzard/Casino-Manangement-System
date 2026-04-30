@@ -35,6 +35,15 @@ type CookieOverrides = {
   expires?: Date;
 };
 
+type CookieOptions = {
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: 'lax';
+  path: string;
+  maxAge?: number;
+  expires?: Date;
+};
+
 /**
  * Returns a full cookie options object for auth cookies.
  * Always use this instead of hardcoding `secure: true`.
@@ -42,7 +51,11 @@ type CookieOverrides = {
 export function getAuthCookieOptions(
   request?: RequestLike,
   overrides?: CookieOverrides
-) {
+): CookieOptions {
+  if (request === undefined) {
+    console.error('[getAuthCookieOptions] request is required');
+    return { httpOnly: true, secure: true, sameSite: 'lax' as const, path: '/' };
+  }
   const secure = isSecureContext(request);
   return {
     httpOnly: true,

@@ -88,7 +88,7 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
         if (data.success) {
           // Optimistically update local state
           setNotifications(prev =>
-            prev.map(n => ids.includes(n._id) ? { ...n, status: 'read' } : n)
+            prev.map(notification => ids.includes(notification._id) ? { ...notification, status: 'read' } : notification)
           );
           setUnreadCount(prev => Math.max(0, prev - ids.length));
         }
@@ -116,7 +116,7 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          setNotifications(prev => prev.filter(n => !ids.includes(n._id)));
+          setNotifications(prev => prev.filter(notification => !ids.includes(notification._id)));
 
           // Calculate how many unread were dismissed to update count
           setUnreadCount(prev => {

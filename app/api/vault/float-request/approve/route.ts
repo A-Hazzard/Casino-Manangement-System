@@ -190,10 +190,13 @@ export async function POST(request: NextRequest) {
           const VaultNotificationModel = (
             await import('@/app/api/lib/models/vaultNotification')
           ).default;
-          await VaultNotificationModel.updateMany(
+          const notifUpdateResult = await VaultNotificationModel.updateMany(
             { relatedEntityId: requestId, relatedEntityType: 'float_request' },
             { $set: { 'metadata.entityStatus': 'approved_vm' } }
           );
+          if (notifUpdateResult.modifiedCount === 0) {
+            console.warn(`[float-request/approve] No notifications updated for requestId: ${requestId}`);
+          }
         } catch (e) {
           console.error('Notification fix failed:', e);
         }
@@ -221,13 +224,9 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Invalid status' },
         { status: 400 }
       );
-    } catch (error: unknown) {
-      console.error('[Float Approve API] Error:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return NextResponse.json(
-        { success: false, error: message },
-        { status: 500 }
-      );
+    } catch (e) {
+      console.error('[Float Approve API] Error:', e instanceof Error ? e.message : 'Unknown error');
+      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
   });
 }

@@ -21,6 +21,7 @@ import { generateMongoId } from '@/lib/utils/id';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { NextRequest, NextResponse } from 'next/server';
+import type { GamingMachine } from '@/shared/types';
 import type { MachinePayload } from '@/shared/types/machines';
 
 // Validation helpers
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
       else if (customNameToCheck) query['custom.name'] = customNameToCheck.trim();
 
       if (excludeId) query._id = { $ne: excludeId };
-      const existing = await Machine.findOne(query).lean();
+      const existing = await Machine.findOne(query).lean<GamingMachine | null>();
       return NextResponse.json({ success: true, available: !existing });
     }
 
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (id) {
-      const cabinet = await Machine.findOne({ _id: id }).lean();
+      const cabinet = await Machine.findOne({ _id: id }).lean<GamingMachine | null>();
       if (!cabinet) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
       return NextResponse.json({ success: true, data: cabinet });
     }
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     const query: Record<string, string | number | boolean | object | null | (string | number | boolean | object | null)[]> = { gamingLocation: locationId as string };
     if (!showArchived) query.$or = [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }];
-    const cabinets = await Machine.find(query).lean();
+    const cabinets = await Machine.find(query).lean<GamingMachine[]>();
     return NextResponse.json({ success: true, data: cabinets });
   });
 }
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
         { $or: [{ serialNumber: normalizedSerial }, ...(normalizedSmib ? [{ relayId: normalizedSmib }] : [])] },
         { $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }] }
       ]
-    }).lean();
+    }).lean<GamingMachine | null>();
 
     if (existing) return NextResponse.json({ success: false, error: 'Cabinet already exists (Serial or SMIB duplicate)' }, { status: 400 });
 

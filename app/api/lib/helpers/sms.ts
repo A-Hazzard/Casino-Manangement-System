@@ -40,6 +40,14 @@ function getInfobipClient(): Infobip {
  * @param from - Sender ID — must be registered on the Infobip account
  */
 export async function sendSMS(to: string, text: string, from: string = 'InfoSMS') {
+  if (!to) {
+    console.error('[sendSMS] to is required');
+    throw new Error('[sendSMS] to is required');
+  }
+  if (!text) {
+    console.error('[sendSMS] text is required');
+    throw new Error('[sendSMS] text is required');
+  }
   const client = getInfobipClient();
 
   console.info(`[SMS] Sending to ${to} from "${from}"`);
@@ -112,6 +120,14 @@ export async function sendSMS(to: string, text: string, from: string = 'InfoSMS'
  * @param phoneNumber - The phone number to send the code to
  */
 export async function sendVerificationSMS(memberId: string, phoneNumber: string) {
+  if (!memberId) {
+    console.error('[sendVerificationSMS] memberId is required');
+    throw new Error('[sendVerificationSMS] memberId is required');
+  }
+  if (!phoneNumber) {
+    console.error('[sendVerificationSMS] phoneNumber is required');
+    throw new Error('[sendVerificationSMS] phoneNumber is required');
+  }
   // Generate a 4-digit numeric code
   const smsCode = Math.floor(1000 + Math.random() * 9000);
 
@@ -155,10 +171,18 @@ export async function sendVerificationSMS(memberId: string, phoneNumber: string)
  * @param phoneNumber - The phone number to send the PIN to
  */
 export async function sendPINVerificationSMS(memberId: string, phoneNumber: string) {
+  if (!memberId) {
+    console.error('[sendPINVerificationSMS] memberId is required');
+    throw new Error('[sendPINVerificationSMS] memberId is required');
+  }
+  if (!phoneNumber) {
+    console.error('[sendPINVerificationSMS] phoneNumber is required');
+    throw new Error('[sendPINVerificationSMS] phoneNumber is required');
+  }
   try {
     // Retrieve member to get their PIN
     // Cast through unknown to satisfy strict overlap checks per project rules
-    const member = (await Member.findOne({ _id: memberId }).lean()) as unknown as CasinoMember | null;
+    const member = await Member.findOne({ _id: memberId }).lean<CasinoMember>();
 
     if (!member) {
       throw new Error(`Member with ID ${memberId} not found`);
@@ -180,7 +204,10 @@ export async function sendPINVerificationSMS(memberId: string, phoneNumber: stri
     return { success: true };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error sending PIN SMS';
-    console.error('[SMS Helper] sendPINVerificationSMS failed:', errorMessage);
+    console.error(
+      '[sendPINVerificationSMS] Failed:',
+      errorMessage
+    );
     throw new Error(errorMessage);
   }
 }

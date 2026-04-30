@@ -11,6 +11,9 @@ import type {
 } from '@/shared/types/entities';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
+import type { CollectionDocument } from '@/lib/types/collection';
+import type { GamingMachine } from '@shared/types';
+import type { CollectionReportDocument } from '@shared/types';
 
 /**
  * Finds the previous collection for a machine
@@ -34,15 +37,31 @@ function findPreviousCollection(
   currentTimestamp: Date,
   currentCollectionId: string
 ) {
+  if (!allCollections) {
+    console.error('[findPreviousCollection] allCollections is required');
+    return undefined;
+  }
+  if (!machineId) {
+    console.error('[findPreviousCollection] machineId is required');
+    return undefined;
+  }
+  if (!currentTimestamp) {
+    console.error('[findPreviousCollection] currentTimestamp is required');
+    return undefined;
+  }
+  if (!currentCollectionId) {
+    console.error('[findPreviousCollection] currentCollectionId is required');
+    return undefined;
+  }
   return allCollections
     .filter(
-      c =>
-        c.machineId === machineId &&
-        new Date(c.timestamp || c.collectionTime || 0) < currentTimestamp &&
-        c.isCompleted === true &&
-        c.locationReportId &&
-        c.locationReportId.trim() !== '' &&
-        c._id.toString() !== currentCollectionId
+      collection =>
+        collection.machineId === machineId &&
+        new Date(collection.timestamp || collection.collectionTime || 0) < currentTimestamp &&
+        collection.isCompleted === true &&
+        collection.locationReportId &&
+        collection.locationReportId.trim() !== '' &&
+        collection._id.toString() !== currentCollectionId
     )
     .sort((a, b) => {
       const aTime = new Date(a.timestamp || a.collectionTime || 0).getTime();
@@ -74,6 +93,19 @@ function validateSasTimes(
   expectedSasEndTime: Date,
   previousCollection: unknown
 ): CollectionIssue[] {
+  if (!collection) {
+    console.error('[validateSasTimes] collection is required');
+    return [];
+  }
+  if (!expectedSasStartTime) {
+    console.error('[validateSasTimes] expectedSasStartTime is required');
+    return [];
+  }
+  if (!expectedSasEndTime) {
+    console.error('[validateSasTimes] expectedSasEndTime is required');
+    return [];
+  }
+
   const issues: CollectionIssue[] = [];
 
   if (collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime) {
@@ -201,6 +233,11 @@ function validatePreviousMeters(
     timestamp?: Date;
   } | null
 ): CollectionIssue[] {
+  if (!collection) {
+    console.error('[validatePreviousMeters] collection is required');
+    return [];
+  }
+
   const issues: CollectionIssue[] = [];
 
   if (collection.prevIn === undefined || collection.prevOut === undefined) {
@@ -270,6 +307,11 @@ function validateMovementCalculation(collection: {
     gross: number;
   };
 }): CollectionIssue[] {
+  if (!collection) {
+    console.error('[validateMovementCalculation] collection is required');
+    return [];
+  }
+
   const issues: CollectionIssue[] = [];
 
   if (!collection.movement) {
@@ -348,6 +390,10 @@ function validateMovementCalculation(collection: {
 async function checkCollectionHistoryIssues(
   machineIds: string[]
 ): Promise<CollectionIssue[]> {
+  if (!machineIds || !Array.isArray(machineIds)) {
+    console.error('[checkCollectionHistoryIssues] machineIds is required');
+    return [];
+  }
   const issues: CollectionIssue[] = [];
 
   try {
@@ -372,21 +418,21 @@ async function checkCollectionHistoryIssues(
         _id: { $in: machineObjectIds },
         collectionMetersHistory: { $exists: true, $ne: [] },
       })
-      .lean()
+      .lean<GamingMachine[]>()
       .exec();
 
     for (const machine of machinesWithHistory) {
       const history = machine.collectionMetersHistory || [];
 
-      for (let i = 0; i < history.length; i++) {
-        const entry = history[i];
+      for (let historyIndex = 0; historyIndex < history.length; historyIndex++) {
+        const entry = history[historyIndex];
 
         if (!entry.locationReportId) continue;
 
         const matchingCollection = await Collections.findOne({
           locationReportId: entry.locationReportId,
           machineId: String(machine._id),
-        }).lean();
+        }).lean<CollectionDocument>();
 
         if (!matchingCollection) continue;
 
@@ -400,7 +446,7 @@ async function checkCollectionHistoryIssues(
           Math.abs(historyPrevOut - collectionPrevOut) > 0.1
         ) {
           issues.push({
-            collectionId: `machine-${String(machine._id)}-history-${i}`,
+            collectionId: `machine-${String(machine._id)}-history-${historyIndex}`,
             machineName:
               machine.serialNumber ||
               machine.custom?.name ||
@@ -411,12 +457,12 @@ async function checkCollectionHistoryIssues(
               current: {
                 prevMetersIn: entry.prevMetersIn,
                 prevMetersOut: entry.prevMetersOut,
-                entryIndex: i,
+                entryIndex: historyIndex,
               },
               expected: {
                 prevMetersIn: collectionPrevIn,
                 prevMetersOut: collectionPrevOut,
-                entryIndex: i,
+                entryIndex: historyIndex,
               },
               explanation: `Collection history entry does not match its collection document. History has prevMetersIn=${historyPrevIn}, prevMetersOut=${historyPrevOut}, but collection document has prevIn=${collectionPrevIn}, prevOut=${collectionPrevOut}.`,
             },
@@ -426,7 +472,7 @@ async function checkCollectionHistoryIssues(
       }
     }
   } catch (error) {
-    console.error('Error checking collectionMetersHistory:', error);
+    console.error('[checkCollectionHistoryIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
   }
 
   return issues;
@@ -441,6 +487,10 @@ async function checkCollectionHistoryIssues(
 export async function checkCollectionReportIssues(
   reportId: string
 ): Promise<CollectionIssueDetails> {
+  if (!reportId) {
+    console.error('[checkCollectionReportIssues] reportId is required');
+    return { issues: [], summary: { totalIssues: 0, affectedMachines: 0, affectedReports: 0 } };
+  }
   const collections = await Collections.find({
     locationReportId: reportId,
   });
@@ -533,7 +583,7 @@ export async function checkCollectionReportIssues(
       ],
     })
       .sort({ collectionTime: -1, timestamp: -1 })
-      .lean();
+      .lean<CollectionDocument>();
 
     if (actualPreviousCollection) {
       const prevMeterIssues = validatePreviousMeters(
@@ -550,7 +600,7 @@ export async function checkCollectionReportIssues(
 
   // Check collection history issues
   const machineIdsInReport = [
-    ...new Set(collections.map(c => c.machineId).filter(Boolean)),
+    ...new Set(collections.map(collection => collection.machineId).filter(Boolean)),
   ];
   const historyIssues = await checkCollectionHistoryIssues(machineIdsInReport);
   issues.push(...historyIssues);
@@ -608,7 +658,7 @@ export async function investigateMostRecentReport(): Promise<{
 
   const mostRecentReport = await CollectionReport.findOne({})
     .sort({ timestamp: -1 })
-    .lean();
+    .lean<CollectionReportDocument>();
 
   if (!mostRecentReport) {
     return {
@@ -621,7 +671,7 @@ export async function investigateMostRecentReport(): Promise<{
     locationReportId: mostRecentReport.locationReportId,
   })
     .sort({ timestamp: 1 })
-    .lean();
+    .lean<CollectionDocument[]>();
 
   const issues: Array<{
     collectionId: string;
@@ -715,13 +765,12 @@ export async function investigateMostRecentReport(): Promise<{
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
       const machine = await Machine.findOne({
         _id: collection.machineId,
-      }).lean();
+      }).lean<GamingMachine>();
       if (
         machine &&
-        (machine as Record<string, unknown>).collectionMetersHistory
+        machine.collectionMetersHistory
       ) {
-        const history = (machine as Record<string, unknown>)
-          .collectionMetersHistory as Array<{
+        const history = machine.collectionMetersHistory as Array<{
           metersIn?: number;
           metersOut?: number;
           locationReportId?: string;

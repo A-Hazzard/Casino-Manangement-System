@@ -12,8 +12,8 @@ import { NextRequest, NextResponse } from 'next/server';
  * changes.
  *
  * Body fields:
- * @param newEmail {string} Required. The new email address to assign to the account.
- * @param password {string} Required. The user's current password, verified before the update is applied.
+ * @param {string} newEmail - Required. The new email address to assign to the account.
+ * @param {string} password - Required. The user's current password, verified before the update is applied.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -63,8 +63,8 @@ export async function POST(req: NextRequest) {
       message: 'Email address updated successfully',
       email: newEmail
     });
-  } catch (error: unknown) {
-    console.error('Update Email Error:', error instanceof Error ? error.message : error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (e) {
+    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

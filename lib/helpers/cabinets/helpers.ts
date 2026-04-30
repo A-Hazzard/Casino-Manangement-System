@@ -785,12 +785,12 @@ export async function fetchCabinetTotals(
       console.warn(
         '[fetchCabinetTotals] Sample machine data:',
         JSON.stringify(
-          sample.map((m: Record<string, unknown>) => ({
-            _id: m._id,
-            moneyOut: m.moneyOut,
-            jackpot: m.jackpot,
-            includeJackpot: m.includeJackpot,
-            gross: m.gross,
+          sample.map((machineItem: Record<string, unknown>) => ({
+            _id: machineItem._id,
+            moneyOut: machineItem.moneyOut,
+            jackpot: machineItem.jackpot,
+            includeJackpot: machineItem.includeJackpot,
+            gross: machineItem.gross,
           })),
           null,
           2

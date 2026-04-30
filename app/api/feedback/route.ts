@@ -8,50 +8,50 @@
  * authenticated users have their session info merged in automatically.
  *
  * Body fields (POST):
- * @param category    {string} Required. One of: 'bug' | 'suggestion' | 'general-review' |
+ * @param {string} category - Required. One of: 'bug' | 'suggestion' | 'general-review' |
  *   'feature-request' | 'performance' | 'ui-ux' | 'other'.
- * @param description {string} Required. Feedback body text; 10–5000 characters.
- * @param email       {string} Optional. Submitter email (required if username is absent).
- * @param username    {string} Optional. Submitter username (required if email is absent).
- * @param userId      {string} Optional. Authenticated user's ID; used to merge session data.
- * @param firstName   {string} Optional. Submitter first name.
- * @param lastName    {string} Optional. Submitter last name.
- * @param locationId  {string} Optional. The location the feedback is associated with.
- * @param licenceeId  {string} Optional. The licencee the feedback is associated with.
+ * @param {string} description - Required. Feedback body text; 10–5000 characters.
+ * @param {string} [email] - Optional. Submitter email (required if username is absent).
+ * @param {string} [username] - Optional. Submitter username (required if email is absent).
+ * @param {string} [userId] - Optional. Authenticated user's ID; used to merge session data.
+ * @param {string} [firstName] - Optional. Submitter first name.
+ * @param {string} [lastName] - Optional. Submitter last name.
+ * @param {string} [locationId] - Optional. The location the feedback is associated with.
+ * @param {string} [licenceeId] - Optional. The licencee the feedback is associated with.
  *
  * GET /api/feedback — Retrieve paginated feedback list. Admin/developer/owner only.
  *
  * Query parameters (GET):
- * @param email    {string} Optional. Filter by submitter email (regex) or exact feedback _id.
- * @param category {string} Optional. Filter by feedback category.
- * @param status   {string} Optional. Filter by status ('pending' | 'reviewed' | 'resolved' |
+ * @param {string} [email] - Optional. Filter by submitter email (regex) or exact feedback _id.
+ * @param {string} [category] - Optional. Filter by feedback category.
+ * @param {string} [status] - Optional. Filter by status ('pending' | 'reviewed' | 'resolved' |
  *   'archived'). Archived items are normally excluded unless status='archived'.
- * @param page     {number} Optional. Page number for pagination. Defaults to 1.
- * @param limit    {number} Optional. Records per page. Defaults to 50.
+ * @param {number} [page] - Optional. Page number for pagination. Defaults to 1.
+ * @param {number} [limit] - Optional. Records per page. Defaults to 50.
  *
  * PATCH /api/feedback — Partial update (archive, status, notes). Admin/developer/owner only.
  *
  * Body fields (PATCH):
- * @param _id      {string}  Required. Feedback document ID.
- * @param archived {boolean} Optional. Set to true to archive, false to unarchive.
- * @param status   {string}  Optional. New status value.
- * @param notes    {string}  Optional. Internal admin notes.
+ * @param {string} _id - Required. Feedback document ID.
+ * @param {boolean} [archived] - Optional. Set to true to archive, false to unarchive.
+ * @param {string} [status] - Optional. New status value.
+ * @param {string} [notes] - Optional. Internal admin notes.
  *
  * PUT /api/feedback — Full update with Zod validation. Admin/developer/owner only.
  *
  * Body fields (PUT):
- * @param _id        {string}  Required. Feedback document ID.
- * @param status     {string}  Optional. New status ('pending' | 'reviewed' | 'resolved').
- * @param archived   {boolean} Optional. Archive flag.
- * @param notes      {string}  Optional. Internal admin notes.
- * @param reviewedBy {string}  Optional. Reviewer identifier; auto-set when status changes to
+ * @param {string} _id - Required. Feedback document ID.
+ * @param {string} [status] - Optional. New status ('pending' | 'reviewed' | 'resolved').
+ * @param {boolean} [archived] - Optional. Archive flag.
+ * @param {string} [notes] - Optional. Internal admin notes.
+ * @param {string} [reviewedBy] - Optional. Reviewer identifier; auto-set when status changes to
  *   'reviewed' or 'resolved'.
- * @param reviewedAt {string|Date} Optional. Review timestamp; auto-set on status change.
+ * @param {string|Date} [reviewedAt] - Optional. Review timestamp; auto-set on status change.
  *
  * DELETE /api/feedback — Permanently delete a feedback record. Admin/developer only.
  *
  * Body fields (DELETE):
- * @param _id {string} Required. Feedback document ID to delete.
+ * @param {string} _id - Required. Feedback document ID to delete.
  *
  * @module app/api/feedback/route
  */
@@ -65,6 +65,7 @@ import { GamingLocations as GamingLocationsModel } from '@/app/api/lib/models/ga
 import { Licencee as LicenceeModel } from '@/app/api/lib/models/licencee';
 import { generateMongoId } from '@/lib/utils/id';
 import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
+import type { FeedbackDocument, GamingLocationDocument, LicenceeDocument } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -171,14 +172,14 @@ export async function POST(request: NextRequest) {
 
     if (locationId) {
       try {
-        const loc = await GamingLocationsModel.findOne({ _id: locationId }).select('name').lean() as { name?: string } | null;
+        const loc = await GamingLocationsModel.findOne({ _id: locationId }).select('name').lean<GamingLocationDocument>();
         resolvedLocationName = loc?.name || null;
       } catch { /* ignore lookup errors */ }
     }
 
     if (licenceeId) {
       try {
-        const lic = await LicenceeModel.findOne({ _id: licenceeId }).select('name').lean() as { name?: string } | null;
+        const lic = await LicenceeModel.findOne({ _id: licenceeId }).select('name').lean<LicenceeDocument>();
         resolvedLicenceeName = lic?.name || null;
       } catch { /* ignore lookup errors */ }
     }
@@ -374,7 +375,7 @@ export async function GET(request: NextRequest) {
       .sort({ submittedAt: -1 })
       .skip(skip)
       .limit(limit)
-      .lean()
+      .lean<FeedbackDocument[]>()
       .exec();
 
     // ============================================================================
@@ -483,7 +484,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Pre-fetch for before-state
-    const existingFeedbackDoc = await FeedbackModel.findOne({ _id }).lean();
+    const existingFeedbackDoc = await FeedbackModel.findOne({ _id }).lean<FeedbackDocument>();
     if (!existingFeedbackDoc) {
       return NextResponse.json(
         { success: false, error: 'Feedback not found' },
@@ -505,7 +506,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Fetch the updated document to return
-    const updatedFeedback = await FeedbackModel.findOne({ _id }).lean();
+    const updatedFeedback = await FeedbackModel.findOne({ _id }).lean<FeedbackDocument>();
 
     // Log activity
     try {
@@ -617,7 +618,7 @@ export async function PUT(request: NextRequest) {
       validationResult.data;
 
     // Get existing feedback
-    const existingFeedback = await FeedbackModel.findOne({ _id }).lean();
+    const existingFeedback = await FeedbackModel.findOne({ _id }).lean<FeedbackDocument>();
     if (!existingFeedback) {
       return NextResponse.json(
         { success: false, error: 'Feedback not found' },
@@ -679,7 +680,7 @@ export async function PUT(request: NextRequest) {
 
     // Force re-read to verify persistence
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const verifiedDoc = await FeedbackModel.findOne({ _id }).lean();
+    const verifiedDoc = await FeedbackModel.findOne({ _id }).lean<FeedbackDocument>();
     const verifiedData = verifiedDoc as { archived?: boolean };
 
     const responseFeedback = {
@@ -808,7 +809,7 @@ export async function DELETE(request: NextRequest) {
     const { _id } = validationResult.data;
 
     // Get existing feedback before deletion
-    const existingFeedback = await FeedbackModel.findOne({ _id }).lean();
+    const existingFeedback = await FeedbackModel.findOne({ _id }).lean<FeedbackDocument>();
     if (!existingFeedback) {
       return NextResponse.json(
         { success: false, error: 'Feedback not found' },
@@ -817,7 +818,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete feedback
-    await FeedbackModel.findOneAndDelete({ _id });
+    const deletedFeedback = await FeedbackModel.findOneAndDelete({ _id });
+    if (!deletedFeedback) {
+      return NextResponse.json({ success: false, error: 'Failed to delete feedback' }, { status: 500 });
+    }
 
     // Log activity - admin deleted feedback
     try {

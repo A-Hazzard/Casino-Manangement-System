@@ -18,6 +18,11 @@ export function formatDate(
   date: DateInput,
   options: DateFormatOptions = {}
 ): string {
+  if (!date) {
+    console.error('[formatDate] date is required');
+    return 'Invalid Date';
+  }
+
   try {
     const dateObj =
       typeof date === 'string' || typeof date === 'number'
@@ -34,8 +39,8 @@ export function formatDate(
     );
 
     return formatter.format(dateObj);
-  } catch (error) {
-    console.warn('Date formatting error:', error);
+  } catch (e) {
+    console.error('[formatDate] Error:', e instanceof Error ? e.message : 'Unknown error');
     return 'Invalid Date';
   }
 }
@@ -44,6 +49,11 @@ export function formatDate(
  * Format date for display (e.g., "Jan 15, 2024")
  */
 export function formatDisplayDate(date: DateInput): string {
+  if (!date) {
+    console.error('[formatDisplayDate] date is required');
+    return 'Invalid Date';
+  }
+
   return formatDate(date, {
     year: 'numeric',
     month: 'short',
@@ -55,6 +65,11 @@ export function formatDisplayDate(date: DateInput): string {
  * Format time only (e.g., "2:30 PM")
  */
 export function formatTime(date: DateInput): string {
+  if (!date) {
+    console.error('[formatTime] date is required');
+    return 'Invalid Time';
+  }
+
   return formatDate(date, {
     hour: 'numeric',
     minute: '2-digit',
@@ -68,6 +83,11 @@ export function formatTime(date: DateInput): string {
  * @returns Time string in 12-hour format (e.g., "2:00 PM", "9:30 AM", "11:45 PM")
  */
 export function formatTime12Hour(time24: string): string {
+  if (!time24 || typeof time24 !== 'string') {
+    console.error('[formatTime12Hour] time24 is required and must be a string');
+    return time24 || 'Invalid Time';
+  }
+
   try {
     // Handle formats like "HH:MM" or "HH:MM:SS"
     const [hours, minutes] = time24.split(':').map(Number);
@@ -88,8 +108,8 @@ export function formatTime12Hour(time24: string): string {
     const minutesStr = minutes.toString().padStart(2, '0');
 
     return `${hour12}:${minutesStr} ${period}`;
-  } catch (error) {
-    console.warn('Time formatting error:', error);
+  } catch (e) {
+    console.error('[formatTime12Hour] Error:', e instanceof Error ? e.message : 'Unknown error');
     return time24; // Return original on error
   }
 }
@@ -98,6 +118,11 @@ export function formatTime12Hour(time24: string): string {
  * Format date for API/ISO format (e.g., "2024-01-15")
  */
 export function formatISODate(date: DateInput): string {
+  if (!date) {
+    console.error('[formatISODate] date is required');
+    return 'Invalid Date';
+  }
+
   return formatDate(date, {
     year: 'numeric',
     month: '2-digit',
@@ -132,6 +157,11 @@ export function formatLocalDateTimeString(
   date: DateInput,
   timezoneOffset: number = TRINIDAD_TIMEZONE_OFFSET
 ): string {
+  if (!date || typeof timezoneOffset !== 'number') {
+    console.error('[formatLocalDateTimeString] date and timezoneOffset (number) are required');
+    return 'Invalid Date';
+  }
+
   const dateObj =
     typeof date === 'string' || typeof date === 'number'
       ? new Date(date)
@@ -189,6 +219,12 @@ export function createDateInTrinidadTime(
   minutes: number,
   seconds: number = 0
 ): Date {
+  if (typeof year !== 'number' || typeof month !== 'number' || typeof day !== 'number' ||
+      typeof hours !== 'number' || typeof minutes !== 'number' || typeof seconds !== 'number') {
+    console.error('[createDateInTrinidadTime] All parameters must be numbers');
+    return new Date();
+  }
+
   // Convert Trinidad local time to UTC
   // UTC = Trinidad - offset, where offset = -4
   // So UTC = Trinidad local + 4 hours
@@ -213,6 +249,11 @@ export function setTimeToGamingDayStart(
   date: Date,
   gameDayOffset: number
 ): Date {
+  if (!(date instanceof Date) || typeof gameDayOffset !== 'number') {
+    console.error('[setTimeToGamingDayStart] date (Date) and gameDayOffset (number) are required');
+    return new Date();
+  }
+
   const result = new Date(date);
   const year = result.getFullYear();
   const month = result.getMonth() + 1;
@@ -243,6 +284,11 @@ export function getGamingDayEndInTrinidad(
   date: Date,
   gameDayOffset: number = 8
 ): Date {
+  if (!(date instanceof Date) || typeof gameDayOffset !== 'number') {
+    console.error('[getGamingDayEndInTrinidad] date (Date) and gameDayOffset (number) are required');
+    return new Date();
+  }
+
   const tomorrow = new Date(date);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
