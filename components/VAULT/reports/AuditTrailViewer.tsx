@@ -11,38 +11,38 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import { fetchAuditTrail } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import {
-    AlertTriangle,
-    FileText,
-    Filter,
-    RefreshCw,
-    Search,
+  AlertTriangle,
+  FileText,
+  Filter,
+  RefreshCw,
+  Search,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -80,7 +80,9 @@ export default function AuditTrailViewer() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date } | undefined>(undefined);
+  const [dateRange, setDateRange] = useState<
+    { from?: Date; to?: Date } | undefined
+  >(undefined);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -216,7 +218,7 @@ export default function AuditTrailViewer() {
 
             <div className="md:col-span-2">
               <Label>Date Range</Label>
-              <ModernCalendar 
+              <ModernCalendar
                 mode="range"
                 date={dateRange}
                 onSelect={setDateRange}
@@ -281,7 +283,7 @@ export default function AuditTrailViewer() {
                   [...Array(5)].map((_, i) => (
                     <TableRow key={i}>
                       <TableCell colSpan={6}>
-                        <div className="h-4 w-full bg-gray-100 rounded animate-pulse" />
+                        <div className="h-4 w-full animate-pulse rounded bg-gray-100" />
                       </TableCell>
                     </TableRow>
                   ))
@@ -308,22 +310,34 @@ export default function AuditTrailViewer() {
                       <TableCell>{entry.description}</TableCell>
                       <TableCell>{entry.performedBy}</TableCell>
                       <TableCell className="font-mono">
-                        {entry.type === 'vault_reconciliation' && entry.balanceBefore !== undefined ? (
+                        {entry.type === 'vault_reconciliation' &&
+                        entry.balanceBefore !== undefined ? (
                           <div className="flex flex-col text-[10px]">
                             <span className="text-gray-400">Shift:</span>
                             <span className="font-bold text-gray-900">
-                              {formatAmount(entry.balanceBefore ?? 0)} → {formatAmount(entry.balanceAfter ?? 0)}
+                              {formatAmount(entry.balanceBefore ?? 0)} →{' '}
+                              {formatAmount(entry.balanceAfter ?? 0)}
                             </span>
-                            <span className={`mt-0.5 ${entry.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              ({entry.amount >= 0 ? '' : '-'}{formatAmount(Math.abs(entry.amount))})
+                            <span
+                              className={`mt-0.5 ${entry.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                            >
+                              ({entry.amount >= 0 ? '' : '-'}
+                              {formatAmount(Math.abs(entry.amount))})
                             </span>
                           </div>
+                        ) : entry.amount > 0 ? (
+                          <span
+                            className={
+                              entry.isOutflow
+                                ? 'text-red-600'
+                                : 'text-green-600'
+                            }
+                          >
+                            {entry.isOutflow ? '-' : ''}
+                            {formatAmount(entry.amount)}
+                          </span>
                         ) : (
-                          entry.amount > 0 ? (
-                            <span className={entry.isOutflow ? 'text-red-600' : 'text-green-600'}>
-                              {entry.isOutflow ? '-' : ''}{formatAmount(entry.amount)}
-                            </span>
-                          ) : '-'
+                          '-'
                         )}
                       </TableCell>
                       <TableCell>

@@ -15,7 +15,15 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { History, Landmark, Minus, Plus, Receipt, RefreshCw, Users } from 'lucide-react';
+import {
+  History,
+  Landmark,
+  Minus,
+  Plus,
+  Receipt,
+  RefreshCw,
+  Users,
+} from 'lucide-react';
 
 type VaultOverviewQuickActionsSectionProps = {
   onAddCash: () => void;
@@ -45,11 +53,13 @@ export default function VaultOverviewQuickActionsSection({
   isAdminOrDev = false,
 }: VaultOverviewQuickActionsSectionProps) {
   // Operational buttons are disabled if shift is not active, not reconciled, OR stale
-  const operationalDisabled = (!isShiftActive || !isReconciled || isStaleShift);
-  const disabledClasses = operationalDisabled ? "opacity-40 cursor-not-allowed" : "";
-  
+  const operationalDisabled = !isShiftActive || !isReconciled || isStaleShift;
+  const disabledClasses = operationalDisabled
+    ? 'opacity-40 cursor-not-allowed'
+    : '';
+
   // Navigation-only buttons are enabled even if shift is not active
-  const navDisabledClasses = "";
+  const navDisabledClasses = '';
 
   // ============================================================================
   // Render
@@ -70,7 +80,9 @@ export default function VaultOverviewQuickActionsSection({
             size="sm"
           >
             <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-xs font-semibold sm:text-sm line-clamp-1">Add Cash</span>
+            <span className="line-clamp-1 text-xs font-semibold sm:text-sm">
+              Add Cash
+            </span>
           </Button>
         )}
 
@@ -82,7 +94,7 @@ export default function VaultOverviewQuickActionsSection({
             size="sm"
           >
             <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-xs font-semibold sm:text-sm line-clamp-1">
+            <span className="line-clamp-1 text-xs font-semibold sm:text-sm">
               Remove Cash
             </span>
           </Button>
@@ -96,7 +108,7 @@ export default function VaultOverviewQuickActionsSection({
             size="sm"
           >
             <Receipt className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-xs font-semibold sm:text-sm line-clamp-1">
+            <span className="line-clamp-1 text-xs font-semibold sm:text-sm">
               Record Expense
             </span>
           </Button>
@@ -111,7 +123,7 @@ export default function VaultOverviewQuickActionsSection({
             title="Count collected cash and add it to vault inventory"
           >
             <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-xs font-semibold sm:text-sm line-clamp-1">
+            <span className="line-clamp-1 text-xs font-semibold sm:text-sm">
               Soft Count
             </span>
           </Button>
@@ -125,7 +137,7 @@ export default function VaultOverviewQuickActionsSection({
             size="sm"
           >
             <Users className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-xs font-semibold sm:text-sm line-clamp-1">
+            <span className="line-clamp-1 text-xs font-semibold sm:text-sm">
               Manage Cashiers
             </span>
           </Button>
@@ -140,7 +152,7 @@ export default function VaultOverviewQuickActionsSection({
             title="View complete audit trail of vault operations"
           >
             <History className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-xs font-semibold sm:text-sm line-clamp-1">
+            <span className="line-clamp-1 text-xs font-semibold sm:text-sm">
               Activity Log
             </span>
           </Button>
@@ -150,12 +162,12 @@ export default function VaultOverviewQuickActionsSection({
         {!isAdminOrDev && onCloseVault && (
           <Button
             onClick={onCloseVault}
-            className={`h-auto min-h-[70px] flex-col gap-1 bg-orange-600 py-3 text-white hover:bg-orange-700 ${!isShiftActive ? "opacity-40 cursor-not-allowed" : ""}`}
+            className={`h-auto min-h-[70px] flex-col gap-1 bg-orange-600 py-3 text-white hover:bg-orange-700 ${!isShiftActive ? 'cursor-not-allowed opacity-40' : ''}`}
             size="sm"
             title="Submit final counts and close the vault day"
           >
             <Landmark className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="text-xs font-semibold sm:text-sm line-clamp-1">
+            <span className="line-clamp-1 text-xs font-semibold sm:text-sm">
               Close Day
             </span>
           </Button>

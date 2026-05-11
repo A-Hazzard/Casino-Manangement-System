@@ -11,7 +11,9 @@ export function validateEmail(
   emailAddress: UserDocument['emailAddress']
 ): boolean {
   if (!emailAddress || typeof emailAddress !== 'string') {
-    console.error('[validateEmail] emailAddress is required and must be a string');
+    console.error(
+      '[validateEmail] emailAddress is required and must be a string'
+    );
     return false;
   }
 
@@ -43,11 +45,17 @@ export async function comparePassword(
   password: string,
   hashedPassword: string
 ): Promise<boolean> {
-  if (!password || typeof password !== 'string' || !hashedPassword || typeof hashedPassword !== 'string') {
-    console.error('[comparePassword] password and hashedPassword are required and must be strings');
+  if (
+    !password ||
+    typeof password !== 'string' ||
+    !hashedPassword ||
+    typeof hashedPassword !== 'string'
+  ) {
+    console.error(
+      '[comparePassword] password and hashedPassword are required and must be strings'
+    );
     return false;
   }
 
   return await bcrypt.compare(password, hashedPassword);
 }
-

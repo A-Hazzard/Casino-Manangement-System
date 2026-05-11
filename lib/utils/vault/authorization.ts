@@ -47,7 +47,7 @@ export function hasVaultAccess(userRoles: string[] | undefined): boolean {
  * Check if user has cashier access
  * @param userRoles - Array of user's roles
  * @returns boolean indicating if user has cashier access
- * 
+ *
  * CMS roles (developer, admin, manager, location admin) can also access cashier pages
  */
 export function hasCashierAccess(userRoles: string[] | undefined): boolean {

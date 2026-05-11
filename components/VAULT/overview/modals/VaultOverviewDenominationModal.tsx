@@ -8,10 +8,10 @@
 'use client';
 
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Label } from '@/components/shared/ui/label';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -36,61 +36,74 @@ export default function VaultOverviewDenominationModal({
   const { formatAmount } = useCurrencyFormat();
 
   // Filter out zero quantities for cleaner view
-  const activeDenoms = denominations.filter((d) => d.quantity > 0);
+  const activeDenoms = denominations.filter(d => d.quantity > 0);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="md:max-w-md p-0 overflow-hidden flex flex-col">
-        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
-           <DialogTitle className="flex items-center gap-2 text-violet-900">
-             <Banknote className="h-5 w-5 text-violet-600" />
-             {title}
-           </DialogTitle>
+      <DialogContent className="flex flex-col overflow-hidden p-0 md:max-w-md">
+        <DialogHeader className="shrink-0 border-b border-violet-100 bg-violet-50 p-6">
+          <DialogTitle className="flex items-center gap-2 text-violet-900">
+            <Banknote className="h-5 w-5 text-violet-600" />
+            {title}
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 md:max-h-[75vh] custom-scrollbar">
-          <div className="grid grid-cols-2 gap-4 rounded-2xl bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100 p-5 shadow-sm">
+        <div className="custom-scrollbar flex-1 space-y-6 overflow-y-auto p-6 md:max-h-[75vh]">
+          <div className="grid grid-cols-2 gap-4 rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 to-purple-50 p-5 shadow-sm">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-violet-400 mb-1">Total Balance</p>
-              <p className="text-2xl font-black text-violet-700 tracking-tight">{formatAmount(totalAmount)}</p>
+              <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-violet-400">
+                Total Balance
+              </p>
+              <p className="text-2xl font-black tracking-tight text-violet-700">
+                {formatAmount(totalAmount)}
+              </p>
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-black uppercase tracking-widest text-violet-400 mb-1">Status</p>
-              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-violet-100 text-[10px] font-black uppercase text-violet-700">
-                 <div className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" />
-                 Active Float
+              <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-violet-400">
+                Status
+              </p>
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-black uppercase text-violet-700">
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-500" />
+                Active Float
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">Denomination Breakdown</Label>
-            <div className="divide-y divide-violet-100 rounded-2xl border border-violet-100 bg-white overflow-hidden shadow-sm">
+            <Label className="ml-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
+              Denomination Breakdown
+            </Label>
+            <div className="divide-y divide-violet-100 overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm">
               {activeDenoms.length > 0 ? (
-                activeDenoms.map((d) => (
-                  <div key={d.denomination} className="flex items-center justify-between p-4 hover:bg-violet-50/30 transition-colors group">
+                activeDenoms.map(d => (
+                  <div
+                    key={d.denomination}
+                    className="group flex items-center justify-between p-4 transition-colors hover:bg-violet-50/30"
+                  >
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600 font-black text-xs border border-violet-100 group-hover:bg-violet-600 group-hover:text-white group-hover:border-violet-600 transition-all">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-violet-100 bg-violet-50 text-xs font-black text-violet-600 transition-all group-hover:border-violet-600 group-hover:bg-violet-600 group-hover:text-white">
                         ${d.denomination}
                       </div>
                       <div>
-                        <p className="text-sm font-black text-gray-900 tracking-tight">
+                        <p className="text-sm font-black tracking-tight text-gray-900">
                           {d.quantity} Bills
                         </p>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
                           Currency Unit
                         </p>
                       </div>
                     </div>
-                    <p className="font-black text-sm text-violet-700">
+                    <p className="text-sm font-black text-violet-700">
                       {formatAmount(d.denomination * d.quantity)}
                     </p>
                   </div>
                 ))
               ) : (
                 <div className="p-12 text-center">
-                  <Banknote className="h-8 w-8 text-gray-200 mx-auto mb-3" />
-                  <p className="text-gray-400 font-bold text-sm uppercase tracking-tight">No denominations recorded</p>
+                  <Banknote className="mx-auto mb-3 h-8 w-8 text-gray-200" />
+                  <p className="text-sm font-bold uppercase tracking-tight text-gray-400">
+                    No denominations recorded
+                  </p>
                 </div>
               )}
             </div>

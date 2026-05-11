@@ -362,9 +362,7 @@ export const createCabinet = async (
  * @param timePeriod - Optional time period filter for fetching cabinet data.
  * @returns Promise resolving to the updated cabinet data, or throws on error.
  */
-export const updateCabinet = async (
-  data: CabinetFormData
-) => {
+export const updateCabinet = async (data: CabinetFormData) => {
   try {
     // console.log(
     //   "updateCabinet called with data:",
@@ -374,10 +372,7 @@ export const updateCabinet = async (
     // Activity logging removed - handled via API calls
 
     // Using the unified cabinet endpoint
-    const response = await axios.put(
-      `/api/cabinets/${data._id}`,
-      data
-    );
+    const response = await axios.put(`/api/cabinets/${data._id}`, data);
 
     // console.log("API response:", response.data);
 
@@ -509,13 +504,14 @@ export async function fetchCabinetsForLocation(
     // Add onlineStatus parameter if provided
     if (onlineStatus && onlineStatus !== 'all') {
       params.onlineStatus = onlineStatus;
+    } else if (includeArchived) {
+      // Only set archived mode if not already filtering by onlineStatus
+      params.onlineStatus = 'archived';
+    } else if (!onlineStatus || onlineStatus === 'all') {
+      // Explicitly request all statuses (including both online and offline)
+      params.onlineStatus = 'all';
     }
 
-    // Add includeArchived parameter if provided
-    if (includeArchived) {
-      params.onlineStatus = 'archived'; // Logically map archived view for the aggregator
-    }
- 
     // Add smibStatus parameter if provided
     if (smibStatus && smibStatus !== 'all') {
       params.smibStatus = smibStatus;
@@ -663,7 +659,6 @@ export async function permanentlyDeleteCabinet(
     throw error;
   }
 }
-
 
 /**
  * Fetches cabinet/machine totals using the machines aggregation API
@@ -897,4 +892,3 @@ export const updateMachineCollectionHistory = async (
     throw error;
   }
 };
-

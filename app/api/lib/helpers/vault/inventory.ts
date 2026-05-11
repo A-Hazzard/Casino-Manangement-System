@@ -15,16 +15,21 @@ export async function updateVaultShiftInventory(
   isAddition: boolean
 ) {
   if (!vaultShift || !Array.isArray(denominations)) {
-    console.error('[updateVaultShiftInventory] vaultShift and denominations are required');
+    console.error(
+      '[updateVaultShiftInventory] vaultShift and denominations are required'
+    );
     return vaultShift;
   }
   // 1. Update Balance
   const currentBalance = vaultShift.closingBalance ?? vaultShift.openingBalance;
-  vaultShift.closingBalance = isAddition ? currentBalance + amount : currentBalance - amount;
+  vaultShift.closingBalance = isAddition
+    ? currentBalance + amount
+    : currentBalance - amount;
 
   // 2. Update Inventory (currentDenominations)
   const currentInventory =
-    vaultShift.currentDenominations && vaultShift.currentDenominations.length > 0
+    vaultShift.currentDenominations &&
+    vaultShift.currentDenominations.length > 0
       ? vaultShift.currentDenominations
       : vaultShift.openingDenominations;
 
@@ -42,7 +47,10 @@ export async function updateVaultShiftInventory(
       inventoryMap.set(denom.denomination, currentQty + denom.quantity);
     } else {
       // Ensure we don't go below zero (though validation should prevent this)
-      inventoryMap.set(denom.denomination, Math.max(0, currentQty - denom.quantity));
+      inventoryMap.set(
+        denom.denomination,
+        Math.max(0, currentQty - denom.quantity)
+      );
     }
   });
 
@@ -63,8 +71,14 @@ export async function updateVaultShiftInventory(
 /**
  * Validates that denominations sum to the provided total amount.
  */
-export function validateDenominationTotal(amount: number, denominations: Denomination[]): boolean {
+export function validateDenominationTotal(
+  amount: number,
+  denominations: Denomination[]
+): boolean {
   if (!denominations || denominations.length === 0) return amount === 0;
-  const total = denominations.reduce((sum, denom) => sum + (denom.denomination * denom.quantity), 0);
+  const total = denominations.reduce(
+    (sum, denom) => sum + denom.denomination * denom.quantity,
+    0
+  );
   return Math.abs(total - amount) < 0.01;
 }

@@ -1,8 +1,8 @@
 # Administration Page Implementation (`/administration`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -15,6 +15,7 @@ Management hub for users, corporate entities (Licencees), and system-wide audit 
 ## 2. Data & API Architecture (By Section)
 
 ### 👥 Personnel Management Table
+
 The master directory for controlling user access and profile data.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -27,6 +28,7 @@ The master directory for controlling user access and profile data.
 - **Implementation**: `AdministrationUsersSection` using the `useAdministrationUsers` hook.
 
 ### 🏢 Corporate Entity Registry
+
 High-level management of Licencees and their associated property quotas.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -38,17 +40,19 @@ High-level management of Licencees and their associated property quotas.
 - **Implementation**: `AdministrationLicenceesSection` using the `useAdministrationLicencees` hook.
 
 ### 📜 Platform Audit Stream
+
 A comprehensive forensic log of all critical system mutations.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
-| **Performed By** | `username` | `GET /api/activitylogs` |
-| **Action Taken** | `action` | `GET /api/activitylogs` |
-| **Target Resource** | `metadata.resourceName`| `GET /api/activitylogs` |
+| **Performed By** | `username` | `GET /api/activity-logs` |
+| **Action Taken** | `action` | `GET /api/activity-logs` |
+| **Target Resource** | `metadata.resourceName`| `GET /api/activity-logs` |
 
 - **Interactive**: Clicking a row reveals a JSON `diff` of the before-and-after state of the modified resource.
 - **Implementation**: `AdministrationActivityLogsTable` with server-side pagination.
 
 ### 🌍 Geographic Zone Manager
+
 Management of supported countries and their respective jurisdictional defaults.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -115,4 +119,5 @@ Management of supported countries and their respective jurisdictional defaults.
 - 🚫 **Banned**: Row opacity reduced to 50% with a "Disabled" badge.
 
 ---
+
 **Internal Document** - Engineering Team

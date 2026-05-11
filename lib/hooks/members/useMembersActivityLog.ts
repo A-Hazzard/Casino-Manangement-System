@@ -71,8 +71,10 @@ export function useMembersActivityLog({
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
 
-      const response = await axios.get(`/api/activity-logs?${params.toString()}`);
-      
+      const response = await axios.get(
+        `/api/activity-logs?${params.toString()}`
+      );
+
       if (response.data.success) {
         setActivities(response.data.data.activities || []);
         setPagination(response.data.data.pagination);

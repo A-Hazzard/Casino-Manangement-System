@@ -96,12 +96,9 @@ export function useAdministrationLicencees({
     [countryNameById]
   );
 
-  const calculateLicenceesBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / licenceesPagesPerBatch) + 1;
-    },
-    []
-  );
+  const calculateLicenceesBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / licenceesPagesPerBatch) + 1;
+  }, []);
 
   const licenceesWithCountryNames = useMemo(() => {
     if (!Array.isArray(allLicencees)) {
@@ -390,8 +387,8 @@ export function useAdministrationLicencees({
       };
       toast.error(
         error?.response?.data?.message ||
-        error?.message ||
-        'Failed to add licencee'
+          error?.message ||
+          'Failed to add licencee'
       );
     }
   }, [
@@ -541,8 +538,8 @@ export function useAdministrationLicencees({
       };
       toast.error(
         error?.response?.data?.message ||
-        error?.message ||
-        'Failed to update licencee'
+          error?.message ||
+          'Failed to update licencee'
       );
     }
   }, [
@@ -599,9 +596,10 @@ export function useAdministrationLicencees({
             resource: 'licencee',
             resourceId: selectedLicencee._id,
             resourceName: selectedLicencee.name,
-            details: `Deleted licencee: ${selectedLicencee.name} from ${selectedLicencee.countryName ||
+            details: `Deleted licencee: ${selectedLicencee.name} from ${
+              selectedLicencee.countryName ||
               getCountryNameById(selectedLicencee.country)
-              }`,
+            }`,
             userId: user?._id || 'unknown',
             username: getUserDisplayName(),
             userRole: 'user',
@@ -638,8 +636,8 @@ export function useAdministrationLicencees({
       };
       toast.error(
         error?.response?.data?.message ||
-        error?.message ||
-        'Failed to delete licencee'
+          error?.message ||
+          'Failed to delete licencee'
       );
     }
   }, [
@@ -715,9 +713,11 @@ export function useAdministrationLicencees({
             resource: 'licencee',
             resourceId: selectedLicenceeForPaymentChange._id,
             resourceName: selectedLicenceeForPaymentChange.name,
-            details: `Changed payment status for ${selectedLicenceeForPaymentChange.name
-              } from ${currentIsPaid ? 'Paid' : 'Unpaid'} to ${newIsPaid ? 'Paid' : 'Unpaid'
-              }`,
+            details: `Changed payment status for ${
+              selectedLicenceeForPaymentChange.name
+            } from ${currentIsPaid ? 'Paid' : 'Unpaid'} to ${
+              newIsPaid ? 'Paid' : 'Unpaid'
+            }`,
             userId: user?._id || 'unknown',
             username: getUserDisplayName(),
             userRole: 'user',
@@ -772,9 +772,7 @@ export function useAdministrationLicencees({
     setIsLicenceesLoading(true);
     try {
       const result = await fetchLicencees(1, licenceesItemsPerBatch);
-      setAllLicencees(
-        Array.isArray(result.licencees) ? result.licencees : []
-      );
+      setAllLicencees(Array.isArray(result.licencees) ? result.licencees : []);
       setLicenceesLoadedBatches(new Set([1]));
       setLicenceesCurrentPage(0);
     } catch (error) {
@@ -832,5 +830,3 @@ export function useAdministrationLicencees({
     getCountryNameById,
   };
 }
-
-

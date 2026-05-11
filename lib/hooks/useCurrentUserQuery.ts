@@ -44,7 +44,8 @@ type CurrentUserResponse = {
     invalidProfileFields?: UserAuthPayload['invalidProfileFields'];
     invalidProfileReasons?: UserAuthPayload['invalidProfileReasons'];
     tempPasswordChanged?: boolean;
-    multiplier?: number | null;
+    moneyInMultiplier?: number | null;
+    moneyOutAndJackpotMultiplier?: number | null;
   };
 };
 
@@ -117,7 +118,8 @@ export function useCurrentUserQuery() {
         invalidProfileFields: dbUser.invalidProfileFields,
         invalidProfileReasons: dbUser.invalidProfileReasons,
         tempPasswordChanged: dbUser.tempPasswordChanged,
-        multiplier: dbUser.multiplier,
+        moneyInMultiplier: dbUser.moneyInMultiplier,
+        moneyOutAndJackpotMultiplier: dbUser.moneyOutAndJackpotMultiplier,
       };
 
       // Only update store if data has changed

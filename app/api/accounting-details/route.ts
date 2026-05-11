@@ -13,6 +13,11 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { getAccountingDetails } from '@/app/api/lib/helpers/accountingDetails';
 import type { BillValidatorTimePeriod } from '@/shared/types/billValidator';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -37,6 +42,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/accounting-details';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -56,6 +63,13 @@ export async function GET(req: NextRequest) {
     // STEP 3: Validate machine ID
     // ============================================================================
     if (!machineId) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/accounting-details',
+        'Machine ID is required',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Machine ID is required' },
         { status: 400 }
@@ -71,18 +85,29 @@ export async function GET(req: NextRequest) {
     // STEP 5: Return accounting details
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Accounting Details API] Completed in ${duration}ms`);
-    }
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/accounting-details',
+      1,
+      user,
+      duration
+    );
 
     return NextResponse.json({
       success: true,
       data: accountingDetails,
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[Accounting Details API] Error after ${duration}ms:`, errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/accounting-details',
+      errorMessage,
+      user
+    );
     return NextResponse.json(
       {
         success: false,
@@ -93,4 +118,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

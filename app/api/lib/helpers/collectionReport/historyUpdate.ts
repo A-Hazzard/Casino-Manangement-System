@@ -90,7 +90,10 @@ export async function updateReportMachineHistories(
     try {
       await processSingleMachineChange(reportId, change, results);
     } catch (error) {
-      console.error('[updateReportMachineHistories] Error:', error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        '[updateReportMachineHistories] Error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       results.failed++;
       results.errors.push({
         machineId: change.machineId,
@@ -189,7 +192,9 @@ async function processSingleMachineChange(
         metersOut: Number(change.metersOut),
         prevIn: Number(change.prevMetersIn),
         prevOut: Number(change.prevMetersOut),
-        collectionTime: change.timestamp ? new Date(change.timestamp) : undefined,
+        collectionTime: change.timestamp
+          ? new Date(change.timestamp)
+          : undefined,
         timestamp: change.timestamp ? new Date(change.timestamp) : undefined,
         ramClear: change.ramClear,
         ramClearMetersIn: change.ramClearMetersIn,
@@ -222,7 +227,10 @@ async function processSingleMachineChange(
     await recalculateMachineCollections(machineId);
     console.warn(`🔄 Recalculation cascade completed for machine ${machineId}`);
   } catch (recalcError) {
-    console.error('[processSingleMachineChange] Error:', recalcError instanceof Error ? recalcError.message : 'Unknown error');
+    console.error(
+      '[processSingleMachineChange] Error:',
+      recalcError instanceof Error ? recalcError.message : 'Unknown error'
+    );
     // Continue even if cascade fails, as the current report entry is already synced
   }
 
@@ -230,26 +238,32 @@ async function processSingleMachineChange(
   // STEP 3: Mark collection as completed and update machine timestamp
   // ============================================================================
   // Mark the collection as completed since it's part of a finalized report
-  await Collections.findOneAndUpdate({ _id: collectionId }, {
-    $set: {
-      isCompleted: true,
-      updatedAt: new Date(),
-    },
-  });
+  await Collections.findOneAndUpdate(
+    { _id: collectionId },
+    {
+      $set: {
+        isCompleted: true,
+        updatedAt: new Date(),
+      },
+    }
+  );
 
   // Update machine's collectionTime to match this finalized collection
-  await Machine.findOneAndUpdate({ _id: machineId }, {
-    $set: {
-      collectionTime: syncedCollection.collectionTime || syncedCollection.timestamp || new Date(),
-      updatedAt: new Date(),
-    },
-  });
+  await Machine.findOneAndUpdate(
+    { _id: machineId },
+    {
+      $set: {
+        collectionTime:
+          syncedCollection.collectionTime ||
+          syncedCollection.timestamp ||
+          new Date(),
+        updatedAt: new Date(),
+      },
+    }
+  );
 
   console.warn(
     `✅ Successfully finalized machine ${machineId} and updated history chain`
   );
   results.updated++;
 }
-
-
-

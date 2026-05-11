@@ -1,10 +1,7 @@
 // Standardized API response utilities
 
 import { NextResponse } from 'next/server';
-import type {
-  ApiResponse,
-  ApiErrorResponse,
-} from '@/shared/types/api';
+import type { ApiResponse, ApiErrorResponse } from '@/shared/types/api';
 
 /**
  * Creates a standardized success response
@@ -48,7 +45,9 @@ export function createErrorResponse(
   details?: Record<string, unknown>
 ): NextResponse<ApiErrorResponse> {
   if (!error || typeof error !== 'string') {
-    console.error('[createErrorResponse] error is required and must be a string');
+    console.error(
+      '[createErrorResponse] error is required and must be a string'
+    );
     return NextResponse.json(
       {
         success: false,
@@ -63,7 +62,7 @@ export function createErrorResponse(
     {
       success: false,
       error,
-      message: error,  // Include 'message' field for frontend compatibility
+      message: error, // Include 'message' field for frontend compatibility
       code,
       details,
       timestamp: new Date().toISOString(),
@@ -71,7 +70,6 @@ export function createErrorResponse(
     { status }
   );
 }
-
 
 /**
  * Creates a standardized server error response
@@ -92,5 +90,3 @@ export function createBadRequestResponse(
 ): NextResponse<ApiErrorResponse> {
   return createErrorResponse(message, 400, 'BAD_REQUEST', details);
 }
-
-

@@ -17,14 +17,15 @@
  * @param dateString - Date string to format
  * @returns Formatted date string or "No SAS Time" if invalid
  */
-export function formatSasTime(dateString: string): string {
+export function formatSasTime(dateString: string | Date | undefined): string {
   // Handle missing/empty dates
   if (!dateString || dateString === '-' || dateString === '') {
     return 'No SAS Time';
   }
 
   try {
-    const date = new Date(dateString);
+    const date =
+      typeof dateString === 'string' ? new Date(dateString) : dateString;
     // Check if date is valid
     if (isNaN(date.getTime())) {
       return 'No SAS Time';
@@ -42,5 +43,3 @@ export function formatSasTime(dateString: string): string {
     return 'No SAS Time'; // Better than showing "Invalid Date"
   }
 }
-
-

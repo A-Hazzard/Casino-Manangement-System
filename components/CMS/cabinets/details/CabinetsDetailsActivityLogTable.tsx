@@ -90,10 +90,9 @@ type CabinetsDetailsActivityLogTableProps = {
  * @param data - Array of MachineEvent objects.
  * @returns Activity log table component.
  */
-export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTableProps> = ({
-  data,
-  onFilterChange,
-}) => {
+export const CabinetsDetailsActivityLogTable: FC<
+  CabinetsDetailsActivityLogTableProps
+> = ({ data, onFilterChange }) => {
   const [expandedSequences, setExpandedSequences] = useState<Set<string>>(
     new Set()
   );
@@ -162,8 +161,6 @@ export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTable
     return Array.from(eventTypes).sort();
   }, [data]);
 
-
-
   // Filter and paginate data
   const filteredAndPaginatedData = useMemo(() => {
     const filtered = data.filter(item => {
@@ -206,7 +203,7 @@ export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTable
       if (filters.type && filters.type !== 'all') {
         const itemType = (item.eventLogLevel || 'General').toLowerCase();
         const filterType = (filters.type || '').toLowerCase();
-        
+
         // Handle common mappings
         if (filterType === 'warning' || filterType === 'warn') {
           if (itemType !== 'warning' && itemType !== 'warn') return false;
@@ -238,20 +235,34 @@ export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTable
         <div className="mb-4 rounded-lg bg-gray-50 p-4">
           {/* Quick Filters */}
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <span className="mr-2 text-sm font-medium text-gray-500">Quick Filters:</span>
+            <span className="mr-2 text-sm font-medium text-gray-500">
+              Quick Filters:
+            </span>
             <Button
               variant={filters.type === 'Critical' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleFilterChange('type', 'Critical')}
-              className={filters.type === 'Critical' ? 'bg-red-600 hover:bg-red-700' : 'text-red-600 border-red-200 hover:bg-red-50'}
+              className={
+                filters.type === 'Critical'
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : 'border-red-200 text-red-600 hover:bg-red-50'
+              }
             >
               Critical
             </Button>
             <Button
-              variant={filters.type === 'Warning' || filters.type === 'WARN' ? 'default' : 'outline'}
+              variant={
+                filters.type === 'Warning' || filters.type === 'WARN'
+                  ? 'default'
+                  : 'outline'
+              }
               size="sm"
               onClick={() => handleFilterChange('type', 'Warning')}
-              className={filters.type === 'Warning' || filters.type === 'WARN' ? 'bg-orange-500 hover:bg-orange-600' : 'text-orange-500 border-orange-200 hover:bg-orange-50'}
+              className={
+                filters.type === 'Warning' || filters.type === 'WARN'
+                  ? 'bg-orange-500 hover:bg-orange-600'
+                  : 'border-orange-200 text-orange-500 hover:bg-orange-50'
+              }
             >
               Warning
             </Button>
@@ -259,23 +270,37 @@ export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTable
               variant={filters.type === 'INFO' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleFilterChange('type', 'INFO')}
-              className={filters.type === 'INFO' ? 'bg-blue-500 hover:bg-blue-600' : 'text-blue-500 border-blue-200 hover:bg-blue-50'}
+              className={
+                filters.type === 'INFO'
+                  ? 'bg-blue-500 hover:bg-blue-600'
+                  : 'border-blue-200 text-blue-500 hover:bg-blue-50'
+              }
             >
               INFO
             </Button>
             <Button
-              variant={filters.eventType === 'SAS Event' ? 'default' : 'outline'}
+              variant={
+                filters.eventType === 'SAS Event' ? 'default' : 'outline'
+              }
               size="sm"
               onClick={() => handleFilterChange('eventType', 'SAS Event')}
-              className={filters.eventType === 'SAS Event' ? 'bg-purple-600 hover:bg-purple-700' : 'text-purple-600 border-purple-200 hover:bg-purple-50'}
+              className={
+                filters.eventType === 'SAS Event'
+                  ? 'bg-purple-600 hover:bg-purple-700'
+                  : 'border-purple-200 text-purple-600 hover:bg-purple-50'
+              }
             >
               SAS Event
             </Button>
             <Button
-              variant={!filters.type && !filters.eventType ? 'default' : 'outline'}
+              variant={
+                !filters.type && !filters.eventType ? 'default' : 'outline'
+              }
               size="sm"
               onClick={clearFilters}
-              className={!filters.type && !filters.eventType ? 'bg-gray-600' : ''}
+              className={
+                !filters.type && !filters.eventType ? 'bg-gray-600' : ''
+              }
             >
               All
             </Button>
@@ -429,85 +454,87 @@ export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTable
               </TableRow>
             </TableHeader>
             <TableBody>
-                {filteredAndPaginatedData.data.map((row, idx) => {
-                  const logLevel = row.eventLogLevel || 'General';
-                  const rowBgClass = 
-                    logLevel === 'Critical' ? 'bg-red-50 hover:bg-red-100' :
-                    logLevel === 'Warning' || logLevel === 'Warn' ? 'bg-orange-50 hover:bg-orange-100' :
-                    'hover:bg-muted';
-                  
-                  return (
-                    <Fragment key={row._id || idx}>
-                      <TableRow className={`text-center ${rowBgClass}`}>
-                    <TableCell>
-                      <div className="flex items-center justify-center gap-2">
-                        <CheckIcon className="h-4 w-4 text-green-500" />
-                        {row.eventType || 'General'}
-                      </div>
-                    </TableCell>
-                    <TableCell isFirstColumn={true}>
-                      <div className="flex items-center justify-between">
-                        <span>{row.description || 'No activity'}</span>
-                        {row.sequence && row.sequence.length > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleSequence(row._id)}
-                            className="rounded p-1 transition-colors hover:bg-gray-100"
-                          >
-                            {expandedSequences.has(row._id) ? (
-                              <MinusIcon className="h-4 w-4 text-green-500 hover:text-green-600" />
-                            ) : (
-                              <PlusIcon className="h-4 w-4 text-green-500 hover:text-green-600" />
-                            )}
-                          </Button>
-                        )}
-                      </div>
-                      {/* Sequence Dropdown within the same cell */}
-                      {expandedSequences.has(row._id) &&
-                        row.sequence &&
-                        row.sequence.length > 0 && (
-                          <div className="mt-3 border-t border-gray-200 pt-3">
-                            <h4 className="mb-2 text-sm font-medium text-gray-700">
-                              Sequence Details
-                            </h4>
-                            <div className="space-y-2">
-                              {row.sequence.map((seq, seqIdx) => (
-                                <div
-                                  key={seqIdx}
-                                  className="rounded border bg-gray-50 p-2 text-xs"
-                                >
-                                  <div className="mb-1 flex items-center justify-between">
-                                    <span className="font-medium">
-                                      {seq.description}
-                                    </span>
-                                    <span
-                                      className={`rounded px-1 py-0.5 text-xs ${
-                                        seq.success
-                                          ? 'bg-green-100 text-green-800'
-                                          : 'bg-red-100 text-red-800'
-                                      }`}
-                                    >
-                                      {seq.logLevel}
-                                    </span>
+              {filteredAndPaginatedData.data.map((row, idx) => {
+                const logLevel = row.eventLogLevel || 'General';
+                const rowBgClass =
+                  logLevel === 'Critical'
+                    ? 'bg-red-50 hover:bg-red-100'
+                    : logLevel === 'Warning' || logLevel === 'Warn'
+                      ? 'bg-orange-50 hover:bg-orange-100'
+                      : 'hover:bg-muted';
+
+                return (
+                  <Fragment key={row._id || idx}>
+                    <TableRow className={`text-center ${rowBgClass}`}>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-2">
+                          <CheckIcon className="h-4 w-4 text-green-500" />
+                          {row.eventType || 'General'}
+                        </div>
+                      </TableCell>
+                      <TableCell isFirstColumn={true}>
+                        <div className="flex items-center justify-between">
+                          <span>{row.description || 'No activity'}</span>
+                          {row.sequence && row.sequence.length > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleSequence(row._id)}
+                              className="rounded p-1 transition-colors hover:bg-gray-100"
+                            >
+                              {expandedSequences.has(row._id) ? (
+                                <MinusIcon className="h-4 w-4 text-green-500 hover:text-green-600" />
+                              ) : (
+                                <PlusIcon className="h-4 w-4 text-green-500 hover:text-green-600" />
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                        {/* Sequence Dropdown within the same cell */}
+                        {expandedSequences.has(row._id) &&
+                          row.sequence &&
+                          row.sequence.length > 0 && (
+                            <div className="mt-3 border-t border-gray-200 pt-3">
+                              <h4 className="mb-2 text-sm font-medium text-gray-700">
+                                Sequence Details
+                              </h4>
+                              <div className="space-y-2">
+                                {row.sequence.map((seq, seqIdx) => (
+                                  <div
+                                    key={seqIdx}
+                                    className="rounded border bg-gray-50 p-2 text-xs"
+                                  >
+                                    <div className="mb-1 flex items-center justify-between">
+                                      <span className="font-medium">
+                                        {seq.description}
+                                      </span>
+                                      <span
+                                        className={`rounded px-1 py-0.5 text-xs ${
+                                          seq.success
+                                            ? 'bg-green-100 text-green-800'
+                                            : 'bg-red-100 text-red-800'
+                                        }`}
+                                      >
+                                        {seq.logLevel}
+                                      </span>
+                                    </div>
+                                    <div className="text-gray-500">
+                                      {formatDate(seq.createdAt)}
+                                    </div>
                                   </div>
-                                  <div className="text-gray-500">
-                                    {formatDate(seq.createdAt)}
-                                  </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      {row.command || '00'}
-                    </TableCell>
-                    <TableCell>{formatDate(row.date)}</TableCell>
-                  </TableRow>
-                    </Fragment>
-                  );
-                })}
+                          )}
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        {row.command || '00'}
+                      </TableCell>
+                      <TableCell>{formatDate(row.date)}</TableCell>
+                    </TableRow>
+                  </Fragment>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -609,4 +636,3 @@ export const CabinetsDetailsActivityLogTable: FC<CabinetsDetailsActivityLogTable
     </LocalizationProvider>
   );
 };
-

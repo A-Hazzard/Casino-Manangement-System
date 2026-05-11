@@ -56,59 +56,62 @@ export const useMachinesTabData = (
   const [loading, setLoading] = useState(false);
 
   // Stats fetching
-  const fetchMachineStats = useCallback(async (locationId: string = 'all') => {
-    setStatsLoading(true);
-    const params: Record<string, string> = {
-      type: 'stats',
-      timePeriod: activeMetricsFilter || 'Today',
-    };
+  const fetchMachineStats = useCallback(
+    async (locationId: string = 'all') => {
+      setStatsLoading(true);
+      const params: Record<string, string> = {
+        type: 'stats',
+        timePeriod: activeMetricsFilter || 'Today',
+      };
 
-    if (selectedLicencee && selectedLicencee !== 'all') {
-      params.licencee = selectedLicencee;
-    }
+      if (selectedLicencee && selectedLicencee !== 'all') {
+        params.licencee = selectedLicencee;
+      }
 
-    if (locationId !== 'all') {
-      params.locationId = locationId;
-    }
+      if (locationId !== 'all') {
+        params.locationId = locationId;
+      }
 
-    if (customDateRange?.startDate && customDateRange?.endDate) {
-      params.startDate = customDateRange.startDate.toISOString();
-      params.endDate = customDateRange.endDate.toISOString();
-    }
+      if (customDateRange?.startDate && customDateRange?.endDate) {
+        params.startDate = customDateRange.startDate.toISOString();
+        params.endDate = customDateRange.endDate.toISOString();
+      }
 
-    if (displayCurrency) {
-      params.currency = displayCurrency;
-    }
+      if (displayCurrency) {
+        params.currency = displayCurrency;
+      }
 
-    try {
-      const result = await makeStatsRequest(async signal => {
-        const response = await axios.get<MachineStatsApiResponse>(
-          '/api/reports/machines',
-          { params, signal }
-        );
-        return response.data;
-      });
+      try {
+        const result = await makeStatsRequest(async signal => {
+          const response = await axios.get<MachineStatsApiResponse>(
+            '/api/reports/machines',
+            { params, signal }
+          );
+          return response.data;
+        });
 
-      if (result !== null) {
-        setMachineStats(result);
+        if (result !== null) {
+          setMachineStats(result);
+          setStatsLoading(false);
+        }
+      } catch (error) {
+        // Silently handle aborted requests - this is expected behavior when switching filters
+        if (isAbortError(error)) {
+          return;
+        }
+        console.error('Failed to fetch machine stats:', error);
+        toast.error('Failed to load machine statistics');
         setStatsLoading(false);
       }
-    } catch (error) {
-      // Silently handle aborted requests - this is expected behavior when switching filters
-      if (isAbortError(error)) {
-        return;
-      }
-      console.error('Failed to fetch machine stats:', error);
-      toast.error('Failed to load machine statistics');
-      setStatsLoading(false);
-    }
-  }, [
-    selectedLicencee,
-    customDateRange,
-    activeMetricsFilter,
-    displayCurrency,
-    makeStatsRequest,
-  ]);
+    },
+    [
+      selectedLicencee,
+      customDateRange,
+      activeMetricsFilter,
+      displayCurrency,
+      makeStatsRequest,
+    ]
+  );
 
   // Overview fetching
   const fetchOverviewMachines = useCallback(
@@ -152,7 +155,9 @@ export const useMachinesTabData = (
             setAllOverviewMachines(newMachines);
           } else {
             setAllOverviewMachines(prev => {
-              const existingIds = new Set(prev.map(machine => machine.machineId));
+              const existingIds = new Set(
+                prev.map(machine => machine.machineId)
+              );
               const uniqueNewMachines = newMachines.filter(
                 machine => !existingIds.has(machine.machineId)
               );
@@ -183,7 +188,12 @@ export const useMachinesTabData = (
 
   // Offline fetching
   const fetchOfflineMachines = useCallback(
-    async (batch: number = 1, search?: string, locationId: string = 'all', duration?: string) => {
+    async (
+      batch: number = 1,
+      search?: string,
+      locationId: string = 'all',
+      duration?: string
+    ) => {
       setOfflineLoading(true);
       try {
         await makeOfflineRequest(async signal => {
@@ -302,18 +312,24 @@ export const useMachinesTabData = (
 
       const response = await axios.get('/api/locations', { params });
 
-      let fetchedLocations: { id: string; name: string; sasEnabled: boolean }[] = [];
+      let fetchedLocations: {
+        id: string;
+        name: string;
+        sasEnabled: boolean;
+      }[] = [];
       if (Array.isArray(response.data?.locations)) {
-        fetchedLocations = response.data.locations.map((loc: {
-          _id: string;
-          id?: string;
-          name: string;
-          sasEnabled?: boolean;
-        }) => ({
-          id: loc.id || String(loc._id),
-          name: loc.name || '',
-          sasEnabled: loc.sasEnabled || false,
-        }));
+        fetchedLocations = response.data.locations.map(
+          (loc: {
+            _id: string;
+            id?: string;
+            name: string;
+            sasEnabled?: boolean;
+          }) => ({
+            id: loc.id || String(loc._id),
+            name: loc.name || '',
+            sasEnabled: loc.sasEnabled || false,
+          })
+        );
       }
 
       setLocations(fetchedLocations);
@@ -350,4 +366,3 @@ export const useMachinesTabData = (
     fetchLocationsData,
   };
 };
-

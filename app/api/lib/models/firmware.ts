@@ -9,11 +9,11 @@ const firmwareSchema = new Schema(
     product: { type: String, required: true },
     version: { type: String, required: true },
     versionDetails: { type: String },
-    fileId: { type: Schema.Types.ObjectId, required: true }, // GridFS file reference
+    fileId: { type: Schema.Types.ObjectId, required: true },
     fileName: { type: String, required: true },
     fileSize: { type: Number, required: true },
     deletedAt: { type: Date, default: null },
-    // Missing fields found in POST route
+
     releaseDate: { type: Date, default: Date.now },
     description: { type: String },
     downloadUrl: { type: String },
@@ -26,4 +26,3 @@ firmwareSchema.index({ deletedAt: 1 });
 firmwareSchema.index({ product: 1, version: 1 });
 
 export const Firmware = models.Firmware || model('Firmware', firmwareSchema);
-

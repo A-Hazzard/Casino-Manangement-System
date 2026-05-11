@@ -11,7 +11,11 @@ type CabinetsSMIBListProps = {
 };
 
 const getStatus = (smib: SmibDevice): 'online' | 'offline' =>
-  typeof smib.online === 'boolean' ? (smib.online ? 'online' : 'offline') : 'offline';
+  typeof smib.online === 'boolean'
+    ? smib.online
+      ? 'online'
+      : 'offline'
+    : 'offline';
 
 export function CabinetsSMIBList({ smibs, onSelect }: CabinetsSMIBListProps) {
   const [search, setSearch] = useState('');
@@ -35,8 +39,10 @@ export function CabinetsSMIBList({ smibs, onSelect }: CabinetsSMIBListProps) {
     <div className="flex flex-col gap-4">
       {/* Summary + Search */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3 text-sm text-gray-600">
-          <span className="font-semibold text-gray-800">{smibs.length} SMIBs</span>
+        <div className="hidden items-center gap-3 text-sm text-gray-600 md:flex">
+          <span className="font-semibold text-gray-800">
+            {smibs.length} SMIBs
+          </span>
           <span className="flex items-center gap-1">
             <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
             {onlineCount} online
@@ -45,6 +51,9 @@ export function CabinetsSMIBList({ smibs, onSelect }: CabinetsSMIBListProps) {
             <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
             {offlineCount} offline
           </span>
+        </div>
+        <div className="text-sm font-semibold text-gray-800 md:hidden">
+          {smibs.length} SMIBs
         </div>
 
         <div className="relative w-full sm:w-72">
@@ -82,7 +91,10 @@ export function CabinetsSMIBList({ smibs, onSelect }: CabinetsSMIBListProps) {
           <tbody className="divide-y divide-gray-100 bg-white">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-400">
+                <td
+                  colSpan={5}
+                  className="px-4 py-10 text-center text-sm text-gray-400"
+                >
                   No SMIBs match your search.
                 </td>
               </tr>
@@ -109,13 +121,17 @@ export function CabinetsSMIBList({ smibs, onSelect }: CabinetsSMIBListProps) {
                       {smib.relayId}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {smib.serialNumber ?? <span className="text-gray-300">—</span>}
+                      {smib.serialNumber ?? (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {smib.game ?? <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {smib.locationName ?? <span className="text-gray-300">—</span>}
+                      {smib.locationName ?? (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -142,25 +158,35 @@ export function CabinetsSMIBList({ smibs, onSelect }: CabinetsSMIBListProps) {
                 className="flex w-full items-start justify-between rounded-lg border border-gray-200 bg-white p-4 text-left transition-colors hover:bg-purple-50"
               >
                 <div className="flex flex-col gap-1">
-                  <span className="font-semibold text-gray-900">{smib.relayId}</span>
+                  <span className="font-semibold text-gray-900">
+                    {smib.relayId}
+                  </span>
                   {smib.serialNumber && (
-                    <span className="text-xs text-gray-500">Serial: {smib.serialNumber}</span>
+                    <span className="text-xs text-gray-500">
+                      Serial: {smib.serialNumber}
+                    </span>
                   )}
                   {smib.game && (
-                    <span className="text-xs text-gray-500">Game: {smib.game}</span>
+                    <span className="text-xs text-gray-500">
+                      Game: {smib.game}
+                    </span>
                   )}
                   {smib.locationName && (
-                    <span className="text-xs text-gray-500">Location: {smib.locationName}</span>
+                    <span className="text-xs text-gray-500">
+                      Location: {smib.locationName}
+                    </span>
                   )}
                 </div>
                 <span
-                  className={`mt-1 flex items-center gap-1.5 text-xs font-medium ${
+                  className={`mt-1 hidden items-center gap-1.5 text-xs font-medium md:flex ${
                     status === 'online' ? 'text-emerald-600' : 'text-red-500'
                   }`}
                 >
                   <span
                     className={`h-2 w-2 rounded-full ${
-                      status === 'online' ? 'animate-pulse bg-emerald-500' : 'bg-red-500'
+                      status === 'online'
+                        ? 'animate-pulse bg-emerald-500'
+                        : 'bg-red-500'
                     }`}
                   />
                   {status === 'online' ? 'Online' : 'Offline'}

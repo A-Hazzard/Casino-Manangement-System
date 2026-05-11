@@ -53,7 +53,9 @@ function calculateManufacturerDateRange(
   endDate?: string | null
 ): { startDate: Date; endDate: Date } {
   if (!timePeriod || typeof timePeriod !== 'string') {
-    console.error('[calculateManufacturerDateRange] timePeriod is required and must be a string');
+    console.error(
+      '[calculateManufacturerDateRange] timePeriod is required and must be a string'
+    );
     return { startDate: new Date(), endDate: new Date() };
   }
   let startDateFilter: Date | undefined;
@@ -93,7 +95,9 @@ function buildManufacturerPerformancePipeline(
   licencee?: string | null
 ): PipelineStage[] {
   if (!locationId || !startDate || !endDate) {
-    console.error('[buildManufacturerPerformancePipeline] locationId, startDate, and endDate are required');
+    console.error(
+      '[buildManufacturerPerformancePipeline] locationId, startDate, and endDate are required'
+    );
     return [];
   }
   const pipeline: PipelineStage[] = [
@@ -131,7 +135,8 @@ function buildManufacturerPerformancePipeline(
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
+          { 'locationDetails.rel.licencee': licencee },
+          { 'locationDetails.rel.licencee': licencee },
         ],
       },
     } as PipelineStage);
@@ -199,8 +204,17 @@ function calculateManufacturerTotals(
   totalGross: number;
 } {
   if (!Array.isArray(manufacturerData)) {
-    console.error('[calculateManufacturerTotals] manufacturerData must be an array');
-    return { totalMachines: 0, totalHandle: 0, totalWin: 0, totalDrop: 0, totalCancelledCredits: 0, totalGross: 0 };
+    console.error(
+      '[calculateManufacturerTotals] manufacturerData must be an array'
+    );
+    return {
+      totalMachines: 0,
+      totalHandle: 0,
+      totalWin: 0,
+      totalDrop: 0,
+      totalCancelledCredits: 0,
+      totalGross: 0,
+    };
   }
   return manufacturerData.reduce(
     (acc, item) => {
@@ -235,7 +249,9 @@ function calculateManufacturerPercentages(
   totals: ReturnType<typeof calculateManufacturerTotals>
 ): ManufacturerPerformanceItem[] {
   if (!Array.isArray(manufacturerData) || !totals) {
-    console.error('[calculateManufacturerPercentages] manufacturerData and totals are required');
+    console.error(
+      '[calculateManufacturerPercentages] manufacturerData and totals are required'
+    );
     return [];
   }
   return manufacturerData.map(item => ({
@@ -259,8 +275,8 @@ function calculateManufacturerPercentages(
     totalCancelledCredits:
       totals.totalCancelledCredits > 0
         ? Math.round(
-          (item.totalCancelledCredits / totals.totalCancelledCredits) * 100
-        )
+            (item.totalCancelledCredits / totals.totalCancelledCredits) * 100
+          )
         : 0,
     totalGross:
       totals.totalGross > 0
@@ -288,7 +304,9 @@ export async function getManufacturerPerformance(
   licencee?: string | null
 ): Promise<ManufacturerPerformanceItem[]> {
   if (!locationId || !timePeriod) {
-    console.error('[getManufacturerPerformance] locationId and timePeriod are required');
+    console.error(
+      '[getManufacturerPerformance] locationId and timePeriod are required'
+    );
     return [];
   }
 

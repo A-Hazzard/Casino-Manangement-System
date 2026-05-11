@@ -11,10 +11,10 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { fetchAdvancedDashboardMetrics } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -22,26 +22,26 @@ import { useUserStore } from '@/lib/store/userStore';
 import type { VaultMetrics } from '@/shared/types/vault';
 import { formatTime12Hour } from '@/shared/utils/dateFormat';
 import {
-    Activity,
-    PieChart as PieChartIcon,
-    RefreshCw,
-    TrendingUp
+  Activity,
+  PieChart as PieChartIcon,
+  RefreshCw,
+  TrendingUp,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
-    Area,
-    AreaChart,
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    Legend,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 import { toast } from 'sonner';
 
@@ -67,7 +67,8 @@ export default function VaultOverviewAdvancedDashboard() {
     'balance' | 'transactions' | 'flow'
   >('balance');
   const [loading, setLoading] = useState(false);
-  const [dashboardData, setDashboardData] = useState<VaultAdvancedDashboardData | null>(null);
+  const [dashboardData, setDashboardData] =
+    useState<VaultAdvancedDashboardData | null>(null);
 
   useEffect(() => {
     fetchAdvancedDashboardData();
@@ -90,7 +91,6 @@ export default function VaultOverviewAdvancedDashboard() {
       setLoading(false);
     }
   };
-
 
   return (
     <div className="space-y-6">
@@ -147,13 +147,17 @@ export default function VaultOverviewAdvancedDashboard() {
 
       {/* Peak Hour Highlight */}
       {dashboardData?.peakHour && dashboardData.peakHour !== 'N/A' && (
-        <div className="flex items-center gap-3 bg-amber-50 border border-amber-100 p-4 rounded-xl animate-in slide-in-from-top-2 duration-500">
-          <div className="bg-amber-500 p-2 rounded-lg">
+        <div className="flex items-center gap-3 rounded-xl border border-amber-100 bg-amber-50 p-4 duration-500 animate-in slide-in-from-top-2">
+          <div className="rounded-lg bg-amber-500 p-2">
             <Activity className="h-5 w-5 text-white" />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">Peak Transaction Activity</p>
-            <p className="text-xl font-black text-amber-900">{dashboardData.peakHour}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">
+              Peak Transaction Activity
+            </p>
+            <p className="text-xl font-black text-amber-900">
+              {dashboardData.peakHour}
+            </p>
           </div>
         </div>
       )}
@@ -180,17 +184,19 @@ export default function VaultOverviewAdvancedDashboard() {
                 {selectedView === 'balance' ? (
                   <AreaChart data={dashboardData?.balanceTrend || []}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
+                    <XAxis
                       dataKey="time"
-                      tickFormatter={(time) => formatTime12Hour(time)}
+                      tickFormatter={time => formatTime12Hour(time)}
                     />
                     <YAxis />
                     <Tooltip
                       formatter={(value, name) => [
                         formatAmount(Number(value)),
-                        name === 'balance' || name === 'Vault Balance' ? 'Vault Balance' : 'Cumulative Cash Out'
+                        name === 'balance' || name === 'Vault Balance'
+                          ? 'Vault Balance'
+                          : 'Cumulative Cash Out',
                       ]}
-                      labelFormatter={(label) => formatTime12Hour(label)}
+                      labelFormatter={label => formatTime12Hour(label)}
                     />
                     <Legend />
                     <Area
@@ -215,8 +221,12 @@ export default function VaultOverviewAdvancedDashboard() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="time" />
                     <YAxis allowDecimals={false} />
-                    <Tooltip formatter={(val) => [val, 'Count']} />
-                    <Bar dataKey="transactions" fill="#FFA203" name="Transaction Count" />
+                    <Tooltip formatter={val => [val, 'Count']} />
+                    <Bar
+                      dataKey="transactions"
+                      fill="#FFA203"
+                      name="Transaction Count"
+                    />
                   </BarChart>
                 ) : (
                   <PieChart>
@@ -233,17 +243,21 @@ export default function VaultOverviewAdvancedDashboard() {
                       }
                     >
                       {dashboardData?.cashFlowData?.map((_entry, index) => (
-                         <Cell key={`cell-${index}`} fill={
-                           index === 0 ? "#0AB40B" : // Cash In (Green)
-                           index === 1 ? "#FFA203" : // Cash Out (Orange)
-                           index === 2 ? "#5A69E7" : // Net Flow (Blue)
-                           "#F9687D" // Payouts (Pink)
-                         } />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={
+                            index === 0
+                              ? '#0AB40B' // Cash In (Green)
+                              : index === 1
+                                ? '#FFA203' // Cash Out (Orange)
+                                : index === 2
+                                  ? '#5A69E7' // Net Flow (Blue)
+                                  : '#F9687D' // Payouts (Pink)
+                          }
+                        />
                       ))}
                     </Pie>
-                    <Tooltip
-                      formatter={value => formatAmount(Number(value))}
-                    />
+                    <Tooltip formatter={value => formatAmount(Number(value))} />
                   </PieChart>
                 )}
               </ResponsiveContainer>

@@ -3,6 +3,7 @@ import type { NextConfig } from 'next';
 import type { Configuration } from 'webpack';
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ['192.168.0.39'],
   reactStrictMode: true,
   images: {
     loader: 'default',
@@ -139,4 +140,3 @@ const withAnalyzer = withBundleAnalyzer({
 });
 
 export default withAnalyzer(nextConfig);
-

@@ -33,7 +33,8 @@ export type AddUserForm = {
   idType?: string;
   idNumber?: string;
   notes?: string;
-  multiplier?: number;
+  moneyInMultiplier?: number;
+  moneyOutAndJackpotMultiplier?: number;
 };
 
 export type AddLicenceeForm = {
@@ -47,4 +48,3 @@ export type AddLicenceeForm = {
   prevExpiryDate?: Date | string | undefined;
   includeJackpot?: boolean;
 };
-

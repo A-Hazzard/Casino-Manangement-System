@@ -98,7 +98,7 @@ export const CabinetsCabinetSearchFilters = ({
   return (
     <>
       {/* Mobile View: Horizontal scrollable filters */}
-      <div className="mt-4 bg-buttonActive p-4 rounded-lg md:hidden">
+      <div className="mt-4 rounded-lg bg-buttonActive p-4 md:hidden">
         <div className="relative mb-3 w-full">
           <Input
             type="text"
@@ -110,8 +110,8 @@ export const CabinetsCabinetSearchFilters = ({
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-white">
-          <div className="flex gap-2 min-w-max">
+        <div className="scrollbar-thin scrollbar-white flex gap-2 overflow-x-auto pb-2">
+          <div className="flex min-w-max gap-2">
             {showLocationFilter && (
               <div className="w-48 flex-shrink-0">
                 <MultiSelectDropdown
@@ -134,7 +134,7 @@ export const CabinetsCabinetSearchFilters = ({
                 searchPlaceholder="Search game types..."
               />
             </div>
-            <div className="w-44 flex-shrink-0 relative">
+            <div className="relative w-44 flex-shrink-0">
               <CustomSelect
                 value={selectedStatus}
                 onValueChange={onStatusChange}
@@ -142,7 +142,10 @@ export const CabinetsCabinetSearchFilters = ({
                   { value: 'All', label: 'All Status' },
                   { value: 'Online', label: 'Online' },
                   { value: 'OfflineLongest', label: 'Offline (Longest First)' },
-                  { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
+                  {
+                    value: 'OfflineShortest',
+                    label: 'Offline (Shortest First)',
+                  },
                   { value: 'NeverOnline', label: 'Never Online' },
                   { value: 'Archived', label: 'Archived' },
                 ]}
@@ -153,7 +156,7 @@ export const CabinetsCabinetSearchFilters = ({
                 emptyMessage="No status options found"
               />
             </div>
-            <div className="w-40 flex-shrink-0 relative">
+            <div className="relative w-40 flex-shrink-0">
               <CustomSelect
                 value={`${sortOption}-${sortOrder}`}
                 onValueChange={handleSortChange}
@@ -165,7 +168,7 @@ export const CabinetsCabinetSearchFilters = ({
                 emptyMessage="No sort options found"
               />
             </div>
-            <div className="w-48 flex-shrink-0 relative">
+            <div className="relative w-48 flex-shrink-0">
               <CustomSelect
                 value={selectedMembership}
                 onValueChange={onMembershipChange}
@@ -181,7 +184,7 @@ export const CabinetsCabinetSearchFilters = ({
                 emptyMessage="No options found"
               />
             </div>
-            <div className="w-48 flex-shrink-0 relative">
+            <div className="relative w-48 flex-shrink-0">
               <CustomSelect
                 value={selectedSmibStatus}
                 onValueChange={onSmibStatusChange}
@@ -202,7 +205,7 @@ export const CabinetsCabinetSearchFilters = ({
       </div>
 
       {/* Desktop View: Purple search bar with filters */}
-      <div className="relative mt-4 hidden rounded-b-none rounded-t-lg bg-buttonActive p-4 md:flex overflow-visible">
+      <div className="relative mt-4 hidden overflow-visible rounded-b-none rounded-t-lg bg-buttonActive p-4 md:flex">
         <div className="flex w-full flex-wrap items-center gap-4">
           {/* Search Input */}
           <div className="relative min-w-0 flex-1">
@@ -217,7 +220,7 @@ export const CabinetsCabinetSearchFilters = ({
           </div>
 
           {/* Filter Dropdowns */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex flex-wrap items-center gap-2">
             {showLocationFilter && (
               <div className="w-auto min-w-[200px] max-w-[250px] flex-shrink-0">
                 <MultiSelectDropdown
@@ -251,7 +254,10 @@ export const CabinetsCabinetSearchFilters = ({
                   { value: 'All', label: 'All Status' },
                   { value: 'Online', label: 'Online' },
                   { value: 'OfflineLongest', label: 'Offline (Longest First)' },
-                  { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
+                  {
+                    value: 'OfflineShortest',
+                    label: 'Offline (Shortest First)',
+                  },
                   { value: 'NeverOnline', label: 'Never Online' },
                   { value: 'Archived', label: 'Archived' },
                 ]}

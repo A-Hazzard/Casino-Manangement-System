@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from '@/components/shared/ui/popover';
 import { cn } from '@/lib/utils';
 import { Clock } from 'lucide-react';
@@ -45,12 +45,17 @@ export function TimePicker({
   // Parse time string (HH:MM 24-hour format) to display format
   const parseTime = (timeStr: string | undefined) => {
     if (!timeStr) return { hours: '12', minutes: '00', period: 'AM' };
-    
+
     const [hoursStr, minutesStr] = timeStr.split(':');
     const hours24 = parseInt(hoursStr);
-    
+
     return {
-      hours: hours24 === 0 ? '12' : hours24 > 12 ? String(hours24 - 12) : String(hours24),
+      hours:
+        hours24 === 0
+          ? '12'
+          : hours24 > 12
+            ? String(hours24 - 12)
+            : String(hours24),
       minutes: minutesStr || '00',
       period: hours24 >= 12 ? 'PM' : 'AM',
     };
@@ -66,11 +71,11 @@ export function TimePicker({
   // Convert display format to 24-hour HH:MM format
   const updateTime = (newTimeState: typeof timeState) => {
     setTimeState(newTimeState);
-    
+
     let hours24 = parseInt(newTimeState.hours);
     if (newTimeState.period === 'PM' && hours24 < 12) hours24 += 12;
     if (newTimeState.period === 'AM' && hours24 === 12) hours24 = 0;
-    
+
     const timeStr = `${hours24.toString().padStart(2, '0')}:${newTimeState.minutes}`;
     setTime(timeStr);
   };

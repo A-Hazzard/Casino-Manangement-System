@@ -31,14 +31,20 @@ export default function AdministrationFeedbackManagement() {
   const [debouncedEmailFilter, setDebouncedEmailFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
+  const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(
+    null
+  );
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [feedbackToDelete, setFeedbackToDelete] = useState<Feedback | null>(null);
+  const [feedbackToDelete, setFeedbackToDelete] = useState<Feedback | null>(
+    null
+  );
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
-  const [feedbackToRestore, setFeedbackToRestore] = useState<Feedback | null>(null);
+  const [feedbackToRestore, setFeedbackToRestore] = useState<Feedback | null>(
+    null
+  );
 
   const itemsPerPage = 20;
   const itemsPerBatch = 40;
@@ -76,11 +82,14 @@ export default function AdministrationFeedbackManagement() {
       fetchInitialBatch();
     };
     window.addEventListener('refreshFeedback', handleRefreshEvent);
-    return () => window.removeEventListener('refreshFeedback', handleRefreshEvent);
+    return () =>
+      window.removeEventListener('refreshFeedback', handleRefreshEvent);
   }, [fetchInitialBatch]);
 
   const handleUpdateLocal = (updated: Feedback) => {
-    setAllFeedback(prev => prev.map(f => f._id === updated._id ? updated : f));
+    setAllFeedback(prev =>
+      prev.map(f => (f._id === updated._id ? updated : f))
+    );
     setSelectedFeedback(updated);
     // Trigger a refresh after a short delay to ensure DB sync is reflected
     setTimeout(() => fetchInitialBatch(), 500);
@@ -108,12 +117,12 @@ export default function AdministrationFeedbackManagement() {
       toast.success('Feedback deleted successfully');
       setDeleteConfirmOpen(false);
       setFeedbackToDelete(null);
-      
+
       if (selectedFeedback?._id === feedbackToDelete._id) {
         setIsDetailModalOpen(false);
         setSelectedFeedback(null);
       }
-      
+
       fetchInitialBatch();
     } catch (error) {
       console.error('Error deleting feedback:', error);
@@ -153,7 +162,7 @@ export default function AdministrationFeedbackManagement() {
       setRestoreConfirmOpen(false);
       setFeedbackToRestore(null);
       fetchInitialBatch();
-      
+
       if (selectedFeedback?._id === feedbackToRestore._id) {
         setSelectedFeedback({ ...selectedFeedback, archived: false });
       }
@@ -202,7 +211,9 @@ export default function AdministrationFeedbackManagement() {
             No feedback found
           </p>
           <p className="mt-2 text-sm text-gray-500">
-            {emailFilter || (categoryFilter && categoryFilter !== 'all') || (statusFilter && statusFilter !== 'all')
+            {emailFilter ||
+            (categoryFilter && categoryFilter !== 'all') ||
+            (statusFilter && statusFilter !== 'all')
               ? 'Try adjusting your filters'
               : 'No feedback has been submitted yet'}
           </p>

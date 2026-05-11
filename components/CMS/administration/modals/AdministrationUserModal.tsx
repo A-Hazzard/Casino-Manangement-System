@@ -47,10 +47,17 @@ import {
   Save,
   Trash2,
   X,
-  XCircle
+  XCircle,
 } from 'lucide-react';
 import Image from 'next/image';
-import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ChangeEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { AdministrationRolePermissionsDialog } from './AdministrationRolePermissionsDialog';
 
@@ -108,7 +115,8 @@ export default function AdministrationUserModal({
   const currentUserRoles = (currentUser?.roles || []) as string[];
   const isOwner = currentUserRoles.includes('owner');
   const isDeveloper = currentUserRoles.includes('developer');
-  const isAdmin = currentUserRoles.includes('admin') && !isDeveloper && !isOwner;
+  const isAdmin =
+    currentUserRoles.includes('admin') && !isDeveloper && !isOwner;
   const isManager =
     currentUserRoles.includes('manager') && !isAdmin && !isDeveloper;
   const isLocationAdmin =
@@ -118,7 +126,9 @@ export default function AdministrationUserModal({
     !isManager;
   const canEditAccountFields = Boolean(
     currentUser?.roles?.some(role =>
-      ['admin', 'developer', 'owner', 'manager', 'location admin'].includes(role)
+      ['admin', 'developer', 'owner', 'manager', 'location admin'].includes(
+        role
+      )
     )
   );
   const canEditLicencees = isDeveloper || isAdmin; // Only admins/developers can edit licencee assignments
@@ -131,7 +141,7 @@ export default function AdministrationUserModal({
       ).map(id => String(id)),
     [currentUser?.assignedLicencees]
   );
-  
+
   const [isEditMode, setIsEditMode] = useState(false);
   const [roles, setRoles] = useState<string[]>([]);
 
@@ -140,31 +150,30 @@ export default function AdministrationUserModal({
     if (isDeveloper) {
       return ROLE_OPTIONS.filter(role => role.value !== 'reviewer');
     } else if (isOwner) {
-      return ROLE_OPTIONS.filter(role => role.value !== 'developer' && role.value !== 'owner');
+      return ROLE_OPTIONS.filter(
+        role => role.value !== 'developer' && role.value !== 'owner'
+      );
     } else if (isAdmin) {
-      return ROLE_OPTIONS.filter(role => !['developer', 'owner', 'reviewer'].includes(role.value));
+      return ROLE_OPTIONS.filter(
+        role => !['developer', 'owner', 'reviewer'].includes(role.value)
+      );
     } else if (isManager) {
       return ROLE_OPTIONS.filter(role =>
-        [
-          'location admin',
-          'technician',
-          'collector',
-          'vault-manager',
-        ].includes(role.value)
-      );
-    } else if (isLocationAdmin) {
-      return ROLE_OPTIONS.filter(role =>
-        ['technician', 'collector', 'vault-manager'].includes(
+        ['location admin', 'technician', 'collector', 'vault-manager'].includes(
           role.value
         )
       );
+    } else if (isLocationAdmin) {
+      return ROLE_OPTIONS.filter(role =>
+        ['technician', 'collector', 'vault-manager'].includes(role.value)
+      );
     }
-    
+
     // If we are editing and not one of the above, just return current roles
     if (isEditMode && roles.length > 0) {
       return ROLE_OPTIONS.filter(role => roles.includes(role.value));
     }
-    
+
     return [];
   }, [isDeveloper, isAdmin, isManager, isLocationAdmin, isEditMode, roles]);
 
@@ -239,7 +248,9 @@ export default function AdministrationUserModal({
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [allLocationsSelected, setAllLocationsSelected] = useState(false);
-  const [multiplier, setMultiplier] = useState<number>(0);
+  const [moneyInMultiplier, setMoneyInMultiplier] = useState<string>('');
+  const [moneyOutAndJackpotMultiplier, setMoneyOutAndJackpotMultiplier] =
+    useState<string>('');
   const [rolePermissionsDialog, setRolePermissionsDialog] = useState<{
     open: boolean;
     role: string;
@@ -297,8 +308,21 @@ export default function AdministrationUserModal({
     setAccountTouched({});
 
     setRoles(targetUser.roles || []);
-    setMultiplier(targetUser.multiplier || 0);
-    setIsEnabled(targetUser.isEnabled !== undefined ? targetUser.isEnabled : true);
+    setMoneyInMultiplier(
+      targetUser.moneyInMultiplier
+        ? String(Math.round((targetUser.moneyInMultiplier || 0) * 100))
+        : ''
+    );
+    setMoneyOutAndJackpotMultiplier(
+      targetUser.moneyOutAndJackpotMultiplier
+        ? String(
+            Math.round((targetUser.moneyOutAndJackpotMultiplier || 0) * 100)
+          )
+        : ''
+    );
+    setIsEnabled(
+      targetUser.isEnabled !== undefined ? targetUser.isEnabled : true
+    );
 
     let rawLicenceeIds: string[] = [];
     if (
@@ -684,7 +708,6 @@ export default function AdministrationUserModal({
     };
   }, [open, isManager, isLocationAdmin, currentUserLicenceeIds, roles]);
 
-
   useEffect(() => {
     const loadCountries = async () => {
       setCountriesLoading(true);
@@ -957,7 +980,7 @@ export default function AdministrationUserModal({
     } else {
       newRoles = roles.filter(r => r !== role);
     }
-    
+
     setRoles(newRoles);
 
     // Enforce single selection if vault-manager or cashier is selected
@@ -1005,16 +1028,24 @@ export default function AdministrationUserModal({
   // Sync "all selected" states to prevent Vault Manager restrictions or single-item auto-selection
   useEffect(() => {
     if (!open) return;
-    
+
     if (hasRestrictedAssignments) {
       if (allLicenceesSelected) setAllLicenceesSelected(false);
       if (allLocationsSelected) setAllLocationsSelected(false);
     } else {
       // Also ensure "All" is not set if count is 0 or individual count doesn't match
-      if (allLicenceesSelected && (licencees.length === 0 || selectedLicenceeIds.length !== licencees.length)) {
+      if (
+        allLicenceesSelected &&
+        (licencees.length === 0 ||
+          selectedLicenceeIds.length !== licencees.length)
+      ) {
         setAllLicenceesSelected(false);
       }
-      if (allLocationsSelected && (availableLocations.length === 0 || selectedLocationIds.length !== availableLocations.length)) {
+      if (
+        allLocationsSelected &&
+        (availableLocations.length === 0 ||
+          selectedLocationIds.length !== availableLocations.length)
+      ) {
         setAllLocationsSelected(false);
       }
     }
@@ -1026,7 +1057,7 @@ export default function AdministrationUserModal({
     licencees.length,
     availableLocations.length,
     selectedLicenceeIds.length,
-    selectedLocationIds.length
+    selectedLocationIds.length,
   ]);
 
   // Form validation
@@ -1121,7 +1152,8 @@ export default function AdministrationUserModal({
           newErrors.country =
             'Country must be at least 3 characters and may only contain letters, spaces, and ampersands (&).';
         } else if (!/^[A-Za-z\s&]+$/.test(country)) {
-          newErrors.country = 'Country may only contain letters, spaces, and ampersands (&).';
+          newErrors.country =
+            'Country may only contain letters, spaces, and ampersands (&).';
         }
       }
     }
@@ -1188,7 +1220,9 @@ export default function AdministrationUserModal({
 
   const handleAllLocationsChange = (checked: boolean) => {
     if (hasRestrictedAssignments && checked) {
-      toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} cannot be assigned to all locations`);
+      toast.error(
+        `${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} cannot be assigned to all locations`
+      );
       return;
     }
     setAllLocationsSelected(checked);
@@ -1213,12 +1247,16 @@ export default function AdministrationUserModal({
     let finalIds = newSelectedIds;
     if (hasRestrictedAssignments && newSelectedIds.length > 1) {
       finalIds = [newSelectedIds[newSelectedIds.length - 1]];
-      toast.info(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single licencee.`);
+      toast.info(
+        `${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single licencee.`
+      );
     }
 
     setSelectedLicenceeIds(finalIds);
     setAllLicenceesSelected(
-      finalIds.length === licencees.length && licencees.length > 1 && !hasRestrictedAssignments
+      finalIds.length === licencees.length &&
+        licencees.length > 1 &&
+        !hasRestrictedAssignments
     );
 
     setSelectedLocationIds(prevLocationIds => {
@@ -1247,11 +1285,15 @@ export default function AdministrationUserModal({
     let finalIds = newSelectedIds;
     if (hasRestrictedAssignments && newSelectedIds.length > 1) {
       finalIds = [newSelectedIds[newSelectedIds.length - 1]];
-      toast.info(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single location.`);
+      toast.info(
+        `${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single location.`
+      );
     }
     setSelectedLocationIds(finalIds);
     setAllLocationsSelected(
-      finalIds.length === availableLocations.length && availableLocations.length > 1 && !hasRestrictedAssignments
+      finalIds.length === availableLocations.length &&
+        availableLocations.length > 1 &&
+        !hasRestrictedAssignments
     );
   };
 
@@ -1271,11 +1313,15 @@ export default function AdministrationUserModal({
   const handleSave = async () => {
     if (hasRestrictedAssignments) {
       if (selectedLicenceeIds.length !== 1 || allLicenceesSelected) {
-        toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one licencee`);
+        toast.error(
+          `${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one licencee`
+        );
         return;
       }
       if (selectedLocationIds.length !== 1 || allLocationsSelected) {
-        toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one location`);
+        toast.error(
+          `${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one location`
+        );
         return;
       }
     }
@@ -1304,17 +1350,19 @@ export default function AdministrationUserModal({
 
     // Synchronous Validation
     const validationErrors: Record<string, string> = { ...accountErrors };
-    
+
     // Username Sync Validation
     if (updatedUsername) {
       if (updatedUsername.length < 3) {
         validationErrors.username = 'Username must be at least 3 characters.';
       } else if (EMAIL_REGEX.test(updatedUsername)) {
-        validationErrors.username = 'Username cannot look like an email address.';
+        validationErrors.username =
+          'Username cannot look like an email address.';
       } else if (/^\d{10,}$/.test(updatedUsername)) {
         validationErrors.username = 'Username cannot look like a phone number.';
       } else if (!/^[A-Za-z0-9\s'-]+$/.test(updatedUsername)) {
-        validationErrors.username = 'Username may only contain letters, numbers, spaces, hyphens, and apostrophes.';
+        validationErrors.username =
+          'Username may only contain letters, numbers, spaces, hyphens, and apostrophes.';
       }
     }
 
@@ -1322,11 +1370,14 @@ export default function AdministrationUserModal({
     const firstName = (formData.firstName || '').trim();
     if (firstName) {
       if (firstName.length < 3) {
-        validationErrors.firstName = 'First name must be at least 3 characters.';
+        validationErrors.firstName =
+          'First name must be at least 3 characters.';
       } else if (EMAIL_REGEX.test(firstName)) {
-        validationErrors.firstName = 'First name cannot look like an email address.';
+        validationErrors.firstName =
+          'First name cannot look like an email address.';
       } else if (!/^[A-Za-z\s'-]+$/.test(firstName)) {
-        validationErrors.firstName = 'First name may only contain letters, spaces, hyphens and apostrophes.';
+        validationErrors.firstName =
+          'First name may only contain letters, spaces, hyphens and apostrophes.';
       }
     }
 
@@ -1336,9 +1387,11 @@ export default function AdministrationUserModal({
       if (lastName.length < 3) {
         validationErrors.lastName = 'Last name must be at least 3 characters.';
       } else if (EMAIL_REGEX.test(lastName)) {
-        validationErrors.lastName = 'Last name cannot look like an email address.';
+        validationErrors.lastName =
+          'Last name cannot look like an email address.';
       } else if (!/^[A-Za-z\s'-]+$/.test(lastName)) {
-        validationErrors.lastName = 'Last name may only contain letters, spaces, hyphens and apostrophes.';
+        validationErrors.lastName =
+          'Last name may only contain letters, spaces, hyphens and apostrophes.';
       }
     }
 
@@ -1348,7 +1401,8 @@ export default function AdministrationUserModal({
       if (town.length < 3) {
         validationErrors.town = 'Town must be at least 3 characters.';
       } else if (!/^[A-Za-z0-9\s,\.]+$/.test(town)) {
-        validationErrors.town = 'Town may only contain letters, numbers, spaces, commas, and full stops.';
+        validationErrors.town =
+          'Town may only contain letters, numbers, spaces, commas, and full stops.';
       }
     }
 
@@ -1357,37 +1411,40 @@ export default function AdministrationUserModal({
       if (region.length < 3) {
         validationErrors.region = 'Region must be at least 3 characters.';
       } else if (!/^[A-Za-z0-9\s,\.]+$/.test(region)) {
-        validationErrors.region = 'Region may only contain letters, numbers, spaces, commas, and full stops.';
+        validationErrors.region =
+          'Region may only contain letters, numbers, spaces, commas, and full stops.';
       }
     }
 
     const country = (formData.country || '').trim();
     if (country) {
-       // Check if it's a country ID (MongoDB ObjectId-like) or name
-       // The form usually stores ID in formData.country if selected from dropdown
-       const isCountryId = /^[0-9a-fA-F]{24}$/.test(country);
-       if (!isCountryId) {
-          if (country.length < 3) {
-            validationErrors.country = 'Country must be at least 3 characters.';
-          } else if (!/^[A-Za-z\s&]+$/.test(country)) {
-            validationErrors.country = 'Country may only contain letters, spaces, and ampersands (&).';
-          }
-       }
+      // Check if it's a country ID (MongoDB ObjectId-like) or name
+      // The form usually stores ID in formData.country if selected from dropdown
+      const isCountryId = /^[0-9a-fA-F]{24}$/.test(country);
+      if (!isCountryId) {
+        if (country.length < 3) {
+          validationErrors.country = 'Country must be at least 3 characters.';
+        } else if (!/^[A-Za-z\s&]+$/.test(country)) {
+          validationErrors.country =
+            'Country may only contain letters, spaces, and ampersands (&).';
+        }
+      }
     }
-    
+
     // ID Sync Validation
     const idType = (formData.idType || '').trim();
     if (idType) {
       if (idType.length < 3) {
         validationErrors.idType = 'ID type must be at least 3 characters.';
       } else if (!/^[A-Za-z\s]+$/.test(idType)) {
-        validationErrors.idType = 'ID type may only contain letters and spaces.';
+        validationErrors.idType =
+          'ID type may only contain letters and spaces.';
       }
     }
 
     const idNumber = (formData.idNumber || '').trim();
     if (idNumber && idNumber.length < 3) {
-        validationErrors.idNumber = 'ID number must be at least 3 characters.';
+      validationErrors.idNumber = 'ID number must be at least 3 characters.';
     }
 
     if (Object.keys(validationErrors).length > 0) {
@@ -1582,7 +1639,12 @@ export default function AdministrationUserModal({
       originalRoles.length !== newRoles.length ||
       !originalRoles.every((role, idx) => role === newRoles[idx]);
 
-    const multiplierChanged = (user.multiplier || 0) !== multiplier;
+    const moneyInMultiplierChanged =
+      String(Math.round((user.moneyInMultiplier || 0) * 100)) !==
+      (moneyInMultiplier || '0');
+    const moneyOutMultiplierChanged =
+      String(Math.round((user.moneyOutAndJackpotMultiplier || 0) * 100)) !==
+      (moneyOutAndJackpotMultiplier || '0');
 
     const updatedUser: Partial<User> & {
       password?: string;
@@ -1609,8 +1671,15 @@ export default function AdministrationUserModal({
       updatedUser.roles = roles;
     }
 
-    if (multiplierChanged && roles.includes('reviewer')) {
-        updatedUser.multiplier = multiplier;
+    if (moneyInMultiplierChanged && roles.includes('reviewer')) {
+      updatedUser.moneyInMultiplier = moneyInMultiplier
+        ? parseFloat(moneyInMultiplier) / 100
+        : 0;
+    }
+    if (moneyOutMultiplierChanged && roles.includes('reviewer')) {
+      updatedUser.moneyOutAndJackpotMultiplier = moneyOutAndJackpotMultiplier
+        ? parseFloat(moneyOutAndJackpotMultiplier) / 100
+        : 0;
     }
 
     if (isLocationAdmin && currentUserLicenceeIds.length > 0) {
@@ -1651,7 +1720,10 @@ export default function AdministrationUserModal({
       updatedUser.password = password;
     }
 
-    if ((isDeveloper || isAdmin || isOwner || isManager) && user.isEnabled !== isEnabled) {
+    if (
+      (isDeveloper || isAdmin || isOwner || isManager) &&
+      user.isEnabled !== isEnabled
+    ) {
       updatedUser.isEnabled = isEnabled;
     }
 
@@ -1766,12 +1838,21 @@ export default function AdministrationUserModal({
       });
     }
 
-    if (multiplierChanged) {
+    if (moneyInMultiplierChanged) {
       meaningfulChanges.push({
-        field: 'multiplier',
-        oldValue: user.multiplier || 0,
-        newValue: multiplier,
-        path: 'multiplier',
+        field: 'moneyInMultiplier',
+        oldValue: Math.round((user.moneyInMultiplier || 0) * 100),
+        newValue: moneyInMultiplier,
+        path: 'moneyInMultiplier',
+      });
+    }
+
+    if (moneyOutMultiplierChanged) {
+      meaningfulChanges.push({
+        field: 'moneyOutAndJackpotMultiplier',
+        oldValue: Math.round((user.moneyOutAndJackpotMultiplier || 0) * 100),
+        newValue: moneyOutAndJackpotMultiplier,
+        path: 'moneyOutAndJackpotMultiplier',
       });
     }
 
@@ -1780,7 +1861,8 @@ export default function AdministrationUserModal({
       meaningfulChanges.length > 0 ||
       locationIdsChanged ||
       licenceeIdsChanged ||
-      multiplierChanged;
+      moneyInMultiplierChanged ||
+      moneyOutMultiplierChanged;
 
     if (!hasAnyChanges) {
       toast.info('No changes detected');
@@ -1924,7 +2006,7 @@ export default function AdministrationUserModal({
                           {user?.username || 'User'}
                         </h3>
                         {user?._id && (
-                          <span className="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-mono font-medium text-gray-500 ring-1 ring-inset ring-gray-500/10">
+                          <span className="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-[10px] font-medium text-gray-500 ring-1 ring-inset ring-gray-500/10">
                             ID: {user._id}
                           </span>
                         )}
@@ -2185,7 +2267,9 @@ export default function AdministrationUserModal({
                       {password && (
                         <div className="mt-2 space-y-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-gray-700">Strength:</span>
+                            <span className="text-sm font-medium text-gray-700">
+                              Strength:
+                            </span>
                             <div className="flex gap-1">
                               {[1, 2, 3, 4, 5].map(level => (
                                 <div
@@ -2215,21 +2299,42 @@ export default function AdministrationUserModal({
                             </span>
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs">
-                             <div className={`flex items-center gap-1 ${passwordStrength.requirements.length ? 'text-green-600' : 'text-gray-400'}`}>
-                                {passwordStrength.requirements.length ? '✓' : '✗'} 8+ chars
-                             </div>
-                             <div className={`flex items-center gap-1 ${passwordStrength.requirements.uppercase ? 'text-green-600' : 'text-gray-400'}`}>
-                                {passwordStrength.requirements.uppercase ? '✓' : '✗'} Uppercase
-                             </div>
-                             <div className={`flex items-center gap-1 ${passwordStrength.requirements.lowercase ? 'text-green-600' : 'text-gray-400'}`}>
-                                {passwordStrength.requirements.lowercase ? '✓' : '✗'} Lowercase
-                             </div>
-                             <div className={`flex items-center gap-1 ${passwordStrength.requirements.number ? 'text-green-600' : 'text-gray-400'}`}>
-                                {passwordStrength.requirements.number ? '✓' : '✗'} Number
-                             </div>
-                             <div className={`flex items-center gap-1 ${passwordStrength.requirements.special ? 'text-green-600' : 'text-gray-400'}`}>
-                                {passwordStrength.requirements.special ? '✓' : '✗'} Special
-                             </div>
+                            <div
+                              className={`flex items-center gap-1 ${passwordStrength.requirements.length ? 'text-green-600' : 'text-gray-400'}`}
+                            >
+                              {passwordStrength.requirements.length ? '✓' : '✗'}{' '}
+                              8+ chars
+                            </div>
+                            <div
+                              className={`flex items-center gap-1 ${passwordStrength.requirements.uppercase ? 'text-green-600' : 'text-gray-400'}`}
+                            >
+                              {passwordStrength.requirements.uppercase
+                                ? '✓'
+                                : '✗'}{' '}
+                              Uppercase
+                            </div>
+                            <div
+                              className={`flex items-center gap-1 ${passwordStrength.requirements.lowercase ? 'text-green-600' : 'text-gray-400'}`}
+                            >
+                              {passwordStrength.requirements.lowercase
+                                ? '✓'
+                                : '✗'}{' '}
+                              Lowercase
+                            </div>
+                            <div
+                              className={`flex items-center gap-1 ${passwordStrength.requirements.number ? 'text-green-600' : 'text-gray-400'}`}
+                            >
+                              {passwordStrength.requirements.number ? '✓' : '✗'}{' '}
+                              Number
+                            </div>
+                            <div
+                              className={`flex items-center gap-1 ${passwordStrength.requirements.special ? 'text-green-600' : 'text-gray-400'}`}
+                            >
+                              {passwordStrength.requirements.special
+                                ? '✓'
+                                : '✗'}{' '}
+                              Special
+                            </div>
                           </div>
                         </div>
                       )}
@@ -2265,38 +2370,42 @@ export default function AdministrationUserModal({
                       Roles
                     </Label>
                     <button
-                        type="button"
-                        onClick={() =>
-                          setRolePermissionsDialog({
-                            open: true,
-                            role: 'info',
-                            roleLabel: 'Role Information',
-                          })
-                        }
-                        className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
-                        title="View role descriptions"
-                      >
-                        <Info className="h-4 w-4" />
-                      </button>
+                      type="button"
+                      onClick={() =>
+                        setRolePermissionsDialog({
+                          open: true,
+                          role: 'info',
+                          roleLabel: 'Role Information',
+                        })
+                      }
+                      className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600"
+                      title="View role descriptions"
+                    >
+                      <Info className="h-4 w-4" />
+                    </button>
                   </div>
-                  
+
                   {isEditMode ? (
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                       {availableRoles.map(role => {
-                        const isRestrictedRole = role.value === 'vault-manager' || role.value === 'cashier';
-                        const isVMRestricted = isRestrictedRole && (
-                          selectedLicenceeIds.length > 1 || 
-                          allLicenceesSelected || 
-                          selectedLocationIds.length > 1 || 
-                          allLocationsSelected
-                        );
+                        const isRestrictedRole =
+                          role.value === 'vault-manager' ||
+                          role.value === 'cashier';
+                        const isVMRestricted =
+                          isRestrictedRole &&
+                          (selectedLicenceeIds.length > 1 ||
+                            allLicenceesSelected ||
+                            selectedLocationIds.length > 1 ||
+                            allLocationsSelected);
 
                         return (
                           <div key={role.value} className="flex flex-col gap-1">
                             <label
                               className={`flex flex-1 cursor-pointer items-center gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-2.5 transition-all ${
-                                roles.includes(role.value) ? 'border-blue-200 bg-blue-50/50 ring-1 ring-blue-100' : ''
-                              } ${isVMRestricted ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+                                roles.includes(role.value)
+                                  ? 'border-blue-200 bg-blue-50/50 ring-1 ring-blue-100'
+                                  : ''
+                              } ${isVMRestricted ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-100'}`}
                             >
                               <Checkbox
                                 id={`role-${role.value}`}
@@ -2306,7 +2415,9 @@ export default function AdministrationUserModal({
                                 }
                                 disabled={isVMRestricted}
                               />
-                              <span className={`text-sm font-medium ${isVMRestricted ? 'text-gray-400' : 'text-gray-900'}`}>
+                              <span
+                                className={`text-sm font-medium ${isVMRestricted ? 'text-gray-400' : 'text-gray-900'}`}
+                              >
                                 {role.label}
                               </span>
                               <button
@@ -2326,8 +2437,11 @@ export default function AdministrationUserModal({
                               </button>
                             </label>
                             {isVMRestricted && (
-                              <p className="px-1 text-[10px] font-bold text-red-600 leading-tight">
-                                {role.value === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to 1 Licencee & Location
+                              <p className="px-1 text-[10px] font-bold leading-tight text-red-600">
+                                {role.value === 'vault-manager'
+                                  ? 'Vault Managers'
+                                  : 'Cashiers'}{' '}
+                                are limited to 1 Licencee & Location
                               </p>
                             )}
                           </div>
@@ -2336,64 +2450,115 @@ export default function AdministrationUserModal({
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
-                       {roles.length > 0 ? roles.map(r => (
-                          <span key={r} className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                             {ROLE_OPTIONS.find(opt => opt.value === r)?.label || r}
+                      {roles.length > 0 ? (
+                        roles.map(r => (
+                          <span
+                            key={r}
+                            className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10"
+                          >
+                            {ROLE_OPTIONS.find(opt => opt.value === r)?.label ||
+                              r}
                           </span>
-                       )) : (
-                          <span className="text-sm text-gray-500 italic">No roles assigned</span>
-                       )}
+                        ))
+                      ) : (
+                        <span className="text-sm italic text-gray-500">
+                          No roles assigned
+                        </span>
+                      )}
                     </div>
                   )}
 
                   {roles.includes('reviewer') && isOwner && (
-                    <div className="mt-4 animate-in slide-in-from-top-2 border-t border-blue-100 pt-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Label className="text-sm font-bold text-blue-900 leading-none">
-                          Reviewer Multiplier (%)
+                    <div className="mt-4 border-t border-green-100 pt-4 animate-in slide-in-from-top-2">
+                      <div className="mb-3 flex items-center gap-2">
+                        <Label className="text-sm font-bold leading-none text-green-900">
+                          Reviewer Multipliers
                         </Label>
-                        {isEditMode && <Info className="h-4 w-4 text-blue-400 cursor-help" />}
+                        {isEditMode && (
+                          <Info className="h-4 w-4 cursor-help text-green-400" />
+                        )}
                       </div>
-                      
+
                       {isEditMode ? (
-                        <div className="relative max-w-xs">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="1"
-                            value={multiplier}
-                            onChange={(e) => setMultiplier(parseFloat(e.target.value) || 0)}
-                            className="border-blue-200 focus:ring-blue-500 bg-blue-50/30"
-                            placeholder="e.g. 0.10 for 10%"
-                          />
-                          <p className="mt-2 text-xs font-medium text-blue-600 bg-blue-50 p-2 rounded-md border border-blue-100 italic">
-                            ℹ️ Results: This user will see financial data reduced by <span className="text-blue-900 font-bold">{(multiplier * 100).toFixed(0)}%</span>.
-                          </p>
+                        <div className="flex flex-row flex-wrap gap-4">
+                          {/* Money In Multiplier */}
+                          <div className="relative min-w-[200px] max-w-xs flex-1">
+                            <Label className="text-xs font-semibold text-green-700">
+                              Money In (Drop) Reduction
+                            </Label>
+                            <Input
+                              type="number"
+                              step="1"
+                              min="0"
+                              max="100"
+                              value={moneyInMultiplier}
+                              onChange={e =>
+                                setMoneyInMultiplier(e.target.value)
+                              }
+                              className="mt-1 border-green-200 bg-green-50/30 focus:ring-green-500"
+                              placeholder="e.g. 10 for 10%"
+                            />
+                            <p className="mt-1 rounded-md border border-green-100 bg-green-50 p-2 text-xs font-medium italic text-green-600">
+                              ℹ️ Drop/Money In reduced by{' '}
+                              <span className="font-bold text-green-900">
+                                {moneyInMultiplier || 0}%
+                              </span>
+                            </p>
+                          </div>
+
+                          {/* Money Out & Jackpot Multiplier */}
+                          <div className="relative min-w-[200px] max-w-xs flex-1">
+                            <Label className="text-xs font-semibold text-orange-700">
+                              Money Out & Jackpot Reduction
+                            </Label>
+                            <Input
+                              type="number"
+                              step="1"
+                              min="0"
+                              max="100"
+                              value={moneyOutAndJackpotMultiplier}
+                              onChange={e =>
+                                setMoneyOutAndJackpotMultiplier(e.target.value)
+                              }
+                              className="mt-1 border-orange-200 bg-orange-50/30 focus:ring-orange-500"
+                              placeholder="e.g. 30 for 30%"
+                            />
+                            <p className="mt-1 rounded-md border border-orange-100 bg-orange-50 p-2 text-xs font-medium italic text-orange-600">
+                              ℹ️ Money Out/Jackpot reduced by{' '}
+                              <span className="font-bold text-orange-900">
+                                {moneyOutAndJackpotMultiplier || 0}%
+                              </span>
+                            </p>
+                          </div>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-gray-900 bg-blue-50 px-3 py-1 rounded-md border border-blue-100">
-                             {(multiplier * 100).toFixed(0)}% Reduction
+                        <div className="flex flex-wrap items-center gap-4">
+                          <span className="rounded-md border border-green-100 bg-green-50 px-3 py-1 text-sm font-bold text-green-900">
+                            Money In: {moneyInMultiplier}% reduction
+                          </span>
+                          <span className="rounded-md border border-orange-100 bg-orange-50 px-3 py-1 text-sm font-bold text-orange-900">
+                            Out/Jackpot: {moneyOutAndJackpotMultiplier}%
+                            reduction
                           </span>
                         </div>
                       )}
                     </div>
                   )}
-
                 </div>
 
                 {isEditMode && (isDeveloper || isAdmin || isManager) && (
-                  <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-3 border-t border-gray-100 pt-4">
                     <Checkbox
                       id="isEnabled"
                       checked={isEnabled}
-                      onCheckedChange={checked => setIsEnabled(checked === true)}
+                      onCheckedChange={checked =>
+                        setIsEnabled(checked === true)
+                      }
                     />
                     <div className="grid gap-1.5 leading-none">
                       <Label
                         htmlFor="isEnabled"
-                        className="text-sm font-medium leading-none cursor-pointer"
+                        className="cursor-pointer text-sm font-medium leading-none"
                       >
                         Account Enabled
                       </Label>
@@ -2406,14 +2571,20 @@ export default function AdministrationUserModal({
               </CardContent>
             </Card>
 
-            <Card className={!isAssignmentsEnabled && isEditMode ? 'opacity-50 grayscale select-none' : ''}>
+            <Card
+              className={
+                !isAssignmentsEnabled && isEditMode
+                  ? 'select-none opacity-50 grayscale'
+                  : ''
+              }
+            >
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   Assignments
                   {!isAssignmentsEnabled && isEditMode && (
-                     <span className="text-xs font-normal text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                        Select a role first
-                     </span>
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-normal text-amber-600">
+                      Select a role first
+                    </span>
                   )}
                 </CardTitle>
                 <CardDescription>
@@ -2422,19 +2593,23 @@ export default function AdministrationUserModal({
               </CardHeader>
               <CardContent className="relative">
                 {!isAssignmentsEnabled && isEditMode && (
-                   <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/20 backdrop-blur-[2px] rounded-b-lg">
-                      <div className="group flex flex-col items-center gap-4 rounded-2xl bg-amber-50 px-8 py-6 text-center shadow-xl ring-1 ring-amber-200 transition-transform hover:scale-105">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-50">
-                          <AlertCircle className="h-6 w-6 animate-pulse text-amber-600" />
-                        </div>
-                        <div className="space-y-1">
-                           <p className="text-sm font-bold text-amber-900">Action Required</p>
-                           <p className="text-xs font-medium text-amber-700 max-w-[200px]">
-                              Please select a <span className="underline">Role</span> above to unlock assignments.
-                           </p>
-                        </div>
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-b-lg bg-white/20 backdrop-blur-[2px]">
+                    <div className="group flex flex-col items-center gap-4 rounded-2xl bg-amber-50 px-8 py-6 text-center shadow-xl ring-1 ring-amber-200 transition-transform hover:scale-105">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 ring-8 ring-amber-50">
+                        <AlertCircle className="h-6 w-6 animate-pulse text-amber-600" />
                       </div>
-                   </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-amber-900">
+                          Action Required
+                        </p>
+                        <p className="max-w-[200px] text-xs font-medium text-amber-700">
+                          Please select a{' '}
+                          <span className="underline">Role</span> above to
+                          unlock assignments.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 )}
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                   <div className="space-y-3">
@@ -2486,7 +2661,11 @@ export default function AdministrationUserModal({
                             onCheckedChange={checked =>
                               handleAllLicenceesChange(checked === true)
                             }
-                            disabled={!canEditLicencees || hasRestrictedAssignments || !isAssignmentsEnabled}
+                            disabled={
+                              !canEditLicencees ||
+                              hasRestrictedAssignments ||
+                              !isAssignmentsEnabled
+                            }
                           />
                           <Label
                             htmlFor="allLicencees"
@@ -2573,7 +2752,10 @@ export default function AdministrationUserModal({
                               onCheckedChange={checked =>
                                 handleAllLocationsChange(checked === true)
                               }
-                              disabled={hasRestrictedAssignments || !isAssignmentsEnabled}
+                              disabled={
+                                hasRestrictedAssignments ||
+                                !isAssignmentsEnabled
+                              }
                               className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
                             />
                             All Locations{' '}
@@ -2592,7 +2774,7 @@ export default function AdministrationUserModal({
                               selectedIds={selectedLocationIds.filter(id =>
                                 locationOptions.some(opt => opt.id === id)
                               )}
-                               onChange={handleLocationChange}
+                              onChange={handleLocationChange}
                               placeholder={
                                 availableLocations.length === 0
                                   ? 'No locations available for selected licencees'
@@ -2601,7 +2783,10 @@ export default function AdministrationUserModal({
                               searchPlaceholder="Search locations..."
                               label="locations"
                               showSelectAll={!hasRestrictedAssignments}
-                              disabled={availableLocations.length === 0 || !isAssignmentsEnabled}
+                              disabled={
+                                availableLocations.length === 0 ||
+                                !isAssignmentsEnabled
+                              }
                             />
                           )}
 
@@ -2887,8 +3072,12 @@ export default function AdministrationUserModal({
                       <div className="mt-2">
                         <DateTimePicker
                           dateOnly
-                          date={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
-                          setDate={(date) =>
+                          date={
+                            formData.dateOfBirth
+                              ? new Date(formData.dateOfBirth)
+                              : undefined
+                          }
+                          setDate={date =>
                             handleInputChange(
                               'dateOfBirth',
                               date ? date.toISOString().split('T')[0] : ''
@@ -2995,8 +3184,6 @@ export default function AdministrationUserModal({
                 </div>
               </CardContent>
             </Card>
-
-
           </div>
 
           {isEditMode && (

@@ -14,7 +14,11 @@ import {
   getCountryCurrency,
   getLicenceeCurrency,
 } from '@/lib/helpers/rates';
-import type { CountryDocument, GamingLocationDocument, LicenceeDocument } from '@/shared/types';
+import type {
+  CountryDocument,
+  GamingLocationDocument,
+  LicenceeDocument,
+} from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 
 // Define the type for top performing items (matches the one in lib/types/index.ts)
@@ -34,7 +38,7 @@ export type TopPerformingItem = {
   game?: string;
   location?: string;
   color?: string;
-}
+};
 
 /**
  * Converts top performing metrics to display currency
@@ -47,8 +51,14 @@ export async function convertTopPerformingCurrency(
   data: TopPerformingItem[],
   displayCurrency: CurrencyCode
 ): Promise<TopPerformingItem[]> {
-  if (!Array.isArray(data) || !displayCurrency || typeof displayCurrency !== 'string') {
-    console.error('[convertTopPerformingCurrency] data must be an array and displayCurrency must be a string');
+  if (
+    !Array.isArray(data) ||
+    !displayCurrency ||
+    typeof displayCurrency !== 'string'
+  ) {
+    console.error(
+      '[convertTopPerformingCurrency] data must be an array and displayCurrency must be a string'
+    );
     return data || [];
   }
 
@@ -150,4 +160,3 @@ export async function convertTopPerformingCurrency(
     return converted;
   });
 }
-

@@ -50,9 +50,14 @@ type MobileFormPanelProps = {
   isAddMachineEnabled: boolean;
 
   // Callbacks
-  formatMachineDisplay: (machine: CollectionReportMachineSummary) => string | ReactElement;
+  formatMachineDisplay: (
+    machine: CollectionReportMachineSummary
+  ) => string | ReactElement;
   onViewMachine: () => void;
-  onFormDataChange: (field: string, value: string | boolean | Date | null) => void;
+  onFormDataChange: (
+    field: string,
+    value: string | boolean | Date | null
+  ) => void;
   onFinancialDataChange: (field: string, value: string) => void;
   onAddMachine: () => void;
 
@@ -131,9 +136,9 @@ export default function CollectionReportMobileFormPanel({
               >
                 <ArrowLeft className="h-6 w-6" />
               </button>
-              <h3 className="text-lg font-bold text-gray-900 line-clamp-1 pr-2">
+              <h3 className="line-clamp-1 pr-2 text-lg font-bold text-gray-900">
                 {isManager
-                  ? 'Financial Summary'
+                  ? 'Report Financials'
                   : selectedMachineData
                     ? formatMachineDisplay(selectedMachineData)
                     : 'Machine'}
@@ -171,10 +176,6 @@ export default function CollectionReportMobileFormPanel({
                   selectedMachineData?.collectionMeters?.metersOut
                 }
                 onViewMachine={onViewMachine}
-                collectionTime={formData.collectionTime}
-                onCollectionTimeChange={date => {
-                  if (date) onFormDataChange('collectionTime', date);
-                }}
                 metersIn={formData.metersIn}
                 metersOut={formData.metersOut}
                 ramClear={formData.ramClear}
@@ -197,10 +198,6 @@ export default function CollectionReportMobileFormPanel({
                 onNotesChange={val => onFormDataChange('notes', val)}
                 disabled={!inputsEnabled}
                 isProcessing={isProcessing}
-                showAdvancedSas={formData.showAdvancedSas}
-                onAdvancedSasToggle={() =>
-                  onFormDataChange('showAdvancedSas', !formData.showAdvancedSas)
-                }
                 sasStartTime={formData.sasStartTime}
                 onSasStartTimeChange={val =>
                   onFormDataChange('sasStartTime', val || null)

@@ -1,14 +1,14 @@
 # Collection Report System - Backend
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ## Recent Performance Optimizations (November 11th, 2025) 🚀
 
 ### Collection Report List API - Pagination Added
 
-**API:** `GET /api/collectionReport`
+**API:** `GET /api/collection-reports`
 
 **Problem:**
 
@@ -26,11 +26,11 @@
 - Before: >5s for Today, >30s for All Time
 - After: ~2-3s for all periods (2-10x faster!)
 
-**Implementation:** `app/api/collectionReport/route.ts`
+**Implementation:** `app/api/collection-reports/route.ts`
 
 ### Collection Report Details API - N+1 Problem SOLVED
 
-**API:** `GET /api/collection-report/[reportId]`
+**API:** `GET /api/collection-reports/[reportId]`
 
 **Problem:**
 
@@ -54,7 +54,7 @@
 
 ### Collection Report Creation - Parallel Machine Updates 🚀
 
-**API:** `POST /api/collectionReport`
+**API:** `POST /api/collection-reports`
 
 **Optimization:**
 
@@ -103,7 +103,7 @@ const meterDataMap = new Map(allMeterData.map(m => [m._id, m]));
 
 ### Locations with Machines API - Projection Optimized
 
-**API:** `GET /api/collectionReport?locationsWithMachines=1`
+**API:** `GET /api/collection-reports?locationsWithMachines=true`
 
 **Problem:**
 
@@ -121,7 +121,7 @@ const meterDataMap = new Map(allMeterData.map(m => [m._id, m]));
 - Before: ~2-5s
 - After: <1s (3x faster!)
 
-**Implementation:** `app/api/collectionReport/route.ts`
+**Implementation:** `app/api/collection-reports/route.ts`
 
 ---
 
@@ -163,7 +163,7 @@ const result = await createReportAPI(payload);
 
 // Step 2: ONLY IF successful, update collections
 const updatePromises = machinesForReport.map(async collection => {
-  await axios.patch(`/api/collections?id=${collection._id}`, {
+  await axios.patch(`/api/collection-reports?id=${collection._id}`, {
     locationReportId: reportId,
     isCompleted: true,
   });
@@ -180,7 +180,7 @@ await Promise.all(updatePromises);
 
 **Issue 2: Detection API Not Finding Previous Collections Across Reports**
 
-The SAS time detection API (`/api/collection-report/[reportId]/check-sas-times`) was only searching collections within the current report, causing "No previous collection found" errors when a machine's previous collection was in a different report.
+The SAS time detection logic was only searching collections within the current report, causing "No previous collection found" errors when a machine's previous collection was in a different report.
 
 **Root Cause:**
 
@@ -214,13 +214,13 @@ const allCollections = await Collections.find({
 
 - `components/collectionReport/NewCollectionModal.tsx`
 - `components/collectionReport/mobile/MobileCollectionModal.tsx`
-- `app/api/collection-report/[reportId]/check-sas-times/route.ts`
+- Collection reports service (`app/api/lib/helpers/collectionReportService.ts`)
 - `scripts/detect-incomplete-collections.js`
 - `scripts/diagnose-fixed-machine.js`
 
 ### November 6th, 2025 - Collection History Sync Enhancement ✅
 
-**Fixed:** POST `/api/collection-reports/fix-report` endpoint now properly syncs `collectionMetersHistory` entries with actual collection documents using `locationReportId` as the unique identifier. Previously, the fix would fail when multiple collections had the same metersIn/metersOut values or would not update all fields correctly. The enhanced logic now:
+**Fixed:** Collection report fix logic now properly syncs `collectionMetersHistory` entries with actual collection documents using `locationReportId` as the unique identifier. Previously, the fix would fail when multiple collections had the same metersIn/metersOut values or would not update all fields correctly. The enhanced logic now:
 
 - Uses `locationReportId` instead of metersIn/metersOut to uniquely identify history entries
 - Syncs ALL fields: `metersIn`, `metersOut`, `prevMetersIn`, `prevMetersOut`, `timestamp`
@@ -250,11 +250,11 @@ See [`isEditing` Flag System](#isediting-flag-system---unsaved-changes-protectio
 
 ### November 4th, 2025 - Previous Meters Recalculation Bug ✅
 
-**Fixed:** PATCH `/api/collections` endpoint now correctly recalculates `prevIn`, `prevOut`, and `movement` values when editing collections. Previously, the endpoint was blindly updating values without looking up the actual previous collection, causing revenue calculation errors up to 99.7%. See [PATCH Implementation](#patch-apicollections-edit-collection-implementation) for details.
+**Fixed:** PATCH `/api/collection-reports` endpoint now correctly recalculates `prevIn`, `prevOut`, and `movement` values when editing collections. Previously, the endpoint was blindly updating values without looking up the actual previous collection, causing revenue calculation errors up to 99.7%. See [PATCH Implementation](#patch-apicollections-edit-collection-implementation) for details.
 
 ### November 4th, 2025 - DELETE Endpoint Not Removing Collection History ✅
 
-**Fixed:** DELETE `/api/collections` endpoint now properly removes `collectionMetersHistory` entries when deleting collections. Previously, it only reverted `collectionMeters` but left orphaned history entries, causing data integrity issues and incorrect collection counts in the UI. See [DELETE Implementation](#delete-apicollections) for details.
+**Fixed:** DELETE `/api/collection-reports` endpoint now properly removes `collectionMetersHistory` entries when deleting collections. Previously, it only reverted `collectionMeters` but left orphaned history entries, causing data integrity issues and incorrect collection counts in the UI. See [DELETE Implementation](#delete-apicollections) for details.
 
 ## Overview
 
@@ -286,7 +286,7 @@ The backend handles collection report creation, SAS metrics calculation, machine
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ Frontend: POST /api/collections                                 │
+│ Frontend: POST /api/collection-reports                                 │
 │   Payload: {                                                    │
 │     machineId, location, collector,                            │
 │     metersIn, metersOut, timestamp,                            │
@@ -296,7 +296,7 @@ The backend handles collection report creation, SAS metrics calculation, machine
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ Backend: app/api/collections/route.ts                          │
+│ Backend: app/api/collection-reports/route.ts                          │
 │   ↓                                                             │
 │   createCollectionWithCalculations()                           │
 │   ↓                                                             │
@@ -359,17 +359,17 @@ The backend handles collection report creation, SAS metrics calculation, machine
 │ 1. Generate locationReportId│  │ 1. Generate locationReportId   │
 │    (uuidv4)                │  │    (uuidv4)                    │
 │ 2. Validate payload        │  │ 2. Update all collections:     │
-│ 3. POST /api/collectionReport│  │    PATCH /api/collections    │
+│ 3. POST /api/collection-reports│  │    PATCH /api/collection-reports    │
 │    → Backend handles all   │  │    Set locationReportId        │
 │       updates automatically│  │    Set isCompleted = true      │
-│                            │  │ 3. POST /api/collectionReport  │
+│                            │  │ 3. POST /api/collection-reports  │
 └────────────────────────────┘  └────────────────────────────────┘
                 │                            │
                 └─────────────┬──────────────┘
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ Backend: POST /api/collectionReport                             │
-│   app/api/collectionReport/route.ts                            │
+│ Backend: POST /api/collection-reports                             │
+│   app/api/collection-reports/route.ts                            │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -511,11 +511,11 @@ The backend handles collection report creation, SAS metrics calculation, machine
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │ 2. LOAD REPORT DATA                                             │
-│    GET /api/collection-report/[reportId]                       │
+│    GET /api/collection-reports/[reportId]                       │
 │    - Fetch report details                                      │
 │    - Populate financial fields                                 │
 │                                                                 │
-│    GET /api/collections?locationReportId=[reportId]            │
+│    GET /api/collection-reports?locationReportId=[reportId]            │
 │    - Fetch all collections for report                          │
 │    - Display in collected machines list                        │
 └─────────────────────────────────────────────────────────────────┘
@@ -540,7 +540,7 @@ The backend handles collection report creation, SAS metrics calculation, machine
         ▼                     ▼                     ▼
 ┌──────────────────┐  ┌─────────────────┐  ┌─────────────────┐
 │ PATCH            │  │ POST            │  │ DELETE          │
-│ /api/collections │  │ /api/collections│  │ /api/collections│
+│ /api/collection-reports │  │ /api/collection-reports│  │ /api/collection-reports│
 │ ?id=[collId]     │  │                 │  │ ?id=[collId]    │
 │                  │  │                 │  │                 │
 │ CRITICAL:        │  │ - Same as       │  │ - Remove from   │
@@ -561,7 +561,7 @@ The backend handles collection report creation, SAS metrics calculation, machine
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │ 4. SAVE REPORT CHANGES                                          │
-│    PUT /api/collection-report/[reportId]                       │
+│    PUT /api/collection-reports/[reportId]                       │
 │    - Update financial fields                                   │
 │    - Recalculate totals                                        │
 │    - Log activity                                              │
@@ -587,7 +587,7 @@ The backend handles collection report creation, SAS metrics calculation, machine
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │ 2. DELETE REQUEST                                               │
-│    DELETE /api/collection-report/[reportId]                    │
+│    DELETE /api/collection-reports/[reportId]                    │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -640,10 +640,10 @@ The backend handles collection report creation, SAS metrics calculation, machine
 
 **Desktop (NewCollectionModal.tsx)**:
 
-1. User adds machines → Creates collections via `POST /api/collections`
+1. User adds machines → Creates collections via `POST /api/collection-reports`
 2. Collections stored with `locationReportId: ""` and `isCompleted: false`
 3. User clicks "Create Report" → Validates payload
-4. **Single API call**: `POST /api/collectionReport` with full payload
+4. **Single API call**: `POST /api/collection-reports` with full payload
 5. Backend handles ALL updates:
    - Updates collections with `locationReportId`
    - Creates `collectionMetersHistory`
@@ -652,14 +652,14 @@ The backend handles collection report creation, SAS metrics calculation, machine
 
 **Mobile (MobileCollectionModal.tsx)**:
 
-1. User adds machines → Creates collections via `POST /api/collections`
+1. User adds machines → Creates collections via `POST /api/collection-reports`
 2. Collections stored with `locationReportId: ""` and `isCompleted: false`
 3. User clicks "Create Report" → Generates `locationReportId` (uuidv4)
 4. **Two-step process**:
-   - Step 1: `PATCH /api/collections` for EACH collection
+   - Step 1: `PATCH /api/collection-reports` for EACH collection
      - Sets `locationReportId`
      - Sets `isCompleted: true`
-   - Step 2: `POST /api/collectionReport` with full payload
+   - Step 2: `POST /api/collection-reports` with full payload
 5. Backend handles remaining updates:
    - Creates `collectionMetersHistory`
    - Updates machine meters
@@ -690,7 +690,7 @@ The backend handles collection report creation, SAS metrics calculation, machine
 
 **Common Behavior**:
 
-- Both use same API endpoints (`PATCH /api/collections`, `PATCH /api/collection-report/[reportId]`)
+- Both use same API endpoints (`PATCH /api/collection-reports`, `PATCH /api/collection-reports/[reportId]`)
 - Both recalculate SAS metrics and movement on edit
 - Both update `collectionMetersHistory` using `arrayFilters`
 - Both maintain state in Zustand store for persistence
@@ -797,7 +797,7 @@ The backend handles collection report creation, SAS metrics calculation, machine
 
 ## API Endpoints
 
-### POST /api/collections
+### POST /api/collection-reports
 
 **Purpose**: Create a new collection with calculated metrics
 
@@ -821,7 +821,7 @@ The backend handles collection report creation, SAS metrics calculation, machine
    - Includes all meter data, movement, SAS metrics
 8. Return created collection to frontend
 
-**File**: `app/api/collections/route.ts`
+**File**: `app/api/collection-reports/route.ts`
 
 **Key Functions**:
 
@@ -830,9 +830,9 @@ The backend handles collection report creation, SAS metrics calculation, machine
 - `calculateSasMetrics` (aggregates SAS data from sashourly)
 - `calculateMovement` (computes movement values)
 
-**Important**: Does NOT update `machine.collectionMeters` or create `collectionMetersHistory` entries. These operations happen when report is finalized via `POST /api/collectionReport`.
+**Important**: Does NOT update `machine.collectionMeters` or create `collectionMetersHistory` entries. These operations happen when report is finalized via `POST /api/collection-reports`.
 
-### PATCH /api/collections
+### PATCH /api/collection-reports
 
 **Purpose**: Update existing collection (used in edit mode and mobile finalization)
 
@@ -849,13 +849,13 @@ The backend handles collection report creation, SAS metrics calculation, machine
 7. Update machine meters if needed
 8. Return updated collection
 
-**File**: `app/api/collections/route.ts`
+**File**: `app/api/collection-reports/route.ts`
 
 **Query Parameters**: `id=[collectionId]`
 
 **Important**: Uses `$set` with `arrayFilters` to update existing history entries, not `$push`. This prevents duplicate history entries when editing collections.
 
-### DELETE /api/collections
+### DELETE /api/collection-reports
 
 **Purpose**: Delete a collection and fully revert machine state
 
@@ -929,11 +929,11 @@ await Machine.findByIdAndUpdate(collectionToDelete.machineId, updateOperation);
 3. Delete collection document
 4. Return success
 
-**File**: `app/api/collections/route.ts`
+**File**: `app/api/collection-reports/route.ts`
 
 **Query Parameters**: `id=[collectionId]`
 
-### POST /api/collectionReport
+### POST /api/collection-reports
 
 **Purpose**: Create a new collection report (finalize collections)
 
@@ -1001,7 +1001,7 @@ await Machine.findByIdAndUpdate(collectionToDelete.machineId, updateOperation);
 10. **Return success**:
     - `{ success: true, data: createdReportId }`
 
-**File**: `app/api/collectionReport/route.ts`
+**File**: `app/api/collection-reports/route.ts`
 
 **Helper Functions**:
 
@@ -1010,11 +1010,11 @@ await Machine.findByIdAndUpdate(collectionToDelete.machineId, updateOperation);
 
 **Critical Timing**:
 
-- `collectionMetersHistory` entries are created HERE, not during `POST /api/collections`
-- `machine.collectionMeters` are updated HERE, not during `POST /api/collections`
+- `collectionMetersHistory` entries are created HERE, not during `POST /api/collection-reports`
+- `machine.collectionMeters` are updated HERE, not during `POST /api/collection-reports`
 - This ensures atomic updates and prevents premature meter changes
 
-### GET /api/collectionReport
+### GET /api/collection-reports
 
 **Purpose**: Fetch collection reports with filtering
 
@@ -1058,7 +1058,7 @@ When `locationsWithMachines=1` is set:
 - `30d`: Last 30 days
 - `Custom`: Uses provided startDate/endDate with gaming day offset
 
-**File**: `app/api/collectionReport/route.ts`
+**File**: `app/api/collection-reports/route.ts`
 
 **Helper Functions**:
 
@@ -1071,6 +1071,7 @@ When `locationsWithMachines=1` is set:
 **Purpose:** Fetch collection schedulers with filtering and human-readable names.
 
 **Query Parameters:**
+
 - `licencee` (string, optional) - Filter by licencee ID.
 - `location` (string, optional) - Filter by location ID.
 - `collector` (string, optional) - Filter by collector ID.
@@ -1079,6 +1080,7 @@ When `locationsWithMachines=1` is set:
 - `endDate` (string, optional) - End date for scheduler `startTime` (ISO format).
 
 **Response (Success - 200):**
+
 ```json
 [
   {
@@ -1097,13 +1099,15 @@ When `locationsWithMachines=1` is set:
   }
 ]
 ```
+
 **Used By:** Collection Report Manager and Collector tabs for displaying and managing schedules.
 **Notes:**
+
 - Uses MongoDB aggregation with `$lookup` to enrich scheduler documents with `locationName`, `collectorName`, and `creatorName` from `gaminglocations` and `users` collections.
 - Supports date range filtering on `startTime`.
 - Filters are applied based on user's accessible locations/licencees.
 
-### GET /api/collection-report/[reportId]
+### GET /api/collection-reports/[reportId]
 
 **Purpose**: Fetch a specific collection report with all details
 
@@ -1114,7 +1118,7 @@ When `locationsWithMachines=1` is set:
 3. Calculate machine count from collections
 4. Return complete report data
 
-**File**: `app/api/collection-report/[reportId]/route.ts`
+**File**: `app/api/collection-reports/[reportId]/route.ts`
 
 **Returns**:
 
@@ -1143,7 +1147,7 @@ When `locationsWithMachines=1` is set:
 }
 ```
 
-### PATCH /api/collection-report/[reportId]
+### PATCH /api/collection-reports/[reportId]
 
 **Purpose**: Update existing collection report (financial data only)
 
@@ -1177,16 +1181,16 @@ When `locationsWithMachines=1` is set:
 
 **Non-Editable**:
 
-- Machine collections (use `/api/collections` endpoints)
+- Machine collections (use `/api/collection-reports` endpoints)
 - Location (locked to original location)
 - Report ID (immutable)
 - Timestamp (audit trail)
 
-**File**: `app/api/collection-report/[reportId]/route.ts`
+**File**: `app/api/collection-reports/[reportId]/route.ts`
 
-**Note**: For editing machine data within a report, use the `/api/collections` PATCH/DELETE endpoints, then optionally update the report totals via this endpoint.
+**Note**: For editing machine data within a report, use the `/api/collection-reports` PATCH/DELETE endpoints, then optionally update the report totals via this endpoint.
 
-### DELETE /api/collection-report/[reportId]
+### DELETE /api/collection-reports/[reportId]
 
 **Purpose**: Delete collection report and fully revert machine state
 
@@ -1226,7 +1230,7 @@ When `locationsWithMachines=1` is set:
 7. **Return success**:
    - `{ success: true }`
 
-**File**: `app/api/collection-report/[reportId]/route.ts`
+**File**: `app/api/collection-reports/[reportId]/route.ts`
 
 **Critical**: Fully reverts machine state to before report was created. This includes:
 
@@ -1297,9 +1301,9 @@ This enables the Collection Report Details page to automatically detect and fix 
 
 **File**: `app/api/collection-reports/check-all-issues/route.ts`
 
-### POST /api/collection-reports/fix-report
+### Collection Report Fix Logic
 
-**Purpose**: Fix detected issues in report or machine and sync collectionMetersHistory with collection documents
+**Purpose**: Fix detected issues in report or machine and sync collectionMetersHistory with collection documents (implemented in collection report route handlers)
 
 **Updated:** November 6th, 2025 - Enhanced history sync logic
 
@@ -1368,7 +1372,7 @@ The fix now properly syncs `collectionMetersHistory` entries with actual collect
 }
 ```
 
-**File**: `app/api/collection-reports/fix-report/route.ts`
+**Implementation:** `app/api/collection-reports/route.ts` - collection report creation and management
 
 ## Core Helper Functions
 
@@ -1456,8 +1460,8 @@ Calculates totals for collection reports:
 
 **Used by**:
 
-- `POST /api/collectionReport` (during creation)
-- `PATCH /api/collection-report/[reportId]` (when recalculating after edits)
+- `POST /api/collection-reports` (during creation)
+- `PATCH /api/collection-reports/[reportId]` (when recalculating after edits)
 
 ## SAS Time Window
 
@@ -1595,7 +1599,7 @@ if (dateGroups.some(group => group.length > 1)) {
 ```
 Frontend: User enters meter data
     ↓
-POST /api/collections
+POST /api/collection-reports
     ↓
 createCollectionWithCalculations()
     ↓
@@ -1613,7 +1617,7 @@ Return collection to frontend
 ```
 Frontend: User clicks "Create Report"
     ↓
-POST /api/collectionReport
+POST /api/collection-reports
     ↓
 - Check for duplicate report on same gaming day
 - Calculate totals from all collections
@@ -1632,7 +1636,7 @@ Return success to frontend
 ```
 Frontend: User deletes report
     ↓
-DELETE /api/collection-report/[reportId]
+DELETE /api/collection-reports/[reportId]
     ↓
 - Find all collections for report
 - For each collection:
@@ -1909,14 +1913,14 @@ Proper error handling throughout:
 
 ### Critical Timing Rules
 
-1. **Collection Creation** (`POST /api/collections`):
+1. **Collection Creation** (`POST /api/collection-reports`):
    - ✅ Creates collection document
    - ✅ Calculates SAS metrics and movement
    - ✅ Stores with `locationReportId: ""` and `isCompleted: false`
    - ❌ Does NOT update `machine.collectionMeters`
    - ❌ Does NOT create `collectionMetersHistory` entries
 
-2. **Report Finalization** (`POST /api/collectionReport`):
+2. **Report Finalization** (`POST /api/collection-reports`):
    - ✅ Creates CollectionReport document
    - ✅ Updates collections with `locationReportId` and `isCompleted: true`
    - ✅ Creates `collectionMetersHistory` entries (ONE per machine)
@@ -1924,14 +1928,14 @@ Proper error handling throughout:
    - ✅ Updates `machine.collectionTime` and `previousCollectionTime`
    - ✅ Updates `gamingLocation.previousCollectionTime`
 
-3. **Collection Editing** (`PATCH /api/collections`):
+3. **Collection Editing** (`PATCH /api/collection-reports`):
    - ✅ Recalculates SAS metrics and movement
    - ✅ Updates collection document
    - ✅ Updates existing `collectionMetersHistory` entry (using `$set` with `arrayFilters`)
    - ❌ Does NOT create new history entry
    - ✅ Preserves original `prevIn`/`prevOut` baseline
 
-4. **Report Deletion** (`DELETE /api/collection-report/[reportId]`):
+4. **Report Deletion** (`DELETE /api/collection-reports/[reportId]`):
    - ✅ Reverts `machine.collectionMeters` to previous values
    - ✅ Removes `collectionMetersHistory` entries (using `$pull`)
    - ✅ Deletes all collections for report
@@ -1940,14 +1944,14 @@ Proper error handling throughout:
 
 ### Desktop vs Mobile Summary
 
-| Aspect                 | Desktop                             | Mobile                                                        |
-| ---------------------- | ----------------------------------- | ------------------------------------------------------------- |
-| **Layout**             | Three-column side-by-side           | Slide-up panels with navigation                               |
-| **Width Distribution** | 20% \| 60% \| 20%                   | Full-width panels                                             |
-| **Report Creation**    | Single `POST /api/collectionReport` | PATCH collections first, then POST report                     |
-| **Components**         | Monolithic modals                   | Componentized (`MobileFormPanel`, `MobileCollectedListPanel`) |
-| **State Management**   | Local state + Zustand               | Local state + Zustand                                         |
-| **Final Result**       | Identical database state            | Identical database state                                      |
+| Aspect                 | Desktop                               | Mobile                                                        |
+| ---------------------- | ------------------------------------- | ------------------------------------------------------------- |
+| **Layout**             | Three-column side-by-side             | Slide-up panels with navigation                               |
+| **Width Distribution** | 20% \| 60% \| 20%                     | Full-width panels                                             |
+| **Report Creation**    | Single `POST /api/collection-reports` | PATCH collections first, then POST report                     |
+| **Components**         | Monolithic modals                     | Componentized (`MobileFormPanel`, `MobileCollectedListPanel`) |
+| **State Management**   | Local state + Zustand                 | Local state + Zustand                                         |
+| **Final Result**       | Identical database state              | Identical database state                                      |
 
 ### Data Integrity Rules
 
@@ -1959,8 +1963,8 @@ Proper error handling throughout:
 
 ### Common Pitfalls to Avoid
 
-❌ **Don't** create `collectionMetersHistory` during `POST /api/collections`  
-✅ **Do** create it during `POST /api/collectionReport`
+❌ **Don't** create `collectionMetersHistory` during `POST /api/collection-reports`  
+✅ **Do** create it during `POST /api/collection-reports`
 
 ❌ **Don't** use `$push` when updating existing history  
 ✅ **Do** use `$set` with `arrayFilters`
@@ -1969,7 +1973,7 @@ Proper error handling throughout:
 ✅ **Do** preserve original baseline values
 
 ❌ **Don't** update `machine.collectionMeters` before report finalization  
-✅ **Do** wait for `POST /api/collectionReport`
+✅ **Do** wait for `POST /api/collection-reports`
 
 ❌ **Don't** allow multiple reports for same location on same gaming day  
 ✅ **Do** check for duplicates using date match
@@ -1979,8 +1983,8 @@ Proper error handling throughout:
 **Check if meters updated prematurely**:
 
 ```javascript
-// Machine meters should ONLY change after POST /api/collectionReport
-// If they change after POST /api/collections, there's a bug
+// Machine meters should ONLY change after POST /api/collection-reports
+// If they change after POST /api/collection-reports, there's a bug
 ```
 
 **Verify history entry count**:
@@ -2009,7 +2013,7 @@ new Date(sasMeters.sasStartTime) < new Date(sasMeters.sasEndTime); // Should be 
 
 ---
 
-## PATCH /api/collections (Edit Collection) Implementation
+## PATCH /api/collection-reports (Edit Collection) Implementation
 
 **Fixed:** November 4th, 2025  
 **Critical Bug:** Previous meters were not being recalculated when editing collections
@@ -2201,7 +2205,7 @@ The `isEditing` flag is a **boolean field** on the `CollectionReport` model that
    ↓
    Report marked as "in-progress"
 
-3. USER FINALIZES REPORT (PATCH /api/collection-report/[reportId])
+3. USER FINALIZES REPORT (PATCH /api/collection-reports/[reportId])
    ↓
    Financial data updated
    ↓
@@ -2219,7 +2223,7 @@ The `isEditing` flag is a **boolean field** on the `CollectionReport` model that
 
 #### 1. Set to `true` - Editing Begins
 
-**Endpoint:** `PATCH /api/collections/[id]`  
+**Endpoint:** `PATCH /api/collection-reports/[reportId]`  
 **File:** `app/api/collections/[id]/route.ts` (lines 244-267)
 
 **Trigger Conditions:**
@@ -2265,8 +2269,8 @@ if (
 
 #### 2. Set to `false` - Editing Completes
 
-**Endpoint:** `PATCH /api/collection-report/[reportId]`  
-**File:** `app/api/collection-report/[reportId]/route.ts` (line 97)
+**Endpoint:** `PATCH /api/collection-reports/[reportId]`  
+**File:** `app/api/collection-reports/[reportId]/route.ts` (line 97)
 
 **Trigger Conditions:**
 
@@ -2450,7 +2454,7 @@ RESULT: User can review and finalize
 
 TIME: 2:02 PM
 ACTION: User reviews financials, clicks "Update Report"
-BACKEND: PATCH /api/collection-report/[reportId]
+BACKEND: PATCH /api/collection-reports/[reportId]
   ↓ Updates report with financial data
   ↓ Sets isEditing: false
   ↓ Calls /update-history
@@ -2527,7 +2531,7 @@ await fetch(`/api/collection-reports/RPT-001/update-history`, {
 **Option 3: Use Fix Report API**
 
 ```bash
-POST /api/collection-reports/fix-report
+Collection report fix logic (implemented in route handlers)
 Body: { reportId: "RPT-001" }
 ```
 
@@ -2582,7 +2586,7 @@ console.log('History prevIn:', historyEntry.prevMetersIn);
 2. **Include `isEditing` in report queries:**
 
    ```javascript
-   GET /api/collectionReport?isEditing=true
+   GET /api/collection-reports?isEditing=true
    // Returns only reports needing finalization
    ```
 

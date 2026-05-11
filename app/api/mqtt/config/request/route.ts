@@ -12,6 +12,12 @@
 
 import { validateMQTTConfigRequest } from '@/app/api/lib/helpers/mqtt';
 import { mqttService } from '@/app/api/lib/services/mqttService';
+import {
+  logRouteFetch,
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -28,6 +34,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/mqtt/config/request';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -44,6 +52,13 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     const validationError = validateMQTTConfigRequest(body);
     if (validationError) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/mqtt/config/request',
+        validationError,
+        user
+      );
       return NextResponse.json(
         { success: false, error: validationError },
         { status: 400 }
@@ -62,6 +77,14 @@ export async function POST(request: NextRequest) {
     if (duration > 1000) {
       console.warn(`[MQTT Config Request API] Completed in ${duration}ms`);
     }
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/mqtt/config/request',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json({
       success: true,
       message: `Config request sent for ${component} to relayId: ${relayId}`,
@@ -73,6 +96,13 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/mqtt/config/request',
+      errorMessage,
+      user
+    );
     console.error(
       `[MQTT Config Request API] Error after ${duration}ms:`,
       errorMessage
@@ -92,7 +122,20 @@ export async function POST(request: NextRequest) {
  * GET /api/mqtt/config/request
  * Get information about the request endpoint
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/mqtt/config/request';
+  const user = extractUserFromRequest(request);
+
+  const duration = Date.now() - startTime;
+  logRouteFetch(
+    functionName,
+    'GET',
+    '/api/mqtt/config/request',
+    1,
+    user,
+    duration
+  );
   return NextResponse.json({
     success: true,
     message: 'MQTT Config Request API',
@@ -107,4 +150,3 @@ export async function GET() {
     },
   });
 }
-

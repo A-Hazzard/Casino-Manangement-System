@@ -17,7 +17,12 @@ export type Cashier = {
   username: string;
   emailAddress: string;
   isEnabled: boolean;
-  shiftStatus?: 'active' | 'pending_review' | 'pending_start' | 'closed' | 'inactive';
+  shiftStatus?:
+    | 'active'
+    | 'pending_review'
+    | 'pending_start'
+    | 'closed'
+    | 'inactive';
   currentBalance?: number;
   denominations?: Denomination[];
   discrepancy?: number;
@@ -26,7 +31,6 @@ export type Cashier = {
   tempPassword?: string;
   tempPasswordChanged?: boolean;
 };
-
 
 export type CashSource = 'Bank' | 'Owner Deposit' | 'Machine';
 export type ExpenseCategory =
@@ -77,7 +81,12 @@ export type VaultShiftOverview = Pick<
   | 'openingDenominations'
 >;
 
-export type CashierShiftStatus = 'pending_start' | 'active' | 'closed' | 'pending_review' | 'cancelled';
+export type CashierShiftStatus =
+  | 'pending_start'
+  | 'active'
+  | 'closed'
+  | 'pending_review'
+  | 'cancelled';
 
 export type CashierShift = {
   _id: string;
@@ -232,8 +241,6 @@ export type EnrichedVaultTransactionOverview = VaultTransactionOverview & {
   toName?: string;
 };
 
-
-
 export type CreateInterLocationTransferRequest = {
   fromLocationId: string;
   toLocationId: string;
@@ -249,7 +256,13 @@ export type ApproveInterLocationTransferRequest = {
 };
 
 export type FloatRequestType = 'increase' | 'decrease';
-export type FloatRequestStatus = 'pending' | 'approved' | 'approved_vm' | 'denied' | 'edited' | 'cancelled';
+export type FloatRequestStatus =
+  | 'pending'
+  | 'approved'
+  | 'approved_vm'
+  | 'denied'
+  | 'edited'
+  | 'cancelled';
 
 export type FloatRequest = {
   _id: string;
@@ -315,8 +328,6 @@ export type InterLocationTransfer = {
   updatedAt: Date;
 };
 
-
-
 export type OpenCashierShiftRequest = {
   locationId: string;
   requestedFloat: number;
@@ -330,8 +341,8 @@ export type CloseCashierShiftRequest = {
 };
 
 export type CloseCashierShiftResponse =
-  | { success: true; status: 'closed' | 'pending_review'; message: string; }
-  | { success: false; error: string; };
+  | { success: true; status: 'closed' | 'pending_review'; message: string }
+  | { success: false; error: string };
 
 export type CreatePayoutRequest = {
   cashierShiftId: string;
@@ -464,8 +475,6 @@ export type CollectionSessionEntry = {
   };
 };
 
-
-
 export type MachineCollectionActivity = {
   _id: string;
   machineId: string;
@@ -502,4 +511,3 @@ export type UpdatePayoutRequest = {
   notes?: string;
   status?: string;
 };
-

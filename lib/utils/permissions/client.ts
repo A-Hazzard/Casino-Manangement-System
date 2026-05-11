@@ -47,8 +47,14 @@ export const hasPageAccess = (
   userRoles: UserRole[],
   page: PageName
 ): boolean => {
-  if (!Array.isArray(userRoles)) { console.error('[hasPageAccess] userRoles is required'); return false; }
-  if (!page) { console.error('[hasPageAccess] page is required'); return false; }
+  if (!Array.isArray(userRoles)) {
+    console.error('[hasPageAccess] userRoles is required');
+    return false;
+  }
+  if (!page) {
+    console.error('[hasPageAccess] page is required');
+    return false;
+  }
   const pagePermissions: Record<PageName, UserRole[]> = {
     dashboard: ['developer', 'owner', 'admin', 'manager', 'location admin'],
     machines: [
@@ -91,13 +97,7 @@ export const hasPageAccess = (
       'collector',
       'reviewer',
     ],
-    reports: [
-      'developer',
-      'owner',
-      'admin',
-      'manager',
-      'location admin',
-    ],
+    reports: ['developer', 'owner', 'admin', 'manager', 'location admin'],
     sessions: ['developer'],
     administration: [
       'developer',
@@ -149,9 +149,18 @@ export const hasTabAccess = (
   page: string,
   tab: string
 ): boolean => {
-  if (!Array.isArray(userRoles)) { console.error('[hasTabAccess] userRoles is required'); return false; }
-  if (!page) { console.error('[hasTabAccess] page is required'); return false; }
-  if (!tab) { console.error('[hasTabAccess] tab is required'); return false; }
+  if (!Array.isArray(userRoles)) {
+    console.error('[hasTabAccess] userRoles is required');
+    return false;
+  }
+  if (!page) {
+    console.error('[hasTabAccess] page is required');
+    return false;
+  }
+  if (!tab) {
+    console.error('[hasTabAccess] tab is required');
+    return false;
+  }
   const tabPermissions: Record<string, UserRole[]> = {
     'administration-users': [
       'developer',
@@ -203,7 +212,10 @@ export const hasTabAccess = (
  * @returns boolean indicating if user has admin access
  */
 export const hasAdminAccess = (userRoles: UserRole[]): boolean => {
-  if (!Array.isArray(userRoles)) { console.error('[hasAdminAccess] userRoles is required'); return false; }
+  if (!Array.isArray(userRoles)) {
+    console.error('[hasAdminAccess] userRoles is required');
+    return false;
+  }
   return (
     userRoles.includes('developer') ||
     userRoles.includes('owner') ||
@@ -217,7 +229,10 @@ export const hasAdminAccess = (userRoles: UserRole[]): boolean => {
  * @returns boolean indicating if user has manager access
  */
 export const hasManagerAccess = (userRoles: UserRole[]): boolean => {
-  if (!Array.isArray(userRoles)) { console.error('[hasManagerAccess] userRoles is required'); return false; }
+  if (!Array.isArray(userRoles)) {
+    console.error('[hasManagerAccess] userRoles is required');
+    return false;
+  }
   return HIGH_PRIORITY_ROLES.some((role: UserRole) => userRoles.includes(role));
 };
 
@@ -231,8 +246,14 @@ export const shouldShowNavigationLink = (
   userRoles: UserRole[],
   page: PageName
 ): boolean => {
-  if (!Array.isArray(userRoles)) { console.error('[shouldShowNavigationLink] userRoles is required'); return false; }
-  if (!page) { console.error('[shouldShowNavigationLink] page is required'); return false; }
+  if (!Array.isArray(userRoles)) {
+    console.error('[shouldShowNavigationLink] userRoles is required');
+    return false;
+  }
+  if (!page) {
+    console.error('[shouldShowNavigationLink] page is required');
+    return false;
+  }
   // Special cases for direct link access
   if (page === 'location-details' || page === 'member-details') {
     return false; // These are accessed via direct links only

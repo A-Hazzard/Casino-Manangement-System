@@ -48,7 +48,9 @@ export function animateDesktopTabTransition(
  * @param collections - Array of collection documents
  * @returns Total location value (sum of movement.gross from all collections)
  */
-export function calculateLocationTotal(collections: CollectionDocument[]): number {
+export function calculateLocationTotal(
+  collections: CollectionDocument[]
+): number {
   if (!collections || collections.length === 0) return 0;
   return collections.reduce((total, collection) => {
     // Sum the meter gross (movement.gross) from each collection
@@ -56,4 +58,3 @@ export function calculateLocationTotal(collections: CollectionDocument[]): numbe
     return total + gross;
   }, 0);
 }
-

@@ -53,7 +53,7 @@ function centerAspectCrop(
 
 /**
  * CircleCropModal Component
- * 
+ *
  * A premium image cropping modal that forces a circular aspect ratio.
  * Used for profile pictures and other circular avatars.
  */
@@ -75,7 +75,11 @@ export default function CircleCropModal({
 
   const handleImageLoad = (e: SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight, width, height } = e.currentTarget;
-    const initialCropPercent = centerAspectCrop(naturalWidth, naturalHeight, aspect);
+    const initialCropPercent = centerAspectCrop(
+      naturalWidth,
+      naturalHeight,
+      aspect
+    );
     setCrop(initialCropPercent);
     setCompletedCrop(convertToPixelCrop(initialCropPercent, width, height));
   };
@@ -121,7 +125,13 @@ export default function CircleCropModal({
       circleCanvas.height = outputSize;
 
       circleCtx.beginPath();
-      circleCtx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, 2 * Math.PI);
+      circleCtx.arc(
+        outputSize / 2,
+        outputSize / 2,
+        outputSize / 2,
+        0,
+        2 * Math.PI
+      );
       circleCtx.clip();
       circleCtx.drawImage(canvas, 0, 0);
 
@@ -149,7 +159,7 @@ export default function CircleCropModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent 
+      <DialogContent
         className="z-[100001] max-w-[500px] overflow-hidden rounded-2xl border-none p-0 shadow-2xl"
         backdropClassName="z-[100000]"
         isMobileFullScreen={false}
@@ -162,7 +172,9 @@ export default function CircleCropModal({
                 <CropIcon className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold text-gray-900">Crop Photo</DialogTitle>
+                <DialogTitle className="text-xl font-bold text-gray-900">
+                  Crop Photo
+                </DialogTitle>
                 <DialogDescription className="text-sm font-medium text-gray-500">
                   Adjust the square to frame your face perfectly
                 </DialogDescription>
@@ -200,19 +212,19 @@ export default function CircleCropModal({
         {/* Action Footer */}
         <div className="bg-gray-50/50 px-6 py-4 backdrop-blur-sm">
           <div className="flex w-full items-center justify-between gap-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={onClose}
               className="group border-gray-200 bg-white px-6 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
             >
               <Cross2Icon className="mr-2 h-4 w-4 transition-transform group-hover:rotate-90" />
               Cancel
             </Button>
-            
+
             <Button
               onClick={handleApply}
               disabled={!completedCrop}
-              className="bg-green-600 px-8 text-white hover:bg-green-700 shadow-lg shadow-green-900/10 active:scale-[0.98] transition-all"
+              className="bg-green-600 px-8 text-white shadow-lg shadow-green-900/10 transition-all hover:bg-green-700 active:scale-[0.98]"
             >
               <CheckIcon className="mr-2 h-5 w-5" />
               Save Picture

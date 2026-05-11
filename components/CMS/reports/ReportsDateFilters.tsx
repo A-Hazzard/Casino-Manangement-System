@@ -3,7 +3,11 @@
 import { TimePeriod } from '@/app/api/lib/types';
 import { Button } from '@/components/shared/ui/button';
 import { MuiDateCalendar } from '@/components/shared/ui/MuiDateCalendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/shared/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/shared/ui/popover';
 import DateRangeIndicator from '@/components/shared/ui/DateRangeIndicator';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
@@ -40,7 +44,11 @@ export default function ReportsDateFilters() {
     if (!isLocationEvaluationOrRevenue && activeMetricsFilter === 'Quarterly') {
       setActiveMetricsFilter('Today');
     }
-  }, [activeMetricsFilter, isLocationEvaluationOrRevenue, setActiveMetricsFilter]);
+  }, [
+    activeMetricsFilter,
+    isLocationEvaluationOrRevenue,
+    setActiveMetricsFilter,
+  ]);
 
   // Conditional filter buttons based on active tab
   const getTimeFilterButtons = () => {
@@ -243,4 +251,3 @@ export default function ReportsDateFilters() {
     </div>
   );
 }
-

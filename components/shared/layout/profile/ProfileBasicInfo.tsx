@@ -8,11 +8,11 @@
 
 import { ChangeEvent, Dispatch, RefObject, SetStateAction } from 'react';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -33,9 +33,7 @@ type ProfileBasicInfoProps = {
   fileInputRef: RefObject<HTMLInputElement | null>;
   onFileSelect: (event: ChangeEvent<HTMLInputElement>) => void;
   validationErrors: Record<string, string>;
-  setValidationErrors: Dispatch<
-    SetStateAction<Record<string, string>>
-  >;
+  setValidationErrors: Dispatch<SetStateAction<Record<string, string>>>;
 };
 
 export default function ProfileBasicInfo({
@@ -52,10 +50,7 @@ export default function ProfileBasicInfo({
   validationErrors,
   setValidationErrors,
 }: ProfileBasicInfoProps) {
-  const handleInputChangeWithValidation = (
-    field: string,
-    value: string
-  ) => {
+  const handleInputChangeWithValidation = (field: string, value: string) => {
     onInputChange(field, value);
     // Clear error when user starts typing
     if (validationErrors[field]) {
@@ -170,7 +165,10 @@ export default function ProfileBasicInfo({
                     type="tel"
                     value={formData?.phoneNumber || ''}
                     onChange={e =>
-                      handleInputChangeWithValidation('phoneNumber', e.target.value)
+                      handleInputChangeWithValidation(
+                        'phoneNumber',
+                        e.target.value
+                      )
                     }
                     placeholder="Enter phone number"
                     className="mt-2"
@@ -209,7 +207,10 @@ export default function ProfileBasicInfo({
                     <Input
                       value={formData?.firstName || ''}
                       onChange={e =>
-                        handleInputChangeWithValidation('firstName', e.target.value)
+                        handleInputChangeWithValidation(
+                          'firstName',
+                          e.target.value
+                        )
                       }
                       placeholder="Enter first name"
                       className={`mt-2 ${
@@ -235,7 +236,10 @@ export default function ProfileBasicInfo({
                     <Input
                       value={formData?.lastName || ''}
                       onChange={e =>
-                        handleInputChangeWithValidation('lastName', e.target.value)
+                        handleInputChangeWithValidation(
+                          'lastName',
+                          e.target.value
+                        )
                       }
                       placeholder="Enter last name"
                       className={`mt-2 ${
@@ -261,4 +265,3 @@ export default function ProfileBasicInfo({
     </Card>
   );
 }
-

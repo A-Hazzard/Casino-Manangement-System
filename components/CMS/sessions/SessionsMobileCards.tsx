@@ -8,13 +8,15 @@ import { Eye } from 'lucide-react';
 import Link from 'next/link';
 import { formatDuration } from './SessionsDesktopTable';
 
-export function SessionsMobileCards({ sessions }: Pick<SessionsTableProps, 'sessions'>) {
+export function SessionsMobileCards({
+  sessions,
+}: Pick<SessionsTableProps, 'sessions'>) {
   const { formatAmount } = useCurrencyFormat();
 
   return (
     <div className="block p-4 lg:hidden">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {sessions.map((session) => (
+        {sessions.map(session => (
           <div
             key={session._id}
             className="overflow-hidden rounded-lg border bg-white transition-shadow hover:shadow-md"
@@ -26,9 +28,13 @@ export function SessionsMobileCards({ sessions }: Pick<SessionsTableProps, 'sess
                   <div className="font-semibold text-gray-900">
                     {session.memberName || 'Unknown Player'}
                   </div>
-                  <div className="text-xs text-gray-500">ID: {session.memberId || 'N/A'}</div>
+                  <div className="text-xs text-gray-500">
+                    ID: {session.memberId || 'N/A'}
+                  </div>
                 </div>
-                <Link href={`/sessions/${session._id}/${session.machineId || ''}/events`}>
+                <Link
+                  href={`/sessions/${session._id}/${session.machineId || ''}/events`}
+                >
                   <Button size="sm" variant="outline" className="h-8 gap-1">
                     <Eye className="h-3 w-3" />
                     View Events
@@ -47,19 +53,27 @@ export function SessionsMobileCards({ sessions }: Pick<SessionsTableProps, 'sess
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500">Duration</span>
-                  <span className="font-medium text-gray-900">{formatDuration(session.duration)}</span>
+                  <span className="font-medium text-gray-900">
+                    {formatDuration(session.duration)}
+                  </span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500">Handle</span>
-                  <span className="font-medium text-gray-900">{formatAmount(session.handle)}</span>
+                  <span className="font-medium text-gray-900">
+                    {formatAmount(session.handle)}
+                  </span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500">Jackpot</span>
-                  <span className="font-medium text-gray-900">{formatAmount(session.jackpot)}</span>
+                  <span className="font-medium text-gray-900">
+                    {formatAmount(session.jackpot)}
+                  </span>
                 </div>
                 <div className="col-span-2 flex flex-col border-t pt-2">
                   <span className="text-xs text-gray-500">Start Time</span>
-                  <span className="font-medium text-gray-900">{formatDate(session.startTime)}</span>
+                  <span className="font-medium text-gray-900">
+                    {formatDate(session.startTime)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -69,4 +83,3 @@ export function SessionsMobileCards({ sessions }: Pick<SessionsTableProps, 'sess
     </div>
   );
 }
-

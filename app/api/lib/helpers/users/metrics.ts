@@ -58,12 +58,7 @@ export async function getUserMetrics(userId: string): Promise<unknown | null> {
 
   const metricsForLocations = await db
     .collection('casinoMetrics')
-    .findOne(
-      { userId },
-      { projection: { _id: 0, userId: 0, lastUpdated: 0 } }
-    );
+    .findOne({ userId }, { projection: { _id: 0, userId: 0, lastUpdated: 0 } });
 
   return metricsForLocations || null;
 }
-
-

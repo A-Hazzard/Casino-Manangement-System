@@ -1,9 +1,9 @@
 /**
  * Shared Vault Management Header
- * 
+ *
  * Provides a consistent header for all Vault Management sub-pages (Cashiers, Floats, etc.)
  * Includes a back button and a persistent notification bell with polling.
- * 
+ *
  * @module components/VAULT/layout/VaultManagerHeader
  */
 'use client';
@@ -13,7 +13,11 @@ import VaultOverviewCloseDayModals from '@/components/VAULT/overview/sections/Va
 import DebugSection from '@/components/shared/debug/DebugSection';
 import NotificationBell from '@/components/shared/ui/NotificationBell';
 import { Button } from '@/components/shared/ui/button';
-import { fetchVaultBalance, handleFloatAction, handleFloatConfirm } from '@/lib/helpers/vaultHelpers';
+import {
+  fetchVaultBalance,
+  handleFloatAction,
+  handleFloatConfirm,
+} from '@/lib/helpers/vaultHelpers';
 import { useNotifications } from '@/lib/hooks/vault/useNotifications';
 import { useVaultCloseDay } from '@/lib/hooks/vault/useVaultCloseDay';
 import { useNotificationStore } from '@/lib/store/notificationStore';
@@ -35,20 +39,25 @@ type VaultManagerHeaderProps = {
   vaultInventory?: Denomination[];
 };
 
-export default function VaultManagerHeader({ 
-  title, 
-  description, 
+export default function VaultManagerHeader({
+  title,
+  description,
   backHref = '/vault/management',
   showBack = true,
   children,
   onFloatActionComplete,
   showNotificationBell = true,
-  vaultInventory: initialInventory
+  vaultInventory: initialInventory,
 }: VaultManagerHeaderProps) {
-  const { user, hasActiveVaultShift, isStaleShift, isVaultReconciled } = useUserStore();
-  const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r?.toLowerCase()));
+  const { user, hasActiveVaultShift, isStaleShift, isVaultReconciled } =
+    useUserStore();
+  const isAdminOrDev = user?.roles?.some(r =>
+    ['admin', 'developer'].includes(r?.toLowerCase())
+  );
   const locationId = user?.assignedLocations?.[0];
-  const [vaultInventory, setVaultInventory] = useState<Denomination[]>(initialInventory || []);
+  const [vaultInventory, setVaultInventory] = useState<Denomination[]>(
+    initialInventory || []
+  );
 
   // Sync prop with local state when it changes
   useEffect(() => {
@@ -62,13 +71,13 @@ export default function VaultManagerHeader({
     unreadCount,
     markAsRead,
     refresh,
-    dismissNotification
+    dismissNotification,
   } = useNotifications(showNotificationBell ? locationId : undefined);
 
   // Fetch vault inventory for float request verification
   const fetchInventory = useCallback(async () => {
     if (!locationId) return;
-    
+
     // If we have a prop, we might rely on parent, but manual refresh should still work
     const balance = await fetchVaultBalance(locationId);
     if (balance?.denominations) {
@@ -84,7 +93,7 @@ export default function VaultManagerHeader({
   // Poll for notifications every 30 seconds
   useEffect(() => {
     if (!locationId || !showNotificationBell) return;
-    
+
     const interval = setInterval(() => {
       refresh();
       fetchInventory(); // Also refresh inventory
@@ -94,65 +103,85 @@ export default function VaultManagerHeader({
   }, [locationId, refresh, fetchInventory, showNotificationBell]);
 
   // Handle float request approval
-  const handleFloatApprove = useCallback(async (requestId: string, approvedDenominations?: Denomination[]) => {
-    try {
-      const status = approvedDenominations ? 'edited' : 'approved';
-      let data: { approvedDenominations?: Denomination[]; approvedAmount?: number } | undefined = undefined;
+  const handleFloatApprove = useCallback(
+    async (requestId: string, approvedDenominations?: Denomination[]) => {
+      try {
+        const status = approvedDenominations ? 'edited' : 'approved';
+        let data:
+          | { approvedDenominations?: Denomination[]; approvedAmount?: number }
+          | undefined = undefined;
 
-      if (approvedDenominations) {
-          const approvedAmount = approvedDenominations.reduce((sum, d) => sum + (d.denomination * d.quantity), 0);
+        if (approvedDenominations) {
+          const approvedAmount = approvedDenominations.reduce(
+            (sum, d) => sum + d.denomination * d.quantity,
+            0
+          );
           data = { approvedDenominations, approvedAmount };
-      }
+        }
 
-      const result = await handleFloatAction(requestId, status, data);
+        const result = await handleFloatAction(requestId, status, data);
 
-      if (result.success) {
-        toast.success(approvedDenominations ? 'Float request validated and approved' : 'Float request approved successfully');
-        refresh(); // Refresh notifications
-        fetchInventory(); // Refresh inventory
-        onFloatActionComplete?.();
-      } else {
-        toast.error(result.error || 'Failed to approve float request');
+        if (result.success) {
+          toast.success(
+            approvedDenominations
+              ? 'Float request validated and approved'
+              : 'Float request approved successfully'
+          );
+          refresh(); // Refresh notifications
+          fetchInventory(); // Refresh inventory
+          onFloatActionComplete?.();
+        } else {
+          toast.error(result.error || 'Failed to approve float request');
+        }
+      } catch (error) {
+        console.error('Error approving float:', error);
+        toast.error('An error occurred while approving the request');
       }
-    } catch (error) {
-      console.error('Error approving float:', error);
-      toast.error('An error occurred while approving the request');
-    }
-  }, [refresh, fetchInventory, onFloatActionComplete]);
+    },
+    [refresh, fetchInventory, onFloatActionComplete]
+  );
 
   // Handle float request denial
-  const handleFloatDeny = useCallback(async (requestId: string, reason?: string) => {
-    try {
-      const result = await handleFloatAction(requestId, 'denied', { vmNotes: reason });
-      if (result.success) {
-        toast.success('Float request denied');
-        refresh(); // Refresh notifications
-        onFloatActionComplete?.();
-      } else {
-        toast.error(result.error || 'Failed to deny float request');
+  const handleFloatDeny = useCallback(
+    async (requestId: string, reason?: string) => {
+      try {
+        const result = await handleFloatAction(requestId, 'denied', {
+          vmNotes: reason,
+        });
+        if (result.success) {
+          toast.success('Float request denied');
+          refresh(); // Refresh notifications
+          onFloatActionComplete?.();
+        } else {
+          toast.error(result.error || 'Failed to deny float request');
+        }
+      } catch (error) {
+        console.error('Error denying float:', error);
+        toast.error('An error occurred while denying the request');
       }
-    } catch (error) {
-      console.error('Error denying float:', error);
-      toast.error('An error occurred while denying the request');
-    }
-  }, [refresh, onFloatActionComplete]);
+    },
+    [refresh, onFloatActionComplete]
+  );
 
   // Handle float receipt confirmation (for returns)
-  const handleFloatReceiptConfirm = useCallback(async (requestId: string) => {
-    try {
-      const result = await handleFloatConfirm(requestId);
-      if (result.success) {
-        toast.success('Float return confirmed and finalized');
-        refresh();
-        onFloatActionComplete?.();
-      } else {
-        toast.error(result.error || 'Failed to confirm float receipt');
+  const handleFloatReceiptConfirm = useCallback(
+    async (requestId: string) => {
+      try {
+        const result = await handleFloatConfirm(requestId);
+        if (result.success) {
+          toast.success('Float return confirmed and finalized');
+          refresh();
+          onFloatActionComplete?.();
+        } else {
+          toast.error(result.error || 'Failed to confirm float receipt');
+        }
+      } catch (error) {
+        console.error('Error confirming receipt:', error);
+        toast.error('An error occurred while confirming receipt');
       }
-    } catch (error) {
-      console.error('Error confirming receipt:', error);
-      toast.error('An error occurred while confirming receipt');
-    }
-  }, [refresh, onFloatActionComplete]);
+    },
+    [refresh, onFloatActionComplete]
+  );
 
   // Map notifications to NotificationItem format
   const bellNotifications = notifications.map(n => ({
@@ -164,19 +193,25 @@ export default function VaultManagerHeader({
     urgent: n.urgent,
     status: n.status,
     relatedEntityId: n.relatedEntityId,
-    metadata: n.metadata
+    metadata: n.metadata,
   }));
 
   // Update global notification store for floating bell
-  const setNotifications = useNotificationStore(state => state.setNotifications);
+  const setNotifications = useNotificationStore(
+    state => state.setNotifications
+  );
   const setHandlers = useNotificationStore(state => state.setHandlers);
-  const clearNotifications = useNotificationStore(state => state.clearNotifications);
+  const clearNotifications = useNotificationStore(
+    state => state.clearNotifications
+  );
 
   const handleMarkAllRead = useCallback(() => {
-      const unreadIds = notifications.filter(n => n.status === 'unread').map(n => n._id);
-      if (unreadIds.length > 0) {
-          markAsRead(unreadIds);
-      }
+    const unreadIds = notifications
+      .filter(n => n.status === 'unread')
+      .map(n => n._id);
+    if (unreadIds.length > 0) {
+      markAsRead(unreadIds);
+    }
   }, [notifications, markAsRead]);
 
   useEffect(() => {
@@ -184,9 +219,17 @@ export default function VaultManagerHeader({
     setHandlers({
       onMarkAsRead: markAsRead,
       onMarkAllAsRead: handleMarkAllRead,
-      onDismiss: dismissNotification
+      onDismiss: dismissNotification,
     });
-  }, [bellNotifications, unreadCount, setNotifications, setHandlers, markAsRead, dismissNotification, handleMarkAllRead]);
+  }, [
+    bellNotifications,
+    unreadCount,
+    setNotifications,
+    setHandlers,
+    markAsRead,
+    dismissNotification,
+    handleMarkAllRead,
+  ]);
 
   // Separate cleanup effect to avoid re-triggering during active session
   useEffect(() => {
@@ -214,11 +257,10 @@ export default function VaultManagerHeader({
     }
   }, [activeStep, refresh, fetchInventory]);
 
-
   return (
-    <div className="border-b pb-4 mb-6">
+    <div className="mb-6 border-b pb-4">
       {/* First Row: Back Button, Title/Description, and Notification Bell */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           {showBack && backHref && (
             <Link href={backHref}>
@@ -230,36 +272,51 @@ export default function VaultManagerHeader({
           {title && (
             <div>
               <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
-              {description && <div className="text-sm text-gray-600">{description}</div>}
+              {description && (
+                <div className="text-sm text-gray-600">{description}</div>
+              )}
             </div>
           )}
-          <DebugSection title="Page Context" data={{ title, description, backHref, locationId, user }} className="ml-2" />
+          <DebugSection
+            title="Page Context"
+            data={{ title, description, backHref, locationId, user }}
+            className="ml-2"
+          />
         </div>
 
         <div className="flex items-center gap-3">
-          {!user?.roles?.includes('cashier') && hasActiveVaultShift && !isAdminOrDev && (
-            <Button 
-              variant="default" 
-              className={`text-white ${!isVaultReconciled ? 'bg-orangeHighlight/50 cursor-not-allowed' : 'bg-orangeHighlight hover:bg-orangeHighlight/90'}`}
-              onClick={() => {
-                if (!isVaultReconciled) {
-                  toast.error('Reconciliation Required', {
-                    description: 'You must reconcile the vault balance before closing the day.'
-                  });
-                  return;
-                }
-                startCloseDay();
-              }}
-            >
-              Close Day
-            </Button>
-          )}
-          
+          {!user?.roles?.includes('cashier') &&
+            hasActiveVaultShift &&
+            !isAdminOrDev && (
+              <Button
+                variant="default"
+                className={`text-white ${!isVaultReconciled ? 'cursor-not-allowed bg-orangeHighlight/50' : 'bg-orangeHighlight hover:bg-orangeHighlight/90'}`}
+                onClick={() => {
+                  if (!isVaultReconciled) {
+                    toast.error('Reconciliation Required', {
+                      description:
+                        'You must reconcile the vault balance before closing the day.',
+                    });
+                    return;
+                  }
+                  startCloseDay();
+                }}
+              >
+                Close Day
+              </Button>
+            )}
+
           {showNotificationBell && (
             <NotificationBell
               notifications={bellNotifications}
               onMarkAsRead={markAsRead}
-              onMarkAllAsRead={() => markAsRead(notifications.filter(n => n.status === 'unread').map(n => n._id))}
+              onMarkAllAsRead={() =>
+                markAsRead(
+                  notifications
+                    .filter(n => n.status === 'unread')
+                    .map(n => n._id)
+                )
+              }
               onNotificationClick={() => {}}
               onDismiss={dismissNotification}
               vaultInventory={vaultInventory}
@@ -274,11 +331,7 @@ export default function VaultManagerHeader({
       </div>
 
       {/* Second Row: Children (Filters, Buttons, etc.) */}
-      {children && (
-        <div className="flex items-center gap-2">
-          {children}
-        </div>
-      )}
+      {children && <div className="flex items-center gap-2">{children}</div>}
 
       {/* Global Close Day Sequence Modals */}
       <VaultOverviewCloseDayModals

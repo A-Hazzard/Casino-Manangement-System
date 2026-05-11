@@ -9,6 +9,11 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -26,6 +31,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * 5. Return availability status
  */
 export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/members/check-unique';
+  const user = extractUserFromRequest(req);
+
   try {
     // ============================================================================
     // STEP 1: Parse query parameters
@@ -73,6 +82,16 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 5: Return availability status
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/members/check-unique',
+      1,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       usernameAvailable,
       emailAvailable,
@@ -82,12 +101,13 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error('[Check Unique API] Error:', errorMessage);
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/members/check-unique',
+      errorMessage,
+      user
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-
-

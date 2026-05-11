@@ -18,13 +18,18 @@
  */
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -73,11 +78,9 @@ function MachinesWithDataModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto w-[95vw] sm:w-full">
+      <DialogContent className="max-h-[80vh] w-[95vw] max-w-4xl overflow-y-auto sm:w-full">
         <DialogHeader>
-          <DialogTitle>
-            Machines with {details.metricName} Activity
-          </DialogTitle>
+          <DialogTitle>Machines with {details.metricName} Activity</DialogTitle>
           <DialogDescription>
             This list shows all {details.machinesWithData} machines that have
             recorded {details.metricName.toLowerCase()} activity during the
@@ -92,11 +95,11 @@ function MachinesWithDataModal({
 
         <div className="space-y-4">
           <div className="rounded-lg border border-orangeHighlight/30 bg-orangeHighlight/15 p-3 text-sm">
-            <p className="font-semibold text-orangeHighlight">Calculation Summary:</p>
+            <p className="font-semibold text-orangeHighlight">
+              Calculation Summary:
+            </p>
             <ul className="mt-1 list-inside list-disc space-y-0.5 text-gray-800">
-              <li>
-                Total machines in view: {details.totalMachines}
-              </li>
+              <li>Total machines in view: {details.totalMachines}</li>
               <li>
                 Machines with {details.metricName.toLowerCase()} activity:{' '}
                 {details.machinesWithData} (excluded:{' '}
@@ -108,7 +111,8 @@ function MachinesWithDataModal({
               </li>
               <li>
                 Top {details.topMachines.length} machines contribute{' '}
-                {formatValue(details.cumulativeValue)} ({details.metricPercentage}% of total{' '}
+                {formatValue(details.cumulativeValue)} (
+                {details.metricPercentage}% of total{' '}
                 {details.metricName.toLowerCase()})
               </li>
             </ul>
@@ -119,7 +123,7 @@ function MachinesWithDataModal({
               All Machines with {details.metricName} Activity (sorted by{' '}
               {details.metricName.toLowerCase()} value, highest to lowest):
             </p>
-            
+
             {/* Desktop Table View */}
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full border-collapse text-sm">
@@ -392,7 +396,9 @@ function MachinesWithDataModal({
                             <ExternalLink className="h-3 w-3 flex-shrink-0 text-blueHighlight" />
                           </button>
                         ) : (
-                          <span className="text-gray-500">Unknown Location</span>
+                          <span className="text-gray-500">
+                            Unknown Location
+                          </span>
                         )}
                         {machine.manufacturer && (
                           <>
@@ -504,8 +510,11 @@ function MachinesWithDataModal({
             <p className="font-medium text-gray-900">Notes:</p>
             <ul className="mt-1 list-inside list-disc space-y-0.5">
               <li>
-                Machines highlighted in <span className="border border-orangeHighlight/40 bg-orangeHighlight/20 px-1.5 py-0.5 text-orangeHighlight font-medium rounded">orange</span> are
-                part of the top {details.topMachines.length} machines that
+                Machines highlighted in{' '}
+                <span className="rounded border border-orangeHighlight/40 bg-orangeHighlight/20 px-1.5 py-0.5 font-medium text-orangeHighlight">
+                  orange
+                </span>{' '}
+                are part of the top {details.topMachines.length} machines that
                 contribute {details.metricPercentage}% of the total{' '}
                 {details.metricName.toLowerCase()}.
               </li>
@@ -622,8 +631,7 @@ function VerificationDetailsSection({
                 </thead>
                 <tbody>
                   {details.topMachines.map(machine => {
-                    const isThresholdReached =
-                      machine.percentageOfTotal >= 75;
+                    const isThresholdReached = machine.percentageOfTotal >= 75;
                     return (
                       <tr
                         key={machine.machineId}
@@ -677,7 +685,8 @@ export default function ReportsMachinesEvaluationSummary({
   gamesPlayedDetails,
 }: ReportsMachinesEvaluationSummaryProps) {
   const { displayCurrency } = useCurrencyFormat();
-  const formatCurrency = (value: number) => formatCurrencyWithCodeString(value, displayCurrency);
+  const formatCurrency = (value: number) =>
+    formatCurrencyWithCodeString(value, displayCurrency);
   const formatNumber = (value: number) => value.toLocaleString();
 
   return (
@@ -733,4 +742,3 @@ export default function ReportsMachinesEvaluationSummary({
     </Card>
   );
 }
-

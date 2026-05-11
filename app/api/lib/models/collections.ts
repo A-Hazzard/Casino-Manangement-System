@@ -9,8 +9,8 @@ const sasMetersSchema = new Schema(
     gross: { type: Number },
     gamesPlayed: { type: Number },
     jackpot: { type: Number },
-    sasStartTime: { type: String },
-    sasEndTime: { type: String },
+    sasStartTime: { type: Date },
+    sasEndTime: { type: Date },
   },
   { _id: false }
 );
@@ -63,4 +63,3 @@ const collectionsSchema = new Schema(
 export const Collections =
   (mongoose.models?.Collections as mongoose.Model<CollectionDocument>) ||
   mongoose.model<CollectionDocument>('Collections', collectionsSchema);
-

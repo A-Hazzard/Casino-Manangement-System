@@ -17,7 +17,7 @@ export default function DeleteMovementRequestModal({
   const { user: currentUser } = useUserStore();
   const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
   const isDeveloper = userRoles.includes('developer');
-  
+
   const [loading, setLoading] = useState(false);
   const [deleteType, setDeleteType] = useState<'soft' | 'hard'>('soft');
 
@@ -26,7 +26,10 @@ export default function DeleteMovementRequestModal({
   const handleDelete = async () => {
     setLoading(true);
     try {
-      await deleteMovementRequest(selectedMovementRequest._id, isDeveloper ? deleteType : 'soft');
+      await deleteMovementRequest(
+        selectedMovementRequest._id,
+        isDeveloper ? deleteType : 'soft'
+      );
       onDeleted();
       closeDeleteModal();
     } catch {
@@ -56,15 +59,17 @@ export default function DeleteMovementRequestModal({
           <p className="text-sm text-muted-foreground">
             Cabinet: <strong>{selectedMovementRequest.cabinetIn}</strong>
           </p>
-          
+
           {isDeveloper && (
-            <div className="mt-6 flex flex-col items-center gap-3 rounded-lg bg-gray-50 p-4 border border-gray-100">
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Developer Delete Options:</span>
-              <div className="flex gap-2 w-full">
+            <div className="mt-6 flex flex-col items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 p-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                Developer Delete Options:
+              </span>
+              <div className="flex w-full gap-2">
                 <Button
                   type="button"
                   variant={deleteType === 'soft' ? 'default' : 'outline'}
-                  className={`flex-1 text-xs h-9 ${deleteType === 'soft' ? 'bg-amber-500 hover:bg-amber-600 border-none' : 'border-gray-200 text-gray-600'}`}
+                  className={`h-9 flex-1 text-xs ${deleteType === 'soft' ? 'border-none bg-amber-500 hover:bg-amber-600' : 'border-gray-200 text-gray-600'}`}
                   onClick={() => setDeleteType('soft')}
                 >
                   SOFT DELETE
@@ -72,16 +77,16 @@ export default function DeleteMovementRequestModal({
                 <Button
                   type="button"
                   variant={deleteType === 'hard' ? 'default' : 'outline'}
-                  className={`flex-1 text-xs h-9 ${deleteType === 'hard' ? 'bg-red-600 hover:bg-red-700 border-none' : 'border-gray-200 text-gray-600'}`}
+                  className={`h-9 flex-1 text-xs ${deleteType === 'hard' ? 'border-none bg-red-600 hover:bg-red-700' : 'border-gray-200 text-gray-600'}`}
                   onClick={() => setDeleteType('hard')}
                 >
                   HARD DELETE
                 </Button>
               </div>
-              <p className="text-[10px] text-gray-400 italic">
-                {deleteType === 'soft' 
-                  ? "Soft delete marks the record as deleted (retains in DB)." 
-                  : "Hard delete PERMANENTLY removes the record from the database."}
+              <p className="text-[10px] italic text-gray-400">
+                {deleteType === 'soft'
+                  ? 'Soft delete marks the record as deleted (retains in DB).'
+                  : 'Hard delete PERMANENTLY removes the record from the database.'}
               </p>
             </div>
           )}
@@ -89,10 +94,14 @@ export default function DeleteMovementRequestModal({
         <div className="mt-6 flex justify-center gap-4">
           <Button
             onClick={handleDelete}
-            className={`${deleteType === 'hard' && isDeveloper ? 'bg-red-700 hover:bg-red-800' : 'bg-destructive hover:bg-destructive/90'} text-white font-bold min-w-[120px]`}
+            className={`${deleteType === 'hard' && isDeveloper ? 'bg-red-700 hover:bg-red-800' : 'bg-destructive hover:bg-destructive/90'} min-w-[120px] font-bold text-white`}
             disabled={loading}
           >
-            {loading ? 'Processing...' : deleteType === 'hard' && isDeveloper ? 'PERM DELETE' : 'YES, DELETE'}
+            {loading
+              ? 'Processing...'
+              : deleteType === 'hard' && isDeveloper
+                ? 'PERM DELETE'
+                : 'YES, DELETE'}
           </Button>
           <Button
             onClick={closeDeleteModal}
@@ -106,4 +115,3 @@ export default function DeleteMovementRequestModal({
     </div>
   );
 }
-

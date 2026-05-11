@@ -21,33 +21,45 @@
 import type { ActivityLog } from '@/shared/types/activityLog';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { DatePicker } from '@/components/shared/ui/date-picker';
 import {
-    Dialog,
-    DialogContent,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import { useUserStore } from '@/lib/store/userStore';
 import { formatDateString } from '@/lib/utils/formatting';
-import { Activity, ArrowUpDown, Check, Copy, ExternalLink, Trash2 } from 'lucide-react';
+import {
+  Activity,
+  ArrowUpDown,
+  Check,
+  Copy,
+  ExternalLink,
+  Trash2,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import AdministrationActivityLogsSearchBar from '../AdministrationActivityLogsSearchBar';
@@ -99,14 +111,22 @@ function AdministrationActivityLogsTable({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // ObjectID resolution state (developer-only)
-  const [resolveProgress, setResolveProgress] = useState<{ updated: number; total: number; remaining: number } | null>(null);
+  const [resolveProgress, setResolveProgress] = useState<{
+    updated: number;
+    total: number;
+    remaining: number;
+  } | null>(null);
   const [isResolving, setIsResolving] = useState(false);
   const [logToDelete, setLogToDelete] = useState<ActivityLog | null>(null);
   const [deleteType, setDeleteType] = useState<'soft' | 'hard'>('soft');
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Copy to clipboard function
-  const copyToClipboard = async (text: string, label: string, fieldId: string) => {
+  const copyToClipboard = async (
+    text: string,
+    label: string,
+    fieldId: string
+  ) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedField(fieldId);
@@ -122,9 +142,11 @@ function AdministrationActivityLogsTable({
     // If username is "unknown" and description contains an identifier, extract it
     if (log.username === 'unknown' && log.description) {
       // Try to extract email/username from description like "Invalid password for: email@example.com"
-      const emailMatch = log.description.match(/(?:for|:)\s*([^\s:]+@[^\s:]+)/i);
+      const emailMatch = log.description.match(
+        /(?:for|:)\s*([^\s:]+@[^\s:]+)/i
+      );
       if (emailMatch) return emailMatch[1];
-      
+
       const userMatch = log.description.match(/(?:for|:)\s*([^\s:]+)/i);
       if (userMatch) return userMatch[1];
     }
@@ -145,9 +167,12 @@ function AdministrationActivityLogsTable({
   };
 
   // Calculate which batch corresponds to the current page
-  const calculateBatchNumber = useCallback((page: number) => {
-    return Math.floor(page / pagesPerBatch) + 1;
-  }, [pagesPerBatch]);
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / pagesPerBatch) + 1;
+    },
+    [pagesPerBatch]
+  );
 
   // Debounce search term
   useEffect(() => {
@@ -211,7 +236,7 @@ function AdministrationActivityLogsTable({
         const logs = data.data.activities || data.data.logs || [];
         setAllLogs(logs);
         setLoadedBatches(new Set([1]));
-        
+
         if (data.data.pagination) {
           setServerTotalCount(data.data.pagination.totalCount || 0);
           setServerTotalPages(data.data.pagination.totalPages || 1);
@@ -287,7 +312,9 @@ function AdministrationActivityLogsTable({
           if (data.success) {
             const logs = data.data.activities || data.data.logs || [];
             setAllLogs(prev => {
-              const existingIds = new Set(prev.map((item: ActivityLog) => item._id));
+              const existingIds = new Set(
+                prev.map((item: ActivityLog) => item._id)
+              );
               const newItems = logs.filter(
                 (item: ActivityLog) => !existingIds.has(item._id)
               );
@@ -340,7 +367,9 @@ function AdministrationActivityLogsTable({
           if (data.success) {
             const logs = data.data.activities || data.data.logs || [];
             setAllLogs(prev => {
-              const existingIds = new Set(prev.map((item: ActivityLog) => item._id));
+              const existingIds = new Set(
+                prev.map((item: ActivityLog) => item._id)
+              );
               const newItems = logs.filter(
                 (item: ActivityLog) => !existingIds.has(item._id)
               );
@@ -488,7 +517,11 @@ function AdministrationActivityLogsTable({
         const res = await fetch('/api/admin/resolve-machine-names?limit=100');
         const data = await res.json();
         if (data.success) {
-          setResolveProgress({ updated: data.updated, total: data.total, remaining: data.remaining });
+          setResolveProgress({
+            updated: data.updated,
+            total: data.total,
+            remaining: data.remaining,
+          });
           // If any logs were updated, refresh the table
           if (data.updated > 0) {
             fetchInitialBatch();
@@ -525,12 +558,17 @@ function AdministrationActivityLogsTable({
     if (!logToDelete) return;
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/activity-logs/${logToDelete._id}?deleteType=${deleteType}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `/api/activity-logs/${logToDelete._id}?deleteType=${deleteType}`,
+        {
+          method: 'DELETE',
+        }
+      );
       const data = await response.json();
       if (data.success) {
-        toast.success(`Activity log ${deleteType === 'hard' ? 'permanently removed' : 'marked as deleted'}`);
+        toast.success(
+          `Activity log ${deleteType === 'hard' ? 'permanently removed' : 'marked as deleted'}`
+        );
         setIsDeleteModalOpen(false);
         setLogToDelete(null);
         fetchInitialBatch();
@@ -552,11 +590,52 @@ function AdministrationActivityLogsTable({
         <div className="mb-3 flex items-center gap-3 rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm text-violet-800">
           <span className="font-semibold text-violet-600">[DEV]</span>
           {resolveProgress.remaining > 0 ? (
-            <span>
-              Resolving machine names: <strong>{resolveProgress.updated}</strong> updated this pass, <strong>{resolveProgress.remaining}</strong> remaining…
-            </span>
+            <>
+              <span className="flex-1">
+                Resolving machine names:{' '}
+                <strong>{resolveProgress.updated}</strong> updated this pass,{' '}
+                <strong>{resolveProgress.remaining}</strong> remaining…
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const runResolve = async () => {
+                    if (isResolving) return;
+                    setIsResolving(true);
+                    try {
+                      const res = await fetch(
+                        '/api/admin/resolve-machine-names?limit=100'
+                      );
+                      const data = await res.json();
+                      if (data.success) {
+                        setResolveProgress({
+                          updated: data.updated,
+                          total: data.total,
+                          remaining: data.remaining,
+                        });
+                        if (data.updated > 0) {
+                          fetchInitialBatch();
+                        }
+                      }
+                    } catch {
+                      // Silently ignore
+                    } finally {
+                      setIsResolving(false);
+                    }
+                  };
+                  runResolve();
+                }}
+                disabled={isResolving}
+                className="flex-shrink-0 rounded-md bg-violet-600 px-3 py-1 text-xs font-medium text-white hover:bg-violet-700 disabled:opacity-50"
+              >
+                {isResolving ? 'Resolving…' : 'Resolve Now'}
+              </button>
+            </>
           ) : (
-            <span>Machine name resolution complete — <strong>{resolveProgress.total}</strong> names resolved.</span>
+            <span>
+              Machine name resolution complete —{' '}
+              <strong>{resolveProgress.total}</strong> names resolved.
+            </span>
           )}
         </div>
       )}
@@ -695,7 +774,13 @@ function AdministrationActivityLogsTable({
                               {/* Username */}
                               <div className="flex items-center justify-center gap-1">
                                 <button
-                                  onClick={() => copyToClipboard(getDisplayUsername(log), 'Username', `username-${log._id}`)}
+                                  onClick={() =>
+                                    copyToClipboard(
+                                      getDisplayUsername(log),
+                                      'Username',
+                                      `username-${log._id}`
+                                    )
+                                  }
                                   className="flex items-center gap-1 text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline"
                                   title="Click to copy username"
                                 >
@@ -707,12 +792,18 @@ function AdministrationActivityLogsTable({
                                   )}
                                 </button>
                               </div>
-                              
+
                               {/* User ID */}
                               {log.userId && log.userId !== 'unknown' && (
                                 <div className="flex items-center justify-center gap-1">
                                   <button
-                                    onClick={() => copyToClipboard(log.userId!, 'User ID', `userId-${log._id}`)}
+                                    onClick={() =>
+                                      copyToClipboard(
+                                        log.userId!,
+                                        'User ID',
+                                        `userId-${log._id}`
+                                      )
+                                    }
                                     className="flex items-center gap-1 font-mono text-xs text-gray-700 hover:text-blue-600 hover:underline"
                                     title="Click to copy user ID"
                                   >
@@ -725,24 +816,32 @@ function AdministrationActivityLogsTable({
                                   </button>
                                 </div>
                               )}
-                              
+
                               {/* Email (only show if different from username) */}
-                              {getDisplayEmail(log) && getDisplayEmail(log) !== getDisplayUsername(log) && (
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    onClick={() => copyToClipboard(getDisplayEmail(log)!, 'Email', `email-${log._id}`)}
-                                    className="flex items-center gap-1 text-xs text-gray-600 hover:text-blue-600 hover:underline"
-                                    title="Click to copy email"
-                                  >
-                                    {getDisplayEmail(log)}
-                                    {copiedField === `email-${log._id}` ? (
-                                      <Check className="h-3 w-3 text-green-600" />
-                                    ) : (
-                                      <Copy className="h-3 w-3 opacity-50" />
-                                    )}
-                                  </button>
-                                </div>
-                              )}
+                              {getDisplayEmail(log) &&
+                                getDisplayEmail(log) !==
+                                  getDisplayUsername(log) && (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      onClick={() =>
+                                        copyToClipboard(
+                                          getDisplayEmail(log)!,
+                                          'Email',
+                                          `email-${log._id}`
+                                        )
+                                      }
+                                      className="flex items-center gap-1 text-xs text-gray-600 hover:text-blue-600 hover:underline"
+                                      title="Click to copy email"
+                                    >
+                                      {getDisplayEmail(log)}
+                                      {copiedField === `email-${log._id}` ? (
+                                        <Check className="h-3 w-3 text-green-600" />
+                                      ) : (
+                                        <Copy className="h-3 w-3 opacity-50" />
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
                             </div>
                           </TableCell>
                           <TableCell centered>
@@ -783,7 +882,13 @@ function AdministrationActivityLogsTable({
                             <div className="flex flex-col items-center">
                               {log.ipAddress && log.ipAddress !== 'unknown' ? (
                                 <button
-                                  onClick={() => copyToClipboard(log.ipAddress!, 'IP Address', `ip-${log._id}`)}
+                                  onClick={() =>
+                                    copyToClipboard(
+                                      log.ipAddress!,
+                                      'IP Address',
+                                      `ip-${log._id}`
+                                    )
+                                  }
                                   className="flex items-center gap-1 text-gray-800 hover:text-blue-600 hover:underline"
                                   title="Click to copy IP address"
                                 >
@@ -903,24 +1008,42 @@ function AdministrationActivityLogsTable({
               <Trash2 className="h-4 w-4 text-red-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-red-700">Delete Activity Log</p>
-              <p className="text-xs text-red-500">This action may be irreversible</p>
+              <p className="text-sm font-semibold text-red-700">
+                Delete Activity Log
+              </p>
+              <p className="text-xs text-red-500">
+                This action may be irreversible
+              </p>
             </div>
           </div>
 
           {/* Body */}
           <div className="space-y-4 px-5 py-4">
             {/* Log summary */}
-            <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 font-mono text-xs text-gray-500 space-y-1">
-              <p><span className="font-semibold text-gray-600">ID</span> &nbsp;{logToDelete?._id}</p>
-              <p><span className="font-semibold text-gray-600">Action</span> &nbsp;{logToDelete?.action}</p>
-              <p><span className="font-semibold text-gray-600">User</span> &nbsp;{logToDelete?.username}</p>
-              <p><span className="font-semibold text-gray-600">Time</span> &nbsp;{logToDelete && formatDateString(logToDelete.timestamp)}</p>
+            <div className="space-y-1 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 font-mono text-xs text-gray-500">
+              <p>
+                <span className="font-semibold text-gray-600">ID</span> &nbsp;
+                {logToDelete?._id}
+              </p>
+              <p>
+                <span className="font-semibold text-gray-600">Action</span>{' '}
+                &nbsp;{logToDelete?.action}
+              </p>
+              <p>
+                <span className="font-semibold text-gray-600">User</span> &nbsp;
+                {logToDelete?.username}
+              </p>
+              <p>
+                <span className="font-semibold text-gray-600">Time</span> &nbsp;
+                {logToDelete && formatDateString(logToDelete.timestamp)}
+              </p>
             </div>
 
             {/* Deletion mode */}
             <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Deletion mode</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                Deletion mode
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -970,7 +1093,11 @@ function AdministrationActivityLogsTable({
               disabled={isDeleting}
               className={`flex-1 ${deleteType === 'hard' ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600'} text-white`}
             >
-              {isDeleting ? 'Deleting…' : deleteType === 'hard' ? 'Delete permanently' : 'Soft delete'}
+              {isDeleting
+                ? 'Deleting…'
+                : deleteType === 'hard'
+                  ? 'Delete permanently'
+                  : 'Soft delete'}
             </Button>
           </div>
         </DialogContent>
@@ -980,4 +1107,3 @@ function AdministrationActivityLogsTable({
 }
 
 export default AdministrationActivityLogsTable;
-

@@ -15,7 +15,6 @@ import { forwardRef } from 'react';
 import { ComponentPropsWithoutRef, ElementRef } from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 
-
 import { cn } from '@/lib/utils';
 
 // ============================================================================
@@ -46,4 +45,3 @@ const PopoverContent = forwardRef<
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
 export { Popover, PopoverContent, PopoverTrigger };
-

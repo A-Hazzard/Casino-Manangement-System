@@ -87,7 +87,7 @@ export function SMIBManagementSkeleton() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Skeleton className="h-3 w-32" />
-              
+
               {/* Connection Info Box */}
               <div className="rounded-md bg-gray-50 p-3">
                 <Skeleton className="mb-2 h-4 w-24" />
@@ -178,13 +178,13 @@ export function SMIBManagementSkeleton() {
               <CardContent className="space-y-4">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-3/4" />
-                
+
                 <div className="space-y-3">
                   <div>
                     <Skeleton className="mb-2 h-4 w-40" />
                     <Skeleton className="h-11 w-full" />
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <Skeleton className="h-10 w-44" />
                   </div>
@@ -206,5 +206,3 @@ export function SMIBManagementSkeleton() {
     </div>
   );
 }
-
-

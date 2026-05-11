@@ -10,6 +10,13 @@
  * Supported POST actions: start | addEntry | removeEntry | cancel
  */
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import {
+  logRouteFetch,
+  logRouteCreate,
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -23,6 +30,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param {boolean} isEndOfDay - Filter specifically for EOD sessions
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/vault/collection-session';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async () => {
     try {
       const { searchParams } = new URL(request.url);
@@ -32,11 +43,19 @@ export async function GET(request: NextRequest) {
         type = searchParams.get('type') || 'soft_count',
         isEOD = searchParams.get('isEndOfDay') === 'true';
 
-      if (!vShiftId || !locId)
+      if (!vShiftId || !locId) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/vault/collection-session',
+          'Vault Shift ID and Location ID required',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Vault Shift ID and Location ID required' },
           { status: 400 }
         );
+      }
 
       const query: Record<string, unknown> = {
         locationId: locId,
@@ -50,10 +69,36 @@ export async function GET(request: NextRequest) {
       const session = await VaultCollectionSession.findOne(query).sort({
         createdAt: -1,
       });
+
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/vault/collection-session',
+        session ? 1 : 0,
+        user,
+        duration
+      );
+
       return NextResponse.json({ success: true, session });
     } catch (e) {
-      console.error('[CollectionSession GET] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to fetch collection session';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/vault/collection-session',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[CollectionSession GET] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        { status: 500 }
+      );
     }
   });
 }
@@ -71,7 +116,11 @@ export async function GET(request: NextRequest) {
  * @body {boolean} isEndOfDay - Whether this is an EOD session
  */
 export async function POST(request: NextRequest) {
-  return withApiAuth(request, async ({ user }) => {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/collection-session';
+  const user = extractUserFromRequest(request);
+
+  return withApiAuth(request, async ({ user: userPayload }) => {
     try {
       const {
         action,
@@ -83,11 +132,19 @@ export async function POST(request: NextRequest) {
         type = 'soft_count',
         isEndOfDay = false,
       } = await request.json();
-      if (!locationId || !vaultShiftId)
+      if (!locationId || !vaultShiftId) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/collection-session',
+          'Location and Vault Shift ID required',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Location and Vault Shift ID required' },
           { status: 400 }
         );
+      }
 
       let session;
       if (action === 'start') {
@@ -98,34 +155,69 @@ export async function POST(request: NextRequest) {
           status: 'active',
           isEndOfDay,
         });
-        if (existing)
+        if (existing) {
+          const duration = Date.now() - startTime;
+          logRouteFetch(
+            functionName,
+            'POST',
+            '/api/vault/collection-session',
+            1,
+            user,
+            duration
+          );
           return NextResponse.json({
             success: true,
             session: existing,
             message: 'Resumed existing session',
           });
+        }
         session = await VaultCollectionSession.create({
           locationId,
           vaultShiftId,
           type,
           isEndOfDay,
-          startedBy: user._id || 'system',
+          startedBy: userPayload._id || 'system',
           status: 'active',
           entries: [],
           totalCollected: 0,
         });
+        const duration = Date.now() - startTime;
+        logRouteCreate(
+          functionName,
+          'POST',
+          '/api/vault/collection-session',
+          1,
+          user,
+          duration
+        );
       } else if (action === 'addEntry') {
-        if (!sessionId || !entryData)
+        if (!sessionId || !entryData) {
+          logRouteError(
+            functionName,
+            'POST',
+            '/api/vault/collection-session',
+            'Session ID and Entry Data required',
+            user
+          );
           return NextResponse.json(
             { success: false, error: 'Session ID and Entry Data required' },
             { status: 400 }
           );
+        }
         session = await VaultCollectionSession.findOne({ _id: sessionId });
-        if (!session || session.status !== 'active')
+        if (!session || session.status !== 'active') {
+          logRouteError(
+            functionName,
+            'POST',
+            '/api/vault/collection-session',
+            'Active session not found',
+            user
+          );
           return NextResponse.json(
             { success: false, error: 'Active session not found' },
             { status: 404 }
           );
+        }
 
         const existingIdx = session.entries.findIndex(
           (e: { machineId: string }) => e.machineId === entryData.machineId
@@ -153,18 +245,43 @@ export async function POST(request: NextRequest) {
           0
         );
         await session.save();
+        const duration = Date.now() - startTime;
+        logRouteUpdate(
+          functionName,
+          'POST',
+          '/api/vault/collection-session',
+          1,
+          user,
+          duration
+        );
       } else if (action === 'removeEntry') {
-        if (!sessionId || !machineId)
+        if (!sessionId || !machineId) {
+          logRouteError(
+            functionName,
+            'POST',
+            '/api/vault/collection-session',
+            'Session ID and Machine ID required',
+            user
+          );
           return NextResponse.json(
             { success: false, error: 'Session ID and Machine ID required' },
             { status: 400 }
           );
+        }
         session = await VaultCollectionSession.findOne({ _id: sessionId });
-        if (!session)
+        if (!session) {
+          logRouteError(
+            functionName,
+            'POST',
+            '/api/vault/collection-session',
+            'Session not found',
+            user
+          );
           return NextResponse.json(
             { success: false, error: 'Session not found' },
             { status: 404 }
           );
+        }
         session.entries = session.entries.filter(
           (e: { machineId: string }) => e.machineId !== machineId
         );
@@ -174,23 +291,64 @@ export async function POST(request: NextRequest) {
           0
         );
         await session.save();
+        const duration = Date.now() - startTime;
+        logRouteUpdate(
+          functionName,
+          'POST',
+          '/api/vault/collection-session',
+          1,
+          user,
+          duration
+        );
       } else if (action === 'cancel') {
-        if (!sessionId)
+        if (!sessionId) {
+          logRouteError(
+            functionName,
+            'POST',
+            '/api/vault/collection-session',
+            'Session ID required',
+            user
+          );
           return NextResponse.json(
             { success: false, error: 'Session ID required' },
             { status: 400 }
           );
+        }
         session = await VaultCollectionSession.findOneAndUpdate(
           { _id: sessionId },
           { status: 'cancelled' },
           { new: true }
         );
+        const duration = Date.now() - startTime;
+        logRouteUpdate(
+          functionName,
+          'POST',
+          '/api/vault/collection-session',
+          1,
+          user,
+          duration
+        );
       }
 
       return NextResponse.json({ success: true, session });
     } catch (e) {
-      console.error('[CollectionSession POST] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to manage collection session';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/collection-session',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[CollectionSession POST] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        { status: 500 }
+      );
     }
   });
 }

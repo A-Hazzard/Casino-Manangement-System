@@ -60,7 +60,10 @@ export function VariationCheckPopover({
 
   if (!mounted || !isOpen) return null;
 
-  const machineWithVariationsCount = variationsData?.machines.filter(m => typeof m.variation === 'number' && m.variation !== 0).length || 0;
+  const machineWithVariationsCount =
+    variationsData?.machines.filter(
+      m => typeof m.variation === 'number' && m.variation !== 0
+    ).length || 0;
   const totalMachinesCount = variationsData?.machines.length || 0;
 
   return createPortal(
@@ -72,15 +75,15 @@ export function VariationCheckPopover({
         transition={{ duration: 0.2 }}
         className="fixed inset-0 z-[100010] flex items-center justify-center bg-black/50 p-4"
         style={{ pointerEvents: 'auto' }}
-        onPointerDownCapture={(e) => e.stopPropagation()}
-        onMouseDownCapture={(e) => e.stopPropagation()}
+        onPointerDownCapture={e => e.stopPropagation()}
+        onMouseDownCapture={e => e.stopPropagation()}
       >
         <motion.div
           className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl"
           initial={{ y: 20 }}
           animate={{ y: 0 }}
           exit={{ y: 20 }}
-          onClick={(e) => e.stopPropagation()}
+          onClick={e => e.stopPropagation()}
         >
           {/* Checking State */}
           {isChecking && (
@@ -91,8 +94,12 @@ export function VariationCheckPopover({
               >
                 <Loader2 className="h-12 w-12 text-blue-500" />
               </motion.div>
-              <p className="text-center text-lg font-semibold text-gray-800">Checking for variations...</p>
-              <p className="text-center text-sm text-gray-600">Please wait while we analyze the data</p>
+              <p className="text-center text-lg font-semibold text-gray-800">
+                Checking for variations...
+              </p>
+              <p className="text-center text-sm text-gray-600">
+                Please wait while we analyze the data
+              </p>
             </div>
           )}
 
@@ -107,14 +114,21 @@ export function VariationCheckPopover({
                 <CheckCircle2 className="h-12 w-12 text-green-500" />
               </motion.div>
               <div className="text-center">
-                <p className="text-lg font-semibold text-gray-800">No variations found</p>
-                <p className="text-sm text-gray-600">All machines are in sync with SAS data</p>
+                <p className="text-lg font-semibold text-gray-800">
+                  No variations found
+                </p>
+                <p className="text-sm text-gray-600">
+                  All machines are in sync with SAS data
+                </p>
               </div>
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" onClick={onClose} className="flex-1">
                   Cancel
                 </Button>
-                <Button onClick={onSubmit} className="flex-1 bg-green-600 hover:bg-green-700">
+                <Button
+                  onClick={onSubmit}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
                   Submit
                 </Button>
               </div>
@@ -132,21 +146,34 @@ export function VariationCheckPopover({
                 <AlertCircle className="h-12 w-12 text-amber-500" />
               </motion.div>
               <div className="text-center">
-                <p className="text-lg font-semibold text-gray-800">Variations found</p>
+                <p className="text-lg font-semibold text-gray-800">
+                  Variations found
+                </p>
                 <p className="text-sm text-gray-600">
-                  {machineWithVariationsCount} / {totalMachinesCount} machines with variation
+                  {machineWithVariationsCount} / {totalMachinesCount} machines
+                  with variation
                 </p>
               </div>
-              <div className="flex flex-col gap-2 w-full pt-2">
+              <div className="flex w-full flex-col gap-2 pt-2">
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={onClose} className="flex-1">
+                  <Button
+                    variant="outline"
+                    onClick={onClose}
+                    className="flex-1"
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={onMinimize} className="flex-1 bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100">
+                  <Button
+                    onClick={onMinimize}
+                    className="flex-1 border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                  >
                     View Details
                   </Button>
                 </div>
-                <Button onClick={onSubmit} className="w-full bg-green-600 hover:bg-green-700 font-bold border-b-4 border-green-800 transition-all">
+                <Button
+                  onClick={onSubmit}
+                  className="w-full border-b-4 border-green-800 bg-green-600 font-bold transition-all hover:bg-green-700"
+                >
                   Confirm & Submit with Variation
                 </Button>
               </div>
@@ -164,7 +191,9 @@ export function VariationCheckPopover({
                 <AlertCircle className="h-12 w-12 text-red-500" />
               </motion.div>
               <div className="text-center">
-                <p className="text-lg font-semibold text-gray-800">Error checking variations</p>
+                <p className="text-lg font-semibold text-gray-800">
+                  Error checking variations
+                </p>
                 <p className="text-sm text-gray-600">{error}</p>
               </div>
               <div className="flex gap-2 pt-2">

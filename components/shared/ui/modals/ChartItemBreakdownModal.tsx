@@ -85,8 +85,7 @@ export default function ChartItemBreakdownModal({
   totalMetrics,
   totalMachinesCount,
 }: ChartItemBreakdownModalProps) {
-  const { formatAmount, shouldShowCurrency } =
-    useCurrencyFormat();
+  const { formatAmount, shouldShowCurrency } = useCurrencyFormat();
 
   // Calculate location breakdown
   const locationBreakdown = useMemo(() => {
@@ -223,7 +222,7 @@ export default function ChartItemBreakdownModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">
+      <DialogContent className="flex max-h-[90vh] max-w-7xl flex-col">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
             {itemLabel} Breakdown: {itemName}
@@ -234,10 +233,10 @@ export default function ChartItemBreakdownModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-auto">
             <Table>
-              <TableHeader className="sticky top-0 bg-white z-10">
+              <TableHeader className="sticky top-0 z-10 bg-white">
                 <TableRow>
                   <TableHead className="font-semibold">Location</TableHead>
                   <TableHead className="text-right font-semibold">
@@ -289,156 +288,155 @@ export default function ChartItemBreakdownModal({
                   <TableRow>
                     <TableCell
                       colSpan={15}
-                      className="text-center py-8 text-gray-500"
+                      className="py-8 text-center text-gray-500"
                     >
                       No location data available for this {itemType}
                     </TableCell>
                   </TableRow>
                 ) : (
                   locationBreakdown.map(location => (
-                  <TableRow key={location.locationId}>
-                    <TableCell className="font-medium">
-                      {location.locationName}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {location.machineCount}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {location.floorPositions.toFixed(2)}%
-                    </TableCell>
-                    <TableCell className="text-right">
-                       {shouldShowCurrency()
-                         ? formatAmount(location.totalHandle)
-                         : formatCurrency(location.totalHandle)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {location.totalHandlePercent.toFixed(2)}%
-                    </TableCell>
-                    <TableCell className="text-right">
-                       {shouldShowCurrency()
-                         ? formatAmount(location.totalWin)
-                         : formatCurrency(location.totalWin)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {location.totalWinPercent.toFixed(2)}%
-                    </TableCell>
-                    <TableCell className="text-right">
-                       {shouldShowCurrency()
-                         ? formatAmount(location.totalDrop)
-                         : formatCurrency(location.totalDrop)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {location.totalDropPercent.toFixed(2)}%
-                    </TableCell>
-                    <TableCell className="text-right">
-                       {shouldShowCurrency()
-                         ? formatAmount(location.totalCancelledCredits)
-                         : formatCurrency(location.totalCancelledCredits)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {location.totalCancelledCreditsPercent.toFixed(2)}%
-                    </TableCell>
-                    <TableCell className="text-right">
-                       {shouldShowCurrency()
-                         ? formatAmount(location.totalGross)
-                         : formatCurrency(location.totalGross)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {location.totalGrossPercent.toFixed(2)}%
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {location.totalGamesPlayed.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {location.totalGamesPlayedPercent.toFixed(2)}%
-                    </TableCell>
-                  </TableRow>
+                    <TableRow key={location.locationId}>
+                      <TableCell className="font-medium">
+                        {location.locationName}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {location.machineCount}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {location.floorPositions.toFixed(2)}%
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {shouldShowCurrency()
+                          ? formatAmount(location.totalHandle)
+                          : formatCurrency(location.totalHandle)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {location.totalHandlePercent.toFixed(2)}%
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {shouldShowCurrency()
+                          ? formatAmount(location.totalWin)
+                          : formatCurrency(location.totalWin)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {location.totalWinPercent.toFixed(2)}%
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {shouldShowCurrency()
+                          ? formatAmount(location.totalDrop)
+                          : formatCurrency(location.totalDrop)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {location.totalDropPercent.toFixed(2)}%
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {shouldShowCurrency()
+                          ? formatAmount(location.totalCancelledCredits)
+                          : formatCurrency(location.totalCancelledCredits)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {location.totalCancelledCreditsPercent.toFixed(2)}%
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {shouldShowCurrency()
+                          ? formatAmount(location.totalGross)
+                          : formatCurrency(location.totalGross)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {location.totalGrossPercent.toFixed(2)}%
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {location.totalGamesPlayed.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {location.totalGamesPlayedPercent.toFixed(2)}%
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
                 {/* Totals Row */}
                 {locationBreakdown.length > 0 && (
                   <TableRow className="bg-gray-50 font-semibold">
-                  <TableCell className="font-bold">Total</TableCell>
-                  <TableCell className="text-right font-bold">
-                    {totals.machineCount}
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {locationBreakdown.reduce(
-                      (sum, loc) => sum + loc.floorPositions,
-                      0
-                    ).toFixed(2)}
-                    %
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                     {shouldShowCurrency()
-                       ? formatAmount(totals.totalHandle)
-                       : formatCurrency(totals.totalHandle)}
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {locationBreakdown.reduce(
-                      (sum, loc) => sum + loc.totalHandlePercent,
-                      0
-                    ).toFixed(2)}
-                    %
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                     {shouldShowCurrency()
-                       ? formatAmount(totals.totalWin)
-                       : formatCurrency(totals.totalWin)}
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {locationBreakdown.reduce(
-                      (sum, loc) => sum + loc.totalWinPercent,
-                      0
-                    ).toFixed(2)}
-                    %
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                     {shouldShowCurrency()
-                       ? formatAmount(totals.totalDrop)
-                       : formatCurrency(totals.totalDrop)}
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {locationBreakdown.reduce(
-                      (sum, loc) => sum + loc.totalDropPercent,
-                      0
-                    ).toFixed(2)}
-                    %
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                     {shouldShowCurrency()
-                       ? formatAmount(totals.totalCancelledCredits)
-                       : formatCurrency(totals.totalCancelledCredits)}
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {locationBreakdown.reduce(
-                      (sum, loc) => sum + loc.totalCancelledCreditsPercent,
-                      0
-                    ).toFixed(2)}
-                    %
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                     {shouldShowCurrency()
-                       ? formatAmount(totals.totalGross)
-                       : formatCurrency(totals.totalGross)}
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {locationBreakdown.reduce(
-                      (sum, loc) => sum + loc.totalGrossPercent,
-                      0
-                    ).toFixed(2)}
-                    %
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {totals.totalGamesPlayed.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right font-bold">
-                    {locationBreakdown.reduce(
-                      (sum, loc) => sum + loc.totalGamesPlayedPercent,
-                      0
-                    ).toFixed(2)}
-                    %
-                  </TableCell>
+                    <TableCell className="font-bold">Total</TableCell>
+                    <TableCell className="text-right font-bold">
+                      {totals.machineCount}
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {locationBreakdown
+                        .reduce((sum, loc) => sum + loc.floorPositions, 0)
+                        .toFixed(2)}
+                      %
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {shouldShowCurrency()
+                        ? formatAmount(totals.totalHandle)
+                        : formatCurrency(totals.totalHandle)}
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {locationBreakdown
+                        .reduce((sum, loc) => sum + loc.totalHandlePercent, 0)
+                        .toFixed(2)}
+                      %
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {shouldShowCurrency()
+                        ? formatAmount(totals.totalWin)
+                        : formatCurrency(totals.totalWin)}
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {locationBreakdown
+                        .reduce((sum, loc) => sum + loc.totalWinPercent, 0)
+                        .toFixed(2)}
+                      %
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {shouldShowCurrency()
+                        ? formatAmount(totals.totalDrop)
+                        : formatCurrency(totals.totalDrop)}
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {locationBreakdown
+                        .reduce((sum, loc) => sum + loc.totalDropPercent, 0)
+                        .toFixed(2)}
+                      %
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {shouldShowCurrency()
+                        ? formatAmount(totals.totalCancelledCredits)
+                        : formatCurrency(totals.totalCancelledCredits)}
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {locationBreakdown
+                        .reduce(
+                          (sum, loc) => sum + loc.totalCancelledCreditsPercent,
+                          0
+                        )
+                        .toFixed(2)}
+                      %
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {shouldShowCurrency()
+                        ? formatAmount(totals.totalGross)
+                        : formatCurrency(totals.totalGross)}
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {locationBreakdown
+                        .reduce((sum, loc) => sum + loc.totalGrossPercent, 0)
+                        .toFixed(2)}
+                      %
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {totals.totalGamesPlayed.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      {locationBreakdown
+                        .reduce(
+                          (sum, loc) => sum + loc.totalGamesPlayedPercent,
+                          0
+                        )
+                        .toFixed(2)}
+                      %
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -446,7 +444,7 @@ export default function ChartItemBreakdownModal({
           </div>
         </div>
 
-        <div className="flex justify-end pt-4 border-t">
+        <div className="flex justify-end border-t pt-4">
           <Button onClick={() => onOpenChange(false)} variant="outline">
             Close
           </Button>
@@ -455,4 +453,3 @@ export default function ChartItemBreakdownModal({
     </Dialog>
   );
 }
-

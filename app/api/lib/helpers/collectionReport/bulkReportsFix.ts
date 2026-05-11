@@ -94,9 +94,9 @@ export async function fixAllReportsData(): Promise<{
       // Use the comprehensive fix function from fixReportOperations
       const { fixResults: reportFixResults } = await fixReportIssues(reportId);
 
-      const totalIssuesFixed = (Object.values(
-        reportFixResults.issuesFixed
-      ) as number[]).reduce((sum, value) => sum + value, 0);
+      const totalIssuesFixed = (
+        Object.values(reportFixResults.issuesFixed) as number[]
+      ).reduce((sum, value) => sum + value, 0);
 
       if (totalIssuesFixed > 0) {
         fixResults.reportsFixed++;
@@ -112,7 +112,10 @@ export async function fixAllReportsData(): Promise<{
         );
       }
     } catch (error) {
-      console.error('[fixAllReportsData] Error:', error instanceof Error ? error.message : 'Unknown error');
+      console.error(
+        '[fixAllReportsData] Error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       fixResults.errors.push({
         reportId,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -154,11 +157,13 @@ async function checkReportForIssues(reportId: string): Promise<boolean> {
   // Check prevIn/prevOut issues
   for (const collection of collections) {
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const machine = await Machine.findOne({ _id: collection.machineId }).lean<GamingMachine>();
+    const machine = await Machine.findOne({
+      _id: collection.machineId,
+    }).lean<GamingMachine>();
 
     if (machine) {
       // Find the actual previous collection to get correct prevIn/prevOut values
-      const actualPreviousCollection = (await Collections.findOne({
+      const actualPreviousCollection = await Collections.findOne({
         machineId: collection.machineId,
         $and: [
           {
@@ -182,7 +187,7 @@ async function checkReportForIssues(reportId: string): Promise<boolean> {
         ],
       })
         .sort({ collectionTime: -1, timestamp: -1 })
-        .lean<CollectionDocument>());
+        .lean<CollectionDocument>();
 
       if (actualPreviousCollection) {
         const expectedPrevIn = actualPreviousCollection.metersIn || 0;
@@ -205,7 +210,9 @@ async function checkReportForIssues(reportId: string): Promise<boolean> {
   }
 
   // Check machine history issues
-  const machineIds = [...new Set(collections.map(collection => collection.machineId))];
+  const machineIds = [
+    ...new Set(collections.map(collection => collection.machineId)),
+  ];
   for (const machineId of machineIds) {
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const machine = await Machine.findOne({
@@ -213,7 +220,11 @@ async function checkReportForIssues(reportId: string): Promise<boolean> {
     }).lean<GamingMachine>();
     if (machine && machine.collectionMetersHistory) {
       const history = machine.collectionMetersHistory;
-      for (let historyIndex = 1; historyIndex < history.length; historyIndex++) {
+      for (
+        let historyIndex = 1;
+        historyIndex < history.length;
+        historyIndex++
+      ) {
         const entry = history[historyIndex];
         if (
           (!entry.prevMetersIn || entry.prevMetersIn === 0) &&

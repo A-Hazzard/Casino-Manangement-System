@@ -5,6 +5,11 @@ import { send2FARecoveryEmail } from '@/lib/services/emailService';
 import type { LeanUserDocument } from 'shared/types/auth';
 import { nanoid } from 'nanoid';
 import { NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/auth/totp/recover/vm
@@ -16,20 +21,38 @@ import { NextResponse } from 'next/server';
  * Restricted to roles: vault-manager, location admin, manager, admin, developer.
  */
 export async function POST() {
+  const startTime = Date.now();
+  const functionName = 'POST /api/auth/totp/recover/vm';
+  const user = extractUserFromRequest(null);
+
   try {
     const session = await getUserFromServer();
     if (!session || !session._id) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/vm',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
-    const user = await UserModel.findOne({ _id: session._id });
-    if (!user) {
+    const foundUser = await UserModel.findOne({ _id: session._id });
+    if (!foundUser) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/vm',
+        'User not found',
+        user
+      );
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Role check: must be vault-manager or admin/developer
-    const userRoles = Array.isArray(user.roles) ? user.roles : [];
+    const userRoles = Array.isArray(foundUser.roles) ? foundUser.roles : [];
     const isVMOrHigher = userRoles.some((role: string) =>
       [
         'vault-manager',
@@ -41,13 +64,27 @@ export async function POST() {
     );
 
     if (!isVMOrHigher) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/vm',
+        'Not authorized for email recovery flow',
+        user
+      );
       return NextResponse.json(
         { error: 'Not authorized for email recovery flow' },
         { status: 403 }
       );
     }
 
-    if (!user.emailAddress) {
+    if (!foundUser.emailAddress) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/vm',
+        'No email address found for account',
+        user
+      );
       return NextResponse.json(
         { error: 'No email address found for this account' },
         { status: 400 }
@@ -60,7 +97,7 @@ export async function POST() {
 
     console.log(
       '[TOTP VM Recovery] Updating user:',
-      user.username,
+      foundUser.username,
       'with token:',
       token
     );
@@ -77,13 +114,17 @@ export async function POST() {
       { new: true, strict: false }
     ).lean<LeanUserDocument & { totpRecoveryToken?: unknown }>();
 
-    if (
-      !updatedUser ||
-      updatedUser.totpRecoveryToken !== token
-    ) {
+    if (!updatedUser || updatedUser.totpRecoveryToken !== token) {
       console.error(
         '[TOTP VM Recovery] Update failed - token not reflected in DB. UpdatedUser:',
         updatedUser
+      );
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/vm',
+        'Failed to update recovery token in database',
+        user
       );
       return NextResponse.json(
         { error: 'Failed to update recovery token in database' },
@@ -94,21 +135,49 @@ export async function POST() {
     console.log('[TOTP VM Recovery] Database updated successfully');
 
     // Send email
-    const emailRes = await send2FARecoveryEmail(user.emailAddress, token);
+    const emailRes = await send2FARecoveryEmail(foundUser.emailAddress, token);
 
     if (emailRes.success) {
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/vm',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         message: 'Recovery email sent',
       });
     } else {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/vm',
+        'Failed to send recovery email',
+        user
+      );
       return NextResponse.json(
         { error: 'Failed to send recovery email' },
         { status: 500 }
       );
     }
   } catch (e) {
-    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    const errorMessage =
+      e instanceof Error ? e.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/auth/totp/recover/vm',
+      errorMessage,
+      user
+    );
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

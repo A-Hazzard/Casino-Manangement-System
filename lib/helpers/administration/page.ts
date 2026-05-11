@@ -4,12 +4,7 @@ import type { Licencee } from '@/lib/types/common';
 import type { AddLicenceeForm, AddUserForm } from '@/lib/types/pages';
 import { getNext30Days } from '@/lib/utils/licencee';
 import { validateEmail, validatePassword } from '@/lib/utils/validation';
-import {
-  createUser,
-  fetchUsers,
-  filterAndSortUsers,
-  updateUser,
-} from './data';
+import { createUser, fetchUsers, filterAndSortUsers, updateUser } from './data';
 // AdministrationSection and AppRouterInstance imports removed - handleSectionChange function was removed
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -91,6 +86,8 @@ const userManagement = {
       idType,
       idNumber,
       notes,
+      moneyInMultiplier,
+      moneyOutAndJackpotMultiplier,
     } = addUserForm;
 
     if (!username || typeof username !== 'string') {
@@ -153,6 +150,8 @@ const userManagement = {
       profilePicture: string | null;
       assignedLicencees?: string[];
       assignedLocations?: string[];
+      moneyInMultiplier?: number;
+      moneyOutAndJackpotMultiplier?: number;
     } = {
       username,
       emailAddress: email,
@@ -162,6 +161,19 @@ const userManagement = {
       isEnabled: true,
       profilePicture: profilePicture || null,
     };
+
+    // Add multiplier fields for reviewer role
+    if (roles.includes('reviewer')) {
+      if (moneyInMultiplier !== undefined && moneyInMultiplier !== null) {
+        payload.moneyInMultiplier = moneyInMultiplier;
+      }
+      if (
+        moneyOutAndJackpotMultiplier !== undefined &&
+        moneyOutAndJackpotMultiplier !== null
+      ) {
+        payload.moneyOutAndJackpotMultiplier = moneyOutAndJackpotMultiplier;
+      }
+    }
 
     // Include licencee assignments (required for all users)
     if (
@@ -175,11 +187,15 @@ const userManagement = {
 
     if (roles.includes('vault-manager') || roles.includes('cashier')) {
       if (licenceeIds.length > 1) {
-        toast.error('Vault Managers and Cashiers can only be assigned to one licencee');
+        toast.error(
+          'Vault Managers and Cashiers can only be assigned to one licencee'
+        );
         return;
       }
       if (allowedLocations && allowedLocations.length > 1) {
-        toast.error('Vault Managers and Cashiers can only be assigned to one location');
+        toast.error(
+          'Vault Managers and Cashiers can only be assigned to one location'
+        );
         return;
       }
     }
@@ -320,8 +336,8 @@ const licenceeManagement = {
       };
       toast.error(
         error?.response?.data?.message ||
-        error?.message ||
-        'Failed to add licencee'
+          error?.message ||
+          'Failed to add licencee'
       );
     }
   },
@@ -367,8 +383,8 @@ const licenceeManagement = {
       };
       toast.error(
         error?.response?.data?.message ||
-        error?.message ||
-        'Failed to update licencee'
+          error?.message ||
+          'Failed to update licencee'
       );
     }
   },
@@ -400,8 +416,8 @@ const licenceeManagement = {
       };
       toast.error(
         error?.response?.data?.message ||
-        error?.message ||
-        'Failed to delete licencee'
+          error?.message ||
+          'Failed to delete licencee'
       );
     }
   },
@@ -453,8 +469,8 @@ const licenceeManagement = {
       };
       toast.error(
         error?.response?.data?.message ||
-        error?.message ||
-        'Failed to update payment status'
+          error?.message ||
+          'Failed to update payment status'
       );
     }
   },
@@ -469,20 +485,30 @@ const locationManagement = {
    * @param options - Optional filters (showAll, forceAll)
    * @returns Promise resolving to an array of locations
    */
-  loadLocations: async (options: { showAll?: boolean; forceAll?: boolean } = {}) => {
+  loadLocations: async (
+    options: { showAll?: boolean; forceAll?: boolean } = {}
+  ) => {
     try {
       const { showAll = true, forceAll = true } = options;
       const response = await axios.get('/api/locations', {
-        params: { showAll, forceAll }
+        params: { showAll, forceAll },
       });
 
       const locationsList = response.data?.locations || [];
 
-      return locationsList.map((loc: { _id?: string; id?: string; name?: string; locationName?: string; licenceeId?: string }) => ({
-        _id: loc._id?.toString() || loc.id?.toString() || '',
-        name: loc.name || loc.locationName || 'Unknown Location',
-        licenceeId: loc.licenceeId ? String(loc.licenceeId) : null,
-      }));
+      return locationsList.map(
+        (loc: {
+          _id?: string;
+          id?: string;
+          name?: string;
+          locationName?: string;
+          licenceeId?: string;
+        }) => ({
+          _id: loc._id?.toString() || loc.id?.toString() || '',
+          name: loc.name || loc.locationName || 'Unknown Location',
+          licenceeId: loc.licenceeId ? String(loc.licenceeId) : null,
+        })
+      );
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {
         console.error('Failed to fetch locations:', error);
@@ -540,7 +566,11 @@ export const administrationUtils = {
   /**
    * Filters out test users unless the current user is a developer
    */
-  filterTestUsers: (users: User[], isDeveloper: boolean, isOwner: boolean = false): User[] => {
+  filterTestUsers: (
+    users: User[],
+    isDeveloper: boolean,
+    isOwner: boolean = false
+  ): User[] => {
     if (isDeveloper || isOwner) {
       return users; // Developers and Owners can see all users including test accounts
     }
@@ -614,4 +644,3 @@ export const administrationUtils = {
     };
   },
 };
-

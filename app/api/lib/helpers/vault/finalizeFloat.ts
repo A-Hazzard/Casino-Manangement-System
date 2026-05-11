@@ -1,6 +1,6 @@
 /**
  * Finalize Float Request Helper
- * 
+ *
  * Shared logic for finalizing float requests.
  * Updates balances, creates transactions, and manages statuses.
  */
@@ -19,8 +19,17 @@ export async function finalizeFloatRequest(
   username: string,
   customNotes?: string
 ) {
-  if (!requestId || typeof requestId !== 'string' || !userId || typeof userId !== 'string' || !username || typeof username !== 'string') {
-    console.error('[finalizeFloatRequest] requestId (string), userId (string), and username (string) are required');
+  if (
+    !requestId ||
+    typeof requestId !== 'string' ||
+    !userId ||
+    typeof userId !== 'string' ||
+    !username ||
+    typeof username !== 'string'
+  ) {
+    console.error(
+      '[finalizeFloatRequest] requestId (string), userId (string), and username (string) are required'
+    );
     throw new Error('Invalid parameters provided');
   }
 
@@ -32,14 +41,21 @@ export async function finalizeFloatRequest(
   const finalDenominations = floatRequest.approvedDenominations;
 
   // Fetch Entities
-  const vaultShift = await VaultShiftModel.findOne({ _id: floatRequest.vaultShiftId });
-  const cashierShift = await CashierShiftModel.findOne({ _id: floatRequest.cashierShiftId });
+  const vaultShift = await VaultShiftModel.findOne({
+    _id: floatRequest.vaultShiftId,
+  });
+  const cashierShift = await CashierShiftModel.findOne({
+    _id: floatRequest.cashierShiftId,
+  });
 
   if (!vaultShift || !cashierShift) {
     throw new Error('Associated shifts not found');
   }
 
-  const currentVaultBalance = vaultShift.closingBalance !== undefined ? vaultShift.closingBalance : vaultShift.openingBalance;
+  const currentVaultBalance =
+    vaultShift.closingBalance !== undefined
+      ? vaultShift.closingBalance
+      : vaultShift.openingBalance;
 
   // LEDGER UPDATES (Moving cash)
   let transactionType = 'float_increase';
@@ -54,49 +70,50 @@ export async function finalizeFloatRequest(
     cashierShift.currentBalance = finalAmount;
     cashierShift.lastSyncedDenominations = finalDenominations;
     transactionType = 'cashier_shift_open';
-    
+
     await VaultShiftModel.updateOne(
-        { _id: floatRequest.vaultShiftId },
-        { canClose: false }
+      { _id: floatRequest.vaultShiftId },
+      { canClose: false }
     );
   } else {
     if (floatRequest.type === 'increase') {
-        cashierShift.floatAdjustmentsTotal += finalAmount;
-        cashierShift.currentBalance += finalAmount;
-        transactionType = 'float_increase';
+      cashierShift.floatAdjustmentsTotal += finalAmount;
+      cashierShift.currentBalance += finalAmount;
+      transactionType = 'float_increase';
     } else {
-        cashierShift.floatAdjustmentsTotal -= finalAmount;
-        cashierShift.currentBalance -= finalAmount;
-        transactionType = 'float_decrease';
+      cashierShift.floatAdjustmentsTotal -= finalAmount;
+      cashierShift.currentBalance -= finalAmount;
+      transactionType = 'float_decrease';
     }
     cashierShift.lastSyncedDenominations = finalDenominations;
   }
 
   // B. Update Vault Shift
   let vaultBalanceAfter = currentVaultBalance;
-  let vaultDenominationsAfter = (vaultShift.currentDenominations?.length > 0)
+  let vaultDenominationsAfter =
+    vaultShift.currentDenominations?.length > 0
       ? vaultShift.currentDenominations
       : vaultShift.openingDenominations;
 
   vaultDenominationsAfter = [...(vaultDenominationsAfter || [])];
 
   // Outflow from vault if: it's an increase OR cashier_shift_open
-  const isOutflow = isIncrease; 
+  const isOutflow = isIncrease;
 
   if (isOutflow) {
-      vaultBalanceAfter = currentVaultBalance - finalAmount;
-      vaultDenominationsAfter = updateDenominationInventory(
-        vaultDenominationsAfter,
-        finalDenominations,
-        'subtract'
-      );
+    vaultBalanceAfter = currentVaultBalance - finalAmount;
+    vaultDenominationsAfter = updateDenominationInventory(
+      vaultDenominationsAfter,
+      finalDenominations,
+      'subtract'
+    );
   } else {
-      vaultBalanceAfter = currentVaultBalance + finalAmount;
-      vaultDenominationsAfter = updateDenominationInventory(
-        vaultDenominationsAfter,
-        finalDenominations,
-        'add'
-      );
+    vaultBalanceAfter = currentVaultBalance + finalAmount;
+    vaultDenominationsAfter = updateDenominationInventory(
+      vaultDenominationsAfter,
+      finalDenominations,
+      'add'
+    );
   }
 
   vaultShift.closingBalance = vaultBalanceAfter;
@@ -109,8 +126,12 @@ export async function finalizeFloatRequest(
     locationId: floatRequest.locationId,
     timestamp: now,
     type: transactionType,
-    from: isOutflow ? { type: 'vault' } : { type: 'cashier', id: floatRequest.cashierId },
-    to: isOutflow ? { type: 'cashier', id: floatRequest.cashierId } : { type: 'vault' },
+    from: isOutflow
+      ? { type: 'vault' }
+      : { type: 'cashier', id: floatRequest.cashierId },
+    to: isOutflow
+      ? { type: 'cashier', id: floatRequest.cashierId }
+      : { type: 'vault' },
     amount: finalAmount,
     denominations: finalDenominations,
     vaultBalanceBefore: currentVaultBalance,
@@ -133,7 +154,7 @@ export async function finalizeFloatRequest(
       action: 'confirmed',
       performedBy: userId,
       timestamp: now,
-      notes: customNotes || ''
+      notes: customNotes || '',
     });
   }
 
@@ -146,7 +167,8 @@ export async function finalizeFloatRequest(
 
   // Mark notification as actioned
   try {
-    const { markNotificationAsActionedByEntity } = await import('@/lib/helpers/vault/notifications');
+    const { markNotificationAsActionedByEntity } =
+      await import('@/lib/helpers/vault/notifications');
     await markNotificationAsActionedByEntity(requestId, 'float_request');
   } catch (notifError) {
     console.error('Failed to update notification status:', notifError);
@@ -169,6 +191,6 @@ export async function finalizeFloatRequest(
 
   return {
     floatRequest,
-    cashierShift
+    cashierShift,
   };
 }

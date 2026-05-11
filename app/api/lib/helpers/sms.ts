@@ -4,7 +4,7 @@ import { AuthType, Infobip } from '@infobip-api/sdk';
 
 /**
  * SMS Service Configuration
- * 
+ *
  * Uses Infobip SDK to send SMS messages.
  */
 
@@ -17,9 +17,10 @@ function getInfobipClient(): Infobip {
   const baseUrl = process.env.INFOBIP_BASE_URL;
   const apiKey = process.env.INFOBIP_API_KEY;
 
-  if (!baseUrl || !apiKey) throw new Error(
-    `Infobip configuration missing. INFOBIP_BASE_URL: ${!!baseUrl}, INFOBIP_API_KEY: ${!!apiKey}`
-  );
+  if (!baseUrl || !apiKey)
+    throw new Error(
+      `Infobip configuration missing. INFOBIP_BASE_URL: ${!!baseUrl}, INFOBIP_API_KEY: ${!!apiKey}`
+    );
 
   infobip = new Infobip({
     baseUrl,
@@ -39,7 +40,11 @@ function getInfobipClient(): Infobip {
  * @param text - Message content
  * @param from - Sender ID — must be registered on the Infobip account
  */
-export async function sendSMS(to: string, text: string, from: string = 'InfoSMS') {
+export async function sendSMS(
+  to: string,
+  text: string,
+  from: string = 'InfoSMS'
+) {
   if (!to) {
     console.error('[sendSMS] to is required');
     throw new Error('[sendSMS] to is required');
@@ -61,10 +66,17 @@ export async function sendSMS(to: string, text: string, from: string = 'InfoSMS'
   // SDK returned an Error object (e.g. 401 Unauthorized, bad config, network error)
   if (response instanceof Error) {
     // Axios errors carry response details on .response.data
-    const axiosData = (response as unknown as { response?: { status?: number; data?: unknown } }).response;
+    const axiosData = (
+      response as unknown as { response?: { status?: number; data?: unknown } }
+    ).response;
     if (axiosData) {
-      console.error(`[SMS] Infobip HTTP ${axiosData.status} error for ${to}:`, JSON.stringify(axiosData.data, null, 2));
-      throw new Error(`Infobip API error ${axiosData.status}: ${JSON.stringify(axiosData.data)}`);
+      console.error(
+        `[SMS] Infobip HTTP ${axiosData.status} error for ${to}:`,
+        JSON.stringify(axiosData.data, null, 2)
+      );
+      throw new Error(
+        `Infobip API error ${axiosData.status}: ${JSON.stringify(axiosData.data)}`
+      );
     }
     console.error(`[SMS] Infobip SDK error for ${to}:`, response.message);
     throw new Error(`SMS send failed: ${response.message}`);
@@ -72,36 +84,62 @@ export async function sendSMS(to: string, text: string, from: string = 'InfoSMS'
 
   // Log the full Infobip response for debugging
   const rawResponse = response.data as Record<string, unknown> | undefined;
-  console.info(`[SMS] Infobip raw response:`, JSON.stringify(rawResponse, null, 2));
+  console.info(
+    `[SMS] Infobip raw response:`,
+    JSON.stringify(rawResponse, null, 2)
+  );
 
   if (!rawResponse) {
-    console.error(`[SMS] Infobip response.data is undefined for ${to} — response keys:`, Object.keys(response ?? {}));
+    console.error(
+      `[SMS] Infobip response.data is undefined for ${to} — response keys:`,
+      Object.keys(response ?? {})
+    );
     throw new Error('SMS send failed: Infobip returned no response body');
   }
 
   // Infobip returns messages[] with per-message status — check it
-  const messages = (rawResponse.messages as Array<{
-    messageId?: string;
-    status?: { groupName?: string; name?: string; description?: string; groupId?: number };
-    to?: string;
-  }>) ?? [];
+  const messages =
+    (rawResponse.messages as Array<{
+      messageId?: string;
+      status?: {
+        groupName?: string;
+        name?: string;
+        description?: string;
+        groupId?: number;
+      };
+      to?: string;
+    }>) ?? [];
 
   if (messages.length === 0) {
-    console.error(`[SMS] Infobip returned no messages array for recipient ${to}. Full response:`, JSON.stringify(rawResponse, null, 2));
-    throw new Error('SMS send failed: Infobip returned no message confirmation');
+    console.error(
+      `[SMS] Infobip returned no messages array for recipient ${to}. Full response:`,
+      JSON.stringify(rawResponse, null, 2)
+    );
+    throw new Error(
+      'SMS send failed: Infobip returned no message confirmation'
+    );
   }
 
   const msg = messages[0];
   const status = msg.status;
 
-  console.info(`[SMS] Message ${msg.messageId} → to: ${msg.to}, status: ${status?.groupName} / ${status?.name} — "${status?.description}"`);
+  console.info(
+    `[SMS] Message ${msg.messageId} → to: ${msg.to}, status: ${status?.groupName} / ${status?.name} — "${status?.description}"`
+  );
 
   // groupId 1 = PENDING (accepted), 3 = DELIVERED — anything else is a failure
   // groupId 2 = UNDELIVERABLE, 5 = REJECTED, etc.
   const acceptedGroupIds = [1, 3];
-  if (status?.groupId !== undefined && !acceptedGroupIds.includes(status.groupId)) {
-    console.error(`[SMS] Infobip rejected message to ${to}: [${status.groupId}] ${status.groupName} — ${status.description}`);
-    throw new Error(`SMS rejected by carrier: ${status.name} — ${status.description}`);
+  if (
+    status?.groupId !== undefined &&
+    !acceptedGroupIds.includes(status.groupId)
+  ) {
+    console.error(
+      `[SMS] Infobip rejected message to ${to}: [${status.groupId}] ${status.groupName} — ${status.description}`
+    );
+    throw new Error(
+      `SMS rejected by carrier: ${status.name} — ${status.description}`
+    );
   }
 
   return {
@@ -115,11 +153,14 @@ export async function sendSMS(to: string, text: string, from: string = 'InfoSMS'
 /**
  * Generates a verification code and sends it to the member's phone number.
  * Updates the member record with the new code and timestamp.
- * 
+ *
  * @param memberId - The identifier of the member
  * @param phoneNumber - The phone number to send the code to
  */
-export async function sendVerificationSMS(memberId: string, phoneNumber: string) {
+export async function sendVerificationSMS(
+  memberId: string,
+  phoneNumber: string
+) {
   if (!memberId) {
     console.error('[sendVerificationSMS] memberId is required');
     throw new Error('[sendVerificationSMS] memberId is required');
@@ -132,9 +173,13 @@ export async function sendVerificationSMS(memberId: string, phoneNumber: string)
   const smsCode = Math.floor(1000 + Math.random() * 9000);
 
   // Format phone number with + prefix if not present
-  const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+  const formattedPhone = phoneNumber.startsWith('+')
+    ? phoneNumber
+    : `+${phoneNumber}`;
 
-  console.info(`[SMS] sendVerificationSMS → memberId: ${memberId}, phone: ${formattedPhone}`);
+  console.info(
+    `[SMS] sendVerificationSMS → memberId: ${memberId}, phone: ${formattedPhone}`
+  );
 
   // STEP 1: Send SMS — throws on failure (carrier rejection, config error, etc.)
   const smsResult = await sendSMS(
@@ -142,7 +187,9 @@ export async function sendVerificationSMS(memberId: string, phoneNumber: string)
     `Your Evolution Activation Code: ${smsCode}`
   );
 
-  console.info(`[SMS] SMS accepted for ${formattedPhone} — messageId: ${smsResult.messageId}, status: ${smsResult.statusName}`);
+  console.info(
+    `[SMS] SMS accepted for ${formattedPhone} — messageId: ${smsResult.messageId}, status: ${smsResult.statusName}`
+  );
 
   // STEP 2: Update member record with new code
   const updatedMember = await Member.findOneAndUpdate(
@@ -166,11 +213,14 @@ export async function sendVerificationSMS(memberId: string, phoneNumber: string)
 
 /**
  * Sends the member's existing PIN via SMS.
- * 
+ *
  * @param memberId - The identifier of the member
  * @param phoneNumber - The phone number to send the PIN to
  */
-export async function sendPINVerificationSMS(memberId: string, phoneNumber: string) {
+export async function sendPINVerificationSMS(
+  memberId: string,
+  phoneNumber: string
+) {
   if (!memberId) {
     console.error('[sendPINVerificationSMS] memberId is required');
     throw new Error('[sendPINVerificationSMS] memberId is required');
@@ -193,7 +243,9 @@ export async function sendPINVerificationSMS(memberId: string, phoneNumber: stri
     }
 
     // Format phone number
-    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+    const formattedPhone = phoneNumber.startsWith('+')
+      ? phoneNumber
+      : `+${phoneNumber}`;
 
     // Send the PIN
     await sendSMS(
@@ -203,11 +255,9 @@ export async function sendPINVerificationSMS(memberId: string, phoneNumber: stri
 
     return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error sending PIN SMS';
-    console.error(
-      '[sendPINVerificationSMS] Failed:',
-      errorMessage
-    );
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error sending PIN SMS';
+    console.error('[sendPINVerificationSMS] Failed:', errorMessage);
     throw new Error(errorMessage);
   }
 }

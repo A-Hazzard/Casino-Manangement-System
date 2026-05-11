@@ -18,6 +18,11 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/analytics/machine-hourly
@@ -41,6 +46,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/analytics/machine-hourly';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -48,6 +55,13 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const db = await connectDB();
     if (!db) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/analytics/machine-hourly',
+        'Database connection not established',
+        user
+      );
       return NextResponse.json(
         { error: 'Database connection not established' },
         { status: 500 }
@@ -62,13 +76,20 @@ export async function GET(req: NextRequest) {
     const machineIds = searchParams.get('machineIds');
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = (searchParams.get('licencee'));
+    const licencee = searchParams.get('licencee');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
 
     if (!locationIds && !machineIds) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/analytics/machine-hourly',
+        'Location IDs or Machine IDs are required',
+        user
+      );
       return NextResponse.json(
         { error: 'Location IDs or Machine IDs are required' },
         { status: 400 }
@@ -92,8 +113,19 @@ export async function GET(req: NextRequest) {
     // STEP 4: Return machine hourly trends data
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/analytics/machine-hourly',
+      1,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
-      console.warn(`[Analytics Machine Hourly GET API] Completed in ${duration}ms`);
+      console.warn(
+        `[Analytics Machine Hourly GET API] Completed in ${duration}ms`
+      );
     }
 
     return NextResponse.json(machineHourlyData);
@@ -101,6 +133,13 @@ export async function GET(req: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/analytics/machine-hourly',
+      errorMessage,
+      user
+    );
     console.error(
       `[Analytics Machine Hourly GET API] Error after ${duration}ms:`,
       errorMessage
@@ -111,4 +150,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

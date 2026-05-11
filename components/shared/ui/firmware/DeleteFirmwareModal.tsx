@@ -127,4 +127,3 @@ export const DeleteFirmwareModal = ({
     </div>
   );
 };
-

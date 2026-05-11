@@ -17,7 +17,6 @@ import { HTMLAttributes, forwardRef } from 'react';
 import { ComponentPropsWithoutRef, ElementRef } from 'react';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 
-
 import { buttonVariants } from '@/components/shared/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -144,13 +143,12 @@ const AlertDialogCancel = forwardRef<
 AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName;
 
 export {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 };
-

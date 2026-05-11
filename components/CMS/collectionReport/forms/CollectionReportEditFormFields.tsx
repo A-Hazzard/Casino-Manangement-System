@@ -57,10 +57,10 @@ import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machine
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import { Textarea } from '@/components/shared/ui/textarea';
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from '@/components/shared/ui/tooltip';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import { formatDate } from '@/lib/utils/formatting';
@@ -70,10 +70,6 @@ import { ExternalLink } from 'lucide-react';
 type EditCollectionFormFieldsProps = {
   selectedLocationName: string;
   machineForDataEntry: CollectionReportMachineSummary | undefined;
-  currentCollectionTime: Date;
-  setCurrentCollectionTime: (date: Date) => void;
-  showAdvancedSas: boolean;
-  setShowAdvancedSas: (show: boolean) => void;
   sasStartTime: Date | null;
   setSasStartTime: (date: Date | null) => void;
   sasEndTime: Date | null;
@@ -110,10 +106,6 @@ type EditCollectionFormFieldsProps = {
 export default function CollectionReportEditFormFields({
   selectedLocationName,
   machineForDataEntry,
-  currentCollectionTime,
-  setCurrentCollectionTime,
-  showAdvancedSas,
-  setShowAdvancedSas,
   sasStartTime,
   setSasStartTime,
   sasEndTime,
@@ -170,7 +162,7 @@ export default function CollectionReportEditFormFields({
           <button
             type="button"
             className="ml-2 shrink-0 rounded p-0.5 transition-transform hover:scale-110 hover:bg-white/20"
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
               onViewMachine();
             }}
@@ -182,101 +174,79 @@ export default function CollectionReportEditFormFields({
         )}
       </div>
 
-      <div className="mb-4">
-        <button
-          type="button"
-          className="text-xs text-button hover:underline flex items-center gap-1 font-medium"
-          onClick={() => setShowAdvancedSas(!showAdvancedSas)}
-        >
-          {showAdvancedSas ? '← Hide Advanced Options' : 'Advanced: Manual SAS Times'}
-        </button>
-      </div>
-
-      {!showAdvancedSas ? (
-        <div className="mb-4">
-          <label className="mb-2 block text-sm font-medium text-grayHighlight">
-            Collection Time:
-          </label>
-          <ModernCalendar
-            date={{
-              from: currentCollectionTime,
-              to: currentCollectionTime,
-            }}
-            onSelect={range => {
-              if (range?.from) {
-                setCurrentCollectionTime(range.from);
+      {/* Collection Time */}
+      <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
+        <p className="mb-4 text-[11px] font-bold uppercase tracking-wide text-blue-900">
+          Collection Time
+        </p>
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
+              Start Time:
+            </label>
+            <ModernCalendar
+              date={
+                sasStartTime
+                  ? {
+                      from: sasStartTime,
+                      to: sasStartTime,
+                    }
+                  : undefined
               }
-            }}
-            enableTimeInputs={true}
-            mode="single"
-            disabled={!inputsEnabled || isProcessing}
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            This time applies to the current machine being added/edited
-          </p>
-        </div>
-      ) : (
-        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
-          <p className="mb-4 text-[11px] font-bold text-blue-900 uppercase tracking-wide">
-            Manual SAS Period:
-          </p>
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
-                Start Time:
-              </label>
-              <ModernCalendar
-                date={
-                  sasStartTime
-                    ? {
-                        from: sasStartTime,
-                        to: sasStartTime,
-                      }
-                    : undefined
-                }
-                onSelect={range => {
-                  setSasStartTime(range?.from || null);
-                }}
-                enableTimeInputs={true}
-                mode="single"
-                disabled={!inputsEnabled || isProcessing}
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
-                End Time:
-              </label>
-              <ModernCalendar
-                date={
-                  sasEndTime
-                    ? {
-                        from: sasEndTime,
-                        to: sasEndTime,
-                      }
-                    : undefined
-                }
-                onSelect={range => {
-                  setSasEndTime(range?.from || null);
-                }}
-                enableTimeInputs={true}
-                mode="single"
-                disabled={!inputsEnabled || isProcessing}
-              />
-            </div>
+              onSelect={range => {
+                setSasStartTime(range?.from || null);
+              }}
+              enableTimeInputs={true}
+              mode="single"
+              disabled={!inputsEnabled || isProcessing}
+              maxDate={sasEndTime || new Date()}
+            />
           </div>
-          <p className="mt-3 text-xs text-blue-600 leading-relaxed italic">
-            Note: Manually setting these times will override the automatic SAS period calculation based on collection time.
-          </p>
+          <div>
+            <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
+              End Time:
+            </label>
+            <ModernCalendar
+              date={
+                sasEndTime
+                  ? {
+                      from: sasEndTime,
+                      to: sasEndTime,
+                    }
+                  : undefined
+              }
+              onSelect={range => {
+                setSasEndTime(range?.from || null);
+              }}
+              enableTimeInputs={true}
+              mode="single"
+              disabled={!inputsEnabled || isProcessing}
+              maxDate={new Date()}
+              minDate={sasStartTime || undefined}
+            />
+          </div>
         </div>
-      )}
+        {sasStartTime && sasEndTime && sasStartTime > sasEndTime && (
+          <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-2">
+            <p className="text-xs text-red-600">
+              ⚠️ Start time cannot be after end time. Start:{' '}
+              {sasStartTime.toLocaleString()}, End:{' '}
+              {sasEndTime.toLocaleString()}
+            </p>
+          </div>
+        )}
+        <p className="mt-3 text-xs italic leading-relaxed text-blue-600">
+          Start time is automatically set from the previous collection time.
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 flex items-center text-sm font-medium text-grayHighlight">
             Meters In:
-            <CalculationHelp 
-              title="Meters In" 
-              formula="Current In - Previous In" 
+            <CalculationHelp
+              title="Meters In"
+              formula="Current In - Previous In"
               description="Calculates the total credits or cash inserted into the machine since the last collection."
             />
           </label>
@@ -293,7 +263,7 @@ export default function CollectionReportEditFormFields({
               disabled={!inputsEnabled || isProcessing}
             />
           </div>
-          <p className="mt-1 text-xs text-grayHighlight font-medium">
+          <p className="mt-1 text-xs font-medium text-grayHighlight">
             Prev In:
           </p>
           <div onClick={onDisabledFieldClick}>
@@ -311,7 +281,8 @@ export default function CollectionReportEditFormFields({
             />
           </div>
 
-          {debouncedCurrentMetersIn &&
+          {!currentRamClear &&
+            debouncedCurrentMetersIn &&
             prevIn &&
             Number(debouncedCurrentMetersIn) < Number(prevIn) && (
               <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
@@ -325,9 +296,9 @@ export default function CollectionReportEditFormFields({
         <div>
           <label className="mb-1 flex items-center text-sm font-medium text-grayHighlight">
             Meters Out:
-            <CalculationHelp 
-              title="Meters Out" 
-              formula="Current Out - Previous Out" 
+            <CalculationHelp
+              title="Meters Out"
+              formula="Current Out - Previous Out"
               description="Calculates the total payouts or credits won by players since the last collection."
             />
           </label>
@@ -344,7 +315,7 @@ export default function CollectionReportEditFormFields({
               disabled={!inputsEnabled || isProcessing}
             />
           </div>
-          <p className="mt-1 text-xs text-grayHighlight font-medium">
+          <p className="mt-1 text-xs font-medium text-grayHighlight">
             Prev Out:
           </p>
           <div onClick={onDisabledFieldClick}>
@@ -362,7 +333,8 @@ export default function CollectionReportEditFormFields({
             />
           </div>
 
-          {debouncedCurrentMetersOut &&
+          {!currentRamClear &&
+            debouncedCurrentMetersOut &&
             prevOut &&
             Number(debouncedCurrentMetersOut) < Number(prevOut) && (
               <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
@@ -399,6 +371,15 @@ export default function CollectionReportEditFormFields({
                 disabled={!inputsEnabled || isProcessing}
                 className="border-blue-300 focus:ring-blue-500"
               />
+              {currentRamClear &&
+                currentRamClearMetersIn &&
+                prevIn &&
+                Number(currentRamClearMetersIn) < Number(prevIn) && (
+                  <p className="mt-1 text-xs text-red-600">
+                    ⚠️ RAM clear meters in ({currentRamClearMetersIn}) must be ≥
+                    previous meters in ({prevIn})
+                  </p>
+                )}
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-blue-700">
@@ -415,6 +396,15 @@ export default function CollectionReportEditFormFields({
                 disabled={!inputsEnabled || isProcessing}
                 className="border-blue-300 focus:ring-blue-500"
               />
+              {currentRamClear &&
+                currentRamClearMetersOut &&
+                prevOut &&
+                Number(currentRamClearMetersOut) < Number(prevOut) && (
+                  <p className="mt-1 text-xs text-red-600">
+                    ⚠️ RAM clear meters out ({currentRamClearMetersOut}) must be
+                    ≥ previous meters out ({prevOut})
+                  </p>
+                )}
             </div>
           </div>
         </div>
@@ -428,18 +418,28 @@ export default function CollectionReportEditFormFields({
           type="checkbox"
           id="ramClearCheckbox"
           checked={currentRamClear}
-          onChange={e => setCurrentRamClear(e.target.checked)}
+          onChange={e => {
+            setCurrentRamClear(e.target.checked);
+            if (e.target.checked) {
+              if (!currentRamClearMetersIn) setCurrentRamClearMetersIn(prevIn);
+              if (!currentRamClearMetersOut)
+                setCurrentRamClearMetersOut(prevOut);
+            } else {
+              setCurrentRamClearMetersIn('');
+              setCurrentRamClearMetersOut('');
+            }
+          }}
           className="h-4 w-4 rounded border-gray-300 text-primary"
           disabled={!inputsEnabled || isProcessing}
         />
         <label
           htmlFor="ramClearCheckbox"
-          className="text-sm font-medium text-gray-700 flex items-center"
+          className="flex items-center text-sm font-medium text-gray-700"
         >
           RAM Clear
-          <CalculationHelp 
-            title="RAM Clear" 
-            formula="(RAM_Clear_Meters - Previous_Meters) + Current_Meters" 
+          <CalculationHelp
+            title="RAM Clear"
+            formula="(RAM_Clear_Meters - Previous_Meters) + Current_Meters"
             description="Used when machine meters are reset to zero. This formula ensures no data is lost during the reset."
           />
         </label>
@@ -509,4 +509,3 @@ export default function CollectionReportEditFormFields({
     </>
   );
 }
-

@@ -47,11 +47,8 @@ tsconfig.tsbuildinfo
 backup/
 
 tmp/
-scripts/
-scripts/backups
-scripts/backups/*.js
-scripts/backup-meters-range.js
 oldSystem/
 
 # Claude Code worktrees
 .claude/worktrees/
+certificates

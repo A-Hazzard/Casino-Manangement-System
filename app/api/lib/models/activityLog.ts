@@ -7,10 +7,10 @@ const ActivityLogSchema = new Schema(
       required: true,
     },
     timestamp: { type: Date, default: Date.now, required: true },
-    // User who performed the action
+
     userId: { type: String, required: true },
     username: { type: String, required: true },
-    // Action details
+
     action: {
       type: String,
       required: true,
@@ -44,6 +44,7 @@ const ActivityLogSchema = new Schema(
         'member',
         'location',
         'machine',
+        'cabinet',
         'session',
         'collection',
         'firmware',
@@ -62,21 +63,21 @@ const ActivityLogSchema = new Schema(
     resourceId: { type: String, required: true },
     resourceName: { type: String },
     membershipLog: { type: Boolean, default: false },
-    // Detailed information
+
     details: { type: String },
     previousData: { type: Schema.Types.Mixed },
     newData: { type: Schema.Types.Mixed },
-    // Client information
+
     ipAddress: { type: String },
     userAgent: { type: String },
-    // Legacy fields for backward compatibility
+
     actor: {
       id: { type: String },
       email: { type: String },
       role: { type: String },
     },
-    actionType: { type: String }, // CREATE, UPDATE, DELETE, etc.
-    entityType: { type: String }, // User, Licencee, etc.
+    actionType: { type: String },
+    entityType: { type: String },
     entity: {
       id: { type: String },
       name: { type: String },
@@ -98,19 +99,17 @@ const ActivityLogSchema = new Schema(
   { timestamps: true, versionKey: false }
 );
 
-// Add indexes for better query performance
 ActivityLogSchema.index({ timestamp: -1 });
 ActivityLogSchema.index({ resource: 1, timestamp: -1 });
 ActivityLogSchema.index({ userId: 1, timestamp: -1 });
 ActivityLogSchema.index({ action: 1, timestamp: -1 });
 ActivityLogSchema.index({ resourceId: 1, timestamp: -1 });
-ActivityLogSchema.index({ ipAddress: 1, timestamp: -1 }); // Index for IP address queries
-// Legacy indexes for backward compatibility
+ActivityLogSchema.index({ ipAddress: 1, timestamp: -1 });
+
 ActivityLogSchema.index({ entityType: 1, timestamp: -1 });
 ActivityLogSchema.index({ 'actor.id': 1, timestamp: -1 });
 ActivityLogSchema.index({ actionType: 1, timestamp: -1 });
 
-// In development, delete the model if it exists to ensure schema updates are applied
 if (process.env.NODE_ENV === 'development' && models?.ActivityLog) {
   delete models.ActivityLog;
 }
@@ -118,4 +117,3 @@ if (process.env.NODE_ENV === 'development' && models?.ActivityLog) {
 export const ActivityLog =
   models?.ActivityLog ||
   model('ActivityLog', ActivityLogSchema, 'activityLogs');
-

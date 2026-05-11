@@ -110,7 +110,9 @@ export default function DashboardDesktopLayout(
                 if (!(props.loadingChartData || props.refreshing))
                   props.onRefresh();
               }}
-              aria-disabled={props.loadingChartData || props.refreshing ? 'true' : 'false'}
+              aria-disabled={
+                props.loadingChartData || props.refreshing ? 'true' : 'false'
+              }
               tabIndex={0}
               role="button"
             >

@@ -17,7 +17,9 @@ type ReportsPageAccessDeniedStateProps = Record<string, never>;
 /**
  * Loading overlay for reports operations
  */
-export function ReportsPageLoadingOverlay({ isLoading }: ReportsPageLoadingOverlayProps) {
+export function ReportsPageLoadingOverlay({
+  isLoading,
+}: ReportsPageLoadingOverlayProps) {
   return (
     <AnimatePresence>
       {isLoading && (
@@ -77,4 +79,3 @@ export function ReportsPageAccessDeniedState({}: ReportsPageAccessDeniedStatePro
     </div>
   );
 }
-

@@ -199,8 +199,8 @@ async function fixCollectionSasTimes(
     ramClearMetersOut?: number;
     sasMeters?: {
       machine?: string;
-      sasStartTime?: string;
-      sasEndTime?: string;
+      sasStartTime?: string | Date;
+      sasEndTime?: string | Date;
     };
     machineName?: string;
   },
@@ -208,7 +208,7 @@ async function fixCollectionSasTimes(
 ): Promise<{ success: boolean; error?: string }> {
   const machineId = collection.machineId;
   if (!machineId) return { success: false, error: 'No machine ID' };
-  
+
   try {
     // Fix prevIn/prevOut
     const {
@@ -228,9 +228,8 @@ async function fixCollectionSasTimes(
     }
 
     // Recalculate SAS time range
-    const { getSasTimePeriod, calculateSasMetrics } = await import(
-      '../creation'
-    );
+    const { getSasTimePeriod, calculateSasMetrics } =
+      await import('../creation');
 
     const { sasStartTime, sasEndTime } = await getSasTimePeriod(
       machineId,
@@ -265,8 +264,8 @@ async function fixCollectionSasTimes(
           ...newSasMetrics,
           machine:
             collection.sasMeters?.machine || collection.machineName || '',
-          sasStartTime: sasStartTime.toISOString(),
-          sasEndTime: sasEndTime.toISOString(),
+          sasStartTime,
+          sasEndTime,
         },
         updatedAt: new Date(),
       }
@@ -296,7 +295,12 @@ async function fixCollectionSasTimes(
         }
       );
     } catch (machineUpdateError) {
-      console.error('[fixCollectionSasTimes] Error:', machineUpdateError instanceof Error ? machineUpdateError.message : 'Unknown error');
+      console.error(
+        '[fixCollectionSasTimes] Error:',
+        machineUpdateError instanceof Error
+          ? machineUpdateError.message
+          : 'Unknown error'
+      );
     }
 
     return { success: true };
@@ -326,7 +330,16 @@ export async function fixSasTimesForReport(reportId: string): Promise<{
 }> {
   if (!reportId) {
     console.error('[fixSasTimesForReport] reportId is required');
-    return { success: false, totalFixedCount: 0, totalSkippedCount: 0, totalHistoryFixedCount: 0, errors: [], processedReports: [], futureReportsAffected: 0, error: 'reportId is required' };
+    return {
+      success: false,
+      totalFixedCount: 0,
+      totalSkippedCount: 0,
+      totalHistoryFixedCount: 0,
+      errors: [],
+      processedReports: [],
+      futureReportsAffected: 0,
+      error: 'reportId is required',
+    };
   }
   // Find current collection report
   const currentReport = await CollectionReport.findOne({
@@ -450,7 +463,11 @@ function hasCollectionHistoryIssues(machine: {
   }
 
   // Check if any entry (except first) has prevIn/prevOut as 0 or undefined
-  for (let historyIndex = 1; historyIndex < machine.collectionMetersHistory.length; historyIndex++) {
+  for (
+    let historyIndex = 1;
+    historyIndex < machine.collectionMetersHistory.length;
+    historyIndex++
+  ) {
     const entry = machine.collectionMetersHistory[historyIndex];
     const prevIn = entry.prevIn || 0;
     const prevOut = entry.prevOut || 0;
@@ -482,7 +499,14 @@ export async function fixCollectionHistoryForReport(reportId: string): Promise<{
 }> {
   if (!reportId) {
     console.error('[fixCollectionHistoryForReport] reportId is required');
-    return { success: false, totalHistoryRebuilt: 0, machinesFixedCount: 0, machinesWithIssues: 0, totalMachinesInReport: 0, error: 'reportId is required' };
+    return {
+      success: false,
+      totalHistoryRebuilt: 0,
+      machinesFixedCount: 0,
+      machinesWithIssues: 0,
+      totalMachinesInReport: 0,
+      error: 'reportId is required',
+    };
   }
   const report = await CollectionReport.findOne({
     locationReportId: reportId,
@@ -544,7 +568,10 @@ export async function fixCollectionHistoryForReport(reportId: string): Promise<{
         }
       }
     } catch (machineError) {
-      console.error('[fixCollectionHistoryForReport] Error:', machineError instanceof Error ? machineError.message : 'Unknown error');
+      console.error(
+        '[fixCollectionHistoryForReport] Error:',
+        machineError instanceof Error ? machineError.message : 'Unknown error'
+      );
     }
   }
 

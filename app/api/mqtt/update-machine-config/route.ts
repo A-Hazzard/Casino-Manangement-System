@@ -23,6 +23,11 @@ import {
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import {
+  logRouteError,
+  logRouteUpdate,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -44,6 +49,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/mqtt/update-machine-config';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -80,7 +87,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Type assertion for machine document
-    const machineDoc = machine as Awaited<ReturnType<typeof findMachineByRelayId>> & {
+    const machineDoc = machine as Awaited<
+      ReturnType<typeof findMachineByRelayId>
+    > & {
       gamingLocation?: unknown;
       _id: { toString: () => string };
       serialNumber?: string;
@@ -98,8 +107,8 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 5: Build update fields
     // ============================================================================
-    const originalMachine = machineDoc.toObject 
-      ? machineDoc.toObject() 
+    const originalMachine = machineDoc.toObject
+      ? machineDoc.toObject()
       : JSON.parse(JSON.stringify(machineDoc));
     const updateFields = buildMachineConfigUpdateFields(
       machineDoc,
@@ -145,7 +154,8 @@ export async function POST(request: NextRequest) {
             userRole: (currentUser.roles as string[])?.[0] || 'user',
             resource: 'machine',
             resourceId: machineDoc._id.toString(),
-            resourceName: machineDoc.serialNumber || machineDoc.game || 'Unknown',
+            resourceName:
+              machineDoc.serialNumber || machineDoc.game || 'Unknown',
             relayId,
             changes,
             source: 'smib-management-tab',
@@ -160,23 +170,31 @@ export async function POST(request: NextRequest) {
     // STEP 8: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[MQTT Update Machine Config API] Completed in ${duration}ms`);
-    }
+    logRouteUpdate(
+      functionName,
+      'POST',
+      '/api/mqtt/update-machine-config',
+      1,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: true,
       data: updatedMachine,
-      machineId: updatedMachine 
-        ? (updatedMachine as { _id: { toString: () => string } })._id.toString() 
+      machineId: updatedMachine
+        ? (updatedMachine as { _id: { toString: () => string } })._id.toString()
         : machineDoc._id.toString(),
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
-    console.error(
-      `[Update Machine Config API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/mqtt/update-machine-config',
+      errorMessage,
+      user
     );
     return NextResponse.json(
       {
@@ -187,5 +205,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-

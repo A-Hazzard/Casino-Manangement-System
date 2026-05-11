@@ -14,6 +14,11 @@
 
 import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/auth/clear-all-tokens
@@ -25,6 +30,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/auth/clear-all-tokens';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -54,14 +61,26 @@ export async function POST(request: NextRequest) {
     // STEP 3: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 100) {
-      console.warn(`[Clear All Tokens API] Completed in ${duration}ms`);
-    }
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/auth/clear-all-tokens',
+      1,
+      user,
+      duration
+    );
 
     return response;
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Clear All Tokens API] Error after ${duration}ms:`, error);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/auth/clear-all-tokens',
+      errorMessage,
+      user
+    );
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
@@ -78,4 +97,3 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   return POST(request);
 }
-

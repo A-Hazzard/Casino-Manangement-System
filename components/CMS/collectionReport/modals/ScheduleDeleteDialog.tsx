@@ -43,7 +43,8 @@ export default function ScheduleDeleteDialog({
           <AlertDialogTitle>Delete Schedule</AlertDialogTitle>
           <AlertDialogDescription>
             Are you sure you want to delete the schedule for{' '}
-            <span className="font-semibold text-gray-900">{collectorName}</span> at{' '}
+            <span className="font-semibold text-gray-900">{collectorName}</span>{' '}
+            at{' '}
             <span className="font-semibold text-gray-900">{locationName}</span>?
             <br />
             <span className="mt-1 block text-xs text-gray-500">

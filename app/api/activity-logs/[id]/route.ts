@@ -9,6 +9,11 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { ActivityLog } from '@/app/api/lib/models/activityLog';
+import {
+  logRouteDelete,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -23,22 +28,39 @@ import { NextRequest, NextResponse } from 'next/server';
  * Query params:
  * @param deleteType {string}  Optional. 'soft' (default) or 'hard'. Hard delete is permanent and requires developer role.
  */
-export async function DELETE(
-  request: NextRequest
-): Promise<Response> {
+export async function DELETE(request: NextRequest): Promise<Response> {
+  const startTime = Date.now();
+  const functionName = 'DELETE /api/activity-logs/[id]';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ isAdminOrDev, userRoles }) => {
     const { pathname } = request.nextUrl;
     const id = pathname.split('/').pop();
-    if (!id)
+    if (!id) {
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/activity-logs/[id]',
+        'Activity log ID is required',
+        user
+      );
       return NextResponse.json(
         { success: false, message: 'Activity log ID is required' },
         { status: 400 }
       );
+    }
 
     const isDeveloper = userRoles.some(
       role => role.toLowerCase() === 'developer'
     );
     if (!isDeveloper && !isAdminOrDev) {
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/activity-logs/[id]',
+        'Forbidden - developer role required',
+        user
+      );
       return NextResponse.json(
         {
           success: false,
@@ -56,6 +78,13 @@ export async function DELETE(
     if (deleteType === 'hard') {
       const deleteResult = await ActivityLog.deleteOne({ _id: id });
       if (deleteResult.deletedCount === 0) {
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/activity-logs/[id]',
+          `Activity log not found: ${id}`,
+          user
+        );
         return NextResponse.json(
           { success: false, message: 'Activity log not found' },
           { status: 404 }
@@ -68,12 +97,29 @@ export async function DELETE(
         { new: true }
       );
       if (!updateResult) {
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/activity-logs/[id]',
+          `Activity log not found: ${id}`,
+          user
+        );
         return NextResponse.json(
           { success: false, message: 'Activity log not found' },
           { status: 404 }
         );
       }
     }
+
+    const duration = Date.now() - startTime;
+    logRouteDelete(
+      functionName,
+      'DELETE',
+      '/api/activity-logs/[id]',
+      1,
+      user,
+      duration
+    );
 
     return NextResponse.json({ success: true });
   });

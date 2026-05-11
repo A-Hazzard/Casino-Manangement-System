@@ -41,7 +41,7 @@ export default function CollectionReportCollectorScheduleFilters({
     <div className="flex w-full flex-col gap-3 rounded-t-lg bg-buttonActive p-4">
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:gap-3 lg:flex-nowrap">
         <select
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-buttonActive focus:outline-none focus:ring-2 focus:ring-buttonActive/20 md:flex-1 md:min-w-[140px] lg:flex-initial lg:w-auto lg:min-w-[160px]"
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-buttonActive focus:outline-none focus:ring-2 focus:ring-buttonActive/20 md:min-w-[140px] md:flex-1 lg:w-auto lg:min-w-[160px] lg:flex-initial"
           value={selectedLocation}
           onChange={e => onLocationChange(e.target.value)}
           disabled={loading}
@@ -54,7 +54,7 @@ export default function CollectionReportCollectorScheduleFilters({
           ))}
         </select>
         <select
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-buttonActive focus:outline-none focus:ring-2 focus:ring-buttonActive/20 md:flex-1 md:min-w-[140px] lg:flex-initial lg:w-auto lg:min-w-[160px]"
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-buttonActive focus:outline-none focus:ring-2 focus:ring-buttonActive/20 md:min-w-[140px] md:flex-1 lg:w-auto lg:min-w-[160px] lg:flex-initial"
           value={selectedCollector}
           onChange={e => onCollectorChange(e.target.value)}
           disabled={loading}
@@ -67,7 +67,7 @@ export default function CollectionReportCollectorScheduleFilters({
           ))}
         </select>
         <select
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-buttonActive focus:outline-none focus:ring-2 focus:ring-buttonActive/20 md:flex-1 md:min-w-[140px] lg:flex-initial lg:w-auto lg:min-w-[160px]"
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-buttonActive focus:outline-none focus:ring-2 focus:ring-buttonActive/20 md:min-w-[140px] md:flex-1 lg:w-auto lg:min-w-[160px] lg:flex-initial"
           value={selectedStatus}
           onChange={e => onStatusChange(e.target.value)}
           disabled={loading}
@@ -89,4 +89,3 @@ export default function CollectionReportCollectorScheduleFilters({
     </div>
   );
 }
-

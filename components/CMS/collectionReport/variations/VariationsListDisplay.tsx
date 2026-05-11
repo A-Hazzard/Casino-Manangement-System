@@ -30,7 +30,9 @@ export function VariationsListDisplay({
   isCompact = false,
 }: VariationsListDisplayProps) {
   // Filter to only machines with actual variations (not "No SAS Data")
-  const variationMachines = machines.filter(m => typeof m.variation === 'number' && Math.abs(m.variation) > 0.1);
+  const variationMachines = machines.filter(
+    m => typeof m.variation === 'number' && Math.abs(m.variation) > 0.1
+  );
 
   if (variationMachines.length === 0) {
     return (
@@ -41,16 +43,24 @@ export function VariationsListDisplay({
   }
 
   const formatNumber = (value: number | string | null | undefined): string => {
-    if (value === null || value === undefined || typeof value === 'string') return String(value || '-');
-    return typeof value === 'number' ? value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : String(value);
+    if (value === null || value === undefined || typeof value === 'string')
+      return String(value || '-');
+    return typeof value === 'number'
+      ? value.toLocaleString(undefined, {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2,
+        })
+      : String(value);
   };
 
-  const formatTime = (timeString: string | null | undefined): string => {
+  const formatTime = (timeString: string | Date | null | undefined): string => {
     if (!timeString) return '-';
     try {
-      return format(new Date(timeString), 'MMM dd, yyyy HH:mm');
+      const dateObj =
+        typeof timeString === 'string' ? new Date(timeString) : timeString;
+      return format(dateObj, 'MMM dd, yyyy HH:mm');
     } catch {
-      return timeString;
+      return String(timeString);
     }
   };
 
@@ -75,37 +85,55 @@ export function VariationsListDisplay({
               <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800">
                 Machine Entry
               </p>
-              <h4 className="text-base font-black text-gray-900">{machine.machineName}</h4>
-              <p className="text-[10px] font-mono text-gray-400">ID: {machine.machineId.substring(0, 8)}</p>
+              <h4 className="text-base font-black text-gray-900">
+                {machine.machineName}
+              </h4>
+              <p className="font-mono text-[10px] text-gray-400">
+                ID: {machine.machineId.substring(0, 8)}
+              </p>
             </div>
-            <div className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${
-              typeof machine.variation === 'number' && machine.variation < 0 
-              ? 'bg-red-500 text-white' 
-              : 'bg-green-500 text-white'
-            }`}>
+            <div
+              className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase ${
+                typeof machine.variation === 'number' && machine.variation < 0
+                  ? 'bg-red-500 text-white'
+                  : 'bg-green-500 text-white'
+              }`}
+            >
               {formatNumber(machine.variation)}
             </div>
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-4 border-t border-amber-100 pt-4">
             <div className="space-y-0.5">
-              <p className="text-[10px] font-bold uppercase text-gray-400">Meter Gross</p>
-              <p className="text-sm font-black text-gray-900">${formatNumber(machine.meterGross)}</p>
+              <p className="text-[10px] font-bold uppercase text-gray-400">
+                Meter Gross
+              </p>
+              <p className="text-sm font-black text-gray-900">
+                ${formatNumber(machine.meterGross)}
+              </p>
             </div>
             <div className="space-y-0.5">
-              <p className="text-[10px] font-bold uppercase text-gray-400">SAS Gross</p>
-              <p className="text-sm font-black text-gray-900">{typeof machine.sasGross === 'string' ? machine.sasGross : `$${formatNumber(machine.sasGross)}`}</p>
+              <p className="text-[10px] font-bold uppercase text-gray-400">
+                SAS Gross
+              </p>
+              <p className="text-sm font-black text-gray-900">
+                {typeof machine.sasGross === 'string'
+                  ? machine.sasGross
+                  : `$${formatNumber(machine.sasGross)}`}
+              </p>
             </div>
           </div>
-          
+
           {machine.sasStartTime && (
-            <div className="mt-3 flex items-center justify-between rounded-lg bg-white/50 p-2 border border-amber-100">
-              <span className="text-[10px] font-bold uppercase text-amber-800 shrink-0">SAS Period</span>
+            <div className="mt-3 flex items-center justify-between rounded-lg border border-amber-100 bg-white/50 p-2">
+              <span className="shrink-0 text-[10px] font-bold uppercase text-amber-800">
+                SAS Period
+              </span>
               <div className="flex flex-col items-end gap-0.5">
-                <span className="text-[10px] font-mono font-bold text-gray-700">
+                <span className="font-mono text-[10px] font-bold text-gray-700">
                   {formatTime(machine.sasStartTime)}
                 </span>
-                <span className="text-[10px] font-mono font-bold text-gray-400">
+                <span className="font-mono text-[10px] font-bold text-gray-400">
                   {formatTime(machine.sasEndTime)}
                 </span>
               </div>
@@ -117,10 +145,19 @@ export function VariationsListDisplay({
   );
 
   // Desktop/Full table view (always hidden on mobile)
-  const totalMeterGross = variationMachines.reduce((sum, machineItem) => sum + (Number(machineItem.meterGross) || 0), 0);
-  const totalSasGross = variationMachines.reduce((sum, machineItem) => sum + (Number(machineItem.sasGross) || 0), 0);
+  const totalMeterGross = variationMachines.reduce(
+    (sum, machineItem) => sum + (Number(machineItem.meterGross) || 0),
+    0
+  );
+  const totalSasGross = variationMachines.reduce(
+    (sum, machineItem) => sum + (Number(machineItem.sasGross) || 0),
+    0
+  );
   const totalVariation = variationMachines.reduce((sum, machineItem) => {
-    const variationValue = typeof machineItem.variation === 'number' ? machineItem.variation : Number(machineItem.variation) || 0;
+    const variationValue =
+      typeof machineItem.variation === 'number'
+        ? machineItem.variation
+        : Number(machineItem.variation) || 0;
     return sum + variationValue;
   }, 0);
 
@@ -129,52 +166,80 @@ export function VariationsListDisplay({
       {renderCards()}
 
       {!isCompact && (
-        <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 shadow-sm bg-white">
+        <div className="hidden overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm md:block">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50/80 backdrop-blur-sm border-b border-gray-100 text-gray-500">
+            <thead className="border-b border-gray-100 bg-gray-50/80 text-gray-500 backdrop-blur-sm">
               <tr>
-                <th className="px-6 py-4 text-left font-bold uppercase tracking-wider text-[10px]">MACHINE / DEVICE</th>
-                <th className="px-6 py-4 text-right font-bold uppercase tracking-wider text-[10px]">METER GROSS</th>
-                <th className="px-6 py-4 text-right font-bold uppercase tracking-wider text-[10px]">SAS GROSS</th>
-                <th className="px-6 py-4 text-right font-bold uppercase tracking-wider text-[10px]">VARIANCE</th>
-                <th className="px-6 py-4 text-left font-bold uppercase tracking-wider text-[10px]">SAS START AND END TIME</th>
+                <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-wider">
+                  MACHINE / DEVICE
+                </th>
+                <th className="px-6 py-4 text-right text-[10px] font-bold uppercase tracking-wider">
+                  METER GROSS
+                </th>
+                <th className="px-6 py-4 text-right text-[10px] font-bold uppercase tracking-wider">
+                  SAS GROSS
+                </th>
+                <th className="px-6 py-4 text-right text-[10px] font-bold uppercase tracking-wider">
+                  VARIANCE
+                </th>
+                <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-wider">
+                  SAS START AND END TIME
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {variationMachines.map((machine, index) => (
                 <tr
                   key={`${machine.machineId}-${index}`}
-                  className="hover:bg-blue-50/30 cursor-pointer transition-all duration-200"
+                  className="cursor-pointer transition-all duration-200 hover:bg-blue-50/30"
                   onClick={() => onMachineClick?.(machine.machineId)}
                 >
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
-                      <span className="font-bold text-gray-900">{machine.machineName}</span>
-                      <span className="text-[10px] text-gray-400 font-mono">ID: {machine.machineId.substring(0, 8)}...</span>
+                      <span className="font-bold text-gray-900">
+                        {machine.machineName}
+                      </span>
+                      <span className="font-mono text-[10px] text-gray-400">
+                        ID: {machine.machineId.substring(0, 8)}...
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right font-medium text-gray-600">
                     ${formatNumber(machine.meterGross)}
                   </td>
                   <td className="px-6 py-4 text-right font-medium text-gray-600">
-                    {typeof machine.sasGross === 'string' ? machine.sasGross : `$${formatNumber(machine.sasGross)}`}
+                    {typeof machine.sasGross === 'string'
+                      ? machine.sasGross
+                      : `$${formatNumber(machine.sasGross)}`}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                      typeof machine.variation === 'number' && machine.variation < 0 
-                      ? 'bg-red-50 text-red-600' 
-                      : typeof machine.variation === 'number' && machine.variation > 0
-                      ? 'bg-green-50 text-green-600'
-                      : 'bg-gray-50 text-gray-600'
-                    }`}>
-                      {typeof machine.variation === 'number' && machine.variation > 0 ? '+' : ''}{formatNumber(machine.variation)}
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        typeof machine.variation === 'number' &&
+                        machine.variation < 0
+                          ? 'bg-red-50 text-red-600'
+                          : typeof machine.variation === 'number' &&
+                              machine.variation > 0
+                            ? 'bg-green-50 text-green-600'
+                            : 'bg-gray-50 text-gray-600'
+                      }`}
+                    >
+                      {typeof machine.variation === 'number' &&
+                      machine.variation > 0
+                        ? '+'
+                        : ''}
+                      {formatNumber(machine.variation)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-gray-500 font-mono text-[11px]">
+                  <td className="whitespace-nowrap px-6 py-4 font-mono text-[11px] text-gray-500">
                     {machine.sasStartTime && machine.sasEndTime ? (
                       <div className="space-y-0.5">
-                        <div className="font-bold text-gray-700">{formatTime(machine.sasStartTime)}</div>
-                        <div className="text-gray-400">{formatTime(machine.sasEndTime)}</div>
+                        <div className="font-bold text-gray-700">
+                          {formatTime(machine.sasStartTime)}
+                        </div>
+                        <div className="text-gray-400">
+                          {formatTime(machine.sasEndTime)}
+                        </div>
                       </div>
                     ) : (
                       <span className="italic text-gray-300">N/A</span>
@@ -183,12 +248,20 @@ export function VariationsListDisplay({
                 </tr>
               ))}
             </tbody>
-            <tfoot className="bg-gray-50/50 font-black text-gray-900 border-t border-gray-100">
+            <tfoot className="border-t border-gray-100 bg-gray-50/50 font-black text-gray-900">
               <tr>
-                <td className="px-6 py-4 text-left uppercase text-[10px] tracking-widest text-gray-400 font-bold">BATCH TOTALS</td>
-                <td className="px-6 py-4 text-right">${formatNumber(totalMeterGross)}</td>
-                <td className="px-6 py-4 text-right">${formatNumber(totalSasGross)}</td>
-                <td className={`px-6 py-4 text-right ${getVariationColor(totalVariation)}`}>
+                <td className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                  BATCH TOTALS
+                </td>
+                <td className="px-6 py-4 text-right">
+                  ${formatNumber(totalMeterGross)}
+                </td>
+                <td className="px-6 py-4 text-right">
+                  ${formatNumber(totalSasGross)}
+                </td>
+                <td
+                  className={`px-6 py-4 text-right ${getVariationColor(totalVariation)}`}
+                >
                   ${formatNumber(totalVariation)}
                 </td>
                 <td className="px-6 py-4"></td>

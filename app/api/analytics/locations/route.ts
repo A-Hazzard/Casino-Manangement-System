@@ -16,6 +16,11 @@ import { getTopLocationsAnalytics } from '@/app/api/lib/helpers/reports/analytic
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/analytics/locations
@@ -34,6 +39,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/analytics/locations';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -41,6 +48,13 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const db = await connectDB();
     if (!db) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/analytics/locations',
+        'Database connection failed',
+        user
+      );
       return NextResponse.json(
         { error: 'Database connection failed' },
         { status: 500 }
@@ -51,11 +65,18 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse and validate request parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licencee = (searchParams.get('licencee'));
+    const licencee = searchParams.get('licencee');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
 
     if (!licencee) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/analytics/locations',
+        'Licencee is required',
+        user
+      );
       return NextResponse.json(
         { message: 'Licencee is required' },
         { status: 400 }
@@ -74,6 +95,15 @@ export async function GET(request: NextRequest) {
     // STEP 4: Return top locations analytics data
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/analytics/locations',
+      1,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
       console.warn(`[Analytics Locations GET API] Completed in ${duration}ms`);
     }
@@ -83,6 +113,13 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/analytics/locations',
+      errorMessage,
+      user
+    );
     console.error(
       `[Analytics Locations GET API] Error after ${duration}ms:`,
       errorMessage
@@ -96,4 +133,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

@@ -17,13 +17,18 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
 import { mqttService } from '@/app/api/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main POST handler for restarting a SMIB device
  *
  * @body {string} relayId - REQUIRED. The 12-char hex relay ID of the SMIB to restart
- * 
+ *
  * Flow:
  * 1. Parse request body
  * 2. Validate relayId
@@ -35,6 +40,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/smib/restart';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -46,6 +53,13 @@ export async function POST(request: NextRequest) {
     // STEP 2: Validate relayId
     // ============================================================================
     if (!relayId) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/smib/restart',
+        'RelayId is required',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'RelayId is required' },
         { status: 400 }
@@ -62,6 +76,13 @@ export async function POST(request: NextRequest) {
     // ============================================================================
 
     if (!relayId) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/smib/restart',
+        'RelayId is required',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'RelayId is required' },
         { status: 400 }
@@ -73,6 +94,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (!machine) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/smib/restart',
+        'Machine not found for this relayId',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Machine not found for this relayId' },
         { status: 404 }
@@ -85,6 +113,13 @@ export async function POST(request: NextRequest) {
     try {
       await mqttService.restartSmib(relayId);
     } catch {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/smib/restart',
+        'Failed to send restart command to SMIB',
+        user
+      );
       return NextResponse.json(
         {
           success: false,
@@ -127,21 +162,29 @@ export async function POST(request: NextRequest) {
     // STEP 7: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[SMIB Restart API] Completed in ${duration}ms`);
-    }
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/smib/restart',
+      1,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: true,
       message: 'Restart command sent successfully',
       relayId,
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(
-      `[SMIB Restart API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/smib/restart',
+      errorMessage,
+      user
     );
     return NextResponse.json(
       { success: false, error: errorMessage },
@@ -149,4 +192,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

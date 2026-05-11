@@ -22,7 +22,10 @@ import { format, isValid, parseISO } from 'date-fns';
  * @returns Formatted string representation
  */
 function formatProfileObject(profile: Record<string, unknown>): string {
-  if (!profile) { console.error('[formatProfileObject] profile is required'); return 'Empty profile'; }
+  if (!profile) {
+    console.error('[formatProfileObject] profile is required');
+    return 'Empty profile';
+  }
   const parts = [];
 
   // Handle basic profile fields
@@ -73,13 +76,10 @@ function formatProfileObject(profile: Record<string, unknown>): string {
  * @param date - Date object, string, or undefined
  * @returns Formatted date string or fallback
  */
-export function formatDate(date: Date | string | number | undefined): string {
+export function formatDate(date: Date | string | undefined): string {
   if (!date) return '-';
-  const dateObj =
-    typeof date === 'string' || typeof date === 'number'
-      ? new Date(date)
-      : date;
 
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
   if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return '-';
 
   return dateObj.toLocaleDateString(undefined, {
@@ -110,7 +110,10 @@ export function formatDateString(
       day: 'numeric',
     });
   } catch (e) {
-    console.error('[formatDateString] Error:', e instanceof Error ? e.message : 'Unknown error');
+    console.error(
+      '[formatDateString] Error:',
+      e instanceof Error ? e.message : 'Unknown error'
+    );
     return fallback;
   }
 }
@@ -146,15 +149,10 @@ export function formatFullDate(
  * @param date - Date object, string, or undefined
  * @returns Formatted date string with ordinal and time or fallback
  */
-export function formatDateWithOrdinal(
-  date: Date | string | number | undefined
-): string {
+export function formatDateWithOrdinal(date: Date | string | undefined): string {
   if (!date) return 'Unknown';
-  const dateObj =
-    typeof date === 'string' || typeof date === 'number'
-      ? new Date(date)
-      : date;
 
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
   if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) return 'Unknown';
 
   return format(dateObj, 'MMM do yyyy h:mm a');
@@ -199,7 +197,10 @@ export function safeFormatDate(
       }
     );
   } catch (e) {
-    console.error('[safeFormatDate] Error:', e instanceof Error ? e.message : 'Unknown error');
+    console.error(
+      '[safeFormatDate] Error:',
+      e instanceof Error ? e.message : 'Unknown error'
+    );
     return '-';
   }
 }
@@ -245,12 +246,15 @@ export function formatValue(value: unknown, fieldName?: string): string {
           return format(date, "MMMM d, yyyy 'at' h:mm a");
         }
       } catch (e) {
-        console.error('[formatValue] Error:', e instanceof Error ? e.message : 'Unknown error');
+        console.error(
+          '[formatValue] Error:',
+          e instanceof Error ? e.message : 'Unknown error'
+        );
         // Fall through to handle as regular string.
       }
     }
 
-  // Check if it's a simple date string (YYYY-MM-DD)
+    // Check if it's a simple date string (YYYY-MM-DD)
     const simpleDateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (typeof value === 'string' && simpleDateRegex.test(value)) {
       try {
@@ -302,7 +306,10 @@ export function formatValue(value: unknown, fieldName?: string): string {
       }
 
       // Check for movement object
-      if (fieldName === 'movement' || ('metersIn' in value && 'metersOut' in value && 'gross' in value)) {
+      if (
+        fieldName === 'movement' ||
+        ('metersIn' in value && 'metersOut' in value && 'gross' in value)
+      ) {
         const movementData = value as Record<string, unknown>;
         return `In: ${movementData.metersIn}, Out: ${movementData.metersOut}, Gross: ${movementData.gross}`;
       }

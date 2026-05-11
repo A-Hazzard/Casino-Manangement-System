@@ -77,9 +77,11 @@ export async function findFirmwareById(
     return null;
   }
   await connectDB();
-  
+
   // Use .lean<Firmware>() to get a typed object
-  const firmwareDoc = await FirmwareModel.findOne({ _id: firmwareId }).lean<Firmware>();
+  const firmwareDoc = await FirmwareModel.findOne({
+    _id: firmwareId,
+  }).lean<Firmware>();
 
   if (!firmwareDoc) {
     return null;
@@ -105,7 +107,7 @@ export async function findFirmwareByVersion(
     return null;
   }
   await connectDB();
-  
+
   const firmwareDoc = await FirmwareModel.findOne({
     version: version,
     $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],

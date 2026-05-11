@@ -47,7 +47,11 @@ export function MoneyOutCell({
   const colorClass = getMoneyOutColorClass(moneyOut, moneyIn);
 
   if (!includeJackpot || jackpot <= 0) {
-    return <span className={`font-semibold ${colorClass} ${className}`}>{displayValue}</span>;
+    return (
+      <span className={`font-semibold ${colorClass} ${className}`}>
+        {displayValue}
+      </span>
+    );
   }
 
   // moneyOut from the API already includes jackpot when includeJackpot is true
@@ -57,19 +61,30 @@ export function MoneyOutCell({
 
   const breakdownContent = (
     <div className="space-y-1 text-xs">
-      <p className="font-semibold text-blue-600 flex items-center gap-1">
+      <p className="flex items-center gap-1 font-semibold text-blue-600">
         Money Out Breakdown
       </p>
       <p>
-        Base Total Cancelled Credits: <span className="font-bold">{baseMoneyOut.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        Base Total Cancelled Credits:{' '}
+        <span className="font-bold">
+          {baseMoneyOut.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </span>
       </p>
       <p>
-        + Jackpot: <span className="font-bold text-amber-600">{jackpot.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        + Jackpot:{' '}
+        <span className="font-bold text-amber-600">
+          {jackpot.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </span>
       </p>
       <p className="border-t border-gray-200 pt-1">
-        Total Money Out: <span className="font-bold">{adjustedMoneyOut.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        Total Money Out:{' '}
+        <span className="font-bold">
+          {adjustedMoneyOut.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+          })}
+        </span>
       </p>
-      <p className="mt-2 text-[10px] text-gray-500 italic">
+      <p className="mt-2 text-[10px] italic text-gray-500">
         * Jackpot is included in Money Out for this licencee.
       </p>
     </div>
@@ -82,12 +97,16 @@ export function MoneyOutCell({
         <Tooltip>
           <TooltipTrigger asChild>
             <span
-              className={`cursor-default font-semibold border-b border-dotted border-gray-400 ${colorClass} ${className} ${underlineClass}`}
+              className={`cursor-default border-b border-dotted border-gray-400 font-semibold ${colorClass} ${className} ${underlineClass}`}
             >
               {displayValue}
             </span>
           </TooltipTrigger>
-          <TooltipContent className="w-auto max-w-xs p-3 bg-white text-gray-900 border shadow-lg" side="top" align="center">
+          <TooltipContent
+            className="w-auto max-w-xs border bg-white p-3 text-gray-900 shadow-lg"
+            side="top"
+            align="center"
+          >
             {breakdownContent}
           </TooltipContent>
         </Tooltip>
@@ -103,18 +122,26 @@ export function MoneyOutCell({
         <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className={`cursor-default font-semibold border-b border-dotted border-gray-400 ${colorClass} ${className}`}>
+              <span
+                className={`cursor-default border-b border-dotted border-gray-400 font-semibold ${colorClass} ${className}`}
+              >
                 {displayValue}
               </span>
             </TooltipTrigger>
-            <TooltipContent className="w-auto max-w-xs p-3 bg-white text-gray-900 border shadow-lg" side="top" align="center">
+            <TooltipContent
+              className="w-auto max-w-xs border bg-white p-3 text-gray-900 shadow-lg"
+              side="top"
+              align="center"
+            >
               {breakdownContent}
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </span>
       {/* Mobile: plain value + clickable info icon */}
-      <span className={`md:hidden font-semibold border-b border-dotted border-gray-400 ${colorClass} ${className}`}>
+      <span
+        className={`border-b border-dotted border-gray-400 font-semibold md:hidden ${colorClass} ${className}`}
+      >
         {displayValue}
       </span>
       {/* Info icon: tooltip on desktop hover, popover on mobile click */}
@@ -126,7 +153,11 @@ export function MoneyOutCell({
                 <Info className="h-3.5 w-3.5" />
               </span>
             </TooltipTrigger>
-            <TooltipContent className="w-auto max-w-xs p-3 bg-white text-gray-900 border shadow-lg" side="top" align="center">
+            <TooltipContent
+              className="w-auto max-w-xs border bg-white p-3 text-gray-900 shadow-lg"
+              side="top"
+              align="center"
+            >
               {breakdownContent}
             </TooltipContent>
           </Tooltip>
@@ -143,7 +174,11 @@ export function MoneyOutCell({
               <Info className="h-3.5 w-3.5" />
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto max-w-xs p-3" side="top" align="center">
+          <PopoverContent
+            className="w-auto max-w-xs p-3"
+            side="top"
+            align="center"
+          >
             {breakdownContent}
           </PopoverContent>
         </Popover>

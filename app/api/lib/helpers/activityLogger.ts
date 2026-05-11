@@ -108,7 +108,12 @@ export function calculateChanges(
   oldObj: Record<string, unknown>,
   newObj: Record<string, unknown>
 ): ActivityLogChange[] {
-  if (!oldObj || typeof oldObj !== 'object' || !newObj || typeof newObj !== 'object') {
+  if (
+    !oldObj ||
+    typeof oldObj !== 'object' ||
+    !newObj ||
+    typeof newObj !== 'object'
+  ) {
     console.error('[calculateChanges] oldObj and newObj are required objects');
     return [];
   }
@@ -172,5 +177,3 @@ function isEqual(a: unknown, b: unknown): boolean {
 
   return aKeys.every(key => isEqual(aObj[key], bObj[key]));
 }
-
-

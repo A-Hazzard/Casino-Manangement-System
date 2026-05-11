@@ -46,7 +46,10 @@ function getUserFromStore(): MinimalUserPayload | null {
       enabled: user.isEnabled !== false,
     };
   } catch (e) {
-    console.error('[getUserFromStore] Error:', e instanceof Error ? e.message : 'Unknown error');
+    console.error(
+      '[getUserFromStore] Error:',
+      e instanceof Error ? e.message : 'Unknown error'
+    );
     return null;
   }
 }
@@ -91,7 +94,10 @@ async function getCurrentUserFromDb(): Promise<MinimalUserPayload | null> {
 
     return null;
   } catch (e) {
-    console.error('[getCurrentUserFromDb] Error:', e instanceof Error ? e.message : 'Unknown error');
+    console.error(
+      '[getCurrentUserFromDb] Error:',
+      e instanceof Error ? e.message : 'Unknown error'
+    );
     return null;
   }
 }
@@ -154,13 +160,7 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
       'collector',
       'reviewer',
     ],
-    reports: [
-      'developer',
-      'owner',
-      'admin',
-      'manager',
-      'location admin',
-    ],
+    reports: ['developer', 'owner', 'admin', 'manager', 'location admin'],
     sessions: ['developer'],
     administration: [
       'developer',
@@ -208,7 +208,10 @@ export async function hasPageAccessDb(page: PageName): Promise<boolean> {
  */
 export async function hasAdminAccessDb(): Promise<boolean> {
   const userData = await getCurrentUserFromDb();
-  if (!userData) { console.error('[hasAdminAccessDb] userData is required'); return false; }
+  if (!userData) {
+    console.error('[hasAdminAccessDb] userData is required');
+    return false;
+  }
 
   if (!userData || !userData.enabled) {
     return false;
@@ -231,6 +234,9 @@ export async function hasAdminAccessDb(): Promise<boolean> {
 export async function shouldShowNavigationLinkDb(
   page: PageName
 ): Promise<boolean> {
-  if (!page) { console.error('[shouldShowNavigationLinkDb] page is required'); return false; }
+  if (!page) {
+    console.error('[shouldShowNavigationLinkDb] page is required');
+    return false;
+  }
   return await hasPageAccessDb(page);
 }

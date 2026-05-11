@@ -32,6 +32,15 @@ import { LocationFilter } from '@/lib/types/location';
 import type { LicenceeDocument } from '@shared/types';
 import type { LeanUserDocument } from 'shared/types/auth';
 import type { CurrencyCode } from '@/shared/types/currency';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import {
+  getMoneyInScale,
+  getMoneyOutAndJackpotScale,
+} from '@/app/api/lib/utils/reviewerScale';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -67,6 +76,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/locationAggregation';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -74,7 +85,7 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(req.url);
     const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || '7d';
-    const licencee = (searchParams.get('licencee')) || undefined;
+    const licencee = searchParams.get('licencee') || undefined;
     const currencyParam = searchParams.get('currency') as CurrencyCode | null;
     let displayCurrency: CurrencyCode = currencyParam || 'USD';
     const machineTypeFilter =
@@ -87,7 +98,8 @@ export async function GET(req: NextRequest) {
     const limitParam = searchParams.get('limit');
     const limit = limitParam ? parseInt(limitParam) : 1000000;
     const search = searchParams.get('search') || null;
-    const onlineStatus = searchParams.get('onlineStatus')?.toLowerCase() || 'all';
+    const onlineStatus =
+      searchParams.get('onlineStatus')?.toLowerCase() || 'all';
 
     // ============================================================================
     // STEP 2: Handle cache clearing if requested
@@ -112,9 +124,12 @@ export async function GET(req: NextRequest) {
       const customStart = searchParams.get('startDate');
       const customEnd = searchParams.get('endDate');
       if (!customStart || !customEnd) {
-        const duration = Date.now() - startTime;
-        console.error(
-          `[Location Aggregation GET API] Missing startDate or endDate after ${duration}ms.`
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/locationAggregation',
+          'Missing startDate or endDate',
+          user
         );
         return NextResponse.json(
           { error: 'Missing startDate or endDate' },
@@ -131,9 +146,12 @@ export async function GET(req: NextRequest) {
 
       // Validate dates are valid
       if (isNaN(customStartDate.getTime()) || isNaN(customEndDate.getTime())) {
-        const duration = Date.now() - startTime;
-        console.error(
-          `[Location Aggregation GET API] Invalid date format after ${duration}ms. startDate: ${customStart}, endDate: ${customEnd}`
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/locationAggregation',
+          `Invalid date format: startDate: ${customStart}, endDate: ${customEnd}`,
+          user
         );
         return NextResponse.json(
           { error: 'Invalid date format' },
@@ -156,9 +174,12 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const db = await connectDB();
     if (!db) {
-      const duration = Date.now() - startTime;
-      console.error(
-        `[Location Aggregation GET API] Database connection failed after ${duration}ms.`
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/locationAggregation',
+        'Database connection failed',
+        user
       );
       return NextResponse.json(
         { error: 'DB connection failed' },
@@ -368,15 +389,32 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 10.5: Apply Reviewer Multiplier Scaling
     // ============================================================================
-    const reviewerMult = (currentUser as { multiplier?: number | null })?.multiplier ?? null;
-    if (reviewerMult !== null) {
-      const scale = 1 - reviewerMult;
-      convertedRows = convertedRows.map((row) => ({
+    const moneyInScale = getMoneyInScale(
+      currentUser as { moneyInMultiplier?: number | null; roles?: string[] }
+    );
+    const moneyOutScale = getMoneyOutAndJackpotScale(
+      currentUser as {
+        moneyOutAndJackpotMultiplier?: number | null;
+        roles?: string[];
+      }
+    );
+    if (moneyInScale !== 1 || moneyOutScale !== 1) {
+      convertedRows = convertedRows.map(row => ({
         ...row,
-        moneyIn: typeof row.moneyIn === 'number' ? row.moneyIn * scale : row.moneyIn,
-        moneyOut: typeof row.moneyOut === 'number' ? row.moneyOut * scale : row.moneyOut,
-        jackpot: typeof row.jackpot === 'number' ? row.jackpot * scale : row.jackpot,
-        gross: typeof row.gross === 'number' ? row.gross * scale : row.gross,
+        moneyIn:
+          typeof row.moneyIn === 'number'
+            ? row.moneyIn * moneyInScale
+            : row.moneyIn,
+        moneyOut:
+          typeof row.moneyOut === 'number'
+            ? row.moneyOut * moneyOutScale
+            : row.moneyOut,
+        jackpot:
+          typeof row.jackpot === 'number'
+            ? row.jackpot * moneyOutScale
+            : row.jackpot,
+        gross:
+          typeof row.gross === 'number' ? row.gross * moneyInScale : row.gross,
       }));
     }
 
@@ -398,20 +436,28 @@ export async function GET(req: NextRequest) {
       setCachedData(cacheKey, result);
     }
 
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/locationAggregation',
+      convertedRows.length,
+      user,
+      duration
+    );
+
     return NextResponse.json(result);
   } catch (error: unknown) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
 
-    console.error(
-      `[Location Aggregation GET API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/locationAggregation',
+      errorMessage,
+      user
     );
-    if (error instanceof Error) {
-      console.error('[Location Aggregation GET API] Error stack:', error.stack);
-    }
-    console.error('[Location Aggregation GET API] Full error:', error);
 
     // Handle specific MongoDB connection errors
     if (error instanceof Error) {
@@ -482,4 +528,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

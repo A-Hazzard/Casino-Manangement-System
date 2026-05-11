@@ -4,6 +4,11 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -21,6 +26,9 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param {number} skip - Offset for pagination
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/vault/activity-log';
+  const user = extractUserFromRequest(request);
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const { searchParams } = new URL(request.url);
@@ -35,11 +43,19 @@ export async function GET(request: NextRequest) {
       const limit = parseInt(searchParams.get('limit') || '50'),
         skip = parseInt(searchParams.get('skip') || '0');
 
-      if (!locId && !uid && !cid && !mid && !sid)
+      if (!locId && !uid && !cid && !mid && !sid) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/vault/activity-log',
+          'Filter required',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Filter required' },
           { status: 400 }
         );
+      }
 
       const filters: Record<string, unknown> = { locationId: locId };
       const isVM = userRoles
@@ -112,6 +128,15 @@ export async function GET(request: NextRequest) {
         VaultTransactionModel.countDocuments(filters),
       ]);
 
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/vault/activity-log',
+        activities.length,
+        user,
+        duration
+      );
       return NextResponse.json({
         success: true,
         activities,
@@ -124,8 +149,17 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch (e) {
-      console.error('[Activity Log] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/vault/activity-log',
+        e instanceof Error ? e.message : 'Unknown error',
+        user
+      );
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        { status: 500 }
+      );
     }
   });
 }

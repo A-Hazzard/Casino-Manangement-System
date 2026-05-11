@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 
-
 type CollectionSnapshot = {
   _id: mongoose.Types.ObjectId | string;
   metersIn?: number;
@@ -22,10 +21,7 @@ type CollectionSnapshot = {
 };
 
 function getCollectionSortTime(collection: CollectionSnapshot): number {
-  const raw =
-    collection.collectionTime ??
-    collection.timestamp ??
-    new Date(0);
+  const raw = collection.collectionTime ?? collection.timestamp ?? new Date(0);
   return new Date(raw).getTime();
 }
 
@@ -35,9 +31,7 @@ function getObjectIdTime(collection: CollectionSnapshot): number {
     collection._id !== null &&
     'getTimestamp' in collection._id
   ) {
-    return (collection._id as mongoose.Types.ObjectId)
-      .getTimestamp()
-      .getTime();
+    return (collection._id as mongoose.Types.ObjectId).getTimestamp().getTime();
   }
   return 0;
 }
@@ -49,9 +43,7 @@ function getObjectIdTime(collection: CollectionSnapshot): number {
  * @param {string | null} [machineId] - The machine to update history for.
  * @param {string} [anchorCollectionId] - Unused (kept for compatibility with callers).
  */
-export async function recalculateMachineCollections(
-  machineId?: string | null
-) {
+export async function recalculateMachineCollections(machineId?: string | null) {
   if (!machineId) {
     console.error('[recalculateMachineCollections] machineId is required');
     return;
@@ -84,7 +76,11 @@ export async function recalculateMachineCollections(
     locationReportId: string;
   }> = [];
 
-  for (let collectionIndex = 0; collectionIndex < sorted.length; collectionIndex++) {
+  for (
+    let collectionIndex = 0;
+    collectionIndex < sorted.length;
+    collectionIndex++
+  ) {
     const col = sorted[collectionIndex];
     historyEntries.push({
       _id: new mongoose.Types.ObjectId(),

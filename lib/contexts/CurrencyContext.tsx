@@ -13,15 +13,14 @@ import type {
   CurrencyCode,
   CurrencyContextType,
 } from '@/shared/types/currency';
-import { 
+import {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
- } from 'react';
-
+} from 'react';
 
 type CurrencyProviderProps = {
   children: ReactNode;
@@ -37,10 +36,10 @@ export function CurrencyProvider({
   initialCurrency = 'USD',
 }: CurrencyProviderProps) {
   // Initialize state from dashboard store or localStorage if available
-  const { 
-    displayCurrency: storeDisplayCurrency, 
+  const {
+    displayCurrency: storeDisplayCurrency,
     setDisplayCurrency: setDashboardCurrency,
-    selectedLicencee 
+    selectedLicencee,
   } = useDashBoardStore();
 
   const [displayCurrency, setDisplayCurrency] = useState<CurrencyCode>(() => {
@@ -61,9 +60,7 @@ export function CurrencyProvider({
   const user = useUserStore(state => state.user);
   const lastAutoSetUserId = useRef<string | null>(null); // Track which user we auto-set currency for
   const lastAutoSetLicenceeId = useRef<string | null>(null); // Track which licencee we auto-set currency for
-  const lastActiveLicenceeId = useRef<string | null>(
-    selectedLicencee ?? null
-  ); // Track active licencee to detect changes
+  const lastActiveLicenceeId = useRef<string | null>(selectedLicencee ?? null); // Track active licencee to detect changes
 
   // Sync with store if it changes elsewhere
   useEffect(() => {
@@ -226,15 +223,21 @@ export function CurrencyProvider({
       // Only perform auto-sync if we're switching TO a specific licencee (not "All")
       // Switching TO "All" should persist the current currency choice
       const isSwitchingToSpecific =
-        selectedLicencee && selectedLicencee !== 'all' && selectedLicencee !== '';
+        selectedLicencee &&
+        selectedLicencee !== 'all' &&
+        selectedLicencee !== '';
 
       if (isSwitchingToSpecific) {
         // Sync to the native currency of the new licencee
         const mappedCurrency = getLicenceeCurrency(selectedLicencee);
-        
+
         // CRITICAL FIX: Only auto-switch if the current currency is 'USD' (default)
         // This ensures if the user manually chose GYD, it persists even when switching licencees
-        if (mappedCurrency && mappedCurrency !== displayCurrency && displayCurrency === 'USD') {
+        if (
+          mappedCurrency &&
+          mappedCurrency !== displayCurrency &&
+          displayCurrency === 'USD'
+        ) {
           handleSetDisplayCurrency(mappedCurrency);
         }
 
@@ -244,7 +247,12 @@ export function CurrencyProvider({
             if (licencee?.name) {
               const apiCurrency = getLicenceeCurrency(licencee.name);
               // Only auto-switch if no manual choice was made (current is USD or matches the initial mapping)
-              if (apiCurrency && apiCurrency !== mappedCurrency && (displayCurrency === 'USD' || displayCurrency === mappedCurrency)) {
+              if (
+                apiCurrency &&
+                apiCurrency !== mappedCurrency &&
+                (displayCurrency === 'USD' ||
+                  displayCurrency === mappedCurrency)
+              ) {
                 handleSetDisplayCurrency(apiCurrency);
               }
             }
@@ -285,7 +293,9 @@ export function CurrencyProvider({
       }
 
       // For admins or multi-licencee users, load from localStorage if not already auto-set
-      const savedCurrency = localStorage.getItem('evolution-currency') as CurrencyCode;
+      const savedCurrency = localStorage.getItem(
+        'evolution-currency'
+      ) as CurrencyCode;
       if (
         savedCurrency &&
         ['USD', 'TTD', 'GYD', 'BBD'].includes(savedCurrency) &&

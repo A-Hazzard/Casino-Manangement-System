@@ -65,5 +65,3 @@ export function handleSectionChange(
     : pathname;
   router.push(newURL, { scroll: false });
 }
-
-

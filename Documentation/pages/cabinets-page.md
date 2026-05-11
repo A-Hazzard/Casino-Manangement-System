@@ -1,8 +1,8 @@
 # Cabinets Page Implementation (`/cabinets`)
 
 **Author:** Evolution One Engineering  
-**Last Updated:** April 2026  
-**Version:** 5.0.0 (Unified API Architecture)
+**Last Updated:May 4, 2026  
+**Version:\*\* 5.0.0 (Unified API Architecture)
 
 ---
 
@@ -15,6 +15,7 @@ Real-time telemetry and hardware management hub for all gaming **cabinets** acro
 ## 2. Data & API Architecture (By Section)
 
 ### 📟 Fleet Inventory Table
+
 The primary management grid for all gaming hardware across the floor.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -29,6 +30,7 @@ The primary management grid for all gaming hardware across the floor.
 - **Implementation**: Utilizes the `useCabinetPageData` hook which communicates with the centralized aggregation engine.
 
 ### 🕹️ Cabinet Details Drawer
+
 A comprehensive fly-out panel providing a 360-degree view of a single asset.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -37,19 +39,21 @@ A comprehensive fly-out panel providing a 360-degree view of a single asset.
 | **Gross** | `gross` | `GET /api/cabinets/[cabinetId]` |
 | **Jackpot** | `jackpot` | `GET /api/cabinets/[cabinetId]` |
 | **Live Meters** | `sasMeters.*` | `GET /api/cabinets/[cabinetId]` |
-| **Analytics** | Time-series data | `GET /api/cabinets/[cabinetId]/chart` |
-| **History** | Collection records | `GET /api/cabinets/[cabinetId]/collection-history` |
+| **Analytics** | Time-series data | `GET /api/cabinets/aggregation` |
+| **History** | Collection records | `GET /api/collection-reports` |
 
 #### Audit Logs Tab
-| UI Term | Data Element | Source API |
-| :--- | :--- | :--- |
-| **Event Type** | `eventType` | `GET /api/activity-log?cabinetId=[cabinetId]` |
+
+| UI Term        | Data Element | Source API                                     |
+| :------------- | :----------- | :--------------------------------------------- |
+| **Event Type** | `eventType`  | `GET /api/activity-logs?cabinetId=[cabinetId]` |
 
 ---
 
 ## 3. Remote Operations & Commands
 
 The interface provides a **"Command Center"** for direct hardware interaction:
+
 - **Sync Meters**: Triggers `POST /api/cabinets/[cabinetId]/sync-meters` (PATCH).
 - **Refresh Status**: Triggers `POST /api/cabinets/[cabinetId]/refresh` (PATCH).
 - **SMIB Config**: Managed via `PATCH /api/cabinets/[cabinetId]` (SMIB Configuration settings).

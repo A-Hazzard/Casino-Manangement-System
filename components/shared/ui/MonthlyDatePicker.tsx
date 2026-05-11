@@ -1,6 +1,6 @@
 'use client';
 
-import {  useState  } from 'react';
+import { useState } from 'react';
 
 import { FC, useMemo } from 'react';
 import { Button } from '@/components/shared/ui/button';
@@ -173,4 +173,3 @@ export const MonthlyDatePicker: FC<MonthlyDatePickerProps> = ({
     </div>
   );
 };
-

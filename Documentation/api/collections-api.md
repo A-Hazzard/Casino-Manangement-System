@@ -1,8 +1,8 @@
-# Collection Report API (`/api/collectionReport`)
+# Collection Report API (`/api/collection-reports`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -14,10 +14,12 @@ The financial reconciliation engine for the casino's collection process. Handles
 
 ## 2. Core Endpoints
 
-### 📋 `GET /api/collectionReport`
+### 📋 `GET /api/collection-reports`
+
 Multi-purpose endpoint that serves the Reports History tab, Monthly Revenue Report, and Manager/Collector Schedule views depending on which query params are passed.
 
 **Steps:**
+
 1. **Connect to database** — Establishes the Mongoose connection.
 2. **Parse request params** — Reads `timePeriod`, `startDate`, `endDate`, `locationName`, `locationId`, `locationIds`, `licencee`, `page`, `limit`.
 3. **Handle `locationsWithMachines=true` query** — If this param is present, immediately delegates to `fetchLocationsWithMachines(licencee)` which returns a list of active locations and their associated machines. Used to populate the "Property & Asset Selection" step of the wizard. Returns early without checking reports data.
@@ -35,10 +37,12 @@ Multi-purpose endpoint that serves the Reports History tab, Monthly Revenue Repo
 
 ---
 
-### ✅ `POST /api/collectionReport`
+### ✅ `POST /api/collection-reports`
+
 Creates a new, immutable collection report from a finalized collection batch.
 
 **Steps:**
+
 1. **Connect to database** — Establishes the Mongoose connection.
 2. **Parse & validate request body** — Reads the `CreateCollectionReportPayload`. Calls `validateCollectionReportPayload(body)` which checks for required fields (`location`, `collections[]`, `totalCollected`, etc.). Returns `400` with the validation error string if invalid.
 3. **Sanitize string fields** — Calls `sanitizeCollectionReportPayload(body)` to trim whitespace and strip potentially harmful characters from string inputs (prevents XSS/injection via collector notes).
@@ -54,6 +58,7 @@ Creates a new, immutable collection report from a finalized collection batch.
 ## 3. Business Logic
 
 ### 💹 Gross Revenue Formula
+
 ```
 Movement Gross = (Current Meter In - Prev Meter In) - (Current Meter Out - Prev Meter Out)
 ```
@@ -61,14 +66,19 @@ Movement Gross = (Current Meter In - Prev Meter In) - (Current Meter Out - Prev 
 For RAM-cleared machines (`ramClear: true`), the calculation uses the `ramClearMeters` to bridge the pre-clear and post-clear readings so continuity is preserved.
 
 ### 🤝 Partner Profit Sharing
+
 Applied after gross is calculated:
+
 ```
 Profit Share = (Gross - Variance - Advances) * SharingPercentage
 ```
+
 Taxes are applied **after** the share split unless the location is flagged as "Pre-Tax Profit Calculation".
 
 ### 🔒 Location Filtering (RBAC)
+
 Reports store the location **name** (not the ObjectId), so the access filter must first resolve the user's allowed location IDs to names via `getLocationNamesFromIds()`, then apply a string comparison. This is a known architectural quirk.
 
 ---
+
 **Technical Reference** - Collection & Finance Team

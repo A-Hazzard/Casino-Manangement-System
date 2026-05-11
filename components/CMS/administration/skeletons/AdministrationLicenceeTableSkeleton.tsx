@@ -50,4 +50,3 @@ function AdministrationLicenceeTableSkeleton() {
 }
 
 export default AdministrationLicenceeTableSkeleton;
-

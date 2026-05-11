@@ -15,11 +15,11 @@ export default function SMIBFirmwareCard({ firmware }: SMIBFirmwareCardProps) {
   const { openDeleteModal, openDownloadModal } = useFirmwareActionsStore();
 
   return (
-    <Card className="overflow-hidden hover:shadow-md transition-shadow">
-      <CardContent className="p-4 space-y-3">
+    <Card className="overflow-hidden transition-shadow hover:shadow-md">
+      <CardContent className="space-y-3 p-4">
         {/* Product */}
         <div>
-          <div className="text-xs text-gray-500 uppercase font-semibold mb-1">
+          <div className="mb-1 text-xs font-semibold uppercase text-gray-500">
             Product
           </div>
           <div className="font-medium text-button">{firmware.product}</div>
@@ -32,7 +32,7 @@ export default function SMIBFirmwareCard({ firmware }: SMIBFirmwareCardProps) {
 
         {/* Version */}
         <div>
-          <div className="text-xs text-gray-500 uppercase font-semibold mb-1">
+          <div className="mb-1 text-xs font-semibold uppercase text-gray-500">
             Version
           </div>
           <span className="font-semibold text-buttonActive">
@@ -42,7 +42,7 @@ export default function SMIBFirmwareCard({ firmware }: SMIBFirmwareCardProps) {
 
         {/* Date Added */}
         <div>
-          <div className="text-xs text-gray-500 uppercase font-semibold mb-1">
+          <div className="mb-1 text-xs font-semibold uppercase text-gray-500">
             Date Added
           </div>
           <div className="text-sm">
@@ -53,13 +53,13 @@ export default function SMIBFirmwareCard({ firmware }: SMIBFirmwareCardProps) {
         </div>
 
         {/* Action Buttons */}
-        <div className="pt-3 border-t border-gray-200">
+        <div className="border-t border-gray-200 pt-3">
           <div className="flex items-center gap-2">
             <Button
               onClick={() => openDownloadModal(firmware)}
               variant="outline"
               size="sm"
-              className="flex-1 flex items-center justify-center gap-1.5 text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
+              className="flex flex-1 items-center justify-center gap-1.5 text-xs text-green-600 hover:bg-green-50 hover:text-green-700"
             >
               <Download className="h-3.5 w-3.5" />
               <span>Download</span>
@@ -68,7 +68,7 @@ export default function SMIBFirmwareCard({ firmware }: SMIBFirmwareCardProps) {
               onClick={() => openDeleteModal(firmware)}
               variant="outline"
               size="sm"
-              className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>Delete</span>
@@ -79,5 +79,3 @@ export default function SMIBFirmwareCard({ firmware }: SMIBFirmwareCardProps) {
     </Card>
   );
 }
-
-

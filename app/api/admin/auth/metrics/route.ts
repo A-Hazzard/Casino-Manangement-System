@@ -20,6 +20,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthMetrics } from '@/app/api/lib/helpers/auth/adminMetrics';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/admin/auth/metrics
@@ -33,6 +38,8 @@ import { connectDB } from '@/app/api/lib/middleware/db';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/admin/auth/metrics';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -43,8 +50,15 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 2: Authenticate user and check permissions
     // ============================================================================
-    const user = await getUserFromServer();
-    if (!user) {
+    const authUser = await getUserFromServer();
+    if (!authUser) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/admin/auth/metrics',
+        'Unauthorized - User not found',
+        user
+      );
       return NextResponse.json(
         { error: 'Unauthorized - User not found' },
         { status: 403 }
@@ -55,7 +69,8 @@ export async function GET(request: NextRequest) {
     // STEP 3: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const timeRange = (searchParams.get('timeRange') as '1h' | '24h' | '7d' | '30d') || '24h';
+    const timeRange =
+      (searchParams.get('timeRange') as '1h' | '24h' | '7d' | '30d') || '24h';
 
     // ============================================================================
     // STEP 4: Fetch authentication metrics
@@ -66,18 +81,25 @@ export async function GET(request: NextRequest) {
     // STEP 5: Return metrics data
     // ============================================================================
     const duration = Date.now() - startTime;
-    console.log(
-      `[Admin Auth Metrics GET API] Fetched metrics for ${timeRange} after ${duration}ms.`
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/admin/auth/metrics',
+      1,
+      user,
+      duration
     );
 
     return NextResponse.json(metrics);
   } catch (error: unknown) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
-    console.error(
-      `[Admin Auth Metrics GET API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/admin/auth/metrics',
+      errorMessage,
+      user
     );
 
     return NextResponse.json(
@@ -86,4 +108,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

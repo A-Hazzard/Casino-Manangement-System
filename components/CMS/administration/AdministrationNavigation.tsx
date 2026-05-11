@@ -20,10 +20,7 @@
 
 import { motion } from 'framer-motion';
 
-import type {
-  AdministrationSection,
-  AdministrationTab,
-} from '@/lib/constants';
+import type { AdministrationSection, AdministrationTab } from '@/lib/constants';
 import { useUserStore } from '@/lib/store/userStore';
 import { hasTabAccess } from '@/lib/utils/permissions';
 import { UserRole } from '@/lib/constants';
@@ -45,7 +42,7 @@ export default function AdministrationNavigation({
   // Hooks & State
   // ============================================================================
   const { user } = useUserStore();
-  const userRoles = user?.roles as UserRole[]
+  const userRoles = user?.roles as UserRole[];
 
   // ============================================================================
   // Computed Values - Filtered Tabs
@@ -99,7 +96,9 @@ export default function AdministrationNavigation({
               type="button"
             >
               <span className="text-sm">{tab.icon}</span>
-              <span className="text-sm font-medium sm:text-base">{tab.label}</span>
+              <span className="text-sm font-medium sm:text-base">
+                {tab.label}
+              </span>
             </motion.button>
           );
         })}
@@ -110,7 +109,7 @@ export default function AdministrationNavigation({
         <select
           value={activeSection}
           onChange={e => onChange(e.target.value as AdministrationSection)}
-          className="navigation-button w-full select-auto cursor-pointer rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
+          className="navigation-button w-full cursor-pointer select-auto rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-700 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
           aria-label="Select administration section"
         >
           {accessibleTabs.map(t => (
@@ -123,4 +122,3 @@ export default function AdministrationNavigation({
     </div>
   );
 }
-

@@ -17,9 +17,7 @@
 // ============================================================================
 
 import { COLLECTION_TABS_CONFIG } from '@/lib/constants';
-import {
-  fetchCollectionReportsByLicencee,
-} from '@/lib/helpers/collectionReport/fetching';
+import { fetchCollectionReportsByLicencee } from '@/lib/helpers/collectionReport/fetching';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import { useCollectionNavigation } from '@/lib/hooks/navigation';
 import { useDebounce } from '@/lib/hooks/useDebounce';
@@ -162,7 +160,10 @@ export function useCollectionReportPageData() {
     const displayedPages = Math.ceil(displayedCount / ITEMS_PER_PAGE) || 1;
 
     const isFiltered =
-      (Array.isArray(filters.selectedLocation) ? filters.selectedLocation.length > 0 && !filters.selectedLocation.includes('all') : filters.selectedLocation !== 'all') ||
+      (Array.isArray(filters.selectedLocation)
+        ? filters.selectedLocation.length > 0 &&
+          !filters.selectedLocation.includes('all')
+        : filters.selectedLocation !== 'all') ||
       filters.showUncollectedOnly ||
       filters.selectedFilters.length > 0;
 
@@ -172,9 +173,13 @@ export function useCollectionReportPageData() {
       // If we are filtered, we only show an extra page if the current matches are a multiple of ITEMS_PER_PAGE
       // or if we have no matches yet, suggesting there might be more in the next batch.
       if (isFiltered) {
-        if (displayedCount === 0 || (displayedCount > 0 && displayedCount % ITEMS_PER_PAGE === 0)) {
-           const serverTotalPages = Math.ceil(totalReports / ITEMS_PER_PAGE) || 1;
-           return Math.min(displayedPages + 1, serverTotalPages);
+        if (
+          displayedCount === 0 ||
+          (displayedCount > 0 && displayedCount % ITEMS_PER_PAGE === 0)
+        ) {
+          const serverTotalPages =
+            Math.ceil(totalReports / ITEMS_PER_PAGE) || 1;
+          return Math.min(displayedPages + 1, serverTotalPages);
         }
         return displayedPages;
       }
@@ -288,7 +293,7 @@ export function useCollectionReportPageData() {
    */
   const fetchReports = useCallback(
     async (batch: number = 1) => {
-      if (activeTab !== 'collection') {
+      if (activeTab !== 'collection' && activeTab !== 'collection-v2') {
         setLoading(false);
         if (!hasReceivedFirstResponseRef.current) {
           hasReceivedFirstResponseRef.current = true;
@@ -322,7 +327,11 @@ export function useCollectionReportPageData() {
           undefined,
           debouncedSearch,
           controller.signal,
-          Array.isArray(filters.selectedLocation) ? filters.selectedLocation : (filters.selectedLocation !== 'all' ? [filters.selectedLocation] : undefined)
+          Array.isArray(filters.selectedLocation)
+            ? filters.selectedLocation
+            : filters.selectedLocation !== 'all'
+              ? [filters.selectedLocation]
+              : undefined
         );
 
         if (result) {
@@ -482,7 +491,7 @@ export function useCollectionReportPageData() {
    * Initial data fetch and reset on tab/filter change
    */
   useEffect(() => {
-    if (activeTab === 'collection') {
+    if (activeTab === 'collection' || activeTab === 'collection-v2') {
       setAllReports([]);
       setTotalReports(0);
       setLoadedBatches(new Set());
@@ -613,9 +622,7 @@ export function useCollectionReportPageData() {
     setEditingReportId,
     // Data Refresh
     onRefreshLocations: useCallback(async () => {
-      const locs = await fetchAllGamingLocations(
-        selectedLicencee || undefined
-      );
+      const locs = await fetchAllGamingLocations(selectedLicencee || undefined);
       const formatted = locs.map(loc => ({
         _id: String(loc.id),
         name: loc.name,

@@ -20,6 +20,11 @@ import {
   buildSessionMatchQuery,
 } from '@/app/api/lib/helpers/sessions';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -39,6 +44,9 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async () => {
     const startTime = Date.now();
+    const functionName = 'GET /api/sessions';
+    const user = extractUserFromRequest(request);
+
     try {
       const { searchParams } = new URL(request.url);
       const page = parseInt(searchParams.get('page') || '1');
@@ -52,21 +60,44 @@ export async function GET(request: NextRequest) {
       const endDateParam = searchParams.get('endDate');
 
       // Step 1: Build match query from search and date params
-      const matchQuery = buildSessionMatchQuery({ search, dateFilter, startDateParam, endDateParam });
+      const matchQuery = buildSessionMatchQuery({
+        search,
+        dateFilter,
+        startDateParam,
+        endDateParam,
+      });
 
       // Step 2: Build base pipeline with lookups
       const basePipeline = buildSessionBasePipeline(matchQuery, licencee);
 
       // Step 3: Count total matching documents
-      const countResult = await MachineSession.aggregate([...basePipeline, { $count: 'total' }]);
+      const countResult = await MachineSession.aggregate([
+        ...basePipeline,
+        { $count: 'total' },
+      ]);
       const totalSessions = countResult[0]?.total || 0;
 
       // Step 4: Build full pipeline with member lookup, sort, pagination, projection
-      const fullPipeline = buildSessionFullPipeline(basePipeline, { sortBy, sortOrder, page, limit, search });
+      const fullPipeline = buildSessionFullPipeline(basePipeline, {
+        sortBy,
+        sortOrder,
+        page,
+        limit,
+        search,
+      });
       const sessions = await MachineSession.aggregate(fullPipeline);
 
       const duration = Date.now() - startTime;
-      if (duration > 2000) console.warn(`[Sessions API] Completed in ${duration}ms`);
+      if (duration > 2000)
+        console.warn(`[Sessions API] Completed in ${duration}ms`);
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/sessions',
+        sessions.length,
+        user,
+        duration
+      );
 
       return NextResponse.json({
         success: true,
@@ -82,8 +113,14 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Internal server error';
+      logRouteError(functionName, 'GET', '/api/sessions', errorMessage, user);
       console.error(`[Sessions API] Error:`, error);
-      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        { status: 500 }
+      );
     }
   });
 }

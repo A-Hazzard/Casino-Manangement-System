@@ -36,7 +36,8 @@ import { UserRole } from '@/lib/constants';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import {
   fetchLicenceeById,
-  fetchLicencees, logoutUser
+  fetchLicencees,
+  logoutUser,
 } from '@/lib/helpers/client';
 import { fetchMetricsData } from '@/lib/helpers/dashboard';
 import { getCountryCurrency, getLicenceeCurrency } from '@/lib/helpers/rates';
@@ -79,10 +80,7 @@ export default function Header({
     setLoadingChartData,
     setGameDayOffset,
   } = useDashBoardStore();
-  const {
-    displayCurrency,
-    setDisplayCurrency,
-  } = useCurrency();
+  const { displayCurrency, setDisplayCurrency } = useCurrency();
 
   // Get user roles for permission checking
   const userRoles = user?.roles || [];
@@ -139,9 +137,11 @@ export default function Header({
       try {
         const result = await fetchLicencees();
         if (cancelled) return;
-        
+
         // Extract licencees array from the result
-        const licencees = Array.isArray(result.licencees) ? result.licencees : [];
+        const licencees = Array.isArray(result.licencees)
+          ? result.licencees
+          : [];
 
         const map: Record<string, CurrencyCode> = {};
         licencees.forEach(licencee => {
@@ -284,7 +284,7 @@ export default function Header({
     // Update currency context based on licencee selection
     const isAllLicencee =
       !newLicencee || newLicencee === 'all' || newLicencee === '';
-    
+
     let targetCurrency = displayCurrency;
     if (!isAllLicencee && displayCurrency === 'USD') {
       targetCurrency = await resolveLicenceeCurrency(newLicencee);
@@ -350,7 +350,7 @@ export default function Header({
     <ClientOnly fallback={<div className="h-16 animate-pulse bg-gray-100" />}>
       <div className={`flex flex-col gap-2 ${containerPaddingMobile || ''}`}>
         {/* Header Section: Main header with title and licencee selector */}
-        <header className="flex w-full flex-col p-2 mb-4">
+        <header className="mb-4 flex w-full flex-col p-2">
           {/* Menu Button and Main Title Row: Mobile sidebar trigger and title */}
           <div className="flex w-full min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             {/* Left side: Menu button and title */}
@@ -366,12 +366,19 @@ export default function Header({
                 <PanelLeft className="h-6 w-6" suppressHydrationWarning />
               </SidebarTrigger>
               <div className="flex min-w-0 items-center gap-2">
-                <h1 className="shrink-0 whitespace-nowrap text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl flex items-center gap-2">
-                  Evolution CMS {isOwner && (
-                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm animate-pulse">
+                <h1 className="flex shrink-0 items-center gap-2 whitespace-nowrap text-left text-base font-semibold tracking-tight sm:text-lg md:ml-0 xl:text-xl">
+                  Evolution CMS{' '}
+                  {isOwner && (
+                    <span className="inline-flex animate-pulse items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700 shadow-sm ring-1 ring-inset ring-amber-600/20">
                       OWNER
                     </span>
-                  )} {pageTitle && <span className="text-gray-400 font-normal"> — {pageTitle}</span>}
+                  )}{' '}
+                  {pageTitle && (
+                    <span className="font-normal text-gray-400">
+                      {' '}
+                      — {pageTitle}
+                    </span>
+                  )}
                 </h1>
                 {shouldShowLicenceeName && singleLicenceeName && (
                   <span className="inline-flex items-center rounded-full bg-buttonActive/10 px-3 py-1 text-xs font-medium text-buttonActive ring-1 ring-inset ring-buttonActive/20 sm:text-sm">
@@ -382,11 +389,12 @@ export default function Header({
             </div>
 
             {/* Right side: Filters */}
-            {(!hideLicenceeFilter && shouldShowLicenceeSelect) || shouldRenderCurrencyFilter ? (
+            {(!hideLicenceeFilter && shouldShowLicenceeSelect) ||
+            shouldRenderCurrencyFilter ? (
               <div className="flex w-full min-w-0 shrink items-center gap-2 sm:w-auto sm:justify-end">
                 {!hideLicenceeFilter && shouldShowLicenceeSelect && (
                   <div
-                    className="min-w-0 w-full overflow-hidden sm:w-auto md:max-w-[200px] lg:max-w-[220px] xl:max-w-none"
+                    className="w-full min-w-0 overflow-hidden sm:w-auto md:max-w-[200px] lg:max-w-[220px] xl:max-w-none"
                     style={{
                       // On strictly mobile, let it be 100% width or whatever flex permits, disable the clamp if on very small screen
                       width: '100%',
@@ -455,7 +463,10 @@ export default function Header({
                   {/* Mobile Navigation Menu: Navigation buttons for mobile users */}
                   <div className="flex h-full flex-col space-y-4 p-6">
                     {/* Dashboard Navigation Button */}
-                    {shouldShowNavigationLink(userRoles as UserRole[], 'dashboard') && (
+                    {shouldShowNavigationLink(
+                      userRoles as UserRole[],
+                      'dashboard'
+                    ) && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -475,7 +486,10 @@ export default function Header({
                     )}
 
                     {/* Locations button */}
-                    {shouldShowNavigationLink(userRoles as UserRole[], 'locations') && (
+                    {shouldShowNavigationLink(
+                      userRoles as UserRole[],
+                      'locations'
+                    ) && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -495,7 +509,10 @@ export default function Header({
                     )}
 
                     {/* Cabinets button */}
-                    {shouldShowNavigationLink(userRoles as UserRole[], 'machines') && (
+                    {shouldShowNavigationLink(
+                      userRoles as UserRole[],
+                      'machines'
+                    ) && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -540,7 +557,10 @@ export default function Header({
                     )}
 
                     {/* Administration button */}
-                    {shouldShowNavigationLink(userRoles as UserRole[], 'administration') && (
+                    {shouldShowNavigationLink(
+                      userRoles as UserRole[],
+                      'administration'
+                    ) && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -562,7 +582,10 @@ export default function Header({
                     )}
 
                     {/* Reports button */}
-                    {shouldShowNavigationLink(userRoles as UserRole[], 'reports') && (
+                    {shouldShowNavigationLink(
+                      userRoles as UserRole[],
+                      'reports'
+                    ) && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -582,7 +605,10 @@ export default function Header({
                     )}
 
                     {/* Members button */}
-                    {shouldShowNavigationLink(userRoles as UserRole[], 'members') && (
+                    {shouldShowNavigationLink(
+                      userRoles as UserRole[],
+                      'members'
+                    ) && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -604,7 +630,10 @@ export default function Header({
                     {/* Members Summary button removed */}
 
                     {/* Sessions button */}
-                    {shouldShowNavigationLink(userRoles as UserRole[], 'sessions') && (
+                    {shouldShowNavigationLink(
+                      userRoles as UserRole[],
+                      'sessions'
+                    ) && (
                       <motion.button
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -673,11 +702,8 @@ export default function Header({
               </>
             )}
           </AnimatePresence>
-
-        
         </header>
       </div>
     </ClientOnly>
   );
 }
-

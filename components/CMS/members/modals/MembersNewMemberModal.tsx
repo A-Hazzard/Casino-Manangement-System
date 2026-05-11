@@ -1,8 +1,8 @@
 /**
  * Members New Member Modal Component
- * 
+ *
  * Modal for creating a new member with validation.
- * 
+ *
  * Features:
  * - Real-time validation
  * - Uniqueness checks
@@ -927,5 +927,3 @@ export default function MembersNewMemberModal({
     </>
   );
 }
-
-

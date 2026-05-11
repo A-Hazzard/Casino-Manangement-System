@@ -281,170 +281,179 @@ const createStore = () => {
       (set, get) => ({
         ...initialState,
 
-      // Navigation actions
-      setActiveView: view => set({ activeView: view }),
-      setLoading: loading => set({ isLoading: loading }),
-      setError: error => set({ error }),
+        // Navigation actions
+        setActiveView: view => set({ activeView: view }),
+        setLoading: loading => set({ isLoading: loading }),
+        setError: error => set({ error }),
 
-      // Dashboard actions
-      updateDashboardWidgets: widgets => set({ dashboardWidgets: widgets }),
-      updateRealTimeMetrics: metrics => set({ realTimeMetrics: metrics }),
-      addDashboardWidget: widget =>
-        set(state => ({
-          dashboardWidgets: [...state.dashboardWidgets, widget],
-        })),
-      removeDashboardWidget: widgetId =>
-        set(state => ({
-          dashboardWidgets: state.dashboardWidgets.filter(
-            w => w.id !== widgetId
-          ),
-        })),
-      reorderDashboardWidgets: widgets => set({ dashboardWidgets: widgets }),
+        // Dashboard actions
+        updateDashboardWidgets: widgets => set({ dashboardWidgets: widgets }),
+        updateRealTimeMetrics: metrics => set({ realTimeMetrics: metrics }),
+        addDashboardWidget: widget =>
+          set(state => ({
+            dashboardWidgets: [...state.dashboardWidgets, widget],
+          })),
+        removeDashboardWidget: widgetId =>
+          set(state => ({
+            dashboardWidgets: state.dashboardWidgets.filter(
+              w => w.id !== widgetId
+            ),
+          })),
+        reorderDashboardWidgets: widgets => set({ dashboardWidgets: widgets }),
 
-      // Report configuration actions
-      setReportConfig: config => set({ currentReportConfig: config }),
-      updateReportConfig: updates =>
-        set(state => ({
-          currentReportConfig: state.currentReportConfig
-            ? { ...state.currentReportConfig, ...updates }
-            : null,
-        })),
-      clearReportConfig: () =>
-        set({ currentReportConfig: null, reportData: null }),
-      setReportData: data => set({ reportData: data }),
+        // Report configuration actions
+        setReportConfig: config => set({ currentReportConfig: config }),
+        updateReportConfig: updates =>
+          set(state => ({
+            currentReportConfig: state.currentReportConfig
+              ? { ...state.currentReportConfig, ...updates }
+              : null,
+          })),
+        clearReportConfig: () =>
+          set({ currentReportConfig: null, reportData: null }),
+        setReportData: data => set({ reportData: data }),
 
-      // Customer metrics actions
-      updateCustomerMetrics: metrics => set({ customerMetrics: metrics }),
+        // Customer metrics actions
+        updateCustomerMetrics: metrics => set({ customerMetrics: metrics }),
 
-      // Voucher tracking actions
-      updateVoucherMetrics: metrics => set({ voucherMetrics: metrics }),
+        // Voucher tracking actions
+        updateVoucherMetrics: metrics => set({ voucherMetrics: metrics }),
 
-      // Compliance actions
-      updateComplianceMetrics: metrics => set({ complianceMetrics: metrics }),
+        // Compliance actions
+        updateComplianceMetrics: metrics => set({ complianceMetrics: metrics }),
 
-      // Performance comparison actions
-      updatePerformanceComparisons: comparisons =>
-        set({ performanceComparisons: comparisons }),
-      addPerformanceComparison: comparison =>
-        set(state => ({
-          performanceComparisons: [...state.performanceComparisons, comparison],
-        })),
+        // Performance comparison actions
+        updatePerformanceComparisons: comparisons =>
+          set({ performanceComparisons: comparisons }),
+        addPerformanceComparison: comparison =>
+          set(state => ({
+            performanceComparisons: [
+              ...state.performanceComparisons,
+              comparison,
+            ],
+          })),
 
-      // Scheduled reports actions
-      updateScheduledReports: reports => set({ scheduledReports: reports }),
-      addScheduledReport: report =>
-        set(state => ({
-          scheduledReports: [...state.scheduledReports, report],
-        })),
-      updateScheduledReport: (id, updates) =>
-        set(state => ({
-          scheduledReports: state.scheduledReports.map(report =>
-            report.id === id ? { ...report, ...updates } : report
-          ),
-        })),
-      deleteScheduledReport: id =>
-        set(state => ({
-          scheduledReports: state.scheduledReports.filter(report => report.id !== id),
-        })),
+        // Scheduled reports actions
+        updateScheduledReports: reports => set({ scheduledReports: reports }),
+        addScheduledReport: report =>
+          set(state => ({
+            scheduledReports: [...state.scheduledReports, report],
+          })),
+        updateScheduledReport: (id, updates) =>
+          set(state => ({
+            scheduledReports: state.scheduledReports.map(report =>
+              report.id === id ? { ...report, ...updates } : report
+            ),
+          })),
+        deleteScheduledReport: id =>
+          set(state => ({
+            scheduledReports: state.scheduledReports.filter(
+              report => report.id !== id
+            ),
+          })),
 
-      // User preferences actions
-      updateUserPreferences: preferences =>
-        set({ userPreferences: preferences }),
+        // User preferences actions
+        updateUserPreferences: preferences =>
+          set({ userPreferences: preferences }),
 
-      // Report generation actions
-      updateGenerationStatus: status => set({ generationStatus: status }),
-      clearGenerationStatus: () => set({ generationStatus: null }),
+        // Report generation actions
+        updateGenerationStatus: status => set({ generationStatus: status }),
+        clearGenerationStatus: () => set({ generationStatus: null }),
 
-      // Filter actions
-      setDateRange: (start, end) => set({ selectedDateRange: { start, end } }),
-      setSelectedLocations: locations => set({ selectedLocations: locations }),
-      setSelectedMachines: machines => set({ selectedMachines: machines }),
-      addSelectedLocation: locationId =>
-        set(state => ({
-          selectedLocations: state.selectedLocations.includes(locationId)
-            ? state.selectedLocations
-            : [...state.selectedLocations, locationId],
-        })),
-      removeSelectedLocation: locationId =>
-        set(state => ({
-          selectedLocations: state.selectedLocations.filter(
-            id => id !== locationId
-          ),
-        })),
-      addSelectedMachine: machineId =>
-        set(state => ({
-          selectedMachines: state.selectedMachines.includes(machineId)
-            ? state.selectedMachines
-            : [...state.selectedMachines, machineId],
-        })),
-      removeSelectedMachine: machineId =>
-        set(state => ({
-          selectedMachines: state.selectedMachines.filter(
-            id => id !== machineId
-          ),
-        })),
-      clearAllFilters: () =>
-        set({
-          selectedLocations: [],
-          selectedMachines: [],
-          selectedDateRange: {
-            start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-            end: new Date(),
-          },
-        }),
-
-      // UI actions
-      toggleSidebar: () =>
-        set(state => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-      setSidebarCollapsed: collapsed => set({ sidebarCollapsed: collapsed }),
-      toggleFullscreen: () =>
-        set(state => ({ fullscreenMode: !state.fullscreenMode })),
-      setRefreshInterval: interval => set({ refreshInterval: interval }),
-      setIsMachineComparisonModalOpen: open =>
-        set({ isMachineComparisonModalOpen: open }),
-
-      // Data refresh actions
-      refreshAllData: async () => {
-        const {
-          refreshDashboard,
-          refreshCustomerData,
-          refreshVoucherData,
-          refreshComplianceData,
-        } = get();
-        set({ isLoading: true, error: null });
-        try {
-          await Promise.all([
-            refreshDashboard(),
-            refreshCustomerData(),
-            refreshVoucherData(),
-            refreshComplianceData(),
-          ]);
-        } catch (error) {
+        // Filter actions
+        setDateRange: (start, end) =>
+          set({ selectedDateRange: { start, end } }),
+        setSelectedLocations: locations =>
+          set({ selectedLocations: locations }),
+        setSelectedMachines: machines => set({ selectedMachines: machines }),
+        addSelectedLocation: locationId =>
+          set(state => ({
+            selectedLocations: state.selectedLocations.includes(locationId)
+              ? state.selectedLocations
+              : [...state.selectedLocations, locationId],
+          })),
+        removeSelectedLocation: locationId =>
+          set(state => ({
+            selectedLocations: state.selectedLocations.filter(
+              id => id !== locationId
+            ),
+          })),
+        addSelectedMachine: machineId =>
+          set(state => ({
+            selectedMachines: state.selectedMachines.includes(machineId)
+              ? state.selectedMachines
+              : [...state.selectedMachines, machineId],
+          })),
+        removeSelectedMachine: machineId =>
+          set(state => ({
+            selectedMachines: state.selectedMachines.filter(
+              id => id !== machineId
+            ),
+          })),
+        clearAllFilters: () =>
           set({
-            error:
-              error instanceof Error ? error.message : 'Failed to refresh data',
-          });
-        } finally {
-          set({ isLoading: false });
-        }
-      },
+            selectedLocations: [],
+            selectedMachines: [],
+            selectedDateRange: {
+              start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+              end: new Date(),
+            },
+          }),
 
-      refreshDashboard: async () => {
-        // Implementation would fetch dashboard data from API
-      },
+        // UI actions
+        toggleSidebar: () =>
+          set(state => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+        setSidebarCollapsed: collapsed => set({ sidebarCollapsed: collapsed }),
+        toggleFullscreen: () =>
+          set(state => ({ fullscreenMode: !state.fullscreenMode })),
+        setRefreshInterval: interval => set({ refreshInterval: interval }),
+        setIsMachineComparisonModalOpen: open =>
+          set({ isMachineComparisonModalOpen: open }),
 
-      refreshCustomerData: async () => {
-        // Implementation would fetch customer data from API
-      },
+        // Data refresh actions
+        refreshAllData: async () => {
+          const {
+            refreshDashboard,
+            refreshCustomerData,
+            refreshVoucherData,
+            refreshComplianceData,
+          } = get();
+          set({ isLoading: true, error: null });
+          try {
+            await Promise.all([
+              refreshDashboard(),
+              refreshCustomerData(),
+              refreshVoucherData(),
+              refreshComplianceData(),
+            ]);
+          } catch (error) {
+            set({
+              error:
+                error instanceof Error
+                  ? error.message
+                  : 'Failed to refresh data',
+            });
+          } finally {
+            set({ isLoading: false });
+          }
+        },
 
-      refreshVoucherData: async () => {
-        // Implementation would fetch voucher data from API
-      },
+        refreshDashboard: async () => {
+          // Implementation would fetch dashboard data from API
+        },
 
-      refreshComplianceData: async () => {
-        // Implementation would fetch compliance data from API
-      },
-    }),
+        refreshCustomerData: async () => {
+          // Implementation would fetch customer data from API
+        },
+
+        refreshVoucherData: async () => {
+          // Implementation would fetch voucher data from API
+        },
+
+        refreshComplianceData: async () => {
+          // Implementation would fetch compliance data from API
+        },
+      }),
       {
         name: 'reports-store',
       }
@@ -466,4 +475,3 @@ const getClientStore = () => {
 // Use this store only on client side
 export const useReportsStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);
-

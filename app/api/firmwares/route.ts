@@ -8,6 +8,13 @@ import { GridFSBucket, type Db } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import { Readable } from 'stream';
 
+import {
+  logRouteFetch,
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+
 /**
  * Main GET handler for fetching firmwares
  *
@@ -16,21 +23,42 @@ import { Readable } from 'stream';
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async () => {
     const startTime = Date.now();
+    const functionName = 'GET /api/firmwares';
+    const user = extractUserFromRequest(request);
     try {
       const { searchParams } = new URL(request.url);
       const includeDeleted = searchParams.get('includeDeleted') === 'true';
 
-      const query = includeDeleted ? {} : {
-        $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
-      };
+      const query = includeDeleted
+        ? {}
+        : {
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ],
+          };
 
-      const firmwares = await Firmware.find(query).sort({ createdAt: -1 }).lean<FirmwareDocument[]>();
+      const firmwares = await Firmware.find(query)
+        .sort({ createdAt: -1 })
+        .lean<FirmwareDocument[]>();
       const duration = Date.now() - startTime;
-      if (duration > 1000) console.warn(`[Firmwares GET API] Completed in ${duration}ms`);
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/firmwares',
+        firmwares.length,
+        user,
+        duration
+      );
       return NextResponse.json(firmwares);
     } catch (error) {
-      console.error(`[Firmwares GET API] Error:`, error);
-      return NextResponse.json({ error: 'Failed to fetch firmwares' }, { status: 500 });
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to fetch firmwares';
+      logRouteError(functionName, 'GET', '/api/firmwares', errorMessage, user);
+      return NextResponse.json(
+        { error: 'Failed to fetch firmwares' },
+        { status: 500 }
+      );
     }
   });
 }
@@ -45,10 +73,14 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async ({ user: currentUser, db }) => {
+    const startTime = Date.now();
+    const functionName = 'POST /api/firmwares';
+    const user = extractUserFromRequest(request);
     try {
       if (!db) throw new Error('Database connection failed');
-      const bucket = new GridFSBucket(db as unknown as Db, { bucketName: 'firmwares' });
-
+      const bucket = new GridFSBucket(db as unknown as Db, {
+        bucketName: 'firmwares',
+      });
 
       const formData = await request.formData();
       const product = formData.get('product') as string;
@@ -57,11 +89,17 @@ export async function POST(request: NextRequest) {
       const file = formData.get('file') as File;
 
       if (!product || !version || !file) {
-        return NextResponse.json({ error: 'Product, version, and file are required' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Product, version, and file are required' },
+          { status: 400 }
+        );
       }
 
       if (!file.name.endsWith('.bin')) {
-        return NextResponse.json({ error: 'Only .bin files are allowed' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Only .bin files are allowed' },
+          { status: 400 }
+        );
       }
 
       const arrayBuffer = await file.arrayBuffer();
@@ -69,7 +107,12 @@ export async function POST(request: NextRequest) {
       const stream = Readable.from(buffer);
 
       const uploadStream = bucket.openUploadStream(file.name, {
-        metadata: { originalName: file.name, mimeType: file.type, size: file.size, uploadedAt: new Date() },
+        metadata: {
+          originalName: file.name,
+          mimeType: file.type,
+          size: file.size,
+          uploadedAt: new Date(),
+        },
       });
 
       const fileId = uploadStream.id;
@@ -79,12 +122,24 @@ export async function POST(request: NextRequest) {
 
       const firmwareId = await generateMongoId();
       const firmware = new Firmware({
-        _id: firmwareId, product, version, versionDetails: versionDetails || '',
-        fileId, fileName: file.name, fileSize: file.size, deletedAt: new Date(-1),
-        releaseDate: new Date(), description: versionDetails || '', downloadUrl: '', checksum: '',
+        _id: firmwareId,
+        product,
+        version,
+        versionDetails: versionDetails || '',
+        fileId,
+        fileName: file.name,
+        fileSize: file.size,
+        deletedAt: new Date(-1),
+        releaseDate: new Date(),
+        description: versionDetails || '',
+        downloadUrl: '',
+        checksum: '',
       });
 
       await firmware.save();
+
+      const duration = Date.now() - startTime;
+      logRouteCreate(functionName, 'POST', '/api/firmwares', 1, user, duration);
 
       if (currentUser && currentUser.emailAddress) {
         await logActivity({
@@ -109,9 +164,13 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(firmware, { status: 201 });
     } catch (error) {
-      console.error('Error uploading firmware:', error);
-      return NextResponse.json({ error: 'Failed to upload firmware' }, { status: 500 });
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to upload firmware';
+      logRouteError(functionName, 'POST', '/api/firmwares', errorMessage, user);
+      return NextResponse.json(
+        { error: 'Failed to upload firmware' },
+        { status: 500 }
+      );
     }
   });
 }
-

@@ -21,6 +21,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthEvents } from '@/app/api/lib/helpers/auth/adminEvents';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/admin/auth/events
@@ -39,6 +44,8 @@ import { connectDB } from '@/app/api/lib/middleware/db';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/admin/auth/events';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -49,8 +56,15 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 2: Authenticate user and check permissions
     // ============================================================================
-    const user = await getUserFromServer();
-    if (!user) {
+    const authUser = await getUserFromServer();
+    if (!authUser) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/admin/auth/events',
+        'Unauthorized - User not found',
+        user
+      );
       return NextResponse.json(
         { error: 'Unauthorized - User not found' },
         { status: 403 }
@@ -61,7 +75,8 @@ export async function GET(request: NextRequest) {
     // STEP 3: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const timeRange = (searchParams.get('timeRange') as '1h' | '24h' | '7d' | '30d') || '24h';
+    const timeRange =
+      (searchParams.get('timeRange') as '1h' | '24h' | '7d' | '30d') || '24h';
     const action = searchParams.get('action');
     const success = searchParams.get('success');
     const search = searchParams.get('search');
@@ -71,24 +86,38 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 4: Fetch authentication events with filters and pagination
     // ============================================================================
-    const results = await getAuthEvents(timeRange, action, success, search, page, limit);
+    const results = await getAuthEvents(
+      timeRange,
+      action,
+      success,
+      search,
+      page,
+      limit
+    );
 
     // ============================================================================
     // STEP 5: Return events and pagination info
     // ============================================================================
     const duration = Date.now() - startTime;
-    console.log(
-      `[Admin Auth Events GET API] Fetched ${results.events.length} events (page ${page}/${results.totalPages}) after ${duration}ms.`
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/admin/auth/events',
+      results.events.length,
+      user,
+      duration
     );
 
     return NextResponse.json(results);
   } catch (error: unknown) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
-    console.error(
-      `[Admin Auth Events GET API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/admin/auth/events',
+      errorMessage,
+      user
     );
 
     return NextResponse.json(
@@ -97,4 +126,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

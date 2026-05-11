@@ -1,8 +1,8 @@
 # System Configuration & GridFS API (`/api/config`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -14,15 +14,18 @@ The Configuration API manages global system constants, jurisdictional rules (tax
 
 ## 2. Core Endpoints
 
-### 📦 `GET /api/config/firmware` (GridFS)
+### 📦 `GET /api/firmwares` (GridFS)
+
 - **What it is**: Retrieves firmware binary metadata.
 - **How it works**: Uses the `gridfs-stream` to read the Large Binary Object (LOB) from the database without loading it into Node.js memory.
 
 ### 🏢 `GET /api/licencees`
+
 - **Scope**: Returns the full profiles of corporate owners.
 - **Calculated Logic**: Includes real-time counts for `maxMachines` vs. `actualMachines`.
 
-### 🌍 `GET /api/config/localization`
+### 🌍 `GET /api/licencees`
+
 - **How it works**: Returns the currency code (TTD, USD), number formatting (decimal places), and timezone for the requested Licencee.
 - **Logic**: Used by the frontend to format all financial strings globally.
 
@@ -30,8 +33,10 @@ The Configuration API manages global system constants, jurisdictional rules (tax
 
 ## 3. Operations & Remote Commands
 
-### 🚀 `POST /api/config/firmware/migrate`
+### 🚀 `POST /api/firmwares/migrate`
+
 Triggers the fleet update.
+
 - **Payload**: `{ sourceId, targetId, machineList: [] }`.
 - **Logic**: Sends the migration package to each machine's MQTT `command` channel.
 - **Status Log**: Creates a `FirmwareMigration` document to track the progress of every individual machine down to the byte.
@@ -48,9 +53,10 @@ Triggers the fleet update.
 
 ## 5. Security & RBAC
 
-- **Developer Only**: Endpoint `POST /api/config/seed` (Used for initial property setup).
+- **Developer Only**: Endpoint `POST /api/firmwares` (Used for initial property setup).
 - **Admin**: Can upload firmware and read configuration.
 - **Manager**: Read-only access to localization and currency rates.
 
 ---
+
 **Technical Reference** - Engineering & Platform Team

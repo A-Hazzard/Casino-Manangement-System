@@ -2,7 +2,7 @@
  * Vault Overview Modals Section Component
  *
  * Centralizes all modals used by the Vault Manager in the overview dashboard.
- * 
+ *
  * @module components/VAULT/overview/sections/VaultOverviewModals
  */
 'use client';
@@ -33,9 +33,9 @@ type VaultOverviewModalsProps = {
   onClose: (key: string) => void;
   onConfirm: (key: string, data?: Record<string, unknown>) => Promise<void>;
   machines?: GamingMachine[];
-  viewDenomsData: { 
-    title: string; 
-    denominations: Denomination[]; 
+  viewDenomsData: {
+    title: string;
+    denominations: Denomination[];
     total: number;
   } | null;
   currentDenominations: Denomination[];
@@ -61,31 +61,31 @@ export default function VaultOverviewModals({
       <VaultOverviewAddCashModal
         open={modals.addCash}
         onClose={() => onClose('addCash')}
-        onConfirm={(data) => onConfirm('addCash', data)}
+        onConfirm={data => onConfirm('addCash', data)}
       />
       <VaultOverviewRemoveCashModal
         open={modals.removeCash}
         onClose={() => onClose('removeCash')}
         vaultDenominations={currentDenominations}
-        onConfirm={(data) => onConfirm('removeCash', data)}
+        onConfirm={data => onConfirm('removeCash', data)}
       />
       <VaultOverviewRecordExpenseModal
         open={modals.recordExpense}
         onClose={() => onClose('recordExpense')}
         vaultDenominations={currentDenominations}
-        onConfirm={(data) => onConfirm('recordExpense', data)}
+        onConfirm={data => onConfirm('recordExpense', data)}
       />
       <VaultOverviewReconcileModal
         open={modals.reconcile}
         onClose={() => onClose('reconcile')}
-        onConfirm={(data) => onConfirm('reconcile', data)}
+        onConfirm={data => onConfirm('reconcile', data)}
         currentBalance={vaultBalance}
         systemDenominations={currentDenominations}
       />
       <VaultOverviewInitializeModal
         open={modals.initialize}
         onClose={() => onClose('initialize')}
-        onConfirm={(data) => onConfirm('initialize', data)}
+        onConfirm={data => onConfirm('initialize', data)}
         expectedBalance={vaultBalance}
         expectedDenominations={currentDenominations}
         isInitial={isInitial}

@@ -275,7 +275,7 @@ function handleCustom(
   }
 
   const hasSpecificTime =
-    hasExplicitTime(customStartDate, timezoneOffset) || 
+    hasExplicitTime(customStartDate, timezoneOffset) ||
     hasExplicitTime(customEndDate, timezoneOffset);
 
   if (hasSpecificTime) {
@@ -426,7 +426,6 @@ function getLocalDateFromUTC(nowLocal: Date): Date {
   );
 }
 
-
 /**
  * Subtract days from a date.
  */
@@ -461,4 +460,3 @@ function hasExplicitTime(date: Date, timezoneOffset: number): boolean {
 function isValidDate(date: Date): boolean {
   return date instanceof Date && !isNaN(date.getTime());
 }
-

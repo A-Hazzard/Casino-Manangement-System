@@ -90,7 +90,9 @@ export const CollectionReportDetailsNoteIndicator: FC<
                 <FileText className="h-4 w-4" />
                 Collection Note
               </h4>
-              <p className="text-sm italic text-gray-700 leading-relaxed">{note}</p>
+              <p className="text-sm italic leading-relaxed text-gray-700">
+                {note}
+              </p>
             </div>
           </PopoverContent>
         </Tooltip>

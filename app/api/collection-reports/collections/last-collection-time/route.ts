@@ -10,10 +10,18 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
-import { createSuccessResponse, createErrorResponse } from '@/app/api/lib/utils/apiResponse';
+import {
+  createSuccessResponse,
+  createErrorResponse,
+} from '@/app/api/lib/utils/apiResponse';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { NextRequest } from 'next/server';
- 
+
 /**
  * Main GET handler for finding the last collection time
  *
@@ -21,11 +29,23 @@ import { NextRequest } from 'next/server';
  */
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName =
+    'GET /api/collection-reports/collections/last-collection-time';
+  const user = extractUserFromRequest(request);
+
   try {
     const { searchParams } = request.nextUrl;
     const machineId = searchParams.get('machineId');
 
     if (!machineId) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/collection-reports/collections/last-collection-time',
+        'machineId query parameter is required',
+        user
+      );
       return createErrorResponse('machineId query parameter is required', 400);
     }
 
@@ -40,19 +60,37 @@ export async function GET(request: NextRequest) {
       .sort({ collectionTime: -1 })
       .lean<CollectionDocument | null>();
 
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/collection-reports/collections/last-collection-time',
+      lastCollection ? 1 : 0,
+      user,
+      duration
+    );
+
     return createSuccessResponse(
-      { 
+      {
         collectionTime: lastCollection?.collectionTime ?? null,
         metersIn: lastCollection?.metersIn ?? null,
         metersOut: lastCollection?.metersOut ?? null,
-        hasPreviousCollection: !!lastCollection
+        hasPreviousCollection: !!lastCollection,
       },
       lastCollection
         ? 'Last collection time found'
-        : 'No previous completed collection found for this machine',
+        : 'No previous completed collection found for this machine'
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error';
+    const message =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/collection-reports/collections/last-collection-time',
+      message,
+      user
+    );
     return createErrorResponse(message, 500);
   }
 }

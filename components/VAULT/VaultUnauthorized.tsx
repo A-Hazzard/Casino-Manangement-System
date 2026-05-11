@@ -15,7 +15,12 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { logoutUser } from '@/lib/helpers/client';
 import { useUserStore } from '@/lib/store/userStore';
 import { AlertTriangle, LogOut } from 'lucide-react';
@@ -76,11 +81,7 @@ export default function VaultUnauthorized() {
             Please contact your manager to request access.
           </p>
           <div className="pt-4">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleLogout}
-            >
+            <Button variant="outline" className="w-full" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Logout
             </Button>

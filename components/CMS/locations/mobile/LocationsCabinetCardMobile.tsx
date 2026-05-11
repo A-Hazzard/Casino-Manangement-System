@@ -49,10 +49,11 @@ export default function LocationsCabinetCardMobile({
   copyToClipboard,
 }: LocationsCabinetCardMobileProps) {
   const statusRef = useRef<HTMLSpanElement>(null);
-  
+
   // Archived machines have a deletedAt date of Jan 1st 2025 or later
-  const isArchived = Boolean(cabinet.deletedAt) &&
-                   new Date(cabinet.deletedAt!) >= new Date('2025-01-01');
+  const isArchived =
+    Boolean(cabinet.deletedAt) &&
+    new Date(cabinet.deletedAt!) >= new Date('2025-01-01');
 
   /**
    * Animates online status indicator with pulsing effect.
@@ -82,15 +83,15 @@ export default function LocationsCabinetCardMobile({
 
   return (
     <div
-      className={`rounded-lg border border-gray-200 p-4 shadow-sm transition-shadow hover:shadow-md ${isArchived ? 'bg-gray-50 border-amber-100' : 'bg-white'}`}
+      className={`rounded-lg border border-gray-200 p-4 shadow-sm transition-shadow hover:shadow-md ${isArchived ? 'border-amber-100 bg-gray-50' : 'bg-white'}`}
     >
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex flex-wrap items-center gap-2 max-w-[85%]">
-          <div className="truncate font-semibold text-sm">
+        <div className="flex max-w-[85%] flex-wrap items-center gap-2">
+          <div className="truncate text-sm font-semibold">
             {formatMachineDisplayNameWithBold(cabinet)}
           </div>
           {isArchived && (
-            <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 text-[10px] px-1.5 py-0">
+            <Badge className="border-amber-200 bg-amber-100 px-1.5 py-0 text-[10px] text-amber-700 hover:bg-amber-100">
               ARCHIVED
             </Badge>
           )}
@@ -108,13 +109,20 @@ export default function LocationsCabinetCardMobile({
 
       {/* Archived Info */}
       {isArchived && cabinet.deletedAt && (
-        <div className="mb-3 flex flex-col gap-1 text-[11px] text-amber-700 bg-amber-50/50 p-2 rounded border border-amber-100/50">
+        <div className="mb-3 flex flex-col gap-1 rounded border border-amber-100/50 bg-amber-50/50 p-2 text-[11px] text-amber-700">
           <div className="flex items-center gap-1.5">
             <Clock className="h-3 w-3" />
-            <span>Archived: {format(new Date(cabinet.deletedAt), 'MMM d, yyyy • h:mm a')}</span>
+            <span>
+              Archived:{' '}
+              {format(new Date(cabinet.deletedAt), 'MMM d, yyyy • h:mm a')}
+            </span>
           </div>
           <div className="ml-[18px] italic opacity-80">
-            ({formatDistanceToNow(new Date(cabinet.deletedAt), { addSuffix: true })})
+            (
+            {formatDistanceToNow(new Date(cabinet.deletedAt), {
+              addSuffix: true,
+            })}
+            )
           </div>
         </div>
       )}
@@ -286,7 +294,7 @@ export default function LocationsCabinetCardMobile({
                 onClick={() => onRestore?.(cabinet)}
                 variant="outline"
                 size="sm"
-                className="flex flex-1 items-center justify-center gap-1.5 text-xs text-amber-600 border-amber-200 hover:bg-amber-50"
+                className="flex flex-1 items-center justify-center gap-1.5 border-amber-200 text-xs text-amber-600 hover:bg-amber-50"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span>Restore</span>
@@ -297,7 +305,7 @@ export default function LocationsCabinetCardMobile({
                 onClick={() => onPermanentDelete?.(cabinet)}
                 variant="outline"
                 size="sm"
-                className="flex items-center justify-center gap-1.5 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                className="flex items-center justify-center gap-1.5 border-red-200 text-xs text-red-600 hover:bg-red-50"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 <span>Perm Delete</span>

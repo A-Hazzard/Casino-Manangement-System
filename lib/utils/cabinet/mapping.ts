@@ -35,6 +35,7 @@ export function mapToCabinetProps(cabinet: Cabinet): CabinetProps {
       '',
     createdAt: cabinet.createdAt || new Date(),
     updatedAt: cabinet.updatedAt || new Date(),
+    deletedAt: cabinet.deletedAt,
     // Optional fields with defaults
     locationId: cabinet.locationId || '',
     locationName: cabinet.locationName || '',
@@ -75,5 +76,3 @@ export function mapToCabinetProps(cabinet: Cabinet): CabinetProps {
     includeJackpot: cabinet.includeJackpot,
   };
 }
-
-

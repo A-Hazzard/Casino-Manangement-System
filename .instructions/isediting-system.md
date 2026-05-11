@@ -81,6 +81,7 @@ Impact: Data integrity maintained, audit trail preserved
 ### Think of `isEditing` Like a Database Transaction
 
 In traditional ACID database transactions:
+
 ```sql
 BEGIN TRANSACTION;
   UPDATE accounts SET balance = balance - 100 WHERE id = 1;
@@ -89,6 +90,7 @@ COMMIT; -- or ROLLBACK
 ```
 
 In our collection system:
+
 ```typescript
 // BEGIN "TRANSACTION"
 User clicks "Update Entry in List"
@@ -143,7 +145,7 @@ Think of `isEditing: true` as a **soft lock** on the report:
 2. User modifies machine meters
 3. System sets isEditing: true
 4. User's browser crashes ← INTERRUPTION
-   
+
 Result: Report remains isEditing: true
 
 Recovery Path:
@@ -164,6 +166,7 @@ Recovery Path:
 **Principle:** The `CollectionReport` document is the authoritative source for report state.
 
 **Application:**
+
 - Frontend reads `isEditing` from API response
 - Frontend never modifies the flag directly
 - Backend controls all flag transitions
@@ -174,6 +177,7 @@ Recovery Path:
 **Principle:** When in doubt, assume editing is incomplete.
 
 **Application:**
+
 - Default value: `isEditing: false` (complete)
 - Any meter edit: `isEditing: true` (incomplete)
 - Only explicit "Update Report": `isEditing: false` (complete)
@@ -184,6 +188,7 @@ Recovery Path:
 **Principle:** Users must explicitly signal completion.
 
 **Application:**
+
 - Clicking "Update Entry" ≠ completion (just saves collection)
 - Clicking "Update Report" = completion (finalizes everything)
 - Closing modal ≠ completion (might be accidental)
@@ -194,6 +199,7 @@ Recovery Path:
 **Principle:** Users should always know the current state.
 
 **Application:**
+
 - Visual indicators for incomplete reports
 - Warning messages when editing incomplete reports
 - Confirmation dialogs explain consequences
@@ -204,6 +210,7 @@ Recovery Path:
 **Principle:** Users should be able to recover from mistakes.
 
 **Application:**
+
 - Incomplete edits can be completed later
 - Collections can be deleted/re-added
 - Financial data can be modified
@@ -289,11 +296,13 @@ The `isEditing` flag creates a simple state machine:
 ### 2. Understand the "Why" Not Just the "How"
 
 **Why does editing a collection set isEditing: true?**
+
 - Because collection documents and machine histories must stay synchronized
 - Because financial calculations depend on consistent data
 - Because incomplete edits create audit problems
 
 **Why doesn't update-history modify isEditing?**
+
 - Because history sync is a consequence of finalization, not the trigger
 - Because the flag represents user intent, not system operations
 - Because the main report update is the authoritative completion signal
@@ -310,11 +319,13 @@ The system prioritizes **data integrity over convenience**:
 ### 4. Consider the User Mental Model
 
 Users think in terms of "tasks":
+
 - "I need to create a collection report" ← Task
 - "I need to fix a mistake in meters" ← Task
 - "I need to finish that report I started" ← Task
 
 The `isEditing` flag bridges the gap between:
+
 - **User intent** ("I'm working on this report")
 - **System state** ("This report is incomplete")
 - **Recovery** ("I need to finish what I started")
@@ -368,7 +379,7 @@ Question 1: Is isEditing: true?
 Question 2: Do collection values match history values?
   → YES: System is healthy
     → Monitor for future issues
-  
+
   → NO: History mismatch detected
     → Check: Was update-history called?
     → Check: Are prevIn/prevOut from collections?
@@ -394,12 +405,14 @@ Question 3: Is user confused about report state?
 ### Potential Enhancements
 
 1. **Dashboard alerts:**
+
    ```typescript
    // Show warning banner
-   "You have 3 incomplete collection reports that need attention"
+   'You have 3 incomplete collection reports that need attention';
    ```
 
 2. **Optimistic locking:**
+
    ```typescript
    // Add version field
    { isEditing: true, editingUser: "user123", editingStartTime: Date }
@@ -408,13 +421,15 @@ Question 3: Is user confused about report state?
 3. **Edit session tracking:**
    ```typescript
    // Log all changes
-   editHistory: [{
-     timestamp: Date,
-     user: string,
-     action: "edited_meters",
-     machineId: string,
-     changes: { metersIn: { old: 100, new: 200 } }
-   }]
+   editHistory: [
+     {
+       timestamp: Date,
+       user: string,
+       action: 'edited_meters',
+       machineId: string,
+       changes: { metersIn: { old: 100, new: 200 } },
+     },
+   ];
    ```
 
 ---
@@ -458,4 +473,3 @@ Transition true → false:
 ---
 
 **Remember:** This system exists to protect financial data integrity. When debugging or enhancing, always ask: "Does this change maintain or improve data integrity?" If the answer is unclear, err on the side of caution.
-

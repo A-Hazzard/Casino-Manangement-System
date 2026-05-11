@@ -40,6 +40,7 @@ const todayBase = today;
 ## When to Apply Gaming Day Offset
 
 ✅ **Use gaming day offset for:**
+
 - Dashboard totals - System-wide financial summaries
 - Location reports - Aggregated location metrics
 - Machine reports - Individual machine financials
@@ -48,6 +49,7 @@ const todayBase = today;
 - **ALL time periods** - Today, Yesterday, 7d, 30d, Custom
 
 ❌ **Do NOT use for:**
+
 - Collection reports - Use collection timestamp
 - Activity logs - Use action timestamp
 - User sessions - Use session timestamp
@@ -254,8 +256,12 @@ for (const location of locations) {
 
 // 2. Calculate global range (earliest start, latest end)
 const allRanges = Array.from(gamingDayRanges.values());
-const globalStart = new Date(Math.min(...allRanges.map(r => r.rangeStart.getTime())));
-const globalEnd = new Date(Math.max(...allRanges.map(r => r.rangeEnd.getTime())));
+const globalStart = new Date(
+  Math.min(...allRanges.map(r => r.rangeStart.getTime()))
+);
+const globalEnd = new Date(
+  Math.max(...allRanges.map(r => r.rangeEnd.getTime()))
+);
 
 // 3. Query globally with wide range
 const results = await Meters.aggregate([

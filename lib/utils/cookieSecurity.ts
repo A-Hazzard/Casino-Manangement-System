@@ -54,7 +54,12 @@ export function getAuthCookieOptions(
 ): CookieOptions {
   if (request === undefined) {
     console.error('[getAuthCookieOptions] request is required');
-    return { httpOnly: true, secure: true, sameSite: 'lax' as const, path: '/' };
+    return {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax' as const,
+      path: '/',
+    };
   }
   const secure = isSecureContext(request);
   return {

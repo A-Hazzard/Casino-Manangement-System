@@ -19,7 +19,10 @@ import { Machine } from '../models/machines';
  * @returns Update fields object
  */
 export function buildMachineConfigUpdateFields(
-  machine: { smibConfig?: Record<string, unknown>; smibVersion?: Record<string, unknown> },
+  machine: {
+    smibConfig?: Record<string, unknown>;
+    smibVersion?: Record<string, unknown>;
+  },
   smibConfig?: Record<string, unknown>,
   smibVersion?: Record<string, unknown>
 ): Record<string, unknown> {
@@ -85,11 +88,10 @@ export async function updateMachineConfiguration(
     console.error('[updateMachineConfiguration] updateFields is required');
     return null;
   }
-  return await Machine.findOneAndUpdate(
-    { _id: machineId },
-    updateFields,
-    { new: true, runValidators: true }
-  );
+  return await Machine.findOneAndUpdate({ _id: machineId }, updateFields, {
+    new: true,
+    runValidators: true,
+  });
 }
 
 /**
@@ -108,5 +110,3 @@ export async function getLocationName(
   const location = await GamingLocations.findOne({ _id: locationId });
   return location?.name || null;
 }
-
-

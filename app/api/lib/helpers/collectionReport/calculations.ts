@@ -36,7 +36,13 @@ export async function calculateCollectionReportTotals(
 ) {
   if (!payload || typeof payload !== 'object') {
     console.error('[calculateCollectionReportTotals] payload is required');
-    return { totalDrop: 0, totalCancelled: 0, totalGross: 0, totalSasGross: 0, totalJackpot: 0 };
+    return {
+      totalDrop: 0,
+      totalCancelled: 0,
+      totalGross: 0,
+      totalSasGross: 0,
+      totalJackpot: 0,
+    };
   }
   console.log(
     '🔄 [Calculations] Starting collection report totals calculation...'
@@ -48,11 +54,16 @@ export async function calculateCollectionReportTotals(
   let totalSasGross = 0;
   let totalJackpot = 0;
 
-  console.log('🔄 [Calculations] Processing ' + machines.length + (machines.length === 1 ? ' machine' : ' machines')  , {
-    hasCollectionIds: collectionIds.length > 0,
-    collectionIdsCount: collectionIds.length,
-    includeJackpot: payload.includeJackpot,
-  });
+  console.log(
+    '🔄 [Calculations] Processing ' +
+      machines.length +
+      (machines.length === 1 ? ' machine' : ' machines'),
+    {
+      hasCollectionIds: collectionIds.length > 0,
+      collectionIdsCount: collectionIds.length,
+      includeJackpot: payload.includeJackpot,
+    }
+  );
 
   // Helper function to query collection by machineId and meters (fallback method)
   const queryCollectionByMachine = async (
@@ -138,7 +149,10 @@ export async function calculateCollectionReportTotals(
       if (!machine.machineId) continue;
 
       try {
-        const collection = await queryCollectionByMachine(machine, reportTimestamp);
+        const collection = await queryCollectionByMachine(
+          machine,
+          reportTimestamp
+        );
 
         if (collection) {
           const moveIn = collection.movement?.metersIn || 0;
@@ -164,10 +178,10 @@ export async function calculateCollectionReportTotals(
   // Apply includeJackpot logic
   // If enabled, totalCancelled is adjusted (Money Out = Cancelled Credits + Jackpots)
   const useIncludeJackpot = !!payload.includeJackpot;
-  const effectiveTotalCancelled = useIncludeJackpot 
+  const effectiveTotalCancelled = useIncludeJackpot
     ? totalCancelled + totalJackpot
     : totalCancelled;
-  
+
   const totalGross = totalDrop - effectiveTotalCancelled;
   const effectiveTotalSasGross = useIncludeJackpot
     ? Math.max(0, totalSasGross - totalJackpot)
@@ -192,4 +206,3 @@ export async function calculateCollectionReportTotals(
     totalJackpot, // Include raw jackpot total for reference
   };
 }
-

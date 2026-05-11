@@ -8,6 +8,11 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -38,10 +43,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param endDate     {string} Optional. ISO datetime string for the end of a custom date range.
  *                             Must be paired with `startDate`; filters `date <= endDate`.
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/sessions/[sessionId]/[machineId]/events';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const parts = pathname.split('/');
   const machineId = parts[parts.length - 2];
@@ -141,6 +146,16 @@ export async function GET(
     // Get unique game names for filters
     const games = await MachineEvent.distinct('gameName', matchQuery);
 
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/sessions/[sessionId]/[machineId]/events',
+      events.length,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: true,
       data: {
@@ -153,8 +168,12 @@ export async function GET(
           hasPrevPage: page > 1,
         },
         filters: {
-          eventTypes: data.eventTypes.map((eventItem: { _id: string }) => eventItem._id).filter(Boolean),
-          events: data.events.map((eventItem: { _id: string }) => eventItem._id).filter(Boolean),
+          eventTypes: data.eventTypes
+            .map((eventItem: { _id: string }) => eventItem._id)
+            .filter(Boolean),
+          events: data.events
+            .map((eventItem: { _id: string }) => eventItem._id)
+            .filter(Boolean),
           games: games.filter(Boolean),
         },
       },
@@ -163,6 +182,13 @@ export async function GET(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/sessions/[sessionId]/[machineId]/events',
+      errorMessage,
+      user
+    );
     console.error(
       `[SessionEvents API] Error after ${duration}ms:`,
       errorMessage

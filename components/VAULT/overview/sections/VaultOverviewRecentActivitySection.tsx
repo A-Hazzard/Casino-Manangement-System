@@ -17,8 +17,8 @@ import { Badge } from '@/components/shared/ui/badge';
 import VaultTransactionsTable from '@/components/VAULT/transactions/tables/VaultTransactionsTable';
 import { formatActivityType } from '@/lib/utils/formatters';
 import type {
-    VaultTransaction,
-    VaultTransactionType,
+  VaultTransaction,
+  VaultTransactionType,
 } from '@/shared/types/vault';
 import { ArrowDown, ArrowUp, Receipt } from 'lucide-react';
 
@@ -80,7 +80,9 @@ export default function VaultOverviewRecentActivitySection({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Recent Activity
+          </h2>
         </div>
         <DebugSection title="Recent Activity Data" data={transactions} />
       </div>

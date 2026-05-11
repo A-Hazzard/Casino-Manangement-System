@@ -72,4 +72,3 @@ export async function deleteMovementRequest(
 ): Promise<void> {
   await axios.delete(`/api/movement-requests/${id}?deleteType=${deleteType}`);
 }
-

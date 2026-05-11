@@ -64,7 +64,9 @@ export const useCabinetSorting = ({
   totalCount,
   searchTerm = '',
   currentPage: controlledCurrentPage,
-}: UseCabinetSortingProps & { searchTerm?: string }): UseCabinetSortingReturn => {
+}: UseCabinetSortingProps & {
+  searchTerm?: string;
+}): UseCabinetSortingReturn => {
   // Sort state management
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
@@ -114,8 +116,16 @@ export const useCabinetSorting = ({
       // If searching, relevance (starts with) takes TOP priority
       if (searchTerm.trim()) {
         const searchLower = searchTerm.toLowerCase();
-        const aSerial = (firstCabinet.serialNumber || firstCabinet.assetNumber || '').toLowerCase();
-        const bSerial = (secondCabinet.serialNumber || secondCabinet.assetNumber || '').toLowerCase();
+        const aSerial = (
+          firstCabinet.serialNumber ||
+          firstCabinet.assetNumber ||
+          ''
+        ).toLowerCase();
+        const bSerial = (
+          secondCabinet.serialNumber ||
+          secondCabinet.assetNumber ||
+          ''
+        ).toLowerCase();
 
         const aStarts = aSerial.startsWith(searchLower);
         const bStarts = bSerial.startsWith(searchLower);
@@ -133,17 +143,21 @@ export const useCabinetSorting = ({
 
         // Determine if machines are online
         // Use backend provided 'online' flag if available, otherwise calculate
-        const firstLastActivity = firstCabinet.lastActivity || firstCabinet.lastOnline;
-        const secondLastActivity = secondCabinet.lastActivity || secondCabinet.lastOnline;
+        const firstLastActivity =
+          firstCabinet.lastActivity || firstCabinet.lastOnline;
+        const secondLastActivity =
+          secondCabinet.lastActivity || secondCabinet.lastOnline;
 
-        const firstIsOnline = firstCabinet.online !== undefined ? firstCabinet.online : (
-          firstLastActivity &&
-          new Date(firstLastActivity).getTime() > threeMinutesAgo
-        );
-        const secondIsOnline = secondCabinet.online !== undefined ? secondCabinet.online : (
-          secondLastActivity &&
-          new Date(secondLastActivity).getTime() > threeMinutesAgo
-        );
+        const firstIsOnline =
+          firstCabinet.online !== undefined
+            ? firstCabinet.online
+            : firstLastActivity &&
+              new Date(firstLastActivity).getTime() > threeMinutesAgo;
+        const secondIsOnline =
+          secondCabinet.online !== undefined
+            ? secondCabinet.online
+            : secondLastActivity &&
+              new Date(secondLastActivity).getTime() > threeMinutesAgo;
 
         // If both online or both offline, compare by offline time
         if (firstIsOnline && secondIsOnline) {
@@ -151,8 +165,12 @@ export const useCabinetSorting = ({
         }
         if (!firstIsOnline && !secondIsOnline) {
           // Both offline, compare by time offline (older lastActivity = longer offline)
-          const firstTime = firstLastActivity ? new Date(firstLastActivity).getTime() : 0;
-          const secondTime = secondLastActivity ? new Date(secondLastActivity).getTime() : 0;
+          const firstTime = firstLastActivity
+            ? new Date(firstLastActivity).getTime()
+            : 0;
+          const secondTime = secondLastActivity
+            ? new Date(secondLastActivity).getTime()
+            : 0;
 
           // Always push "Never Online" (0) to the bottom
           if (firstTime === 0 && secondTime > 0) return 1;
@@ -222,10 +240,7 @@ export const useCabinetSorting = ({
   const totalPages = useMemo(() => {
     if (totalCount !== undefined) {
       // If we have a backend totalCount, use it for global total pages
-      const total = Math.max(
-        1,
-        Math.ceil(totalCount / itemsPerPage)
-      );
+      const total = Math.max(1, Math.ceil(totalCount / itemsPerPage));
       console.warn(
         'Total pages calculated (from backend totalCount):',
         total,
@@ -252,10 +267,7 @@ export const useCabinetSorting = ({
     }
 
     // Simple mode: total pages based on full dataset
-    const total = Math.max(
-      1,
-      Math.ceil(sortedCabinets.length / itemsPerPage)
-    );
+    const total = Math.max(1, Math.ceil(sortedCabinets.length / itemsPerPage));
     console.warn(
       'Total pages calculated (simple mode):',
       total,
@@ -294,4 +306,3 @@ export const useCabinetSorting = ({
     transformCabinet,
   };
 };
-

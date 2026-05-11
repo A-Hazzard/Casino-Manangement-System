@@ -4,6 +4,7 @@
 
 Browsers **silently drop** cookies with `secure: true` when the connection is HTTP (not HTTPS).
 This breaks authentication entirely when accessing via:
+
 - Local IP addresses: `http://192.168.8.2:3000`
 - HTTP-only staging servers
 - Any non-HTTPS development environment
@@ -33,7 +34,11 @@ Create and import this helper everywhere cookies are set:
  *
  * Never hardcode `secure: true`. Always use this helper.
  */
-export function isSecureContext(request?: Request | { url: string; headers: { get: (key: string) => string | null } }): boolean {
+export function isSecureContext(
+  request?:
+    | Request
+    | { url: string; headers: { get: (key: string) => string | null } }
+): boolean {
   // Explicit override via environment variable (see .env rules below)
   if (process.env.COOKIE_SECURE === 'true') return true;
   if (process.env.COOKIE_SECURE === 'false') return false;
@@ -97,7 +102,7 @@ COOKIE_SECURE=false
 ```
 
 > **Do you need an env var?**
-> You don't *have* to — the `isSecureContext()` helper auto-detects from the request.
+> You don't _have_ to — the `isSecureContext()` helper auto-detects from the request.
 > But `COOKIE_SECURE=false` is a useful escape hatch for unusual deployments (e.g. production
 > on a LAN with no reverse proxy). Set it explicitly when auto-detection isn't reliable.
 
@@ -111,7 +116,9 @@ COOKIE_SECURE=false
 import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 
 // In API route handler (has access to request)
-const cookieOptions = getAuthCookieOptions(request, { maxAge: 60 * 60 * 24 * 7 });
+const cookieOptions = getAuthCookieOptions(request, {
+  maxAge: 60 * 60 * 24 * 7,
+});
 response.cookies.set('token', jwtToken, cookieOptions);
 response.cookies.set('refreshToken', refreshToken, {
   ...cookieOptions,
@@ -125,7 +132,7 @@ response.cookies.set('refreshToken', refreshToken, {
 // NEVER DO THIS
 response.cookies.set('token', jwtToken, {
   httpOnly: true,
-  secure: true,        // ← breaks HTTP/IP access
+  secure: true, // ← breaks HTTP/IP access
   sameSite: 'lax',
   path: '/',
 });
@@ -139,7 +146,10 @@ import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 const clearOptions = getAuthCookieOptions(request, { maxAge: 0 });
 // maxAge: 0 or expires: new Date(0) both work
 response.cookies.set('token', '', { ...clearOptions, expires: new Date(0) });
-response.cookies.set('refreshToken', '', { ...clearOptions, expires: new Date(0) });
+response.cookies.set('refreshToken', '', {
+  ...clearOptions,
+  expires: new Date(0),
+});
 ```
 
 ---
@@ -148,7 +158,10 @@ response.cookies.set('refreshToken', '', { ...clearOptions, expires: new Date(0)
 
 ```typescript
 // proxy.ts — createLogoutResponse
-function createLogoutResponse(request: NextRequest, error: string): NextResponse {
+function createLogoutResponse(
+  request: NextRequest,
+  error: string
+): NextResponse {
   const redirectUrl = new URL(
     error === 'database_context_mismatch' ? '/login' : `/login?error=${error}`,
     request.url
@@ -162,7 +175,7 @@ function createLogoutResponse(request: NextRequest, error: string): NextResponse
   const clearOptions = {
     expires: new Date(0),
     httpOnly: true,
-    secure,                // ← conditional, not hardcoded
+    secure, // ← conditional, not hardcoded
     sameSite: 'lax' as const,
     path: '/',
   };
@@ -179,13 +192,13 @@ function createLogoutResponse(request: NextRequest, error: string): NextResponse
 
 ## Quick Reference Checklist
 
-| Scenario | `secure` value | Why |
-|---|---|---|
-| `https://yourdomain.com` (production) | `true` | HTTPS confirmed |
-| `http://192.168.8.2:3000` (LAN IP) | `false` | No TLS |
-| `http://localhost:3000` (dev) | `false` | No TLS |
-| Behind nginx/Caddy with HTTPS | `true` | `x-forwarded-proto: https` |
-| Behind reverse proxy, HTTP internally | Use `x-forwarded-proto` | Proxy adds header |
+| Scenario                              | `secure` value          | Why                        |
+| ------------------------------------- | ----------------------- | -------------------------- |
+| `https://yourdomain.com` (production) | `true`                  | HTTPS confirmed            |
+| `http://192.168.8.2:3000` (LAN IP)    | `false`                 | No TLS                     |
+| `http://localhost:3000` (dev)         | `false`                 | No TLS                     |
+| Behind nginx/Caddy with HTTPS         | `true`                  | `x-forwarded-proto: https` |
+| Behind reverse proxy, HTTP internally | Use `x-forwarded-proto` | Proxy adds header          |
 
 ---
 

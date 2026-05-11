@@ -12,6 +12,11 @@
 
 import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type { GamingMachine } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -24,15 +29,14 @@ import { NextRequest, NextResponse } from 'next/server';
  * URL params:
  * @param {string} locationId - Required (path). The location whose SMIB configs to retrieve.
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/locations/[locationId]/smib-configs';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const locationId = pathname.split('/').at(-2);
 
   try {
-
     // ============================================================================
     // STEP 2: Connect to database
     // ============================================================================
@@ -54,6 +58,16 @@ export async function GET(
       .lean<GamingMachine[]>();
 
     if (machines.length === 0) {
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/locations/[locationId]/smib-configs',
+        0,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         configs: [],
@@ -101,6 +115,15 @@ export async function GET(
     if (duration > 1000) {
       console.warn(`[Location SMIB Configs API] Completed in ${duration}ms`);
     }
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/locations/[locationId]/smib-configs',
+      configs.length,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: true,
       configs,
@@ -115,6 +138,13 @@ export async function GET(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/locations/[locationId]/smib-configs',
+      errorMessage,
+      user
+    );
     console.error(
       `[Location SMIB Configs API] Error after ${duration}ms:`,
       errorMessage

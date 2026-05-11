@@ -20,4 +20,3 @@ export type Licencee = {
   includeJackpot?: boolean;
   gameDayOffset?: number;
 };
-

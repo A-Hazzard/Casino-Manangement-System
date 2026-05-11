@@ -59,7 +59,8 @@ export default function ApplicationSelection({
     // Note: This is a server-side env var, so we check it on mount
     // In production, this would be set at build/deploy time
     // For development, you can set it in .env.local
-    const appEnv = process.env.NEXT_PUBLIC_APPLICATION || process.env.APPLICATION;
+    const appEnv =
+      process.env.NEXT_PUBLIC_APPLICATION || process.env.APPLICATION;
     if (appEnv) {
       const appMode = appEnv as 'CMS' | 'VAULT';
       onSelect(appMode);
@@ -111,16 +112,14 @@ export default function ApplicationSelection({
           <h1 className="mb-2 text-2xl font-bold text-gray-900">
             Welcome back, {user.profile?.firstName || user.username || 'User'}
           </h1>
-          <p className="text-gray-600">
-            Please select your workspace:
-          </p>
+          <p className="text-gray-600">Please select your workspace:</p>
         </div>
 
         {/* Application Selection Cards */}
         <div className="grid gap-6 md:grid-cols-2">
           {/* CMS Card */}
           <Card
-            className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
+            className="cursor-pointer transition-all hover:scale-105 hover:shadow-lg"
             onClick={() => handleSelect('CMS')}
           >
             <CardContent className="flex flex-col items-center p-8 text-center">
@@ -148,7 +147,7 @@ export default function ApplicationSelection({
 
           {/* VAULT Card */}
           <Card
-            className="cursor-pointer transition-all hover:shadow-lg hover:scale-105"
+            className="cursor-pointer transition-all hover:scale-105 hover:shadow-lg"
             onClick={() => handleSelect('VAULT')}
           >
             <CardContent className="flex flex-col items-center p-8 text-center">

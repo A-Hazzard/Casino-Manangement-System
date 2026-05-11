@@ -63,7 +63,12 @@ export default function AdministrationEditCountryModal({
     e.preventDefault();
     if (!country?._id) return;
 
-    if (!formData.name || !formData.alpha2 || !formData.alpha3 || !formData.isoNumeric) {
+    if (
+      !formData.name ||
+      !formData.alpha2 ||
+      !formData.alpha3 ||
+      !formData.isoNumeric
+    ) {
       toast.error('All fields are required');
       return;
     }
@@ -129,33 +134,39 @@ export default function AdministrationEditCountryModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1 block text-sm font-semibold">Alpha-2 *</label>
+              <label className="mb-1 block text-sm font-semibold">
+                Alpha-2 *
+              </label>
               <input
                 type="text"
                 name="alpha2"
                 value={formData.alpha2}
                 onChange={handleChange}
                 maxLength={2}
-                className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-button uppercase"
+                className="w-full rounded border px-3 py-2 uppercase focus:outline-none focus:ring-2 focus:ring-button"
                 required
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold">Alpha-3 *</label>
+              <label className="mb-1 block text-sm font-semibold">
+                Alpha-3 *
+              </label>
               <input
                 type="text"
                 name="alpha3"
                 value={formData.alpha3}
                 onChange={handleChange}
                 maxLength={3}
-                className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-button uppercase"
+                className="w-full rounded border px-3 py-2 uppercase focus:outline-none focus:ring-2 focus:ring-button"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-semibold">ISO Numeric *</label>
+            <label className="mb-1 block text-sm font-semibold">
+              ISO Numeric *
+            </label>
             <input
               type="text"
               name="isoNumeric"

@@ -1,6 +1,6 @@
 /**
  * Manufacturer Multi-Select Component
- * 
+ *
  * Dropdown component for selecting multiple manufacturers with search functionality
  */
 
@@ -58,7 +58,9 @@ export function ReportsManufacturerMultiSelect({
 
   const handleToggleManufacturer = (manufacturerId: string) => {
     if (selectedManufacturers.includes(manufacturerId)) {
-      onSelectionChange(selectedManufacturers.filter(id => id !== manufacturerId));
+      onSelectionChange(
+        selectedManufacturers.filter(id => id !== manufacturerId)
+      );
     } else {
       onSelectionChange([...selectedManufacturers, manufacturerId]);
     }
@@ -73,7 +75,9 @@ export function ReportsManufacturerMultiSelect({
     return name.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  const allSelected = manufacturers.length > 0 && selectedManufacturers.length === manufacturers.length;
+  const allSelected =
+    manufacturers.length > 0 &&
+    selectedManufacturers.length === manufacturers.length;
 
   const handleSelectAll = () => {
     if (allSelected) {
@@ -134,7 +138,7 @@ export function ReportsManufacturerMultiSelect({
               />
               <Label
                 htmlFor="select-all-manufacturers-performance"
-                className="text-sm font-medium cursor-pointer"
+                className="cursor-pointer text-sm font-medium"
               >
                 Select All
               </Label>
@@ -187,5 +191,3 @@ export function ReportsManufacturerMultiSelect({
     </div>
   );
 }
-
-

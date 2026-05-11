@@ -20,7 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/shared/ui/table';
-import type { CollectionReportManagerScheduleTableProps, SchedulerTableRow } from '@/lib/types/components';
+import type {
+  CollectionReportManagerScheduleTableProps,
+  SchedulerTableRow,
+} from '@/lib/types/components';
 import { Pencil, Trash2 } from 'lucide-react';
 
 export default function CollectionReportManagerScheduleTable({
@@ -56,14 +59,22 @@ export default function CollectionReportManagerScheduleTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
-            <TableHead className="font-semibold text-white">COLLECTOR</TableHead>
+            <TableHead className="font-semibold text-white">
+              COLLECTOR
+            </TableHead>
             <TableHead className="font-semibold text-white">LOCATION</TableHead>
             <TableHead className="font-semibold text-white">MANAGER</TableHead>
-            <TableHead className="font-semibold text-white">VISIT TIME</TableHead>
-            <TableHead className="font-semibold text-white">CREATED AT</TableHead>
+            <TableHead className="font-semibold text-white">
+              VISIT TIME
+            </TableHead>
+            <TableHead className="font-semibold text-white">
+              CREATED AT
+            </TableHead>
             <TableHead className="font-semibold text-white">STATUS</TableHead>
             {showActions && (
-              <TableHead className="font-semibold text-white">ACTIONS</TableHead>
+              <TableHead className="font-semibold text-white">
+                ACTIONS
+              </TableHead>
             )}
           </TableRow>
         </TableHeader>

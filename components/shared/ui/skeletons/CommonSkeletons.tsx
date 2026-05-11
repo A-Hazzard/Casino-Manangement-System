@@ -14,7 +14,12 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 /**
@@ -104,12 +109,12 @@ export const ChartNoData = ({
 /**
  * Skeleton component for tables
  */
-export const TableSkeleton = ({ 
-  rows = 5, 
-  cols = 4 
-}: { 
-  rows?: number; 
-  cols?: number 
+export const TableSkeleton = ({
+  rows = 5,
+  cols = 4,
+}: {
+  rows?: number;
+  cols?: number;
 }) => (
   <Card>
     <CardContent className="p-0">

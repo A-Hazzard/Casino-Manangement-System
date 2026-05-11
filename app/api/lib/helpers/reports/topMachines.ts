@@ -27,7 +27,9 @@ function calculateTopMachinesDateRange(
   endDate?: string | null
 ): { start: Date; end: Date } {
   if (!timePeriod || typeof timePeriod !== 'string') {
-    console.error('[calculateTopMachinesDateRange] timePeriod is required and must be a string');
+    console.error(
+      '[calculateTopMachinesDateRange] timePeriod is required and must be a string'
+    );
     const now = new Date();
     return { start: now, end: now };
   }
@@ -80,7 +82,9 @@ function buildTopMachinesPipeline(
   end: Date
 ): PipelineStage[] {
   if (!locationId || !start || !end) {
-    console.error('[buildTopMachinesPipeline] locationId, start, and end are required');
+    console.error(
+      '[buildTopMachinesPipeline] locationId, start, and end are required'
+    );
     return [];
   }
   return [
@@ -168,7 +172,9 @@ export async function getTopMachinesByLocation(
   endDate?: string | null
 ): Promise<unknown[]> {
   if (!locationId || !timePeriod) {
-    console.error('[getTopMachinesByLocation] locationId and timePeriod are required');
+    console.error(
+      '[getTopMachinesByLocation] locationId and timePeriod are required'
+    );
     return [];
   }
 
@@ -208,7 +214,9 @@ function buildTopMachinesDetailedPipeline(
   limit: number = 5
 ): PipelineStage[] {
   if (!startDate || !endDate) {
-    console.error('[buildTopMachinesDetailedPipeline] startDate and endDate are required');
+    console.error(
+      '[buildTopMachinesDetailedPipeline] startDate and endDate are required'
+    );
     return [];
   }
   const pipeline: PipelineStage[] = [
@@ -245,7 +253,8 @@ function buildTopMachinesDetailedPipeline(
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
+          { 'locationDetails.rel.licencee': licencee },
+          { 'locationDetails.rel.licencee': licencee },
         ],
       },
     } as PipelineStage);
@@ -490,4 +499,3 @@ export async function getTopMachinesDetailed(
   }
   return results;
 }
-

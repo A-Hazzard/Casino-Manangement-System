@@ -44,4 +44,3 @@ function AdministrationLicenceeSearchBar({
 }
 
 export default AdministrationLicenceeSearchBar;
-

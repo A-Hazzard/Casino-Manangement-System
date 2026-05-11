@@ -16,17 +16,22 @@
 'use client';
 
 import { ReactNode, RefObject } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { formatTime12Hour } from '@/shared/utils/dateFormat';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    CartesianGrid,
-    Line,
-    LineChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 type HourlyChartData = {
@@ -163,7 +168,6 @@ export function ReportsMetersHourlyCharts({
     return '100%';
   }, [isMobile, chartData.length, chartWidthNumeric]);
 
-
   // Format time for display - shorter on mobile, 12-hour format
   const formatTimeLabel = (timeStr: string) => {
     try {
@@ -255,8 +259,17 @@ export function ReportsMetersHourlyCharts({
           </span>
         </div>
 
-        <div ref={scrollRef} className="touch-pan-x overflow-x-auto overflow-y-hidden">
-          <div style={{ minWidth: typeof chartWidth === 'number' ? `${chartWidth}px` : chartWidth, width: '100%' }}>
+        <div
+          ref={scrollRef}
+          className="touch-pan-x overflow-x-auto overflow-y-hidden"
+        >
+          <div
+            style={{
+              minWidth:
+                typeof chartWidth === 'number' ? `${chartWidth}px` : chartWidth,
+              width: '100%',
+            }}
+          >
             {children}
           </div>
         </div>
@@ -290,10 +303,7 @@ export function ReportsMetersHourlyCharts({
               legendItem={{ label: 'Games Played', color: '#3b82f6' }}
               scrollRef={gamesScrollRef}
             >
-              <ResponsiveContainer
-                width="100%"
-                height={isMobile ? 250 : 300}
-              >
+              <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                 <LineChart
                   data={chartData}
                   margin={
@@ -360,10 +370,7 @@ export function ReportsMetersHourlyCharts({
                 legendItem={{ label: 'Coin In', color: '#10b981' }}
                 scrollRef={coinInScrollRef}
               >
-                <ResponsiveContainer
-                  width="100%"
-                  height={isMobile ? 250 : 300}
-                >
+                <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                   <LineChart
                     data={chartData}
                     margin={
@@ -433,10 +440,7 @@ export function ReportsMetersHourlyCharts({
                 legendItem={{ label: 'Coin Out', color: '#f59e0b' }}
                 scrollRef={coinOutScrollRef}
               >
-                <ResponsiveContainer
-                  width="100%"
-                  height={isMobile ? 250 : 300}
-                >
+                <ResponsiveContainer width="100%" height={isMobile ? 250 : 300}>
                   <LineChart
                     data={chartData}
                     margin={
@@ -485,4 +489,3 @@ export function ReportsMetersHourlyCharts({
     </div>
   );
 }
-

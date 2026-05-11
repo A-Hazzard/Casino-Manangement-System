@@ -89,13 +89,22 @@ export async function generateEndOfDayReport(
   locationId: string,
   date: Date
 ): Promise<EndOfDayReport> {
-  if (!locationId || typeof locationId !== 'string' || !date || !(date instanceof Date)) {
-    console.error('[generateEndOfDayReport] locationId (string) and date (Date) are required');
+  if (
+    !locationId ||
+    typeof locationId !== 'string' ||
+    !date ||
+    !(date instanceof Date)
+  ) {
+    console.error(
+      '[generateEndOfDayReport] locationId (string) and date (Date) are required'
+    );
     throw new Error('Invalid parameters provided');
   }
 
   // Fetch location to get gameDayOffset
-  const location = await GamingLocations.findOne({ _id: locationId }).select('gameDayOffset').lean<GamingLocationDocument | null>();
+  const location = await GamingLocations.findOne({ _id: locationId })
+    .select('gameDayOffset')
+    .lean<GamingLocationDocument | null>();
   const gameDayOffset = location?.gameDayOffset ?? 8; // Default to 8 AM if not set
 
   // Calculate start and end of day using gaming day logic
@@ -109,19 +118,22 @@ export async function generateEndOfDayReport(
     $or: [
       {
         status: 'closed',
-        closedAt: { $gte: rangeStart, $lte: rangeEnd }
+        closedAt: { $gte: rangeStart, $lte: rangeEnd },
       },
       {
         status: 'active',
-        openedAt: { $gte: rangeStart, $lte: rangeEnd }
-      }
-    ]
-  }).sort({ openedAt: 1 }).lean<VaultShiftDocument[]>();
+        openedAt: { $gte: rangeStart, $lte: rangeEnd },
+      },
+    ],
+  })
+    .sort({ openedAt: 1 })
+    .lean<VaultShiftDocument[]>();
 
   let vaultSystemBalance = 0;
   let vaultPhysicalCount = 0;
   let vaultVariance = 0;
-  let vaultDenominations: Array<{ denomination: number; quantity: number }> = [];
+  let vaultDenominations: Array<{ denomination: number; quantity: number }> =
+    [];
   let shiftStatus: 'not_started' | 'active' | 'closed' = 'not_started';
   let previousShiftActive = false;
   let previousShiftDate: Date | string | undefined = undefined;
@@ -134,23 +146,35 @@ export async function generateEndOfDayReport(
 
     // The current/latest system balance is from the newest shift (last in sorted array)
     const latestShift = vaultShifts[vaultShifts.length - 1];
-    const latestShiftDoc = latestShift as VaultShiftDocument & { currentBalance?: number; currentDenominations?: Array<{ denomination: number; quantity: number }> };
+    const latestShiftDoc = latestShift as VaultShiftDocument & {
+      currentBalance?: number;
+      currentDenominations?: Array<{ denomination: number; quantity: number }>;
+    };
     if (latestShift.status === 'closed') {
       vaultSystemBalance = latestShift.closingBalance || 0;
     } else {
-      vaultSystemBalance = latestShiftDoc.currentBalance ?? latestShift.openingBalance ?? 0;
+      vaultSystemBalance =
+        latestShiftDoc.currentBalance ?? latestShift.openingBalance ?? 0;
     }
     vaultPhysicalCount = vaultSystemBalance;
 
     // Aggregate denominations and variance from all relevant shifts
-    vaultDenominations = latestShift.status === 'closed'
-      ? (latestShift.closingDenominations || []).map(d => ({ denomination: d.denomination, quantity: d.quantity }))
-      : (latestShiftDoc.currentDenominations || (latestShift.openingDenominations || []).map(d => ({ denomination: d.denomination, quantity: d.quantity })));
+    vaultDenominations =
+      latestShift.status === 'closed'
+        ? (latestShift.closingDenominations || []).map(d => ({
+            denomination: d.denomination,
+            quantity: d.quantity,
+          }))
+        : latestShiftDoc.currentDenominations ||
+          (latestShift.openingDenominations || []).map(d => ({
+            denomination: d.denomination,
+            quantity: d.quantity,
+          }));
 
     // Sum variance from all shifts in the range
     vaultShifts.forEach(s => {
       (s.reconciliations || []).forEach(r => {
-        vaultVariance += (r.newBalance - r.previousBalance);
+        vaultVariance += r.newBalance - r.previousBalance;
       });
     });
   } else {
@@ -158,8 +182,10 @@ export async function generateEndOfDayReport(
     const prevActive = await VaultShiftModel.findOne({
       locationId,
       status: 'active',
-      openedAt: { $lt: rangeStart }
-    }).select('openedAt').lean<VaultShiftDocument | null>();
+      openedAt: { $lt: rangeStart },
+    })
+      .select('openedAt')
+      .lean<VaultShiftDocument | null>();
 
     if (prevActive) {
       previousShiftActive = true;
@@ -169,10 +195,13 @@ export async function generateEndOfDayReport(
 
   // Transform denominations
   const denominationBreakdown: Record<string, number> = {};
-  vaultDenominations.forEach((denomItem: { denomination: number; quantity: number }) => {
-    const key = String(denomItem.denomination);
-    denominationBreakdown[key] = (denominationBreakdown[key] || 0) + (denomItem.quantity || 0);
-  });
+  vaultDenominations.forEach(
+    (denomItem: { denomination: number; quantity: number }) => {
+      const key = String(denomItem.denomination);
+      denominationBreakdown[key] =
+        (denominationBreakdown[key] || 0) + (denomItem.quantity || 0);
+    }
+  );
 
   // ============================================================================
   // 2. Cashier Floats
@@ -182,31 +211,43 @@ export async function generateEndOfDayReport(
     $or: [
       { openedAt: { $gte: rangeStart, $lte: rangeEnd } },
       { closedAt: { $gte: rangeStart, $lte: rangeEnd } },
-      { status: 'active', openedAt: { $gte: rangeStart, $lte: rangeEnd } }
-    ]
+      { status: 'active', openedAt: { $gte: rangeStart, $lte: rangeEnd } },
+    ],
   }).lean<CashierShiftDocument[]>();
 
-  type CashierShiftWithName = CashierShiftDocument & { cashierName?: string; cashierUsername?: string };
-  const cashierFloats = cashierShifts.map((shift) => {
+  type CashierShiftWithName = CashierShiftDocument & {
+    cashierName?: string;
+    cashierUsername?: string;
+  };
+  const cashierFloats = cashierShifts.map(shift => {
     const shiftWithName = shift as CashierShiftWithName;
     return {
       _id: String(shift._id),
-      cashierName: shiftWithName.cashierName || shiftWithName.cashierUsername || 'Unknown',
+      cashierName:
+        shiftWithName.cashierName || shiftWithName.cashierUsername || 'Unknown',
       status: shift.status,
-      balance: shift.status === 'closed' ? (shift.closingBalance || 0) : (shift.currentBalance || shift.openingBalance || 0),
+      balance:
+        shift.status === 'closed'
+          ? shift.closingBalance || 0
+          : shift.currentBalance || shift.openingBalance || 0,
     };
   });
 
-const totalCashierFloat = cashierFloats.reduce((sum, cashierFloatItem) => sum + cashierFloatItem.balance, 0);
+  const totalCashierFloat = cashierFloats.reduce(
+    (sum, cashierFloatItem) => sum + cashierFloatItem.balance,
+    0
+  );
 
-// ============================================================================
-// 3. Machine Counts (Drops)
-// ============================================================================
-const machinesMatchQuery = {
+  // ============================================================================
+  // 3. Machine Counts (Drops)
+  // ============================================================================
+  const machinesMatchQuery = {
     gamingLocation: locationId,
-    deletedAt: { $exists: false }
+    deletedAt: { $exists: false },
   };
-  const allMachines = await Machine.find(machinesMatchQuery).select('_id assetNumber custom.name').lean<GamingMachine[]>();
+  const allMachines = await Machine.find(machinesMatchQuery)
+    .select('_id assetNumber custom.name')
+    .lean<GamingMachine[]>();
 
   const machineIds = allMachines.map(machine => String(machine._id));
 
@@ -229,16 +270,20 @@ const machinesMatchQuery = {
 
   const softCounts = await SoftCountModel.find({
     locationId,
-    countedAt: { $gte: rangeStart, $lte: rangeEnd }
-  }).sort({ countedAt: 1 }).lean<SoftCountDocument[]>();
+    countedAt: { $gte: rangeStart, $lte: rangeEnd },
+  })
+    .sort({ countedAt: 1 })
+    .lean<SoftCountDocument[]>();
 
   const midDaySoftCounts: EndOfDayReport['midDaySoftCounts'] = [];
   const endOfDaySoftCounts: EndOfDayReport['endOfDaySoftCounts'] = [];
 
-  softCounts.forEach((softCount) => {
+  softCounts.forEach(softCount => {
     const machineId = softCount.machineId;
     if (!machineId) return;
-    const machine = allMachines.find((machineItem) => machineItem._id === machineId);
+    const machine = allMachines.find(
+      machineItem => machineItem._id === machineId
+    );
     if (!machine) return;
 
     const machineDrop = dropMap.get(machineId) || 0;
@@ -246,10 +291,13 @@ const machinesMatchQuery = {
 
     const entry = {
       machineId: machineId,
-      location: (machine.custom?.name as string | undefined) || machine.assetNumber || 'Floor',
+      location:
+        (machine.custom?.name as string | undefined) ||
+        machine.assetNumber ||
+        'Floor',
       amount: softCount.amount,
       countedAt: softCount.countedAt as Date,
-      variance
+      variance,
     };
 
     if (softCount.isEndOfDay) {
@@ -259,7 +307,8 @@ const machinesMatchQuery = {
     }
   });
 
-  const totalMachineBalance = endOfDaySoftCounts.reduce((sum, endItem) => sum + endItem.amount, 0) +
+  const totalMachineBalance =
+    endOfDaySoftCounts.reduce((sum, endItem) => sum + endItem.amount, 0) +
     midDaySoftCounts.reduce((sum, midItem) => sum + midItem.amount, 0);
 
   // ============================================================================
@@ -269,7 +318,7 @@ const machinesMatchQuery = {
     locationId,
     timestamp: {
       $gte: rangeStart,
-      $lte: rangeEnd
+      $lte: rangeEnd,
     },
   }).lean<VaultTransactionDocument[]>();
 
@@ -278,7 +327,7 @@ const machinesMatchQuery = {
   let totalPayouts = 0;
   let expenses = 0;
 
-  transactions.forEach((vaultTransaction) => {
+  transactions.forEach(vaultTransaction => {
     if ((vaultTransaction.type as string) === 'vault_reconciliation') return;
 
     if (vaultTransaction.to?.type === 'vault') {
@@ -295,7 +344,8 @@ const machinesMatchQuery = {
     }
   });
 
-  const totalCash = vaultSystemBalance + totalCashierFloat + totalMachineBalance;
+  const totalCash =
+    vaultSystemBalance + totalCashierFloat + totalMachineBalance;
 
   return {
     locationId,
@@ -309,7 +359,7 @@ const machinesMatchQuery = {
     vaultBalance: {
       systemBalance: vaultSystemBalance,
       physicalCount: vaultPhysicalCount,
-      variance: vaultVariance
+      variance: vaultVariance,
     },
     cashierFloats,
     midDaySoftCounts,
@@ -321,11 +371,10 @@ const machinesMatchQuery = {
       payouts: totalPayouts,
       totalMachineBalance,
       totalCashierFloats: totalCashierFloat,
-      expenses
-    }
+      expenses,
+    },
   };
 }
-
 
 /**
  * Export report to CSV format
@@ -334,7 +383,9 @@ const machinesMatchQuery = {
  */
 export function exportReportToCSV(report: EndOfDayReport): string {
   if (!report || typeof report !== 'object') {
-    console.error('[exportReportToCSV] report is required and must be an object');
+    console.error(
+      '[exportReportToCSV] report is required and must be an object'
+    );
     return '';
   }
 

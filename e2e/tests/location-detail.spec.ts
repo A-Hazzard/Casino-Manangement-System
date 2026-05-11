@@ -43,24 +43,24 @@ async function mockLocationDetailAPIs(
   page: Page,
   machinesPayload = MOCK_LOCATION_MACHINES
 ) {
-  await page.route('**/api/auth/current-user**', (route) =>
+  await page.route('**/api/auth/current-user**', route =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
   );
   // Fetching the same location but potentially with nameOnly or other params
-  await page.route(`**/api/locations/${LOCATION_ID}**`, (route) =>
+  await page.route(`**/api/locations/${LOCATION_ID}**`, route =>
     route.fulfill({ status: 200, json: MOCK_LOCATION_DETAIL })
   );
   // Machine list for this location
-  await page.route(`**/api/cabinets?locationId=${LOCATION_ID}**`, (route) =>
+  await page.route(`**/api/cabinets?locationId=${LOCATION_ID}**`, route =>
     route.fulfill({ status: 200, json: machinesPayload })
   );
-  await page.route(`**/api/cabinets**`, (route) =>
+  await page.route(`**/api/cabinets**`, route =>
     route.fulfill({ status: 200, json: machinesPayload })
   );
-  await page.route('**/api/manufacturers**', (route) =>
+  await page.route('**/api/manufacturers**', route =>
     route.fulfill({ status: 200, json: MOCK_MANUFACTURERS })
   );
-  await page.route('**/api/licencees**', (route) =>
+  await page.route('**/api/licencees**', route =>
     route.fulfill({ status: 200, json: MOCK_LICENCEES_LIST })
   );
 }
@@ -122,21 +122,24 @@ test.describe('Location Detail', () => {
     });
 
     await test.step('Intercept POST machine creation endpoint', async () => {
-      await page.route(
-        `**/api/cabinets`,
-        async (route) => {
-          if (route.request().method() === 'POST') {
-            createRequestBody = route.request().postDataJSON() as Record<string, unknown>;
-            await route.fulfill({ status: 201, json: MOCK_MACHINE_CREATE_SUCCESS });
-          } else {
-            await route.continue();
-          }
+      await page.route(`**/api/cabinets`, async route => {
+        if (route.request().method() === 'POST') {
+          createRequestBody = route.request().postDataJSON() as Record<
+            string,
+            unknown
+          >;
+          await route.fulfill({
+            status: 201,
+            json: MOCK_MACHINE_CREATE_SUCCESS,
+          });
+        } else {
+          await route.continue();
         }
-      );
+      });
     });
 
     await test.step('After creation, return updated machine list', async () => {
-      await page.route('**/api/cabinets**', (route) =>
+      await page.route('**/api/cabinets**', route =>
         route.fulfill({ status: 200, json: MOCK_LOCATION_MACHINES_AFTER_ADD })
       );
     });
@@ -215,9 +218,12 @@ test.describe('Location Detail', () => {
     });
 
     await test.step('Intercept PUT machine update endpoint', async () => {
-      await page.route('**/api/cabinets/**', async (route) => {
+      await page.route('**/api/cabinets/**', async route => {
         if (route.request().method() === 'PUT') {
-          await route.fulfill({ status: 200, json: MOCK_MACHINE_UPDATE_SUCCESS });
+          await route.fulfill({
+            status: 200,
+            json: MOCK_MACHINE_UPDATE_SUCCESS,
+          });
         } else {
           await route.continue();
         }
@@ -225,7 +231,7 @@ test.describe('Location Detail', () => {
     });
 
     await test.step('After edit, return updated machine list', async () => {
-      await page.route('**/api/cabinets**', (route) =>
+      await page.route('**/api/cabinets**', route =>
         route.fulfill({
           status: 200,
           json: {
@@ -255,7 +261,9 @@ test.describe('Location Detail', () => {
 
     await test.step('Assert the modal opens and the custom name is pre-filled', async () => {
       await expect(locationDetailPage.machineModal).toBeVisible();
-      await expect(locationDetailPage.customNameInput).toHaveValue('Lucky Dragon');
+      await expect(locationDetailPage.customNameInput).toHaveValue(
+        'Lucky Dragon'
+      );
     });
 
     await test.step('Update the custom name', async () => {
@@ -281,9 +289,12 @@ test.describe('Location Detail', () => {
     });
 
     await test.step('Intercept DELETE machine endpoint', async () => {
-      await page.route('**/api/cabinets/**', async (route) => {
+      await page.route('**/api/cabinets/**', async route => {
         if (route.request().method() === 'DELETE') {
-          await route.fulfill({ status: 200, json: MOCK_MACHINE_DELETE_SUCCESS });
+          await route.fulfill({
+            status: 200,
+            json: MOCK_MACHINE_DELETE_SUCCESS,
+          });
         } else {
           await route.continue();
         }
@@ -303,7 +314,7 @@ test.describe('Location Detail', () => {
     });
 
     await test.step('Confirm deletion and update the mocked machine list', async () => {
-      await page.route('**/api/cabinets**', (route) =>
+      await page.route('**/api/cabinets**', route =>
         route.fulfill({
           status: 200,
           json: {
@@ -334,7 +345,7 @@ test.describe('Location Detail', () => {
     await test.step('Mock APIs — location has membershipEnabled: true', async () => {
       await mockLocationDetailAPIs(page);
       // Members endpoint
-      await page.route(`**/api/members**`, (route) =>
+      await page.route(`**/api/members**`, route =>
         route.fulfill({
           status: 200,
           json: {
@@ -360,9 +371,7 @@ test.describe('Location Detail', () => {
 
     await test.step('Assert the view has switched (machines table no longer shown)', async () => {
       // After switching, we expect a members-oriented heading or empty-state
-      await expect(
-        page.getByText(/members|no members/i).first()
-      ).toBeVisible();
+      await expect(page.getByText(/members|no members/i).first()).toBeVisible();
     });
   });
 
@@ -408,7 +417,10 @@ test.describe('Location Detail — Role-based access', () => {
     ['location admin', MOCK_USER_LOCATION_ADMIN],
     ['technician', MOCK_USER_TECHNICIAN],
   ] as const) {
-    test(`${label} can access location detail page`, async ({ page, locationDetailPage }) => {
+    test(`${label} can access location detail page`, async ({
+      page,
+      locationDetailPage,
+    }) => {
       await test.step(`Inject ${label} auth cookie and mock APIs`, async () => {
         await setRoleAuthCookie(page, userPayload);
         await mockLocationDetailAPIs(page);
@@ -446,4 +458,3 @@ test.describe('Location Detail — Role-based access', () => {
     await expect(page).toHaveURL(/collection-report/);
   });
 });
-

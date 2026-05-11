@@ -9,6 +9,8 @@ type CollectionTimeInputProps = {
   showHelpText?: boolean;
   helpText?: string;
   className?: string;
+  minDate?: Date;
+  maxDate?: Date;
 };
 
 /**
@@ -22,13 +24,15 @@ export default function CollectionReportFormTimeInput({
   showHelpText = true,
   helpText = 'This time applies to all machines in the collection report',
   className = '',
+  minDate,
+  maxDate = new Date(),
 }: CollectionTimeInputProps) {
   return (
     <div className={className}>
       <label className="mb-1 block text-sm font-medium">Collection Time</label>
       <ModernCalendar
         date={date ? { from: date, to: date } : undefined}
-        onSelect={(range) => {
+        onSelect={range => {
           if (range?.from) {
             onDateChange(range.from);
           }
@@ -36,12 +40,10 @@ export default function CollectionReportFormTimeInput({
         enableTimeInputs={true}
         mode="single"
         disabled={disabled}
+        minDate={minDate}
+        maxDate={maxDate}
       />
-      {showHelpText && (
-        <p className="mt-1 text-xs text-gray-500">{helpText}</p>
-      )}
+      {showHelpText && <p className="mt-1 text-xs text-gray-500">{helpText}</p>}
     </div>
   );
-};
-
-
+}

@@ -16,10 +16,10 @@ export * from './vault';
  * Global Polling Intervals (milliseconds)
  */
 export const POLL_INTERVALS = {
-  VERY_FAST: 5000,   // 5 seconds
-  FAST: 15000,       // 15 seconds
-  MEDIUM: 30000,     // 30 seconds
-  SLOW: 60000,       // 1 minute
+  VERY_FAST: 5000, // 5 seconds
+  FAST: 15000, // 15 seconds
+  MEDIUM: 30000, // 30 seconds
+  SLOW: 60000, // 1 minute
 } as const;
 
 export const DEFAULT_POLL_INTERVAL = POLL_INTERVALS.MEDIUM;

@@ -9,13 +9,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
-import { ChevronDown, Download, ExternalLink, FileSpreadsheet, FileText } from 'lucide-react';
+import {
+  ChevronDown,
+  Download,
+  ExternalLink,
+  FileSpreadsheet,
+  FileText,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import PaginationControls from '@/components/shared/ui/PaginationControls';
-import type { MonthlyMobileUIProps, MonthlyReportDetailsRow } from '@/lib/types/components';
-import { exportMonthlyReportExcel, exportMonthlyReportPDF } from '@/lib/utils/export';
+import type {
+  MonthlyMobileUIProps,
+  MonthlyReportDetailsRow,
+} from '@/lib/types/components';
+import {
+  exportMonthlyReportExcel,
+  exportMonthlyReportPDF,
+} from '@/lib/utils/export';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { getGrossColorClass } from '@/lib/utils/financial';
 
@@ -88,14 +100,22 @@ export default function CollectionReportMonthlyMobile({
   };
 
   const copy = async (text: string, label: string) => {
-    if (!text || text.trim() === '' || text === '-') { toast.error(`No ${label} value to copy`); return; }
+    if (!text || text.trim() === '' || text === '-') {
+      toast.error(`No ${label} value to copy`);
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(text.replace('$', '').replace(/,/g, '').trim());
+      await navigator.clipboard.writeText(
+        text.replace('$', '').replace(/,/g, '').trim()
+      );
       toast.success(`${label} copied`);
-    } catch { toast.error(`Failed to copy ${label}`); }
+    } catch {
+      toast.error(`Failed to copy ${label}`);
+    }
   };
 
-  const getLocationId = (name: string) => locations.find(loc => loc.name === name)?.id ?? null;
+  const getLocationId = (name: string) =>
+    locations.find(loc => loc.name === name)?.id ?? null;
 
   const totalPages = monthlyTotalPages || 1;
   const pageItems = monthlyCurrentItems;
@@ -109,15 +129,24 @@ export default function CollectionReportMonthlyMobile({
 
   const handleExport = async (format: 'pdf' | 'excel') => {
     if (format === 'pdf') {
-      await exportMonthlyReportPDF(monthlySummary, monthlyDetails, locations.length, monthlyDetails.length);
+      await exportMonthlyReportPDF(
+        monthlySummary,
+        monthlyDetails,
+        locations.length,
+        monthlyDetails.length
+      );
     } else {
-      exportMonthlyReportExcel(monthlySummary, monthlyDetails, locations.length, monthlyDetails.length);
+      exportMonthlyReportExcel(
+        monthlySummary,
+        monthlyDetails,
+        locations.length,
+        monthlyDetails.length
+      );
     }
   };
 
   return (
     <div className="w-full pb-6 md:hidden">
-
       {/* ── Purple filter bar ── */}
       <div className="bg-buttonActive px-3 py-3 sm:px-4">
         <div className="flex items-center gap-2">
@@ -127,7 +156,9 @@ export default function CollectionReportMonthlyMobile({
               selectedLocations={
                 Array.isArray(monthlyLocation)
                   ? monthlyLocation
-                  : monthlyLocation === 'all' ? [] : [monthlyLocation]
+                  : monthlyLocation === 'all'
+                    ? []
+                    : [monthlyLocation]
               }
               onSelectionChange={onMonthlyLocationChange}
               placeholder="Select locations..."
@@ -146,11 +177,19 @@ export default function CollectionReportMonthlyMobile({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleExport('pdf')} className="cursor-pointer">
-                <FileText className="mr-2 h-4 w-4" />Export as PDF
+              <DropdownMenuItem
+                onClick={() => handleExport('pdf')}
+                className="cursor-pointer"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Export as PDF
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('excel')} className="cursor-pointer">
-                <FileSpreadsheet className="mr-2 h-4 w-4" />Export as Excel
+              <DropdownMenuItem
+                onClick={() => handleExport('excel')}
+                className="cursor-pointer"
+              >
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Export as Excel
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -171,7 +210,10 @@ export default function CollectionReportMonthlyMobile({
         {monthlyLoading ? (
           <div className="grid grid-cols-2 gap-3">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-24 animate-pulse rounded-xl bg-gray-200" />
+              <div
+                key={i}
+                className="h-24 animate-pulse rounded-xl bg-gray-200"
+              />
             ))}
           </div>
         ) : (
@@ -190,7 +232,9 @@ export default function CollectionReportMonthlyMobile({
                     className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md"
                   >
                     {/* Coloured top strip */}
-                    <div className={`absolute left-0 right-0 top-0 h-1 bg-gradient-to-r ${metric.gradient}`} />
+                    <div
+                      className={`absolute left-0 right-0 top-0 h-1 bg-gradient-to-r ${metric.gradient}`}
+                    />
                     <div className="p-4 pt-5">
                       <div className="mb-2 flex items-center justify-between">
                         <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -203,7 +247,9 @@ export default function CollectionReportMonthlyMobile({
                         className="text-left hover:opacity-70"
                         title="Tap to copy"
                       >
-                        <span className={`text-lg font-bold ${valueCls || 'text-gray-900'}`}>
+                        <span
+                          className={`text-lg font-bold ${valueCls || 'text-gray-900'}`}
+                        >
                           {formatted}
                         </span>
                       </button>
@@ -220,7 +266,10 @@ export default function CollectionReportMonthlyMobile({
       {monthlyLoading ? (
         <div className="mt-4 space-y-3 px-3 sm:px-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-44 animate-pulse rounded-lg bg-gray-200" />
+            <div
+              key={i}
+              className="h-44 animate-pulse rounded-lg bg-gray-200"
+            />
           ))}
         </div>
       ) : pageItems.length === 0 ? (
@@ -243,13 +292,17 @@ export default function CollectionReportMonthlyMobile({
                       {locationId ? (
                         <>
                           <button
-                            onClick={() => router.push(`/locations/${locationId}`)}
+                            onClick={() =>
+                              router.push(`/locations/${locationId}`)
+                            }
                             className="min-w-0 truncate text-sm font-semibold text-white hover:text-blue-200"
                           >
                             {detail.location}
                           </button>
                           <button
-                            onClick={() => router.push(`/locations/${locationId}`)}
+                            onClick={() =>
+                              router.push(`/locations/${locationId}`)
+                            }
                             title="View location details"
                             aria-label="View location details"
                           >
@@ -272,14 +325,21 @@ export default function CollectionReportMonthlyMobile({
                       { label: 'Gross', value: detail.gross },
                       { label: 'SAS Gross', value: detail.sasGross },
                     ].map(row => (
-                      <div key={row.label} className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">{row.label}</span>
+                      <div
+                        key={row.label}
+                        className="flex items-center justify-between"
+                      >
+                        <span className="text-sm font-medium text-gray-700">
+                          {row.label}
+                        </span>
                         <button
                           onClick={() => copy(row.value, row.label)}
                           className="text-right text-sm font-semibold hover:opacity-70"
                           title="Tap to copy"
                         >
-                          <span className={colorCls(row.value) || 'text-gray-900'}>
+                          <span
+                            className={colorCls(row.value) || 'text-gray-900'}
+                          >
                             {formatVal(row.value)}
                           </span>
                         </button>
@@ -299,7 +359,8 @@ export default function CollectionReportMonthlyMobile({
                 setCurrentPage={onPaginateMonthly}
               />
               <p className="mt-2 text-center text-xs text-gray-400">
-                {monthlyFirstItemIndex}–{monthlyLastItemIndex} of {monthlyDetails.length} locations
+                {monthlyFirstItemIndex}–{monthlyLastItemIndex} of{' '}
+                {monthlyDetails.length} locations
               </p>
             </div>
           )}

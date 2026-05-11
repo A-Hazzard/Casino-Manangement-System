@@ -21,18 +21,26 @@ import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machine
 import { CabinetCardProps } from '@/lib/types/components';
 import { formatCurrency } from '@/lib/utils';
 import {
-    getGrossColorClass,
-    getMoneyInColorClass,
+  getGrossColorClass,
+  getMoneyInColorClass,
 } from '@/lib/utils/financial';
 import { format, formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import gsap from 'gsap';
-import { Clock, ExternalLink, Eye, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import {
+  Clock,
+  ExternalLink,
+  Eye,
+  Pencil,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 
 export default function CabinetsCabinetCard(props: CabinetCardProps) {
+  const showArchived = props.showArchived || false;
   const cardRef = useRef<HTMLDivElement>(null);
   const prevPropsRef = useRef<CabinetCardProps | null>(null);
   const router = useRouter();
@@ -87,22 +95,28 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
   };
 
   // Archived machines have a deletedAt date of Jan 1st 2025 or later
-  const isArchived = Boolean(props.deletedAt) &&
-                   new Date(props.deletedAt!) >= new Date('2025-01-01');
+  const isArchived =
+    Boolean(props.deletedAt) &&
+    new Date(props.deletedAt!) >= new Date('2025-01-01');
 
   // Determine if cabinet is online (you may need to adjust this based on your data structure)
-  const isOnline = props.online !== undefined ? props.online : (props.status === 'functional' || props.online === true);
-  const lastOnlineText = props.offlineTimeLabel || (props.lastOnline
-    ? formatDistanceToNow(new Date(props.lastOnline), {
-        addSuffix: true,
-      })
-    : 'Never');
+  const isOnline =
+    props.online !== undefined
+      ? props.online
+      : props.status === 'functional' || props.online === true;
+  const lastOnlineText =
+    props.offlineTimeLabel ||
+    (props.lastOnline
+      ? formatDistanceToNow(new Date(props.lastOnline), {
+          addSuffix: true,
+        })
+      : 'Never');
   const smbId = props.smbId || '';
 
   return (
     <div
       ref={cardRef}
-      className={`xs:p-2 relative mx-auto mb-4 w-full max-w-full rounded-lg border p-2 shadow-sm transition-shadow hover:shadow-md sm:p-4 ${isArchived ? 'bg-gray-50 border-amber-100' : 'bg-white border-gray-100'}`}
+      className={`xs:p-2 relative mx-auto mb-4 w-full max-w-full rounded-lg border p-2 shadow-sm transition-shadow hover:shadow-md sm:p-4 ${isArchived ? 'border-amber-100 bg-gray-50' : 'border-gray-100 bg-white'}`}
     >
       {/* Header with Asset Number and Status Indicator */}
       <div className="mb-2 flex items-center justify-between">
@@ -118,11 +132,11 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
             {formatMachineDisplayNameWithBold(props)}
           </button>
           {isArchived && (
-            <div className="ml-1 inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0 text-[10px] font-semibold text-amber-700 border border-amber-200">
+            <div className="ml-1 inline-flex items-center rounded-full border border-amber-200 bg-amber-100 px-1.5 py-0 text-[10px] font-semibold text-amber-700">
               ARCHIVED
             </div>
           )}
-          {!isArchived && (
+          {!isArchived && smbId && (
             <motion.span
               className={`h-2 w-2 rounded-full ${
                 isOnline ? 'bg-green-500' : 'bg-red-500'
@@ -136,13 +150,20 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
 
       {/* Archived Info */}
       {isArchived && props.deletedAt && (
-        <div className="mb-3 flex flex-col gap-1 text-[11px] text-amber-700 bg-amber-50/50 p-2 rounded border border-amber-100/50">
+        <div className="mb-3 flex flex-col gap-1 rounded border border-amber-100/50 bg-amber-50/50 p-2 text-[11px] text-amber-700">
           <div className="flex items-center gap-1.5">
             <Clock className="h-3 w-3" />
-            <span>Archived: {format(new Date(props.deletedAt), 'MMM d, yyyy • h:mm a')}</span>
+            <span>
+              Archived:{' '}
+              {format(new Date(props.deletedAt), 'MMM d, yyyy • h:mm a')}
+            </span>
           </div>
           <div className="ml-[18px] italic opacity-80">
-            ({formatDistanceToNow(new Date(props.deletedAt), { addSuffix: true })})
+            (
+            {formatDistanceToNow(new Date(props.deletedAt), {
+              addSuffix: true,
+            })}
+            )
           </div>
         </div>
       )}
@@ -165,7 +186,7 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
         {/* Network Badge */}
         {props.network && (
           <div className="mb-1">
-            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 border border-gray-200">
+            <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
               {props.network}
             </span>
           </div>
@@ -202,19 +223,24 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
           )}
         </div>
       </div>
-      
-      {/* Offline Status - Show when offline */}
-      {!isOnline && (
-        <div className="mb-3 flex flex-col gap-1 text-xs text-red-600 font-medium">
+
+      {/* Offline Status - Only show for machines with a SMIB */}
+      {!isOnline && smbId && (
+        <div className="mb-3 flex flex-col gap-1 text-xs font-medium text-red-600">
           <div className="flex items-center gap-1.5">
             <Clock className="h-3 w-3" />
-            <span>{lastOnlineText === 'Never' ? 'Never Online' : `Offline ${lastOnlineText}`}</span>
+            <span>
+              {lastOnlineText === 'Never'
+                ? 'Never Online'
+                : `Offline ${lastOnlineText}`}
+            </span>
           </div>
-          {props.actualOfflineTime && props.actualOfflineTime !== lastOnlineText && (
-            <div className="ml-[18px] text-[10px] opacity-70 italic text-gray-500">
-              (Actual Offline Time: {props.actualOfflineTime})
-            </div>
-          )}
+          {props.actualOfflineTime &&
+            props.actualOfflineTime !== lastOnlineText && (
+              <div className="ml-[18px] text-[10px] italic text-gray-500 opacity-70">
+                (Actual Offline Time: {props.actualOfflineTime})
+              </div>
+            )}
         </div>
       )}
 
@@ -276,29 +302,29 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
 
       {/* Action Buttons - Fixed at bottom */}
       <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
-        {isArchived ? (
-          /* Archived view: Restore (all managers) and Delete (developers only) */
+        {showArchived ? (
+          /* Archived view: Restore (managers/admins/devs/owners) and Delete (developers/admins/owners only) - icon only */
           <>
             {props.canDeleteMachines !== false && (
               <Button
                 onClick={() => props.onRestore?.(props)}
                 variant="outline"
                 size="sm"
-                className="flex flex-1 items-center justify-center gap-1.5 text-xs text-green-600 hover:bg-green-50 hover:text-green-700"
+                className="flex flex-1 items-center justify-center text-xs text-green-600 hover:bg-green-50 hover:text-green-700"
+                title="Restore"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                <span>Restore</span>
               </Button>
             )}
             {props.canPermanentlyDeleteMachines && (
               <Button
-                onClick={() => props.onDelete?.(props)}
+                onClick={() => props.onPermanentDelete?.(props)}
                 variant="outline"
                 size="sm"
-                className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                className="flex items-center justify-center text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
+                title="Permanently Delete"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                <span>Delete</span>
               </Button>
             )}
           </>
@@ -342,4 +368,3 @@ export default function CabinetsCabinetCard(props: CabinetCardProps) {
     </div>
   );
 }
-

@@ -17,6 +17,12 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { mqttService } from '@/app/api/lib/services/mqttService';
 import type { SmibConfig } from '@/shared/types/entities';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/cabinets/[cabinetId]/smib-config
@@ -37,14 +43,14 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param smibVersion    {object} Optional. Version metadata to store on the machine record.
  * @param machineControl {object} Optional. Machine control command payload sent via MQTT.
  */
-export async function POST(
-  request: NextRequest
-) {
+export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/cabinets/[cabinetId]/smib-config';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
-    // STEP 1: Parse route parameters and request body
+    // STEP1: Parse route parameters and request body
     // ============================================================================
     const { pathname } = request.nextUrl;
     const cabinetId = pathname.split('/')[3];
@@ -62,6 +68,13 @@ export async function POST(
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const cabinet = await Machine.findOne({ _id: cabinetId });
     if (!cabinet) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cabinets/[cabinetId]/smib-config',
+        `Not found: ${cabinetId}`,
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Cabinet not found' },
         { status: 404 }
@@ -69,8 +82,17 @@ export async function POST(
     }
 
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const location = await GamingLocations.findOne({ _id: cabinet.gamingLocation });
+    const location = await GamingLocations.findOne({
+      _id: cabinet.gamingLocation,
+    });
     if (!location) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cabinets/[cabinetId]/smib-config',
+        'Location not found',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Location not found' },
         { status: 404 }
@@ -119,6 +141,13 @@ export async function POST(
     );
 
     if (!updatedMachine) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cabinets/[cabinetId]/smib-config',
+        `Not found: ${cabinetId}`,
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Machine not found' },
         { status: 404 }
@@ -158,9 +187,14 @@ export async function POST(
     // STEP 8: Return updated machine data
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Cabinet SMIB Config POST API] Completed in ${duration}ms`);
-    }
+    logRouteUpdate(
+      functionName,
+      'POST',
+      '/api/cabinets/[cabinetId]/smib-config',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json({
       success: true,
       data: updatedMachine,
@@ -172,6 +206,13 @@ export async function POST(
       error instanceof Error
         ? error.message
         : 'Failed to update SMIB configuration';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/cabinets/[cabinetId]/smib-config',
+      errorMessage,
+      user
+    );
     console.error(
       `[Cabinet SMIB Config API POST] Error after ${duration}ms:`,
       errorMessage
@@ -185,6 +226,7 @@ export async function POST(
 
 /**
  * GET /api/cabinets/[cabinetId]/smib-config
+
  *
  * Returns the current SMIB configuration, version metadata, and relay ID for a
  * cabinet. Called when the SMIB config panel opens to pre-populate form fields.
@@ -192,15 +234,14 @@ export async function POST(
  * URL params:
  * @param cabinetId {string} Required (path). The cabinet (machine) ID to fetch config for.
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/cabinets/[cabinetId]/smib-config';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const cabinetId = pathname.split('/')[3];
 
   try {
-
     // ============================================================================
     // STEP 2: Connect to database
     // ============================================================================
@@ -213,6 +254,13 @@ export async function GET(
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const cabinet = await Machine.findOne({ _id: cabinetId });
     if (!cabinet) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cabinets/[cabinetId]/smib-config',
+        `Not found: ${cabinetId}`,
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Cabinet not found' },
         { status: 404 }
@@ -225,9 +273,14 @@ export async function GET(
     const relayId = cabinet.relayId || cabinet.smibBoard || '';
 
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Cabinet SMIB Config GET API] Completed in ${duration}ms`);
-    }
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/cabinets/[cabinetId]/smib-config',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json({
       success: true,
       data: {
@@ -242,6 +295,13 @@ export async function GET(
       error instanceof Error
         ? error.message
         : 'Failed to fetch SMIB configuration';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/cabinets/[cabinetId]/smib-config',
+      errorMessage,
+      user
+    );
     console.error(
       `[Cabinet SMIB Config API GET] Error after ${duration}ms:`,
       errorMessage

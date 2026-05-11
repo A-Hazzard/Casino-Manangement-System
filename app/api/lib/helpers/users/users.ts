@@ -2,12 +2,20 @@ import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import UserModel from '@/app/api/lib/models/user';
 import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
 import { getClientIP } from '@/lib/utils/ipAddress';
-import { isValidDateInput, validateAlphabeticField, validateNameField, validateOptionalGender } from '@/lib/utils/validation';
+import {
+  isValidDateInput,
+  validateAlphabeticField,
+  validateNameField,
+  validateOptionalGender,
+} from '@/lib/utils/validation';
 import { JWTPayload, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { LeanUserDocument } from '../../../../../shared/types/auth';
-import { CurrentUser, OriginalUserType } from '../../../../../shared/types/users';
+import {
+  CurrentUser,
+  OriginalUserType,
+} from '../../../../../shared/types/users';
 import type { CashierShiftDocument } from '@shared/types';
 import { connectDB } from '../../middleware/db';
 import { apiLogger, LogContext } from '../../services/loggerService';
@@ -21,7 +29,9 @@ function validateDatabaseContext(
   tokenPayload: Record<string, unknown>
 ): boolean {
   if (!tokenPayload || typeof tokenPayload !== 'object') {
-    console.error('[validateDatabaseContext] tokenPayload is required and must be an object');
+    console.error(
+      '[validateDatabaseContext] tokenPayload is required and must be an object'
+    );
     return false;
   }
 
@@ -115,6 +125,8 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
       isEnabled?: boolean;
       deletedAt?: Date | null;
       multiplier?: number | null;
+      moneyInMultiplier?: number | null;
+      moneyOutAndJackpotMultiplier?: number | null;
     } | null = null;
 
     if (jwtPayload._id) {
@@ -123,7 +135,7 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         const UserModel = (await import('@/app/api/lib/models/user')).default;
         dbUser = await UserModel.findOne({ _id: jwtPayload._id })
           .select(
-            'sessionVersion roles permissions assignedLocations assignedLicencees isEnabled deletedAt multiplier'
+            'sessionVersion roles permissions assignedLocations assignedLicencees isEnabled deletedAt multiplier moneyInMultiplier moneyOutAndJackpotMultiplier'
           )
           .lean<LeanUserDocument>();
 
@@ -240,14 +252,17 @@ export async function getUserFromServer(): Promise<JWTPayload | null> {
         jwtPayload.assignedLicencees = [];
       }
 
-      // ALWAYS use database value for multiplier if available (source of truth — may have changed since login)
-      // This ensures that when an owner updates a reviewer's multiplier, it takes effect immediately
-      // on the NEXT request without requiring a re-login.
-      (jwtPayload as Record<string, unknown>).multiplier = dbUser.multiplier ?? null;
+      // ALWAYS use database values for multipliers (source of truth — may have changed since login).
+      // Falls back to old single `multiplier` field for users not yet migrated to dual fields.
+      const legacyMultiplier = dbUser.multiplier ?? null;
+      (jwtPayload as Record<string, unknown>).moneyInMultiplier =
+        dbUser.moneyInMultiplier ?? legacyMultiplier;
+      (jwtPayload as Record<string, unknown>).moneyOutAndJackpotMultiplier =
+        dbUser.moneyOutAndJackpotMultiplier ?? legacyMultiplier;
     } else {
-      // If dbUser lookup failed for some reason, ensure multiplier is null to be safe
-      // (Never use the multiplier potentially baked into the JWT asset)
-      (jwtPayload as Record<string, unknown>).multiplier = null;
+      (jwtPayload as Record<string, unknown>).moneyInMultiplier = null;
+      (jwtPayload as Record<string, unknown>).moneyOutAndJackpotMultiplier =
+        null;
     }
 
     return jwtPayload;
@@ -319,9 +334,9 @@ export async function getUserByEmail(
 
   try {
     await connectDB();
-    return (await UserModel.findOne({
+    return await UserModel.findOne({
       emailAddress: email,
-    }).lean<LeanUserDocument>());
+    }).lean<LeanUserDocument>();
   } catch (error) {
     console.error('[getUserByEmail] Error:', error);
     throw error;
@@ -332,15 +347,17 @@ export async function getUserByUsername(
   username: string
 ): Promise<LeanUserDocument | null> {
   if (!username || typeof username !== 'string') {
-    console.error('[getUserByUsername] username is required and must be a string');
+    console.error(
+      '[getUserByUsername] username is required and must be a string'
+    );
     return null;
   }
 
   try {
     await connectDB();
-    return (await UserModel.findOne({
+    return await UserModel.findOne({
       username,
-    }).lean<LeanUserDocument>());
+    }).lean<LeanUserDocument>();
   } catch (error) {
     console.error('[getUserByUsername] Error:', error);
     throw error;
@@ -355,7 +372,10 @@ export async function getUserById(
     return null;
   }
 
-  return await UserModel.findOne({ _id: userId }, '-password').lean<LeanUserDocument>();
+  return await UserModel.findOne(
+    { _id: userId },
+    '-password'
+  ).lean<LeanUserDocument>();
 }
 
 /**
@@ -373,7 +393,8 @@ export async function createUser(
     assignedLocations?: string[];
     assignedLicencees?: string[];
     tempPassword?: string;
-    multiplier?: number | null;
+    moneyInMultiplier?: number | null;
+    moneyOutAndJackpotMultiplier?: number | null;
   },
   request: NextRequest
 ) {
@@ -383,8 +404,12 @@ export async function createUser(
   }
 
   if (!data.username || !data.emailAddress || !data.password) {
-    console.error('[createUser] username, emailAddress, and password are required');
-    throw new Error('Missing required fields: username, emailAddress, password');
+    console.error(
+      '[createUser] username, emailAddress, and password are required'
+    );
+    throw new Error(
+      'Missing required fields: username, emailAddress, password'
+    );
   }
   const {
     username,
@@ -397,7 +422,8 @@ export async function createUser(
     assignedLocations,
     assignedLicencees,
     tempPassword,
-    multiplier,
+    moneyInMultiplier,
+    moneyOutAndJackpotMultiplier,
   } = data;
 
   // Get current user to check permissions for role assignment
@@ -415,9 +441,13 @@ export async function createUser(
 
   const isOwner = requestingUserRoles.includes('owner');
   const isDeveloper = requestingUserRoles.includes('developer');
-  const isAdmin = requestingUserRoles.includes('admin') && !isDeveloper && !isOwner;
+  const isAdmin =
+    requestingUserRoles.includes('admin') && !isDeveloper && !isOwner;
   const isManager =
-    requestingUserRoles.includes('manager') && !isAdmin && !isDeveloper && !isOwner;
+    requestingUserRoles.includes('manager') &&
+    !isAdmin &&
+    !isDeveloper &&
+    !isOwner;
 
   // Validate role assignments based on creator's permissions
   const ALLOWED_ROLES = [
@@ -479,7 +509,13 @@ export async function createUser(
     if (roles.some(r => r.trim().toLowerCase() === 'cashier')) {
       throw new Error('Only Vault Managers can assign the cashier role');
     }
-  } else if (!isDeveloper && !isOwner && !isAdmin && !isManager && !isVaultManager) {
+  } else if (
+    !isDeveloper &&
+    !isOwner &&
+    !isAdmin &&
+    !isManager &&
+    !isVaultManager
+  ) {
     // Only developer/admin/manager/vault-manager can create users
     console.error('[createUser] Permission check failed:', {
       requestingUserRoles,
@@ -529,23 +565,32 @@ export async function createUser(
     // ENFORCEMENT: Managers and Vault Managers can ONLY create users within their own licencees and locations
     // Owners and Developers have NO restrictions (handled by getUserLocationFilter returning 'all')
     if (isManager || isVaultManager) {
-      finalAssignedLicencees = (requestingUser.assignedLicencees as string[]) || [];
-      finalAssignedLocations = (requestingUser.assignedLocations as string[]) || [];
+      finalAssignedLicencees =
+        (requestingUser.assignedLicencees as string[]) || [];
+      finalAssignedLocations =
+        (requestingUser.assignedLocations as string[]) || [];
 
-      console.log(`[createUser] Auto-assigning licencees/locations for new user ${username} based on creator ${requestingUser._id}`);
+      console.log(
+        `[createUser] Auto-assigning licencees/locations for new user ${username} based on creator ${requestingUser._id}`
+      );
     }
 
     // ENFORCEMENT: Vault Managers must have exactly 1 licencee and 1 location
     if (roles.includes('vault-manager')) {
-      if (finalAssignedLicencees.length !== 1 || finalAssignedLocations.length !== 1) {
-        throw new Error('Vault Managers must be assigned to exactly one licencee and one location');
+      if (
+        finalAssignedLicencees.length !== 1 ||
+        finalAssignedLocations.length !== 1
+      ) {
+        throw new Error(
+          'Vault Managers must be assigned to exactly one licencee and one location'
+        );
       }
     }
 
     // Cashiers with a tempPassword have NOT truly set their own password yet.
     // We leave passwordUpdatedAt as null so the auth system knows they need to change it on first login.
     const isCashier = roles.includes('cashier');
-    const hasTemp = !!(tempPassword);
+    const hasTemp = !!tempPassword;
 
     newUser = await UserModel.create({
       _id: new (
@@ -554,7 +599,7 @@ export async function createUser(
       username,
       emailAddress,
       password: hashedPassword,
-      passwordUpdatedAt: (isCashier && hasTemp) ? null : new Date(),
+      passwordUpdatedAt: isCashier && hasTemp ? null : new Date(),
       roles: roles,
       profile,
       isEnabled,
@@ -562,8 +607,9 @@ export async function createUser(
       // Old fields removed - only using assignedLocations and assignedLicencees
       assignedLocations: finalAssignedLocations,
       assignedLicencees: finalAssignedLicencees,
-      multiplier: multiplier ?? null,
-      tempPasswordChanged: (isCashier && hasTemp) ? false : true, // Cashiers must change on first login
+      moneyInMultiplier: moneyInMultiplier ?? null,
+      moneyOutAndJackpotMultiplier: moneyOutAndJackpotMultiplier ?? null,
+      tempPasswordChanged: isCashier && hasTemp ? false : true, // Cashiers must change on first login
       tempPassword: tempPassword || null, // Store plain text temp password
       deletedAt: new Date(-1), // SMIB boards require all fields to be present
     });
@@ -638,13 +684,23 @@ export async function updateUser(
   updateFields: Record<string, unknown>,
   request: NextRequest
 ) {
-  if (!_id || typeof _id !== 'string' || !updateFields || typeof updateFields !== 'object' || !request) {
-    console.error('[updateUser] _id (string), updateFields (object), and request are required');
+  if (
+    !_id ||
+    typeof _id !== 'string' ||
+    !updateFields ||
+    typeof updateFields !== 'object' ||
+    !request
+  ) {
+    console.error(
+      '[updateUser] _id (string), updateFields (object), and request are required'
+    );
     throw new Error('Invalid parameters provided');
   }
-  
+
   // Find user with password field included (needed for password verification and history)
-  const user = await UserModel.findOne({ _id }).select('+password +previousPasswords');
+  const user = await UserModel.findOne({ _id }).select(
+    '+password +previousPasswords'
+  );
   if (!user) {
     throw new Error('User not found');
   }
@@ -668,7 +724,10 @@ export async function updateUser(
     isDeveloper = requestingUserRoles.includes('developer');
     isAdmin = requestingUserRoles.includes('admin') && !isDeveloper && !isOwner;
     isManager =
-      requestingUserRoles.includes('manager') && !isAdmin && !isDeveloper && !isOwner;
+      requestingUserRoles.includes('manager') &&
+      !isAdmin &&
+      !isDeveloper &&
+      !isOwner;
     isLocationAdmin =
       requestingUserRoles.includes('location admin') &&
       !isAdmin &&
@@ -693,7 +752,15 @@ export async function updateUser(
   const isSelfUpdate = requestingUserId === String(_id);
 
   // If not self-update and not an administrative role, block everything
-  if (!isSelfUpdate && !isOwner && !isDeveloper && !isAdmin && !isManager && !isVaultManager && !isLocationAdmin) {
+  if (
+    !isSelfUpdate &&
+    !isOwner &&
+    !isDeveloper &&
+    !isAdmin &&
+    !isManager &&
+    !isVaultManager &&
+    !isLocationAdmin
+  ) {
     throw new Error('Insufficient permissions to update this user');
   }
 
@@ -704,7 +771,12 @@ export async function updateUser(
     const isTargetAdmin = user.roles.includes('admin');
     const isTargetManager = user.roles.includes('manager');
 
-    if (isTargetOwner || isTargetDeveloper || isTargetAdmin || isTargetManager) {
+    if (
+      isTargetOwner ||
+      isTargetDeveloper ||
+      isTargetAdmin ||
+      isTargetManager
+    ) {
       throw new Error(
         'Location admins cannot edit owners, developers, admins, or managers'
       );
@@ -720,31 +792,45 @@ export async function updateUser(
   if (!isAssignmentEditingAllowed) {
     // Silently remove sensitive fields that non-admin users cannot touch
     if (updateFields.assignedLocations !== undefined) {
-      console.warn(`[updateUser] Stripping assignedLocations from update by non-admin user ${requestingUser?._id}`);
+      console.warn(
+        `[updateUser] Stripping assignedLocations from update by non-admin user ${requestingUser?._id}`
+      );
       delete updateFields.assignedLocations;
     }
     if (updateFields.assignedLicencees !== undefined) {
-      console.warn(`[updateUser] Stripping assignedLicencees from update by non-admin user ${requestingUser?._id}`);
+      console.warn(
+        `[updateUser] Stripping assignedLicencees from update by non-admin user ${requestingUser?._id}`
+      );
       delete updateFields.assignedLicencees;
     }
-    if (updateFields.multiplier !== undefined) {
-      console.warn(`[updateUser] Stripping multiplier from update by non-admin user ${requestingUser?._id}`);
-      delete updateFields.multiplier;
+    if (updateFields.moneyInMultiplier !== undefined) {
+      console.warn(
+        `[updateUser] Stripping moneyInMultiplier from update by non-admin user ${requestingUser?._id}`
+      );
+      delete updateFields.moneyInMultiplier;
+    }
+    if (updateFields.moneyOutAndJackpotMultiplier !== undefined) {
+      console.warn(
+        `[updateUser] Stripping moneyOutAndJackpotMultiplier from update by non-admin user ${requestingUser?._id}`
+      );
+      delete updateFields.moneyOutAndJackpotMultiplier;
     }
     // Block legacy fields
     if (updateFields.rel !== undefined) delete updateFields.rel;
-    if (updateFields.resourcePermissions !== undefined) delete updateFields.resourcePermissions;
+    if (updateFields.resourcePermissions !== undefined)
+      delete updateFields.resourcePermissions;
     // Non-admins cannot change isEnabled on other accounts
     if (!isSelfUpdate && updateFields.isEnabled !== undefined) {
       delete updateFields.isEnabled;
     }
   }
 
- 
   // Validate role assignments if roles are being updated
   if (updateFields.roles !== undefined) {
-    const rolesToUpdate = Array.isArray(updateFields.roles) ? (updateFields.roles as string[]) : [];
-    
+    const rolesToUpdate = Array.isArray(updateFields.roles)
+      ? (updateFields.roles as string[])
+      : [];
+
     const ALLOWED_ROLES = [
       'owner',
       'developer',
@@ -759,9 +845,7 @@ export async function updateUser(
     ];
 
     // Check for invalid roles
-    const invalidRoles = rolesToUpdate.filter(
-      r => !ALLOWED_ROLES.includes(r)
-    );
+    const invalidRoles = rolesToUpdate.filter(r => !ALLOWED_ROLES.includes(r));
     if (invalidRoles.length > 0) {
       throw new Error(
         `Invalid roles: ${invalidRoles.join(', ')}. Allowed roles: ${ALLOWED_ROLES.join(', ')}`
@@ -779,7 +863,11 @@ export async function updateUser(
       // Check role assignment permissions
       if (isManager) {
         // Manager can only assign: location admin, technician, collector
-        const managerAllowedRoles = ['location admin', 'technician', 'collector'];
+        const managerAllowedRoles = [
+          'location admin',
+          'technician',
+          'collector',
+        ];
         const unauthorizedRoles = rolesToUpdate.filter(
           r => !managerAllowedRoles.includes(r)
         );
@@ -810,7 +898,13 @@ export async function updateUser(
         if (rolesToUpdate.includes('cashier')) {
           throw new Error('Only Vault Managers can assign the cashier role');
         }
-      } else if (!isDeveloper && !isAdmin && !isOwner && !isVaultManager && !isManager) {
+      } else if (
+        !isDeveloper &&
+        !isAdmin &&
+        !isOwner &&
+        !isVaultManager &&
+        !isManager
+      ) {
         // Only owner/developer/admin/manager/vault-manager can update roles
         throw new Error('Insufficient permissions to update user roles');
       }
@@ -824,8 +918,14 @@ export async function updateUser(
 
     // ENFORCEMENT: Vault Managers must have exactly 1 licencee and 1 location
     if (rolesToUpdate.includes('vault-manager')) {
-      const licencees = (updateFields.assignedLicencees as string[]) || (user.assignedLicencees as string[]) || [];
-      const locations = (updateFields.assignedLocations as string[]) || (user.assignedLocations as string[]) || [];
+      const licencees =
+        (updateFields.assignedLicencees as string[]) ||
+        (user.assignedLicencees as string[]) ||
+        [];
+      const locations =
+        (updateFields.assignedLocations as string[]) ||
+        (user.assignedLocations as string[]) ||
+        [];
 
       if (licencees.length !== 1 || locations.length !== 1) {
         throw new Error(
@@ -927,7 +1027,7 @@ export async function updateUser(
 
     const contact =
       typeof profileUpdate.contact === 'object' &&
-        profileUpdate.contact !== null
+      profileUpdate.contact !== null
         ? (profileUpdate.contact as Record<string, unknown>)
         : undefined;
 
@@ -937,7 +1037,7 @@ export async function updateUser(
           ? profileUpdate.phone
           : undefined) ||
         (typeof (profileUpdate as Record<string, unknown>).phoneNumber ===
-          'string'
+        'string'
           ? (profileUpdate as Record<string, unknown>).phoneNumber
           : undefined) ||
         (contact?.phone as string | undefined) ||
@@ -1117,7 +1217,9 @@ export async function updateUser(
       if (user.previousPasswords && user.previousPasswords.length > 0) {
         for (const prevHashed of user.previousPasswords) {
           if (await comparePassword(passwordObj.new, prevHashed)) {
-            throw new Error('New password cannot match any previously used password');
+            throw new Error(
+              'New password cannot match any previously used password'
+            );
           }
         }
       }
@@ -1177,7 +1279,9 @@ export async function updateUser(
       if (user.previousPasswords && user.previousPasswords.length > 0) {
         for (const prevHashed of user.previousPasswords) {
           if (await comparePassword(updateFields.password, prevHashed)) {
-            throw new Error('New password cannot match any previously used password');
+            throw new Error(
+              'New password cannot match any previously used password'
+            );
           }
         }
       }
@@ -1324,7 +1428,9 @@ export async function updateUser(
   }
 
   // Log activity — fetch user for logging even in dev mode where requestingUser is null
-  const currentUser = (requestingUser as CurrentUser | null) || await getUserFromServer() as CurrentUser | null;
+  const currentUser =
+    (requestingUser as CurrentUser | null) ||
+    ((await getUserFromServer()) as CurrentUser | null);
   const clientIP = getClientIP(request);
   if (currentUser && currentUser.emailAddress) {
     logActivity({
@@ -1385,7 +1491,12 @@ export async function deleteUser(_id: string, request: NextRequest) {
       const isTargetAdmin = normalizedTargetRoles.includes('admin');
       const isTargetManager = normalizedTargetRoles.includes('manager');
 
-      if (isTargetOwner || isTargetDeveloper || isTargetAdmin || isTargetManager) {
+      if (
+        isTargetOwner ||
+        isTargetDeveloper ||
+        isTargetAdmin ||
+        isTargetManager
+      ) {
         throw new Error(
           'Location admins cannot delete owners, developers, admins, or managers'
         );
@@ -1443,8 +1554,9 @@ export async function deleteUser(_id: string, request: NextRequest) {
 
       await logActivity({
         action: 'DELETE',
-        details: `Deleted user "${deletedUser.username || deletedUser.emailAddress
-          }"`,
+        details: `Deleted user "${
+          deletedUser.username || deletedUser.emailAddress
+        }"`,
         ipAddress: getClientIP(request) || undefined,
         userAgent: request.headers.get('user-agent') || undefined,
         userId: currentUser._id as string,
@@ -1475,7 +1587,9 @@ function calculateUserChanges(
   updateFields: Record<string, unknown>
 ) {
   if (!originalUser || !updateFields || typeof updateFields !== 'object') {
-    console.error('[calculateUserChanges] originalUser and updateFields (object) are required');
+    console.error(
+      '[calculateUserChanges] originalUser and updateFields (object) are required'
+    );
     return [];
   }
 
@@ -1556,7 +1670,8 @@ function calculateUserChanges(
   // Normalize values for comparison: Date objects → ISO date strings, avoid false positives
   const normalizeForCompare = (v: unknown): unknown => {
     if (v instanceof Date) return v.toISOString().split('T')[0];
-    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v)) return v.split('T')[0];
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v))
+      return v.split('T')[0];
     return v;
   };
 
@@ -1648,14 +1763,22 @@ function calculateUserChanges(
       updated: updateFields.profilePicture,
     },
     {
-      field: 'multiplier',
-      original: originalUser.multiplier,
-      updated: updateFields.multiplier,
+      field: 'moneyInMultiplier',
+      original: originalUser.moneyInMultiplier,
+      updated: updateFields.moneyInMultiplier,
+    },
+    {
+      field: 'moneyOutAndJackpotMultiplier',
+      original: originalUser.moneyOutAndJackpotMultiplier,
+      updated: updateFields.moneyOutAndJackpotMultiplier,
     },
   ];
 
   fieldChecks.forEach(({ field, original, updated }) => {
-    if (updated !== undefined && normalizeForCompare(updated) !== normalizeForCompare(original)) {
+    if (
+      updated !== undefined &&
+      normalizeForCompare(updated) !== normalizeForCompare(original)
+    ) {
       let oldValue = (original as string) || '';
       let newValue = (updated as string) || '';
 
@@ -1734,7 +1857,7 @@ export async function handleDeletedUsersRequest(
 
   let result: UserItem[] = users.map(user => ({
     _id: user._id,
-    name: `${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).firstName ?? '' : ''} ${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).lastName ?? '' : ''}`.trim(),
+    name: `${user.profile && typeof user.profile === 'object' ? ((user.profile as Record<string, unknown>).firstName ?? '') : ''} ${user.profile && typeof user.profile === 'object' ? ((user.profile as Record<string, unknown>).lastName ?? '') : ''}`.trim(),
     username: user.username,
     email: user.emailAddress,
     isEnabled: user.isEnabled,
@@ -1805,20 +1928,32 @@ export async function handleCashiersRequest(
   const [users, allActiveShifts] = await Promise.all([
     getAllUsers(),
     CashierShiftModel.find({
-      status: { $in: ['active', 'pending_review', 'pending_start'] }
-    }).lean<CashierShiftDocument[]>()
+      status: { $in: ['active', 'pending_review', 'pending_start'] },
+    }).lean<CashierShiftDocument[]>(),
   ]);
 
   // Create a map of active shift data by cashier ID
-  const shiftMap = new Map<string, { status: string; balance: number; denominations: unknown[]; discrepancy: number }>();
+  const shiftMap = new Map<
+    string,
+    {
+      status: string;
+      balance: number;
+      denominations: unknown[];
+      discrepancy: number;
+    }
+  >();
   allActiveShifts.forEach(shift => {
     shiftMap.set(String(shift.cashierId), {
       status: String(shift.status),
-      balance: (shift.status === 'active' || shift.status === 'pending_review')
-        ? (shift.currentBalance || shift.openingBalance || 0)
-        : ((shift.openingBalance as number) || 0),
-      denominations: (shift.lastSyncedDenominations as unknown[]) ?? (shift.openingDenominations as unknown[]) ?? [],
-      discrepancy: (shift.discrepancy as number) || 0
+      balance:
+        shift.status === 'active' || shift.status === 'pending_review'
+          ? shift.currentBalance || shift.openingBalance || 0
+          : (shift.openingBalance as number) || 0,
+      denominations:
+        (shift.lastSyncedDenominations as unknown[]) ??
+        (shift.openingDenominations as unknown[]) ??
+        [],
+      discrepancy: (shift.discrepancy as number) || 0,
     });
   });
 
@@ -1832,11 +1967,16 @@ export async function handleCashiersRequest(
     })
     .map((user: Record<string, unknown>) => ({
       _id: user._id,
-      name: `${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).firstName ?? '' : ''} ${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).lastName ?? '' : ''}`.trim(),
+      name: `${user.profile && typeof user.profile === 'object' ? ((user.profile as Record<string, unknown>).firstName ?? '') : ''} ${user.profile && typeof user.profile === 'object' ? ((user.profile as Record<string, unknown>).lastName ?? '') : ''}`.trim(),
       username: user.username as string,
       emailAddress: user.emailAddress as string,
       isEnabled: user.isEnabled as boolean,
-      shiftStatus: (shiftMap.get(String(user._id))?.status || 'inactive') as 'active' | 'pending_review' | 'pending_start' | 'closed' | 'inactive',
+      shiftStatus: (shiftMap.get(String(user._id))?.status || 'inactive') as
+        | 'active'
+        | 'pending_review'
+        | 'pending_start'
+        | 'closed'
+        | 'inactive',
       currentBalance: shiftMap.get(String(user._id))?.balance || 0,
       denominations: shiftMap.get(String(user._id))?.denominations || [],
       discrepancy: shiftMap.get(String(user._id))?.discrepancy || 0,
@@ -1916,7 +2056,7 @@ export async function handleAllUsersRequest(
 
   let result: UserItem[] = users.map((user: Record<string, unknown>) => ({
     _id: user._id,
-    name: `${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).firstName ?? '' : ''} ${user.profile && typeof user.profile === 'object' ? (user.profile as Record<string, unknown>).lastName ?? '' : ''}`.trim(),
+    name: `${user.profile && typeof user.profile === 'object' ? ((user.profile as Record<string, unknown>).firstName ?? '') : ''} ${user.profile && typeof user.profile === 'object' ? ((user.profile as Record<string, unknown>).lastName ?? '') : ''}`.trim(),
     username: user.username as string,
     emailAddress: user.emailAddress as string,
     isEnabled: user.isEnabled as boolean,
@@ -1944,9 +2084,13 @@ export async function handleAllUsersRequest(
   // Apply status filtering
   if (status !== 'all') {
     if (status === 'active') {
-      result = result.filter((user: Record<string, unknown>) => user.isEnabled === true);
+      result = result.filter(
+        (user: Record<string, unknown>) => user.isEnabled === true
+      );
     } else if (status === 'disabled') {
-      result = result.filter((user: Record<string, unknown>) => user.isEnabled === false);
+      result = result.filter(
+        (user: Record<string, unknown>) => user.isEnabled === false
+      );
     }
   }
 
@@ -2150,7 +2294,6 @@ function paginateAndRespond(
   startTime: number,
   context: LogContext
 ): NextResponse {
-
   const page = parseInt(searchParams.get('page') || '1');
   const requestedLimit = parseInt(searchParams.get('limit') || '50');
   const limit = Math.min(requestedLimit, 1000);
@@ -2185,4 +2328,3 @@ function paginateAndRespond(
     }
   );
 }
-

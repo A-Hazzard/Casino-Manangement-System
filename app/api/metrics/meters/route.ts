@@ -20,6 +20,15 @@ import {
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { CurrencyCode } from '@/shared/types/currency';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import {
+  getMoneyInScale,
+  getMoneyOutAndJackpotScale,
+} from '@/app/api/lib/utils/reviewerScale';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -110,6 +119,8 @@ function handleMongoDBError(error: unknown): NextResponse | null {
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/metrics/meters';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -124,25 +135,44 @@ export async function GET(req: NextRequest) {
       rawLicencee && rawLicencee !== 'all' ? String(rawLicencee) : '';
     const displayCurrency =
       (params.currency as CurrencyCode | undefined) || 'USD';
-    const granularity = params.granularity as 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly' | undefined;
+    const granularity = params.granularity as
+      | 'hourly'
+      | 'minute'
+      | 'daily'
+      | 'weekly'
+      | 'monthly'
+      | undefined;
 
     // Parse filter parameters
     const locationIdParam = params.locationId;
     const locationIds = locationIdParam
-      ? locationIdParam.split(',').filter(id => id && id !== 'all' && id !== 'null')
+      ? locationIdParam
+          .split(',')
+          .filter(id => id && id !== 'all' && id !== 'null')
       : undefined;
 
     const gameTypeParam = params.gameType;
     const gameTypes = gameTypeParam
-      ? gameTypeParam.split(',').filter(type => type && type !== 'all' && type !== 'null')
+      ? gameTypeParam
+          .split(',')
+          .filter(type => type && type !== 'all' && type !== 'null')
       : undefined;
 
     const onlineStatus = params.onlineStatus;
     const searchTerm = params.search;
 
-    console.log(`[Metrics Meters] Request — timePeriod: ${timePeriod}, licencee: ${licencee || 'all'}, startDate: ${startDate ?? 'none'}, endDate: ${endDate ?? 'none'}, granularity: ${granularity ?? 'auto'}, currency: ${displayCurrency}, locations: ${locationIds?.join(',') ?? 'all'}`);
+    console.log(
+      `[Metrics Meters] Request — timePeriod: ${timePeriod}, licencee: ${licencee || 'all'}, startDate: ${startDate ?? 'none'}, endDate: ${endDate ?? 'none'}, granularity: ${granularity ?? 'auto'}, currency: ${displayCurrency}, locations: ${locationIds?.join(',') ?? 'all'}`
+    );
 
     if (!timePeriod) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/metrics/meters',
+        'timePeriod parameter is required',
+        user
+      );
       return NextResponse.json(
         { error: 'timePeriod parameter is required' },
         { status: 400 }
@@ -154,6 +184,13 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const db = await connectDB();
     if (!db) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/metrics/meters',
+        'Database connection not established',
+        user
+      );
       return NextResponse.json(
         { error: 'Database connection not established' },
         { status: 500 }
@@ -181,6 +218,13 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     if (licencee && accessibleLicencees !== 'all') {
       if (!accessibleLicencees.includes(licencee)) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/metrics/meters',
+          'Unauthorized: You do not have access to this licencee',
+          user
+        );
         return NextResponse.json(
           { error: 'Unauthorized: You do not have access to this licencee' },
           { status: 403 }
@@ -197,6 +241,13 @@ export async function GET(req: NextRequest) {
       endDate
     );
     if (dateRangeError) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/metrics/meters',
+        dateRangeError,
+        user
+      );
       return NextResponse.json({ error: dateRangeError }, { status: 400 });
     }
 
@@ -219,33 +270,57 @@ export async function GET(req: NextRequest) {
       accessibleLicencees,
       userRoles,
       userLocationPermissions,
-      (userPayload as { multiplier?: number | null })?.multiplier ?? null
+      getMoneyInScale(
+        userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+      ),
+      getMoneyOutAndJackpotScale(
+        userPayload as {
+          moneyOutAndJackpotMultiplier?: number | null;
+          roles?: string[];
+        }
+      )
     );
 
     // ============================================================================
     // STEP 7: Return aggregated metrics
     // ============================================================================
     const duration = Date.now() - startTime;
-    const resultCount = Array.isArray(aggregatedMetrics) ? aggregatedMetrics.length : 0;
-    console.log(`[Metrics Meters] Response — ${resultCount} data point(s), ${duration}ms`);
+    const resultCount = Array.isArray(aggregatedMetrics)
+      ? aggregatedMetrics.length
+      : 0;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/metrics/meters',
+      resultCount,
+      user,
+      duration
+    );
+    console.log(
+      `[Metrics Meters] Response — ${resultCount} data point(s), ${duration}ms`
+    );
     if (duration > 1000) {
       console.warn(`[Metrics Meters] Slow response — ${duration}ms`);
     }
     return NextResponse.json(aggregatedMetrics);
   } catch (error) {
     const duration = Date.now() - startTime;
-    console.error(
-      `[Metrics Meters] Error after ${duration}ms:`,
-      error
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/metrics/meters',
+      errorMessage,
+      user
     );
+    console.error(`[Metrics Meters] Error after ${duration}ms:`, error);
 
     const mongoErrorResponse = handleMongoDBError(error);
     if (mongoErrorResponse) {
       return mongoErrorResponse;
     }
 
-    const errorMessage =
-      error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
       {
         error: 'Internal server error',
@@ -261,4 +336,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

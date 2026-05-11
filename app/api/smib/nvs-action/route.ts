@@ -17,6 +17,11 @@ import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { mqttService } from '@/app/api/lib/services/mqttService';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -36,6 +41,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/smib/nvs-action';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -144,9 +151,18 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 6: Return success response
+    // STEP6: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/smib/nvs-action',
+      1,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
       console.warn(`[SMIB NVS Action API] Completed in ${duration}ms`);
     }
@@ -160,6 +176,13 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/smib/nvs-action',
+      errorMessage,
+      user
+    );
     console.error(
       `[SMIB NVS Action API] Error after ${duration}ms:`,
       errorMessage
@@ -170,4 +193,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

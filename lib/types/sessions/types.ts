@@ -120,4 +120,3 @@ export type SessionsFiltersProps = {
   onDateRangeChange?: (range: unknown) => void;
   onClearFilters?: () => void;
 };
-

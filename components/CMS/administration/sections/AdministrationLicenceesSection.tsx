@@ -47,10 +47,14 @@ type AdministrationLicenceesSectionProps = {
   setIsLicenceeSuccessModalOpen: (open: boolean) => void;
   setIsPaymentConfirmModalOpen: (open: boolean) => void;
   setSelectedLicencee: (licencee: Licencee | null) => void;
-  setLicenceeForm: (form: AddLicenceeForm | ((prev: AddLicenceeForm) => AddLicenceeForm)) => void;
+  setLicenceeForm: (
+    form: AddLicenceeForm | ((prev: AddLicenceeForm) => AddLicenceeForm)
+  ) => void;
   setSelectedLicenceeForPayment: (licencee: Licencee | null) => void;
   setSelectedLicenceeForPaymentChange: (licencee: Licencee | null) => void;
-  setCreatedLicencee: (licencee: { name: string; licenceKey: string } | null) => void;
+  setCreatedLicencee: (
+    licencee: { name: string; licenceKey: string } | null
+  ) => void;
   // Handlers
   handleOpenAddLicencee: () => void;
   handleSaveAddLicencee: () => Promise<void>;
@@ -137,9 +141,7 @@ export default function AdministrationLicenceesSection({
             ))}
           </div>
         ) : (
-          <p className="py-4 text-center text-gray-500">
-            No licencees found.
-          </p>
+          <p className="py-4 text-center text-gray-500">No licencees found.</p>
         )}
       </div>
       <div className="hidden lg:block">
@@ -218,5 +220,3 @@ export default function AdministrationLicenceesSection({
     </>
   );
 }
-
-

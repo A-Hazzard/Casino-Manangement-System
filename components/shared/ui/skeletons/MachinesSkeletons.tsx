@@ -13,7 +13,12 @@
 
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { ChartSkeleton } from './CommonSkeletons';
 
@@ -386,7 +391,7 @@ export const MachinesOverviewSkeleton = () => (
             ))}
           </div>
           {/* Pagination skeleton */}
-          <div className="flex flex-col items-center justify-center space-y-4 pt-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+          <div className="flex flex-col items-center justify-center space-y-4 pt-4 sm:flex-row sm:space-x-4 sm:space-y-0">
             <div className="flex items-center gap-2">
               <Skeleton className="h-8 w-8 rounded-md" />
               <Skeleton className="h-8 w-8 rounded-md" />
@@ -851,7 +856,7 @@ export const MachinesOfflineSkeleton = () => (
           </div>
 
           {/* Pagination skeleton */}
-          <div className="flex flex-col items-center justify-center space-y-4 pt-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+          <div className="flex flex-col items-center justify-center space-y-4 pt-4 sm:flex-row sm:space-x-4 sm:space-y-0">
             <div className="flex items-center gap-2">
               <Skeleton className="h-8 w-8 rounded-md" />
               <Skeleton className="h-8 w-8 rounded-md" />
@@ -869,4 +874,3 @@ export const MachinesOfflineSkeleton = () => (
     </Card>
   </div>
 );
-

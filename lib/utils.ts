@@ -28,4 +28,3 @@ export function cn(...inputs: ClassValue[]) {
  * The actual implementation is in lib/utils/formatting.ts
  */
 export { formatCurrency };
-

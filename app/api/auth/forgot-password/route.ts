@@ -14,6 +14,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '../../lib/middleware/db';
 import { validateEmail } from '../../lib/utils/validation';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/auth/forgot-password
@@ -27,6 +32,8 @@ import { validateEmail } from '../../lib/utils/validation';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/auth/forgot-password';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -41,6 +48,13 @@ export async function POST(request: NextRequest) {
     const { email } = body;
 
     if (!email) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/forgot-password',
+        'Email is required',
+        user
+      );
       return NextResponse.json(
         { success: false, message: 'Email is required.' },
         { status: 400 }
@@ -51,6 +65,13 @@ export async function POST(request: NextRequest) {
     // STEP 3: Validate email format
     // ============================================================================
     if (!validateEmail(email)) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/forgot-password',
+        'Invalid email format',
+        user
+      );
       return NextResponse.json(
         { success: false, message: 'Invalid email format.' },
         { status: 400 }
@@ -61,27 +82,34 @@ export async function POST(request: NextRequest) {
     // STEP 4: Send password reset email (DISABLED)
     // ============================================================================
     // const result: AuthResult = await sendPasswordResetEmail(email);
-    console.log(`[Forgot Password] Reset requested for ${email}, but email services are disabled.`);
 
     // ============================================================================
     // STEP 5: Return result
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Forgot Password POST API] Completed in ${duration}ms`);
-    }
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/auth/forgot-password',
+      1,
+      user,
+      duration
+    );
 
     return NextResponse.json({
       success: true,
-      message: 'Password reset functionality via email is currently disabled. Please contact your administrator.',
+      message:
+        'Password reset functionality via email is currently disabled. Please contact your administrator.',
     });
   } catch (error: unknown) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(
-      `[Forgot Password POST API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/auth/forgot-password',
+      errorMessage,
+      user
     );
     return NextResponse.json(
       { success: false, message: 'Failed to process password reset request.' },
@@ -89,4 +117,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

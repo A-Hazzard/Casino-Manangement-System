@@ -120,7 +120,7 @@ export default function MembersDeleteMemberModal({
         const memberName = `${selectedMember.profile?.firstName || 'Unknown'} ${
           selectedMember.profile?.lastName || 'Member'
         }`;
-        
+
         await logActivity(
           'delete',
           'member',
@@ -147,9 +147,10 @@ export default function MembersDeleteMemberModal({
 
   if (!isDeleteModalOpen || !selectedMember) return null;
 
-  const memberDisplayName = `${selectedMember.profile?.firstName || ''} ${
-    selectedMember.profile?.lastName || ''
-  }`.trim() || selectedMember._id;
+  const memberDisplayName =
+    `${selectedMember.profile?.firstName || ''} ${
+      selectedMember.profile?.lastName || ''
+    }`.trim() || selectedMember._id;
 
   return (
     <div className="fixed inset-0 z-[100000]">
@@ -193,11 +194,13 @@ export default function MembersDeleteMemberModal({
               </p>
               <div className="mb-4 rounded-lg border border-border bg-buttonInactive/5 p-3 text-left">
                 <p className="text-sm text-grayHighlight">
-                  <span className="font-semibold">Member ID:</span> {selectedMember._id}
+                  <span className="font-semibold">Member ID:</span>{' '}
+                  {selectedMember._id}
                 </p>
                 {selectedMember.profile?.email && (
                   <p className="text-sm text-grayHighlight">
-                    <span className="font-semibold">Email:</span> {selectedMember.profile.email}
+                    <span className="font-semibold">Email:</span>{' '}
+                    {selectedMember.profile.email}
                   </p>
                 )}
               </div>
@@ -237,4 +240,3 @@ export default function MembersDeleteMemberModal({
     </div>
   );
 }
-

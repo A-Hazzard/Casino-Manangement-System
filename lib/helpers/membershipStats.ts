@@ -73,7 +73,7 @@ export async function fetchMembershipStats(
 
     // Only log non-cancellation errors
     if (!isCancellation) {
-    console.error('Failed to fetch membership stats:', error);
+      console.error('Failed to fetch membership stats:', error);
     }
 
     // Re-throw cancellation errors so useAbortableRequest can handle them silently
@@ -86,4 +86,3 @@ export async function fetchMembershipStats(
     };
   }
 }
-

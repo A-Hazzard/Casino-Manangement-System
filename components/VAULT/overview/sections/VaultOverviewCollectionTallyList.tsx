@@ -3,7 +3,7 @@
  *
  * Displays a list of all machines and their collection status for the day.
  * Used in the End-of-Day / Vault Closure process to ensure full floor coverage.
- * 
+ *
  * @module components/VAULT/overview/sections/VaultOverviewCollectionTallyList
  */
 'use client';
@@ -27,7 +27,7 @@ interface VaultOverviewCollectionTallyListProps {
 
 export default function VaultOverviewCollectionTallyList({
   locationId,
-  date = new Date().toLocaleDateString('en-CA') // Returns YYYY-MM-DD in local time
+  date = new Date().toLocaleDateString('en-CA'), // Returns YYYY-MM-DD in local time
 }: VaultOverviewCollectionTallyListProps) {
   const { formatAmount } = useCurrencyFormat();
   const [tally, setTally] = useState<TallyItem[]>([]);
@@ -39,7 +39,9 @@ export default function VaultOverviewCollectionTallyList({
     const fetchTally = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/vault/end-of-day?locationId=${locationId}&date=${date}`);
+        const res = await fetch(
+          `/api/vault/end-of-day?locationId=${locationId}&date=${date}`
+        );
         const result = await res.json();
         if (result.success && result.data) {
           setTally(result.data.slotCounts || []);
@@ -56,9 +58,12 @@ export default function VaultOverviewCollectionTallyList({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-14 bg-gray-50 rounded-xl border border-dashed animate-pulse" />
+          <div
+            key={i}
+            className="h-14 animate-pulse rounded-xl border border-dashed bg-gray-50"
+          />
         ))}
       </div>
     );
@@ -71,48 +76,62 @@ export default function VaultOverviewCollectionTallyList({
     <div className="space-y-4">
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-           <History className="h-4 w-4 text-violet-600" />
-           <span className="text-[11px] font-black uppercase tracking-widest text-gray-400">Machine Collection Tally</span>
+          <History className="h-4 w-4 text-violet-600" />
+          <span className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+            Machine Collection Tally
+          </span>
         </div>
-        <div className={cn(
-          "text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter",
-          isComplete ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"
-        )}>
+        <div
+          className={cn(
+            'rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-tighter',
+            isComplete
+              ? 'bg-emerald-100 text-emerald-700'
+              : 'bg-orange-100 text-orange-700'
+          )}
+        >
           {collectedCount} / {tally.length} Collected
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+      <div className="custom-scrollbar grid max-h-[300px] grid-cols-1 gap-2 overflow-y-auto pr-2 sm:grid-cols-2">
         {tally.length === 0 ? (
-          <div className="col-span-2 text-center py-6 text-gray-400 italic text-xs bg-gray-50 rounded-xl border border-dashed">
+          <div className="col-span-2 rounded-xl border border-dashed bg-gray-50 py-6 text-center text-xs italic text-gray-400">
             No machines registered at this location.
           </div>
         ) : (
-          tally.map((item) => (
-            <div 
+          tally.map(item => (
+            <div
               key={item.machineId}
               className={cn(
-                "flex items-center justify-between p-3 rounded-xl border transition-all",
-                item.collected 
-                  ? "bg-emerald-50/30 border-emerald-100" 
-                  : "bg-orange-50/30 border-orange-100 grayscale-[0.5] opacity-80"
+                'flex items-center justify-between rounded-xl border p-3 transition-all',
+                item.collected
+                  ? 'border-emerald-100 bg-emerald-50/30'
+                  : 'border-orange-100 bg-orange-50/30 opacity-80 grayscale-[0.5]'
               )}
             >
               <div className="flex items-center gap-3">
-                <div className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-lg shadow-sm font-black text-[10px]",
-                  item.collected ? "bg-white text-emerald-600 border border-emerald-100" : "bg-white text-orange-400 border border-orange-100"
-                )}>
+                <div
+                  className={cn(
+                    'flex h-8 w-8 items-center justify-center rounded-lg text-[10px] font-black shadow-sm',
+                    item.collected
+                      ? 'border border-emerald-100 bg-white text-emerald-600'
+                      : 'border border-orange-100 bg-white text-orange-400'
+                  )}
+                >
                   <Monitor className="h-4 w-4" />
                 </div>
                 <div className="flex flex-col">
-                   <span className="text-xs font-black text-gray-800 truncate max-w-[120px]">{item.location}</span>
-                   <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
-                     {item.collected ? formatAmount(item.closingCount) : 'Pending Collection'}
-                   </span>
+                  <span className="max-w-[120px] truncate text-xs font-black text-gray-800">
+                    {item.location}
+                  </span>
+                  <span className="text-[9px] font-bold uppercase tracking-tighter text-gray-400">
+                    {item.collected
+                      ? formatAmount(item.closingCount)
+                      : 'Pending Collection'}
+                  </span>
                 </div>
               </div>
-              
+
               {item.collected ? (
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
               ) : (
@@ -124,13 +143,17 @@ export default function VaultOverviewCollectionTallyList({
       </div>
 
       {!isComplete && tally.length > 0 && (
-         <div className="bg-orange-100/50 border border-orange-200 rounded-xl p-3 flex items-start gap-2">
-            <XCircle className="h-4 w-4 text-orange-600 shrink-0 mt-0.5" />
-            <p className="text-[10px] text-orange-800 leading-tight">
-               <span className="font-black uppercase tracking-tighter block mb-0.5">Coverage Warning</span>
-               There are {tally.length - collectedCount} machines that have not been collected today. Please verify if they should be included before final vault closure.
-            </p>
-         </div>
+        <div className="flex items-start gap-2 rounded-xl border border-orange-200 bg-orange-100/50 p-3">
+          <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-orange-600" />
+          <p className="text-[10px] leading-tight text-orange-800">
+            <span className="mb-0.5 block font-black uppercase tracking-tighter">
+              Coverage Warning
+            </span>
+            There are {tally.length - collectedCount} machines that have not
+            been collected today. Please verify if they should be included
+            before final vault closure.
+          </p>
+        </div>
       )}
     </div>
   );

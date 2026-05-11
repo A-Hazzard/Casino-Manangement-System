@@ -14,7 +14,11 @@
 'use client';
 
 import { fetchDashboardTotals } from '@/lib/helpers/dashboard';
-import { useLocationData, useLocationMachineStats, useLocationMembershipStats } from '@/lib/hooks/data';
+import {
+  useLocationData,
+  useLocationMachineStats,
+  useLocationMembershipStats,
+} from '@/lib/hooks/data';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -24,13 +28,17 @@ import { isAbortError } from '@/lib/utils/errors';
 import { calculateLocationFinancialTotals } from '@/lib/utils/financial';
 import { useDebounce } from '@/lib/utils/hooks';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
+
+type SmibSyncStatus = {
+  lastSync: Date | null;
+  isStale: boolean;
+  staleAfterHours: number;
+};
 
 export function useLocationsPageData() {
-  const {
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-  } = useDashBoardStore();
+  const { selectedLicencee, activeMetricsFilter, customDateRange } =
+    useDashBoardStore();
   const { displayCurrency } = useCurrencyFormat();
 
   // ============================================================================
@@ -43,13 +51,21 @@ export function useLocationsPageData() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(null);
+  const [metricsTotals, setMetricsTotals] = useState<DashboardTotals | null>(
+    null
+  );
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(true);
   const [filtersInitialized, setFiltersInitialized] = useState(false);
 
   // Sorting State
-  const [sortOption, setSortOption] = useState<LocationSortOption>('moneyIn');
+  const [sortOption, setSortOption] = useState<LocationSortOption>('gross');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // SMIB Sync State
+  const [smibSyncStatus, _setSmibSyncStatus] = useState<SmibSyncStatus | null>(
+    null
+  );
+  const [hasCheckedSmibSync, setHasCheckedSmibSync] = useState(false);
 
   const makeMetricsRequest = useAbortableRequest();
 
@@ -63,37 +79,47 @@ export function useLocationsPageData() {
   const [loadedBatches, setLoadedBatches] = useState<Set<number>>(new Set());
 
   // Helper to calculate which batch a page belongs to
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / PAGES_PER_BATCH) + 1;
-    },
-    []
-  );
+  const calculateBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / PAGES_PER_BATCH) + 1;
+  }, []);
 
   // ============================================================================
   // Base Hook Integration
   // ============================================================================
-  const { locationData, loading, searchLoading, error, fetchData, totalCount } = useLocationData({
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-    searchTerm,
-    selectedFilters,
-    selectedStatus,
-    sortBy: sortOption,
-    sortOrder: sortOrder,
-  });
+  const { locationData, loading, searchLoading, error, fetchData, totalCount } =
+    useLocationData({
+      selectedLicencee,
+      activeMetricsFilter,
+      customDateRange,
+      searchTerm,
+      selectedFilters,
+      selectedStatus,
+      sortBy: sortOption,
+      sortOrder: sortOrder,
+    });
 
-  const machineTypeFilterString = useMemo(() => selectedFilters.join(','), [selectedFilters]);
-  const { machineStats, machineStatsLoading, refreshMachineStats } = useLocationMachineStats(undefined, machineTypeFilterString, debouncedSearchTerm, undefined, selectedStatus);
-  const { membershipStats, membershipStatsLoading, refreshMembershipStats } = useLocationMembershipStats(undefined, machineTypeFilterString);
+  const machineTypeFilterString = useMemo(
+    () => selectedFilters.join(','),
+    [selectedFilters]
+  );
+  const { machineStats, machineStatsLoading, refreshMachineStats } =
+    useLocationMachineStats(
+      undefined,
+      machineTypeFilterString,
+      debouncedSearchTerm,
+      undefined,
+      selectedStatus
+    );
+  const { membershipStats, membershipStatsLoading, refreshMembershipStats } =
+    useLocationMembershipStats(undefined, machineTypeFilterString);
 
   // ============================================================================
   // Computed Values
   // ============================================================================
-  const financialTotals = useMemo(() => calculateLocationFinancialTotals(
-    locationData
-  ), [locationData]);
+  const financialTotals = useMemo(
+    () => calculateLocationFinancialTotals(locationData),
+    [locationData]
+  );
 
   // Sliced data for the current page
   const paginatedLocationData = useMemo(() => {
@@ -103,12 +129,15 @@ export function useLocationsPageData() {
 
   const isDataMissingForPage = useMemo(() => {
     const startIndex = currentPage * ITEMS_PER_PAGE;
-    return locationData.length <= startIndex && totalCount > locationData.length;
+    return (
+      locationData.length <= startIndex && totalCount > locationData.length
+    );
   }, [locationData.length, currentPage, ITEMS_PER_PAGE, totalCount]);
 
-  const isDataComplete = useMemo(() =>
-    locationData.length >= totalCount && totalCount > 0,
-    [locationData.length, totalCount]);
+  const isDataComplete = useMemo(
+    () => locationData.length >= totalCount && totalCount > 0,
+    [locationData.length, totalCount]
+  );
 
   const effectiveTotalPages = useMemo(() => {
     const displayedCount = locationData.length;
@@ -128,15 +157,41 @@ export function useLocationsPageData() {
   // ============================================================================
   const handleRefresh = async () => {
     setRefreshing(true);
+    setCurrentPage(0);
     setLoadedBatches(new Set());
+
+    // Check and sync SMIB status on refresh
+    try {
+      const statusRes = await axios.get<SmibSyncStatus>('/api/admin/smib-sync');
+      const status = statusRes.data;
+      if (status.isStale) {
+        console.log(`[useLocationsPageData] SMIB stale on refresh, syncing...`);
+        await axios.post('/api/admin/smib-sync', {}, { timeout: 300000 });
+        console.log('[useLocationsPageData] SMIB sync complete on refresh');
+      }
+    } catch (err) {
+      console.error(
+        '[useLocationsPageData] SMIB sync check failed on refresh:',
+        err
+      );
+    }
+
     const firstBatch = calculateBatchNumber(0);
     setLoadedBatches(new Set([firstBatch]));
-    await Promise.all([refreshMachineStats(), refreshMembershipStats(), fetchData(firstBatch, ITEMS_PER_BATCH)]);
+    await Promise.all([
+      refreshMachineStats(),
+      refreshMembershipStats(),
+      fetchData(firstBatch, ITEMS_PER_BATCH),
+    ]);
     setRefreshing(false);
   };
 
   const handleFilterChange = (filter: LocationFilter, checked: boolean) => {
-    setSelectedFilters(prev => checked ? [...prev, filter] : prev.filter(activeFilter => activeFilter !== filter));
+    setSelectedFilters(prev =>
+      checked
+        ? [...prev, filter]
+        : prev.filter(activeFilter => activeFilter !== filter)
+    );
     setCurrentPage(0);
   };
 
@@ -147,7 +202,7 @@ export function useLocationsPageData() {
 
   const handleSort = (option: LocationSortOption) => {
     if (sortOption === option) {
-      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortOption(option);
       setSortOrder('desc');
@@ -169,14 +224,63 @@ export function useLocationsPageData() {
   useEffect(() => {
     setCurrentPage(0);
     setLoadedBatches(new Set());
-  }, [selectedFilters, selectedStatus, searchTerm, debouncedSearchTerm, activeMetricsFilter, selectedLicencee, customDateRange, sortOption, sortOrder, displayCurrency]);
+  }, [
+    selectedFilters,
+    selectedStatus,
+    searchTerm,
+    debouncedSearchTerm,
+    activeMetricsFilter,
+    selectedLicencee,
+    customDateRange,
+    sortOption,
+    sortOrder,
+    displayCurrency,
+  ]);
+
+  // SMIB Auto-Sync on mount (run once when filters are initialized)
+  useEffect(() => {
+    if (!filtersInitialized || hasCheckedSmibSync) return;
+
+    const checkAndSyncSmib = async () => {
+      try {
+        setHasCheckedSmibSync(true);
+        const statusRes = await axios.get<SmibSyncStatus>(
+          '/api/admin/smib-sync'
+        );
+        const status = statusRes.data;
+
+        if (status.isStale) {
+          console.log(
+            `[useLocationsPageData] SMIB status stale (last sync: ${status.lastSync}), triggering sync...`
+          );
+          await axios.post('/api/admin/smib-sync', {}, { timeout: 300000 });
+          console.log('[useLocationsPageData] SMIB sync complete');
+        } else {
+          console.log(
+            `[useLocationsPageData] SMIB status fresh (last sync: ${status.lastSync}), skipping sync`
+          );
+        }
+        _setSmibSyncStatus(status);
+      } catch (err) {
+        console.error(
+          '[useLocationsPageData] Failed to check SMIB sync status:',
+          err
+        );
+        setHasCheckedSmibSync(false); // Allow retry on next mount
+      }
+    };
+
+    void checkAndSyncSmib();
+  }, [filtersInitialized, hasCheckedSmibSync]);
 
   // Consolidated data fetch effect
   useEffect(() => {
     if (filtersInitialized) {
       const currentBatch = calculateBatchNumber(currentPage);
       if (!loadedBatches.has(currentBatch)) {
-        console.warn(`[useLocationsPageData] Fetching batch ${currentBatch} for page ${currentPage + 1}`);
+        console.warn(
+          `[useLocationsPageData] Fetching batch ${currentBatch} for page ${currentPage + 1}`
+        );
         setLoadedBatches(prev => new Set([...prev, currentBatch]));
         void fetchData(currentBatch, ITEMS_PER_BATCH);
       }
@@ -209,7 +313,7 @@ export function useLocationsPageData() {
           activeMetricsFilter,
           customDateRange || { startDate: new Date(), endDate: new Date() },
           selectedLicencee,
-          (data) => {
+          data => {
             setMetricsTotals(data);
           },
           displayCurrency,
@@ -231,10 +335,24 @@ export function useLocationsPageData() {
         setMetricsTotalsLoading(false);
       }
     });
-  }, [activeMetricsFilter, selectedLicencee, customDateRange, displayCurrency, filtersInitialized, machineTypeFilterString, makeMetricsRequest, debouncedSearchTerm, selectedStatus]);
+  }, [
+    activeMetricsFilter,
+    selectedLicencee,
+    customDateRange,
+    displayCurrency,
+    filtersInitialized,
+    machineTypeFilterString,
+    makeMetricsRequest,
+    debouncedSearchTerm,
+    selectedStatus,
+  ]);
 
   return {
-    loading: loading || searchLoading || isDataMissingForPage || (searchTerm !== debouncedSearchTerm),
+    loading:
+      loading ||
+      searchLoading ||
+      isDataMissingForPage ||
+      searchTerm !== debouncedSearchTerm,
     refreshing,
     error,
     locationData: paginatedLocationData,
@@ -252,6 +370,7 @@ export function useLocationsPageData() {
     totalPages: effectiveTotalPages,
     sortOption,
     sortOrder,
+    smibSyncStatus,
     // Handlers
     handleRefresh,
     handleFilterChange,
@@ -266,7 +385,3 @@ export function useLocationsPageData() {
     isDataComplete,
   };
 }
-
-
-
-

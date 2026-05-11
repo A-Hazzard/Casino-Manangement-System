@@ -103,4 +103,3 @@ export function validateMachineEntry(
 
   return { isValid: true };
 }
-

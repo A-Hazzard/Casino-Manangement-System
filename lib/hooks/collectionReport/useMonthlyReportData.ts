@@ -9,19 +9,26 @@
 import { fetchMonthlyReportSummaryAndDetails } from '@/lib/helpers/collectionReport';
 import { fetchAllGamingLocations } from '@/lib/helpers/locations';
 import type {
-    MonthlyReportDetailsRow,
-    MonthlyReportSummary
+  MonthlyReportDetailsRow,
+  MonthlyReportSummary,
 } from '@/lib/types/components';
 import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
 
-export function useMonthlyReportData(selectedLicencee: string | null, activeTab: string) {
+export function useMonthlyReportData(
+  selectedLicencee: string | null,
+  activeTab: string
+) {
   // ============================================================================
   // State Management
   // ============================================================================
-  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
-  const [monthlyLocation, setMonthlyLocation] = useState<string | string[]>('all');
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>(
+    []
+  );
+  const [monthlyLocation, setMonthlyLocation] = useState<string | string[]>(
+    'all'
+  );
   const [monthlyLoading, setMonthlyLoading] = useState(false);
   const [monthlySummary, setMonthlySummary] = useState<MonthlyReportSummary>({
     drop: '-',
@@ -29,15 +36,20 @@ export function useMonthlyReportData(selectedLicencee: string | null, activeTab:
     gross: '-',
     sasGross: '-',
   });
-  const [monthlyDetails, setMonthlyDetails] = useState<MonthlyReportDetailsRow[]>([]);
-  const [sortField, setSortField] = useState<keyof MonthlyReportDetailsRow>('gross');
+  const [monthlyDetails, setMonthlyDetails] = useState<
+    MonthlyReportDetailsRow[]
+  >([]);
+  const [sortField, setSortField] =
+    useState<keyof MonthlyReportDetailsRow>('gross');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [monthlyPage, setMonthlyPage] = useState(0);
-  const [pendingRange, setPendingRange] = useState<RDPDateRange | undefined>(() => {
-    const end = endOfMonth(new Date());
-    const start = startOfMonth(end);
-    return { from: start, to: end };
-  });
+  const [pendingRange, setPendingRange] = useState<RDPDateRange | undefined>(
+    () => {
+      const end = endOfMonth(new Date());
+      const start = startOfMonth(end);
+      return { from: start, to: end };
+    }
+  );
 
   const paginationRef = useRef<HTMLDivElement>(null);
   const ITEMS_PER_PAGE = 20;
@@ -47,17 +59,23 @@ export function useMonthlyReportData(selectedLicencee: string | null, activeTab:
   // ============================================================================
   const fetchMonthlyData = useCallback(async () => {
     if (!pendingRange?.from || !pendingRange?.to) return;
-    
+
     setMonthlyLoading(true);
     try {
       const { summary, details } = await fetchMonthlyReportSummaryAndDetails({
         startDate: pendingRange.from,
         endDate: pendingRange.to,
-        locationId: Array.isArray(monthlyLocation) ? undefined : (monthlyLocation === 'all' ? undefined : monthlyLocation),
-        locationIds: Array.isArray(monthlyLocation) ? monthlyLocation : undefined,
+        locationId: Array.isArray(monthlyLocation)
+          ? undefined
+          : monthlyLocation === 'all'
+            ? undefined
+            : monthlyLocation,
+        locationIds: Array.isArray(monthlyLocation)
+          ? monthlyLocation
+          : undefined,
         licencee: selectedLicencee || undefined,
       });
-      
+
       setMonthlySummary(summary);
       setMonthlyDetails(details);
       setMonthlyPage(0);
@@ -68,15 +86,18 @@ export function useMonthlyReportData(selectedLicencee: string | null, activeTab:
     }
   }, [pendingRange, monthlyLocation, selectedLicencee]);
 
-  const handleSort = useCallback((field: keyof MonthlyReportDetailsRow) => {
-    if (sortField === field) {
-      setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortDirection('desc'); // Default to desc for new field
-    }
-    setMonthlyPage(0);
-  }, [sortField]);
+  const handleSort = useCallback(
+    (field: keyof MonthlyReportDetailsRow) => {
+      if (sortField === field) {
+        setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
+      } else {
+        setSortField(field);
+        setSortDirection('desc'); // Default to desc for new field
+      }
+      setMonthlyPage(0);
+    },
+    [sortField]
+  );
 
   const handleSetLastMonth = useCallback(() => {
     const lastMonth = subMonths(new Date(), 1);
@@ -127,7 +148,10 @@ export function useMonthlyReportData(selectedLicencee: string | null, activeTab:
   }, [sortedDetails, monthlyPage]);
 
   const firstItemIndex = monthlyPage * ITEMS_PER_PAGE + 1;
-  const lastItemIndex = Math.min((monthlyPage + 1) * ITEMS_PER_PAGE, monthlyDetails.length);
+  const lastItemIndex = Math.min(
+    (monthlyPage + 1) * ITEMS_PER_PAGE,
+    monthlyDetails.length
+  );
 
   // ============================================================================
   // Effects
@@ -166,4 +190,3 @@ export function useMonthlyReportData(selectedLicencee: string | null, activeTab:
     handleSort,
   };
 }
-

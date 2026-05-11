@@ -6,7 +6,7 @@
  * - Required field validation
  * - Uniqueness checks
  * - Debounced validation
- * 
+ *
  * @param props - Hook props
  */
 
@@ -276,4 +276,3 @@ export function useMembersEditMemberValidation({
     setErrors,
   };
 }
-

@@ -60,4 +60,3 @@ export function setCachedData(key: string, data: unknown): void {
 export function clearCache(): void {
   cache.clear();
 }
-

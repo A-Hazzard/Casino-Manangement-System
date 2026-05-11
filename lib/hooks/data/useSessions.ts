@@ -179,7 +179,9 @@ export function useSessions() {
             setAllSessions(prev => {
               if (append) {
                 const existingIds = new Set(prev.map(session => session._id));
-                const newSessions = sessions.filter((session: Session) => !existingIds.has(session._id));
+                const newSessions = sessions.filter(
+                  (session: Session) => !existingIds.has(session._id)
+                );
                 return [...prev, ...newSessions];
               }
               return sessions;
@@ -258,20 +260,23 @@ export function useSessions() {
   // ============================================================================
   // Handlers
   // ============================================================================
-  const handlePageChange = useCallback((page: number) => {
-    setCurrentPage(page);
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setCurrentPage(page);
 
-    // If we are moving to the last page of loaded data and there's more on the server,
-    // fetch the next batch in the background.
-    if (page >= totalPages - 1 && hasMore && !loading) {
-      const nextBatch = currentBatch + 1;
-      if (!loadedBatches.has(nextBatch)) {
-        void fetchSessions(nextBatch, true);
-        setLoadedBatches(prev => new Set(prev).add(nextBatch));
-        setCurrentBatch(nextBatch);
+      // If we are moving to the last page of loaded data and there's more on the server,
+      // fetch the next batch in the background.
+      if (page >= totalPages - 1 && hasMore && !loading) {
+        const nextBatch = currentBatch + 1;
+        if (!loadedBatches.has(nextBatch)) {
+          void fetchSessions(nextBatch, true);
+          setLoadedBatches(prev => new Set(prev).add(nextBatch));
+          setCurrentBatch(nextBatch);
+        }
       }
-    }
-  }, [totalPages, hasMore, loading, currentBatch, loadedBatches, fetchSessions]);
+    },
+    [totalPages, hasMore, loading, currentBatch, loadedBatches, fetchSessions]
+  );
 
   const refreshSessions = useCallback(async () => {
     setCurrentPage(0);
@@ -293,7 +298,7 @@ export function useSessions() {
   // ============================================================================
   return {
     sessions,
-    loading: loading || (searchTerm !== debouncedSearchTerm),
+    loading: loading || searchTerm !== debouncedSearchTerm,
     error,
     pagination,
     currentPage,
@@ -307,15 +312,18 @@ export function useSessions() {
     sortBy,
     sortOrder,
     statusFilter,
-    setSearchTerm: useCallback((term: string) => {
-      if (term.trim() !== searchTerm.trim()) {
-        filterControls.setSearchTerm(term);
-        setAllSessions([]);
-        setLoadedBatches(new Set([1]));
-        setCurrentPage(0);
-        setCurrentBatch(1);
-      }
-    }, [searchTerm, filterControls]),
+    setSearchTerm: useCallback(
+      (term: string) => {
+        if (term.trim() !== searchTerm.trim()) {
+          filterControls.setSearchTerm(term);
+          setAllSessions([]);
+          setLoadedBatches(new Set([1]));
+          setCurrentPage(0);
+          setCurrentBatch(1);
+        }
+      },
+      [searchTerm, filterControls]
+    ),
     setSortBy: filterControls.setSortBy,
     setSortOrder: filterControls.setSortOrder,
     setStatusFilter: filterControls.setStatusFilter,
@@ -325,4 +333,3 @@ export function useSessions() {
     getSortIcon: filterControls.getSortIcon,
   };
 }
-

@@ -10,9 +10,11 @@ This API provides centralized management for all gaming cabinets across property
 ## 1. List & Aggregation
 
 ### `GET /api/cabinets/aggregation`
+
 The core reporting engine for cabinets. It aggregates machine metrics, online status, and location data in a single optimized pass.
 
 **Query Parameters:**
+
 - `timePeriod`: (Required) `Today`, `Yesterday`, `7d`, `30d`, `Custom`.
 - `locationId`: (Optional) Comma-separated list of location IDs.
 - `onlineStatus`: (Optional) `online`, `offline`, `archived`, `all`.
@@ -20,6 +22,7 @@ The core reporting engine for cabinets. It aggregates machine metrics, online st
 - `gameType`: (Optional) Comma-separated filter for installed games.
 
 **Response Schema:**
+
 ```json
 {
   "success": true,
@@ -29,10 +32,10 @@ The core reporting engine for cabinets. It aggregates machine metrics, online st
       "assetNumber": "CMS-101",
       "locationName": "Main Floor",
       "online": true,
-      "moneyIn": 1500.50,
-      "moneyOut": 1200.00,
-      "gross": 300.50,
-      "jackpot": 50.00
+      "moneyIn": 1500.5,
+      "moneyOut": 1200.0,
+      "gross": 300.5,
+      "jackpot": 50.0
     }
   ],
   "pagination": { "page": 1, "total": 1250 }
@@ -44,20 +47,26 @@ The core reporting engine for cabinets. It aggregates machine metrics, online st
 ## 2. Cabinet CRUD Operations
 
 ### `POST /api/cabinets`
+
 Creates a new gaming cabinet asset. Automatically manages configuration records and activity logs.
 
 ### `GET /api/cabinets/[cabinetId]`
+
 Returns a single cabinet document augmented with current metrics for the specified `timePeriod`.
 
 ### `PUT /api/cabinets/[cabinetId]`
+
 Full update of cabinet hardware configuration, SMIB settings, and status metadata.
 
 ### `PATCH /api/cabinets/[cabinetId]`
+
 Partial updates for incremental changes, including:
+
 - Actions: `restore` (un-archives a cabinet).
 - Config updates: `smibConfig`, `custom.name`.
 
 ### `DELETE /api/cabinets/[cabinetId]`
+
 - **Soft Delete**: (Default) Archives the cabinet, setting `deletedAt`.
 - **Hard Delete**: (Admin only) Permanently removes document and related metrics via `?hardDelete=true`.
 
@@ -66,14 +75,17 @@ Partial updates for incremental changes, including:
 ## 3. Sub-resources
 
 ### `GET /api/cabinets/[cabinetId]/chart`
+
 Returns time-series data for operational metrics (Drop, Cancelled Credits, Gross) aggregated by hour or day.
 
 ### `GET /api/cabinets/[cabinetId]/collection-history`
+
 Lists all lifetime collection events for the cabinet, including physical drop values and meter variations.
 
 ---
 
 ## 4. Technical Constants
+
 - **Online Calculation**: `lastActivity >= now - 180 seconds` OR `location.aceEnabled === true`.
 - **Currency Strategy**: Centralized conversion via `convertToUSD` / `convertFromUSD` helpers based on the location's `country` or `licencee` setting.
 

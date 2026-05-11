@@ -3,7 +3,10 @@
  */
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
-import { getReviewerScale } from '@/app/api/lib/utils/reviewerScale';
+import {
+  getMoneyInScale,
+  getMoneyOutAndJackpotScale,
+} from '@/app/api/lib/utils/reviewerScale';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
@@ -12,6 +15,11 @@ import { TimePeriod } from '@/app/api/lib/types';
 import type { GamingMachine, LicenceeDocument } from '@shared/types';
 import { LocationDocument, TransformedCabinet } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -57,15 +65,28 @@ import { NextRequest, NextResponse } from 'next/server';
  *                                 cabinets are returned unpaginated.
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/locations/[locationId]';
+  const user = extractUserFromRequest(request);
+
   const { pathname } = request.nextUrl;
   const locationId = pathname.split('/').pop();
 
   if (!locationId) {
-    return NextResponse.json({ success: false, message: 'Location ID required' }, { status: 400 });
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/locations/[locationId]',
+      'Location ID required',
+      user
+    );
+    return NextResponse.json(
+      { success: false, message: 'Location ID required' },
+      { status: 400 }
+    );
   }
 
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
-
     try {
       const { searchParams } = new URL(request.url);
       const nameOnly = searchParams.get('nameOnly') === 'true';
@@ -97,6 +118,16 @@ export async function GET(request: NextRequest) {
           includeJackpot = Boolean(licDoc?.includeJackpot);
         }
 
+        const duration = Date.now() - startTime;
+        logRouteFetch(
+          functionName,
+          'GET',
+          '/api/locations/[locationId]',
+          1,
+          user,
+          duration
+        );
+
         return NextResponse.json({
           success: true,
           location: {
@@ -114,6 +145,13 @@ export async function GET(request: NextRequest) {
         normalizedRoles.includes('developer') ||
         normalizedRoles.includes('owner');
       if (!isAdmin && !(await checkUserLocationAccess(locationId))) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/locations/[locationId]',
+          'Unauthorized',
+          user
+        );
         return NextResponse.json(
           { success: false, message: 'Unauthorized' },
           { status: 403 }
@@ -123,11 +161,115 @@ export async function GET(request: NextRequest) {
       const locationCheck = await GamingLocations.findOne({
         _id: locationId,
       }).lean<LocationDocument>();
-      if (!locationCheck)
+      if (!locationCheck) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/locations/[locationId]',
+          'Not found',
+          user
+        );
         return NextResponse.json(
           { success: false, message: 'Not found' },
           { status: 404 }
         );
+      }
+
+      // ============================================================================
+      // SMIB AUTO-TAG — re-classify this location on every detail page load.
+      // Uses a lightweight projection (relayId only) so it doesn't slow the response.
+      // Fire-and-forget: result is not awaited.
+      // ============================================================================
+      {
+        const activeMachinesForTag = await Machine.find(
+          {
+            gamingLocation: locationId,
+            $or: [
+              { deletedAt: null },
+              { deletedAt: { $lt: new Date('2025-01-01') } },
+            ],
+          },
+          { _id: 1, relayId: 1 }
+        ).lean<{ _id: string; relayId?: string }[]>();
+
+        const totalForTag = activeMachinesForTag.length;
+        const withRelayForTag = activeMachinesForTag.filter(
+          m => m.relayId && String(m.relayId).trim()
+        ).length;
+        const withoutRelayForTag = totalForTag - withRelayForTag;
+
+        const computedFull = totalForTag > 0 && withRelayForTag === totalForTag;
+        const computedSemi =
+          totalForTag > 0 &&
+          withRelayForTag > 0 &&
+          withRelayForTag < totalForTag;
+        const computedNone = !computedFull && !computedSemi;
+
+        const storedFull = Boolean(locationCheck.fullSMIBs);
+        const storedSemi = Boolean(locationCheck.semiSMIBs);
+        const storedNone = Boolean(locationCheck.noSMIBLocation);
+
+        const computedType = computedFull
+          ? 'fullSMIBs'
+          : computedSemi
+            ? 'semiSMIBs'
+            : 'noSMIBLocation';
+        const storedType = storedFull
+          ? 'fullSMIBs'
+          : storedSemi
+            ? 'semiSMIBs'
+            : storedNone
+              ? 'noSMIBLocation'
+              : 'unset';
+
+        console.log(
+          `[GET /api/locations/[locationId]] SMIB check for "${locationCheck.name}" (${locationId}) — ` +
+            `total machines: ${totalForTag}, with relayId: ${withRelayForTag}, without relayId: ${withoutRelayForTag} → computed: ${computedType}`
+        );
+
+        // Always inject computed values into locationCheck so this response reflects
+        // the fresh classification regardless of DB write timing
+        (locationCheck as Record<string, unknown>).fullSMIBs = computedFull;
+        (locationCheck as Record<string, unknown>).semiSMIBs = computedSemi;
+        (locationCheck as Record<string, unknown>).noSMIBLocation =
+          computedNone;
+
+        const unchanged =
+          storedFull === computedFull &&
+          storedSemi === computedSemi &&
+          storedNone === computedNone;
+
+        if (unchanged) {
+          console.log(
+            `[GET /api/locations/[locationId]] "${locationCheck.name}" — already "${storedType}", no update needed`
+          );
+        } else {
+          console.log(
+            `[GET /api/locations/[locationId]] "${locationCheck.name}" — queuing update: "${storedType}" → "${computedType}"`
+          );
+          GamingLocations.updateOne(
+            { _id: locationId },
+            {
+              $set: {
+                fullSMIBs: computedFull,
+                semiSMIBs: computedSemi,
+                noSMIBLocation: computedNone,
+              },
+            }
+          )
+            .then(result => {
+              console.log(
+                `[GET /api/locations/[locationId]] "${locationCheck.name}" — update complete, modified: ${result.modifiedCount}`
+              );
+            })
+            .catch(err => {
+              console.error(
+                `[GET /api/locations/[locationId]] "${locationCheck.name}" — update failed:`,
+                err
+              );
+            });
+        }
+      }
 
       if (basicInfo || !searchParams.toString().length) {
         const licId = locationCheck.rel?.licencee;
@@ -140,6 +282,16 @@ export async function GET(request: NextRequest) {
           ).lean<LicenceeDocument>();
           includeJackpot = Boolean(licDoc?.includeJackpot);
         }
+        const duration = Date.now() - startTime;
+        logRouteFetch(
+          functionName,
+          'GET',
+          '/api/locations/[locationId]',
+          1,
+          user,
+          duration
+        );
+
         return NextResponse.json({
           success: true,
           location: { ...locationCheck, includeJackpot },
@@ -152,17 +304,27 @@ export async function GET(request: NextRequest) {
       const customStart = searchParams.get('startDate');
       const customEnd = searchParams.get('endDate');
       const onlineStatus = searchParams.get('onlineStatus') || 'all';
-      const smibStatus = (searchParams.get('smibStatus') || 'all').toLowerCase();
+      const smibStatus = (
+        searchParams.get('smibStatus') || 'all'
+      ).toLowerCase();
       const limitParam = searchParams.get('limit');
       const limit = limitParam ? parseInt(limitParam) : undefined;
       const page = parseInt(searchParams.get('page') || '1');
       const skip = limit ? (page - 1) * limit : 0;
 
-      if (!timePeriod)
+      if (!timePeriod) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/locations/[locationId]',
+          'timePeriod required',
+          user
+        );
         return NextResponse.json(
           { error: 'timePeriod required' },
           { status: 400 }
         );
+      }
 
       if (!isAdmin && licencee && licencee !== 'all') {
         const locLicId = locationCheck.rel?.licencee;
@@ -170,6 +332,13 @@ export async function GET(request: NextRequest) {
           locLicId !== licencee &&
           (!Array.isArray(locLicId) || !locLicId.includes(licencee))
         ) {
+          logRouteError(
+            functionName,
+            'GET',
+            '/api/locations/[locationId]',
+            'Access denied',
+            user
+          );
           return NextResponse.json({ error: 'Access denied' }, { status: 403 });
         }
       }
@@ -192,13 +361,19 @@ export async function GET(request: NextRequest) {
         includeJackpotSetting = !!licDoc?.includeJackpot;
       }
 
-      const reviewerScale = getReviewerScale(userPayload as { multiplier?: number | null; roles?: string[] });
+      const moneyInScale = getMoneyInScale(
+        userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+      );
+      const moneyOutScale = getMoneyOutAndJackpotScale(
+        userPayload as {
+          moneyOutAndJackpotMultiplier?: number | null;
+          roles?: string[];
+        }
+      );
 
       const includeArchived = searchParams.get('includeArchived') === 'true';
       const mMatch: Record<string, unknown> = {
-        $and: [
-          { gamingLocation: locationId },
-        ] as unknown[],
+        $and: [{ gamingLocation: locationId }] as unknown[],
       };
 
       if (!includeArchived) {
@@ -213,10 +388,7 @@ export async function GET(request: NextRequest) {
         // Archived View: Show ALL machines
         // (If there's a third state to hide, we'd add another filter here)
         (mMatch.$and as unknown[]).push({
-          $or: [
-            { deletedAt: null },
-            { deletedAt: { $exists: true } },
-          ],
+          $or: [{ deletedAt: null }, { deletedAt: { $exists: true } }],
         });
       }
 
@@ -225,11 +397,15 @@ export async function GET(request: NextRequest) {
         if (locationCheck.aceEnabled) {
           if (onlineStatus === 'online') {
             // all active machines are online
-          } else if (onlineStatus === 'offline' || onlineStatus === 'never-online') {
+          } else if (
+            onlineStatus === 'offline' ||
+            onlineStatus === 'never-online'
+          ) {
             (mMatch.$and as unknown[]).push({ _id: null });
           }
         } else {
-          if (onlineStatus === 'online') mMatch.lastActivity = { $gte: threeMin };
+          if (onlineStatus === 'online')
+            mMatch.lastActivity = { $gte: threeMin };
           else if (onlineStatus === 'offline')
             (mMatch.$and as unknown[]).push({
               $or: [
@@ -240,7 +416,10 @@ export async function GET(request: NextRequest) {
             });
           else if (onlineStatus === 'never-online')
             (mMatch.$and as unknown[]).push({
-              $or: [{ lastActivity: { $exists: false } }, { lastActivity: null }],
+              $or: [
+                { lastActivity: { $exists: false } },
+                { lastActivity: null },
+              ],
             });
         }
       }
@@ -256,8 +435,22 @@ export async function GET(request: NextRequest) {
         } else if (smibStatus === 'no-smib') {
           (mMatch.$and as unknown[]).push({
             $and: [
-              { $or: [{ relayId: '' }, { relayId: null }, { relayId: { $exists: false } }, { relayId: /^\s*$/ }] },
-              { $or: [{ smibBoard: '' }, { smibBoard: null }, { smibBoard: { $exists: false } }, { smibBoard: /^\s*$/ }] },
+              {
+                $or: [
+                  { relayId: '' },
+                  { relayId: null },
+                  { relayId: { $exists: false } },
+                  { relayId: /^\s*$/ },
+                ],
+              },
+              {
+                $or: [
+                  { smibBoard: '' },
+                  { smibBoard: null },
+                  { smibBoard: { $exists: false } },
+                  { smibBoard: /^\s*$/ },
+                ],
+              },
             ],
           });
         }
@@ -280,7 +473,17 @@ export async function GET(request: NextRequest) {
         assetStatus: 1,
         deletedAt: 1,
       }).lean<GamingMachine[]>();
-      if (!machines.length)
+      if (!machines.length) {
+        const duration = Date.now() - startTime;
+        logRouteFetch(
+          functionName,
+          'GET',
+          '/api/locations/[locationId]',
+          0,
+          user,
+          duration
+        );
+
         return NextResponse.json({
           success: true,
           data: [],
@@ -293,6 +496,7 @@ export async function GET(request: NextRequest) {
             hasPrevPage: false,
           },
         });
+      }
 
       let filteredMachines = machines;
       if (searchTerm) {
@@ -309,7 +513,9 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const filteredMachineIds = filteredMachines.map(machine => String(machine._id));
+      const filteredMachineIds = filteredMachines.map(machine =>
+        String(machine._id)
+      );
       const rawMachineMetrics: Array<{
         _id: string;
         moneyIn: number;
@@ -343,7 +549,9 @@ export async function GET(request: NextRequest) {
       ]).cursor({ batchSize: 1000 });
       for await (const doc of metricsCursor) rawMachineMetrics.push(doc);
 
-      const machineMetricsMap = new Map(rawMachineMetrics.map(metric => [String(metric._id), metric]));
+      const machineMetricsMap = new Map(
+        rawMachineMetrics.map(metric => [String(metric._id), metric])
+      );
       const machinesWithMeters = filteredMachines.map(machine => {
         const currentMachineId = String(machine._id);
         const machineMeters = machineMetricsMap.get(currentMachineId) || {
@@ -361,11 +569,16 @@ export async function GET(request: NextRequest) {
           )?.trim() || '';
         const assetNumber = serialNumber || customName || '';
         const lastActivityDate = machine.lastActivity as Date | null;
-        const isOnline = locationCheck.aceEnabled || (lastActivityDate && new Date(lastActivityDate) > new Date(Date.now() - 3 * 60 * 1000));
-        const rawMoneyIn = (Number(machineMeters.moneyIn) || 0) * reviewerScale;
-        const rawMoneyOut = (Number(machineMeters.moneyOut) || 0) * reviewerScale;
-        const rawJackpot = (Number(machineMeters.jackpot) || 0) * reviewerScale;
-        const adjustedMoneyOut = rawMoneyOut + (includeJackpotSetting ? rawJackpot : 0);
+        const isOnline =
+          locationCheck.aceEnabled ||
+          (lastActivityDate &&
+            new Date(lastActivityDate) > new Date(Date.now() - 3 * 60 * 1000));
+        const rawMoneyIn = (Number(machineMeters.moneyIn) || 0) * moneyInScale;
+        const rawMoneyOut =
+          (Number(machineMeters.moneyOut) || 0) * moneyOutScale;
+        const rawJackpot = (Number(machineMeters.jackpot) || 0) * moneyOutScale;
+        const adjustedMoneyOut =
+          rawMoneyOut + (includeJackpotSetting ? rawJackpot : 0);
         const grossProfit = rawMoneyIn - adjustedMoneyOut;
 
         return {
@@ -377,13 +590,16 @@ export async function GET(request: NextRequest) {
           custom: machine.custom || {},
           relayId: (machine.relayId as string) || '',
           smibBoard: (machine.smibBoard as string) || '',
-          smbId: (machine.smibBoard as string) || (machine.relayId as string) || '',
+          smbId:
+            (machine.smibBoard as string) || (machine.relayId as string) || '',
           lastActivity: lastActivityDate,
           lastOnline: lastActivityDate,
           game: (machine.game as string) || '',
           installedGame: (machine.game as string) || '',
           manufacturer:
-            (machine.manufacturer as string) || (machine.manuf as string) || 'Unknown',
+            (machine.manufacturer as string) ||
+            (machine.manuf as string) ||
+            'Unknown',
           cabinetType: (machine.cabinetType as string) || '',
           status: (machine.assetStatus as string) || '',
           gameType: (machine.gameType as string) || '',
@@ -417,19 +633,33 @@ export async function GET(request: NextRequest) {
         ? machinesWithMeters.slice(skip, skip + limit)
         : machinesWithMeters;
 
-      const transformed: TransformedCabinet[] = paginated.map(transformedMachine => {
-        const currentGross = Number(transformedMachine.gross) || 0;
-        const currentJackpot = Number(transformedMachine.jackpot) || 0;
-        const base: TransformedCabinet = {
-          ...transformedMachine,
-          netGross: transformedMachine.includeJackpot ? currentGross - currentJackpot : undefined,
-          metersData: null,
-        } as unknown as TransformedCabinet;
+      const transformed: TransformedCabinet[] = paginated.map(
+        transformedMachine => {
+          const currentGross = Number(transformedMachine.gross) || 0;
+          const currentJackpot = Number(transformedMachine.jackpot) || 0;
+          const base: TransformedCabinet = {
+            ...transformedMachine,
+            netGross: transformedMachine.includeJackpot
+              ? currentGross - currentJackpot
+              : undefined,
+            metersData: null,
+          } as unknown as TransformedCabinet;
 
-        return base;
-      });
+          return base;
+        }
+      );
 
       const totalPages = limit ? Math.ceil(total / limit) : 1;
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/locations/[locationId]',
+        transformed.length,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         data: transformed,
@@ -443,8 +673,15 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch (error: unknown) {
-      console.error(`[Location Detail API] Error:`, error);
       const message = error instanceof Error ? error.message : 'Unknown error';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/locations/[locationId]',
+        message,
+        user
+      );
+      console.error(`[Location Detail API] Error:`, error);
       return NextResponse.json({ error: message }, { status: 500 });
     }
   });

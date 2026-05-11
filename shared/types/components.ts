@@ -19,4 +19,3 @@ export type DataTableProps<T> = {
   formatNumber?: (number: number) => string;
   hideFinancials?: boolean;
 };
-

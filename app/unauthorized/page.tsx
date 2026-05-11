@@ -35,20 +35,26 @@ export default function UnauthorizedPage() {
   useEffect(() => {
     // Redirect after 5 seconds based on user role
     const timer = setTimeout(() => {
-      const redirectPath = getDefaultRedirectPathFromRoles(user?.roles as UserRole[]);
+      const redirectPath = getDefaultRedirectPathFromRoles(
+        user?.roles as UserRole[]
+      );
       router.push(redirectPath);
     }, 5000);
 
     return () => clearTimeout(timer);
   }, [router, user]);
 
-  const userRole = user?.roles ? getRoleDisplayName(user.roles as UserRole[]) : 'User';
+  const userRole = user?.roles
+    ? getRoleDisplayName(user.roles as UserRole[])
+    : 'User';
   const userName =
     user?.profile?.firstName && user?.profile?.lastName
       ? `${user.profile.firstName} ${user.profile.lastName}`
       : user?.username || 'User';
 
-  const redirectPath = getDefaultRedirectPathFromRoles(user?.roles as UserRole[]);
+  const redirectPath = getDefaultRedirectPathFromRoles(
+    user?.roles as UserRole[]
+  );
   const redirectDestination = getRedirectDestinationNameFromRoles(
     user?.roles as UserRole[]
   );
@@ -113,4 +119,3 @@ export default function UnauthorizedPage() {
     </div>
   );
 }
-

@@ -16,18 +16,18 @@
 'use client';
 
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import type { Licencee } from '@/lib/types/common';
 import {
-    canChangePaymentStatus,
-    formatLicenceeDate,
-    isLicenceePaid,
+  canChangePaymentStatus,
+  formatLicenceeDate,
+  isLicenceePaid,
 } from '@/lib/utils/licencee';
 import creditCardIcon from '@/public/creditCardIcon.svg';
 import deleteIcon from '@/public/deleteIcon.svg';

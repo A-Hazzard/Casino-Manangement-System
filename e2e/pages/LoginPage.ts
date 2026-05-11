@@ -33,7 +33,9 @@ export class LoginPage {
     this.identifierError = page.locator('#identifier-error');
     this.passwordError = page.locator('#password-error');
     // Password visibility toggle button sits alongside the password input
-    this.passwordToggle = page.locator('button[aria-label*="password"], button[aria-label*="Password"]').first();
+    this.passwordToggle = page
+      .locator('button[aria-label*="password"], button[aria-label*="Password"]')
+      .first();
   }
 
   // ─── Navigation ────────────────────────────────────────────────────────────

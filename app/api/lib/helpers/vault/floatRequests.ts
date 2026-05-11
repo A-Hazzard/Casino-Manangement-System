@@ -35,10 +35,19 @@ export async function fetchFloatRequests(
   allowedLocationIds: string[] | 'all'
 ) {
   if (!params || typeof params !== 'object' || !allowedLocationIds) {
-    console.error('[fetchFloatRequests] params (object) and allowedLocationIds are required');
+    console.error(
+      '[fetchFloatRequests] params (object) and allowedLocationIds are required'
+    );
     return {
       floatRequests: [],
-      pagination: { page: 1, limit: 20, totalCount: 0, totalPages: 0, hasNextPage: false, hasPrevPage: false }
+      pagination: {
+        page: 1,
+        limit: 20,
+        totalCount: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false,
+      },
     };
   }
 
@@ -109,7 +118,11 @@ export async function fetchFloatRequests(
 
   // Execute query
   const [floatRequests, totalCount] = await Promise.all([
-    FloatRequest.find(matchStage).sort(sort).skip(skip).limit(limit).lean<FloatRequestDocument[]>(),
+    FloatRequest.find(matchStage)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean<FloatRequestDocument[]>(),
     FloatRequest.countDocuments(matchStage),
   ]);
 
@@ -153,9 +166,7 @@ export async function getFloatRequestById(
  * @param denom - Denomination breakdown object
  * @returns Calculated total amount
  */
-export function calculateDenominationTotal(
-  denom: Denomination[]
-): number {
+export function calculateDenominationTotal(denom: Denomination[]): number {
   if (!denom || typeof denom !== 'object') {
     return 0;
   }
@@ -180,8 +191,15 @@ export function validateFloatRequestStatusTransition(
   currentStatus: string,
   newStatus: string
 ): string | null {
-  if (!currentStatus || typeof currentStatus !== 'string' || !newStatus || typeof newStatus !== 'string') {
-    console.error('[validateFloatRequestStatusTransition] currentStatus and newStatus are required and must be strings');
+  if (
+    !currentStatus ||
+    typeof currentStatus !== 'string' ||
+    !newStatus ||
+    typeof newStatus !== 'string'
+  ) {
+    console.error(
+      '[validateFloatRequestStatusTransition] currentStatus and newStatus are required and must be strings'
+    );
     return 'Invalid status parameters';
   }
 
@@ -210,7 +228,9 @@ export function checkDualAcknowledgment(
   request: FloatRequestDocument
 ): boolean {
   if (!request || typeof request !== 'object') {
-    console.error('[checkDualAcknowledgment] request is required and must be an object');
+    console.error(
+      '[checkDualAcknowledgment] request is required and must be an object'
+    );
     return false;
   }
 
@@ -234,8 +254,15 @@ export async function createFloatRequest(
   data: CreateFloatRequestRequest,
   cashier: { _id: string; profile?: { firstName?: string; lastName?: string } }
 ): Promise<FloatRequestDocument> {
-  if (!data || typeof data !== 'object' || !cashier || typeof cashier !== 'object') {
-    console.error('[createFloatRequest] data (object) and cashier (object) are required');
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    !cashier ||
+    typeof cashier !== 'object'
+  ) {
+    console.error(
+      '[createFloatRequest] data (object) and cashier (object) are required'
+    );
     throw new Error('Invalid parameters provided');
   }
 
@@ -299,12 +326,21 @@ export async function approveFloatRequest(
   approvedDenom: Denomination[] | undefined,
   manager: { _id: string }
 ): Promise<FloatRequestDocument | null> {
-  if (!id || typeof id !== 'string' || !manager || typeof manager !== 'object') {
-    console.error('[approveFloatRequest] id (string) and manager (object) are required');
+  if (
+    !id ||
+    typeof id !== 'string' ||
+    !manager ||
+    typeof manager !== 'object'
+  ) {
+    console.error(
+      '[approveFloatRequest] id (string) and manager (object) are required'
+    );
     throw new Error('Invalid parameters provided');
   }
 
-  const request = await FloatRequest.findOne({ _id: id }).lean<FloatRequestDocument>();
+  const request = await FloatRequest.findOne({
+    _id: id,
+  }).lean<FloatRequestDocument>();
   if (!request) {
     throw new Error('Float request not found');
   }
@@ -356,12 +392,23 @@ export async function rejectFloatRequest(
   reason: string,
   manager: { _id: string }
 ): Promise<FloatRequestDocument | null> {
-  if (!id || typeof id !== 'string' || !reason || typeof reason !== 'string' || !manager || typeof manager !== 'object') {
-    console.error('[rejectFloatRequest] id (string), reason (string), and manager (object) are required');
+  if (
+    !id ||
+    typeof id !== 'string' ||
+    !reason ||
+    typeof reason !== 'string' ||
+    !manager ||
+    typeof manager !== 'object'
+  ) {
+    console.error(
+      '[rejectFloatRequest] id (string), reason (string), and manager (object) are required'
+    );
     throw new Error('Invalid parameters provided');
   }
 
-  const request = await FloatRequest.findOne({ _id: id }).lean<FloatRequestDocument>();
+  const request = await FloatRequest.findOne({
+    _id: id,
+  }).lean<FloatRequestDocument>();
   if (!request) {
     throw new Error('Float request not found');
   }
@@ -405,11 +452,15 @@ export async function editFloatRequest(
   editedDenom: Denomination[]
 ): Promise<FloatRequestDocument | null> {
   if (!id || typeof id !== 'string' || !Array.isArray(editedDenom)) {
-    console.error('[editFloatRequest] id (string) and editedDenom (array) are required');
+    console.error(
+      '[editFloatRequest] id (string) and editedDenom (array) are required'
+    );
     throw new Error('Invalid parameters provided');
   }
 
-  const request = await FloatRequest.findOne({ _id: id }).lean<FloatRequestDocument>();
+  const request = await FloatRequest.findOne({
+    _id: id,
+  }).lean<FloatRequestDocument>();
   if (!request) {
     throw new Error('Float request not found');
   }
@@ -458,12 +509,22 @@ export async function acknowledgeFloatRequest(
   userRole: 'cashier' | 'vault-manager',
   user: { _id: string }
 ): Promise<FloatRequestDocument | null> {
-  if (!id || typeof id !== 'string' || !userRole || !user || typeof user !== 'object') {
-    console.error('[acknowledgeFloatRequest] id (string), userRole, and user (object) are required');
+  if (
+    !id ||
+    typeof id !== 'string' ||
+    !userRole ||
+    !user ||
+    typeof user !== 'object'
+  ) {
+    console.error(
+      '[acknowledgeFloatRequest] id (string), userRole, and user (object) are required'
+    );
     throw new Error('Invalid parameters provided');
   }
 
-  const request = await FloatRequest.findOne({ _id: id }).lean<FloatRequestDocument>();
+  const request = await FloatRequest.findOne({
+    _id: id,
+  }).lean<FloatRequestDocument>();
   if (!request) {
     throw new Error('Float request not found');
   }
@@ -526,7 +587,9 @@ export function transformFloatRequestForResponse(
   request: FloatRequestDocument
 ): Record<string, unknown> {
   if (!request || typeof request !== 'object') {
-    console.error('[transformFloatRequestForResponse] request is required and must be an object');
+    console.error(
+      '[transformFloatRequestForResponse] request is required and must be an object'
+    );
     return {};
   }
 

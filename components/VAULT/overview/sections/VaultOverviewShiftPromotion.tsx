@@ -22,20 +22,25 @@ export default function VaultOverviewShiftPromotion({
   if (activeShiftId) return null;
 
   return (
-    <div className="rounded-lg bg-orange-50 border border-orange-200 p-6 shadow-sm animate-in zoom-in duration-300">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div className="rounded-lg border border-orange-200 bg-orange-50 p-6 shadow-sm duration-300 animate-in zoom-in">
+      <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center text-orange-600">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-orange-600">
             <TrendingUp className="h-6 w-6" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-orange-900">Vault Shift Required</h3>
-            <p className="text-orange-700 text-sm">You must open the vault before cashiers can start their shifts and perform operations.</p>
+            <h3 className="text-lg font-bold text-orange-900">
+              Vault Shift Required
+            </h3>
+            <p className="text-sm text-orange-700">
+              You must open the vault before cashiers can start their shifts and
+              perform operations.
+            </p>
           </div>
         </div>
-        <Button 
+        <Button
           onClick={onStartShift}
-          className="bg-orange-600 hover:bg-orange-700 text-white font-bold px-8 h-12 shadow-md hover:shadow-lg transition-all"
+          className="h-12 bg-orange-600 px-8 font-bold text-white shadow-md transition-all hover:bg-orange-700 hover:shadow-lg"
         >
           Start Vault Shift
         </Button>

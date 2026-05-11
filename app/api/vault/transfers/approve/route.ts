@@ -1,4 +1,3 @@
-
 /**
  * Transfer Approval API
  *
@@ -16,6 +15,11 @@ import { InterLocationTransferModel } from '@/app/api/lib/models/interLocationTr
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { generateMongoId } from '@/lib/utils/id';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type { ApproveInterLocationTransferRequest } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -27,12 +31,23 @@ import { NextRequest, NextResponse } from 'next/server';
  * @body {string} notes - Optional approval notes
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/transfers/approve';
+  const user = extractUserFromRequest(request);
+
   try {
     // ============================================================================
     // STEP 1: Authentication & Authorization
     // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/transfers/approve',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -44,6 +59,13 @@ export async function POST(request: NextRequest) {
       ['developer', 'admin', 'manager'].includes(role.toLowerCase())
     );
     if (!hasVMAccess) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/transfers/approve',
+        'Insufficient permissions',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Insufficient permissions' },
         { status: 403 }
@@ -57,6 +79,13 @@ export async function POST(request: NextRequest) {
     const { transferId, approved, notes } = body;
 
     if (!transferId) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/transfers/approve',
+        'Transfer ID is required',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Transfer ID is required' },
         { status: 400 }
@@ -71,8 +100,17 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 4: Find and validate transfer
     // ============================================================================
-    const transfer = await InterLocationTransferModel.findOne({ _id: transferId });
+    const transfer = await InterLocationTransferModel.findOne({
+      _id: transferId,
+    });
     if (!transfer) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/transfers/approve',
+        'Transfer not found',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Transfer not found' },
         { status: 404 }
@@ -80,6 +118,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (transfer.status !== 'pending') {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/transfers/approve',
+        'Transfer is not in pending status',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Transfer is not in pending status' },
         { status: 400 }
@@ -138,7 +183,8 @@ export async function POST(request: NextRequest) {
         vaultBalanceBefore:
           activeVaultShift.closingBalance || activeVaultShift.openingBalance,
         vaultBalanceAfter:
-          ((activeVaultShift.closingBalance || activeVaultShift.openingBalance) as number) +
+          ((activeVaultShift.closingBalance ||
+            activeVaultShift.openingBalance) as number) +
           (transferDoc.amount as number),
         vaultShiftId: activeVaultShift._id,
         performedBy: vaultManagerId,
@@ -171,9 +217,19 @@ export async function POST(request: NextRequest) {
         resourceName: 'Inter-Location Transfer',
         transferId: transferDoc._id,
         status: approved ? 'approved' : 'denied',
-        amount: transferDoc.amount
+        amount: transferDoc.amount,
       },
     });
+
+    const duration = Date.now() - startTime;
+    logRouteUpdate(
+      functionName,
+      'POST',
+      '/api/vault/transfers/approve',
+      1,
+      user,
+      duration
+    );
 
     // ============================================================================
     // STEP 8: Return success response
@@ -184,10 +240,23 @@ export async function POST(request: NextRequest) {
       transaction,
     });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    console.error('Error approving inter-location transfer:', errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to approve transfer';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/vault/transfers/approve',
+      errorMessage,
+      user
+    );
+    const errorMessageForResponse =
+      error instanceof Error ? error.message : 'Internal server error';
+    console.error(
+      'Error approving inter-location transfer:',
+      errorMessageForResponse
+    );
     return NextResponse.json(
-      { success: false, error: errorMessage },
+      { success: false, error: errorMessageForResponse },
       { status: 500 }
     );
   }

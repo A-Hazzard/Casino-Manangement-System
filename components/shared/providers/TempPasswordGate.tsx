@@ -83,13 +83,13 @@ export default function TempPasswordGate() {
             data.message ||
             'Failed to update password. Please try again.'
           );
-      }
+        }
 
         // Update store and invalidate query to prevent stale data flicker
         if (data.user) {
           setUser({ ...user!, ...data.user, tempPasswordChanged: true });
         }
-        
+
         // Invalidate current-user query so that other components get the fresh data
         await queryClient.invalidateQueries({ queryKey: ['current-user'] });
 

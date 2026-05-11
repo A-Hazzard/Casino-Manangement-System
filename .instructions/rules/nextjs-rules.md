@@ -1343,12 +1343,12 @@ import { getFinancialColorClass } from '@/lib/utils/financial';
 ```
 
 ### General Rules for Financial UI:
+
 1. **Consistency**: Apply the same color logic across all tabs and reports (Overview, Monthly, Collection, etc.).
 2. **Readability**: Ensure sufficient contrast when using colored text, especially on background colors.
 3. **Alignment**: Financial numbers should generally be right-aligned in tables for easier comparison.
 
 ---
-
 
 **Summary:**  
 Persistence: Keep going until the job is completely solved before ending your turn.

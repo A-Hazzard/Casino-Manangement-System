@@ -110,4 +110,3 @@ export default function ReportsLocationsTabWithErrorHandling() {
   // Render the actual ReportsLocationsTab component
   return <ReportsLocationsTab />;
 }
-

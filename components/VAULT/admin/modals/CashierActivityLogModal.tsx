@@ -10,19 +10,19 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
@@ -143,18 +143,13 @@ export default function CashierActivityLogModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
-        className="max-w-4xl !z-[200]"
+      <DialogContent
+        className="!z-[200] max-w-4xl"
         backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
       >
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <Button
-              onClick={onBack}
-              variant="ghost"
-              size="sm"
-              className="mr-2"
-            >
+            <Button onClick={onBack} variant="ghost" size="sm" className="mr-2">
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <History className="h-5 w-5" />
@@ -173,62 +168,84 @@ export default function CashierActivityLogModal({
             </div>
           ) : (
             <>
-              <div className="rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+              <div className="overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
                 <Table>
                   <TableHeader className="bg-gray-50/50">
                     <TableRow>
-                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400 py-4">Timestamp</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400">Type</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400">Performed By</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Amount</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400">Notes</TableHead>
+                      <TableHead className="py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                        Timestamp
+                      </TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                        Type
+                      </TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                        Performed By
+                      </TableHead>
+                      <TableHead className="text-right text-[10px] font-black uppercase tracking-widest text-gray-400">
+                        Amount
+                      </TableHead>
+                      <TableHead className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                        Notes
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {activities.map((activity) => (
-                      <TableRow key={activity._id} className="hover:bg-gray-50/50 transition-colors">
+                    {activities.map(activity => (
+                      <TableRow
+                        key={activity._id}
+                        className="transition-colors hover:bg-gray-50/50"
+                      >
                         <TableCell className="py-4">
                           <div className="flex flex-col">
-                            <span className="text-sm font-black text-gray-900 leading-none">
-                              {new Date(activity.timestamp).toLocaleString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })}
+                            <span className="text-sm font-black leading-none text-gray-900">
+                              {new Date(activity.timestamp).toLocaleString(
+                                'en-US',
+                                {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                }
+                              )}
                             </span>
-                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-1">
-                              {new Date(activity.timestamp).toLocaleString('en-US', {
-                                hour: 'numeric',
-                                minute: 'numeric',
-                                hour12: true,
-                              })}
+                            <span className="mt-1 text-[10px] font-bold uppercase tracking-tighter text-gray-400">
+                              {new Date(activity.timestamp).toLocaleString(
+                                'en-US',
+                                {
+                                  hour: 'numeric',
+                                  minute: 'numeric',
+                                  hour12: true,
+                                }
+                              )}
                             </span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className={cn(
-                            "inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest",
-                            activity.type.includes('error') || activity.type.includes('denied') 
-                              ? "bg-red-50 text-red-600 border border-red-100" 
-                              : "bg-violet-50 text-violet-600 border border-violet-100"
-                          )}>
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest',
+                              activity.type.includes('error') ||
+                                activity.type.includes('denied')
+                                ? 'border border-red-100 bg-red-50 text-red-600'
+                                : 'border border-violet-100 bg-violet-50 text-violet-600'
+                            )}
+                          >
                             {getActivityDescription(activity)}
                           </span>
                         </TableCell>
                         <TableCell>
-                           <div className="flex items-center gap-2">
-                              <div className="h-7 w-7 bg-gray-100 rounded-full flex items-center justify-center text-[10px] font-black text-gray-500 uppercase">
-                                {activity.performerName?.[0] || 'U'}
-                              </div>
-                              <span className="text-xs font-bold text-gray-700">
-                                {activity.performerName || 'Unknown System'}
-                              </span>
-                           </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-[10px] font-black uppercase text-gray-500">
+                              {activity.performerName?.[0] || 'U'}
+                            </div>
+                            <span className="text-xs font-bold text-gray-700">
+                              {activity.performerName || 'Unknown System'}
+                            </span>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-right font-black text-sm text-gray-900">
+                        <TableCell className="text-right text-sm font-black text-gray-900">
                           {formatAmount(activity.amount || 0)}
                         </TableCell>
-                        <TableCell className="whitespace-normal break-words max-w-[200px] text-[11px] font-medium text-gray-500 italic">
+                        <TableCell className="max-w-[200px] whitespace-normal break-words text-[11px] font-medium italic text-gray-500">
                           {activity.notes ? `"${activity.notes}"` : '—'}
                         </TableCell>
                       </TableRow>

@@ -30,9 +30,9 @@ type CollectionReportDetailsSasCompareTabProps = {
  *
  * @param reportData - Full report details object containing SAS metrics
  */
-const CollectionReportDetailsSasCompareTab: FC<CollectionReportDetailsSasCompareTabProps> = ({
-  reportData,
-}) => {
+const CollectionReportDetailsSasCompareTab: FC<
+  CollectionReportDetailsSasCompareTabProps
+> = ({ reportData }) => {
   // ============================================================================
   // SAS System Metric Computations
   // ============================================================================
@@ -63,15 +63,18 @@ const CollectionReportDetailsSasCompareTab: FC<CollectionReportDetailsSasCompare
       {/* Mobile Card Layout */}
       <div className="space-y-4 lg:hidden">
         <div className="overflow-hidden rounded-lg bg-white shadow-md">
-          <div className="bg-lighterBlueHighlight p-3 text-white font-semibold">
+          <div className="bg-lighterBlueHighlight p-3 font-semibold text-white">
             SAS Totals
           </div>
           <div className="space-y-3 p-4 text-sm">
             {metrics.map((m, i) => (
-              <div key={i} className="flex justify-between items-center">
-                <span className="text-gray-600 font-medium">{m.label}</span>
-                <span className={`font-bold ${getFinancialColorClass(m.value)}`}>
-                  ${m.value.toLocaleString(undefined, {
+              <div key={i} className="flex items-center justify-between">
+                <span className="font-medium text-gray-600">{m.label}</span>
+                <span
+                  className={`font-bold ${getFinancialColorClass(m.value)}`}
+                >
+                  $
+                  {m.value.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
@@ -86,17 +89,24 @@ const CollectionReportDetailsSasCompareTab: FC<CollectionReportDetailsSasCompare
       <div className="hidden overflow-hidden rounded-lg bg-white shadow-md lg:block">
         <Table>
           <TableHeader>
-            <TableRow className="bg-button hover:bg-button border-b-0">
+            <TableRow className="border-b-0 bg-button hover:bg-button">
               <TableHead className="font-semibold text-white">METRIC</TableHead>
-              <TableHead className="font-semibold text-white text-right">VALUE</TableHead>
+              <TableHead className="text-right font-semibold text-white">
+                VALUE
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {metrics.map((m, i) => (
               <TableRow key={i} className="hover:bg-gray-50/50">
-                <TableCell className="font-medium text-gray-700">{m.label}</TableCell>
-                <TableCell className={`text-right font-bold ${getFinancialColorClass(m.value)}`}>
-                  ${m.value.toLocaleString(undefined, {
+                <TableCell className="font-medium text-gray-700">
+                  {m.label}
+                </TableCell>
+                <TableCell
+                  className={`text-right font-bold ${getFinancialColorClass(m.value)}`}
+                >
+                  $
+                  {m.value.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}
@@ -111,4 +121,3 @@ const CollectionReportDetailsSasCompareTab: FC<CollectionReportDetailsSasCompare
 };
 
 export default CollectionReportDetailsSasCompareTab;
-

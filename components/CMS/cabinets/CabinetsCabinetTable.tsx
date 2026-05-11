@@ -19,19 +19,19 @@ import { Button } from '@/components/shared/ui/button';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import { IMAGES } from '@/lib/constants';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import {
-    getGrossColorClass,
-    getMoneyInColorClass,
+  getGrossColorClass,
+  getMoneyInColorClass,
 } from '@/lib/utils/financial';
 import type { DataTableProps } from '@/shared/types/components';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
@@ -39,6 +39,7 @@ import { ClockIcon, Cross1Icon, MobileIcon } from '@radix-ui/react-icons';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ExternalLink, Eye, RotateCcw, Trash2 } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 import { toast } from 'sonner';
@@ -82,7 +83,6 @@ export default function CabinetsCabinetTable({
   onPermanentDelete,
   canEditMachines = true,
   canDeleteMachines = true,
-  canViewArchived = false,
   canPermanentlyDeleteMachines = false,
   enableHeaderSorting = true,
   showSortIcons = true,
@@ -93,7 +93,8 @@ export default function CabinetsCabinetTable({
   const tableRef = useRef<HTMLTableElement>(null);
   const router = useRouter();
   const { displayCurrency } = useCurrencyFormat();
-  const formatCurrency = (amount: number | null | undefined) => formatCurrencyWithCodeString(amount, displayCurrency);
+  const formatCurrency = (amount: number | null | undefined) =>
+    formatCurrencyWithCodeString(amount, displayCurrency);
 
   // Navigate to cabinet detail page
   const navigateToCabinet = (cabinetId: string) => {
@@ -142,7 +143,9 @@ export default function CabinetsCabinetTable({
             <TableHead
               className="relative w-[240px] font-semibold text-white"
               onClick={
-                enableHeaderSorting && onSort ? () => onSort('assetNumber') : undefined
+                enableHeaderSorting && onSort
+                  ? () => onSort('assetNumber')
+                  : undefined
               }
               isFirstColumn={true}
             >
@@ -157,7 +160,9 @@ export default function CabinetsCabinetTable({
             <TableHead
               className="relative font-semibold text-white"
               onClick={
-                enableHeaderSorting && onSort ? () => onSort('moneyIn') : undefined
+                enableHeaderSorting && onSort
+                  ? () => onSort('moneyIn')
+                  : undefined
               }
             >
               <span>MONEY IN</span>
@@ -170,7 +175,9 @@ export default function CabinetsCabinetTable({
             <TableHead
               className="relative font-semibold text-white"
               onClick={
-                enableHeaderSorting && onSort ? () => onSort('moneyOut') : undefined
+                enableHeaderSorting && onSort
+                  ? () => onSort('moneyOut')
+                  : undefined
               }
             >
               <span>MONEY OUT</span>
@@ -183,7 +190,9 @@ export default function CabinetsCabinetTable({
             <TableHead
               className="relative font-semibold text-white"
               onClick={
-                enableHeaderSorting && onSort ? () => onSort('jackpot') : undefined
+                enableHeaderSorting && onSort
+                  ? () => onSort('jackpot')
+                  : undefined
               }
             >
               <span>JACKPOT</span>
@@ -195,7 +204,11 @@ export default function CabinetsCabinetTable({
             </TableHead>
             <TableHead
               className="relative font-semibold text-white"
-              onClick={enableHeaderSorting && onSort ? () => onSort('gross') : undefined}
+              onClick={
+                enableHeaderSorting && onSort
+                  ? () => onSort('gross')
+                  : undefined
+              }
             >
               <span>GROSS</span>
               {showSortIcons && sortOption === 'gross' && (
@@ -219,27 +232,35 @@ export default function CabinetsCabinetTable({
         </TableHeader>
         <TableBody>
           {cabinets.map(cab => {
-            const isOnline = cab.online !== undefined ? cab.online : (
-              cab.lastOnline &&
-              new Date(cab.lastOnline) > new Date(Date.now() - 3 * 60 * 1000)
-            );
-            const lastOnlineText = cab.offlineTimeLabel || (cab.lastOnline
-              ? formatDistanceToNow(new Date(cab.lastOnline), {
-                  addSuffix: true,
-                })
-              : 'Never');
+            const isOnline =
+              cab.online !== undefined
+                ? cab.online
+                : cab.lastOnline &&
+                  new Date(cab.lastOnline) >
+                    new Date(Date.now() - 3 * 60 * 1000);
+            const lastOnlineText =
+              cab.offlineTimeLabel ||
+              (cab.lastOnline
+                ? formatDistanceToNow(new Date(cab.lastOnline), {
+                    addSuffix: true,
+                  })
+                : 'Never');
 
             const smbId = cab.smbId || '';
             // Archived machines have a deletedAt date of Jan 1st 2025 or later
-            const isArchived = Boolean(cab.deletedAt) &&
-                             new Date(cab.deletedAt!) >= new Date('2025-01-01');
+            const isArchived =
+              Boolean(cab.deletedAt) &&
+              new Date(cab.deletedAt!) >= new Date('2025-01-01');
 
             return (
-              <TableRow key={cab._id} className={`hover:bg-grayHighlight/10 ${isArchived ? 'bg-gray-50' : ''}`}>
+              <TableRow
+                key={cab._id}
+                className={`hover:bg-grayHighlight/10 ${isArchived ? 'bg-gray-50' : ''}`}
+              >
                 <TableCell isFirstColumn={true} className="w-[240px]">
                   <div className="space-y-1">
                     {/* Row 1: Serial Number/Asset Number - Navigate to cabinet details */}
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex min-w-0 items-center gap-2">
                       <button
                         onClick={e => {
                           e.stopPropagation();
@@ -251,7 +272,7 @@ export default function CabinetsCabinetTable({
                         {formatMachineDisplayNameWithBold(cab)}
                       </button>
                       {isArchived && (
-                        <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 text-[10px] px-1.5 py-0">
+                        <Badge className="border-amber-200 bg-amber-100 px-1.5 py-0 text-[10px] text-amber-700 hover:bg-amber-100">
                           ARCHIVED
                         </Badge>
                       )}
@@ -298,9 +319,14 @@ export default function CabinetsCabinetTable({
                         title={smbId ? 'Click to copy SMIB' : 'No SMIB'}
                         disabled={!smbId}
                       >
-                        SMIB: {smbId || <span className="font-bold text-red-600">NO SMIB</span>}
+                        SMIB:{' '}
+                        {smbId || (
+                          <span className="font-bold text-red-600">
+                            NO SMIB
+                          </span>
+                        )}
                       </button>
-                      {!isArchived && (
+                      {!isArchived && smbId && (
                         <Badge
                           variant={isOnline ? 'default' : 'destructive'}
                           className={`ml-auto inline-block w-fit flex-shrink-0 rounded-full px-2 py-0.5 text-xs ${
@@ -319,20 +345,23 @@ export default function CabinetsCabinetTable({
                       )}
                     </div>
 
-                    {/* Row 3: Last Activity - Only show time for offline machines */}
-                    {!isOnline && !isArchived && (
+                    {/* Row 3: Last Activity - Only show time for offline machines with SMIB */}
+                    {!isOnline && !isArchived && smbId && (
                       <div className="flex flex-col gap-0.5 text-xs text-gray-500">
                         <div className="flex items-center gap-1">
                           <ClockIcon className="h-3 w-3 flex-shrink-0" />
                           <span className="whitespace-normal break-words">
-                            {lastOnlineText === 'Never' ? 'Never Online' : `Offline ${lastOnlineText}`}
+                            {lastOnlineText === 'Never'
+                              ? 'Never Online'
+                              : `Offline ${lastOnlineText}`}
                           </span>
                         </div>
-                        {cab.actualOfflineTime && cab.actualOfflineTime !== lastOnlineText && (
-                          <div className="ml-4 text-[10px] opacity-70 italic">
-                            (Actual Offline Time: {cab.actualOfflineTime})
-                          </div>
-                        )}
+                        {cab.actualOfflineTime &&
+                          cab.actualOfflineTime !== lastOnlineText && (
+                            <div className="ml-4 text-[10px] italic opacity-70">
+                              (Actual Offline Time: {cab.actualOfflineTime})
+                            </div>
+                          )}
                       </div>
                     )}
                   </div>
@@ -375,34 +404,44 @@ export default function CabinetsCabinetTable({
                     <TableCell className="text-gray-600">
                       {cab.deletedAt ? (
                         <>
-                          {format(new Date(cab.deletedAt), 'MMM d, yyyy • h:mm a')}
+                          {format(
+                            new Date(cab.deletedAt),
+                            'MMM d, yyyy • h:mm a'
+                          )}
                           <span className="ml-1 text-xs opacity-70">
-                            ({formatDistanceToNow(new Date(cab.deletedAt), { addSuffix: true })})
+                            (
+                            {formatDistanceToNow(new Date(cab.deletedAt), {
+                              addSuffix: true,
+                            })}
+                            )
                           </span>
                         </>
-                      ) : '-'}
+                      ) : (
+                        '-'
+                      )}
                     </TableCell>
                     <TableCell className="text-gray-600">
-                      {cab.deletedAt ? formatDistanceToNow(new Date(cab.deletedAt), { addSuffix: true }) : '-'}
+                      {cab.deletedAt
+                        ? formatDistanceToNow(new Date(cab.deletedAt), {
+                            addSuffix: true,
+                          })
+                        : '-'}
                     </TableCell>
                   </>
                 )}
                 <TableCell>
                   <div className="action-buttons flex items-center justify-center gap-2">
                     {/* Common actions */}
-                    {!isArchived && (
+                    {!isArchived && !showArchived && (
                       <>
-                        <Button
-                          variant="ghost"
-                          onClick={e => {
-                            e.stopPropagation();
-                            navigateToCabinet(cab._id);
-                          }}
-                          className="h-8 w-8 p-1 hover:bg-accent"
+                        <Link
+                          href={`/cabinets/${cab._id}`}
+                          onClick={e => e.stopPropagation()}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md p-1 hover:bg-accent"
                           title="View details"
                         >
                           <Eye className="h-4 w-4" />
-                        </Button>
+                        </Link>
                         {canEditMachines && (
                           <Button
                             variant="ghost"
@@ -444,17 +483,17 @@ export default function CabinetsCabinetTable({
                       </>
                     )}
 
-                    {/* Archive management actions */}
-                    {isArchived && (
+                    {/* Archive management actions - icon only */}
+                    {showArchived && (
                       <>
-                        {canViewArchived && (
+                        {canDeleteMachines && (
                           <Button
                             variant="ghost"
                             onClick={e => {
                               e.stopPropagation();
                               onRestore?.(cab);
                             }}
-                            className="h-8 w-8 p-1 hover:bg-amber-100 text-amber-600"
+                            className="h-8 w-8 p-1 text-amber-600 hover:bg-amber-100"
                             title="Restore machine"
                           >
                             <RotateCcw className="h-4 w-4" />
@@ -467,8 +506,8 @@ export default function CabinetsCabinetTable({
                               e.stopPropagation();
                               onPermanentDelete?.(cab);
                             }}
-                            className="h-8 w-8 p-1 hover:bg-red-100 text-red-600"
-                            title="PERMANENTLY delete"
+                            className="h-8 w-8 p-1 text-red-600 hover:bg-red-100"
+                            title="Permanently Delete"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

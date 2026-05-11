@@ -29,7 +29,8 @@ export type OriginalUserType = {
     };
   };
   profilePicture?: string;
-  multiplier?: number;
+  moneyInMultiplier?: number;
+  moneyOutAndJackpotMultiplier?: number;
   isEnabled?: boolean;
   roles?: string[];
 };
@@ -49,4 +50,3 @@ export type ProfileUpdatePayload = {
   licenceeIds?: string[];
   locationIds?: string[];
 };
-

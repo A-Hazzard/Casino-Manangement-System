@@ -9,12 +9,12 @@
 
 import { Card, CardContent } from '@/components/shared/ui/card';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
@@ -67,7 +67,7 @@ export default function VaultPayoutsTable({
   return (
     <div className="space-y-4">
       {/* Desktop Table View */}
-      <div className="hidden lg:block overflow-x-auto rounded-lg bg-container shadow-md border-t-4 border-orangeHighlight">
+      <div className="hidden overflow-x-auto rounded-lg border-t-4 border-orangeHighlight bg-container shadow-md lg:block">
         <Table>
           <TableHeader>
             <TableRow className="bg-button hover:bg-button">
@@ -88,7 +88,7 @@ export default function VaultPayoutsTable({
               </TableHead>
               <TableHead
                 className={cn(
-                  'relative cursor-pointer select-none font-semibold text-white text-center',
+                  'relative cursor-pointer select-none text-center font-semibold text-white',
                   onSort && 'hover:bg-button/90'
                 )}
                 onClick={onSort ? () => onSort('amount') : undefined}
@@ -100,10 +100,12 @@ export default function VaultPayoutsTable({
                   </span>
                 )}
               </TableHead>
-              <TableHead className="font-semibold text-white text-center">Notes</TableHead>
+              <TableHead className="text-center font-semibold text-white">
+                Notes
+              </TableHead>
               <TableHead
                 className={cn(
-                  'relative cursor-pointer select-none font-semibold text-white text-center',
+                  'relative cursor-pointer select-none text-center font-semibold text-white',
                   onSort && 'hover:bg-button/90'
                 )}
                 onClick={onSort ? () => onSort('processed') : undefined}
@@ -120,8 +122,8 @@ export default function VaultPayoutsTable({
           <TableBody>
             <AnimatePresence initial={false}>
               {payouts.map(payout => (
-                <motion.tr 
-                  key={payout.id} 
+                <motion.tr
+                  key={payout.id}
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
@@ -131,19 +133,25 @@ export default function VaultPayoutsTable({
                   <TableCell isFirstColumn className="font-medium">
                     <div className="flex items-center gap-2">
                       {payout.ticketNumber.includes('Hand Pay') ? (
-                         <Banknote className="h-4 w-4 text-emerald-500" />
+                        <Banknote className="h-4 w-4 text-emerald-500" />
                       ) : (
-                         <Ticket className="h-4 w-4 text-blue-500" />
+                        <Ticket className="h-4 w-4 text-blue-500" />
                       )}
                       {payout.ticketNumber}
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
-                    <span className="font-semibold text-red-600">-{formatAmount(Math.abs(payout.amount))}</span>
+                    <span className="font-semibold text-red-600">
+                      -{formatAmount(Math.abs(payout.amount))}
+                    </span>
                   </TableCell>
 
-                  <TableCell className="text-center text-sm text-gray-600 truncate max-w-[200px]">{payout.notes || '-'}</TableCell>
-                  <TableCell className="text-center text-sm text-gray-600 whitespace-nowrap">{formatDate(payout.processed)}</TableCell>
+                  <TableCell className="max-w-[200px] truncate text-center text-sm text-gray-600">
+                    {payout.notes || '-'}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-center text-sm text-gray-600">
+                    {formatDate(payout.processed)}
+                  </TableCell>
                 </motion.tr>
               ))}
             </AnimatePresence>
@@ -151,41 +159,49 @@ export default function VaultPayoutsTable({
         </Table>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:hidden">
         <AnimatePresence initial={false}>
           {payouts.map(payout => (
-            <motion.div 
+            <motion.div
               key={payout.id}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
             >
-              <Card className="overflow-hidden border-l-4 border-l-red-600 shadow-sm h-full">
-                <CardContent className="p-4 space-y-3">
+              <Card className="h-full overflow-hidden border-l-4 border-l-red-600 shadow-sm">
+                <CardContent className="space-y-3 p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                       {payout.ticketNumber.includes('Hand Pay') ? (
-                           <Banknote className="h-4 w-4 text-emerald-500" />
-                        ) : (
-                           <Ticket className="h-4 w-4 text-blue-500" />
-                        )}
-                      <span className="font-bold text-gray-900">{payout.ticketNumber}</span>
+                      {payout.ticketNumber.includes('Hand Pay') ? (
+                        <Banknote className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <Ticket className="h-4 w-4 text-blue-500" />
+                      )}
+                      <span className="font-bold text-gray-900">
+                        {payout.ticketNumber}
+                      </span>
                     </div>
-                    <span className="text-lg font-black text-red-600">-{formatAmount(Math.abs(payout.amount))}</span>
+                    <span className="text-lg font-black text-red-600">
+                      -{formatAmount(Math.abs(payout.amount))}
+                    </span>
                   </div>
-                  
+
                   <div className="grid grid-cols-1 gap-2 text-xs">
                     <div className="flex items-center gap-2 text-gray-500">
                       <Calendar className="h-3.5 w-3.5" />
-                      <span className="whitespace-nowrap">{formatDate(payout.processed)}</span>
+                      <span className="whitespace-nowrap">
+                        {formatDate(payout.processed)}
+                      </span>
                     </div>
                   </div>
-  
-                  <div className="flex items-center justify-start pt-2 border-t border-gray-100">
+
+                  <div className="flex items-center justify-start border-t border-gray-100 pt-2">
                     <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                       <FileText className="h-3 w-3" />
-                       <span className="italic truncate max-w-[150px]">{payout.notes || '-'}</span>
+                      <FileText className="h-3 w-3" />
+                      <span className="max-w-[150px] truncate italic">
+                        {payout.notes || '-'}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -194,8 +210,6 @@ export default function VaultPayoutsTable({
           ))}
         </AnimatePresence>
       </div>
-
-
     </div>
   );
 }

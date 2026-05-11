@@ -42,7 +42,8 @@ export async function getAllCollectionReportsWithMachineCounts(
   endDate?: Date,
   page = 1,
   limit = 50,
-  scale = 1,
+  moneyInScale = 1,
+  moneyOutScale = 1,
   locationIds?: string[]
 ): Promise<{ reports: CollectionReportRow[]; total: number }> {
   let rawReports: Array<Record<string, unknown>> = [];
@@ -112,14 +113,15 @@ export async function getAllCollectionReportsWithMachineCounts(
     // Apply licencee filter only if provided
     ...(licenceeId
       ? [
-        {
-          $match: {
-            $or: [
-              { 'locationDetails.rel.licencee': licenceeId  }, { 'locationDetails.rel.licencee': licenceeId  },
-            ],
+          {
+            $match: {
+              $or: [
+                { 'locationDetails.rel.licencee': licenceeId },
+                { 'locationDetails.rel.licencee': licenceeId },
+              ],
+            },
           },
-        },
-      ]
+        ]
       : []),
     { $sort: { timestamp: -1 } },
   ];
@@ -194,14 +196,26 @@ export async function getAllCollectionReportsWithMachineCounts(
               { $toDouble: '$movement.gross' },
               {
                 $subtract: [
-                  { $subtract: [{ $toDouble: { $ifNull: ['$metersIn', 0] } }, { $toDouble: { $ifNull: ['$prevIn', 0] } }] },
-                  { $subtract: [{ $toDouble: { $ifNull: ['$metersOut', 0] } }, { $toDouble: { $ifNull: ['$prevOut', 0] } }] },
+                  {
+                    $subtract: [
+                      { $toDouble: { $ifNull: ['$metersIn', 0] } },
+                      { $toDouble: { $ifNull: ['$prevIn', 0] } },
+                    ],
+                  },
+                  {
+                    $subtract: [
+                      { $toDouble: { $ifNull: ['$metersOut', 0] } },
+                      { $toDouble: { $ifNull: ['$prevOut', 0] } },
+                    ],
+                  },
                 ],
               },
             ],
           },
         },
-        calculatedSasGross: { $sum: { $toDouble: { $ifNull: ['$sasMeters.gross', 0] } } },
+        calculatedSasGross: {
+          $sum: { $toDouble: { $ifNull: ['$sasMeters.gross', 0] } },
+        },
       },
     },
   ]);
@@ -298,40 +312,54 @@ export async function getAllCollectionReportsWithMachineCounts(
 
     // Use stored values for financial data (not calculated from meters)
     // Use SAS gross if available, fallback to machine total gross (matches "Total Machine Gross" in UI)
-    const storedGross = (doc.totalSasGross as number) || (doc.totalGross as number);
+    const storedGross =
+      (doc.totalSasGross as number) || (doc.totalGross as number);
     const calculatedCollected = (doc.amountCollected as number) || 0;
     const calculatedLocationRevenue = (doc.partnerProfit as number) || 0;
     const calculatedBalance = (doc.currentBalance as number) || 0;
-    const calculatedUncollected = typeof doc.amountUncollected === 'number' ? doc.amountUncollected as number : null;
+    const calculatedUncollected =
+      typeof doc.amountUncollected === 'number'
+        ? (doc.amountUncollected as number)
+        : null;
 
     // Priority: calculatedGross (Machine Delta) -> stored totalGross -> totalSasGross from report -> calculatedSasGross
-    const displayGross = collectionData.calculatedGross || storedGross || collectionData.calculatedSasGross;
+    const displayGross =
+      collectionData.calculatedGross ||
+      storedGross ||
+      collectionData.calculatedSasGross;
 
     // Read pre-computed totalVariation stored on the CollectionReport document.
     // Backfill migration ensures all historical docs have this field.
     const storedVariation = (doc as Record<string, unknown>).totalVariation;
     if (storedVariation === undefined) {
-      console.warn(`[service] totalVariation missing for report ${locationReportId}`);
+      console.warn(
+        `[service] totalVariation missing for report ${locationReportId}`
+      );
     }
-    const calculatedVariation = typeof storedVariation === 'number' ? storedVariation : 0;
+    const calculatedVariation =
+      typeof storedVariation === 'number' ? storedVariation : 0;
 
-    // Apply reviewer scale to all financial output values before formatting.
-    // For non-reviewers scale === 1, so multiplication is a no-op.
-    const displayVariation = calculatedVariation * scale;
-    const scaledGross = displayGross * scale;
-    const scaledCollected = calculatedCollected * scale;
-    const scaledLocationRevenue = calculatedLocationRevenue * scale;
-    const scaledBalance = calculatedBalance * scale;
-    const scaledUncollected = calculatedUncollected !== null ? calculatedUncollected * scale : null;
+    // Apply reviewer scales to all financial output values before formatting.
+    // Money in fields use moneyInScale, money out fields use moneyOutScale.
+    // For non-reviewers scales === 1, so multiplication is a no-op.
+    const displayVariation = calculatedVariation * moneyInScale;
+    const scaledGross = displayGross * moneyInScale;
+    const scaledCollected = calculatedCollected * moneyInScale;
+    const scaledLocationRevenue = calculatedLocationRevenue * moneyInScale;
+    const scaledBalance = calculatedBalance * moneyOutScale;
+    const scaledUncollected =
+      calculatedUncollected !== null
+        ? calculatedUncollected * moneyInScale
+        : null;
 
     // Determine collector value (user ID) and display name
     const collectorUserId = (doc.collector as string) || '';
     const collectorDetails = doc.collectorDetails as
       | {
-        username?: string;
-        profile?: { firstName?: string; lastName?: string };
-        emailAddress?: string;
-      }
+          username?: string;
+          profile?: { firstName?: string; lastName?: string };
+          emailAddress?: string;
+        }
       | undefined;
 
     // Compute display name with priority: username → firstName → emailAddress → collectorName
@@ -376,18 +404,18 @@ export async function getAllCollectionReportsWithMachineCounts(
     // Prepare tooltip data: firstName, lastName, ID, email
     const collectorTooltipData = collectorDetails
       ? {
-        firstName: collectorDetails.profile?.firstName || undefined,
-        lastName: collectorDetails.profile?.lastName || undefined,
-        id: collectorUserId || undefined,
-        email: collectorDetails.emailAddress || undefined,
-      }
+          firstName: collectorDetails.profile?.firstName || undefined,
+          lastName: collectorDetails.profile?.lastName || undefined,
+          id: collectorUserId || undefined,
+          email: collectorDetails.emailAddress || undefined,
+        }
       : collectorUserId
         ? {
-          firstName: undefined,
-          lastName: undefined,
-          id: collectorUserId,
-          email: undefined,
-        }
+            firstName: undefined,
+            lastName: undefined,
+            id: collectorUserId,
+            email: undefined,
+          }
         : undefined;
 
     const result = {
@@ -416,8 +444,8 @@ export async function getAllCollectionReportsWithMachineCounts(
             typeof ts === 'string' || ts instanceof Date
               ? new Date(ts)
               : typeof ts === 'object' &&
-                '$date' in ts &&
-                typeof ts.$date === 'string'
+                  '$date' in ts &&
+                  typeof ts.$date === 'string'
                 ? new Date(ts.$date)
                 : null;
 
@@ -445,4 +473,3 @@ export async function getAllCollectionReportsWithMachineCounts(
 
   return { reports: enrichedReports, total };
 }
-

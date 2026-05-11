@@ -10,11 +10,11 @@
 import { ChangeEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import type { MultiSelectOption } from '@/components/shared/ui/common/MultiSelectDropdown';
@@ -31,21 +31,21 @@ import type { Country, Licencee } from '@/lib/types/common';
 import type { LocationSelectItem } from '@/lib/types/location';
 import type { AddUserForm } from '@/lib/types/pages';
 import {
-    getPasswordStrengthLabel,
-    isPlaceholderEmail,
-    validateEmail,
-    validatePasswordStrength,
+  getPasswordStrengthLabel,
+  isPlaceholderEmail,
+  validateEmail,
+  validatePasswordStrength,
 } from '@/lib/utils/validation';
 import defaultAvatar from '@/public/defaultAvatar.svg';
 import gsap from 'gsap';
 import {
-    AlertCircle,
-    Camera,
-    Info,
-    Loader2,
-    Save,
-    Trash2,
-    X,
+  AlertCircle,
+  Camera,
+  Info,
+  Loader2,
+  Save,
+  Trash2,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -89,9 +89,13 @@ export default function AdministrationAddUserModal({
   const currentUserRoles = (currentUser?.roles || []) as string[];
   const isOwner = currentUserRoles.includes('owner');
   const isDeveloper = currentUserRoles.includes('developer');
-  const isAdmin = currentUserRoles.includes('admin') && !isDeveloper && !isOwner;
+  const isAdmin =
+    currentUserRoles.includes('admin') && !isDeveloper && !isOwner;
   const isManager =
-    currentUserRoles.includes('manager') && !isAdmin && !isDeveloper && !isOwner;
+    currentUserRoles.includes('manager') &&
+    !isAdmin &&
+    !isDeveloper &&
+    !isOwner;
   const isLocationAdmin =
     currentUserRoles.includes('location admin') &&
     !isAdmin &&
@@ -105,24 +109,23 @@ export default function AdministrationAddUserModal({
       return ROLE_OPTIONS.filter(role => role.value !== 'reviewer');
     } else if (isOwner) {
       // Owners can create everything except developer and owner
-      return ROLE_OPTIONS.filter(role => !['developer', 'owner'].includes(role.value));
+      return ROLE_OPTIONS.filter(
+        role => !['developer', 'owner'].includes(role.value)
+      );
     } else if (isAdmin) {
       // Admins cannot create reviewer, developer, or owner
-      return ROLE_OPTIONS.filter(role => !['developer', 'owner', 'reviewer'].includes(role.value));
+      return ROLE_OPTIONS.filter(
+        role => !['developer', 'owner', 'reviewer'].includes(role.value)
+      );
     } else if (isManager) {
       return ROLE_OPTIONS.filter(role =>
-        [
-          'location admin',
-          'technician',
-          'collector',
-          'vault-manager',
-        ].includes(role.value)
+        ['location admin', 'technician', 'collector', 'vault-manager'].includes(
+          role.value
+        )
       );
     } else if (isLocationAdmin) {
       return ROLE_OPTIONS.filter(role =>
-        ['technician', 'collector', 'vault-manager'].includes(
-          role.value
-        )
+        ['technician', 'collector', 'vault-manager'].includes(role.value)
       );
     }
     return [];
@@ -162,8 +165,12 @@ export default function AdministrationAddUserModal({
   });
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
-  const [accountErrors, setAccountErrors] = useState<Record<string, string>>({});
-  const [accountTouched, setAccountTouched] = useState<Record<string, boolean>>({});
+  const [accountErrors, setAccountErrors] = useState<Record<string, string>>(
+    {}
+  );
+  const [accountTouched, setAccountTouched] = useState<Record<string, boolean>>(
+    {}
+  );
 
   // Profile data
   const [formData, setFormData] = useState({
@@ -211,7 +218,9 @@ export default function AdministrationAddUserModal({
   const [locations, setLocations] = useState<LocationSelectItem[]>([]);
   const [selectedLocationIds, setSelectedLocationIds] = useState<string[]>([]);
   const [allLocationsSelected, setAllLocationsSelected] = useState(false);
-  const [multiplier, setMultiplier] = useState<number>(0);
+  const [moneyInMultiplier, setMoneyInMultiplier] = useState<string>('');
+  const [moneyOutAndJackpotMultiplier, setMoneyOutAndJackpotMultiplier] =
+    useState<string>('');
   const [rolePermissionsDialog, setRolePermissionsDialog] = useState<{
     open: boolean;
     role: string;
@@ -265,7 +274,8 @@ export default function AdministrationAddUserModal({
       setAllLicenceesSelected(false);
       setSelectedLocationIds([]);
       setAllLocationsSelected(false);
-      setMultiplier(0);
+      setMoneyInMultiplier('');
+      setMoneyOutAndJackpotMultiplier('');
       setAccountErrors({});
       setAccountTouched({});
       setPasswordStrength({
@@ -290,7 +300,6 @@ export default function AdministrationAddUserModal({
       setAllLicenceesSelected(false);
     }
   }, [open, isLocationAdmin, currentUserLicenceeIds]);
-
 
   // Load licencees
   useEffect(() => {
@@ -347,10 +356,11 @@ export default function AdministrationAddUserModal({
 
     const loadLocationsData = async () => {
       try {
-        const formattedLocs = await administrationUtils.locationManagement.loadLocations({
-          showAll: true,
-          forceAll: true
-        });
+        const formattedLocs =
+          await administrationUtils.locationManagement.loadLocations({
+            showAll: true,
+            forceAll: true,
+          });
 
         if (cancelled) return;
         setLocations(formattedLocs);
@@ -422,11 +432,7 @@ export default function AdministrationAddUserModal({
   useEffect(() => {
     const username = (accountData.username || '').trim();
 
-    if (
-      username &&
-      username.length >= 3 &&
-      accountTouched.username
-    ) {
+    if (username && username.length >= 3 && accountTouched.username) {
       const timeoutId = setTimeout(async () => {
         setCheckingUsername(true);
         try {
@@ -465,11 +471,7 @@ export default function AdministrationAddUserModal({
   useEffect(() => {
     const email = (accountData.email || '').trim();
 
-    if (
-      email &&
-      validateEmail(email) &&
-      accountTouched.email
-    ) {
+    if (email && validateEmail(email) && accountTouched.email) {
       const timeoutId = setTimeout(async () => {
         setCheckingEmail(true);
         try {
@@ -552,7 +554,7 @@ export default function AdministrationAddUserModal({
         newErrors.firstName = 'First name cannot look like an email address.';
       } else if (!/^[A-Za-z\s'-]+$/.test(firstName)) {
         newErrors.firstName =
-          "First name may only contain letters, spaces, hyphens and apostrophes.";
+          'First name may only contain letters, spaces, hyphens and apostrophes.';
       }
     }
 
@@ -563,7 +565,8 @@ export default function AdministrationAddUserModal({
       } else if (EMAIL_REGEX.test(lastName)) {
         newErrors.lastName = 'Last name cannot look like an email address.';
       } else if (!/^[A-Za-z\s'-]+$/.test(lastName)) {
-        newErrors.lastName = "Last name may only contain letters, spaces, hyphens and apostrophes.";
+        newErrors.lastName =
+          'Last name may only contain letters, spaces, hyphens and apostrophes.';
       }
     }
 
@@ -597,7 +600,8 @@ export default function AdministrationAddUserModal({
           newErrors.country =
             'Country must be at least 3 characters and may only contain letters, spaces, and ampersands (&).';
         } else if (!/^[A-Za-z\s&]+$/.test(country)) {
-          newErrors.country = 'Country may only contain letters, spaces, and ampersands (&).';
+          newErrors.country =
+            'Country may only contain letters, spaces, and ampersands (&).';
         }
       }
     }
@@ -736,12 +740,13 @@ export default function AdministrationAddUserModal({
     } else {
       newRoles = roles.filter(r => r !== role);
     }
-    
+
     setRoles(newRoles);
 
-    // Reset multiplier if reviewer role is removed
+    // Reset multipliers if reviewer role is removed
     if (!newRoles.includes('reviewer')) {
-      setMultiplier(0);
+      setMoneyInMultiplier('');
+      setMoneyOutAndJackpotMultiplier('');
     }
 
     // Enforce single selection if vault-manager or cashier is selected
@@ -790,16 +795,24 @@ export default function AdministrationAddUserModal({
   // Sync "all selected" states to prevent Vault Manager restrictions or single-item auto-selection
   useEffect(() => {
     if (!open) return;
-    
+
     if (hasRestrictedAssignments) {
       if (allLicenceesSelected) setAllLicenceesSelected(false);
       if (allLocationsSelected) setAllLocationsSelected(false);
     } else {
       // Also ensure "All" is not set if count is 0 or individual count doesn't match
-      if (allLicenceesSelected && (licencees.length === 0 || selectedLicenceeIds.length !== licencees.length)) {
+      if (
+        allLicenceesSelected &&
+        (licencees.length === 0 ||
+          selectedLicenceeIds.length !== licencees.length)
+      ) {
         setAllLicenceesSelected(false);
       }
-      if (allLocationsSelected && (availableLocations.length === 0 || selectedLocationIds.length !== availableLocations.length)) {
+      if (
+        allLocationsSelected &&
+        (availableLocations.length === 0 ||
+          selectedLocationIds.length !== availableLocations.length)
+      ) {
         setAllLocationsSelected(false);
       }
     }
@@ -811,12 +824,14 @@ export default function AdministrationAddUserModal({
     licencees.length,
     availableLocations.length,
     selectedLicenceeIds.length,
-    selectedLocationIds.length
+    selectedLocationIds.length,
   ]);
 
   const handleAllLocationsChange = (checked: boolean) => {
     if (hasRestrictedAssignments && checked) {
-      toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} cannot be assigned to all locations`);
+      toast.error(
+        `${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} cannot be assigned to all locations`
+      );
       return;
     }
     setAllLocationsSelected(checked);
@@ -841,12 +856,16 @@ export default function AdministrationAddUserModal({
     let finalIds = newSelectedIds;
     if (hasRestrictedAssignments && newSelectedIds.length > 1) {
       finalIds = [newSelectedIds[newSelectedIds.length - 1]];
-      toast.info(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single licencee.`);
+      toast.info(
+        `${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single licencee.`
+      );
     }
 
     setSelectedLicenceeIds(finalIds);
     setAllLicenceesSelected(
-      finalIds.length === licencees.length && licencees.length > 1 && !hasRestrictedAssignments
+      finalIds.length === licencees.length &&
+        licencees.length > 1 &&
+        !hasRestrictedAssignments
     );
 
     // Filter locations based on selected licencees
@@ -854,9 +873,7 @@ export default function AdministrationAddUserModal({
       const validLocationIds = prevLocationIds.filter(locId => {
         const location = locations.find(l => l._id === locId);
         if (!location) return true;
-        return (
-          location.licenceeId && finalIds.includes(location.licenceeId)
-        );
+        return location.licenceeId && finalIds.includes(location.licenceeId);
       });
 
       if (validLocationIds.length !== prevLocationIds.length) {
@@ -874,11 +891,15 @@ export default function AdministrationAddUserModal({
     let finalIds = newSelectedIds;
     if (hasRestrictedAssignments && newSelectedIds.length > 1) {
       finalIds = [newSelectedIds[newSelectedIds.length - 1]];
-      toast.info(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single location.`);
+      toast.info(
+        `${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} are limited to a single location.`
+      );
     }
     setSelectedLocationIds(finalIds);
     setAllLocationsSelected(
-      finalIds.length === availableLocations.length && availableLocations.length > 1 && !hasRestrictedAssignments
+      finalIds.length === availableLocations.length &&
+        availableLocations.length > 1 &&
+        !hasRestrictedAssignments
     );
   };
 
@@ -949,11 +970,15 @@ export default function AdministrationAddUserModal({
 
     if (hasRestrictedAssignments) {
       if (selectedLicenceeIds.length !== 1 || allLicenceesSelected) {
-        toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one licencee`);
+        toast.error(
+          `${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one licencee`
+        );
         return;
       }
       if (selectedLocationIds.length !== 1 || allLocationsSelected) {
-        toast.error(`${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one location`);
+        toast.error(
+          `${isVaultManagerSelected ? 'Vault Managers' : 'Cashiers'} must be assigned to exactly one location`
+        );
         return;
       }
     }
@@ -972,13 +997,19 @@ export default function AdministrationAddUserModal({
     if (formData.dateOfBirth) {
       const dob = new Date(formData.dateOfBirth);
       if (isNaN(dob.getTime()) || dob > new Date()) {
-        toast.error('Date of birth must be a valid date and cannot be in the future.');
+        toast.error(
+          'Date of birth must be a valid date and cannot be in the future.'
+        );
         return;
       }
     }
 
     // Check for validation errors
-    if (Object.keys(accountErrors).length > 0 || checkingUsername || checkingEmail) {
+    if (
+      Object.keys(accountErrors).length > 0 ||
+      checkingUsername ||
+      checkingEmail
+    ) {
       if (checkingUsername || checkingEmail) {
         toast.error('Please wait for username/email validation to complete');
       } else {
@@ -1001,7 +1032,14 @@ export default function AdministrationAddUserModal({
       licenceeIds: allLicenceesSelected
         ? licencees.map(lic => String(lic._id))
         : selectedLicenceeIds,
-      multiplier: roles.includes('reviewer') ? multiplier : 0,
+      moneyInMultiplier:
+        roles.includes('reviewer') && moneyInMultiplier
+          ? parseFloat(moneyInMultiplier) / 100
+          : 0,
+      moneyOutAndJackpotMultiplier:
+        roles.includes('reviewer') && moneyOutAndJackpotMultiplier
+          ? parseFloat(moneyOutAndJackpotMultiplier) / 100
+          : 0,
       allowedLocations: allLocationsSelected
         ? availableLocations.map(loc => loc._id)
         : selectedLocationIds,
@@ -1132,10 +1170,15 @@ export default function AdministrationAddUserModal({
                             id="username"
                             value={accountData.username}
                             onChange={e =>
-                              handleAccountInputChange('username', e.target.value)
+                              handleAccountInputChange(
+                                'username',
+                                e.target.value
+                              )
                             }
                             placeholder="Enter username"
-                            className={accountErrors.username ? 'border-red-500' : ''}
+                            className={
+                              accountErrors.username ? 'border-red-500' : ''
+                            }
                             required
                           />
                           {checkingUsername && (
@@ -1165,7 +1208,9 @@ export default function AdministrationAddUserModal({
                               handleAccountInputChange('email', e.target.value)
                             }
                             placeholder="Enter email address"
-                            className={accountErrors.email ? 'border-red-500' : ''}
+                            className={
+                              accountErrors.email ? 'border-red-500' : ''
+                            }
                             required
                           />
                           {checkingEmail && (
@@ -1199,7 +1244,9 @@ export default function AdministrationAddUserModal({
                         {password && (
                           <div className="mt-2 space-y-2">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">Strength:</span>
+                              <span className="text-sm font-medium">
+                                Strength:
+                              </span>
                               <div className="flex gap-1">
                                 {[1, 2, 3, 4, 5].map(level => (
                                   <div
@@ -1237,7 +1284,9 @@ export default function AdministrationAddUserModal({
                                 }`}
                               >
                                 <span>
-                                  {passwordStrength.requirements.length ? '✓' : '✗'}
+                                  {passwordStrength.requirements.length
+                                    ? '✓'
+                                    : '✗'}
                                 </span>
                                 <span>At least 8 characters</span>
                               </div>
@@ -1249,7 +1298,9 @@ export default function AdministrationAddUserModal({
                                 }`}
                               >
                                 <span>
-                                  {passwordStrength.requirements.uppercase ? '✓' : '✗'}
+                                  {passwordStrength.requirements.uppercase
+                                    ? '✓'
+                                    : '✗'}
                                 </span>
                                 <span>Uppercase letter</span>
                               </div>
@@ -1261,7 +1312,9 @@ export default function AdministrationAddUserModal({
                                 }`}
                               >
                                 <span>
-                                  {passwordStrength.requirements.lowercase ? '✓' : '✗'}
+                                  {passwordStrength.requirements.lowercase
+                                    ? '✓'
+                                    : '✗'}
                                 </span>
                                 <span>Lowercase letter</span>
                               </div>
@@ -1273,7 +1326,9 @@ export default function AdministrationAddUserModal({
                                 }`}
                               >
                                 <span>
-                                  {passwordStrength.requirements.number ? '✓' : '✗'}
+                                  {passwordStrength.requirements.number
+                                    ? '✓'
+                                    : '✗'}
                                 </span>
                                 <span>Number</span>
                               </div>
@@ -1285,7 +1340,9 @@ export default function AdministrationAddUserModal({
                                 }`}
                               >
                                 <span>
-                                  {passwordStrength.requirements.special ? '✓' : '!'}
+                                  {passwordStrength.requirements.special
+                                    ? '✓'
+                                    : '!'}
                                 </span>
                                 <span>Special character</span>
                               </div>
@@ -1296,8 +1353,12 @@ export default function AdministrationAddUserModal({
 
                       {/* Confirm Password */}
                       <div>
-                        <Label htmlFor="confirmPassword" className="text-gray-700">
-                          Confirm Password <span className="text-red-500">*</span>
+                        <Label
+                          htmlFor="confirmPassword"
+                          className="text-gray-700"
+                        >
+                          Confirm Password{' '}
+                          <span className="text-red-500">*</span>
                         </Label>
                         <Input
                           id="confirm-password"
@@ -1319,11 +1380,13 @@ export default function AdministrationAddUserModal({
                           autoComplete="new-password"
                           required
                         />
-                        {confirmPassword && password && password !== confirmPassword && (
-                          <p className="mt-1 text-sm text-red-600">
-                            Passwords do not match
-                          </p>
-                        )}
+                        {confirmPassword &&
+                          password &&
+                          password !== confirmPassword && (
+                            <p className="mt-1 text-sm text-red-600">
+                              Passwords do not match
+                            </p>
+                          )}
                         {confirmPassword &&
                           password &&
                           password === confirmPassword && (
@@ -1355,7 +1418,9 @@ export default function AdministrationAddUserModal({
                     <Input
                       id="firstName"
                       value={formData.firstName}
-                      onChange={e => handleInputChange('firstName', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('firstName', e.target.value)
+                      }
                       placeholder="Enter first name"
                       className={`mt-2 ${accountErrors.firstName ? 'border-red-500' : ''}`}
                     />
@@ -1372,7 +1437,9 @@ export default function AdministrationAddUserModal({
                     <Input
                       id="lastName"
                       value={formData.lastName}
-                      onChange={e => handleInputChange('lastName', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('lastName', e.target.value)
+                      }
                       placeholder="Enter last name"
                       className={`mt-2 ${accountErrors.lastName ? 'border-red-500' : ''}`}
                     />
@@ -1389,7 +1456,9 @@ export default function AdministrationAddUserModal({
                     <select
                       id="gender"
                       value={formData.gender}
-                      onChange={e => handleInputChange('gender', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('gender', e.target.value)
+                      }
                       className="mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <option value="">Select gender</option>
@@ -1406,7 +1475,9 @@ export default function AdministrationAddUserModal({
                       id="phoneNumber"
                       type="tel"
                       value={formData.phoneNumber}
-                      onChange={e => handleInputChange('phoneNumber', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('phoneNumber', e.target.value)
+                      }
                       placeholder="Enter phone number"
                       className="mt-2"
                     />
@@ -1430,7 +1501,9 @@ export default function AdministrationAddUserModal({
                     <Input
                       id="street"
                       value={formData.street}
-                      onChange={e => handleInputChange('street', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('street', e.target.value)
+                      }
                       placeholder="Enter street address"
                       className="mt-2"
                     />
@@ -1459,7 +1532,9 @@ export default function AdministrationAddUserModal({
                     <Input
                       id="region"
                       value={formData.region}
-                      onChange={e => handleInputChange('region', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('region', e.target.value)
+                      }
                       placeholder="Enter region"
                       className={`mt-2 ${accountErrors.region ? 'border-red-500' : ''}`}
                     />
@@ -1476,7 +1551,9 @@ export default function AdministrationAddUserModal({
                     <select
                       id="country"
                       value={formData.country}
-                      onChange={e => handleInputChange('country', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('country', e.target.value)
+                      }
                       className={`mt-2 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                         accountErrors.country ? 'border-red-500' : ''
                       }`}
@@ -1502,7 +1579,9 @@ export default function AdministrationAddUserModal({
                     <Input
                       id="postalCode"
                       value={formData.postalCode}
-                      onChange={e => handleInputChange('postalCode', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('postalCode', e.target.value)
+                      }
                       placeholder="Enter postal code"
                       className="mt-2"
                     />
@@ -1526,8 +1605,12 @@ export default function AdministrationAddUserModal({
                     <div className="mt-2">
                       <DateTimePicker
                         dateOnly
-                        date={formData.dateOfBirth ? new Date(formData.dateOfBirth) : undefined}
-                        setDate={(date) =>
+                        date={
+                          formData.dateOfBirth
+                            ? new Date(formData.dateOfBirth)
+                            : undefined
+                        }
+                        setDate={date =>
                           handleInputChange(
                             'dateOfBirth',
                             date ? date.toISOString().split('T')[0] : ''
@@ -1543,7 +1626,9 @@ export default function AdministrationAddUserModal({
                     <Input
                       id="idType"
                       value={formData.idType}
-                      onChange={e => handleInputChange('idType', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('idType', e.target.value)
+                      }
                       placeholder="Enter ID type"
                       className={`mt-2 ${accountErrors.idType ? 'border-red-500' : ''}`}
                     />
@@ -1560,7 +1645,9 @@ export default function AdministrationAddUserModal({
                     <Input
                       id="idNumber"
                       value={formData.idNumber}
-                      onChange={e => handleInputChange('idNumber', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('idNumber', e.target.value)
+                      }
                       placeholder="Enter ID number"
                       className={`mt-2 ${accountErrors.idNumber ? 'border-red-500' : ''}`}
                     />
@@ -1602,18 +1689,22 @@ export default function AdministrationAddUserModal({
                   </Label>
                   <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 md:grid-cols-3 md:gap-x-6">
                     {availableRoles.map(role => {
-                      const isRestrictedRole = role.value === 'vault-manager' || role.value === 'cashier';
-                      const isVMRestricted = isRestrictedRole && (
-                        selectedLicenceeIds.length > 1 || 
-                        allLicenceesSelected || 
-                        selectedLocationIds.length > 1 || 
-                        allLocationsSelected
-                      );
+                      const isRestrictedRole =
+                        role.value === 'vault-manager' ||
+                        role.value === 'cashier';
+                      const isVMRestricted =
+                        isRestrictedRole &&
+                        (selectedLicenceeIds.length > 1 ||
+                          allLicenceesSelected ||
+                          selectedLocationIds.length > 1 ||
+                          allLocationsSelected);
 
                       return (
                         <div key={role.value} className="flex flex-col gap-1">
                           <div className="flex items-center gap-2">
-                            <label className={`flex flex-1 cursor-pointer items-center gap-2 text-sm font-medium transition-colors ${isVMRestricted ? 'text-gray-400 cursor-not-allowed' : 'text-gray-900'}`}>
+                            <label
+                              className={`flex flex-1 cursor-pointer items-center gap-2 text-sm font-medium transition-colors ${isVMRestricted ? 'cursor-not-allowed text-gray-400' : 'text-gray-900'}`}
+                            >
                               <Checkbox
                                 id={role.value}
                                 checked={roles.includes(role.value)}
@@ -1643,8 +1734,11 @@ export default function AdministrationAddUserModal({
                             </button>
                           </div>
                           {isVMRestricted && (
-                            <p className="pl-6 text-[10px] font-bold text-red-600 leading-tight">
-                              {role.value === 'vault-manager' ? 'Vault Managers' : 'Cashiers'} are limited to 1 Licencee & Location
+                            <p className="pl-6 text-[10px] font-bold leading-tight text-red-600">
+                              {role.value === 'vault-manager'
+                                ? 'Vault Managers'
+                                : 'Cashiers'}{' '}
+                              are limited to 1 Licencee & Location
                             </p>
                           )}
                         </div>
@@ -1658,39 +1752,73 @@ export default function AdministrationAddUserModal({
                   )}
 
                   {roles.includes('reviewer') && isOwner && (
-                    <div className="mt-4 animate-in slide-in-from-top-2 border-t border-blue-100 pt-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Label className="text-sm font-bold text-blue-900 leading-none">
-                          Reviewer Multiplier (%)
+                    <div className="mt-4 border-t border-green-100 pt-4 animate-in slide-in-from-top-2">
+                      <div className="mb-3 flex items-center gap-2">
+                        <Label className="text-sm font-bold leading-none text-green-900">
+                          Reviewer Multipliers
                         </Label>
-                        <span title="This user will see financial reports scaled down by this percentage.">
-                          <Info className="h-4 w-4 text-blue-400 cursor-help" />
+                        <span title="Independent control over money in and money out/jackpot visibility">
+                          <Info className="h-4 w-4 cursor-help text-green-400" />
                         </span>
                       </div>
-                      <div className="relative max-w-xs">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="1"
-                          value={multiplier}
-                          onChange={(e) => setMultiplier(parseFloat(e.target.value) || 0)}
-                          className="border-blue-200 focus:ring-blue-500 bg-blue-50/30"
-                          placeholder="e.g. 0.10 for 10%"
-                        />
-                        <p className="mt-2 text-xs font-medium text-blue-600 bg-blue-50 p-2 rounded-md border border-blue-100 italic">
-                          ℹ️ Results: This user will see financial data reduced by <span className="text-blue-900 font-bold">{(multiplier * 100).toFixed(0)}%</span>.
-                        </p>
+                      <div className="flex flex-row flex-wrap gap-4">
+                        {/* Money In Multiplier */}
+                        <div className="relative min-w-[200px] max-w-xs flex-1">
+                          <Label className="text-xs font-semibold text-green-700">
+                            Money In (Drop) Reduction
+                          </Label>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            max="100"
+                            value={moneyInMultiplier}
+                            onChange={e => setMoneyInMultiplier(e.target.value)}
+                            className="mt-1 border-green-200 bg-green-50/30 focus:ring-green-500"
+                            placeholder="e.g. 10 for 10%"
+                          />
+                          <p className="mt-1 rounded-md border border-green-100 bg-green-50 p-2 text-xs font-medium italic text-green-600">
+                            ℹ️ Drop/Money In reduced by{' '}
+                            <span className="font-bold text-green-900">
+                              {moneyInMultiplier || 0}%
+                            </span>
+                          </p>
+                        </div>
+                        {/* Money Out & Jackpot Multiplier */}
+                        <div className="relative min-w-[200px] max-w-xs flex-1">
+                          <Label className="text-xs font-semibold text-orange-700">
+                            Money Out & Jackpot Reduction
+                          </Label>
+                          <Input
+                            type="number"
+                            step="1"
+                            min="0"
+                            max="100"
+                            value={moneyOutAndJackpotMultiplier}
+                            onChange={e =>
+                              setMoneyOutAndJackpotMultiplier(e.target.value)
+                            }
+                            className="mt-1 border-orange-200 bg-orange-50/30 focus:ring-orange-500"
+                            placeholder="e.g. 30 for 30%"
+                          />
+                          <p className="mt-1 rounded-md border border-orange-100 bg-orange-50 p-2 text-xs font-medium italic text-orange-600">
+                            ℹ️ Money Out/Jackpot reduced by{' '}
+                            <span className="font-bold text-orange-900">
+                              {moneyOutAndJackpotMultiplier || 0}%
+                            </span>
+                          </p>
+                        </div>
                       </div>
                     </div>
                   )}
-
                 </div>
 
                 <div className="h-px w-full bg-gray-200" />
 
                 {/* Licencees and Locations Container */}
-                <div className={`relative grid w-full grid-cols-1 gap-6 md:grid-cols-2 rounded-xl border-2 border-transparent transition-all duration-300 ${!isAssignmentsEnabled ? 'border-dashed border-amber-200 bg-gray-50/50 opacity-60 grayscale' : 'border-solid border-transparent'}`}>
+                <div
+                  className={`relative grid w-full grid-cols-1 gap-6 rounded-xl border-2 border-transparent transition-all duration-300 md:grid-cols-2 ${!isAssignmentsEnabled ? 'border-dashed border-amber-200 bg-gray-50/50 opacity-60 grayscale' : 'border-solid border-transparent'}`}
+                >
                   {!isAssignmentsEnabled && (
                     <div className="absolute inset-0 z-50 flex flex-col items-center justify-center rounded-xl bg-white/40 p-6 backdrop-blur-[2px]">
                       <div className="group flex flex-col items-center gap-4 rounded-2xl bg-amber-50 px-8 py-6 text-center shadow-xl ring-1 ring-amber-200 transition-transform hover:scale-105">
@@ -1698,9 +1826,13 @@ export default function AdministrationAddUserModal({
                           <AlertCircle className="h-8 w-8 animate-pulse text-amber-600" />
                         </div>
                         <div className="space-y-1">
-                          <h4 className="text-lg font-bold text-amber-900">Action Required</h4>
+                          <h4 className="text-lg font-bold text-amber-900">
+                            Action Required
+                          </h4>
                           <p className="max-w-[280px] text-sm font-medium leading-relaxed text-amber-700">
-                            Please select a <span className="font-bold underline">Role</span> above to unlock licencee and location assignments.
+                            Please select a{' '}
+                            <span className="font-bold underline">Role</span>{' '}
+                            above to unlock licencee and location assignments.
                           </p>
                         </div>
                       </div>
@@ -1721,7 +1853,8 @@ export default function AdministrationAddUserModal({
                           )?.name || 'No licencee assigned'}
                         </div>
                         <p className="mt-2 text-xs italic text-gray-500">
-                          Licencee is automatically set to your assigned licencee
+                          Licencee is automatically set to your assigned
+                          licencee
                         </p>
                       </div>
                     ) : (
@@ -1732,7 +1865,12 @@ export default function AdministrationAddUserModal({
                             onCheckedChange={checked =>
                               handleAllLicenceesChange(checked === true)
                             }
-                            disabled={(isLocationAdmin && currentUserLicenceeIds.length === 1) || hasRestrictedAssignments || !isAssignmentsEnabled}
+                            disabled={
+                              (isLocationAdmin &&
+                                currentUserLicenceeIds.length === 1) ||
+                              hasRestrictedAssignments ||
+                              !isAssignmentsEnabled
+                            }
                             className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
                           />
                           All Licencees
@@ -1746,7 +1884,11 @@ export default function AdministrationAddUserModal({
                           searchPlaceholder="Search licencees..."
                           label="licencees"
                           showSelectAll={!hasRestrictedAssignments}
-                          disabled={(isLocationAdmin && currentUserLicenceeIds.length === 1) || !isAssignmentsEnabled}
+                          disabled={
+                            (isLocationAdmin &&
+                              currentUserLicenceeIds.length === 1) ||
+                            !isAssignmentsEnabled
+                          }
                         />
                       </div>
                     )}
@@ -1758,7 +1900,8 @@ export default function AdministrationAddUserModal({
                       Allowed Locations
                     </Label>
 
-                    {selectedLicenceeIds.length === 0 && !allLicenceesSelected ? (
+                    {selectedLicenceeIds.length === 0 &&
+                    !allLicenceesSelected ? (
                       <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-center text-sm font-medium text-yellow-800">
                         ⚠️ Please select at least one licencee first to assign
                         locations
@@ -1766,12 +1909,14 @@ export default function AdministrationAddUserModal({
                     ) : (
                       <div className="space-y-3">
                         <label className="flex cursor-pointer items-center gap-2 text-base font-medium text-gray-900">
-                           <Checkbox
+                          <Checkbox
                             checked={allLocationsSelected}
                             onCheckedChange={checked =>
                               handleAllLocationsChange(checked === true)
                             }
-                            disabled={hasRestrictedAssignments || !isAssignmentsEnabled}
+                            disabled={
+                              hasRestrictedAssignments || !isAssignmentsEnabled
+                            }
                             className="border-2 border-gray-400 text-blue-600 focus:ring-blue-600"
                           />
                           All Locations
@@ -1781,7 +1926,7 @@ export default function AdministrationAddUserModal({
                           <MultiSelectDropdown
                             options={locationOptions}
                             selectedIds={selectedLocationIds}
-                             onChange={handleLocationChange}
+                            onChange={handleLocationChange}
                             placeholder="Select locations..."
                             searchPlaceholder="Search locations..."
                             label="locations"
@@ -1792,7 +1937,8 @@ export default function AdministrationAddUserModal({
 
                         {allLocationsSelected && (
                           <div className="rounded-md border border-green-200 bg-green-50 p-3 text-center text-sm font-medium text-green-800">
-                            All {availableLocations.length} locations are selected
+                            All {availableLocations.length} locations are
+                            selected
                           </div>
                         )}
                       </div>
@@ -1871,4 +2017,3 @@ export default function AdministrationAddUserModal({
     </>
   );
 }
-

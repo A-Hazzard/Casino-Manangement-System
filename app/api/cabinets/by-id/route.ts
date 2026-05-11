@@ -13,6 +13,11 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * Main GET handler for fetching a machine by ID
@@ -28,6 +33,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/cabinets/by-id';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -40,6 +47,13 @@ export async function GET(request: NextRequest) {
     // STEP 2: Validate machine ID parameter
     // ============================================================================
     if (!id) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cabinets/by-id',
+        'Machine ID is required',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Machine ID is required' },
         { status: 400 }
@@ -65,6 +79,13 @@ export async function GET(request: NextRequest) {
     );
 
     if (!machine) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cabinets/by-id',
+        `Not found: ${id}`,
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Machine not found' },
         { status: 404 }
@@ -74,6 +95,15 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 5: Return machine data
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/cabinets/by-id',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json({
       success: true,
       data: machine,
@@ -82,6 +112,13 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch machine';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/cabinets/by-id',
+      errorMessage,
+      user
+    );
     console.error(
       `[Machines By-ID API] Error after ${duration}ms:`,
       errorMessage
@@ -113,5 +150,3 @@ export function PUT() {
 export function DELETE() {
   return NextResponse.json({ error: 'Method Not Allowed' }, { status: 405 });
 }
-
-

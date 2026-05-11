@@ -5,12 +5,12 @@
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import { format } from 'date-fns';
 import { Eye, RotateCcw, Trash2 } from 'lucide-react';
@@ -70,8 +70,7 @@ export default function FeedbackTable({
                 variant="outline"
                 className={STATUS_COLORS[item.status] || ''}
               >
-                {item.status.charAt(0).toUpperCase() +
-                  item.status.slice(1)}
+                {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
               </Badge>
             </TableCell>
             <TableCell>

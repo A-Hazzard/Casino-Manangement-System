@@ -20,6 +20,7 @@ bun run lint --fix
 ```
 
 **If ESLint complains:**
+
 1. Fix the issue immediately
 2. Don't suppress with `// eslint-disable`
 3. Address root cause, not symptom
@@ -35,6 +36,7 @@ bun run type-check && bun run lint
 ```
 
 **Type checking is strict mode:**
+
 - `noUnusedLocals` - No unused variables
 - `noImplicitReturns` - All code paths return
 - `noFallthroughCases` - Switch cases must break/return
@@ -163,12 +165,14 @@ const cursor = Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
 **EVERY exported function must validate mandatory parameters at the very top:**
 
 ### Rule
+
 1. Check mandatory parameters immediately after function signature
 2. Log errors with function name as prefix: `[FunctionName] paramName is required`
 3. Return early with failure result or `undefined`
 4. Do NOT use inline `if` checks scattered throughout function body
 
 ### Required Guards
+
 - **Mandatory IDs** (`_id`, `machineId`, `locationReportId`): Must exist and be non-empty strings
 - **Mandatory numbers** (`metersIn`, `amount`): Must be valid finite numbers (use `Number.isFinite()`)
 - **Mandatory objects** (`body`, `payload`): Must be truthy and of correct type
@@ -209,6 +213,7 @@ export async function getLocationTrends(
 ```
 
 ### Optional Parameters
+
 - Optional parameters (`?` or `| undefined`) should still be checked if used later
 - Log missing optional params at info level, not error
 
@@ -221,12 +226,12 @@ if (optionalParam) {
 
 **Guard return type rules — match the function's return signature:**
 
-| Return type | Guard return |
-|---|---|
-| `T[]` / `Promise<T[]>` | `return []` |
-| `T \| null` / `Promise<T \| null>` | `return null` |
-| `Record<K, V>` / object | `return {}` |
-| `void` / throws expected | `throw new Error(msg)` |
+| Return type                                     | Guard return            |
+| ----------------------------------------------- | ----------------------- |
+| `T[]` / `Promise<T[]>`                          | `return []`             |
+| `T \| null` / `Promise<T \| null>`              | `return null`           |
+| `Record<K, V>` / object                         | `return {}`             |
+| `void` / throws expected                        | `throw new Error(msg)`  |
 | Typed shape `Promise<{ a: number; b: number }>` | `return { a: 0, b: 0 }` |
 
 ```typescript
@@ -248,12 +253,14 @@ if (allowedLocationIds === undefined || allowedLocationIds === null) {
 Use `console.error` with clean, readable messages. Avoid complex if statements in catch blocks.
 
 ### Rule
+
 1. Never type annotate catch parameter (no `catch (e: any)` or `catch (e: unknown)`)
 2. Always use `console.error` for errors
 3. Prefix with function name: `[FunctionName]`
 4. Log the message only, not the entire error object
 
 ### Correct Pattern
+
 ```typescript
 // ❌ WRONG — type annotation, logging entire error
 } catch (e: unknown) {
@@ -272,6 +279,7 @@ Use `console.error` with clean, readable messages. Avoid complex if statements i
 ```
 
 ### Backend (Node.js/Next.js API)
+
 ```typescript
 } catch (e) {
   console.error('[createCollection] Error:', e instanceof Error ? e.message : 'Unknown error');
@@ -279,6 +287,7 @@ Use `console.error` with clean, readable messages. Avoid complex if statements i
 ```
 
 ### Frontend (React)
+
 ```typescript
 } catch (e) {
   console.error('[useCollection] Error:', e instanceof Error ? e.message : 'Unknown error');
@@ -286,6 +295,7 @@ Use `console.error` with clean, readable messages. Avoid complex if statements i
 ```
 
 ### MongoDB-Specific Queries (Mongoose)
+
 ```typescript
 // For .catch() on promises
 }).catch((e) => {
@@ -294,12 +304,19 @@ Use `console.error` with clean, readable messages. Avoid complex if statements i
 ```
 
 ### Never Do This
+
 ```typescript
 // ❌ Logging entire MongoDB error object (verbose, unreadable)
 console.error(e);
 
 // ❌ Complex type checking in catch
-console.error(e instanceof Error && e.message ? e.message : typeof e === 'string' ? e : e?.errmsg);
+console.error(
+  e instanceof Error && e.message
+    ? e.message
+    : typeof e === 'string'
+      ? e
+      : e?.errmsg
+);
 ```
 
 ## Critical Operation Result Checking (Rule 15)
@@ -307,12 +324,14 @@ console.error(e instanceof Error && e.message ? e.message : typeof e === 'string
 When performing critical database operations within `try` blocks, **always check the result** and return early on failure.
 
 ### Rule
+
 1. **Check results** of `findOneAndDelete`, `findOneAndUpdate`, `deleteOne`, etc.
 2. **Log with function name prefix**: `[FunctionName] Failed to [operation] [resource] [id]`
 3. **Return early with failure** if a critical operation fails
 4. **Non-critical operations** (e.g., optional cleanup) can continue without returning
 
 ### Correct Pattern
+
 ```typescript
 // ✅ CORRECT — check critical delete, return on failure
 try {
@@ -321,24 +340,29 @@ try {
     console.error(`[deleteMeter] Failed to delete meter ${meterId}`);
     return { success: false };
   }
-  
+
   // Continue only if critical operation succeeded
   await SomeOtherOperation();
 } catch (e) {
-  console.error('[deleteMeter] Error:', e instanceof Error ? e.message : 'Unknown error');
+  console.error(
+    '[deleteMeter] Error:',
+    e instanceof Error ? e.message : 'Unknown error'
+  );
   return { success: false };
 }
 ```
 
 ### When to Return vs Continue
-| Operation | Critical? | Action on Failure |
-|------------|----------|-------------------|
-| Delete meter for ram clear | ✅ Yes | Return early |
-| Delete main meter | ✅ Yes | Return early |
-| Update optional field | ❌ No | Log warning, continue |
-| Delete optional history | ❌ No | Log warning, continue |
+
+| Operation                  | Critical? | Action on Failure     |
+| -------------------------- | --------- | --------------------- |
+| Delete meter for ram clear | ✅ Yes    | Return early          |
+| Delete main meter          | ✅ Yes    | Return early          |
+| Update optional field      | ❌ No     | Log warning, continue |
+| Delete optional history    | ❌ No     | Log warning, continue |
 
 ### Never Do This
+
 ```typescript
 // ❌ No result checking — function continues even if critical delete failed
 try {
@@ -416,6 +440,7 @@ items.forEach((entry) => process(entry));
 ```
 
 **Common replacements:**
+
 - `i` → `index` (loop counter)
 - `s` → `sum`, `total`, `result` (accumulator)
 - `c` → `collection`, `count`, `current`
@@ -508,7 +533,14 @@ const result = calculateMetrics(
 );
 
 // ❌ Too long (hard to read)
-const result = calculateMetrics(startDate, endDate, gameDayOffset, selectedLocations, additionalParam1, additionalParam2);
+const result = calculateMetrics(
+  startDate,
+  endDate,
+  gameDayOffset,
+  selectedLocations,
+  additionalParam1,
+  additionalParam2
+);
 ```
 
 ## Unused Code Cleanup
@@ -636,8 +668,5 @@ for (const item of items) {
 }
 
 // ✅ Define outside loop or use useCallback
-const handler = useCallback(
-  () => processItem(selectedItem),
-  [selectedItem]
-);
+const handler = useCallback(() => processItem(selectedItem), [selectedItem]);
 ```

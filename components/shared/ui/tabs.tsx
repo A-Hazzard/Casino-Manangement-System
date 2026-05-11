@@ -10,7 +10,6 @@
  */
 'use client';
 
-
 import { forwardRef } from 'react';
 import { ComponentPropsWithoutRef, ElementRef } from 'react';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
@@ -69,4 +68,3 @@ const TabsContent = forwardRef<
 TabsContent.displayName = TabsPrimitive.Content.displayName;
 
 export { Tabs, TabsList, TabsTrigger, TabsContent };
-

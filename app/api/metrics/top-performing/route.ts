@@ -21,6 +21,11 @@ import { resolveLicenceeId } from '@/lib/utils/licencee';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
 import type { TopPerformingTab } from '@/shared/types/reports';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * Main GET handler for fetching top performing metrics
@@ -41,6 +46,8 @@ import type { TopPerformingTab } from '@/shared/types/reports';
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/metrics/top-performing';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -78,6 +85,13 @@ export async function GET(req: NextRequest) {
 
       // Validate dates
       if (isNaN(customStartDate.getTime()) || isNaN(customEndDate.getTime())) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/metrics/top-performing',
+          'Invalid date parameters',
+          user
+        );
         return NextResponse.json(
           { error: 'Invalid date parameters' },
           { status: 400 }
@@ -90,6 +104,13 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const db = await connectDB();
     if (!db) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/metrics/top-performing',
+        'Database connection failed',
+        user
+      );
       return NextResponse.json(
         { error: 'Database connection failed' },
         { status: 500 }
@@ -138,6 +159,14 @@ export async function GET(req: NextRequest) {
     // STEP 5: Return top performing data
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/metrics/top-performing',
+      (convertedData as unknown[]).length,
+      user,
+      duration
+    );
     if (duration > 1000) {
       console.warn(`[Top Performing API] Completed in ${duration}ms`);
     }
@@ -151,6 +180,13 @@ export async function GET(req: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal Server Error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/metrics/top-performing',
+      errorMessage,
+      user
+    );
     console.error(
       `[Top Performing Metrics GET API] Error after ${duration}ms:`,
       errorMessage

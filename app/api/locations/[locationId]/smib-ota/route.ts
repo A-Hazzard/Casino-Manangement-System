@@ -17,6 +17,11 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { mqttService } from '@/app/api/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import axios from 'axios';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -35,10 +40,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param relayIds   {string[]} Required. SMIB relay IDs to push the firmware to.
  * @param firmwareId {string}   Required. MongoDB ID of the Firmware document to deploy.
  */
-export async function POST(
-  request: NextRequest
-) {
+export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/locations/[locationId]/smib-ota';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const locationId = pathname.split('/').at(-2);
 
@@ -50,6 +55,13 @@ export async function POST(
     // ============================================================================
 
     if (!relayIds || relayIds.length === 0) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/locations/[locationId]/smib-ota',
+        'relayIds array is required',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'relayIds array is required' },
         { status: 400 }
@@ -57,6 +69,13 @@ export async function POST(
     }
 
     if (!firmwareId) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/locations/[locationId]/smib-ota',
+        'firmwareId is required',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'firmwareId is required' },
         { status: 400 }
@@ -76,6 +95,13 @@ export async function POST(
     );
 
     if (!serveResponse.data.success) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/locations/[locationId]/smib-ota',
+        'Failed to prepare firmware file',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Failed to prepare firmware file' },
         { status: 500 }
@@ -120,7 +146,11 @@ export async function POST(
 
     // Process in batches of 10 for parallel execution
     const BATCH_SIZE = 10;
-    for (let relayIndex = 0; relayIndex < uniqueRelayIds.length; relayIndex += BATCH_SIZE) {
+    for (
+      let relayIndex = 0;
+      relayIndex < uniqueRelayIds.length;
+      relayIndex += BATCH_SIZE
+    ) {
       const batch = uniqueRelayIds.slice(relayIndex, relayIndex + BATCH_SIZE);
 
       await Promise.allSettled(
@@ -143,7 +173,9 @@ export async function POST(
               { $set: { 'smibConfig.ota.firmwareUpdatedAt': new Date() } }
             );
             if (machineOtaUpdate.modifiedCount === 0) {
-              console.warn(`[smib-ota] No machine found with relayId: ${relayId}`);
+              console.warn(
+                `[smib-ota] No machine found with relayId: ${relayId}`
+              );
             }
           } catch (error) {
             results.failed++;
@@ -214,6 +246,15 @@ export async function POST(
     if (duration > 1000) {
       console.warn(`[Location SMIB OTA API] Completed in ${duration}ms`);
     }
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/locations/[locationId]/smib-ota',
+      results.total,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: results.failed === 0,
       message: `OTA update commands sent to ${results.successful} SMIBs${results.failed > 0 ? ` (${results.failed} failed)` : ''}`,
@@ -223,6 +264,13 @@ export async function POST(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/locations/[locationId]/smib-ota',
+      errorMessage,
+      user
+    );
     console.error(
       `[Location SMIB OTA API] Error after ${duration}ms:`,
       errorMessage

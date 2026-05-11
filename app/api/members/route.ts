@@ -7,6 +7,12 @@ import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Member } from '@/app/api/lib/models/members';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import {
+  logRouteFetch,
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type { PipelineStage } from 'mongoose';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
@@ -27,6 +33,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param {string} licencee - Licencee for currency conversion rules
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/members';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async () => {
     try {
       const { searchParams } = new URL(request.url);
@@ -237,6 +247,16 @@ export async function GET(request: NextRequest) {
         displayCurrency as CurrencyCode
       );
 
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/members',
+        convertedMembers.length,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         data: {
@@ -253,7 +273,9 @@ export async function GET(request: NextRequest) {
         converted: shouldApplyCurrencyConversion(licencee),
       });
     } catch (error) {
-      console.error(`[Members API GET] Error:`, error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Internal server error';
+      logRouteError(functionName, 'GET', '/api/members', errorMessage, user);
       return NextResponse.json(
         { error: 'Internal server error' },
         { status: 500 }
@@ -270,6 +292,10 @@ export async function GET(request: NextRequest) {
  * @body {string} gamingLocation - Optional. ID of the member's primary gaming location
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/members';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: currentUser }) => {
     try {
       const body = await request.json();
@@ -278,6 +304,13 @@ export async function POST(request: NextRequest) {
       const trimmedUsername = body.username?.trim();
 
       if (!trimmedFirstName || !trimmedLastName || !trimmedUsername) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/members',
+          'Missing required fields',
+          user
+        );
         return NextResponse.json(
           { error: 'First name, last name, and username are required' },
           { status: 400 }
@@ -288,6 +321,13 @@ export async function POST(request: NextRequest) {
         username: trimmedUsername,
       });
       if (existingMember) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/members',
+          'Username already exists',
+          user
+        );
         return NextResponse.json(
           { error: 'Username already exists' },
           { status: 400 }
@@ -311,6 +351,9 @@ export async function POST(request: NextRequest) {
 
       await newMember.save();
 
+      const duration = Date.now() - startTime;
+      logRouteCreate(functionName, 'POST', '/api/members', 1, user, duration);
+
       if (currentUser?._id) {
         await logActivity({
           action: 'CREATE',
@@ -328,7 +371,9 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(newMember, { status: 201 });
     } catch (error) {
-      console.error(`[Members API POST] Error:`, error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Internal server error';
+      logRouteError(functionName, 'POST', '/api/members', errorMessage, user);
       return NextResponse.json(
         { error: 'Internal server error' },
         { status: 500 }

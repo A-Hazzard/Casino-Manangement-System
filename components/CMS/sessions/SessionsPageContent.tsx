@@ -53,7 +53,7 @@ export default function SessionsPageContent() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-if (refreshSessions) {
+    if (refreshSessions) {
       await refreshSessions();
     }
     setRefreshing(false);
@@ -109,7 +109,11 @@ if (refreshSessions) {
         </div>
 
         <div className="mt-4">
-          <DateFilters hideAllTime={false} onCustomRangeGo={refreshSessions} customRangeGoLabel="Get Sessions" />
+          <DateFilters
+            hideAllTime={false}
+            onCustomRangeGo={refreshSessions}
+            customRangeGoLabel="Get Sessions"
+          />
         </div>
 
         {/* Filters row */}
@@ -139,7 +143,7 @@ if (refreshSessions) {
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="text-sm font-medium text-white hover:underline whitespace-nowrap"
+                className="whitespace-nowrap text-sm font-medium text-white hover:underline"
               >
                 Clear Filters
               </button>

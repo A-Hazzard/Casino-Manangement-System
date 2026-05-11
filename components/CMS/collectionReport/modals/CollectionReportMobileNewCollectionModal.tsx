@@ -27,26 +27,39 @@ import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSe
 import { ConfirmationDialog } from '@/components/shared/ui/ConfirmationDialog';
 import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
 import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogTitle
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { formatDateWithOrdinal } from '@/lib/utils/date/formatting';
 import { useMobileCollectionModal } from '@/lib/hooks/collectionReport/useMobileCollectionModal';
+import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
+import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import type { CollectionReportLocationWithMachines } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
-import { Calculator, ClipboardList, Info, SendHorizontal, X } from 'lucide-react';
+import {
+  Calculator,
+  ClipboardList,
+  Info,
+  SendHorizontal,
+  X,
+} from 'lucide-react';
 import { VariationCheckPopover } from '@/components/CMS/collectionReport/variations/VariationCheckPopover';
 import { VariationsConfirmationDialog } from '@/components/CMS/collectionReport/variations/VariationsConfirmationDialog';
-import { useCollectionReportVariationCheck, type CheckVariationsMachine } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
-import { useState } from 'react';
+import {
+  useCollectionReportVariationCheck,
+  type CheckVariationsMachine,
+} from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
+import { checkLocationNoSMIB } from '@/lib/helpers/collectionReport/fetching';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/shared/ui/button';
+import { toast } from 'sonner';
 
 type CollectionReportMobileNewCollectionModalProps = {
   show: boolean;
@@ -113,6 +126,10 @@ export default function CollectionReportMobileNewCollectionModal({
     onClose,
   });
 
+  // Online/offline status for available machines
+  const mobileMachineIds = availableMachines.map(m => String(m._id));
+  const machineStatusMap = useMachineOnlineStatus(mobileMachineIds);
+
   // Variation checking state
   const {
     isChecking,
@@ -125,825 +142,1038 @@ export default function CollectionReportMobileNewCollectionModal({
     reset: resetVariationCheck,
   } = useCollectionReportVariationCheck();
 
-  const [showVariationCheckPopover, setShowVariationCheckPopover] = useState(false);
-  const [showVariationsConfirmation, setShowVariationsConfirmation] = useState(false);
+  const [showVariationCheckPopover, setShowVariationCheckPopover] =
+    useState(false);
+  const [showVariationsConfirmation, setShowVariationsConfirmation] =
+    useState(false);
 
-  const handleStartSubmit = () => {
+  // Reset variation check when modal opens/closes
+  useEffect(() => {
+    if (!show) {
+      resetVariationCheck();
+    }
+  }, [show, resetVariationCheck]);
+
+  // Defensive: clear any stale shared collection-modal store state when the create
+  // modal opens (e.g. machines/financials left over from a prior edit modal session).
+  const resetCollectionModalStore = useCollectionModalStore(
+    state => state.resetState
+  );
+  useEffect(() => {
+    if (show) {
+      resetCollectionModalStore();
+    }
+  }, [show, resetCollectionModalStore]);
+
+  const handleStartSubmit = async () => {
     if (collectedMachines.length === 0 || modalState.isProcessing) return;
+
+    const locationIdToUse = lockedLocationId || selectedLocation || '';
+
+    // Query gaminglocations directly to check noSMIBLocation flag.
+    // If true, skip the /api/collection-reports/check-variations request entirely.
+    const isNoSmib = await checkLocationNoSMIB(locationIdToUse);
+    if (isNoSmib) {
+      setShowCreateReportConfirmation(true);
+      return;
+    }
 
     // Trigger variation check
     setShowVariationCheckPopover(true);
 
-    const machinesForCheck: CheckVariationsMachine[] = collectedMachines.map(entry => ({
-      machineId: entry.machineId,
-      machineName: entry.machineCustomName || entry.machineName || entry.serialNumber || entry.machineId,
-      metersIn: entry.metersIn || 0,
-      metersOut: entry.metersOut || 0,
-      sasStartTime: entry.sasMeters?.sasStartTime || undefined,
-      sasEndTime: entry.sasMeters?.sasEndTime || undefined,
-      prevMetersIn: entry.prevIn || 0,
-      prevMetersOut: entry.prevOut || 0,
-      movementGross: (entry as { movement?: { gross?: number } }).movement?.gross,
-    }));
+    const machinesForCheck: CheckVariationsMachine[] = collectedMachines.map(
+      entry => ({
+        machineId: entry.machineId,
+        machineName:
+          entry.machineCustomName ||
+          entry.machineName ||
+          entry.serialNumber ||
+          entry.machineId,
+        metersIn: entry.metersIn || 0,
+        metersOut: entry.metersOut || 0,
+        sasStartTime: entry.sasMeters?.sasStartTime || undefined,
+        sasEndTime: entry.sasMeters?.sasEndTime || undefined,
+        prevMetersIn: entry.prevIn || 0,
+        prevMetersOut: entry.prevOut || 0,
+        movementGross: (entry as { movement?: { gross?: number } }).movement
+          ?.gross,
+      })
+    );
 
-    const locationIdToUse = lockedLocationId || selectedLocation || '';
     checkVariations(locationIdToUse, machinesForCheck);
   };
 
   return (
     <>
-    <Dialog 
-      open={show} 
-      onOpenChange={(isOpen) => {
-        // Prevent closing if confirmation dialogs are open
-        if (!isOpen && (showCreateReportConfirmation || showDeleteConfirmation || modalState.showViewMachineConfirmation || showUnsavedChangesWarning)) {
-          return;
-        }
+      <Dialog
+        open={show}
+        onOpenChange={isOpen => {
+          // Prevent closing if confirmation dialogs are open
+          if (
+            !isOpen &&
+            (showCreateReportConfirmation ||
+              showDeleteConfirmation ||
+              modalState.showViewMachineConfirmation ||
+              showUnsavedChangesWarning)
+          ) {
+            return;
+          }
 
-        // Check for unsaved changes before closing
-        if (!isOpen && (collectedMachines.length > 0 || selectedMachineData || storeFormData.metersIn || storeFormData.metersOut || storeFormData.notes)) {
-           setShowUnsavedChangesWarning(true);
-           return;
-        }
+          // Check for unsaved changes before closing
+          if (
+            !isOpen &&
+            (collectedMachines.length > 0 ||
+              selectedMachineData ||
+              storeFormData.metersIn ||
+              storeFormData.metersOut ||
+              storeFormData.notes)
+          ) {
+            setShowUnsavedChangesWarning(true);
+            return;
+          }
 
-        if (!isOpen) {
-          onClose();
-        }
-      }}
-    >
-      <DialogContent 
-        className="m-0 flex h-[100dvh] w-full max-w-full flex-col overflow-hidden border-none bg-gray-50 p-0 shadow-2xl md:inset-auto md:left-[50%] md:top-[50%] md:h-[90vh] md:w-[95vw] md:max-w-6xl md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-2xl"
-        onInteractOutside={(e) => e.preventDefault()}
-        showCloseButton={false}
-        isMobileFullScreen={true}
+          if (!isOpen) {
+            onClose();
+          }
+        }}
       >
-        <DialogTitle className="sr-only">New Collection Report</DialogTitle>
-        
-        {/* Modern Sticky Header - Only show on home screen */}
-        {modalState.navigationStack.length === 0 && (
-          <div className="sticky top-0 z-[100] border-b bg-white px-5 py-4 shadow-sm md:rounded-t-2xl">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold tracking-tight text-gray-900">New Collection Report</h2>
-              <DialogClose asChild>
-                <button
-                  onClick={onClose}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                  aria-label="Close"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </DialogClose>
-            </div>
-          </div>
-        )}
+        <DialogContent
+          className="m-0 flex h-[100dvh] w-full max-w-full flex-col overflow-hidden border-none bg-gray-50 p-0 shadow-2xl md:inset-auto md:left-[50%] md:top-[50%] md:h-[90vh] md:w-[95vw] md:max-w-6xl md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-2xl"
+          onInteractOutside={e => e.preventDefault()}
+          showCloseButton={false}
+          isMobileFullScreen={true}
+        >
+          <DialogTitle className="sr-only">New Collection Report</DialogTitle>
 
-        {modalState.navigationStack.length === 0 && !modalState.isFormVisible && !modalState.isCollectedListVisible ? (
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-white mobile-collection-scrollbar">
-
-            {/* Summary Info - Show when location is selected and we have machines */}
-            {(lockedLocationId || selectedLocation) && collectedMachines.length > 0 && (
-              <div className="border-b bg-blue-50/50 px-6 py-4">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {selectedLocationName || 'Location'}
-                    </p>
-                  </div>
-                  <div className="rounded-full bg-green-100 px-3 py-1 text-right">
-                    <p className="text-xs font-bold text-green-700">
-                      {collectedMachines.length} Machine{collectedMachines.length !== 1 ? 's' : ''} Recorded
-                    </p>
-                  </div>
-                </div>
-
-                {/* Live Reconciliation Summary */}
-                <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
-                  <h5 className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-blue-600">
-                    <Info className="h-3 w-3" />
-                    Live Reconciliation Summary
-                  </h5>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-0.5 border-r border-gray-100">
-                      <p className="text-[9px] font-bold text-gray-400 uppercase">Target</p>
-                      <p className="text-sm font-black text-gray-900">${financials.amountToCollect || '0.00'}</p>
-                    </div>
-                    <div className="space-y-0.5 pl-2">
-                       <p className="text-[9px] font-bold text-gray-400 uppercase">Actual</p>
-                       <p className="text-sm font-black text-blue-600">${financials.collectedAmount || '0.00'}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 border-t border-gray-50 pt-3">
-                    <div className="flex items-center justify-between">
-                       <p className="text-[9px] font-bold text-gray-400 uppercase">Next Opening Balance</p>
-                       <p className={`text-xs font-black ${Number(financials.previousBalance) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                         ${financials.previousBalance || '0.00'}
-                       </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Location Selector - ALWAYS VISIBLE */}
-            <div className="p-6 bg-gray-50/20">
-              {modalState.isLoadingCollections ? (
-                <div className="space-y-6 flex flex-col items-center justify-center py-10">
-                  <div className="text-center">
-                    <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-                    <p className="font-semibold text-gray-900">
-                      Checking status...
-                    </p>
-                    <p className="mt-2 text-sm text-gray-500 max-w-[200px] mx-auto">
-                      Checking for any in-progress collection reports
-                    </p>
-                  </div>
-                  <Skeleton className="h-12 w-full max-w-sm rounded-xl" />
-                </div>
-              ) : (
-                <>
-                  <label className="mb-2 block text-sm font-bold text-gray-700">
-                    Select Location
-                  </label>
-                  <div
-                    className={
-                      modalState.isProcessing ||
-                      lockedLocationId !== undefined ||
-                      collectedMachines.length > 0 ||
-                      modalState.isLoadingCollections
-                        ? 'pointer-events-none opacity-50'
-                        : ''
-                    }
-                  >
-                    {isLoadingLocations ? (
-                      <Skeleton className="h-10 w-full rounded-md" />
-                    ) : (
-                      <LocationSingleSelect
-                        locations={locations.map(loc => ({
-                          id: String(loc._id),
-                          name: loc.name,
-                          sasEnabled: false,
-                        }))}
-                        selectedLocation={
-                          lockedLocationId || selectedLocation || ''
-                        }
-                        onSelectionChange={handleLocationChange}
-                        placeholder="Choose a location..."
-                        includeAllOption={false}
-                      />
-                    )}
-                  </div>
-                </>
-              )}
-
-              {/* Action Buttons - Only show when location is selected */}
-              {(lockedLocationId || selectedLocation) && (
-                <div className="mt-6 space-y-3">
-                  {/* View Form Button - Always show once location is selected */}
-                  {(lockedLocationId || selectedLocation) && (
-                    <button
-                      onClick={() => {
-                        pushNavigation('list');
-                        setModalState(prev => ({
-                          ...prev,
-                          isCollectedListVisible: true,
-                          isViewingFinancialForm: true, // Show financial form
-                        }));
-                      }}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-3 font-medium text-white transition-all hover:bg-blue-700 active:scale-95 shadow-md"
-                    >
-                      <Calculator className="h-5 w-5" />
-                      View Amount to Collect/Taxes
-                    </button>
-                  )}
-
-                  {/* View Collected Machines Button - only show when >=1 machine */}
-                  {collectedMachines.length >= 1 && (
-                    <button
-                      onClick={() => {
-                        pushNavigation('list');
-                        setModalState(prev => ({
-                          ...prev,
-                          isCollectedListVisible: true,
-                          isViewingFinancialForm: false,
-                        }));
-                      }}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 py-3 font-medium text-white shadow-md transition-all hover:bg-green-700 active:scale-95"
-                    >
-                      <ClipboardList className="h-5 w-5" />
-                      View Recorded Machines ({collectedMachines.length})
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Machines List - Show when location is selected */}
-              {(lockedLocationId || selectedLocation) && (
-                <div className="mt-8">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-gray-900">
-                      {selectedLocationName ? `Machines at ${selectedLocationName}` : 'Available Machines'}
-                    </h3>
-                  </div>
-
-                  {/* Search bar for machines */}
-                  {availableMachines.length > 3 && (
-                    <div className="mb-4">
-                      <input
-                        type="text"
-                        placeholder="Search machines by name or serial number..."
-                        value={modalState.searchTerm}
-                        onChange={e =>
-                          setModalState(prev => ({
-                            ...prev,
-                            searchTerm: e.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  )}
-
-                  {/* Machine Cards Container - 2x2 Grid */}
-                  <div
-                    className="grid grid-cols-1 gap-3 pb-8 sm:grid-cols-2 items-start"
-                  >
-                    {modalState.isLoadingMachines ? (
-                      [1, 2, 3, 4, 5, 6].map(i => (
-                        <div
-                          key={i}
-                          className="animate-pulse rounded-lg border bg-gray-50 p-4"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="mb-2 h-4 w-3/4 rounded bg-gray-300"></div>
-                              <div className="h-3 w-1/2 rounded bg-gray-300"></div>
-                            </div>
-                            <div className="h-8 w-16 rounded bg-gray-300"></div>
-                          </div>
-                        </div>
-                      ))
-                    ) : availableMachines.length === 0 ? (
-                      <div className="py-8 text-center text-gray-500">
-                        <p>No machines found for this location.</p>
-                      </div>
-                    ) : (
-                      (() => {
-                        // Filter machines
-                        const filteredMachines = availableMachines.filter(
-                          machine => {
-                            if (!modalState.searchTerm.trim()) return true;
-                            const searchTerm =
-                              modalState.searchTerm.toLowerCase();
-                            const machineName = (
-                              machine.name || ''
-                            ).toLowerCase();
-                            const serialNumber = (
-                              machine.serialNumber || ''
-                            ).toLowerCase();
-                            return (
-                              machineName.includes(searchTerm) ||
-                              serialNumber.includes(searchTerm)
-                            );
-                          }
-                        );
-
-                        // Sort machines
-                        const sortedMachines =
-                          sortMachinesAlphabetically(filteredMachines);
-
-                        return sortedMachines.map(machine => {
-                          const isCollected = collectedMachines.some(
-                            cm => cm.machineId === String(machine._id)
-                          );
-                          const isSelected =
-                            selectedMachine === String(machine._id);
-
-                          return (
-                            <div
-                              key={String(machine._id)}
-                              className={`rounded-2xl border p-4 transition-all duration-200 ${
-                                isSelected
-                                  ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-500/10 shadow-md'
-                                  : isCollected
-                                    ? 'border-green-200 bg-green-50/50 opacity-90'
-                                    : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-lg'
-                              }`}
-                            >
-                              {/* Machine Name */}
-                              <p className="break-words text-sm font-bold text-gray-900 line-clamp-2 min-h-[40px]">
-                                {formatMachineDisplayNameWithBold(machine)}
-                              </p>
-
-                              {/* Previous Meters Display */}
-                              <div className="mt-1 space-y-1 text-xs text-gray-600">
-                                <p className="flex flex-col sm:flex-row sm:gap-2">
-                                  <span>
-                                    Prev In:{' '}
-                                    {machine.collectionMeters?.metersIn || 0}
-                                  </span>
-                                  <span className="hidden sm:inline">|</span>
-                                  <span>
-                                    Prev Out:{' '}
-                                    {machine.collectionMeters?.metersOut || 0}
-                                  </span>
-                                </p>
-                              </div>
-
-                              {/* Status Indicators */}
-                              {isCollected && (
-                                <div className="mt-1 flex items-center">
-                                  <div className="mr-2 h-2 w-2 rounded-full bg-green-500"></div>
-                                  <p className="text-xs font-semibold text-green-600">
-                                    Added to Collection
-                                  </p>
-                                </div>
-                              )}
-
-                              {isSelected && (
-                                <div className="mt-1 flex items-center">
-                                  <div className="mr-2 h-2 w-2 rounded-full bg-blue-500"></div>
-                                  <p className="text-xs font-semibold text-blue-600">
-                                    Selected
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Action Button */}
-                              <div className="mt-3 flex justify-end">
-                                <button
-                                  onClick={() => {
-                                    if (isSelected) {
-                                      // Unselect the machine
-                                      setStoreSelectedMachine(undefined);
-                                      setStoreSelectedMachineData(null);
-                                    } else {
-                                      // Select the machine
-                                      setStoreSelectedMachine(String(machine._id));
-                                      setStoreSelectedMachineData(machine);
-                                      // Auto-populate sasStartTime from the last completed collection
-                                      axios
-                                        .get(`/api/collection-reports/collections/last-collection-time?machineId=${String(machine._id)}`)
-                                        .then(res => {
-                                          const lastTime = res.data?.data?.collectionTime;
-                                          if (lastTime) {
-                                            setStoreFormData({ sasStartTime: new Date(lastTime) });
-                                          } else {
-                                            const loc = locations.find(l => String(l._id) === (lockedLocationId || selectedLocation));
-                                            const gameDayOffset = loc?.gameDayOffset ?? 8;
-                                            const now = new Date();
-                                            const currentGamingDayStart = new Date(now);
-                                            if (now.getHours() < gameDayOffset) {
-                                              currentGamingDayStart.setDate(currentGamingDayStart.getDate() - 1);
-                                            }
-                                            currentGamingDayStart.setHours(gameDayOffset, 0, 0, 0);
-                                            setStoreFormData({ sasStartTime: new Date(currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000) });
-                                          }
-                                        })
-                                        .catch(() => {
-                                          if (machine.collectionTime) {
-                                            setStoreFormData({ sasStartTime: new Date(machine.collectionTime) });
-                                          } else {
-                                            const loc = locations.find(l => String(l._id) === (lockedLocationId || selectedLocation));
-                                            const gameDayOffset = loc?.gameDayOffset ?? 8;
-                                            const now = new Date();
-                                            const currentGamingDayStart = new Date(now);
-                                            if (now.getHours() < gameDayOffset) {
-                                              currentGamingDayStart.setDate(currentGamingDayStart.getDate() - 1);
-                                            }
-                                            currentGamingDayStart.setHours(gameDayOffset, 0, 0, 0);
-                                            setStoreFormData({ sasStartTime: new Date(currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000) });
-                                          }
-                                        });
-                                      setStoreFormData({
-                                        metersIn: '',
-                                        metersOut: '',
-                                        notes: '',
-                                        ramClear: false,
-                                        ramClearMetersIn: '',
-                                        ramClearMetersOut: '',
-                                        showAdvancedSas: false,
-                                        sasStartTime: null,
-                                        sasEndTime: null,
-                                        collectionTime: new Date(),
-                                        prevIn: (() => {
-                                          const sasDrop = machine.sasMeters?.drop ?? null;
-                                          const collectionIn = machine.collectionMeters?.metersIn;
-                                          return (collectionIn !== null && collectionIn !== undefined && collectionIn > 0) ? collectionIn.toString() : ((sasDrop !== null && sasDrop > 0) ? sasDrop.toString() : '');
-                                        })(),
-                                        prevOut: (() => {
-                                          const sasCancelled = machine.sasMeters?.totalCancelledCredits ?? null;
-                                          const collectionOut = machine.collectionMeters?.metersOut;
-                                          return (collectionOut !== null && collectionOut !== undefined && collectionOut > 0) ? collectionOut.toString() : ((sasCancelled !== null && sasCancelled > 0) ? sasCancelled.toString() : '');
-                                        })(),
-                                      });
-                                      pushNavigation('form');
-                                      setModalState(prev => ({
-                                        ...prev,
-                                        isFormVisible: true,
-                                      }));
-                                    }
-                                  }}
-                                  disabled={isCollected}
-                                  className={`rounded-full px-5 py-2.5 text-sm font-bold shadow-sm transition-all active:scale-95 ${
-                                    isCollected
-                                      ? 'cursor-not-allowed bg-green-100 text-green-700'
-                                      : isSelected
-                                        ? 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100'
-                                        : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
-                                  }`}
-                                >
-                                  {isCollected
-                                    ? '✓ Collected'
-                                    : isSelected
-                                      ? 'Unselect'
-                                      : 'Select'}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        });
-                      })()
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Home Screen Submit Button - Allow submission from machine list */}
-              {collectedMachines.length > 0 && (
-                <div className="sticky bottom-0 mt-4 border-t bg-white/90 p-3 backdrop-blur-sm">
+          {/* Modern Sticky Header - Only show on home screen */}
+          {modalState.navigationStack.length === 0 && (
+            <div className="sticky top-0 z-[100] border-b bg-white px-5 py-4 shadow-sm md:rounded-t-2xl">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold tracking-tight text-gray-900">
+                  New Collection Report
+                </h2>
+                <DialogClose asChild>
                   <button
-                    onClick={handleStartSubmit}
-                    disabled={!isCreateReportsEnabled || modalState.isProcessing}
-                    className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold shadow-md transition-all active:scale-95 ${
-                      isCreateReportsEnabled && !modalState.isProcessing
-                        ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:shadow-green-200'
-                        : 'cursor-not-allowed bg-gray-400 text-gray-200'
-                    }`}
-                  >
-                    <SendHorizontal className="h-3.5 w-3.5" />
-                    SUBMIT FINAL REPORT ({collectedMachines.length} machines)
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : modalState.navigationStack[
-            modalState.navigationStack.length - 1
-          ] === 'machine-list' ? (
-          <CollectionReportMobileMachineList
-            machines={availableMachines}
-            collectedMachines={collectedMachines}
-            searchTerm={modalState.searchTerm}
-            selectedMachine={selectedMachine ?? null}
-            isLoadingMachines={modalState.isLoadingMachines}
-            onSearchChange={val =>
-              setModalState(prev => ({ ...prev, searchTerm: val }))
-            }
-            onMachineSelect={() => {
-              // handle select
-              pushNavigation('form');
-            }}
-            onBack={popNavigation}
-          />
-        ) : null}
-
-        {/* Form Panel - Show when isFormVisible is true */}
-        {modalState.isFormVisible && (
-          <CollectionReportMobileFormPanel
-            isVisible={modalState.isFormVisible}
-            onBack={() => {
-              popNavigation();
-            }}
-            onViewCollectedList={handleViewCollectedMachines}
-            selectedMachineData={selectedMachineData ?? null}
-            editingEntryId={modalState.editingEntryId}
-            formData={{
-              collectionTime: modalState.formData.collectionTime,
-              metersIn: modalState.formData.metersIn,
-              metersOut: modalState.formData.metersOut,
-              ramClear: modalState.formData.ramClear,
-              ramClearMetersIn: modalState.formData.ramClearMetersIn,
-              ramClearMetersOut: modalState.formData.ramClearMetersOut,
-              notes: modalState.formData.notes,
-              prevIn: modalState.formData.prevIn,
-              prevOut: modalState.formData.prevOut,
-              sasStartTime: modalState.formData.sasStartTime,
-              sasEndTime: modalState.formData.sasEndTime,
-              showAdvancedSas: modalState.formData.showAdvancedSas,
-            }}
-            financials={financials}
-            collectedMachinesCount={collectedMachines.length}
-            isProcessing={modalState.isProcessing}
-            inputsEnabled={inputsEnabled}
-            isAddMachineEnabled={isAddMachineEnabled}
-            formatMachineDisplay={machine => 
-              formatMachineDisplayNameWithBold({
-                ...machine,
-                serialNumber: machine.serialNumber,
-                custom: machine.custom || { name: machine.name },
-              })
-            }
-            onViewMachine={() => {
-              setModalState(prev => ({
-                ...prev,
-                showViewMachineConfirmation: true,
-              }));
-            }}
-            onFormDataChange={onFormDataChange}
-            onFinancialDataChange={(field, value) => {
-              setStoreFinancials({ [field]: value });
-            }}
-            onAddMachine={addMachineToList}
-            autoFillRamClearMeters={checked => {
-              const update = checked
-                ? {
-                    ramClear: true,
-                    ramClearMetersIn: storeFormData.metersIn,
-                    ramClearMetersOut: storeFormData.metersOut,
-                  }
-                : {
-                    ramClear: false,
-                    ramClearMetersIn: '',
-                    ramClearMetersOut: '',
-                  };
-              setStoreFormData(update);
-              setModalState(prev => ({
-                ...prev,
-                formData: { ...prev.formData, ...update },
-              }));
-            }}
-            onCollectedAmountChange={value => {
-              setStoreFinancials({ collectedAmount: value });
-            }}
-            baseBalanceCorrection={baseBalanceCorrection}
-            onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}
-          />
-        )}
-
-        {/* Collected List Panel - Show when isCollectedListVisible is true */}
-        {modalState.isCollectedListVisible && (
-          <CollectionReportMobileCollectedListPanel
-            isVisible={modalState.isCollectedListVisible}
-            onBack={() => {
-              popNavigation();
-            }}
-            collectedMachines={collectedMachines}
-            searchTerm={modalState.collectedMachinesSearchTerm}
-            onSearchChange={term => {
-              setModalState(prev => ({
-                ...prev,
-                collectedMachinesSearchTerm: term,
-              }));
-            }}
-            isViewingFinancialForm={modalState.isViewingFinancialForm}
-            onToggleView={isFinancial => {
-              setModalState(prev => ({
-                ...prev,
-                isViewingFinancialForm: isFinancial,
-              }));
-            }}
-            financials={financials}
-            isProcessing={modalState.isProcessing}
-            isCreateReportsEnabled={isCreateReportsEnabled}
-            updateAllSasStartDate={updateAllSasStartDate}
-            onUpdateAllSasStartDate={setUpdateAllSasStartDate}
-            updateAllSasEndDate={updateAllSasEndDate}
-            onUpdateAllSasEndDate={setUpdateAllSasEndDate}
-            onApplyAllDates={handleApplyAllDates}
-            variationMachineIds={variationsData?.machines.filter(m => typeof m.variation === 'number').map(m => m.machineId)}
-            formatMachineDisplay={machine => {
-              const doc = machine as unknown as CollectionDocument;
-              return formatMachineDisplayNameWithBold({
-                serialNumber: doc.serialNumber,
-                custom: { name: doc.machineCustomName },
-                game: doc.game,
-              });
-            }}
-            formatDate={date => {
-              return formatDateWithOrdinal(date);
-            }}
-            sortMachines={sortMachinesAlphabetically}
-            onEditMachine={editMachineInList}
-            onDeleteMachine={machineId => {
-              // Set confirmation state and delete
-              setShowDeleteConfirmation(true);
-              // Store the machine ID to delete in modalState for confirmation
-              setModalState(prev => ({
-                ...prev,
-                editingEntryId: machineId, // Reuse editingEntryId to store delete target
-              }));
-            }}
-            onFinancialDataChange={(field, value) => {
-              setStoreFinancials({ [field]: value });
-            }}
-            onCollectedAmountChange={value => {
-              setStoreFinancials({ collectedAmount: value });
-            }}
-            baseBalanceCorrection={baseBalanceCorrection}
-            onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}
-            onCreateReport={handleStartSubmit}
-          />
-        )}
-
-        {/* Variation Check Popover */}
-        <VariationCheckPopover
-          isOpen={showVariationCheckPopover && !isMinimized}
-          isChecking={isChecking}
-          hasVariations={hasVariations}
-          error={variationError}
-          variationsData={variationsData}
-          onMinimize={toggleMinimize}
-          onSubmit={() => {
-            setShowVariationCheckPopover(false);
-            if (hasVariations && variationsData) {
-              setShowVariationsConfirmation(true);
-            } else {
-              setShowCreateReportConfirmation(true);
-            }
-          }}
-          onRetry={() => {
-            const machinesForCheck: CheckVariationsMachine[] = collectedMachines.map(entry => ({
-              machineId: entry.machineId,
-              machineName: entry.machineCustomName || entry.machineName || entry.serialNumber || entry.machineId,
-              metersIn: entry.metersIn || 0,
-              metersOut: entry.metersOut || 0,
-              sasStartTime: entry.sasMeters?.sasStartTime || undefined,
-              sasEndTime: entry.sasMeters?.sasEndTime || undefined,
-              prevMetersIn: entry.prevIn || 0,
-              prevMetersOut: entry.prevOut || 0,
-            }));
-            const locationIdToUse = lockedLocationId || selectedLocation || '';
-            checkVariations(locationIdToUse, machinesForCheck);
-          }}
-          onClose={() => {
-            setShowVariationCheckPopover(false);
-            if (!hasVariations || variationError) {
-              resetVariationCheck();
-            }
-          }}
-        />
-        
-        {/* Variations with Detail Display */}
-        {showVariationCheckPopover && !isChecking && hasVariations && variationsData && isMinimized && (
-          createPortal(
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-[100005] flex items-center justify-center bg-black/60 p-4 pointer-events-auto"
-            >
-              <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl max-h-[85vh] overflow-y-auto border-t-8 border-amber-500">
-                <div className="mb-6 flex items-center justify-between border-b pb-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">Machine Variation Analysis</h3>
-                    <p className="text-sm text-gray-500 mt-1">Detailed comparison between Sas data and manual meter entry</p>
-                  </div>
-                  <button 
-                    title="close"
-                    onClick={toggleMinimize}
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-900"
+                    onClick={onClose}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                    aria-label="Close"
                   >
                     <X className="h-5 w-5" />
                   </button>
-                </div>
-                
-                <div className="space-y-4">
-                  {variationsData.machines.map((m, idx) => (
-                    <div key={idx} className={`p-4 rounded-xl border ${typeof m.variation === 'number' ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-100'}`}>
-                      <p className="text-xs font-bold text-gray-400 uppercase mb-1">{m.machineId}</p>
-                      <h4 className="font-bold text-gray-900 truncate mb-3">{m.machineName}</h4>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-gray-400 uppercase">Sas Movement</p>
-                          <p className="text-sm font-black text-blue-600">${Number(m.sasGross).toFixed(2)}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[9px] font-bold text-gray-400 uppercase">Manual Movement</p>
-                          <p className="text-sm font-black text-gray-900">${Number(m.meterGross).toFixed(2)}</p>
-                        </div>
+                </DialogClose>
+              </div>
+            </div>
+          )}
+
+          {modalState.navigationStack.length === 0 &&
+          !modalState.isFormVisible &&
+          !modalState.isCollectedListVisible ? (
+            <div className="mobile-collection-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto bg-white">
+              {/* Summary Info - Show when location is selected and we have machines */}
+              {(lockedLocationId || selectedLocation) &&
+                collectedMachines.length > 0 && (
+                  <div className="border-b bg-blue-50/50 px-6 py-4">
+                    <div className="mb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500"></span>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {selectedLocationName || 'Location'}
+                        </p>
                       </div>
-                      
-                      {typeof m.variation === 'number' && (
-                        <div className="mt-3 pt-3 border-t border-amber-200 flex justify-between items-center">
-                          <p className="text-[10px] font-bold text-amber-800 uppercase">Variation</p>
-                          <p className={`text-sm font-black ${m.variation < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                            {m.variation < 0 ? '-' : '+'}${Math.abs(m.variation).toFixed(2)}
+                      <div className="rounded-full bg-green-100 px-3 py-1 text-right">
+                        <p className="text-xs font-bold text-green-700">
+                          {collectedMachines.length} Machine
+                          {collectedMachines.length !== 1 ? 's' : ''} Recorded
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Live Reconciliation Summary */}
+                    <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
+                      <h5 className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-blue-600">
+                        <Info className="h-3 w-3" />
+                        Live Reconciliation Summary
+                      </h5>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-0.5 border-r border-gray-100">
+                          <p className="text-[9px] font-bold uppercase text-gray-400">
+                            Target
+                          </p>
+                          <p className="text-sm font-black text-gray-900">
+                            ${financials.amountToCollect || '0.00'}
                           </p>
                         </div>
+                        <div className="space-y-0.5 pl-2">
+                          <p className="text-[9px] font-bold uppercase text-gray-400">
+                            Actual
+                          </p>
+                          <p className="text-sm font-black text-blue-600">
+                            ${financials.collectedAmount || '0.00'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3 border-t border-gray-50 pt-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[9px] font-bold uppercase text-gray-400">
+                            Next Opening Balance
+                          </p>
+                          <p
+                            className={`text-xs font-black ${Number(financials.previousBalance) < 0 ? 'text-red-600' : 'text-green-600'}`}
+                          >
+                            ${financials.previousBalance || '0.00'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              {/* Location Selector - ALWAYS VISIBLE */}
+              <div className="bg-gray-50/20 p-6">
+                {modalState.isLoadingCollections ? (
+                  <div className="flex flex-col items-center justify-center space-y-6 py-10">
+                    <div className="text-center">
+                      <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+                      <p className="font-semibold text-gray-900">
+                        Checking status...
+                      </p>
+                      <p className="mx-auto mt-2 max-w-[200px] text-sm text-gray-500">
+                        Checking for any in-progress collection reports
+                      </p>
+                    </div>
+                    <Skeleton className="h-12 w-full max-w-sm rounded-xl" />
+                  </div>
+                ) : (
+                  <>
+                    <label className="mb-2 block text-sm font-bold text-gray-700">
+                      Select Location
+                    </label>
+                    <div
+                      className={
+                        modalState.isProcessing ||
+                        lockedLocationId !== undefined ||
+                        collectedMachines.length > 0 ||
+                        modalState.isLoadingCollections
+                          ? 'pointer-events-none opacity-50'
+                          : ''
+                      }
+                    >
+                      {isLoadingLocations ? (
+                        <Skeleton className="h-10 w-full rounded-md" />
+                      ) : (
+                        <LocationSingleSelect
+                          locations={locations.map(loc => ({
+                            id: String(loc._id),
+                            name: loc.name,
+                            sasEnabled: false,
+                          }))}
+                          selectedLocation={
+                            lockedLocationId || selectedLocation || ''
+                          }
+                          onSelectionChange={handleLocationChange}
+                          placeholder="Choose a location..."
+                          includeAllOption={false}
+                        />
                       )}
                     </div>
-                  ))}
-                </div>
-                
-                <div className="mt-8">
-                  <Button 
-                    className="w-full bg-blue-600 hover:bg-blue-700 py-6 text-base font-bold shadow-lg"
-                    onClick={() => {
-                      setShowVariationCheckPopover(false);
-                      setShowVariationsConfirmation(true);
-                      toggleMinimize();
-                    }}
-                  >
-                    Continue to Submission
-                  </Button>
-                </div>
+                  </>
+                )}
+
+                {/* Action Buttons - Only show when location is selected */}
+                {(lockedLocationId || selectedLocation) && (
+                  <div className="mt-6 space-y-3">
+                    {/* View Form Button - Always show once location is selected */}
+                    {(lockedLocationId || selectedLocation) && (
+                      <button
+                        onClick={() => {
+                          pushNavigation('list');
+                          setModalState(prev => ({
+                            ...prev,
+                            isCollectedListVisible: true,
+                            isViewingFinancialForm: true, // Show financial form
+                          }));
+                        }}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-3 font-medium text-white shadow-md transition-all hover:bg-blue-700 active:scale-95"
+                      >
+                        <Calculator className="h-5 w-5" />
+                        View Amount to Collect/Taxes
+                      </button>
+                    )}
+
+                    {/* View Collected Machines Button - only show when >=1 machine */}
+                    {collectedMachines.length >= 1 && (
+                      <button
+                        onClick={() => {
+                          pushNavigation('list');
+                          setModalState(prev => ({
+                            ...prev,
+                            isCollectedListVisible: true,
+                            isViewingFinancialForm: false,
+                          }));
+                        }}
+                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 py-3 font-medium text-white shadow-md transition-all hover:bg-green-700 active:scale-95"
+                      >
+                        <ClipboardList className="h-5 w-5" />
+                        View Recorded Machines ({collectedMachines.length})
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Machines List - Show when location is selected */}
+                {(lockedLocationId || selectedLocation) && (
+                  <div className="mt-8">
+                    <div className="mb-4 flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-gray-900">
+                        {selectedLocationName
+                          ? `Machines at ${selectedLocationName}`
+                          : 'Available Machines'}
+                      </h3>
+                    </div>
+
+                    {/* Search bar for machines */}
+                    {availableMachines.length > 3 && (
+                      <div className="mb-4">
+                        <input
+                          type="text"
+                          placeholder="Search machines by name or serial number..."
+                          value={modalState.searchTerm}
+                          onChange={e =>
+                            setModalState(prev => ({
+                              ...prev,
+                              searchTerm: e.target.value,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    )}
+
+                    {/* Machine Cards Container - 2x2 Grid */}
+                    <div className="grid grid-cols-1 items-start gap-3 pb-8 sm:grid-cols-2">
+                      {modalState.isLoadingMachines ? (
+                        [1, 2, 3, 4, 5, 6].map(i => (
+                          <div
+                            key={i}
+                            className="animate-pulse rounded-lg border bg-gray-50 p-4"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <div className="mb-2 h-4 w-3/4 rounded bg-gray-300"></div>
+                                <div className="h-3 w-1/2 rounded bg-gray-300"></div>
+                              </div>
+                              <div className="h-8 w-16 rounded bg-gray-300"></div>
+                            </div>
+                          </div>
+                        ))
+                      ) : availableMachines.length === 0 ? (
+                        <div className="py-8 text-center text-gray-500">
+                          <p>No machines found for this location.</p>
+                        </div>
+                      ) : (
+                        (() => {
+                          // Filter machines
+                          const filteredMachines = availableMachines.filter(
+                            machine => {
+                              if (!modalState.searchTerm.trim()) return true;
+                              const searchTerm =
+                                modalState.searchTerm.toLowerCase();
+                              const machineName = (
+                                machine.name || ''
+                              ).toLowerCase();
+                              const serialNumber = (
+                                machine.serialNumber || ''
+                              ).toLowerCase();
+                              return (
+                                machineName.includes(searchTerm) ||
+                                serialNumber.includes(searchTerm)
+                              );
+                            }
+                          );
+
+                          // Sort machines
+                          const sortedMachines =
+                            sortMachinesAlphabetically(filteredMachines);
+
+                          return sortedMachines.map(machine => {
+                            const isCollected = collectedMachines.some(
+                              cm => cm.machineId === String(machine._id)
+                            );
+                            const isSelected =
+                              selectedMachine === String(machine._id);
+
+                            return (
+                              <div
+                                key={String(machine._id)}
+                                className={`rounded-2xl border p-4 transition-all duration-200 ${
+                                  isSelected
+                                    ? 'border-blue-500 bg-blue-50/50 shadow-md ring-2 ring-blue-500/10'
+                                    : isCollected
+                                      ? 'border-green-200 bg-green-50/50 opacity-90'
+                                      : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-lg'
+                                }`}
+                              >
+                                {/* Machine Name */}
+                                <p className="line-clamp-2 min-h-[40px] break-words text-sm font-bold text-gray-900">
+                                  {formatMachineDisplayNameWithBold(machine)}
+                                </p>
+
+                                {/* Previous Meters Display */}
+                                <div className="mt-1 space-y-1 text-xs text-gray-600">
+                                  <p className="flex flex-col sm:flex-row sm:gap-2">
+                                    <span>
+                                      Prev In:{' '}
+                                      {machine.collectionMeters?.metersIn || 0}
+                                    </span>
+                                    <span className="hidden sm:inline">|</span>
+                                    <span>
+                                      Prev Out:{' '}
+                                      {machine.collectionMeters?.metersOut || 0}
+                                    </span>
+                                  </p>
+                                </div>
+
+                                {/* Status Indicators */}
+                                {isCollected && (
+                                  <div className="mt-1 flex items-center">
+                                    <div className="mr-2 h-2 w-2 rounded-full bg-green-500"></div>
+                                    <p className="text-xs font-semibold text-green-600">
+                                      Added to Collection
+                                    </p>
+                                  </div>
+                                )}
+
+                                {isSelected && (
+                                  <div className="mt-1 flex items-center">
+                                    <div className="mr-2 h-2 w-2 rounded-full bg-blue-500"></div>
+                                    <p className="text-xs font-semibold text-blue-600">
+                                      Selected
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Action Button */}
+                                <div className="mt-3 flex justify-end">
+                                  <button
+                                    onClick={() => {
+                                      if (isCollected) {
+                                        // Already collected - show warning
+                                        toast.warning(
+                                          'This machine has already been recorded in this collection report.'
+                                        );
+                                        return;
+                                      }
+                                      if (isSelected) {
+                                        // Unselect the machine
+                                        setStoreSelectedMachine(undefined);
+                                        setStoreSelectedMachineData(null);
+                                      } else {
+                                        // Select the machine
+                                        setStoreSelectedMachine(
+                                          String(machine._id)
+                                        );
+                                        setStoreSelectedMachineData(machine);
+                                        // Auto-populate sasStartTime from the last completed collection
+                                        axios
+                                          .get(
+                                            `/api/collection-reports/collections/last-collection-time?machineId=${String(machine._id)}`
+                                          )
+                                          .then(res => {
+                                            const lastTime =
+                                              res.data?.data?.collectionTime;
+                                            if (lastTime) {
+                                              setStoreFormData({
+                                                sasStartTime: new Date(
+                                                  lastTime
+                                                ),
+                                              });
+                                            } else {
+                                              const loc = locations.find(
+                                                l =>
+                                                  String(l._id) ===
+                                                  (lockedLocationId ||
+                                                    selectedLocation)
+                                              );
+                                              const gameDayOffset =
+                                                loc?.gameDayOffset ?? 8;
+                                              const now = new Date();
+                                              const currentGamingDayStart =
+                                                new Date(now);
+                                              if (
+                                                now.getHours() < gameDayOffset
+                                              ) {
+                                                currentGamingDayStart.setDate(
+                                                  currentGamingDayStart.getDate() -
+                                                    1
+                                                );
+                                              }
+                                              currentGamingDayStart.setHours(
+                                                gameDayOffset,
+                                                0,
+                                                0,
+                                                0
+                                              );
+                                              setStoreFormData({
+                                                sasStartTime: new Date(
+                                                  currentGamingDayStart.getTime() -
+                                                    24 * 60 * 60 * 1000
+                                                ),
+                                              });
+                                            }
+                                          })
+                                          .catch(() => {
+                                            if (machine.collectionTime) {
+                                              setStoreFormData({
+                                                sasStartTime: new Date(
+                                                  machine.collectionTime
+                                                ),
+                                              });
+                                            } else {
+                                              const loc = locations.find(
+                                                l =>
+                                                  String(l._id) ===
+                                                  (lockedLocationId ||
+                                                    selectedLocation)
+                                              );
+                                              const gameDayOffset =
+                                                loc?.gameDayOffset ?? 8;
+                                              const now = new Date();
+                                              const currentGamingDayStart =
+                                                new Date(now);
+                                              if (
+                                                now.getHours() < gameDayOffset
+                                              ) {
+                                                currentGamingDayStart.setDate(
+                                                  currentGamingDayStart.getDate() -
+                                                    1
+                                                );
+                                              }
+                                              currentGamingDayStart.setHours(
+                                                gameDayOffset,
+                                                0,
+                                                0,
+                                                0
+                                              );
+                                              setStoreFormData({
+                                                sasStartTime: new Date(
+                                                  currentGamingDayStart.getTime() -
+                                                    24 * 60 * 60 * 1000
+                                                ),
+                                              });
+                                            }
+                                          });
+                                        setStoreFormData({
+                                          metersIn: '',
+                                          metersOut: '',
+                                          notes: '',
+                                          ramClear: false,
+                                          ramClearMetersIn: '',
+                                          ramClearMetersOut: '',
+                                          showAdvancedSas: false,
+                                          sasStartTime: null,
+                                          sasEndTime: null,
+                                          collectionTime: new Date(),
+                                          prevIn: (() => {
+                                            const sasDrop =
+                                              machine.sasMeters?.drop ?? null;
+                                            const collectionIn =
+                                              machine.collectionMeters
+                                                ?.metersIn;
+                                            return collectionIn !== null &&
+                                              collectionIn !== undefined &&
+                                              collectionIn > 0
+                                              ? collectionIn.toString()
+                                              : sasDrop !== null && sasDrop > 0
+                                                ? sasDrop.toString()
+                                                : '';
+                                          })(),
+                                          prevOut: (() => {
+                                            const sasCancelled =
+                                              machine.sasMeters
+                                                ?.totalCancelledCredits ?? null;
+                                            const collectionOut =
+                                              machine.collectionMeters
+                                                ?.metersOut;
+                                            return collectionOut !== null &&
+                                              collectionOut !== undefined &&
+                                              collectionOut > 0
+                                              ? collectionOut.toString()
+                                              : sasCancelled !== null &&
+                                                  sasCancelled > 0
+                                                ? sasCancelled.toString()
+                                                : '';
+                                          })(),
+                                        });
+                                        pushNavigation('form');
+                                        setModalState(prev => ({
+                                          ...prev,
+                                          isFormVisible: true,
+                                        }));
+                                      }
+                                    }}
+                                    disabled={isCollected}
+                                    className={`rounded-full px-5 py-2.5 text-sm font-bold shadow-sm transition-all active:scale-95 ${
+                                      isCollected
+                                        ? 'cursor-not-allowed bg-green-100 text-green-700'
+                                        : isSelected
+                                          ? 'border border-red-100 bg-red-50 text-red-600 hover:bg-red-100'
+                                          : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
+                                    }`}
+                                  >
+                                    {isCollected
+                                      ? '✓ Collected'
+                                      : isSelected
+                                        ? 'Unselect'
+                                        : 'Select'}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Home Screen Submit Button - Allow submission from machine list */}
+                {collectedMachines.length > 0 && (
+                  <div className="sticky bottom-0 mt-4 border-t bg-white/90 p-3 backdrop-blur-sm">
+                    <button
+                      onClick={handleStartSubmit}
+                      disabled={
+                        !isCreateReportsEnabled || modalState.isProcessing
+                      }
+                      className={`flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold shadow-md transition-all active:scale-95 ${
+                        isCreateReportsEnabled && !modalState.isProcessing
+                          ? 'bg-gradient-to-r from-green-600 to-green-700 text-white hover:shadow-green-200'
+                          : 'cursor-not-allowed bg-gray-400 text-gray-200'
+                      }`}
+                    >
+                      <SendHorizontal className="h-3.5 w-3.5" />
+                      SUBMIT FINAL REPORT ({collectedMachines.length} machines)
+                    </button>
+                  </div>
+                )}
               </div>
-            </motion.div>,
-            document.body
-          )
-        )}
+            </div>
+          ) : modalState.navigationStack[
+              modalState.navigationStack.length - 1
+            ] === 'machine-list' ? (
+            <CollectionReportMobileMachineList
+              machines={availableMachines}
+              collectedMachines={collectedMachines}
+              searchTerm={modalState.searchTerm}
+              selectedMachine={selectedMachine ?? null}
+              isLoadingMachines={modalState.isLoadingMachines}
+              machineStatusMap={machineStatusMap}
+              onSearchChange={val =>
+                setModalState(prev => ({ ...prev, searchTerm: val }))
+              }
+              onMachineSelect={() => {
+                // handle select
+                pushNavigation('form');
+              }}
+              onBack={popNavigation}
+            />
+          ) : null}
 
-        {/* Variations Confirmation Dialog */}
-        <VariationsConfirmationDialog
-          isOpen={showVariationsConfirmation}
-          machineCount={variationsData?.machines.filter(m => typeof m.variation === 'number').length || 0}
-          totalVariation={variationsData?.totalVariation || 0}
-          isLoading={modalState.isProcessing}
-          onConfirm={() => {
-            createCollectionReport(variationsData || undefined);
-            setShowVariationsConfirmation(false);
-          }}
-          onCancel={() => setShowVariationsConfirmation(false)}
-        />
-      </DialogContent>
-    </Dialog>
+          {/* Form Panel - Show when isFormVisible is true */}
+          {modalState.isFormVisible && (
+            <CollectionReportMobileFormPanel
+              isVisible={modalState.isFormVisible}
+              onBack={() => {
+                popNavigation();
+              }}
+              onViewCollectedList={handleViewCollectedMachines}
+              selectedMachineData={selectedMachineData ?? null}
+              editingEntryId={modalState.editingEntryId}
+              formData={{
+                collectionTime: modalState.formData.collectionTime,
+                metersIn: modalState.formData.metersIn,
+                metersOut: modalState.formData.metersOut,
+                ramClear: modalState.formData.ramClear,
+                ramClearMetersIn: modalState.formData.ramClearMetersIn,
+                ramClearMetersOut: modalState.formData.ramClearMetersOut,
+                notes: modalState.formData.notes,
+                prevIn: modalState.formData.prevIn,
+                prevOut: modalState.formData.prevOut,
+                sasStartTime: modalState.formData.sasStartTime,
+                sasEndTime: modalState.formData.sasEndTime,
+                showAdvancedSas: modalState.formData.showAdvancedSas,
+              }}
+              financials={financials}
+              collectedMachinesCount={collectedMachines.length}
+              isProcessing={modalState.isProcessing}
+              inputsEnabled={inputsEnabled}
+              isAddMachineEnabled={isAddMachineEnabled}
+              formatMachineDisplay={machine =>
+                formatMachineDisplayNameWithBold({
+                  ...machine,
+                  serialNumber: machine.serialNumber,
+                  custom: machine.custom || { name: machine.name },
+                })
+              }
+              onViewMachine={() => {
+                setModalState(prev => ({
+                  ...prev,
+                  showViewMachineConfirmation: true,
+                }));
+              }}
+              onFormDataChange={onFormDataChange}
+              onFinancialDataChange={(field, value) => {
+                setStoreFinancials({ [field]: value });
+              }}
+              onAddMachine={addMachineToList}
+              autoFillRamClearMeters={checked => {
+                const update = checked
+                  ? {
+                      ramClear: true,
+                      ramClearMetersIn:
+                        storeFormData.ramClearMetersIn || storeFormData.prevIn,
+                      ramClearMetersOut:
+                        storeFormData.ramClearMetersOut ||
+                        storeFormData.prevOut,
+                    }
+                  : {
+                      ramClear: false,
+                      ramClearMetersIn: '',
+                      ramClearMetersOut: '',
+                    };
+                setStoreFormData(update);
+                setModalState(prev => ({
+                  ...prev,
+                  formData: { ...prev.formData, ...update },
+                }));
+              }}
+              onCollectedAmountChange={value => {
+                setStoreFinancials({ collectedAmount: value });
+              }}
+              baseBalanceCorrection={baseBalanceCorrection}
+              onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}
+            />
+          )}
 
-    {/* Delete Confirmation Dialog - Rendered outside Dialog to avoid z-index stacking context issues */}
-    <ConfirmationDialog
-      isOpen={showDeleteConfirmation}
-      onClose={() => {
-        setShowDeleteConfirmation(false);
-        setModalState(prev => ({
-          ...prev,
-          editingEntryId: null, // Clear delete target
-        }));
-      }}
-      onConfirm={() => {
-        if (modalState.editingEntryId) {
-          deleteMachineFromList(modalState.editingEntryId);
+          {/* Collected List Panel - Show when isCollectedListVisible is true */}
+          {modalState.isCollectedListVisible && (
+            <CollectionReportMobileCollectedListPanel
+              isVisible={modalState.isCollectedListVisible}
+              onBack={() => {
+                popNavigation();
+              }}
+              collectedMachines={collectedMachines}
+              searchTerm={modalState.collectedMachinesSearchTerm}
+              onSearchChange={term => {
+                setModalState(prev => ({
+                  ...prev,
+                  collectedMachinesSearchTerm: term,
+                }));
+              }}
+              isViewingFinancialForm={modalState.isViewingFinancialForm}
+              onToggleView={isFinancial => {
+                setModalState(prev => ({
+                  ...prev,
+                  isViewingFinancialForm: isFinancial,
+                }));
+              }}
+              financials={financials}
+              isProcessing={modalState.isProcessing}
+              isCreateReportsEnabled={isCreateReportsEnabled}
+              updateAllSasStartDate={updateAllSasStartDate}
+              onUpdateAllSasStartDate={setUpdateAllSasStartDate}
+              updateAllSasEndDate={updateAllSasEndDate}
+              onUpdateAllSasEndDate={setUpdateAllSasEndDate}
+              onApplyAllDates={handleApplyAllDates}
+              variationMachineIds={variationsData?.machines
+                .filter(m => typeof m.variation === 'number')
+                .map(m => m.machineId)}
+              formatMachineDisplay={machine => {
+                const doc = machine as unknown as CollectionDocument;
+                return formatMachineDisplayNameWithBold({
+                  serialNumber: doc.serialNumber,
+                  custom: { name: doc.machineCustomName },
+                  game: doc.game,
+                });
+              }}
+              formatDate={date => {
+                return formatDateWithOrdinal(date);
+              }}
+              sortMachines={sortMachinesAlphabetically}
+              onEditMachine={editMachineInList}
+              onDeleteMachine={machineId => {
+                // Set confirmation state and delete
+                setShowDeleteConfirmation(true);
+                // Store the machine ID to delete in modalState for confirmation
+                setModalState(prev => ({
+                  ...prev,
+                  editingEntryId: machineId, // Reuse editingEntryId to store delete target
+                }));
+              }}
+              onFinancialDataChange={(field, value) => {
+                setStoreFinancials({ [field]: value });
+              }}
+              onCollectedAmountChange={value => {
+                setStoreFinancials({ collectedAmount: value });
+              }}
+              baseBalanceCorrection={baseBalanceCorrection}
+              onBaseBalanceCorrectionChange={onBaseBalanceCorrectionChange}
+              onCreateReport={handleStartSubmit}
+            />
+          )}
+
+          {/* Variation Check Popover */}
+          <VariationCheckPopover
+            isOpen={showVariationCheckPopover && !isMinimized}
+            isChecking={isChecking}
+            hasVariations={hasVariations}
+            error={variationError}
+            variationsData={variationsData}
+            onMinimize={toggleMinimize}
+            onSubmit={() => {
+              setShowVariationCheckPopover(false);
+              // Filter out machines with "No SMIB" (no relayId)
+              const machinesWithSmib =
+                variationsData?.machines.filter(
+                  m => typeof m.variation === 'number'
+                ) || [];
+
+              // If no machines have SMIB or no variations, skip variation confirmation and go straight to creation
+              if (machinesWithSmib.length === 0 || !hasVariations) {
+                setShowCreateReportConfirmation(true);
+              } else {
+                // Show variations confirmation only if there are actual variations with SMIB machines
+                setShowVariationsConfirmation(true);
+              }
+            }}
+            onRetry={() => {
+              const machinesForCheck: CheckVariationsMachine[] =
+                collectedMachines.map(entry => ({
+                  machineId: entry.machineId,
+                  machineName:
+                    entry.machineCustomName ||
+                    entry.machineName ||
+                    entry.serialNumber ||
+                    entry.machineId,
+                  metersIn: entry.metersIn || 0,
+                  metersOut: entry.metersOut || 0,
+                  sasStartTime: entry.sasMeters?.sasStartTime || undefined,
+                  sasEndTime: entry.sasMeters?.sasEndTime || undefined,
+                  prevMetersIn: entry.prevIn || 0,
+                  prevMetersOut: entry.prevOut || 0,
+                }));
+              const locationIdToUse =
+                lockedLocationId || selectedLocation || '';
+              checkVariations(locationIdToUse, machinesForCheck);
+            }}
+            onClose={() => {
+              setShowVariationCheckPopover(false);
+              if (!hasVariations || variationError) {
+                resetVariationCheck();
+              }
+            }}
+          />
+
+          {/* Variations with Detail Display */}
+          {showVariationCheckPopover &&
+            !isChecking &&
+            hasVariations &&
+            variationsData &&
+            isMinimized &&
+            createPortal(
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="pointer-events-auto fixed inset-0 z-[100005] flex items-center justify-center bg-black/60 p-4"
+              >
+                <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border-t-8 border-amber-500 bg-white p-6 shadow-2xl">
+                  <div className="mb-6 flex items-center justify-between border-b pb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        Machine Variation Analysis
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Detailed comparison between Sas data and manual meter
+                        entry
+                      </p>
+                    </div>
+                    <button
+                      title="close"
+                      onClick={toggleMinimize}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-900"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {variationsData.machines.map((m, idx) => (
+                      <div
+                        key={idx}
+                        className={`rounded-xl border p-4 ${typeof m.variation === 'number' ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-gray-50'}`}
+                      >
+                        <p className="mb-1 text-xs font-bold uppercase text-gray-400">
+                          {m.machineId}
+                        </p>
+                        <h4 className="mb-3 truncate font-bold text-gray-900">
+                          {m.machineName}
+                        </h4>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-bold uppercase text-gray-400">
+                              Sas Movement
+                            </p>
+                            <p className="text-sm font-black text-blue-600">
+                              ${Number(m.sasGross).toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[9px] font-bold uppercase text-gray-400">
+                              Manual Movement
+                            </p>
+                            <p className="text-sm font-black text-gray-900">
+                              ${Number(m.meterGross).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {typeof m.variation === 'number' && (
+                          <div className="mt-3 flex items-center justify-between border-t border-amber-200 pt-3">
+                            <p className="text-[10px] font-bold uppercase text-amber-800">
+                              Variation
+                            </p>
+                            <p
+                              className={`text-sm font-black ${m.variation < 0 ? 'text-red-600' : 'text-green-600'}`}
+                            >
+                              {m.variation < 0 ? '-' : '+'}$
+                              {Math.abs(m.variation).toFixed(2)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-8">
+                    <Button
+                      className="w-full bg-blue-600 py-6 text-base font-bold shadow-lg hover:bg-blue-700"
+                      onClick={() => {
+                        setShowVariationCheckPopover(false);
+                        setShowVariationsConfirmation(true);
+                        toggleMinimize();
+                      }}
+                    >
+                      Continue to Submission
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>,
+              document.body
+            )}
+
+          {/* Variations Confirmation Dialog */}
+          <VariationsConfirmationDialog
+            isOpen={showVariationsConfirmation}
+            machineCount={
+              variationsData?.machines.filter(
+                m => typeof m.variation === 'number'
+              ).length || 0
+            }
+            totalVariation={variationsData?.totalVariation || 0}
+            isLoading={modalState.isProcessing}
+            onConfirm={() => {
+              createCollectionReport(variationsData || undefined);
+              setShowVariationsConfirmation(false);
+            }}
+            onCancel={() => setShowVariationsConfirmation(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog - Rendered outside Dialog to avoid z-index stacking context issues */}
+      <ConfirmationDialog
+        isOpen={showDeleteConfirmation}
+        onClose={() => {
           setShowDeleteConfirmation(false);
           setModalState(prev => ({
             ...prev,
             editingEntryId: null, // Clear delete target
           }));
+        }}
+        onConfirm={() => {
+          if (modalState.editingEntryId) {
+            deleteMachineFromList(modalState.editingEntryId);
+            setShowDeleteConfirmation(false);
+            setModalState(prev => ({
+              ...prev,
+              editingEntryId: null, // Clear delete target
+            }));
+          }
+        }}
+        title="Confirm Delete"
+        message="Are you sure you want to delete this collection entry?"
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+        isLoading={modalState.isProcessing}
+      />
+
+      {/* Unsaved Changes Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showUnsavedChangesWarning}
+        onClose={() => setShowUnsavedChangesWarning(false)}
+        onConfirm={() => {
+          setShowUnsavedChangesWarning(false);
+          onClose();
+        }}
+        title="Unsaved Changes"
+        message="You have unsaved changes or machines added to your report. Are you sure you want to close and discard everything?"
+        confirmText="Discard and Close"
+        cancelText="Keep Editing"
+      />
+
+      {/* Create Report Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showCreateReportConfirmation}
+        onClose={() => setShowCreateReportConfirmation(false)}
+        onConfirm={() => {
+          setShowCreateReportConfirmation(false);
+          createCollectionReport();
+        }}
+        title="Confirm Collection Report"
+        message="Are you sure you want to create this collection report batch? This will update machine history and meter readings."
+        confirmText="Yes, Create Report"
+        cancelText="Cancel"
+        isLoading={modalState.isProcessing}
+        confirmButtonVariant="default"
+        showFooterWarning={false}
+      />
+
+      {/* View Machine Confirmation Dialog */}
+      <InfoConfirmationDialog
+        isOpen={modalState.showViewMachineConfirmation}
+        onClose={() =>
+          setModalState(prev => ({
+            ...prev,
+            showViewMachineConfirmation: false,
+          }))
         }
-      }}
-      title="Confirm Delete"
-      message="Are you sure you want to delete this collection entry?"
-      confirmText="Yes, Delete"
-      cancelText="Cancel"
-      isLoading={modalState.isProcessing}
-    />
-
-    {/* Unsaved Changes Confirmation Dialog */}
-    <ConfirmationDialog
-      isOpen={showUnsavedChangesWarning}
-      onClose={() => setShowUnsavedChangesWarning(false)}
-      onConfirm={() => {
-        setShowUnsavedChangesWarning(false);
-        onClose();
-      }}
-      title="Unsaved Changes"
-      message="You have unsaved changes or machines added to your report. Are you sure you want to close and discard everything?"
-      confirmText="Discard and Close"
-      cancelText="Keep Editing"
-    />
-
-    {/* Create Report Confirmation Dialog */}
-    <ConfirmationDialog
-      isOpen={showCreateReportConfirmation}
-      onClose={() => setShowCreateReportConfirmation(false)}
-      onConfirm={() => {
-        setShowCreateReportConfirmation(false);
-        createCollectionReport();
-      }}
-      title="Confirm Collection Report"
-      message="Are you sure you want to create this collection report batch? This will update machine history and meter readings."
-      confirmText="Yes, Create Report"
-      cancelText="Cancel"
-      isLoading={modalState.isProcessing}
-    />
-
-    {/* View Machine Confirmation Dialog */}
-    <InfoConfirmationDialog
-      isOpen={modalState.showViewMachineConfirmation}
-      onClose={() => setModalState(prev => ({ ...prev, showViewMachineConfirmation: false }))}
-      onConfirm={() => {
-        if (selectedMachineData?._id) {
-          window.open(`/cabinets/${selectedMachineData._id}`, '_blank');
-        }
-        setModalState(prev => ({ ...prev, showViewMachineConfirmation: false }));
-      }}
-      title="View Machine"
-      message="Do you want to open this machine's details in a new tab?"
-      confirmText="Yes, View Machine"
-      cancelText="Cancel"
-      isLoading={false}
-    />
+        onConfirm={() => {
+          if (selectedMachineData?._id) {
+            window.open(`/cabinets/${selectedMachineData._id}`, '_blank');
+          }
+          setModalState(prev => ({
+            ...prev,
+            showViewMachineConfirmation: false,
+          }));
+        }}
+        title="View Machine"
+        message="Do you want to open this machine's details in a new tab?"
+        confirmText="Yes, View Machine"
+        cancelText="Cancel"
+        isLoading={false}
+      />
     </>
   );
 }
-

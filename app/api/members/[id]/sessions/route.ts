@@ -13,12 +13,17 @@
  */
 
 import {
-    applyCurrencyConversionToMetrics,
-    getCurrencyFromQuery,
-    shouldApplyCurrencyConversion,
+  applyCurrencyConversionToMetrics,
+  getCurrencyFromQuery,
+  shouldApplyCurrencyConversion,
 } from '@/app/api/lib/helpers/currency/helper';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type { MachineSessionDocument } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -32,7 +37,9 @@ function getWeekNumber(date: Date): number {
   const dayNum = adjustedDate.getUTCDay() || 7;
   adjustedDate.setUTCDate(adjustedDate.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(adjustedDate.getUTCFullYear(), 0, 1));
-  return Math.ceil(((adjustedDate.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return Math.ceil(
+    ((adjustedDate.getTime() - yearStart.getTime()) / 86400000 + 1) / 7
+  );
 }
 
 /**
@@ -64,10 +71,10 @@ function getWeekNumber(date: Date): number {
  * @param {string} [timePeriod] - Optional. Preset time window applied when `startDate`/`endDate` are absent.
  *                             Accepted values: `today`, `yesterday`, `7d`, `30d`, `all time`.
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/members/[id]/sessions';
+  const user = extractUserFromRequest(request);
 
   try {
     const { pathname } = request.nextUrl;
@@ -85,7 +92,7 @@ export async function GET(
     const limit = parseInt(searchParams.get('limit') || '10');
     const filter = searchParams.get('filter') || 'session';
     const displayCurrency = getCurrencyFromQuery(searchParams);
-    const licencee = (searchParams.get('licencee')) || null;
+    const licencee = searchParams.get('licencee') || null;
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
     const timePeriod = searchParams.get('timePeriod');
@@ -98,30 +105,30 @@ export async function GET(
       // Create end date and add 1 day to make it inclusive (less than next day)
       const end = new Date(endDateParam);
       end.setUTCDate(end.getUTCDate() + 1);
-      
+
       query.startTime = {
         $gte: start,
-        $lt: end
+        $lt: end,
       };
     } else if (timePeriod) {
       const now = new Date();
       // Reset to start of today (local time as base, but could be UTC depending on server)
       // Usually matching the 'today' logic of the dashboard
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
+
       switch (timePeriod) {
         case 'today':
-          query.startTime = { 
-            $gte: today, 
-            $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) 
+          query.startTime = {
+            $gte: today,
+            $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000),
           };
           break;
         case 'yesterday':
           const yesterday = new Date(today);
           yesterday.setDate(yesterday.getDate() - 1);
-          query.startTime = { 
-            $gte: yesterday, 
-            $lt: today 
+          query.startTime = {
+            $gte: yesterday,
+            $lt: today,
           };
           break;
         case '7d':
@@ -135,8 +142,8 @@ export async function GET(
           query.startTime = { $gte: thirtyDaysAgo };
           break;
         case 'all time':
-            // No filter
-            break;
+          // No filter
+          break;
       }
     }
 
@@ -245,6 +252,16 @@ export async function GET(
       // ============================================================================
       // STEP 7: Return paginated results
       // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/members/[id]/sessions',
+        convertedSessions.length,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         data: {
@@ -421,6 +438,16 @@ export async function GET(
       // ============================================================================
       // STEP 7: Return paginated results
       // ============================================================================
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/members/[id]/sessions',
+        convertedGroupedSessions.length,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         data: {
@@ -441,6 +468,13 @@ export async function GET(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/members/[id]/sessions',
+      errorMessage,
+      user
+    );
     console.error(
       `[Member Sessions API] Error after ${duration}ms:`,
       errorMessage

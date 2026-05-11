@@ -4,6 +4,11 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
@@ -29,6 +34,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @body {string} notes - Transaction notes
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/cashier-shift/direct-open';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {
       const hasVaultAccess = userRoles
@@ -36,22 +45,45 @@ export async function POST(request: NextRequest) {
         .some(role =>
           ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
         );
-      if (!hasVaultAccess)
+      if (!hasVaultAccess) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/cashier-shift/direct-open',
+          'Insufficient permissions',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient permissions' },
           { status: 403 }
         );
+      }
 
       const { locationId, cashierId, amount, denominations, notes } =
         await request.json();
-      if (!locationId || !cashierId || amount === undefined || !denominations)
+      if (!locationId || !cashierId || amount === undefined || !denominations) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/cashier-shift/direct-open',
+          'Missing fields',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Missing fields' },
           { status: 400 }
         );
+      }
 
       const validation = validateDenominations(denominations);
-      if (!validation.valid || validation.total !== amount)
+      if (!validation.valid || validation.total !== amount) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/cashier-shift/direct-open',
+          `Denomination mismatch: $${validation.total} vs $${amount}`,
+          user
+        );
         return NextResponse.json(
           {
             success: false,
@@ -59,41 +91,74 @@ export async function POST(request: NextRequest) {
           },
           { status: 400 }
         );
+      }
 
       const vaultShift = await VaultShiftModel.findOne({
         locationId,
         status: 'active',
       });
-      if (!vaultShift)
+      if (!vaultShift) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/cashier-shift/direct-open',
+          'No active vault shift',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'No active vault shift' },
           { status: 400 }
         );
-      if (!vaultShift.isReconciled)
+      }
+      if (!vaultShift.isReconciled) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/cashier-shift/direct-open',
+          'Vault not reconciled',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Vault not reconciled' },
           { status: 403 }
         );
+      }
 
       const currentBalance =
         vaultShift.closingBalance !== undefined
           ? vaultShift.closingBalance
           : vaultShift.openingBalance;
-      if (!validateVaultBalance(amount, currentBalance).valid)
+      if (!validateVaultBalance(amount, currentBalance).valid) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/cashier-shift/direct-open',
+          'Insufficient funds',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient funds' },
           { status: 400 }
         );
+      }
       if (
         !validateVaultDenominations(
           denominations,
           vaultShift.currentDenominations || []
         ).valid
-      )
+      ) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/cashier-shift/direct-open',
+          'Insufficient denominations in vault',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient denominations in vault' },
           { status: 400 }
         );
+      }
 
       if (
         await CashierShiftModel.findOne({
@@ -101,6 +166,13 @@ export async function POST(request: NextRequest) {
           status: { $in: ['active', 'pending_start', 'pending_review'] },
         })
       ) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/cashier-shift/direct-open',
+          'Cashier already has active/pending shift',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Cashier already has active/pending shift' },
           { status: 409 }
@@ -186,6 +258,16 @@ export async function POST(request: NextRequest) {
         metadata: { resourceId: shiftId, locationId, cashierId },
       });
 
+      const duration = Date.now() - startTime;
+      logRouteCreate(
+        functionName,
+        'POST',
+        '/api/vault/cashier-shift/direct-open',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json(
         {
           success: true,
@@ -195,8 +277,23 @@ export async function POST(request: NextRequest) {
         { status: 201 }
       );
     } catch (e) {
-      console.error('[Cashier Direct Open] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to open cashier shift';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/cashier-shift/direct-open',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[Cashier Direct Open] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        { status: 500 }
+      );
     }
   });
 }

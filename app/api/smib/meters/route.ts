@@ -23,6 +23,11 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
 import { mqttService } from '@/app/api/lib/services/mqttService';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -44,6 +49,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/smib/meters';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -144,9 +151,11 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 9: Return success response
+    // STEP9: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteCreate(functionName, 'POST', '/api/smib/meters', 1, user, duration);
+
     if (duration > 1000) {
       console.warn(`[SMIB Meters API] Completed in ${duration}ms`);
     }
@@ -159,6 +168,7 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(functionName, 'POST', '/api/smib/meters', errorMessage, user);
     console.error(`[SMIB Meters API] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
       { success: false, error: errorMessage },
@@ -166,4 +176,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

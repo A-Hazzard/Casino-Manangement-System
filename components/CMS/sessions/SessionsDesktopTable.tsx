@@ -2,12 +2,12 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { SessionsTableProps } from '@/lib/types/sessions';
@@ -42,7 +42,10 @@ export function SessionsDesktopTable({
   sortOption,
   sortOrder,
   onSort,
-}: Pick<SessionsTableProps, 'sessions' | 'sortOption' | 'sortOrder' | 'onSort'>) {
+}: Pick<
+  SessionsTableProps,
+  'sessions' | 'sortOption' | 'sortOrder' | 'onSort'
+>) {
   const { formatAmount } = useCurrencyFormat();
   const router = useRouter();
 
@@ -217,4 +220,3 @@ export function SessionsDesktopTable({
     </div>
   );
 }
-

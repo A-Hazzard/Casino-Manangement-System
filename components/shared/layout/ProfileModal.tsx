@@ -98,7 +98,7 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
 
   if (!open) return null;
 
-        return (
+  return (
     <Dialog.Root open={open} onOpenChange={onClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-[99998] bg-black/50" />
@@ -117,7 +117,7 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
               <div className="space-y-6">
                 {/* Header skeleton */}
                 <div className="flex items-center gap-4 rounded-xl border bg-white p-6">
-                  <Skeleton className="h-20 w-20 rounded-full flex-shrink-0" />
+                  <Skeleton className="h-20 w-20 flex-shrink-0 rounded-full" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-5 w-48" />
                     <Skeleton className="h-4 w-32" />
@@ -125,7 +125,7 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
                   </div>
                 </div>
                 {/* Assignments skeleton */}
-                <div className="rounded-xl border bg-white p-6 space-y-4">
+                <div className="space-y-4 rounded-xl border bg-white p-6">
                   <Skeleton className="h-5 w-32" />
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <Skeleton className="h-10 w-full" />
@@ -134,7 +134,7 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
                   <Skeleton className="h-24 w-full" />
                 </div>
                 {/* Address / Identity skeleton */}
-                <div className="rounded-xl border bg-white p-6 space-y-4">
+                <div className="space-y-4 rounded-xl border bg-white p-6">
                   <Skeleton className="h-5 w-32" />
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Skeleton className="h-10 w-full" />
@@ -210,27 +210,31 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
                   />
                 )}
 
-          {isEditMode && (
+                {isEditMode && (
                   <div className="sticky bottom-0 flex justify-end gap-3 border-t border-gray-200 bg-gray-50 pb-2 pt-4">
-                <Button
-                  variant="outline"
+                    <Button
+                      variant="outline"
                       onClick={() => setIsEditMode(false)}
                       disabled={isLoading}
                       className="gap-2"
-                >
-                  <X className="h-4 w-4" />
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleSave}
-                  disabled={isLoading || isCurrentPasswordVerified === false || !!passwordReuseError}
-                  className="gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-500"
-                >
+                    >
+                      <X className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleSave}
+                      disabled={
+                        isLoading ||
+                        isCurrentPasswordVerified === false ||
+                        !!passwordReuseError
+                      }
+                      className="gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-500"
+                    >
                       <Save className="h-4 w-4" />
                       {isLoading ? 'Saving...' : 'Save Changes'}
-                </Button>
-            </div>
-          )}
+                    </Button>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -248,4 +252,3 @@ export default function ProfileModal({ open, onClose }: ProfileModalProps) {
     </Dialog.Root>
   );
 }
-

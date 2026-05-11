@@ -16,6 +16,11 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
 import { mqttService } from '@/app/api/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -31,14 +36,14 @@ import { NextRequest, NextResponse } from 'next/server';
  * Body fields:
  * (none — machines are resolved from the locationId path parameter)
  */
-export async function POST(
-  request: NextRequest
-) {
+export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/locations/[locationId]/smib-meters';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
-    // STEP 1: Parse route parameters
+    // STEP1: Parse route parameters
     // ============================================================================
     const { pathname } = request.nextUrl;
     const locationId = pathname.split('/').at(-2);
@@ -62,6 +67,13 @@ export async function POST(
     }).select('_id serialNumber game relayId smibBoard');
 
     if (machines.length === 0) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/locations/[locationId]/smib-meters',
+        'No machines with SMIBs found',
+        user
+      );
       return NextResponse.json(
         {
           success: false,
@@ -83,7 +95,11 @@ export async function POST(
 
     // Process in batches of 10 for parallel execution
     const BATCH_SIZE = 10;
-    for (let machineIndex = 0; machineIndex < machines.length; machineIndex += BATCH_SIZE) {
+    for (
+      let machineIndex = 0;
+      machineIndex < machines.length;
+      machineIndex += BATCH_SIZE
+    ) {
       const batch = machines.slice(machineIndex, machineIndex + BATCH_SIZE);
 
       await Promise.allSettled(
@@ -146,6 +162,15 @@ export async function POST(
     if (duration > 1000) {
       console.warn(`[Location SMIB Meters API] Completed in ${duration}ms`);
     }
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/locations/[locationId]/smib-meters',
+      results.total,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: results.failed === 0,
       message: `Meter requests sent to ${results.successful} SMIBs${results.failed > 0 ? ` (${results.failed} failed)` : ''}`,
@@ -155,6 +180,13 @@ export async function POST(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/locations/[locationId]/smib-meters',
+      errorMessage,
+      user
+    );
     console.error(
       `[Location SMIB Meters API] Error after ${duration}ms:`,
       errorMessage

@@ -17,16 +17,31 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { markNotificationAsCancelledByEntity } from '@/lib/helpers/vault/notifications';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/cashier/shift/cancel';
+  const user = extractUserFromRequest(request);
   try {
     // ============================================================================
     // STEP 1: Authentication
     // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/cancel',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -46,6 +61,13 @@ export async function POST() {
     });
 
     if (!pendingShift) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/cancel',
+        'No cancellable shift request found',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'No cancellable shift request found' },
         { status: 404 }
@@ -95,7 +117,10 @@ export async function POST() {
           }
         );
         if (floatUpdateResult.modifiedCount === 0) {
-          return NextResponse.json({ success: false, error: 'Failed to cancel float request' }, { status: 500 });
+          return NextResponse.json(
+            { success: false, error: 'Failed to cancel float request' },
+            { status: 500 }
+          );
         }
       }
 
@@ -109,7 +134,10 @@ export async function POST() {
         }
       );
       if (cancelResult.modifiedCount === 0) {
-        return NextResponse.json({ success: false, error: 'Failed to cancel shift' }, { status: 500 });
+        return NextResponse.json(
+          { success: false, error: 'Failed to cancel shift' },
+          { status: 500 }
+        );
       }
 
       // Audit Activity
@@ -139,7 +167,10 @@ export async function POST() {
         }
       );
       if (revertResult.modifiedCount === 0) {
-        return NextResponse.json({ success: false, error: 'Failed to revert shift to active' }, { status: 500 });
+        return NextResponse.json(
+          { success: false, error: 'Failed to revert shift to active' },
+          { status: 500 }
+        );
       }
 
       // Mark Shift Review Notification as cancelled
@@ -167,12 +198,29 @@ export async function POST() {
       });
     }
 
+    const duration = Date.now() - startTime;
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/cashier/shift/cancel',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json({
       success: true,
       message: 'Shift request cancelled successfully',
     });
   } catch (error) {
-    console.error('Error cancelling cashier shift request:', error);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/cashier/shift/cancel',
+      errorMessage,
+      user
+    );
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

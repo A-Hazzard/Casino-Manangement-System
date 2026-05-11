@@ -19,6 +19,11 @@ import {
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/analytics/machines/stats
@@ -38,14 +43,15 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/analytics/machines/stats';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
     // STEP 1: Parse and validate request parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licencee =
-      searchParams.get('licencee');
+    const licencee = searchParams.get('licencee');
     const effectiveLicencee =
       licencee && licencee.toLowerCase() !== 'all' ? licencee : null;
 
@@ -61,8 +67,13 @@ export async function GET(request: NextRequest) {
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
     let userLocationPermissions: string[] = [];
-    if (Array.isArray((userPayload as { assignedLocations?: string[] })?.assignedLocations)) {
-      userLocationPermissions = (userPayload as { assignedLocations: string[] }).assignedLocations;
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
     }
 
     const allowedLocationIds = await getUserLocationFilter(
@@ -106,14 +117,32 @@ export async function GET(request: NextRequest) {
     // STEP 6: Return machine statistics
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/analytics/machines/stats',
+      1,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
-      console.warn(`[Analytics Machines Stats GET API] Completed in ${duration}ms`);
+      console.warn(
+        `[Analytics Machines Stats GET API] Completed in ${duration}ms`
+      );
     }
     return NextResponse.json(result);
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch machine stats';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/analytics/machines/stats',
+      errorMessage,
+      user
+    );
     console.error(
       `[Machine Stats GET API] Error after ${duration}ms:`,
       errorMessage
@@ -127,4 +156,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

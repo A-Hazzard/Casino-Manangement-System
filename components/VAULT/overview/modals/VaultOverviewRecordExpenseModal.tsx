@@ -22,12 +22,12 @@ import SearchableSelect from '@/components/shared/ui/common/SearchableSelect';
 import { DatePicker } from '@/components/shared/ui/date-picker';
 import DenominationInputGrid from '@/components/shared/ui/DenominationInputGrid';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Label } from '@/components/shared/ui/label';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
@@ -40,16 +40,16 @@ import { getDenominationValues } from '@/lib/utils/vault/denominations';
 import type { Denomination, ExpenseCategory } from '@/shared/types/vault';
 import axios from 'axios';
 import {
-    Briefcase,
-    Coffee,
-    FileText,
-    Landmark,
-    Lightbulb,
-    Loader2,
-    Receipt,
-    RefreshCw,
-    User,
-    Wrench
+  Briefcase,
+  Coffee,
+  FileText,
+  Landmark,
+  Lightbulb,
+  Loader2,
+  Receipt,
+  RefreshCw,
+  User,
+  Wrench,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -83,20 +83,27 @@ export default function VaultOverviewRecordExpenseModal({
   // Hooks & State
   // ============================================================================
   const [category, setCategory] = useState<ExpenseCategory | ''>('');
-  
+
   // Denomination State
   const [denominations, setDenominations] = useState<Denomination[]>([]);
-  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
+  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(
+    new Set()
+  );
 
-  const denomsList = useMemo(() => getDenominationValues(selectedLicencee), [selectedLicencee]);
+  const denomsList = useMemo(
+    () => getDenominationValues(selectedLicencee),
+    [selectedLicencee]
+  );
 
   // Update denominations when licencee changes or modal opens
   useEffect(() => {
     if (open) {
-      setDenominations(denomsList.map(denom => ({ 
-        denomination: denom as Denomination['denomination'], 
-        quantity: 0 
-      })));
+      setDenominations(
+        denomsList.map(denom => ({
+          denomination: denom as Denomination['denomination'],
+          quantity: 0,
+        }))
+      );
       setTouchedDenominations(new Set());
     }
   }, [denomsList, open]);
@@ -128,7 +135,9 @@ export default function VaultOverviewRecordExpenseModal({
     workerName: '',
   });
 
-  const [machines, setMachines] = useState<{id: string, label: string, displayNode?: ReactNode}[]>([]);
+  const [machines, setMachines] = useState<
+    { id: string; label: string; displayNode?: ReactNode }[]
+  >([]);
   const [loadingMachines, setLoadingMachines] = useState(false);
 
   useEffect(() => {
@@ -140,7 +149,8 @@ export default function VaultOverviewRecordExpenseModal({
             params: {
               type: 'overview',
               limit: 1000,
-              licencee: selectedLicencee !== 'all' ? selectedLicencee : undefined,
+              licencee:
+                selectedLicencee !== 'all' ? selectedLicencee : undefined,
             },
           });
           const fetchedMachines = response.data.data || [];
@@ -155,13 +165,18 @@ export default function VaultOverviewRecordExpenseModal({
           }
           setMachines(
             fetchedMachines.map((m: APIMachine) => ({
-               id: m.machineId || m._id || m.serialNumber || '',
-               label: m.serialNumber || m.customName || m.custom?.name || 'N/A', // fallback text label for dropdown search filter
-               displayNode: formatMachineDisplayNameWithBold({
-                   ...m,
-                   game: m.gameTitle === '(game name not provided)' ? '' : (m.gameTitle || m.game),
-                   custom: m.custom || (m.customName ? { name: m.customName } : undefined)
-               })
+              id: m.machineId || m._id || m.serialNumber || '',
+              label: m.serialNumber || m.customName || m.custom?.name || 'N/A', // fallback text label for dropdown search filter
+              displayNode: formatMachineDisplayNameWithBold({
+                ...m,
+                game:
+                  m.gameTitle === '(game name not provided)'
+                    ? ''
+                    : m.gameTitle || m.game,
+                custom:
+                  m.custom ||
+                  (m.customName ? { name: m.customName } : undefined),
+              }),
             }))
           );
         } catch (error) {
@@ -170,7 +185,7 @@ export default function VaultOverviewRecordExpenseModal({
           setLoadingMachines(false);
         }
       };
-      
+
       fetchMachines();
     }
   }, [open, category, expenseDetails.isMachineRepair, selectedLicencee]);
@@ -189,14 +204,16 @@ export default function VaultOverviewRecordExpenseModal({
   /**
    * Check if form is valid for submission
    */
-  const isAllTouched = useMemo(() => denomsList.every(d => touchedDenominations.has(Number(d))), [denomsList, touchedDenominations]);
-  const isValid =
-    category !== '' && (amountNum > 0 || isAllTouched);
+  const isAllTouched = useMemo(
+    () => denomsList.every(d => touchedDenominations.has(Number(d))),
+    [denomsList, touchedDenominations]
+  );
+  const isValid = category !== '' && (amountNum > 0 || isAllTouched);
 
   // ============================================================================
   // Event Handlers
   // ============================================================================
-  
+
   /**
    * Handle form submission
    * Validates form data, calls onConfirm callback, and resets form on success
@@ -207,7 +224,11 @@ export default function VaultOverviewRecordExpenseModal({
     if (!category) {
       newErrors.category = 'Please select a category';
     }
-    if (category === 'Repairs' && expenseDetails.isMachineRepair && expenseDetails.machineIds.length === 0) {
+    if (
+      category === 'Repairs' &&
+      expenseDetails.isMachineRepair &&
+      expenseDetails.machineIds.length === 0
+    ) {
       newErrors.machines = 'Please select at least one machine';
     }
     if (amountNum <= 0) {
@@ -221,21 +242,26 @@ export default function VaultOverviewRecordExpenseModal({
     }
 
     if (category === 'Bank Account') {
-      if (!bankDetails.nameOnAccount.trim()) newErrors.nameOnAccount = 'Required';
+      if (!bankDetails.nameOnAccount.trim())
+        newErrors.nameOnAccount = 'Required';
       if (!bankDetails.bankName.trim()) newErrors.bankName = 'Required';
-      if (!bankDetails.accountNumber.trim()) newErrors.accountNumber = 'Required';
+      if (!bankDetails.accountNumber.trim())
+        newErrors.accountNumber = 'Required';
       if (!bankDetails.accountType.trim()) newErrors.accountType = 'Required';
     }
 
     const overages = denominations.some(requested => {
       if (requested.quantity <= 0) return false;
-      const available = vaultDenominations.find(d => d.denomination === requested.denomination)?.quantity || 0;
+      const available =
+        vaultDenominations.find(d => d.denomination === requested.denomination)
+          ?.quantity || 0;
       return requested.quantity > available;
     });
 
     if (overages) {
       toast.error('Insufficient Stock', {
-        description: 'One or more denominations exceed the available vault inventory.'
+        description:
+          'One or more denominations exceed the available vault inventory.',
       });
       return;
     }
@@ -275,10 +301,12 @@ export default function VaultOverviewRecordExpenseModal({
    */
   const handleReset = () => {
     setCategory('');
-    setDenominations(denomsList.map(denom => ({
-      denomination: denom as Denomination['denomination'],
-      quantity: 0,
-    })));
+    setDenominations(
+      denomsList.map(denom => ({
+        denomination: denom as Denomination['denomination'],
+        quantity: 0,
+      }))
+    );
     setTouchedDenominations(new Set());
     setDescription('');
     setDate(new Date());
@@ -319,256 +347,428 @@ export default function VaultOverviewRecordExpenseModal({
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="md:max-w-3xl p-0 overflow-hidden flex flex-col">
-        <DialogHeader className="p-6 bg-violet-50 border-b border-violet-100 shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-violet-900">
-            <Receipt className="h-5 w-5 text-violet-600" />
-            Record Operation Expense
-          </DialogTitle>
-          <DialogDescription className="text-violet-700/80">
-            Deduct operational costs from the vault inventory.
-          </DialogDescription>
-        </DialogHeader>
+        <DialogContent className="flex flex-col overflow-hidden p-0 md:max-w-3xl">
+          <DialogHeader className="shrink-0 border-b border-violet-100 bg-violet-50 p-6">
+            <DialogTitle className="flex items-center gap-2 text-violet-900">
+              <Receipt className="h-5 w-5 text-violet-600" />
+              Record Operation Expense
+            </DialogTitle>
+            <DialogDescription className="text-violet-700/80">
+              Deduct operational costs from the vault inventory.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-8 md:max-h-[75vh] custom-scrollbar">
-          {/* Category Selection */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400">
-                Expense category
-              </Label>
-              {errors.category && <span className="text-[10px] font-bold text-red-500 uppercase">Required</span>}
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-3">
-              {[
-                { label: 'Food/Drinks', icon: Coffee },
-                { label: 'Repairs', icon: Wrench },
-                { label: 'Bills', icon: Lightbulb },
-                { label: 'Worker/Employee', icon: User },
-                { label: 'Bank Account', icon: Landmark },
-                { label: 'Other', icon: Briefcase }
-              ].map(cat => {
-                const isSelected = category === cat.label;
-                const Icon = cat.icon;
-                return (
-                  <button
-                    key={cat.label}
-                    type="button"
-                    onClick={() => setCategory(cat.label as ExpenseCategory)}
-                    className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all gap-2",
-                      isSelected 
-                        ? "bg-violet-600 border-violet-600 text-white shadow-lg shadow-violet-200" 
-                        : "bg-white border-gray-100 text-gray-600 hover:border-violet-200 hover:bg-violet-50/30"
-                    )}
-                  >
-                    <Icon className={cn("h-5 w-5", isSelected ? "text-white" : "text-violet-500")} />
-                    <span className="text-[10px] font-black uppercase tracking-tight leading-tight">{cat.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-            {/* Left side - Cash/Bank and Date */}
-            <div className="md:col-span-5 space-y-6">
-              <div className="space-y-4">
-                <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">
-                  Cash Paid & Date
+          <div className="custom-scrollbar flex-1 space-y-8 overflow-y-auto p-6 md:max-h-[75vh]">
+            {/* Category Selection */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                  Expense category
                 </Label>
-                
-                <div className="space-y-3">
-                  <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 shadow-inner">
-                    <DenominationInputGrid
-                      denominations={denominations}
-                      onChange={setDenominations}
-                      stock={vaultDenominations}
-                      touchedDenominations={touchedDenominations}
-                      onTouchedChange={setTouchedDenominations}
-                    />
-                  </div>
-                  
-                    <DatePicker 
+                {errors.category && (
+                  <span className="text-[10px] font-bold uppercase text-red-500">
+                    Required
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-6">
+                {[
+                  { label: 'Food/Drinks', icon: Coffee },
+                  { label: 'Repairs', icon: Wrench },
+                  { label: 'Bills', icon: Lightbulb },
+                  { label: 'Worker/Employee', icon: User },
+                  { label: 'Bank Account', icon: Landmark },
+                  { label: 'Other', icon: Briefcase },
+                ].map(cat => {
+                  const isSelected = category === cat.label;
+                  const Icon = cat.icon;
+                  return (
+                    <button
+                      key={cat.label}
+                      type="button"
+                      onClick={() => setCategory(cat.label as ExpenseCategory)}
+                      className={cn(
+                        'flex flex-col items-center justify-center gap-2 rounded-2xl border-2 p-3 transition-all',
+                        isSelected
+                          ? 'border-violet-600 bg-violet-600 text-white shadow-lg shadow-violet-200'
+                          : 'border-gray-100 bg-white text-gray-600 hover:border-violet-200 hover:bg-violet-50/30'
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          'h-5 w-5',
+                          isSelected ? 'text-white' : 'text-violet-500'
+                        )}
+                      />
+                      <span className="text-[10px] font-black uppercase leading-tight tracking-tight">
+                        {cat.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
+              {/* Left side - Cash/Bank and Date */}
+              <div className="space-y-6 md:col-span-5">
+                <div className="space-y-4">
+                  <Label className="ml-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
+                    Cash Paid & Date
+                  </Label>
+
+                  <div className="space-y-3">
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 shadow-inner">
+                      <DenominationInputGrid
+                        denominations={denominations}
+                        onChange={setDenominations}
+                        stock={vaultDenominations}
+                        touchedDenominations={touchedDenominations}
+                        onTouchedChange={setTouchedDenominations}
+                      />
+                    </div>
+
+                    <DatePicker
                       date={date}
-                      setDate={(d: Date | undefined) => setDate(d || new Date())}
+                      setDate={(d: Date | undefined) =>
+                        setDate(d || new Date())
+                      }
                       disabledDates={{ after: new Date() }}
                     />
                   </div>
                 </div>
 
                 {/* Summary Card */}
-                <div className="rounded-2xl p-5 bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100 shadow-sm text-violet-900">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">Payout Value</span>
+                <div className="rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 to-purple-50 p-5 text-violet-900 shadow-sm">
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-violet-400">
+                      Payout Value
+                    </span>
                     <Receipt className="h-4 w-4 text-violet-500" />
                   </div>
                   <div className="space-y-0.5">
-                    <span className="text-3xl font-black tracking-tight text-violet-700">{formatAmount(amountNum)}</span>
-                    <p className="text-[10px] text-violet-600/60 font-bold uppercase tracking-tight">Total Expense Amount</p>
+                    <span className="text-3xl font-black tracking-tight text-violet-700">
+                      {formatAmount(amountNum)}
+                    </span>
+                    <p className="text-[10px] font-bold uppercase tracking-tight text-violet-600/60">
+                      Total Expense Amount
+                    </p>
                   </div>
                 </div>
               </div>
 
-            {/* Right side - Dynamic Details */}
-            <div className="md:col-span-7 space-y-6">
-              {category === 'Bank Account' && (
-                <div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                   <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400">Bank Details</Label>
-                   <div className="grid grid-cols-2 gap-3 mb-3">
+              {/* Right side - Dynamic Details */}
+              <div className="space-y-6 md:col-span-7">
+                {category === 'Bank Account' && (
+                  <div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                    <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                      Bank Details
+                    </Label>
+                    <div className="mb-3 grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-xs font-bold text-gray-600">Name on Account <span className="text-red-500">*</span></Label>
+                        <Label className="text-xs font-bold text-gray-600">
+                          Name on Account{' '}
+                          <span className="text-red-500">*</span>
+                        </Label>
                         <input
-                          type="text" placeholder="John Doe"
-                          value={bankDetails.nameOnAccount} onChange={e => setBankDetails({...bankDetails, nameOnAccount: e.target.value})}
-                          className={cn("w-full px-3 py-2 rounded-xl border text-sm focus:border-violet-500 outline-none", errors.nameOnAccount ? "border-red-500" : "border-gray-200")}
+                          type="text"
+                          placeholder="John Doe"
+                          value={bankDetails.nameOnAccount}
+                          onChange={e =>
+                            setBankDetails({
+                              ...bankDetails,
+                              nameOnAccount: e.target.value,
+                            })
+                          }
+                          className={cn(
+                            'w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-violet-500',
+                            errors.nameOnAccount
+                              ? 'border-red-500'
+                              : 'border-gray-200'
+                          )}
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs font-bold text-gray-600">Bank Name <span className="text-red-500">*</span></Label>
+                        <Label className="text-xs font-bold text-gray-600">
+                          Bank Name <span className="text-red-500">*</span>
+                        </Label>
                         <SearchableSelect
                           options={CARIBBEAN_BANKS}
                           value={bankDetails.bankName}
-                          onChange={val => setBankDetails({...bankDetails, bankName: val})}
+                          onChange={val =>
+                            setBankDetails({ ...bankDetails, bankName: val })
+                          }
                           placeholder="Select Bank..."
                           searchPlaceholder="Search banks..."
                           error={!!errors.bankName}
                         />
                       </div>
-                   </div>
-                   <div className="grid grid-cols-2 gap-3 mb-3">
+                    </div>
+                    <div className="mb-3 grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-xs font-bold text-gray-600">Account Number <span className="text-red-500">*</span></Label>
+                        <Label className="text-xs font-bold text-gray-600">
+                          Account Number <span className="text-red-500">*</span>
+                        </Label>
                         <input
-                          type="text" placeholder="123456789"
-                          value={bankDetails.accountNumber} onChange={e => setBankDetails({...bankDetails, accountNumber: e.target.value})}
-                          className={cn("w-full px-3 py-2 rounded-xl border text-sm focus:border-violet-500 outline-none", errors.accountNumber ? "border-red-500" : "border-gray-200")}
+                          type="text"
+                          placeholder="123456789"
+                          value={bankDetails.accountNumber}
+                          onChange={e =>
+                            setBankDetails({
+                              ...bankDetails,
+                              accountNumber: e.target.value,
+                            })
+                          }
+                          className={cn(
+                            'w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-violet-500',
+                            errors.accountNumber
+                              ? 'border-red-500'
+                              : 'border-gray-200'
+                          )}
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs font-bold text-gray-600">Account Type <span className="text-red-500">*</span></Label>
+                        <Label className="text-xs font-bold text-gray-600">
+                          Account Type <span className="text-red-500">*</span>
+                        </Label>
                         <input
-                          type="text" placeholder="Chequing"
-                          value={bankDetails.accountType} onChange={e => setBankDetails({...bankDetails, accountType: e.target.value})}
-                          className={cn("w-full px-3 py-2 rounded-xl border text-sm focus:border-violet-500 outline-none", errors.accountType ? "border-red-500" : "border-gray-200")}
+                          type="text"
+                          placeholder="Chequing"
+                          value={bankDetails.accountType}
+                          onChange={e =>
+                            setBankDetails({
+                              ...bankDetails,
+                              accountType: e.target.value,
+                            })
+                          }
+                          className={cn(
+                            'w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-violet-500',
+                            errors.accountType
+                              ? 'border-red-500'
+                              : 'border-gray-200'
+                          )}
                         />
                       </div>
-                   </div>
-                   <div className="grid grid-cols-2 gap-3">
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <Label className="text-xs font-bold text-gray-600">Transit Number (Optional)</Label>
+                        <Label className="text-xs font-bold text-gray-600">
+                          Transit Number (Optional)
+                        </Label>
                         <input
-                          type="text" placeholder="Transit Number"
-                          value={bankDetails.transit} onChange={e => setBankDetails({...bankDetails, transit: e.target.value})}
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-violet-500 outline-none"
+                          type="text"
+                          placeholder="Transit Number"
+                          value={bankDetails.transit}
+                          onChange={e =>
+                            setBankDetails({
+                              ...bankDetails,
+                              transit: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-violet-500"
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs font-bold text-gray-600">Branch (Optional)</Label>
+                        <Label className="text-xs font-bold text-gray-600">
+                          Branch (Optional)
+                        </Label>
                         <input
-                          type="text" placeholder="Branch Name/Code"
-                          value={bankDetails.branch} onChange={e => setBankDetails({...bankDetails, branch: e.target.value})}
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-violet-500 outline-none"
+                          type="text"
+                          placeholder="Branch Name/Code"
+                          value={bankDetails.branch}
+                          onChange={e =>
+                            setBankDetails({
+                              ...bankDetails,
+                              branch: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-violet-500"
                         />
                       </div>
-                   </div>
-                </div>
-              )}
-
-              {/* Category specifics */}
-              {category && category !== 'Other' && category !== 'Bank Account' && category !== 'Food/Drinks' && (
-                <div className="space-y-4 rounded-2xl border border-gray-100 p-4">
-                  <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400">{category} Details</Label>
-                  <div className="space-y-3">
-                    {category === 'Worker/Employee' && (
-                      <input type="text" placeholder="Worker / Employee Name" value={expenseDetails.workerName} onChange={e => setExpenseDetails({...expenseDetails, workerName: e.target.value})} className="w-full px-3 py-2 rounded-xl border text-sm" />
-                    )}
-                    {category === 'Repairs' && (
-                      <>
-                        {!expenseDetails.isMachineRepair && (
-                          <input type="text" placeholder="Service Provider" value={expenseDetails.serviceProvider} onChange={e => setExpenseDetails({...expenseDetails, serviceProvider: e.target.value})} className="w-full px-3 py-2 rounded-xl border" />
-                        )}
-                        <label className="flex items-center gap-2 text-sm text-gray-600">
-                          <input type="checkbox" checked={expenseDetails.isMachineRepair} onChange={e => setExpenseDetails({...expenseDetails, isMachineRepair: e.target.checked})} className="rounded text-violet-600 focus:ring-violet-500" />
-                          Is this a machine-related repair?
-                        </label>
-                        {expenseDetails.isMachineRepair && (
-                          <div className="space-y-2 mt-2">
-                             <div className="flex items-center justify-between px-1">
-                               <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400">Select Machine(s)</Label>
-                               {errors.machines && <span className="text-[10px] font-bold text-red-500 uppercase">Required</span>}
-                             </div>
-                             {loadingMachines ? (
-                               <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 p-3 rounded border border-amber-200 font-medium">
-                                 <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
-                                 Machine selection loading...
-                               </div>
-                             ) : (
-                               <MultiSelectDropdown
-                                 options={machines}
-                                 selectedIds={expenseDetails.machineIds}
-                                 onChange={(ids) => setExpenseDetails({...expenseDetails, machineIds: ids})}
-                                 placeholder="Select machines that were repaired..."
-                                 label="machines"
-                               />
-                             )}
-                          </div>
-                        )}
-                      </>
-                    )}
-                    {category === 'Bills' && (
-                      <>
-                        <input type="text" placeholder="Biller Name" value={expenseDetails.billerName} onChange={e => setExpenseDetails({...expenseDetails, billerName: e.target.value})} className="w-full px-3 py-2 rounded-xl border" />
-                        <input type="text" placeholder="Billing Period" value={expenseDetails.billingPeriod} onChange={e => setExpenseDetails({...expenseDetails, billingPeriod: e.target.value})} className="w-full px-3 py-2 rounded-xl border" />
-                      </>
-                    )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div className="space-y-3">
-                <Label htmlFor="description" className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-1">
-                   <FileText className="h-3 w-3" />
-                   {category === 'Other' ? 'Detailed Description' : 'Additional Notes (Optional)'}
-                </Label>
-                <Textarea
-                  id="description"
-                  placeholder={category === 'Other' ? "Please provide full details..." : "What was this expense for?"}
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  rows={4}
-                  className="resize-none bg-gray-50/50 border-gray-100 rounded-2xl focus:bg-white transition-all text-sm border-2 focus:border-violet-500/30"
-                />
+                {/* Category specifics */}
+                {category &&
+                  category !== 'Other' &&
+                  category !== 'Bank Account' &&
+                  category !== 'Food/Drinks' && (
+                    <div className="space-y-4 rounded-2xl border border-gray-100 p-4">
+                      <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                        {category} Details
+                      </Label>
+                      <div className="space-y-3">
+                        {category === 'Worker/Employee' && (
+                          <input
+                            type="text"
+                            placeholder="Worker / Employee Name"
+                            value={expenseDetails.workerName}
+                            onChange={e =>
+                              setExpenseDetails({
+                                ...expenseDetails,
+                                workerName: e.target.value,
+                              })
+                            }
+                            className="w-full rounded-xl border px-3 py-2 text-sm"
+                          />
+                        )}
+                        {category === 'Repairs' && (
+                          <>
+                            {!expenseDetails.isMachineRepair && (
+                              <input
+                                type="text"
+                                placeholder="Service Provider"
+                                value={expenseDetails.serviceProvider}
+                                onChange={e =>
+                                  setExpenseDetails({
+                                    ...expenseDetails,
+                                    serviceProvider: e.target.value,
+                                  })
+                                }
+                                className="w-full rounded-xl border px-3 py-2"
+                              />
+                            )}
+                            <label className="flex items-center gap-2 text-sm text-gray-600">
+                              <input
+                                type="checkbox"
+                                checked={expenseDetails.isMachineRepair}
+                                onChange={e =>
+                                  setExpenseDetails({
+                                    ...expenseDetails,
+                                    isMachineRepair: e.target.checked,
+                                  })
+                                }
+                                className="rounded text-violet-600 focus:ring-violet-500"
+                              />
+                              Is this a machine-related repair?
+                            </label>
+                            {expenseDetails.isMachineRepair && (
+                              <div className="mt-2 space-y-2">
+                                <div className="flex items-center justify-between px-1">
+                                  <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400">
+                                    Select Machine(s)
+                                  </Label>
+                                  {errors.machines && (
+                                    <span className="text-[10px] font-bold uppercase text-red-500">
+                                      Required
+                                    </span>
+                                  )}
+                                </div>
+                                {loadingMachines ? (
+                                  <div className="flex items-center gap-2 rounded border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-600">
+                                    <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+                                    Machine selection loading...
+                                  </div>
+                                ) : (
+                                  <MultiSelectDropdown
+                                    options={machines}
+                                    selectedIds={expenseDetails.machineIds}
+                                    onChange={ids =>
+                                      setExpenseDetails({
+                                        ...expenseDetails,
+                                        machineIds: ids,
+                                      })
+                                    }
+                                    placeholder="Select machines that were repaired..."
+                                    label="machines"
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {category === 'Bills' && (
+                          <>
+                            <input
+                              type="text"
+                              placeholder="Biller Name"
+                              value={expenseDetails.billerName}
+                              onChange={e =>
+                                setExpenseDetails({
+                                  ...expenseDetails,
+                                  billerName: e.target.value,
+                                })
+                              }
+                              className="w-full rounded-xl border px-3 py-2"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Billing Period"
+                              value={expenseDetails.billingPeriod}
+                              onChange={e =>
+                                setExpenseDetails({
+                                  ...expenseDetails,
+                                  billingPeriod: e.target.value,
+                                })
+                              }
+                              className="w-full rounded-xl border px-3 py-2"
+                            />
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                <div className="space-y-3">
+                  <Label
+                    htmlFor="description"
+                    className="ml-1 flex items-center gap-1 text-[11px] font-black uppercase tracking-widest text-gray-400"
+                  >
+                    <FileText className="h-3 w-3" />
+                    {category === 'Other'
+                      ? 'Detailed Description'
+                      : 'Additional Notes (Optional)'}
+                  </Label>
+                  <Textarea
+                    id="description"
+                    placeholder={
+                      category === 'Other'
+                        ? 'Please provide full details...'
+                        : 'What was this expense for?'
+                    }
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    rows={4}
+                    className="resize-none rounded-2xl border-2 border-gray-100 bg-gray-50/50 text-sm transition-all focus:border-violet-500/30 focus:bg-white"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <DialogFooter className="p-4 bg-gray-50 border-t flex flex-col sm:flex-row gap-3">
-          <Button variant="ghost" onClick={handleClose} disabled={loading} className="order-2 sm:order-1 font-bold text-gray-500">
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!isValid || loading}
-            className="order-1 sm:order-2 flex-1 h-12 bg-violet-600 text-white hover:bg-violet-700 font-black text-base shadow-lg shadow-violet-600/20 active:scale-[0.98] transition-all rounded-xl"
-          >
-            {loading ? (
-              <div className="flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Recording Expense...
-              </div>
-            ) : 'Confirm Expense'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    <VaultAuthenticatorModal
-      open={showAuthenticator}
-      onClose={() => setShowAuthenticator(false)}
-      onVerified={handleAuthVerified}
-      actionName="Record Expense"
-    />
+          <DialogFooter className="flex flex-col gap-3 border-t bg-gray-50 p-4 sm:flex-row">
+            <Button
+              variant="ghost"
+              onClick={handleClose}
+              disabled={loading}
+              className="order-2 font-bold text-gray-500 sm:order-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!isValid || loading}
+              className="order-1 h-12 flex-1 rounded-xl bg-violet-600 text-base font-black text-white shadow-lg shadow-violet-600/20 transition-all hover:bg-violet-700 active:scale-[0.98] sm:order-2"
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Recording Expense...
+                </div>
+              ) : (
+                'Confirm Expense'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <VaultAuthenticatorModal
+        open={showAuthenticator}
+        onClose={() => setShowAuthenticator(false)}
+        onVerified={handleAuthVerified}
+        actionName="Record Expense"
+      />
     </>
   );
 }

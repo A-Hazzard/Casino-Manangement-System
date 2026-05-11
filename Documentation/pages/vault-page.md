@@ -1,8 +1,8 @@
 # Vault Management Page Implementation (`/vault`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -15,6 +15,7 @@ Cage and Vault operations for property-wide cash management, shift lifecycle man
 ## 2. Data & API Architecture (By Section)
 
 ### 💰 Vault Balance Card
+
 The primary financial snapshot for the current vault shift.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -28,6 +29,7 @@ The primary financial snapshot for the current vault shift.
 - **Implementation**: `VaultOverviewBalanceCard` component.
 
 ### 📦 Inventory Card
+
 Denomination-level breakdown of physical cash inside the vault safe.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -38,6 +40,7 @@ Denomination-level breakdown of physical cash inside the vault safe.
 - **Implementation**: `VaultOverviewInventoryCard` component.
 
 ### 🏧 Float Requests Panel
+
 Incoming cash requests from cashiers on the floor awaiting vault manager approval.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -50,6 +53,7 @@ Incoming cash requests from cashiers on the floor awaiting vault manager approva
 - **Implementation**: `VaultOverviewFloatRequestsPanel` component.
 
 ### 📋 Shift Review Panel
+
 Audit interface for reviewing cashier shift closures that have variances.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -63,6 +67,7 @@ Audit interface for reviewing cashier shift closures that have variances.
 - **Implementation**: `VaultOverviewShiftReviewPanel` component.
 
 ### 📊 Cash on Premises Metrics
+
 A real-time summary of property-wide liquidity (visible to Vault Managers and above).
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -74,6 +79,7 @@ A real-time summary of property-wide liquidity (visible to Vault Managers and ab
 - **Contextual**: Provides the "Full Picture" of total fiscal exposure across the property for risk management.
 
 ### 📜 Recent Activity
+
 A chronological log of all cash movements within the current vault shift.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -124,4 +130,5 @@ The Vault operates in a strict shift-based model:
 - **Polling Strategy**: The Float Requests Panel polls every 5 seconds using a `setInterval` to ensure instant notification for vault managers.
 
 ---
+
 **Internal Document** - Engineering Team

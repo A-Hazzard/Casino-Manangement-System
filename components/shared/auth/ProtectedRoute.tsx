@@ -21,14 +21,14 @@ import { NoRoleAssigned } from '@/components/shared/ui/NoRoleAssigned';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { shouldShowNoRoleMessage } from '@/lib/utils/licencee';
 import {
-    PageName,
-    hasAdminAccessDb,
-    hasPageAccess,
-    hasPageAccessDb,
+  PageName,
+  hasAdminAccessDb,
+  hasPageAccess,
+  hasPageAccessDb,
 } from '@/lib/utils/permissions';
 import {
-    isCashierOnly,
-    isVaultManagerOnly,
+  isCashierOnly,
+  isVaultManagerOnly,
 } from '@/lib/utils/permissions/client';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
@@ -139,12 +139,14 @@ export default function ProtectedRoute({
       // Check local permissions first (faster)
       const userRoles = (user?.roles || []) as string[];
       // STEP 1: Authorization Bypass for Developers and Admins
-      // Developers have unrestricted access to all pages. 
+      // Developers have unrestricted access to all pages.
       // Admins and Owners have unrestricted access to all pages EXCEPT sessions.
       const isDeveloper = userRoles.includes('developer');
-      const isAdminOrOwner = userRoles.includes('owner') || userRoles.includes('admin');
-      
-      const isBypassAuthorized = isDeveloper || (isAdminOrOwner && requiredPage !== 'sessions');
+      const isAdminOrOwner =
+        userRoles.includes('owner') || userRoles.includes('admin');
+
+      const isBypassAuthorized =
+        isDeveloper || (isAdminOrOwner && requiredPage !== 'sessions');
 
       if (isBypassAuthorized) {
         setIsChecking(false);
@@ -154,7 +156,9 @@ export default function ProtectedRoute({
       // STEP 2: Standard Authorization Check
       if (requireAdminAccess) {
         const hasAdminLocal =
-          user.roles.includes('admin') || user.roles.includes('owner') || user.roles.includes('developer');
+          user.roles.includes('admin') ||
+          user.roles.includes('owner') ||
+          user.roles.includes('developer');
         if (!hasAdminLocal) {
           router.push('/'); // Redirect to dashboard if not admin
           return;
@@ -252,7 +256,6 @@ export default function ProtectedRoute({
           setSelectedLicencee: () => {},
           disabled: false,
         }}
-        
         hideOptions={true}
         hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"

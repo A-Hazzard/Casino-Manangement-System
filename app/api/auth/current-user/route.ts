@@ -14,11 +14,19 @@
 import {
   getInvalidProfileFields,
   hasInvalidProfileFields,
-  ProfileLike
+  ProfileLike,
 } from '@/app/api/lib/helpers/profileValidation';
-import { getUserById, getUserFromServer } from '@/app/api/lib/helpers/users/users';
+import {
+  getUserById,
+  getUserFromServer,
+} from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/auth/current-user
@@ -27,8 +35,10 @@ import { NextResponse } from 'next/server';
  * params; reads the `token` JWT cookie, validates the sessionVersion against the
  * database to detect permission changes, and hydrates profile-completeness flags.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/auth/current-user';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -37,6 +47,13 @@ export async function GET() {
     const jwtUser = await getUserFromServer();
 
     if (!jwtUser) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/auth/current-user',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -53,6 +70,13 @@ export async function GET() {
     const dbUser = await getUserById(userId);
 
     if (!dbUser || Array.isArray(dbUser)) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/auth/current-user',
+        `Not found: ${userId}`,
+        user
+      );
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
@@ -65,12 +89,23 @@ export async function GET() {
     // ============================================================================
     // STEP 4: Validate profile fields
     // ============================================================================
-    const { invalidFields, reasons } = getInvalidProfileFields(dbUser as ProfileLike);
+    const { invalidFields, reasons } = getInvalidProfileFields(
+      dbUser as ProfileLike
+    );
     const requiresProfileUpdate = hasInvalidProfileFields(invalidFields);
 
     // ============================================================================
     // STEP 5: Return user data with validation status
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/auth/current-user',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json({
       success: true,
       user: {
@@ -87,7 +122,9 @@ export async function GET() {
         updatedAt: dbUser.updatedAt || new Date(),
         tempPasswordChanged: dbUser.tempPasswordChanged ?? true,
         tempPassword: dbUser.tempPassword ?? null,
-        multiplier: dbUser.multiplier ?? null,
+        moneyInMultiplier: dbUser.moneyInMultiplier ?? null,
+        moneyOutAndJackpotMultiplier:
+          dbUser.moneyOutAndJackpotMultiplier ?? null,
         requiresProfileUpdate,
         requiresPasswordUpdate: !!invalidFields.password,
         invalidProfileFields: invalidFields,
@@ -95,17 +132,18 @@ export async function GET() {
       },
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Current User API] Error after ${duration}ms:`, error);
-    console.error('Error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-      name: error instanceof Error ? error.name : undefined,
-    });
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/auth/current-user',
+      errorMessage,
+      user
+    );
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
-

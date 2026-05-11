@@ -17,10 +17,13 @@ import { useMembersNavigation } from '@/lib/hooks/navigation';
 
 // Components
 import MembersNavigation from '@/components/CMS/members/common/MembersNavigation';
-import { MembersHandlersProvider, useMembersHandlers } from '@/components/CMS/members/context/MembersHandlersContext';
 import {
-    MembersListTabSkeleton,
-    MembersSummaryTabSkeleton,
+  MembersHandlersProvider,
+  useMembersHandlers,
+} from '@/components/CMS/members/context/MembersHandlersContext';
+import {
+  MembersListTabSkeleton,
+  MembersSummaryTabSkeleton,
 } from '@/components/shared/ui/skeletons/MembersSkeletons';
 
 // Tab Components
@@ -29,10 +32,7 @@ import MembersSummaryTab from '@/components/CMS/members/tabs/MembersSummaryTab';
 import MembersActivityLogTab from '@/components/CMS/members/tabs/MembersActivityLogTab';
 
 // Constants
-import {
-    MEMBERS_ANIMATIONS,
-    MEMBERS_TABS_CONFIG,
-} from '@/lib/constants';
+import { MEMBERS_ANIMATIONS, MEMBERS_TABS_CONFIG } from '@/lib/constants';
 
 // Types
 import type { MembersView } from '@/shared/types/entities';
@@ -51,7 +51,9 @@ function MembersPageContentInner() {
 
   const isManagement = !!(
     user?.roles &&
-    (user.roles.includes('developer') || user.roles.includes('admin') || user.roles.includes('owner'))
+    (user.roles.includes('developer') ||
+      user.roles.includes('admin') ||
+      user.roles.includes('owner'))
   );
 
   // Filter tabs - apply maintenance state first, then role-based access
@@ -82,7 +84,7 @@ function MembersPageContentInner() {
   const renderTabContent = () => {
     const animationProps = getTabAnimationProps();
     const { key, ...restProps } = animationProps;
-    
+
     return (
       <AnimatePresence mode="wait">
         <motion.div key={key} {...restProps}>
@@ -94,8 +96,10 @@ function MembersPageContentInner() {
               ) : activeTab === 'summary-report' ? (
                 <MembersSummaryTabSkeleton />
               ) : (
-                <div className="flex h-64 items-center justify-center bg-white/50 animate-pulse rounded-lg mt-6">
-                  <span className="text-gray-500 font-medium">Loading Activity Log...</span>
+                <div className="mt-6 flex h-64 animate-pulse items-center justify-center rounded-lg bg-white/50">
+                  <span className="font-medium text-gray-500">
+                    Loading Activity Log...
+                  </span>
                 </div>
               )
             }

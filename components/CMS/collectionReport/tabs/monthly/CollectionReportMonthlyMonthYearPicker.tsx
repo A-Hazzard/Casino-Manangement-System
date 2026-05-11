@@ -4,7 +4,7 @@ import { FC } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { CustomSelect } from '@/components/shared/ui/custom-select';
 import { endOfMonth, setMonth, setYear, startOfMonth } from 'date-fns';
-import {  useMemo  } from 'react';
+import { useMemo } from 'react';
 
 import { DateRange as RDPDateRange } from 'react-day-picker';
 
@@ -20,31 +20,35 @@ type MonthYearPickerProps = {
  * A specialized date picker that only allows selecting Month and Year.
  * Returns a date range covering the entire selected month.
  */
-export const CollectionReportMonthlyMonthYearPicker: FC<MonthYearPickerProps> = ({
-  value,
-  onChange,
-  onSetLastMonth,
-  disabled = false,
-}) => {
+export const CollectionReportMonthlyMonthYearPicker: FC<
+  MonthYearPickerProps
+> = ({ value, onChange, onSetLastMonth, disabled = false }) => {
   // Current selections
-  const selectedMonth = value?.from ? value.from.getMonth().toString() : new Date().getMonth().toString();
-  const selectedYear = value?.from ? value.from.getFullYear().toString() : new Date().getFullYear().toString();
+  const selectedMonth = value?.from
+    ? value.from.getMonth().toString()
+    : new Date().getMonth().toString();
+  const selectedYear = value?.from
+    ? value.from.getFullYear().toString()
+    : new Date().getFullYear().toString();
 
   // Options for months
-  const monthOptions = useMemo(() => [
-    { value: '0', label: 'January' },
-    { value: '1', label: 'February' },
-    { value: '2', label: 'March' },
-    { value: '3', label: 'April' },
-    { value: '4', label: 'May' },
-    { value: '5', label: 'June' },
-    { value: '6', label: 'July' },
-    { value: '7', label: 'August' },
-    { value: '8', label: 'September' },
-    { value: '9', label: 'October' },
-    { value: '10', label: 'November' },
-    { value: '11', label: 'December' },
-  ], []);
+  const monthOptions = useMemo(
+    () => [
+      { value: '0', label: 'January' },
+      { value: '1', label: 'February' },
+      { value: '2', label: 'March' },
+      { value: '3', label: 'April' },
+      { value: '4', label: 'May' },
+      { value: '5', label: 'June' },
+      { value: '6', label: 'July' },
+      { value: '7', label: 'August' },
+      { value: '8', label: 'September' },
+      { value: '9', label: 'October' },
+      { value: '10', label: 'November' },
+      { value: '11', label: 'December' },
+    ],
+    []
+  );
 
   // Options for years (from 2020 to current year)
   const yearOptions = useMemo(() => {
@@ -60,7 +64,7 @@ export const CollectionReportMonthlyMonthYearPicker: FC<MonthYearPickerProps> = 
     const monthIdx = parseInt(month);
     const baseDate = value?.from || new Date();
     const newDate = setMonth(baseDate, monthIdx);
-    
+
     onChange({
       from: startOfMonth(newDate),
       to: endOfMonth(newDate),
@@ -71,7 +75,7 @@ export const CollectionReportMonthlyMonthYearPicker: FC<MonthYearPickerProps> = 
     const yearNum = parseInt(year);
     const baseDate = value?.from || new Date();
     const newDate = setYear(baseDate, yearNum);
-    
+
     onChange({
       from: startOfMonth(newDate),
       to: endOfMonth(newDate),

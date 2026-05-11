@@ -11,9 +11,9 @@ import {
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { dateRange } from '@/lib/types/index';
 import { isAbortError } from '@/lib/utils/errors';
-import { 
+import {
   calculateCabinetFinancialTotals,
-  type FinancialTotals 
+  type FinancialTotals,
 } from '@/lib/utils/financial/totals';
 import { useDebounce } from '@/lib/utils/hooks';
 import type { GamingMachine as Cabinet } from '@/shared/types/entities';
@@ -118,14 +118,16 @@ export const useCabinetData = ({
   }, [allCabinets.length, initialLoading, loading]);
 
   // Removed filteredCabinets state - now using memoized value for better performance
-  const [locations, setLocations] = useState<{ _id: string; name: string; includeJackpot?: boolean }[]>(
-    []
-  );
+  const [locations, setLocations] = useState<
+    { _id: string; name: string; includeJackpot?: boolean }[]
+  >([]);
   const [gameTypes, setGameTypes] = useState<string[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
 
   // Separate state for metrics totals (from dedicated API call)
-  const [metricsTotals, setMetricsTotals] = useState<FinancialTotals | null>(null);
+  const [metricsTotals, setMetricsTotals] = useState<FinancialTotals | null>(
+    null
+  );
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
 
   // AbortController for canceling previous requests
@@ -176,19 +178,30 @@ export const useCabinetData = ({
     return allCabinets.filter(cabinet => {
       // 1. Location filter (matches any of multiple selected locations)
       if (selectedLocation.length > 0 && !selectedLocation.includes('all')) {
-        const matchesLocation = selectedLocation.some(locId => String(cabinet.locationId) === String(locId));
+        const matchesLocation = selectedLocation.some(
+          locId => String(cabinet.locationId) === String(locId)
+        );
         if (!matchesLocation) return false;
       }
 
       // 2. Game Type filter (matches any of multiple selected game types)
       if (selectedGameType.length > 0 && !selectedGameType.includes('all')) {
-        const machineGame = (cabinet.game || cabinet.installedGame || '').toString();
+        const machineGame = (
+          cabinet.game ||
+          cabinet.installedGame ||
+          ''
+        ).toString();
         const matchesGameType = selectedGameType.includes(machineGame);
         if (!matchesGameType) return false;
       }
 
       // 3. Status filter (if not 'All', filter by onlineStatus)
       if (selectedStatus !== 'All' && selectedStatus !== 'all') {
+        // Archived status is handled by API-level filtering, pass through
+        if (selectedStatus === 'Archived') {
+          return true;
+        }
+
         const isOnline = cabinet.online === true;
 
         if (selectedStatus === 'NeverOnline') {
@@ -215,12 +228,16 @@ export const useCabinetData = ({
   ]);
 
   // Legacy filterCabinets function for backward compatibility (now just updates state)
-  const filterCabinets = useCallback(() => {
-  }, []);
+  const filterCabinets = useCallback(() => {}, []);
 
   // Load cabinets with proper error handling and logging
   const loadCabinets = useCallback(
-    async (page?: number, limit?: number, sortBy?: string, sortOrder?: 'asc' | 'desc') => {
+    async (
+      page?: number,
+      limit?: number,
+      sortBy?: string,
+      sortOrder?: 'asc' | 'desc'
+    ) => {
       // Synchronously increment and set loading to prevent the "No data" flash
       activeRequestsRef.current++;
       setLoading(true);
@@ -239,7 +256,8 @@ export const useCabinetData = ({
         // (e.g. when called via onCustomRangeGo setTimeout callback)
         const storeState = useDashBoardStore.getState();
         const currentCustomDateRange = storeState.customDateRange;
-        const currentActiveMetricsFilter = storeState.activeMetricsFilter || activeMetricsFilter;
+        const currentActiveMetricsFilter =
+          storeState.activeMetricsFilter || activeMetricsFilter;
 
         console.warn('[useCabinetData] Loading cabinets with filters:', {
           selectedLicencee,
@@ -248,9 +266,9 @@ export const useCabinetData = ({
           limit,
           customDateRange: currentCustomDateRange
             ? {
-              startDate: currentCustomDateRange.startDate?.toISOString(),
-              endDate: currentCustomDateRange.endDate?.toISOString(),
-            }
+                startDate: currentCustomDateRange.startDate?.toISOString(),
+                endDate: currentCustomDateRange.endDate?.toISOString(),
+              }
             : undefined,
           selectedLocation,
           selectedGameType,
@@ -261,12 +279,12 @@ export const useCabinetData = ({
 
         const dateRangeForFetch =
           currentActiveMetricsFilter === 'Custom' &&
-            currentCustomDateRange?.startDate &&
-            currentCustomDateRange?.endDate
+          currentCustomDateRange?.startDate &&
+          currentCustomDateRange?.endDate
             ? {
-              from: currentCustomDateRange.startDate,
-              to: currentCustomDateRange.endDate,
-            }
+                from: currentCustomDateRange.startDate,
+                to: currentCustomDateRange.endDate,
+              }
             : undefined;
 
         // When searching, fetch all results (no pagination limit) to find matches across all machines
@@ -468,7 +486,7 @@ export const useCabinetData = ({
   // DISABLED: This effect was causing duplicate API calls
   // The parent component (useCabinetsPageData) already handles filter change refetches
   // Keeping this code commented for reference but it should NOT be re-enabled
-  // 
+  //
   // Trigger refetch when status or location filter changes (filtering is now done at API level)
   // Note: This replaces the old frontend-first filtering approach since status filtering
   // is now handled at the database query level for better performance

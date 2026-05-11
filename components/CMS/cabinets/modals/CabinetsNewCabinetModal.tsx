@@ -12,11 +12,11 @@ import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Input } from '@/components/shared/ui/input';
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import { createCabinet } from '@/lib/helpers/cabinets';
 import { fetchManufacturers } from '@/lib/helpers/cabinets';
@@ -282,7 +282,10 @@ export default function CabinetsNewCabinetModal({
       }
 
       // Validate manufacturer before submission
-      if (!formData.manufacturer || (isAddingManufacturer && !formData.manufacturer.trim())) {
+      if (
+        !formData.manufacturer ||
+        (isAddingManufacturer && !formData.manufacturer.trim())
+      ) {
         toast.error('Manufacturer is mandatory');
         setLoading(false);
         return;
@@ -291,7 +294,13 @@ export default function CabinetsNewCabinetModal({
       // Build submission data with lowercased gameType and consistent SMIB field names
       const submissionData = {
         ...formData,
-        gameType: ((formData.gameType === 'other' ? formData.otherGameType : formData.gameType) || '').toLowerCase().trim(),
+        gameType: (
+          (formData.gameType === 'other'
+            ? formData.otherGameType
+            : formData.gameType) || ''
+        )
+          .toLowerCase()
+          .trim(),
         smibBoard: formData.relayId,
         smbId: formData.relayId,
       };
@@ -505,11 +514,11 @@ export default function CabinetsNewCabinetModal({
       <div className="fixed inset-0 flex items-start justify-center overflow-y-auto p-2 md:items-center md:p-4">
         <div
           ref={modalRef}
-          className="flex flex-col w-full md:max-h-[90vh] md:max-w-2xl md:rounded-md bg-container shadow-lg md:shadow-lg"
+          className="flex w-full flex-col bg-container shadow-lg md:max-h-[90vh] md:max-w-2xl md:rounded-md md:shadow-lg"
           style={{ opacity: 0, transform: 'translateY(-20px)' }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-border px-4 md:px-6 py-4 flex-shrink-0">
+          <div className="flex flex-shrink-0 items-center justify-between border-b border-border px-4 py-4 md:px-6">
             <h2 className="text-xl font-semibold">New Cabinet</h2>
             <Button variant="ghost" size="icon" onClick={handleClose}>
               <Cross2Icon className="h-4 w-4" />
@@ -517,7 +526,7 @@ export default function CabinetsNewCabinetModal({
           </div>
 
           {/* Form Content */}
-          <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-6">
+          <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6">
             <div className="space-y-6">
               {/* Basic Information Section */}
               <div className="space-y-4">
@@ -538,7 +547,9 @@ export default function CabinetsNewCabinetModal({
                       onChange={e =>
                         handleInputChange('serialNumber', e.target.value)
                       }
-                      onBlur={e => checkSerialNumberAvailability(e.target.value)}
+                      onBlur={e =>
+                        checkSerialNumberAvailability(e.target.value)
+                      }
                       className={`h-10 border-border bg-container ${
                         serialNumberError ? 'border-red-500' : ''
                       }`}
@@ -581,9 +592,8 @@ export default function CabinetsNewCabinetModal({
                       setFormData(prev => ({
                         ...prev,
                         custom: { name: e.target.value },
-                      }))
-                    }
-                    }
+                      }));
+                    }}
                     onBlur={e => checkCustomNameAvailability(e.target.value)}
                     className={`h-10 border-border bg-container ${
                       customNameError ? 'border-red-500' : ''
@@ -628,7 +638,9 @@ export default function CabinetsNewCabinetModal({
                         placeholder="Enter custom game type"
                         className="mt-2"
                         value={formData.otherGameType}
-                        onChange={e => handleInputChange('otherGameType', e.target.value)}
+                        onChange={e =>
+                          handleInputChange('otherGameType', e.target.value)
+                        }
                       />
                     )}
                   </div>
@@ -662,7 +674,9 @@ export default function CabinetsNewCabinetModal({
                     </label>
                     <button
                       type="button"
-                      onClick={() => setIsAddingManufacturer(!isAddingManufacturer)}
+                      onClick={() =>
+                        setIsAddingManufacturer(!isAddingManufacturer)
+                      }
                       className="text-xs text-buttonActive hover:underline"
                     >
                       {isAddingManufacturer ? 'Select from list' : '+ Add New'}
@@ -672,7 +686,9 @@ export default function CabinetsNewCabinetModal({
                     <Input
                       placeholder="Enter manufacturer name"
                       value={formData.manufacturer}
-                      onChange={e => handleInputChange('manufacturer', e.target.value)}
+                      onChange={e =>
+                        handleInputChange('manufacturer', e.target.value)
+                      }
                       className="h-10 border-border bg-container"
                     />
                   ) : manufacturersLoading ? (
@@ -880,7 +896,9 @@ export default function CabinetsNewCabinetModal({
                     </label>
                     <ModernCalendar
                       date={{ from: collectionTime, to: collectionTime }}
-                      onSelect={(range) => handleCollectionTimeChange(range?.from)}
+                      onSelect={range =>
+                        handleCollectionTimeChange(range?.from)
+                      }
                       enableTimeInputs={true}
                       mode="single"
                     />
@@ -925,7 +943,7 @@ export default function CabinetsNewCabinetModal({
           </div>
 
           {/* Footer */}
-          <div className="flex justify-center space-x-3 flex-shrink-0 border-t border-border pt-4 px-4 md:px-6 pb-4">
+          <div className="flex flex-shrink-0 justify-center space-x-3 border-t border-border px-4 pb-4 pt-4 md:px-6">
             <Button
               onClick={handleSubmit}
               className="bg-button px-8 text-container hover:bg-button/90"
@@ -947,5 +965,3 @@ export default function CabinetsNewCabinetModal({
     </div>
   );
 }
-
-

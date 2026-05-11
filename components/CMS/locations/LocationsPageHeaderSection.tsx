@@ -2,7 +2,7 @@
  * LocationsPageHeaderSection Component
  *
  * Displays the page title, refresh controls, and location creation actions.
- * 
+ *
  * @param props - Component props
  */
 
@@ -52,7 +52,9 @@ export default function LocationsPageHeaderSection({
           disabled={refreshing}
           className="flex-shrink-0 p-1.5 text-gray-600 md:p-2"
         >
-          <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`}
+          />
         </button>
 
         {/* Show skeleton while loading, button if user can manage, otherwise nothing */}
@@ -61,7 +63,7 @@ export default function LocationsPageHeaderSection({
         ) : canManage ? (
           <Button
             onClick={onNew}
-            className="flex-shrink-0 items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:bg-buttonActive shadow-sm sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+            className="flex-shrink-0 items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white shadow-sm hover:bg-buttonActive sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Create new location</span>
@@ -72,4 +74,3 @@ export default function LocationsPageHeaderSection({
     </div>
   );
 }
-

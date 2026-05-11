@@ -34,4 +34,3 @@ export const fetchManufacturers = async (): Promise<Manufacturer[]> => {
     return [];
   }
 };
-

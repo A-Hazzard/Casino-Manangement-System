@@ -815,9 +815,12 @@ export default function CabinetsSMIBManagementTab({
       ) : (
         <div className="flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 py-16">
           <Server className="h-10 w-10 text-gray-400" />
-          <p className="text-base font-medium text-gray-600">No SMIB Selected</p>
+          <p className="text-base font-medium text-gray-600">
+            No SMIB Selected
+          </p>
           <p className="max-w-sm text-center text-sm text-gray-500">
-            Use the search bar above to find and select a SMIB device by relay ID, serial number, or location.
+            Use the search bar above to find and select a SMIB device by relay
+            ID, serial number, or location.
           </p>
         </div>
       )}
@@ -873,5 +876,3 @@ export default function CabinetsSMIBManagementTab({
     </div>
   );
 }
-
-

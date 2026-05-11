@@ -42,16 +42,33 @@ import { Machine } from '@/app/api/lib/models/machines';
 import PayoutModel from '@/app/api/lib/models/payout';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import {
+  logRouteFetch,
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { generateMongoId } from '@/lib/utils/id';
 import type { GamingMachine, PayoutDocument } from '@shared/types';
 import type { CreatePayoutRequest } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/cashier/payout';
+  const user = extractUserFromRequest(request);
+
   try {
     // STEP 1: Authorization
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/payout',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -69,11 +86,18 @@ export async function POST(request: NextRequest) {
       printedAt,
       machineId,
       reason,
-      notes
+      notes,
     } = body;
 
     // Validate
     if (!cashierShiftId || !amount || amount <= 0) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/payout',
+        'Invalid payout data',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Invalid payout data' },
         { status: 400 }
@@ -81,6 +105,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'ticket' && !ticketNumber) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/payout',
+        'Ticket number required',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Ticket number required' },
         { status: 400 }
@@ -88,8 +119,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'hand_pay' && !machineId) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/payout',
+        'Machine identification required for Hand Pay',
+        user
+      );
       return NextResponse.json(
-        { success: false, error: 'Machine identification required for Hand Pay' },
+        {
+          success: false,
+          error: 'Machine identification required for Hand Pay',
+        },
         { status: 400 }
       );
     }
@@ -99,10 +140,17 @@ export async function POST(request: NextRequest) {
     const shift = await CashierShiftModel.findOne({
       _id: cashierShiftId,
       cashierId: userId,
-      status: 'active'
+      status: 'active',
     });
 
     if (!shift) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/payout',
+        `Active cashier shift not found: ${cashierShiftId}`,
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Active cashier shift not found' },
         { status: 404 }
@@ -112,12 +160,23 @@ export async function POST(request: NextRequest) {
     // STEP 3.5: Check if Vault is reconciled
     const vaultShift = await VaultShiftModel.findOne({
       _id: shift.vaultShiftId,
-      status: 'active'
+      status: 'active',
     });
 
     if (!vaultShift?.isReconciled) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/payout',
+        'Vault is not reconciled',
+        user
+      );
       return NextResponse.json(
-        { success: false, error: 'Vault is not reconciled. Operation blocked until Vault Manager performs reconciliation.' },
+        {
+          success: false,
+          error:
+            'Vault is not reconciled. Operation blocked until Vault Manager performs reconciliation.',
+        },
         { status: 403 }
       );
     }
@@ -126,6 +185,13 @@ export async function POST(request: NextRequest) {
     const currentBalance = shift.currentBalance || 0;
 
     if (currentBalance < amount) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/payout',
+        'Insufficient funds for payout',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Insufficient funds for payout' },
         { status: 400 }
@@ -135,8 +201,12 @@ export async function POST(request: NextRequest) {
     // STEP 3.7: Fetch Machine Serial if Hand Pay
     let machineSerialNumber = '';
     if (type === 'hand_pay' && machineId) {
-      const machine = await Machine.findOne({ _id: machineId }, { origSerialNumber: 1, 'custom.name': 1 }).lean<GamingMachine>();
-      machineSerialNumber = machine?.custom?.name || machine?.origSerialNumber || machineId;
+      const machine = await Machine.findOne(
+        { _id: machineId },
+        { origSerialNumber: 1, 'custom.name': 1 }
+      ).lean<GamingMachine>();
+      machineSerialNumber =
+        machine?.custom?.name || machine?.origSerialNumber || machineId;
     }
 
     // STEP 4: Process Payout
@@ -157,7 +227,7 @@ export async function POST(request: NextRequest) {
       cashierFloatAfter: currentBalance - amount,
       transactionId, // Satisfy requirement before creation
       notes,
-      createdAt: now
+      createdAt: now,
     };
 
     if (type === 'ticket') {
@@ -183,9 +253,12 @@ export async function POST(request: NextRequest) {
       payoutId,
       cashierShiftId: shift._id,
       performedBy: userId,
-      notes: type === 'hand_pay' ? `Payout (Hand Pay - ${machineSerialNumber})` : `Payout (Ticket Redemption - ${ticketNumber})`,
+      notes:
+        type === 'hand_pay'
+          ? `Payout (Hand Pay - ${machineSerialNumber})`
+          : `Payout (Ticket Redemption - ${ticketNumber})`,
       isVoid: false,
-      createdAt: now
+      createdAt: now,
     });
 
     // STEP 5: Update Shift
@@ -194,23 +267,55 @@ export async function POST(request: NextRequest) {
     shift.payoutsCount += 1;
     await shift.save();
 
-    return NextResponse.json({
-      success: true,
-      payout: payout.toObject(),
-      newBalance: shift.currentBalance
-    }, { status: 201 });
-
+    const duration = Date.now() - startTime;
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/cashier/payout',
+      1,
+      user,
+      duration
+    );
+    return NextResponse.json(
+      {
+        success: true,
+        payout: payout.toObject(),
+        newBalance: shift.currentBalance,
+      },
+      { status: 201 }
+    );
   } catch (e) {
-    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/cashier/payout',
+      errorMessage,
+      user
+    );
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/cashier/payout';
+  const user = extractUserFromRequest(request);
+
   try {
     // STEP 1: Authorization
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cashier/payout',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -259,14 +364,23 @@ export async function GET(request: NextRequest) {
       .lean<PayoutDocument[]>();
 
     // Backward compatibility: Populate machineSerialNumber if missing
-    const handPayPayouts = payouts.filter(p => p.type === 'hand_pay' && !p.machineSerialNumber && p.machineId);
+    const handPayPayouts = payouts.filter(
+      p => p.type === 'hand_pay' && !p.machineSerialNumber && p.machineId
+    );
     if (handPayPayouts.length > 0) {
       const machineIds = [...new Set(handPayPayouts.map(p => p.machineId))];
-      const machines = await Machine.find({ _id: { $in: machineIds } }, { origSerialNumber: 1, 'custom.name': 1 }).lean<GamingMachine[]>();
-      const machineMap = machines.reduce((acc, m) => {
-        acc[String(m._id)] = m?.custom?.name || m?.origSerialNumber || String(m._id);
-        return acc;
-      }, {} as Record<string, string>);
+      const machines = await Machine.find(
+        { _id: { $in: machineIds } },
+        { origSerialNumber: 1, 'custom.name': 1 }
+      ).lean<GamingMachine[]>();
+      const machineMap = machines.reduce(
+        (acc, m) => {
+          acc[String(m._id)] =
+            m?.custom?.name || m?.origSerialNumber || String(m._id);
+          return acc;
+        },
+        {} as Record<string, string>
+      );
 
       payouts.forEach(p => {
         if (p.type === 'hand_pay' && !p.machineSerialNumber && p.machineId) {
@@ -275,13 +389,31 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/cashier/payout',
+      payouts.length,
+      user,
+      duration
+    );
     return NextResponse.json({
       success: true,
-      payouts
+      payouts,
     });
-
   } catch (e) {
-    console.error('[GET] Error:', e instanceof Error ? e.message : 'Unknown error');
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/cashier/payout',
+      errorMessage,
+      user
+    );
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

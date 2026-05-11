@@ -5,20 +5,23 @@
  */
 
 import { HIGH_PRIORITY_ROLES } from '@/lib/constants/roles';
-import type { NavigationConfig, NavigationItem } from '@/lib/types/layout/navigation';
+import type {
+  NavigationConfig,
+  NavigationItem,
+} from '@/lib/types/layout/navigation';
 import {
-    ArrowLeftRight,
-    BarChart3,
-    Clock,
-    DollarSign,
-    FileText,
-    History,
-    MapPin,
-    MonitorSpeaker,
-    Receipt,
-    UserCog,
-    Users,
-    Wallet
+  ArrowLeftRight,
+  BarChart3,
+  Clock,
+  DollarSign,
+  FileText,
+  History,
+  MapPin,
+  MonitorSpeaker,
+  Receipt,
+  UserCog,
+  Users,
+  Wallet,
 } from 'lucide-react';
 
 /**
@@ -119,25 +122,28 @@ export function getCmsNavigationConfig(userRoles?: string[]): NavigationConfig {
   const hasHighPriorityRole = (userRoles || []).some(role =>
     (HIGH_PRIORITY_ROLES as string[]).includes(role)
   );
-  
+
   // Specific role checks
-  const isAdminOrDev = (userRoles || []).includes('admin') || (userRoles || []).includes('developer');
-  const isVaultManager = (userRoles || []).includes('vault-manager') || isAdminOrDev;
+  const isAdminOrDev =
+    (userRoles || []).includes('admin') ||
+    (userRoles || []).includes('developer');
+  const isVaultManager =
+    (userRoles || []).includes('vault-manager') || isAdminOrDev;
   const isCashier = (userRoles || []).includes('cashier') || isAdminOrDev;
 
   // If user only has cashier or vault-manager roles, return flat structure
   if (!hasHighPriorityRole) {
     const filteredItems = baseCmsNavigationItems.filter(item => {
-        // Vault Manager Access
-        if (item.href.startsWith('/vault/management')) {
-            return isVaultManager;
-        }
-        // Cashier Access
-        if (item.href.startsWith('/vault/cashier')) {
-            return isCashier;
-        }
-        // Default (allow other links unless specifically restricted elsewhere)
-        return true;
+      // Vault Manager Access
+      if (item.href.startsWith('/vault/management')) {
+        return isVaultManager;
+      }
+      // Cashier Access
+      if (item.href.startsWith('/vault/cashier')) {
+        return isCashier;
+      }
+      // Default (allow other links unless specifically restricted elsewhere)
+      return true;
     });
 
     return {
@@ -164,39 +170,36 @@ export function getCmsNavigationConfig(userRoles?: string[]): NavigationConfig {
       !item.href.startsWith('/vault/cashier') &&
       !item.href.startsWith('/vault/management')
   );
-  
+
   const additionalSections: NavigationItem[] = [];
-  
+
   if (isCashier) {
-      additionalSections.push({
-          label: 'Cash Desk',
-          href: '#',
-          icon: DollarSign,
-          children: cashDeskItems,
-      });
+    additionalSections.push({
+      label: 'Cash Desk',
+      href: '#',
+      icon: DollarSign,
+      children: cashDeskItems,
+    });
   }
-  
+
   if (isVaultManager) {
-      additionalSections.push({
-          label: 'Vault Manager',
-          href: '#',
+    additionalSections.push({
+      label: 'Vault Manager',
+      href: '#',
+      icon: BarChart3,
+      children: [
+        {
+          label: 'Vault Overview',
+          href: '/vault/management',
           icon: BarChart3,
-          children: [
-            {
-              label: 'Vault Overview',
-              href: '/vault/management',
-              icon: BarChart3,
-            },
-            ...vaultManagerItems,
-          ],
-      });
+        },
+        ...vaultManagerItems,
+      ],
+    });
   }
 
   return {
-    items: [
-      ...otherItems,
-      ...additionalSections,
-    ],
+    items: [...otherItems, ...additionalSections],
   };
 }
 

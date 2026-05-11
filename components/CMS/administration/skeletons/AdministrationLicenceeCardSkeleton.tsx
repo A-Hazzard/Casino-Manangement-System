@@ -34,7 +34,7 @@ function AdministrationLicenceeCardSkeleton() {
             </div>
           </div>
           <div className="p-3">
-            <div className="space-y-2 mb-3">
+            <div className="mb-3 space-y-2">
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-4 w-28" />
@@ -42,7 +42,7 @@ function AdministrationLicenceeCardSkeleton() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2 border-t border-gray-200 pt-3 mt-3">
+            <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
               <Skeleton className="h-8 w-20" />
               <Skeleton className="h-8 w-16" />
               <Skeleton className="h-8 w-16" />
@@ -55,4 +55,3 @@ function AdministrationLicenceeCardSkeleton() {
 }
 
 export default AdministrationLicenceeCardSkeleton;
-

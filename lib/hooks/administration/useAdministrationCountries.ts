@@ -40,7 +40,7 @@ export function useAdministrationCountries() {
   useEffect(() => {
     fetchCountries();
   }, [fetchCountries]);
-  
+
   const openAddModal = useCallback(() => {
     setIsAddModalOpen(true);
   }, []);

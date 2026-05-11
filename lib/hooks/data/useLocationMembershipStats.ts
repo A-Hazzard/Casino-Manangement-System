@@ -7,8 +7,8 @@
  */
 
 import {
-    fetchMembershipStats,
-    type MembershipStats,
+  fetchMembershipStats,
+  type MembershipStats,
 } from '@/lib/helpers/membershipStats';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -100,7 +100,9 @@ export function useLocationMembershipStats(
 
         // Handle any errors
         const errorMessage =
-          error instanceof Error ? error.message : 'Failed to fetch membership stats';
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch membership stats';
         setError(errorMessage);
         setMembershipStats({
           membershipCount: 0,
@@ -119,4 +121,3 @@ export function useLocationMembershipStats(
     error,
   };
 }
-

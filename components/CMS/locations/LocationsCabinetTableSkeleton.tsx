@@ -1,4 +1,3 @@
-
 import { FC } from 'react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
@@ -47,7 +46,10 @@ const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
       </thead>
       <tbody>
         {Array.from({ length: 10 }).map((_, rowIndex) => (
-          <tr key={rowIndex} className="border-b border-gray-200 hover:bg-grayHighlight/10">
+          <tr
+            key={rowIndex}
+            className="border-b border-gray-200 hover:bg-grayHighlight/10"
+          >
             {/* Asset/Status Column - matches CabinetTable structure */}
             <td className="w-[240px] p-3">
               <div className="space-y-1">
@@ -58,7 +60,7 @@ const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
                 {/* Row 2: Location Name with icon */}
                 <div className="flex items-center gap-1.5">
                   <Skeleton className="h-3 w-32" />
-                  <Skeleton className="h-3 w-3 rounded flex-shrink-0" />
+                  <Skeleton className="h-3 w-3 flex-shrink-0 rounded" />
                 </div>
                 {/* Row 3: SMIB and Status Badge */}
                 <div className="flex items-center gap-2">
@@ -67,7 +69,7 @@ const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
                 </div>
                 {/* Row 4: Last Activity */}
                 <div className="flex items-center gap-1">
-                  <Skeleton className="h-3 w-3 rounded flex-shrink-0" />
+                  <Skeleton className="h-3 w-3 flex-shrink-0 rounded" />
                   <Skeleton className="h-3 w-20" />
                 </div>
               </div>
@@ -109,4 +111,3 @@ const LocationsCabinetTableSkeleton: FC<LocationsCabinetTableSkeletonProps> = ({
 );
 
 export default LocationsCabinetTableSkeleton;
-

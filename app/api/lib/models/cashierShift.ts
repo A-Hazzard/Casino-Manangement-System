@@ -1,9 +1,5 @@
 import mongoose, { model, Schema } from 'mongoose';
 
-/**
- * Denomination Schema
- * Tracks specific bill denominations and quantities
- */
 const DenominationSchema = new Schema(
   {
     denomination: {
@@ -20,20 +16,22 @@ const DenominationSchema = new Schema(
   { _id: false }
 );
 
-/**
- * Cashier Shift Schema
- * Tracks individual cashier shifts with blind closing support (C-4)
- */
 const CashierShiftSchema = new Schema(
   {
     _id: { type: String, required: true },
     locationId: { type: String, required: true, index: true },
     cashierId: { type: String, required: true, index: true },
-    vaultShiftId: { type: String, required: true }, // Parent vault shift
+    vaultShiftId: { type: String, required: true },
 
     status: {
       type: String,
-      enum: ['pending_start', 'active', 'closed', 'pending_review', 'cancelled'],
+      enum: [
+        'pending_start',
+        'active',
+        'closed',
+        'pending_review',
+        'cancelled',
+      ],
       default: 'pending_start',
       required: true,
     },
@@ -41,30 +39,25 @@ const CashierShiftSchema = new Schema(
     openedAt: { type: Date, required: true, default: Date.now },
     closedAt: { type: Date },
 
-    // Opening balance
     openingBalance: { type: Number, required: true, min: 0 },
     openingDenominations: [DenominationSchema],
 
-    // Closing - Blind Close Implementation (C-4)
-    cashierEnteredBalance: { type: Number, min: 0 }, // What cashier physically counted
+    cashierEnteredBalance: { type: Number, min: 0 },
     cashierEnteredDenominations: [DenominationSchema],
-    expectedClosingBalance: { type: Number, min: 0 }, // System calculation
-    closingBalance: { type: Number, min: 0 }, // Final approved balance
+    expectedClosingBalance: { type: Number, min: 0 },
+    closingBalance: { type: Number, min: 0 },
     closingDenominations: [DenominationSchema],
 
-    // Discrepancy handling
-    discrepancy: { type: Number }, // Difference between expected and entered
+    discrepancy: { type: Number },
     discrepancyResolved: { type: Boolean, default: false },
     vmReviewNotes: { type: String },
     vmAdjustedBalance: { type: Number },
-    reviewedBy: { type: String }, // VM user ID
+    reviewedBy: { type: String },
     reviewedAt: { type: Date },
 
-    // Live tracking
     currentBalance: { type: Number, required: true, default: 0 },
     lastSyncedDenominations: [DenominationSchema],
 
-    // Metrics (Can be derived from transactions)
     payoutsTotal: { type: Number, default: 0, min: 0 },
     payoutsCount: { type: Number, default: 0, min: 0 },
     floatAdjustmentsTotal: { type: Number, default: 0 },
@@ -75,7 +68,6 @@ const CashierShiftSchema = new Schema(
   { timestamps: true }
 );
 
-// Indexes for performance
 CashierShiftSchema.index({ locationId: 1, status: 1 });
 CashierShiftSchema.index({ cashierId: 1, createdAt: -1 });
 CashierShiftSchema.index({ status: 1, closedAt: -1 });

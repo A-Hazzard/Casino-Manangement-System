@@ -2,8 +2,8 @@
 
 **Author:** Aaron Hazzard — Senior Software Engineer  
 **Document Version:** 4.3.0  
-**Last Updated:** April 2026  
-**Classification:** Internal Engineering Document
+**Last Updated:May 4, 2026  
+**Classification:\*\* Internal Engineering Document
 
 ---
 
@@ -38,34 +38,36 @@ The system is designed to replace fragmented, paper-based processes with a singl
 
 ## 2. Technology Stack
 
-| Layer | Technology | Version |
-|:---|:---|:---|
-| Framework | Next.js (App Router) | 16.x |
-| Language | TypeScript | 5.x |
-| Styling | Tailwind CSS | 3.x |
-| Database | MongoDB | 7.x |
-| ODM | Mongoose | 8.x |
-| State (Global) | Zustand | 4.x |
-| State (Server) | TanStack React Query | 5.x |
-| UI Components | Shadcn/UI, Radix UI, MUI | Latest |
-| Authentication | JWT (jose), bcryptjs, otplib | Latest |
-| Real-time | MQTT (via HiveMQ / SMIB) | — |
-| Email | SendGrid / Nodemailer | — |
-| SMS | Infobip | — |
-| Maps | Google Maps API | — |
-| Package Manager | bun | 9.x |
-| Runtime | Node.js | 20.x |
+| Layer           | Technology                   | Version |
+| :-------------- | :--------------------------- | :------ |
+| Framework       | Next.js (App Router)         | 16.x    |
+| Language        | TypeScript                   | 5.x     |
+| Styling         | Tailwind CSS                 | 3.x     |
+| Database        | MongoDB                      | 7.x     |
+| ODM             | Mongoose                     | 8.x     |
+| State (Global)  | Zustand                      | 4.x     |
+| State (Server)  | TanStack React Query         | 5.x     |
+| UI Components   | Shadcn/UI, Radix UI, MUI     | Latest  |
+| Authentication  | JWT (jose), bcryptjs, otplib | Latest  |
+| Real-time       | MQTT (via HiveMQ / SMIB)     | —       |
+| Email           | SendGrid / Nodemailer        | —       |
+| SMS             | Infobip                      | —       |
+| Maps            | Google Maps API              | —       |
+| Package Manager | bun                          | 9.x     |
+| Runtime         | Node.js                      | 20.x    |
 
 ---
 
 ## 3. System Architecture
 
 ### Hosting Model
+
 - **Next.js App Router** — All pages are React Server Components by default; client components opt in with `"use client"`.
 - **MongoDB** — Single document store with 30+ Mongoose schemas, compound indexes for fleet-wide queries, soft deletes on all core entities.
 - **MQTT Broker** — Real-time two-way communication channel between the CMS server and each SMIB (Slot Machine Interface Board) unit.
 
 ### Core Architectural Patterns
+
 - **Multi-tenant**: All data is scoped to a `Licencee`. Users are assigned to specific licencees and/or locations. Every API response is filtered by the requesting user's access grants.
 - **Role Hierarchy**: 9 discrete roles with descending privilege: `developer → admin → manager → location admin → vault-manager → cashier → technician → collector → reviewer`.
 - **Gaming Day Offset**: Financial periods run 08:00 AM → 08:00 AM (Trinidad UTC-4), not calendar midnight. This offset is stored per-location and applied to all aggregation queries.
@@ -73,6 +75,7 @@ The system is designed to replace fragmented, paper-based processes with a singl
 - **Standardized API Responses**: All API routes return `{ success, data, message, timestamp }` for success and `{ success, error, message, code, details, timestamp }` for errors.
 
 ### Cookie Security
+
 The system operates on both HTTPS (public domain) and HTTP (LAN IP access e.g., `192.168.x.x`). A custom `isSecureContext()` utility auto-detects the correct cookie `secure` flag from `x-forwarded-proto` headers or the `COOKIE_SECURE` environment variable, preventing authentication breakage on LAN deployments.
 
 ---
@@ -81,15 +84,15 @@ The system operates on both HTTPS (public domain) and HTTP (LAN IP access e.g., 
 
 The application is a single unified deployment. After login, users are automatically redirected to their designated landing page based on their assigned role — there is no separate "CMS mode" or "Vault mode" build. Role-based routing is handled by `lib/utils/roleBasedRedirect.ts`.
 
-| Role | Landing Page | Interface |
-|:---|:---|:---|
-| `developer` | `/` (Dashboard) | Full CMS access |
-| `admin`, `manager`, `location admin` | `/` (Dashboard) | Full CMS access |
-| `reviewer`, `owner` | `/locations` | Read-only financial view |
-| `vault-manager` | `/vault/management` | Vault management interface |
-| `cashier` | `/vault/cashier/payouts` | Cashier operations interface |
-| `technician` | `/cabinets` | Cabinet management only |
-| `collector` | `/collection-report` | Collection reports only |
+| Role                                 | Landing Page             | Interface                    |
+| :----------------------------------- | :----------------------- | :--------------------------- |
+| `developer`                          | `/` (Dashboard)          | Full CMS access              |
+| `admin`, `manager`, `location admin` | `/` (Dashboard)          | Full CMS access              |
+| `reviewer`, `owner`                  | `/locations`             | Read-only financial view     |
+| `vault-manager`                      | `/vault/management`      | Vault management interface   |
+| `cashier`                            | `/vault/cashier/payouts` | Cashier operations interface |
+| `technician`                         | `/cabinets`              | Cabinet management only      |
+| `collector`                          | `/collection-report`     | Collection reports only      |
 
 All pages, navigation, and features are gated at the component and API level by the user's role — not by any build-time or environment-level flag.
 
@@ -100,40 +103,50 @@ All pages, navigation, and features are gated at the component and API level by 
 ### 5.1 CMS — General Casino Management Interface
 
 #### Dashboard (`/`)
+
 Real-time KPI cards (Money In/Out, Jackpot & Gross Revenue) with cabinet online/offline counts, revenue totals, and map visualization. Revenue trend charts (hourly/daily/weekly/monthly granularity), top-performing locations & cabinets leaderboard, and an interactive geographic map with colour-coded property markers (green = fully online, amber = partial, grey = offline). Global filter bar controls licencee scope and time period across all sections simultaneously. Currency auto-converts to the selected licencee's local currency (TTD, GYD, etc.). Dashboard auto-refreshes every 180 seconds. Gaming day offset applied to all figures.
 
 #### Locations (`/locations`, `/locations/[slug]`)
+
 Aggregated financial metrics per property based on each location's gaming period (`gameDayOffset`). Summary bar shows fleet-wide Money In, Money Out and Gross across the selected scope. Table supports multi-column sorting and filtering by licencee, cabinet type, and online status — clicking the "Offline" pill instantly filters to problem properties. Interactive map syncs with the table (clicking a map marker scrolls to the matching row). Reviewer multiplier scaling applied server-side. Location detail view (`/locations/[slug]`) shows a per-cabinet financial breakdown, membership stats, and geographic coordinates.
 
 #### Cabinets (`/cabinets`, `/cabinets/[slug]`)
+
 Full fleet management with remote MQTT commands (SYNC, LOCK, UNLOCK) and cabinet configurations inclusive of SMIB and accounting denomination settings. Fleet table filters by location, manufacturer, online status, and cabinet type (Slot/VGT/Roulette/Terminal) with case-insensitive search across serial number, asset name, and game title. Details drawer (`/cabinets/[slug]`) is tabbed: **Accounting** (Money In/Out, Gross, Net Gross, Jackpot), **Live SAS Meters** (Coin In/Out, Current Credits, Total Drop), **Bill Validator** (denomination breakdown and subtotals), and **Audit Logs** (cabinet events). Each tab fetches lazily. SMIB Configuration panel (developer/technician only) exposes SMIB IP, SAS address, polling interval, and MQTT topic with live push via `POST /api/mqtt/update-cabinet-config`. Firmware OTA update and device restart also available from the details drawer.
 
 #### Members (`/members`, `/members/[id]`)
+
 CRM hub for player identity, loyalty management, and win/loss analytics. List view with debounced search (350ms) across name, member ID and phone, filterable by licencee, location, and KYC status, paginated at 50 per page. Member 360 profile (`/members/[id]`) is tabbed: **Overview** (personal details, KYC documents), **Sessions** (full gaming session history), **Points History**, **Documents**, and **Win/Loss Report** (total won/lost across all sessions). KYC status and tier/points balance tracked per member.
 
 #### Sessions (`/sessions`, `/sessions/[sessionId]/[cabinetId]/events`)
+
 Real-time floor monitoring and session forensic replay. Session history table filterable by search (ID/asset/member), licencee, and date range. Session details drawer shows start/end time, computed duration, status, loyalty settings active during play (points multiplier, tier bonus), and a full forensic event feed (Card-In, Spin, Win, Card-Out) sourced from MQTT events. Live Operations Ticker (Server-Sent Events) pushes jackpots, door opens, and high-value card-ins to the floor view without a page refresh.
 
 #### Collection Report (`/collection-report`, `/collection-report/report/[reportId]`)
+
 Multi-step financial wizard for reconciling electronic cabinet meters with physical cash collection. Full multi-tier check validation for cash variations. Desktop and mobile layouts with feature parity. Skeleton loader shown on every fetch trigger, not just initial load.
 
 **Four tabs:**
+
 - **Reports History** — Finalized audit log of all past collections; filterable by licencee, location, collector, and date range; variance flagged per report
 - **Monthly Revenue Report** — Property-level aggregated financial summaries for tax and accounting handover; PDF and Excel export
 - **Manager Schedule** — All properties with last collection date and cabinet count; rows highlighted red/orange based on age.
 - **Collectors Schedule** — Field staff task list; switches to card-based mobile checklist for one-handed operation
 
 **3-Step Collection Wizard** (`CollectionReportNewCollectionModal` / `CollectionReportMobileNewCollectionModal`):
+
 1. **Property & Asset Selection** — Location dropdown rendered via React portal (`createPortal` to `document.body`) to escape `overflow: hidden` clipping; auto-sizes width to longest location name; supports 248+ locations. Cabinet list with live SAS sync per cabinet.
-2. **Meter & Cash Verification** — Physical Meter In/Out entry; auto-calculates `Movement Gross = (Current In − Prev In) − (Current Out − Prev Out)`; RAM clear toggle reveals `ramClearMeters` fields; collection time defaults to 1 minute before the `gameDayOffset` boundary; SAS start time auto-populated from the last completed collection for that cabinet (`GET /api/collections/last-collection-time`).
+2. **Meter & Cash Verification** — Physical Meter In/Out entry; auto-calculates `Movement Gross = (Current In − Prev In) − (Current Out − Prev Out)`; RAM clear toggle reveals `ramClearMeters` fields; collection time defaults to 1 minute before the `gameDayOffset` boundary; SAS start time auto-populated from the last completed collection for that cabinet (`GET /api/collection-reports/last-collection-time`).
 3. **Financial Reconciliation & Commit** — The system compares the physical cash collected against the electronic meter reading and flags any difference. If the variance is unusually large, the collector must acknowledge the discrepancy and provide a note before the report can be submitted. The system also checks the submitted figures against historical averages and requires explicit confirmation if any value appears abnormal.
 
 **Edit Collection** — Full edit modal (desktop + mobile) with meter reversion on save, SAS time pre-population, and soft delete with audit trail. Edit modal defaults to showing the cabinets list so green "Added to Collection" indicators are visible.
 
 #### Reports (`/reports`)
+
 Consolidated reporting hub aggregating collection data, cabinet performance, and financial summaries across whole fleets or single properties for regulatory and internal reporting.
 
 #### Administration (`/administration`)
+
 Management hub for users, corporate entities (licencees), gaming locations, and platform audit logging. Access is role-gated per tab.
 
 - **Personnel Management** — Create, edit, suspend users; assign roles and location access; suspension immediately invalidates the user's active session (`sessionVersion` increment)
@@ -238,7 +251,7 @@ Overview of all cashier desk assignments and their current float allocations. Sh
 
 #### Cashiers (`/vault/management/cashiers`)
 
-Cashier roster management panel. Shows all cashier users, their current shift status (active/closed/no shift), current float balance, any open discrepancy flags, and a link to their full shift history. Vault managers can force-close a cashier's shift from this page if the cashier is unresponsive or unavailable. Triggers `POST /api/vault/cashier-shift/force-close`.
+Cashier roster management panel. Shows all cashier users, their current shift status (active/closed/no shift), current float balance, any open discrepancy flags, and a link to their full shift history. Vault managers can force-close a cashier's shift from this page if the cashier is unresponsive or unavailable. Triggers `POST /api/vault/cashier-shifts/force-close`.
 
 ---
 
@@ -294,12 +307,15 @@ Personal transaction history for the cashier: every payout, float adjustment, an
 ### 5.3 Shared / Auth Pages
 
 #### Login (`/login`)
+
 Secure login with username/password, optional TOTP (Time-based One-Time Password) 2FA challenge, SMIB-aware session management, and "Remember Me" (30-day token). Redirects users to their role-appropriate landing page after login.
 
 #### 2FA Recovery (`/auth/recovery/2fa`)
+
 Self-service TOTP recovery flow for users who have lost their authenticator device. Vault manager and cashier roles have dedicated supervised recovery paths.
 
 #### Unauthorized (`/unauthorized`)
+
 Role-gate fallback page shown when a user attempts to access a page beyond their assigned permissions.
 
 ---
@@ -309,36 +325,47 @@ Role-gate fallback page shown when a user attempts to access a page beyond their
 The system exposes approximately **100+ API route handlers** organized by domain.
 
 ### Authentication (`/api/auth/*`)
+
 `POST login` · `POST logout` · `POST refresh` · `POST refresh-token` · `POST forgot-password` · `GET current-user` · `POST clear-all-tokens` · `POST clear-token` · `POST clear-session` · `PATCH profile/update-email` · `GET/POST totp/setup` · `POST totp/confirm` · `POST totp/reset` · `POST verify-totp` · `POST totp/recover/verify` · `POST totp/recover/cashier` · `POST totp/recover/vm`
 
 ### Analytics (`/api/analytics/*`)
+
 `GET dashboard` · `GET charts` · `GET reports` · `GET cabinets` · `GET cabinets/stats` · `GET locations` · `GET logistics` · `GET hourly-revenue` · `GET cabinet-hourly` · `GET top-cabinets` · `GET jackpot-trends` · `GET winloss-trends` · `GET handle-trends` · `GET plays-trends` · `GET manufacturer-performance`
 
 ### Locations (`/api/locations/*`, `/api/reports/locations`)
+
 `GET/POST/PATCH/DELETE locations` · `GET locations/[locationId]` · `GET locations/[locationId]/cabinets` · `GET locations/[locationId]/cabinets/[cabinetId]` · `GET locations/search-all` · `GET locations/membership-count` · `GET reports/locations`
 
 ### Cabinets & Meters (`/api/cabinets/*`, `/api/metrics/*`)
+
 `GET cabinets/aggregation` · `GET/PATCH/DELETE cabinets/[cabinetId]` · `GET cabinets/by-id` · `GET cabinets/by-id/events` · `POST smib/meters` · `POST smib/restart` · `POST smib/ota-update` · `POST smib/nvs-action` · `GET metrics/meters`
 
-### Collections (`/api/collections/*`, `/api/collectionReport/*`, `/api/collection-report/*`)
+### Collections (`/api/collections/*`, `/api/collection-reports/*`, `/api/collection-report/*`)
+
 `GET/POST/PATCH/DELETE collections` · `GET collections/last-collection-time` · `GET collections/check-first-collection` · `GET/POST collectionReport` · `GET collectionReport/locations` · `GET/PATCH/DELETE collection-report/[reportId]` · `POST collection-reports/fix-report` · `GET collection-reports/check-all-issues` · `GET collection-reports`
 
 ### Members & Sessions (`/api/members/*`, `/api/sessions/*`)
+
 `GET/POST/PATCH/DELETE members` · `GET members/[id]/sessions` · `GET sessions` · `GET sessions/[id]/events`
 
 ### Vault (`/api/vault/*`)
+
 `POST vault/initialize` · `POST vault/shift/close` · `POST vault/add-cash` · `POST vault/remove-cash` · `POST vault/reconcile` · `POST vault/payout` · `POST vault/float-request/approve` · `POST vault/soft-counts` · `POST vault/collection-session/finalize` · `POST vault/transfers/approve` · `POST vault/cashier-shift/direct-open` · `POST vault/cashier-shift/force-close`
 
 ### Cashier (`/api/cashier/*`)
+
 `POST cashier/shift/open` · `POST cashier/shift/close` · `POST cashier/shift/resolve` · `POST cashier/shift/reject` · `POST cashier/shift/cancel` · `GET cashier/shift/current` · `GET cashier/shifts` · `POST cashier/payout`
 
 ### Administration (`/api/users`, `/api/licencees`, `/api/gaming-locations`, etc.)
+
 `GET/POST/PATCH/DELETE users` · `GET/POST/PATCH licencees` · `GET/POST/PATCH/DELETE gaming-locations` · `GET/POST collectors` · `GET/POST/DELETE firmwares` · `POST firmwares/migrate` · `GET manufacturers` · `GET/POST system-config`
 
 ### MQTT (`/api/mqtt/*`)
+
 `POST mqtt/discover-smibs` · `POST mqtt/config/publish` · `POST mqtt/config/request` · `POST mqtt/update-cabinet-config`
 
 ### Admin Utilities (`/api/admin/*`)
+
 `POST admin/reconnect-db` · `POST admin/create-indexes` · `POST admin/repair-sas-times` · `GET admin/auth/events` · `GET admin/auth/metrics` · `POST admin/migrations/rename-licencee` · `GET admin/cashiers`
 
 ---
@@ -350,6 +377,7 @@ The system exposes approximately **100+ API route handlers** organized by domain
 **Movement Delta Method**: The primary accounting methodology. Instead of reading cumulative SAS meter values (which reset on RAM clears), the system stores the 15-minute movement delta per meter read. All revenue aggregation sums `movement.drop`, `movement.totalCancelledCredits`, and `movement.jackpot` from the `Meters` collection.
 
 **Gross vs. Net Revenue (includeJackpot flag)**: Licencees may configure whether jackpot payouts are included in "Money Out" for reporting purposes:
+
 - **Vision A (Default Gross)**: Money Out = Cancelled Credits only; jackpots reported separately.
 - **Vision B (Additive Gross)**: Money Out = Cancelled Credits + Jackpots.
 - **Universal Net Gross**: Always calculated as `Money In − Cancelled Credits − Jackpots`, regardless of flag.
@@ -398,34 +426,36 @@ Admin and developer users viewing a multi-licencee dashboard can select a displa
 The system uses **30+ Mongoose schemas** across two primary domains:
 
 ### Core CMS Models
-| Model | Purpose |
-|:---|:---|
-| `Licencee` | Top-level multi-tenant entity |
-| `GamingLocation` | Casino property, gaming day offset, membership settings |
-| `Cabinet` | Cabinet hardware record, SMIB config, SAS meters |
-| `Meter` | 15-minute financial snapshots with movement deltas |
-| `Collection` | Draft collection entries (one per cabinet per session) |
-| `CollectionReport` | Finalized collection batch (parent of Collections) |
-| `User` | Authentication, roles, multiplier, assigned access |
-| `Member` | Player card profile, points, tier |
-| `CabinetSession` | Gaming session records per cabinet |
-| `CabinetEvent` | Individual SAS events within a session |
-| `AcceptedBill` | Bill validator denomination tracking |
-| `Firmware` | Firmware versions and deployment records |
+
+| Model              | Purpose                                                 |
+| :----------------- | :------------------------------------------------------ |
+| `Licencee`         | Top-level multi-tenant entity                           |
+| `GamingLocation`   | Casino property, gaming day offset, membership settings |
+| `Cabinet`          | Cabinet hardware record, SMIB config, SAS meters        |
+| `Meter`            | 15-minute financial snapshots with movement deltas      |
+| `Collection`       | Draft collection entries (one per cabinet per session)  |
+| `CollectionReport` | Finalized collection batch (parent of Collections)      |
+| `User`             | Authentication, roles, multiplier, assigned access      |
+| `Member`           | Player card profile, points, tier                       |
+| `CabinetSession`   | Gaming session records per cabinet                      |
+| `CabinetEvent`     | Individual SAS events within a session                  |
+| `AcceptedBill`     | Bill validator denomination tracking                    |
+| `Firmware`         | Firmware versions and deployment records                |
 
 ### Vault (VMS) Models
-| Model | Purpose |
-|:---|:---|
-| `VaultShift` | Vault manager shift lifecycle |
-| `CashierShift` | Cashier shift with live balance tracking |
-| `VaultTransaction` | Immutable cash ledger (every movement) |
-| `FloatRequest` | Cashier → Vault float request workflow |
-| `Payout` | Ticket and hand-pay payout records |
-| `SoftCount` | Physical cash count records |
-| `VaultNotification` | Real-time alert records |
-| `VaultCollectionSession` | Draft machine collection session |
-| `MachineCollection` | Finalized machine collection record |
-| `InterLocationTransfer` | Cross-property cash transfer |
+
+| Model                    | Purpose                                  |
+| :----------------------- | :--------------------------------------- |
+| `VaultShift`             | Vault manager shift lifecycle            |
+| `CashierShift`           | Cashier shift with live balance tracking |
+| `VaultTransaction`       | Immutable cash ledger (every movement)   |
+| `FloatRequest`           | Cashier → Vault float request workflow   |
+| `Payout`                 | Ticket and hand-pay payout records       |
+| `SoftCount`              | Physical cash count records              |
+| `VaultNotification`      | Real-time alert records                  |
+| `VaultCollectionSession` | Draft machine collection session         |
+| `MachineCollection`      | Finalized machine collection record      |
+| `InterLocationTransfer`  | Cross-property cash transfer             |
 
 ---
 
@@ -446,30 +476,37 @@ The system uses **30+ Mongoose schemas** across two primary domains:
 This section records notable technical work completed during the v4.3.0 development cycle.
 
 ### Collection Report — Portal Dropdown for Location Select
+
 **Problem**: The `LocationSingleSelect` component inside the "New Collection Report" modal was clipped by parent `overflow: hidden` containers, truncating the dropdown for large location lists (248+ locations).  
 **Solution**: Implemented `React.createPortal` to render the dropdown to `document.body` with `position: fixed` positioning. Added a hidden DOM measurement element to auto-size the dropdown width to the longest location name.
 
 ### Collection Report — SAS Start Time Auto-Population
+
 **Problem**: When a collector selected a machine, the `sasStartTime` field was blank, requiring manual lookup of the previous collection's end time.  
-**Solution**: On machine selection, the system now calls `GET /api/collections/last-collection-time?machineId=<id>` and pre-populates `sasStartTime` with the previous collection's `collectionTime`. Implemented for both the desktop hook (`useCollectionReportNewCollectionModal.ts`) and the mobile modal (`CollectionReportMobileNewCollectionModal.tsx`).
+**Solution**: On machine selection, the system now calls `GET /api/collection-reports/last-collection-time?machineId=<id>` and pre-populates `sasStartTime` with the previous collection's `collectionTime`. Implemented for both the desktop hook (`useCollectionReportNewCollectionModal.ts`) and the mobile modal (`CollectionReportMobileNewCollectionModal.tsx`).
 
 ### Collection Report — Mobile Edit Modal Machine List Display
+
 **Problem**: When opening the edit modal on mobile for an existing collection report, the collected machines list was shown instead of the machines list, preventing managers from seeing machines with "Added to Collection" indicators.  
 **Root Cause**: `useMobileEditCollectionModal.ts` initialized `isMachineListVisible: false` and had an effect that suppressed the machine list on modal open.  
 **Solution**: Changed initial state to `isMachineListVisible: true` and simplified the reset effect to always show the machines list on modal open.
 
 ### Collection Report — Skeleton Loader Behavior
+
 **Enhancement**: Configured the collection report page's skeleton loader to display on every fetch trigger (tab switch, filter change, pagination), not just the initial page load. The `setInitialLoading(true)` call in `useCollectionReportPageData.ts` ensures the skeleton replaces stale data during any re-fetch.
 
 ### Reviewer Multiplier — Server-Side Implementation
+
 **Requirement**: Users assigned a `multiplier` value (0–1) must see scaled financial figures system-wide.  
 **Implementation**: Applied `value × (1 − multiplier)` in all seven financial metric API routes after currency conversion. The `getUserFromServer()` function was updated to always write the database value of `multiplier` back to the JWT payload object, ensuring changes to the multiplier take effect without requiring the user to re-login.
 
 ### Cookie Security — HTTP/HTTPS Auto-Detection
+
 **Problem**: Hardcoded `secure: true` on auth cookies broke authentication on LAN deployments served over plain HTTP.  
 **Solution**: Implemented `getAuthCookieOptions(request)` utility in `lib/utils/cookieSecurity.ts` that detects the correct `secure` flag from `x-forwarded-proto` headers, the `COOKIE_SECURE` environment variable, or the request URL protocol. Applied across all auth routes (`login`, `logout`, `refresh`, `refresh-token`, `clear-*`).
 
 ### Authentication — TOTP 2FA System
+
 Built full TOTP two-factor authentication: QR code setup, confirmation, per-request verification, and supervised recovery paths for vault manager and cashier roles who cannot self-serve (require manager supervision for account recovery).
 
 ---
@@ -539,15 +576,15 @@ Documentation/
 
 ## 12. Current Bugs
 
-> *(To be filled in by Aaron Hazzard)*
+> _(To be filled in by Aaron Hazzard)_
 
 ---
 
 ## 13. Currently Working On
 
-> *(To be filled in by Aaron Hazzard)*
+> _(To be filled in by Aaron Hazzard)_
 
 ---
 
-*Evolution One Engineering — Internal Document*  
-*Not for external distribution.*
+_Evolution One Engineering — Internal Document_  
+_Not for external distribution._

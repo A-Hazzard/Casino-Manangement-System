@@ -67,9 +67,10 @@ export async function exportMonthlyReportPDF(
   }
   doc.setFontSize(16);
   // Show total locations count if provided
-  const titleText = totalLocations !== undefined && currentLocationsCount !== undefined
-    ? `All (${currentLocationsCount}/${totalLocations}) Locations Total`
-    : 'All Locations Total';
+  const titleText =
+    totalLocations !== undefined && currentLocationsCount !== undefined
+      ? `All (${currentLocationsCount}/${totalLocations}) Locations Total`
+      : 'All Locations Total';
   doc.text(titleText, 14, 32);
   // Table colors: Tailwind buttonActive: #5119E9
   autoTable(doc, {
@@ -117,9 +118,10 @@ export function exportMonthlyReportExcel(
 ) {
   // Add a title row and blank row for logo/title spacing
   // Show total locations count if provided
-  const titleText = totalLocations !== undefined && currentLocationsCount !== undefined
-    ? `All (${currentLocationsCount}/${totalLocations}) Locations Total`
-    : 'All Locations Total';
+  const titleText =
+    totalLocations !== undefined && currentLocationsCount !== undefined
+      ? `All (${currentLocationsCount}/${totalLocations}) Locations Total`
+      : 'All Locations Total';
   const summarySheet = [
     ['Evolution One Solutions'],
     [''],
@@ -180,7 +182,7 @@ export async function exportMetersReportPDF(
   }
 ) {
   const doc = new jsPDF();
-  
+
   // Add logo at the top (centered)
   try {
     const logoBase64 = await getBase64FromUrl(
@@ -202,11 +204,12 @@ export async function exportMetersReportPDF(
   let yPosition = 40;
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  
+
   if (metadata.locations.length > 0) {
-    const locationText = metadata.locations.length === 1 
-      ? `Location: ${metadata.locations[0]}`
-      : `Locations: ${metadata.locations.length} selected`;
+    const locationText =
+      metadata.locations.length === 1
+        ? `Location: ${metadata.locations[0]}`
+        : `Locations: ${metadata.locations.length} selected`;
     doc.text(locationText, 10, yPosition);
     yPosition += 6;
   }
@@ -226,7 +229,10 @@ export async function exportMetersReportPDF(
 
   // Format numbers for display
   const formatNumber = (num: number): string => {
-    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return num.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
 
   // Prepare table data
@@ -251,9 +257,26 @@ export async function exportMetersReportPDF(
   // Table colors: Tailwind buttonActive: #5119E9 (RGB: 81, 25, 233)
   autoTable(doc, {
     startY: yPosition,
-    head: [['Machine ID', 'Location', 'Meters In', 'Money Won', 'Jackpot', 'Bill In', 'Voucher Out', 'Hand Paid Cancelled Credits', 'Games Played', 'Date']],
+    head: [
+      [
+        'Machine ID',
+        'Location',
+        'Meters In',
+        'Money Won',
+        'Jackpot',
+        'Bill In',
+        'Voucher Out',
+        'Hand Paid Cancelled Credits',
+        'Games Played',
+        'Date',
+      ],
+    ],
     body: tableData,
-    headStyles: { fillColor: [81, 25, 233], textColor: [255, 255, 255], fontStyle: 'bold' },
+    headStyles: {
+      fillColor: [81, 25, 233],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+    },
     styles: { fontSize: 8, cellPadding: 2 },
     columnStyles: {
       0: { cellWidth: 30 }, // Machine ID
@@ -313,9 +336,10 @@ export function exportMetersReportExcel(
 
   // Add metadata
   if (metadata.locations.length > 0) {
-    const locationText = metadata.locations.length === 1 
-      ? `Location: ${metadata.locations[0]}`
-      : `Locations: ${metadata.locations.join(', ')}`;
+    const locationText =
+      metadata.locations.length === 1
+        ? `Location: ${metadata.locations[0]}`
+        : `Locations: ${metadata.locations.join(', ')}`;
     headerRows.push([locationText]);
   }
   headerRows.push([`Date Range: ${metadata.dateRange}`]);
@@ -327,7 +351,18 @@ export function exportMetersReportExcel(
 
   // Create table headers
   const tableHeaders = [
-    ['Machine ID', 'Location', 'Meters In', 'Money Won', 'Jackpot', 'Bill In', 'Voucher Out', 'Hand Paid Cancelled Credits', 'Games Played', 'Date'],
+    [
+      'Machine ID',
+      'Location',
+      'Meters In',
+      'Money Won',
+      'Jackpot',
+      'Bill In',
+      'Voucher Out',
+      'Hand Paid Cancelled Credits',
+      'Games Played',
+      'Date',
+    ],
   ];
 
   // Create table data

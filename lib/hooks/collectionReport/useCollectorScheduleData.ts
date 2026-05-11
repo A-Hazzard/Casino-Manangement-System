@@ -17,7 +17,13 @@ import type { LocationSelectItem } from '@/lib/types/location';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const ITEMS_PER_PAGE = 20;
-const MANAGE_ROLES = ['manager', 'admin', 'location admin', 'owner', 'developer'];
+const MANAGE_ROLES = [
+  'manager',
+  'admin',
+  'location admin',
+  'owner',
+  'developer',
+];
 
 export function useCollectorScheduleData(
   selectedLicencee: string | null,
@@ -29,7 +35,8 @@ export function useCollectorScheduleData(
   // Permission
   // ============================================================================
   const canManage = useMemo(
-    () => user?.roles?.some((role: string) => MANAGE_ROLES.includes(role)) ?? false,
+    () =>
+      user?.roles?.some((role: string) => MANAGE_ROLES.includes(role)) ?? false,
     [user]
   );
 
@@ -43,16 +50,21 @@ export function useCollectorScheduleData(
   // ============================================================================
   // Data State
   // ============================================================================
-  const [collectorSchedules, setCollectorSchedules] = useState<CollectorSchedule[]>([]);
+  const [collectorSchedules, setCollectorSchedules] = useState<
+    CollectorSchedule[]
+  >([]);
   const [collectors, setCollectors] = useState<string[]>([]);
-  const [loadingCollectorSchedules, setLoadingCollectorSchedules] = useState(false);
+  const [loadingCollectorSchedules, setLoadingCollectorSchedules] =
+    useState(false);
   const [currentPage, setCurrentPage] = useState(0);
 
   // ============================================================================
   // Edit / Delete State
   // ============================================================================
-  const [editingSchedule, setEditingSchedule] = useState<CollectorSchedule | null>(null);
-  const [deletingSchedule, setDeletingSchedule] = useState<CollectorSchedule | null>(null);
+  const [editingSchedule, setEditingSchedule] =
+    useState<CollectorSchedule | null>(null);
+  const [deletingSchedule, setDeletingSchedule] =
+    useState<CollectorSchedule | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 

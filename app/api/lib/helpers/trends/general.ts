@@ -83,7 +83,8 @@ function buildWinLossTrendsPipeline(
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
+          { 'locationDetails.rel.licencee': licencee },
+          { 'locationDetails.rel.licencee': licencee },
         ],
       },
     } as PipelineStage);
@@ -188,7 +189,8 @@ function buildPlaysTrendsPipeline(
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
+          { 'locationDetails.rel.licencee': licencee },
+          { 'locationDetails.rel.licencee': licencee },
         ],
       },
     } as PipelineStage);
@@ -581,7 +583,8 @@ function buildHandleTrendsPipeline(
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
+          { 'locationDetails.rel.licencee': licencee },
+          { 'locationDetails.rel.licencee': licencee },
         ],
       },
     } as PipelineStage);
@@ -727,7 +730,8 @@ function buildJackpotTrendsPipeline(
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
+          { 'locationDetails.rel.licencee': licencee },
+          { 'locationDetails.rel.licencee': licencee },
         ],
       },
     } as PipelineStage);
@@ -811,4 +815,3 @@ export async function getJackpotTrends(
   }
   return results;
 }
-

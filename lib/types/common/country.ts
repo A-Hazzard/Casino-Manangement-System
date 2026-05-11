@@ -7,4 +7,3 @@ export type Country = {
   createdAt: string;
   updatedAt: string;
 };
-

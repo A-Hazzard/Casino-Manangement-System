@@ -3,6 +3,11 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
 import { create2FARecoveryNotification } from '@/lib/helpers/vault/notifications';
 import { NextResponse } from 'next/server';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/auth/totp/recover/cashier
@@ -13,20 +18,45 @@ import { NextResponse } from 'next/server';
  * location, requesting manual 2FA reset approval.
  */
 export async function POST() {
+  const startTime = Date.now();
+  const functionName = 'POST /api/auth/totp/recover/cashier';
+  const user = extractUserFromRequest(null);
+
   try {
     const session = await getUserFromServer();
     if (!session || !session._id) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/cashier',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectDB();
-    const user = await UserModel.findOne({ _id: session._id });
-    if (!user) {
+    const foundUser = await UserModel.findOne({ _id: session._id });
+    if (!foundUser) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/cashier',
+        'User not found',
+        user
+      );
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const locationId = user.assignedLocations?.[0];
+    const locationId = foundUser.assignedLocations?.[0];
     if (!locationId) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/cashier',
+        'User has no assigned location',
+        user
+      );
       return NextResponse.json(
         { error: 'User has no assigned location' },
         { status: 400 }
@@ -41,6 +71,13 @@ export async function POST() {
     });
 
     if (vaultManagers.length === 0) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/cashier',
+        'No Vault Managers found for location',
+        user
+      );
       return NextResponse.json(
         {
           error:
@@ -51,25 +88,46 @@ export async function POST() {
     }
 
     const cashierName =
-      `${user.profile?.firstName || ''} ${user.profile?.lastName || ''}`.trim() ||
-      user.username;
+      `${foundUser.profile?.firstName || ''} ${foundUser.profile?.lastName || ''}`.trim() ||
+      foundUser.username;
 
     // Send notifications to all VMs
     for (const vm of vaultManagers) {
       await create2FARecoveryNotification(
         locationId,
         vm._id,
-        user._id,
+        foundUser._id,
         cashierName
       );
     }
+
+    const duration = Date.now() - startTime;
+    logRouteUpdate(
+      functionName,
+      'POST',
+      '/api/auth/totp/recover/cashier',
+      1,
+      user,
+      duration
+    );
 
     return NextResponse.json({
       success: true,
       message: 'Help request sent to Vault Managers',
     });
   } catch (e) {
-    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    const errorMessage =
+      e instanceof Error ? e.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/auth/totp/recover/cashier',
+      errorMessage,
+      user
+    );
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

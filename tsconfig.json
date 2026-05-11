@@ -1,10 +1,6 @@
 {
   "compilerOptions": {
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "baseUrl": ".",
     "allowJs": true,
     "skipLibCheck": true,
@@ -25,18 +21,10 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@shared/*": [
-        "./shared/*"
-      ],
-      "@/public/*": [
-        "./public/*"
-      ],
-      "/public/*": [
-        "./public/*"
-      ]
+      "@/*": ["./*"],
+      "@shared/*": ["./shared/*"],
+      "@/public/*": ["./public/*"],
+      "/public/*": ["./public/*"]
     },
     "target": "ES2017",
     // Strict unused code detection
@@ -52,11 +40,11 @@
     "**/*.tsx",
     "**/*.d.ts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
-, "scripts/update-test-machines-data.js", "scripts/migrate-licencee.js", "scripts/check-locs.js", "scripts/repair-database.js"  ],
-  "exclude": [
-    "node_modules",
-    "scripts",
-    ".next"
-  ]
+    ".next/dev/types/**/*.ts",
+    "scripts/update-test-machines-data.js",
+    "scripts/migrate-licencee.js",
+    "scripts/check-locs.js",
+    "scripts/repair-database.js"
+  ],
+  "exclude": ["node_modules", "scripts", ".next"]
 }

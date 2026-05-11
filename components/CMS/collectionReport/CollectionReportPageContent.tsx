@@ -17,6 +17,7 @@
 import { FC, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
+import axios from 'axios';
 
 // === Internal Components ===
 import CollectionReportHeader from '@/components/CMS/collectionReport/CollectionReportHeader';
@@ -26,6 +27,9 @@ import ScheduleDeleteDialog from '@/components/CMS/collectionReport/modals/Sched
 import ScheduleEditModal from '@/components/CMS/collectionReport/modals/ScheduleEditModal';
 import CollectionReportDesktopLayout from '@/components/CMS/collectionReport/tabs/collection/CollectionReportDesktopLayout';
 import CollectionReportMobileLayout from '@/components/CMS/collectionReport/tabs/collection/CollectionReportMobileLayout';
+import CollectionReportV2Desktop from '@/components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Desktop';
+import CollectionReportV2Mobile from '@/components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2Mobile';
+import CollectionReportV2StartSessionDialog from '@/components/CMS/collectionReport/tabs/collection-v2/CollectionReportV2StartSessionDialog';
 
 // === Shared Components ===
 import PageLayout from '@/components/shared/layout/PageLayout';
@@ -36,6 +40,7 @@ import PaginationControls from '@/components/shared/ui/PaginationControls';
 // === Hooks & Store ===
 import { COLLECTION_TABS_CONFIG, UserRole } from '@/lib/constants';
 import { useCollectionReportPageData } from '@/lib/hooks/collectionReport/useCollectionReportPageData';
+import { useCollectionReportV2Data } from '@/lib/hooks/collectionReport/useCollectionReportV2Data';
 import { useCollectorScheduleData } from '@/lib/hooks/collectionReport/useCollectorScheduleData';
 import { useManagerScheduleData } from '@/lib/hooks/collectionReport/useManagerScheduleData';
 import { useMonthlyReportData } from '@/lib/hooks/collectionReport/useMonthlyReportData';
@@ -44,18 +49,42 @@ import { useUserStore } from '@/lib/store/userStore';
 
 // === Utilities ===
 import {
-    shouldShowLicenceeFilter,
-    shouldShowNoLicenceeMessage,
+  shouldShowLicenceeFilter,
+  shouldShowNoLicenceeMessage,
 } from '@/lib/utils/licencee';
 import { hasManagerAccess } from '@/lib/utils/permissions';
 
 // === Specialized Tab UI Components (Dynamically Imported) ===
-const MonthlyDesktop = dynamic(() => import('@/components/CMS/collectionReport/tabs/monthly/CollectionReportMonthlyDesktop'), { ssr: false });
-const MonthlyMobile = dynamic(() => import('@/components/CMS/collectionReport/tabs/monthly/CollectionReportMonthlyMobile'), { ssr: false });
-const CollectorDesktop = dynamic(() => import('@/components/CMS/collectionReport/tabs/collector/CollectionReportCollectorDesktop'), { ssr: false });
-const CollectorMobile = dynamic(() => import('@/components/CMS/collectionReport/tabs/collector/CollectionReportCollectorMobile'), { ssr: false });
-const ManagerDesktop = dynamic(() => import('@/components/CMS/collectionReport/tabs/manager/CollectionReportManagerDesktop'), { ssr: false });
-const ManagerMobile = dynamic(() => import('@/components/CMS/collectionReport/tabs/manager/CollectionReportManagerMobile'), { ssr: false });
+const MonthlyDesktop = dynamic(
+  () =>
+    import('@/components/CMS/collectionReport/tabs/monthly/CollectionReportMonthlyDesktop'),
+  { ssr: false }
+);
+const MonthlyMobile = dynamic(
+  () =>
+    import('@/components/CMS/collectionReport/tabs/monthly/CollectionReportMonthlyMobile'),
+  { ssr: false }
+);
+const CollectorDesktop = dynamic(
+  () =>
+    import('@/components/CMS/collectionReport/tabs/collector/CollectionReportCollectorDesktop'),
+  { ssr: false }
+);
+const CollectorMobile = dynamic(
+  () =>
+    import('@/components/CMS/collectionReport/tabs/collector/CollectionReportCollectorMobile'),
+  { ssr: false }
+);
+const ManagerDesktop = dynamic(
+  () =>
+    import('@/components/CMS/collectionReport/tabs/manager/CollectionReportManagerDesktop'),
+  { ssr: false }
+);
+const ManagerMobile = dynamic(
+  () =>
+    import('@/components/CMS/collectionReport/tabs/manager/CollectionReportManagerMobile'),
+  { ssr: false }
+);
 
 const MotionDiv = motion.div;
 
@@ -70,6 +99,10 @@ const CollectionReportPageContent: FC = () => {
   const desktopTableRef = useRef<HTMLDivElement | null>(null);
   const mobileCardsRef = useRef<HTMLDivElement | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [showV2StartSession, setShowV2StartSession] = useState(false);
+  const [v2DeleteConfirm, setV2DeleteConfirm] = useState<string | null>(null);
+  const [v2Deleting, setV2Deleting] = useState(false);
+  const [v2GroupByLocation, setV2GroupByLocation] = useState(false);
 
   // Destructure hook for better readability
   const {
@@ -110,21 +143,29 @@ const CollectionReportPageContent: FC = () => {
     locations,
     collectorHook.collectors
   );
+  const v2Hook = useCollectionReportV2Data(selectedLicencee, locations);
 
   // ============================================================================
   // Role-Based Visibility Computations
   // ============================================================================
-  
-  // Hide Monthly Report and Manager Schedule tabs from non-management roles
-  const canSeeManagerTabs = hasManagerAccess((user?.roles || []) as UserRole[]);
-  const visibleTabs = COLLECTION_TABS_CONFIG.filter(
-    tab => tab.id === 'monthly' || tab.id === 'manager' ? canSeeManagerTabs : true
-  );
+
+  const userRoles = (user?.roles || []) as UserRole[];
+  const canSeeManagerTabs = hasManagerAccess(userRoles);
+  const isDeveloper = userRoles.includes('developer');
+
+  const visibleTabs = COLLECTION_TABS_CONFIG.filter(tab => {
+    if (tab.id === 'monthly' || tab.id === 'manager') return canSeeManagerTabs;
+    if (tab.id === 'collection-v2') return isDeveloper;
+    return true;
+  });
 
   // Role-based active tab fallback
-  const effectiveTab = (activeTab === 'monthly' || activeTab === 'manager') && !canSeeManagerTabs
-    ? 'collection' as const
-    : activeTab;
+  const effectiveTab =
+    (activeTab === 'monthly' || activeTab === 'manager') && !canSeeManagerTabs
+      ? ('collection' as const)
+      : activeTab === 'collection-v2' && !isDeveloper
+        ? ('collection' as const)
+        : activeTab;
 
   // ============================================================================
   // Early Returns: Authentication & Tenancy Checks
@@ -164,8 +205,20 @@ const CollectionReportPageContent: FC = () => {
           activeTab={effectiveTab}
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          onCreateDesktop={handleCreate}
-          onCreateMobile={handleCreate}
+          onCreateDesktop={() => {
+            if (effectiveTab === 'collection-v2') {
+              setShowV2StartSession(true);
+            } else {
+              handleCreate();
+            }
+          }}
+          onCreateMobile={() => {
+            if (effectiveTab === 'collection-v2') {
+              setShowV2StartSession(true);
+            } else {
+              handleCreate();
+            }
+          }}
         />
 
         {/* Navigation Section */}
@@ -179,7 +232,8 @@ const CollectionReportPageContent: FC = () => {
         </div>
 
         {/* Global Filters Section */}
-        {effectiveTab === 'collection' && (
+        {(effectiveTab === 'collection' ||
+          effectiveTab === 'collection-v2') && (
           <div className="mb-6">
             <DateFilters hideAllTime={false} customRangeGoLabel="Get Reports" />
           </div>
@@ -214,7 +268,9 @@ const CollectionReportPageContent: FC = () => {
                       }}
                       onSearchSubmit={() => {}}
                       showUncollectedOnly={filters.showUncollectedOnly}
-                      onShowUncollectedOnlyChange={filters.setShowUncollectedOnly}
+                      onShowUncollectedOnlyChange={
+                        filters.setShowUncollectedOnly
+                      }
                       selectedFilters={filters.selectedFilters}
                       onFilterChange={filters.handleFilterChange}
                       onClearFilters={filters.clearFilters}
@@ -246,7 +302,9 @@ const CollectionReportPageContent: FC = () => {
                       }}
                       onSearchSubmit={() => {}}
                       showUncollectedOnly={filters.showUncollectedOnly}
-                      onShowUncollectedOnlyChange={filters.setShowUncollectedOnly}
+                      onShowUncollectedOnlyChange={
+                        filters.setShowUncollectedOnly
+                      }
                       selectedFilters={filters.selectedFilters}
                       onFilterChange={filters.handleFilterChange}
                       onClearFilters={filters.clearFilters}
@@ -259,20 +317,23 @@ const CollectionReportPageContent: FC = () => {
                   </div>
 
                   {/* Pagination Section */}
-                  {(hook.paginatedReports?.length > 0 || filters.filteredReports.length > 0) && (
+                  {(hook.paginatedReports?.length > 0 ||
+                    filters.filteredReports.length > 0) && (
                     <div className="mb-8 mt-4 flex w-full justify-center">
                       <PaginationControls
-                          currentPage={hook.currentPage}
-                          totalPages={hook.totalPages || 1}
-                          totalCount={
-                            filters.selectedLocation !== 'all' || filters.showUncollectedOnly || filters.selectedFilters.length > 0
-                              ? filters.filteredReports.length
-                              : hook.totalReports
-                          }
-                          setCurrentPage={setCurrentPage}
-                        />
-                      </div>
-                    )}
+                        currentPage={hook.currentPage}
+                        totalPages={hook.totalPages || 1}
+                        totalCount={
+                          filters.selectedLocation !== 'all' ||
+                          filters.showUncollectedOnly ||
+                          filters.selectedFilters.length > 0
+                            ? filters.filteredReports.length
+                            : hook.totalReports
+                        }
+                        setCurrentPage={setCurrentPage}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -307,12 +368,12 @@ const CollectionReportPageContent: FC = () => {
                   {collectorHook.collectorSchedules.length > 0 && (
                     <div className="mt-6 flex justify-center">
                       <PaginationControls
-                          currentPage={collectorHook.currentPage}
-                          totalPages={collectorHook.totalPages}
-                          setCurrentPage={collectorHook.setCurrentPage}
-                        />
-                      </div>
-                    )}
+                        currentPage={collectorHook.currentPage}
+                        totalPages={collectorHook.totalPages}
+                        setCurrentPage={collectorHook.setCurrentPage}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -333,16 +394,118 @@ const CollectionReportPageContent: FC = () => {
                       showActions={managerHook.canManage}
                     />
                   </div>
-                  
+
                   {managerHook.schedulers.length > 0 && (
                     <div className="mt-6 flex justify-center">
                       <PaginationControls
-                          currentPage={managerHook.currentPage}
-                          totalPages={managerHook.totalPages}
-                          setCurrentPage={managerHook.setCurrentPage}
-                        />
+                        currentPage={managerHook.currentPage}
+                        totalPages={managerHook.totalPages}
+                        setCurrentPage={managerHook.setCurrentPage}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* === COLLECTION REPORT V2 TAB (Developer only) === */}
+              {effectiveTab === 'collection-v2' && (
+                <div className="tab-content-wrapper">
+                  {/* V2 Location Filter & Group Toggle */}
+                  {v2Hook.locations.length > 0 && (
+                    <div className="mb-4 flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                          Location
+                        </label>
+                        <select
+                          value={v2Hook.selectedLocation}
+                          onChange={e =>
+                            v2Hook.setSelectedLocation(e.target.value)
+                          }
+                          className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        >
+                          <option value="all">All Locations</option>
+                          {v2Hook.locations.map(loc => (
+                            <option key={String(loc._id)} value={String(loc._id)}>
+                              {loc.name}
+                            </option>
+                          ))}
+                        </select>
                       </div>
-                    )}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setV2GroupByLocation(prev => !prev)
+                        }
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                          v2GroupByLocation
+                            ? 'border-blue-300 bg-blue-50 text-blue-700'
+                            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {v2GroupByLocation
+                          ? 'Grouped by Location'
+                          : 'Group by Location'}
+                      </button>
+                    </div>
+                  )}
+                  <div className="hidden md:block">
+                    <CollectionReportV2Desktop
+                      sessions={v2Hook.sessions}
+                      loading={v2Hook.loading}
+                      groupByLocation={v2GroupByLocation}
+                      onViewSession={sessionId => {
+                        window.location.href = `/collection-report/report/session/${sessionId}`;
+                      }}
+                      onSubmitSession={async sessionId => {
+                        try {
+                          await axios.patch(
+                            `/api/collection-reports-v2/sessions/${sessionId}/submit`
+                          );
+                          v2Hook.onRefresh();
+                        } catch (error) {
+                          console.error('Failed to submit session:', error);
+                        }
+                      }}
+                      onDeleteSession={sessionId => {
+                        setV2DeleteConfirm(sessionId);
+                      }}
+                    />
+                  </div>
+
+                  <div className="md:hidden">
+                    <CollectionReportV2Mobile
+                      sessions={v2Hook.sessions}
+                      loading={v2Hook.loading}
+                      groupByLocation={v2GroupByLocation}
+                      onViewSession={sessionId => {
+                        window.location.href = `/collection-report/report/session/${sessionId}`;
+                      }}
+                      onSubmitSession={async sessionId => {
+                        try {
+                          await axios.patch(
+                            `/api/collection-reports-v2/sessions/${sessionId}/submit`
+                          );
+                          v2Hook.onRefresh();
+                        } catch (error) {
+                          console.error('Failed to submit session:', error);
+                        }
+                      }}
+                      onDeleteSession={sessionId => {
+                        setV2DeleteConfirm(sessionId);
+                      }}
+                    />
+                  </div>
+
+                  {v2Hook.sessions.length > 0 && (
+                    <div className="mb-8 mt-4 flex w-full justify-center">
+                      <PaginationControls
+                        currentPage={v2Hook.currentPage}
+                        totalPages={v2Hook.totalPages}
+                        setCurrentPage={v2Hook.setCurrentPage}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </MotionDiv>
@@ -439,9 +602,60 @@ const CollectionReportPageContent: FC = () => {
         onRefresh={handleRefresh}
         onRefreshLocations={onRefreshLocations}
       />
+
+      {showV2StartSession && (
+        <CollectionReportV2StartSessionDialog
+          locations={locations}
+          onClose={() => setShowV2StartSession(false)}
+        />
+      )}
+
+      {v2DeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">
+              Delete Session
+            </h3>
+            <p className="mb-6 text-sm text-gray-600">
+              Are you sure you want to delete this in-progress session? This
+              will remove all captured data permanently.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setV2DeleteConfirm(null)}
+                disabled={v2Deleting}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setV2Deleting(true);
+                  try {
+                    await axios.delete(
+                      `/api/collection-reports-v2/sessions/${v2DeleteConfirm}`
+                    );
+                    setV2DeleteConfirm(null);
+                    v2Hook.onRefresh();
+                  } catch (error) {
+                    console.error('Failed to delete session:', error);
+                  } finally {
+                    setV2Deleting(false);
+                  }
+                }}
+                disabled={v2Deleting}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {v2Deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
 
 export default CollectionReportPageContent;
-

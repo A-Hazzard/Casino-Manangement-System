@@ -13,6 +13,11 @@
 import { generateAccessToken, verifyAccessToken } from '@/lib/utils/auth';
 import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/auth/refresh-token
@@ -24,6 +29,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/auth/refresh-token';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -32,6 +39,13 @@ export async function POST(request: NextRequest) {
     const token = request.cookies.get('token')?.value;
 
     if (!token) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/refresh-token',
+        'No authentication token found',
+        user
+      );
       return NextResponse.json(
         { error: 'No authentication token found' },
         { status: 401 }
@@ -44,6 +58,13 @@ export async function POST(request: NextRequest) {
     const payload = await verifyAccessToken(token);
 
     if (!payload) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/refresh-token',
+        'Invalid or expired token',
+        user
+      );
       return NextResponse.json(
         { error: 'Invalid or expired token' },
         { status: 401 }
@@ -73,25 +94,36 @@ export async function POST(request: NextRequest) {
       message: 'Token refreshed successfully',
     });
 
-    response.cookies.set('token', newToken, getAuthCookieOptions(request, { maxAge: 120 * 60 }));
+    response.cookies.set(
+      'token',
+      newToken,
+      getAuthCookieOptions(request, { maxAge: 120 * 60 })
+    );
 
     // ============================================================================
     // STEP 5: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 500) {
-      console.warn(`[Refresh Token API] Completed in ${duration}ms`);
-    }
+    logRouteFetch(
+      functionName,
+      'POST',
+      '/api/auth/refresh-token',
+      1,
+      user,
+      duration
+    );
 
     return response;
   } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Failed to refresh token';
-    console.error(`[Refresh Token API] Error after ${duration}ms:`, errorMessage);
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to refresh token';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/auth/refresh-token',
+      errorMessage,
+      user
     );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-

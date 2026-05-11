@@ -1,8 +1,8 @@
 # Vault & Ledger API (`/api/vault`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -15,11 +15,13 @@ The Vault API manages the casino's on-premises cash operations through a strict 
 ## 2. Core Endpoints
 
 ### 🏦 `GET /api/vault/balance`
+
 Returns the full financial state of the current vault shift. Primary data source for the Vault Balance Card.
 
 **Required Params**: `locationId`
 
 **Steps:**
+
 1. **Authenticate user** — Calls `getUserFromServer()`. Returns `401` if not authenticated.
 2. **Check vault access** — Verifies the user has one of `developer`, `admin`, `manager`, or `vault-manager` in their `roles`. Returns `403` if not.
 3. **Validate `locationId`** — Returns `400` if `locationId` is absent.
@@ -40,9 +42,11 @@ Returns the full financial state of the current vault shift. Primary data source
 ---
 
 ### 🟢 `POST /api/vault/initialize`
+
 Opens a new vault shift for the day.
 
 **Steps:**
+
 1. **Authenticate & authorize** — Checks `vault-manager` or above role.
 2. **Validate conflict** — Returns `409` if there is already an `active` shift for this location.
 3. **Create vault shift** — Creates a new `VaultShift` document with `status: 'active'`, `openingBalance`, `openingDenominations`, and `vaultManagerId`.
@@ -52,9 +56,11 @@ Opens a new vault shift for the day.
 ---
 
 ### 💵 `POST /api/vault/add-cash`
+
 Records cash brought into the vault.
 
 **Steps:**
+
 1. **Authenticate & authorize** — Checks vault access roles.
 2. **Parse & validate body** — Reads `locationId`, `amount`, `reason`, `denominations`.
 3. **Find active shift** — Returns `404` if no active shift found for the location.
@@ -66,9 +72,11 @@ Records cash brought into the vault.
 ---
 
 ### 🏧 `POST /api/vault/float-request/approve`
+
 Disburses a cash float from the vault to a cashier.
 
 **Steps:**
+
 1. **Authenticate & authorize** — Checks `vault-manager` or above.
 2. **Fetch float request** — Finds the `FloatRequest` by `_id`. Returns `404` if not found.
 3. **Guard: Sufficient vault balance** — Returns `409` if `floatAmount > vaultBalance`.
@@ -83,9 +91,11 @@ Disburses a cash float from the vault to a cashier.
 ---
 
 ### 🔒 `POST /api/vault/end-of-day`
+
 Closes the vault shift for the day.
 
 **Steps:**
+
 1. **Authenticate & authorize** — Checks `vault-manager` or above.
 2. **Fetch active shift** — Returns `404` if no active shift.
 3. **Guard (BR-VMS-01)** — Counts cashier shifts with `status: { $in: ['active', 'pending_review'] }`. Returns `409` with `blockReason` message if any are still open.
@@ -102,10 +112,13 @@ Closes the vault shift for the day.
 - **BR-VMS-03**: All `Expense` records require a `category` and `description` — returns `400` otherwise.
 
 ### 🧮 Cash on Premises Formula (Step 8 in GET /balance)
+
 ```
 totalCashOnPremises = vaultBalance + cashierFloats + machineMoneyIn(today)
 ```
+
 Where `machineMoneyIn(today)` is the sum of `Meters.movement.drop` for the current gaming day window, giving management a real-time picture of the property's total cash exposure.
 
 ---
+
 **Technical Reference** - Cage & Finance Team

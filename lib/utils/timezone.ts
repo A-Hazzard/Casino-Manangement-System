@@ -49,6 +49,3 @@ export function formatTrinidadTime(
  * @param endDate - End date in Trinidad local time
  * @returns Object with UTC dates for MongoDB queries
  */
-
-
-

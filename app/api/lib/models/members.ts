@@ -156,7 +156,7 @@ const memberSchema = new Schema(
     startMeters: { type: metersSchema, default: null },
     startTime: { type: Date, default: null },
     status: { type: String, default: '' },
-    uaccount: { type: Number, default: 0 }, // Account balance
+    uaccount: { type: Number, default: 0 },
     ucardId: { type: String, default: '' },
     ulock: { type: Number, default: 0 },
     upassFull: { type: Number, default: 0 },
@@ -169,14 +169,9 @@ const memberSchema = new Schema(
   { timestamps: true }
 );
 
-// Indexes for better query performance
 memberSchema.index({ gamingLocation: 1, deletedAt: 1 });
 memberSchema.index({ username: 1 });
 memberSchema.index({ 'profile.email': 1 });
 memberSchema.index({ deletedAt: 1 });
 
-/**
- * Mongoose model for members, including profile information, account details, and gaming data.
- */
 export const Member = models.Member || model('Member', memberSchema, 'members');
-

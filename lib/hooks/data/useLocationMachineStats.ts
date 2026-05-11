@@ -73,7 +73,14 @@ export function useLocationMachineStats(
     } finally {
       setMachineStatsLoading(false);
     }
-  }, [selectedLicencee, locationId, machineTypeFilter, search, gameTypeFilter, selectedStatus]);
+  }, [
+    selectedLicencee,
+    locationId,
+    machineTypeFilter,
+    search,
+    gameTypeFilter,
+    selectedStatus,
+  ]);
 
   // Refresh machine stats
   const refreshMachineStats = useCallback(async () => {
@@ -114,7 +121,9 @@ export function useLocationMachineStats(
 
         // Handle any errors
         const errorMessage =
-          error instanceof Error ? error.message : 'Failed to fetch machine stats';
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch machine stats';
         setError(errorMessage);
         setMachineStats({
           totalMachines: 0,
@@ -135,7 +144,15 @@ export function useLocationMachineStats(
     };
 
     loadMachineStats();
-  }, [selectedLicencee, locationId, machineTypeFilter, search, gameTypeFilter, selectedStatus, makeRequest]);
+  }, [
+    selectedLicencee,
+    locationId,
+    machineTypeFilter,
+    search,
+    gameTypeFilter,
+    selectedStatus,
+    makeRequest,
+  ]);
 
   return {
     machineStats,
@@ -144,5 +161,3 @@ export function useLocationMachineStats(
     error,
   };
 }
-
-

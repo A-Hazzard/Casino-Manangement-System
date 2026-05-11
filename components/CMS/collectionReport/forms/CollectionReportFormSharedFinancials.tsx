@@ -1,6 +1,5 @@
 'use client';
 
-
 type SharedFinancialsFormProps = {
   taxes: string;
   advance: string;
@@ -25,48 +24,46 @@ export default function CollectionReportFormSharedFinancials({
 }: SharedFinancialsFormProps) {
   return (
     <div className={className}>
-      <h3 className="text-base font-semibold mb-3">
+      <h3 className="mb-3 text-base font-semibold">
         Shared Financials for Batch
       </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Taxes */}
         <div>
-          <label className="block text-sm font-medium mb-1">Taxes</label>
+          <label className="mb-1 block text-sm font-medium">Taxes</label>
           <input
             type="text"
             placeholder="0"
             value={taxes}
-            onChange={(e) => {
+            onChange={e => {
               const val = e.target.value;
               if (/^-?\d*\.?\d*$/.test(val) || val === '') {
                 onTaxesChange(val);
               }
             }}
             disabled={disabled}
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
           />
         </div>
 
         {/* Advance */}
         <div>
-          <label className="block text-sm font-medium mb-1">Advance</label>
+          <label className="mb-1 block text-sm font-medium">Advance</label>
           <input
             type="text"
             placeholder="0"
             value={advance}
-            onChange={(e) => {
+            onChange={e => {
               const val = e.target.value;
               if (/^-?\d*\.?\d*$/.test(val) || val === '') {
                 onAdvanceChange(val);
               }
             }}
             disabled={disabled}
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
           />
         </div>
       </div>
     </div>
   );
-};
-
-
+}

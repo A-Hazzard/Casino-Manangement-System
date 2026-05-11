@@ -4,7 +4,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Feedback, FeedbackResponse } from '@/components/CMS/administration/feedback/FeedbackTypes';
+import {
+  Feedback,
+  FeedbackResponse,
+} from '@/components/CMS/administration/feedback/FeedbackTypes';
 
 type UseFeedbackDataProps = {
   debouncedEmailFilter: string;
@@ -31,9 +34,12 @@ export function useFeedbackData({
   const [serverTotalPages, setServerTotalPages] = useState(1);
 
   // Calculate which batch corresponds to the current page
-  const calculateBatchNumber = useCallback((page: number) => {
-    return Math.floor(page / pagesPerBatch) + 1;
-  }, [pagesPerBatch]);
+  const calculateBatchNumber = useCallback(
+    (page: number) => {
+      return Math.floor(page / pagesPerBatch) + 1;
+    },
+    [pagesPerBatch]
+  );
 
   // Fetch feedback - initial batch and when filters change
   const fetchInitialBatch = useCallback(async () => {
@@ -45,8 +51,10 @@ export function useFeedbackData({
     try {
       const params = new URLSearchParams();
       if (debouncedEmailFilter) params.append('email', debouncedEmailFilter);
-      if (categoryFilter && categoryFilter !== 'all') params.append('category', categoryFilter);
-      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+      if (categoryFilter && categoryFilter !== 'all')
+        params.append('category', categoryFilter);
+      if (statusFilter && statusFilter !== 'all')
+        params.append('status', statusFilter);
       params.append('page', '1');
       params.append('limit', String(itemsPerBatch));
 
@@ -90,8 +98,10 @@ export function useFeedbackData({
     const buildParams = (batch: number) => {
       const params = new URLSearchParams();
       if (debouncedEmailFilter) params.append('email', debouncedEmailFilter);
-      if (categoryFilter && categoryFilter !== 'all') params.append('category', categoryFilter);
-      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+      if (categoryFilter && categoryFilter !== 'all')
+        params.append('category', categoryFilter);
+      if (statusFilter && statusFilter !== 'all')
+        params.append('status', statusFilter);
       params.append('page', String(batch));
       params.append('limit', String(itemsPerBatch));
       return params;

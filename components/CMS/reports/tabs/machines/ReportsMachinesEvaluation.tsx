@@ -568,4 +568,3 @@ export const ReportsMachinesEvaluation = ({
     </div>
   );
 };
-

@@ -3,6 +3,11 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
 import VaultNotificationModel from '@/app/api/lib/models/vaultNotification';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/auth/totp/reset
@@ -17,33 +22,92 @@ import { NextRequest, NextResponse } from 'next/server';
  *                                actioned once the reset completes.
  */
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/auth/totp/reset';
+  const user = extractUserFromRequest(req);
+
   try {
     const session = await getUserFromServer();
-    if (!session || !session._id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
+    if (!session || !session._id) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/reset',
+        'Unauthorized',
+        user
+      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { userId, notificationId } = await req.json();
 
-    if (!userId) return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+    if (!userId) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/reset',
+        'User ID is required',
+        user
+      );
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      );
+    }
 
     await connectDB();
 
     // 1. Verify acting user is a VM or higher
     const actor = await UserModel.findOne({ _id: session._id });
-    if (!actor) return NextResponse.json({ error: 'Actor not found' }, { status: 404 });
+    if (!actor) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/reset',
+        'Actor not found',
+        user
+      );
+      return NextResponse.json({ error: 'Actor not found' }, { status: 404 });
+    }
 
     const actorRoles = Array.isArray(actor.roles) ? actor.roles : [];
-    const isVM = actorRoles.some((r: string) => ['vault-manager', 'admin', 'developer'].includes(r.toLowerCase()));
+    const isVM = actorRoles.some((r: string) =>
+      ['vault-manager', 'admin', 'developer'].includes(r.toLowerCase())
+    );
 
-    if (!isVM) return NextResponse.json({ error: 'Not authorized to reset 2FA' }, { status: 403 });
+    if (!isVM) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/reset',
+        'Not authorized to reset 2FA',
+        user
+      );
+      return NextResponse.json(
+        { error: 'Not authorized to reset 2FA' },
+        { status: 403 }
+      );
+    }
 
     // 2. Perform reset
-    const user = await UserModel.findOne({ _id: userId });
-    if (!user) return NextResponse.json({ error: 'Target user not found' }, { status: 404 });
+    const foundUser = await UserModel.findOne({ _id: userId });
+    if (!foundUser) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/reset',
+        'Target user not found',
+        user
+      );
+      return NextResponse.json(
+        { error: 'Target user not found' },
+        { status: 404 }
+      );
+    }
 
-    user.totpSecret = null;
-    user.totpEnabled = false;
-    await user.save();
+    foundUser.totpSecret = null;
+    foundUser.totpEnabled = false;
+    await foundUser.save();
 
     // 3. Mark notification as actioned if provided
     if (notificationId) {
@@ -59,9 +123,33 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, message: '2FA has been reset for the user' });
+    const duration = Date.now() - startTime;
+    logRouteUpdate(
+      functionName,
+      'POST',
+      '/api/auth/totp/reset',
+      1,
+      user,
+      duration
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: '2FA has been reset for the user',
+    });
   } catch (e) {
-    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    const errorMessage =
+      e instanceof Error ? e.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/auth/totp/reset',
+      errorMessage,
+      user
+    );
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

@@ -43,7 +43,7 @@ import {
   Monitor,
   Search,
 } from 'lucide-react';
-import {  useMemo, useState  } from 'react';
+import { useMemo, useState } from 'react';
 
 /**
  * Main ReportsLocationsRevenueTable Component
@@ -579,4 +579,3 @@ export default function ReportsLocationsRevenueTable({
     </Card>
   );
 }
-

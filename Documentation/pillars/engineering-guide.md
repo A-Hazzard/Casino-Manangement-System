@@ -1,8 +1,8 @@
 # Engineering & Platform Pillar (Platform)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -42,12 +42,13 @@
 
 ## 5. Engineering Workflows
 
-| Task | tool | Location |
-| :--- | :--- | :--- |
-| **New API** | Route Handler | `app/api/[domain]/route.ts` |
-| **New Logic** | Helper Class | `app/api/lib/helpers/` |
-| **New UI** | Component | `components/[DOMAIN]/` |
-| **New State** | Zustand Store | `lib/store/` |
+| Task          | tool          | Location                    |
+| :------------ | :------------ | :-------------------------- |
+| **New API**   | Route Handler | `app/api/[domain]/route.ts` |
+| **New Logic** | Helper Class  | `app/api/lib/helpers/`      |
+| **New UI**    | Component     | `components/[DOMAIN]/`      |
+| **New State** | Zustand Store | `lib/store/`                |
 
 ---
+
 **Maintained By**: Evolution One Development Team

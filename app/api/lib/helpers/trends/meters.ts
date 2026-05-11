@@ -20,7 +20,12 @@ import {
   getCountryCurrency,
 } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
-import type { CountryDocument, GamingLocationDocument, GamingMachine, LicenceeDocument } from '@/shared/types';
+import type {
+  CountryDocument,
+  GamingLocationDocument,
+  GamingMachine,
+  LicenceeDocument,
+} from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 // Functions accept 'any' for db parameter to handle version differences
@@ -165,7 +170,7 @@ function determineAggregationGranularity(
       // Date-only custom range: use hourly if <= 1 day (for gaming day offset)
       const diffInDays = Math.ceil(
         (customEndDate.getTime() - customStartDate.getTime()) /
-        (1000 * 60 * 60 * 24)
+          (1000 * 60 * 60 * 24)
       );
       if (diffInDays <= 1) {
         return { useHourly: true, useMinute: false };
@@ -194,7 +199,9 @@ function filterLocationsByPermissions(
   userLocationPermissions: string[]
 ): LocationData[] {
   if (!Array.isArray(locations) || !Array.isArray(userLocationPermissions)) {
-    console.error('[filterLocationsByPermissions] locations and userLocationPermissions must be arrays');
+    console.error(
+      '[filterLocationsByPermissions] locations and userLocationPermissions must be arrays'
+    );
     return [];
   }
 
@@ -264,7 +271,9 @@ function buildLocationMetricsPipeline(
   shouldUseMinute?: boolean
 ): PipelineStage[] {
   if (!Array.isArray(machineIds) || !rangeStart || !rangeEnd) {
-    console.error('[buildLocationMetricsPipeline] machineIds (array), rangeStart, and rangeEnd are required');
+    console.error(
+      '[buildLocationMetricsPipeline] machineIds (array), rangeStart, and rangeEnd are required'
+    );
     return [];
   }
 
@@ -289,22 +298,22 @@ function buildLocationMetricsPipeline(
         },
         time: shouldUseMinute
           ? {
-            // Minute-level: format as HH:MM
-            $dateToString: {
-              date: '$readAt',
-              format: '%H:%M',
-              timezone: 'UTC',
-            },
-          }
-          : shouldUseHourly
-            ? {
-              // Hourly: format as HH:00
+              // Minute-level: format as HH:MM
               $dateToString: {
                 date: '$readAt',
-                format: '%H:00',
+                format: '%H:%M',
                 timezone: 'UTC',
               },
             }
+          : shouldUseHourly
+            ? {
+                // Hourly: format as HH:00
+                $dateToString: {
+                  date: '$readAt',
+                  format: '%H:00',
+                  timezone: 'UTC',
+                },
+              }
             : '00:00',
       },
     },
@@ -369,8 +378,14 @@ async function processLocationMetricsSingleAggregation(
   shouldUseHourly: boolean,
   shouldUseMinute?: boolean
 ): Promise<MeterTrendMetric[]> {
-  if (!Array.isArray(locations) || !(machinesByLocation instanceof Map) || !(gamingDayRanges instanceof Map)) {
-    console.error('[processLocationMetricsSingleAggregation] locations (array), machinesByLocation (Map), and gamingDayRanges (Map) are required');
+  if (
+    !Array.isArray(locations) ||
+    !(machinesByLocation instanceof Map) ||
+    !(gamingDayRanges instanceof Map)
+  ) {
+    console.error(
+      '[processLocationMetricsSingleAggregation] locations (array), machinesByLocation (Map), and gamingDayRanges (Map) are required'
+    );
     return [];
   }
 
@@ -424,22 +439,22 @@ async function processLocationMetricsSingleAggregation(
         },
         time: shouldUseMinute
           ? {
-            // Minute-level: format as HH:MM
-            $dateToString: {
-              date: '$readAt',
-              format: '%H:%M',
-              timezone: 'UTC',
-            },
-          }
-          : shouldUseHourly
-            ? {
-              // Hourly: format as HH:00
+              // Minute-level: format as HH:MM
               $dateToString: {
                 date: '$readAt',
-                format: '%H:00',
+                format: '%H:%M',
                 timezone: 'UTC',
               },
             }
+          : shouldUseHourly
+            ? {
+                // Hourly: format as HH:00
+                $dateToString: {
+                  date: '$readAt',
+                  format: '%H:00',
+                  timezone: 'UTC',
+                },
+              }
             : '00:00',
       },
     },
@@ -565,7 +580,8 @@ async function processLocationMetricsSingleAggregation(
         licencee:
           typeof location.rel?.licencee === 'string'
             ? location.rel.licencee
-            : typeof (location.rel as Record<string, unknown> | undefined)?.licencee === 'string'
+            : typeof (location.rel as Record<string, unknown> | undefined)
+                  ?.licencee === 'string'
               ? (location.rel as Record<string, unknown> | undefined)?.licencee
               : Array.isArray(location.rel?.licencee)
                 ? (location.rel?.licencee?.[0]?.toString() ?? null)
@@ -600,14 +616,24 @@ async function processLocationMetricsBatches(
   shouldUseMinute?: boolean,
   batchSize: number = 20
 ): Promise<MeterTrendMetric[]> {
-  if (!Array.isArray(locations) || !(machinesByLocation instanceof Map) || !(gamingDayRanges instanceof Map)) {
-    console.error('[processLocationMetricsBatches] locations (array), machinesByLocation (Map), and gamingDayRanges (Map) are required');
+  if (
+    !Array.isArray(locations) ||
+    !(machinesByLocation instanceof Map) ||
+    !(gamingDayRanges instanceof Map)
+  ) {
+    console.error(
+      '[processLocationMetricsBatches] locations (array), machinesByLocation (Map), and gamingDayRanges (Map) are required'
+    );
     return [];
   }
 
   const metricsPerLocation: MeterTrendMetric[] = [];
 
-  for (let locationIndex = 0; locationIndex < locations.length; locationIndex += batchSize) {
+  for (
+    let locationIndex = 0;
+    locationIndex < locations.length;
+    locationIndex += batchSize
+  ) {
     const batch = locations.slice(locationIndex, locationIndex + batchSize);
     const batchResults = await Promise.all(
       batch.map(async location => {
@@ -658,14 +684,15 @@ async function processLocationMetricsBatches(
           });
         }
 
-
         return results.map(metric => ({
           ...metric,
           licencee:
             typeof location.rel?.licencee === 'string'
               ? location.rel.licencee
-              : typeof (location.rel as Record<string, unknown> | undefined)?.licencee === 'string'
-                ? (location.rel as Record<string, unknown> | undefined)?.licencee
+              : typeof (location.rel as Record<string, unknown> | undefined)
+                    ?.licencee === 'string'
+                ? (location.rel as Record<string, unknown> | undefined)
+                    ?.licencee
                 : Array.isArray(location.rel?.licencee)
                   ? (location.rel?.licencee?.[0]?.toString() ?? null)
                   : null,
@@ -790,10 +817,17 @@ function aggregateMetricsWithConversion(
   displayCurrency: CurrencyCode,
   licenceeIdToName: Map<string, string>,
   countryIdToName: Map<string, string>,
-  reviewerMult: number | null
+  moneyInScale: number,
+  moneyOutScale: number
 ): AggregatedMetric[] {
-  if (!Array.isArray(metricsPerLocation) || !(licenceeIdToName instanceof Map) || !(countryIdToName instanceof Map)) {
-    console.error('[aggregateMetricsWithConversion] metricsPerLocation (array), licenceeIdToName (Map), and countryIdToName (Map) are required');
+  if (
+    !Array.isArray(metricsPerLocation) ||
+    !(licenceeIdToName instanceof Map) ||
+    !(countryIdToName instanceof Map)
+  ) {
+    console.error(
+      '[aggregateMetricsWithConversion] metricsPerLocation (array), licenceeIdToName (Map), and countryIdToName (Map) are required'
+    );
     return [];
   }
 
@@ -852,48 +886,34 @@ function aggregateMetricsWithConversion(
         Number(metric.totalCancelledCredits) || 0,
         nativeCurrency
       );
-      const grossUSD = convertToUSD(Number(metric.gross) || 0, nativeCurrency);
       const jackpotUSD = convertToUSD(
         Number(metric.jackpot) || 0,
         nativeCurrency
       );
 
-      let convertedDrop = convertFromUSD(dropUSD, displayCurrency);
-      let convertedCancelled = convertFromUSD(cancelledUSD, displayCurrency);
-      let convertedGross = convertFromUSD(grossUSD, displayCurrency);
-      let convertedJackpot = convertFromUSD(jackpotUSD, displayCurrency);
+      const convertedDrop = convertFromUSD(dropUSD, displayCurrency);
+      const convertedCancelled = convertFromUSD(cancelledUSD, displayCurrency);
+      const convertedJackpot = convertFromUSD(jackpotUSD, displayCurrency);
 
-      if (reviewerMult !== null) {
-        const mult = (1 - reviewerMult);
-        convertedDrop *= mult;
-        convertedCancelled *= mult;
-        convertedGross *= mult;
-        convertedJackpot *= mult;
-      }
+      const scaledDrop = convertedDrop * moneyInScale;
+      const scaledCancelled = convertedCancelled * moneyOutScale;
+      const scaledJackpot = convertedJackpot * moneyOutScale;
 
       accumulator(
         key,
         day,
         time,
-        convertedDrop,
-        convertedCancelled,
-        convertedGross,
+        scaledDrop,
+        scaledCancelled,
+        scaledDrop - scaledCancelled - scaledJackpot,
         gamesPlayedValue,
-        convertedJackpot
+        scaledJackpot
       );
     } else {
-      let dropValue = Number(metric.drop) || 0;
-      let cancelledValue = Number(metric.totalCancelledCredits) || 0;
-      let grossValue = Number(metric.gross) || 0;
-      let jackpotValue = Number(metric.jackpot) || 0;
-
-      if (reviewerMult !== null) {
-        const mult = (1 - reviewerMult);
-        dropValue *= mult;
-        cancelledValue *= mult;
-        grossValue *= mult;
-        jackpotValue *= mult;
-      }
+      const dropValue = (Number(metric.drop) || 0) * moneyInScale;
+      const cancelledValue =
+        (Number(metric.totalCancelledCredits) || 0) * moneyOutScale;
+      const jackpotValue = (Number(metric.jackpot) || 0) * moneyOutScale;
 
       accumulator(
         key,
@@ -901,7 +921,7 @@ function aggregateMetricsWithConversion(
         time,
         dropValue,
         cancelledValue,
-        grossValue,
+        dropValue - cancelledValue - jackpotValue,
         gamesPlayedValue,
         jackpotValue
       );
@@ -942,10 +962,17 @@ export async function getMeterTrends(
   accessibleLicencees: string[] | 'all',
   userRoles: string[],
   userLocationPermissions: string[],
-  userMultiplier: number | null = null
+  moneyInScale: number = 1,
+  moneyOutScale: number = 1
 ): Promise<AggregatedMetric[]> {
-  if (!params || !Array.isArray(userRoles) || !Array.isArray(userLocationPermissions)) {
-    console.error('[getMeterTrends] params, userRoles, and userLocationPermissions are required');
+  if (
+    !params ||
+    !Array.isArray(userRoles) ||
+    !Array.isArray(userLocationPermissions)
+  ) {
+    console.error(
+      '[getMeterTrends] params, userRoles, and userLocationPermissions are required'
+    );
     return [];
   }
 
@@ -963,7 +990,9 @@ export async function getMeterTrends(
   } = params;
 
   const isAdminOrDev =
-    userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
+    userRoles.includes('admin') ||
+    userRoles.includes('developer') ||
+    userRoles.includes('owner');
   const shouldConvert =
     isAdminOrDev && shouldApplyCurrencyConversion(licencee || 'all');
 
@@ -986,9 +1015,7 @@ export async function getMeterTrends(
       locationQuery.$and = [];
     }
     (locationQuery.$and as unknown[]).push({
-      $or: [
-        { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  },
-      ],
+      $or: [{ 'rel.licencee': licencee }, { 'rel.licencee': licencee }],
     });
   }
 
@@ -1044,7 +1071,9 @@ export async function getMeterTrends(
   }
 
   if (locations.length === 0) {
-    console.log(`[Meters Trends] No accessible locations found — licencee: ${licencee || 'all'}, timePeriod: ${timePeriod}`);
+    console.log(
+      `[Meters Trends] No accessible locations found — licencee: ${licencee || 'all'}, timePeriod: ${timePeriod}`
+    );
     return [];
   }
 
@@ -1071,17 +1100,16 @@ export async function getMeterTrends(
     granularity // Pass manual granularity to override defaults
   );
 
-  console.log(`[Meters Trends] Query — period: ${timePeriod}, locations: ${locations.length}, granularity: ${granularity ?? 'auto'} → useHourly: ${useHourly}, useMinute: ${useMinute}`);
+  console.log(
+    `[Meters Trends] Query — period: ${timePeriod}, locations: ${locations.length}, granularity: ${granularity ?? 'auto'} → useHourly: ${useHourly}, useMinute: ${useMinute}`
+  );
 
   const locationIdStrings = locations.map(location => String(location._id));
 
   // Build machine query with filters
   const machineQuery: Record<string, unknown> = {
     gamingLocation: { $in: locationIdStrings },
-    $or: [
-      { deletedAt: null },
-      { deletedAt: { $lt: new Date('2025-01-01') } },
-    ],
+    $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
   };
 
   // Apply game type filter
@@ -1095,9 +1123,9 @@ export async function getMeterTrends(
         {
           $or: [
             { game: { $in: gameTypes } },
-            { installedGame: { $in: gameTypes } }
-          ]
-        }
+            { installedGame: { $in: gameTypes } },
+          ],
+        },
       ];
     }
   }
@@ -1117,8 +1145,8 @@ export async function getMeterTrends(
       (machineQuery.$and as unknown[]).push({
         $or: [
           { lastActivity: { $exists: false } },
-          { lastActivity: { $lt: threeMinutesAgo } }
-        ]
+          { lastActivity: { $lt: threeMinutesAgo } },
+        ],
       });
     }
   }
@@ -1139,7 +1167,7 @@ export async function getMeterTrends(
       { relayId: searchRegex },
       { smbId: searchRegex },
       { 'custom.name': searchRegex },
-      { 'Custom.name': searchRegex } // Just in case of casing differences
+      { 'Custom.name': searchRegex }, // Just in case of casing differences
     ];
 
     // Search by ObjectId if it's a valid 24-character hex string
@@ -1152,43 +1180,52 @@ export async function getMeterTrends(
     }
 
     (machineQuery.$and as unknown[]).push({
-      $or: searchOrConditions
+      $or: searchOrConditions,
     });
   }
 
-  const machineDocs = await Machine.find(
-    machineQuery,
-    { _id: 1, gamingLocation: 1, 'gameConfig.accountingDenomination': 1 }
-  ).lean<GamingMachine[]>();
-  
+  const machineDocs = await Machine.find(machineQuery, {
+    _id: 1,
+    gamingLocation: 1,
+    'gameConfig.accountingDenomination': 1,
+  }).lean<GamingMachine[]>();
+
   const denomMap = new Map<string, number>();
   machineDocs.forEach(m => {
-    const machine = m as { _id: unknown; gameConfig?: { accountingDenomination?: number } };
-    denomMap.set(String(m._id), machine.gameConfig?.accountingDenomination || 1);
+    const machine = m as {
+      _id: unknown;
+      gameConfig?: { accountingDenomination?: number };
+    };
+    denomMap.set(
+      String(m._id),
+      machine.gameConfig?.accountingDenomination || 1
+    );
   });
 
-  const machinesByLocation = buildMachinesByLocationMap((machineDocs as unknown) as Array<{ _id: string; gamingLocation: string }>);
+  const machinesByLocation = buildMachinesByLocationMap(
+    machineDocs as unknown as Array<{ _id: string; gamingLocation: string }>
+  );
 
   // 🚀 OPTIMIZED: Use single aggregation for 7d/30d periods (much faster)
   const useSingleAggregation = timePeriod === '7d' || timePeriod === '30d';
 
   const metricsPerLocation = useSingleAggregation
     ? await processLocationMetricsSingleAggregation(
-      locations as LocationData[],
-      machinesByLocation,
-      gamingDayRanges,
-      denomMap,
-      useHourly,
-      useMinute
-    )
+        locations as LocationData[],
+        machinesByLocation,
+        gamingDayRanges,
+        denomMap,
+        useHourly,
+        useMinute
+      )
     : await processLocationMetricsBatches(
-      locations as LocationData[],
-      machinesByLocation,
-      gamingDayRanges,
-      denomMap,
-      useHourly,
-      useMinute
-    );
+        locations as LocationData[],
+        machinesByLocation,
+        gamingDayRanges,
+        denomMap,
+        useHourly,
+        useMinute
+      );
 
   if (metricsPerLocation.length === 0) {
     return [];
@@ -1209,10 +1246,13 @@ export async function getMeterTrends(
     displayCurrency,
     licenceeIdToName,
     countryIdToName,
-    userMultiplier
+    moneyInScale,
+    moneyOutScale
   );
 
-  console.log(`[Meters Trends] Response — ${aggregatedMetrics.length} data point(s)`);
+  console.log(
+    `[Meters Trends] Response — ${aggregatedMetrics.length} data point(s)`
+  );
 
   return aggregatedMetrics;
 }

@@ -16,11 +16,11 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
 import { Skeleton } from '@/components/shared/ui/skeleton';
@@ -97,16 +97,20 @@ export default function ReportsMetersLocationSelection({
 }: ReportsMetersLocationSelectionProps) {
   const router = useRouter();
   const { displayCurrency } = useCurrencyFormat();
-  const formatCurrency = (amount: number | null | undefined) => formatCurrencyWithCodeString(amount, displayCurrency);
+  const formatCurrency = (amount: number | null | undefined) =>
+    formatCurrencyWithCodeString(amount, displayCurrency);
   const [activePieIndex, setActivePieIndex] = useState<number | null>(null);
-  
+
   // Determine layout:
   // - If ALL locations are selected, keep pie chart below (not on right)
   // - Only if individual locations are selected (not "all") AND more than 10, show on right
-  const allLocationsSelected = selectedLocations.length === locations.length && locations.length > 0;
-  const individualLocationsSelected = !allLocationsSelected && selectedLocations.length > 0;
+  const allLocationsSelected =
+    selectedLocations.length === locations.length && locations.length > 0;
+  const individualLocationsSelected =
+    !allLocationsSelected && selectedLocations.length > 0;
   const moreThan10Locations = selectedLocations.length > 10;
-  const shouldShowChartOnRight = individualLocationsSelected && moreThan10Locations;
+  const shouldShowChartOnRight =
+    individualLocationsSelected && moreThan10Locations;
 
   return (
     <Card>
@@ -121,9 +125,11 @@ export default function ReportsMetersLocationSelection({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Location Selection and Top Machines - Conditionally in grid if chart on right */}
-        <div className={`grid grid-cols-1 gap-4 ${shouldShowChartOnRight ? 'lg:grid-cols-2' : ''}`}>
+        <div
+          className={`grid grid-cols-1 gap-4 ${shouldShowChartOnRight ? 'lg:grid-cols-2' : ''}`}
+        >
           {/* Location Selection Controls */}
-          <div className="bg-buttonActive p-4 rounded-lg space-y-3">
+          <div className="space-y-3 rounded-lg bg-buttonActive p-4">
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <label className="block text-sm font-medium text-white">
@@ -223,9 +229,7 @@ export default function ReportsMetersLocationSelection({
                           innerRadius={30}
                           paddingAngle={2}
                           activeIndex={activePieIndex ?? undefined}
-                          onMouseEnter={(_, index) =>
-                            setActivePieIndex(index)
-                          }
+                          onMouseEnter={(_, index) => setActivePieIndex(index)}
                           onMouseLeave={() => setActivePieIndex(null)}
                         >
                           {topMachinesData.map((entry, index) => (
@@ -274,7 +278,7 @@ export default function ReportsMetersLocationSelection({
               )}
             </div>
           </div>
-          
+
           {/* Hourly Charts - Show on right if more than 10 locations, otherwise below */}
           {shouldShowChartOnRight && selectedLocations.length > 0 && (
             <div className="space-y-2">
@@ -311,7 +315,7 @@ export default function ReportsMetersLocationSelection({
             </div>
           )}
         </div>
-        
+
         {/* Hourly Charts - Show below if 10 or fewer locations selected */}
         {!shouldShowChartOnRight && selectedLocations.length > 0 && (
           <div className="space-y-2">
@@ -351,5 +355,3 @@ export default function ReportsMetersLocationSelection({
     </Card>
   );
 }
-
-

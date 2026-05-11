@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3000",
-    "dev:turbo": "next dev --turbopack -H 0.0.0.0",
+    "dev:https": "next dev --experimental-https -H 0.0.0.0 -p 3000",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 3000",
     "lint": "eslint . --ext .ts,.tsx",
@@ -12,7 +12,6 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write .",
     "check": "bun run type-check && bun run lint",
-    "analyze": "cross-env ANALYZE=true bun run build",
     "test": "playwright test e2e/tests/dashboard.spec.ts -c e2e/playwright.config.ts --project=chromium"
   },
   "dependencies": {
@@ -61,6 +60,7 @@
     "next": "16.0.7",
     "next-auth": "^4.24.13",
     "nodemailer": "^8.0.1",
+    "openai": "^6.37.0",
     "otplib": "^13.3.0",
     "playwright": "^1.58.2",
     "profane-words": "^2.1.0",

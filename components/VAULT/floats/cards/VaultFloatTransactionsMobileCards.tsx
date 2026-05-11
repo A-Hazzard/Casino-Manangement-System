@@ -63,16 +63,22 @@ export default function VaultFloatTransactionsMobileCards({
     <div className="block lg:hidden">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {transactions.map(tx => {
-          const isInflow = tx.type === 'float_increase' || tx.type === 'cashier_shift_open';
+          const isInflow =
+            tx.type === 'float_increase' || tx.type === 'cashier_shift_open';
           const isCompleted = !tx.isVoid;
 
           const getLabel = (type: string) => {
             switch (type) {
-              case 'float_increase': return 'Increase';
-              case 'float_decrease': return 'Decrease';
-              case 'cashier_shift_open': return 'Shift Open';
-              case 'payout': return 'Payout';
-              default: return type.replace(/_/g, ' ');
+              case 'float_increase':
+                return 'Increase';
+              case 'float_decrease':
+                return 'Decrease';
+              case 'cashier_shift_open':
+                return 'Shift Open';
+              case 'payout':
+                return 'Payout';
+              default:
+                return type.replace(/_/g, ' ');
             }
           };
 
@@ -92,11 +98,12 @@ export default function VaultFloatTransactionsMobileCards({
                         year: 'numeric',
                         hour: 'numeric',
                         minute: 'numeric',
-                        hour12: true
+                        hour12: true,
                       })}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {tx.performedByName || (isInflow ? tx.toName : tx.fromName)}
+                      {tx.performedByName ||
+                        (isInflow ? tx.toName : tx.fromName)}
                     </p>
                   </div>
                 </div>
@@ -147,7 +154,10 @@ export default function VaultFloatTransactionsMobileCards({
                       onClick={() => !disabled && onApprove?.(tx._id)}
                       disabled={disabled}
                       size="sm"
-                      className={cn("flex-1 bg-button text-white hover:bg-button/90", disabled && "opacity-40 cursor-not-allowed")}
+                      className={cn(
+                        'flex-1 bg-button text-white hover:bg-button/90',
+                        disabled && 'cursor-not-allowed opacity-40'
+                      )}
                     >
                       <CheckCircle2 className="mr-1 h-4 w-4" />
                       Approve
@@ -157,7 +167,10 @@ export default function VaultFloatTransactionsMobileCards({
                       disabled={disabled}
                       size="sm"
                       variant="destructive"
-                      className={cn("flex-1", disabled && "opacity-40 cursor-not-allowed")}
+                      className={cn(
+                        'flex-1',
+                        disabled && 'cursor-not-allowed opacity-40'
+                      )}
                     >
                       <Minus className="mr-1 h-4 w-4" />
                       Reject

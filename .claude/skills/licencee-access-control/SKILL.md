@@ -56,32 +56,32 @@ type Location = {
   _id: string;
   name: string;
   rel: {
-    licencee: string;  // Single licencee ID
-  }
-}
+    licencee: string; // Single licencee ID
+  };
+};
 
 // Machine → Location relationship
 type Machine = {
   _id: string;
   serialNumber: string;
-  gamingLocation: string;  // Location ID (inherits licencee)
-}
+  gamingLocation: string; // Location ID (inherits licencee)
+};
 ```
 
 ## Role-Based Access Rules
 
-| Role | Licencee Access | Location Access | Dropdown |
-|------|---|---|---|
-| Developer | ALL | ALL | Yes (filter only) |
-| Owner | ALL | ALL | Yes (filter only) |
-| Admin | ALL | ALL | Yes (filter only) |
-| Manager | Assigned only | ALL in assigned licencees | Yes if 2+ licencees |
-| Location Admin | Assigned only | Intersection | Never |
-| Vault-Manager | Assigned only | Intersection | Yes if 2+ licencees |
-| Cashier | Assigned only | Intersection | Never |
-| Technician | Assigned only | Intersection | Yes if 2+ licencees |
-| Collector | Assigned only | Intersection | Yes if 2+ licencees |
-| Reviewer | Assigned only | Intersection | Yes if 2+ licencees |
+| Role           | Licencee Access | Location Access           | Dropdown            |
+| -------------- | --------------- | ------------------------- | ------------------- |
+| Developer      | ALL             | ALL                       | Yes (filter only)   |
+| Owner          | ALL             | ALL                       | Yes (filter only)   |
+| Admin          | ALL             | ALL                       | Yes (filter only)   |
+| Manager        | Assigned only   | ALL in assigned licencees | Yes if 2+ licencees |
+| Location Admin | Assigned only   | Intersection              | Never               |
+| Vault-Manager  | Assigned only   | Intersection              | Yes if 2+ licencees |
+| Cashier        | Assigned only   | Intersection              | Never               |
+| Technician     | Assigned only   | Intersection              | Yes if 2+ licencees |
+| Collector      | Assigned only   | Intersection              | Yes if 2+ licencees |
+| Reviewer       | Assigned only   | Intersection              | Yes if 2+ licencees |
 
 **Key difference**: Managers see ALL locations for their licencees. All other non-admin roles see ONLY the intersection of (licencee locations) ∩ (assigned locations).
 
@@ -99,7 +99,8 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 1: Parse licencee parameter (support both spellings)
     // ============================================================================
-    const licencee = searchParams.get('licencee') || searchParams.get('licencee');
+    const licencee =
+      searchParams.get('licencee') || searchParams.get('licencee');
 
     // ============================================================================
     // STEP 2: Get user's accessible locations
@@ -264,8 +265,7 @@ const pipeline: PipelineStage[] = [
   },
 ];
 
-const results = await Meters.aggregate(pipeline)
-  .cursor({ batchSize: 1000 });
+const results = await Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
 ```
 
 ## Common Mistakes - AVOID
@@ -284,6 +284,7 @@ const results = await Meters.aggregate(pipeline)
 ## Testing Checklist
 
 ### Test Each Role
+
 - ✅ Developer (view all + filter)
 - ✅ Manager with 3 licencees (dropdown filters correctly)
 - ✅ Manager with 1 licencee (no dropdown)
@@ -292,11 +293,13 @@ const results = await Meters.aggregate(pipeline)
 - ✅ Technician (minimal access)
 
 ### Verify No Data Leakage
+
 - ✅ Select licencee → verify ONLY that licencee's data
 - ✅ NO other licencee data visible
 - ✅ Check all pages (Dashboard, Locations, Cabinets, Reports)
 
 ### Test Session Invalidation
+
 - ✅ Login as user
 - ✅ Admin changes permissions
 - ✅ User makes next API call → 401 Unauthorized

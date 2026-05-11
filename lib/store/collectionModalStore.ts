@@ -88,9 +88,7 @@ type CollectionModalState = {
   setFinancials: (
     financials: Partial<CollectionModalState['financials']>
   ) => void;
-  setFormData: (
-    formData: Partial<CollectionModalState['formData']>
-  ) => void;
+  setFormData: (formData: Partial<CollectionModalState['formData']>) => void;
   calculateCarryover: (
     collectedAmount: string,
     baseBalanceCorrection: string
@@ -115,7 +113,7 @@ const initialFinancials = {
   reasonForShortagePayment: '',
 };
 
-const initialFormData = {
+const makeInitialFormData = () => ({
   metersIn: '',
   metersOut: '',
   ramClear: false,
@@ -125,10 +123,12 @@ const initialFormData = {
   collectionTime: new Date(),
   prevIn: '',
   prevOut: '',
-  sasStartTime: null,
-  sasEndTime: null,
+  sasStartTime: null as Date | null,
+  sasEndTime: null as Date | null,
   showAdvancedSas: false,
-};
+});
+
+const initialFormData = makeInitialFormData();
 
 // ============================================================================
 // Store Creation
@@ -164,128 +164,134 @@ const dummyState: CollectionModalState = {
 
 const createStore = () => {
   return create<CollectionModalState>(set => ({
-  // Initial state
-  selectedLocationId: undefined,
-  selectedLocationName: '',
-  lockedLocationId: undefined,
-  availableMachines: [],
-  collectedMachines: [],
-  selectedMachineId: undefined,
-  selectedMachineData: null,
-  collectionTime: new Date(),
-  financials: initialFinancials,
-  formData: initialFormData,
+    // Initial state
+    selectedLocationId: undefined,
+    selectedLocationName: '',
+    lockedLocationId: undefined,
+    availableMachines: [],
+    collectedMachines: [],
+    selectedMachineId: undefined,
+    selectedMachineData: null,
+    collectionTime: new Date(),
+    financials: initialFinancials,
+    formData: initialFormData,
 
-  // Actions
-  setSelectedLocation: (locationId, locationName) =>
-    set({ selectedLocationId: locationId, selectedLocationName: locationName }),
+    // Actions
+    setSelectedLocation: (locationId, locationName) =>
+      set({
+        selectedLocationId: locationId,
+        selectedLocationName: locationName,
+      }),
 
-  setLockedLocation: locationId => set({ lockedLocationId: locationId }),
+    setLockedLocation: locationId => set({ lockedLocationId: locationId }),
 
-  setAvailableMachines: machines => set({ availableMachines: machines }),
+    setAvailableMachines: machines => set({ availableMachines: machines }),
 
-  setCollectedMachines: machines => set({ collectedMachines: machines }),
+    setCollectedMachines: machines => set({ collectedMachines: machines }),
 
-  addCollectedMachine: machine =>
-    set(state => ({
-      collectedMachines: [...state.collectedMachines, machine],
-    })),
+    addCollectedMachine: machine =>
+      set(state => ({
+        collectedMachines: [...state.collectedMachines, machine],
+      })),
 
-  removeCollectedMachine: machineId =>
-    set(state => ({
-      collectedMachines: state.collectedMachines.filter(
-        m => m._id !== machineId
-      ),
-    })),
+    removeCollectedMachine: machineId =>
+      set(state => ({
+        collectedMachines: state.collectedMachines.filter(
+          m => m._id !== machineId
+        ),
+      })),
 
-  updateCollectedMachine: (machineId, updates) =>
-    set(state => ({
-      collectedMachines: state.collectedMachines.map(machine =>
-        machine._id === machineId ? { ...machine, ...updates } : machine
-      ),
-    })),
+    updateCollectedMachine: (machineId, updates) =>
+      set(state => ({
+        collectedMachines: state.collectedMachines.map(machine =>
+          machine._id === machineId ? { ...machine, ...updates } : machine
+        ),
+      })),
 
-  setSelectedMachineId: machineId => set({ selectedMachineId: machineId }),
+    setSelectedMachineId: machineId => set({ selectedMachineId: machineId }),
 
-  setSelectedMachineData: machineData =>
-    set({ selectedMachineData: machineData }),
+    setSelectedMachineData: machineData =>
+      set({ selectedMachineData: machineData }),
 
-  setCollectionTime: time => set({ collectionTime: time }),
+    setCollectionTime: time => set({ collectionTime: time }),
 
-  setFinancials: financials =>
-    set(state => ({
-      financials: { ...state.financials, ...financials },
-    })),
+    setFinancials: financials =>
+      set(state => ({
+        financials: { ...state.financials, ...financials },
+      })),
 
-  setFormData: (formData) =>
-    set(state => {
-      const newFormData = { ...state.formData, ...formData };
-      
-      // If collectionTime is updated and we are NOT in advanced mode,
-      // sync sasEndTime to match collectionTime.
-      if (formData.collectionTime && !newFormData.showAdvancedSas) {
-        newFormData.sasEndTime = formData.collectionTime;
-      }
-      
-      // If toggling advanced mode OFF, sync sasEndTime to collectionTime
-      if (formData.showAdvancedSas === false) {
-        newFormData.sasEndTime = newFormData.collectionTime;
-        if (formData.sasStartTime === undefined) {
-          newFormData.sasStartTime = null; // Clear manual start time override only if not explicitly passed
+    setFormData: formData =>
+      set(state => {
+        const newFormData = { ...state.formData, ...formData };
+
+        // If collectionTime is updated and we are NOT in advanced mode,
+        // sync sasEndTime to match collectionTime.
+        if (formData.collectionTime && !newFormData.showAdvancedSas) {
+          newFormData.sasEndTime = formData.collectionTime;
         }
-      }
 
-      return {
-        formData: newFormData,
-      };
-    }),
+        // If toggling advanced mode OFF, sync sasEndTime to collectionTime
+        if (formData.showAdvancedSas === false) {
+          newFormData.sasEndTime = newFormData.collectionTime;
+          if (formData.sasStartTime === undefined) {
+            newFormData.sasStartTime = null; // Clear manual start time override only if not explicitly passed
+          }
+        }
 
-  calculateCarryover: (collectedAmount: string, baseBalanceCorrection: string) => {
-    set(state => {
-      const amountCollected = Number(collectedAmount) || 0;
-      const amountToCollect = Number(state.financials.amountToCollect) || 0;
-      const baseCorrection = Number(baseBalanceCorrection) || 0;
+        return {
+          formData: newFormData,
+        };
+      }),
 
-      let previousBalance = state.financials.previousBalance;
-      let finalCorrection = state.financials.balanceCorrection;
+    calculateCarryover: (
+      collectedAmount: string,
+      baseBalanceCorrection: string
+    ) => {
+      set(state => {
+        const amountCollected = Number(collectedAmount) || 0;
+        const amountToCollect = Number(state.financials.amountToCollect) || 0;
+        const baseCorrection = Number(baseBalanceCorrection) || 0;
 
-      if (collectedAmount !== '' && amountCollected >= 0) {
-        // Carryover = Collected - Target
-        const carryover = amountCollected - amountToCollect;
-        previousBalance = carryover.toFixed(2);
-        
-        // Final Balance Correction = Base + Carryover
-        finalCorrection = (baseCorrection + carryover).toFixed(2);
-      } else {
-        // If cleared, reset to base
-        finalCorrection = baseCorrection.toFixed(2);
-      }
+        let previousBalance = state.financials.previousBalance;
+        let finalCorrection = state.financials.balanceCorrection;
 
-      return {
-        financials: {
-          ...state.financials,
-          collectedAmount,
-          previousBalance,
-          balanceCorrection: finalCorrection,
-        },
-      };
-    });
-  },
-  resetState: () => {
-    console.log('🧹 [Store] resetState called');
-    set({
-      selectedLocationId: undefined,
-      selectedLocationName: '',
-      lockedLocationId: undefined,
-      availableMachines: [],
-      collectedMachines: [],
-      selectedMachineId: undefined,
-      selectedMachineData: null,
-      collectionTime: new Date(),
-      financials: initialFinancials,
-      formData: initialFormData,
-    });
-  },
+        if (collectedAmount !== '' && amountCollected >= 0) {
+          // Carryover = Collected - Target
+          const carryover = amountCollected - amountToCollect;
+          previousBalance = carryover.toFixed(2);
+
+          // Final Balance Correction = Base + Carryover
+          finalCorrection = (baseCorrection + carryover).toFixed(2);
+        } else {
+          // If cleared, reset to base
+          finalCorrection = baseCorrection.toFixed(2);
+        }
+
+        return {
+          financials: {
+            ...state.financials,
+            collectedAmount,
+            previousBalance,
+            balanceCorrection: finalCorrection,
+          },
+        };
+      });
+    },
+    resetState: () => {
+      console.log('🧹 [Store] resetState called');
+      set({
+        selectedLocationId: undefined,
+        selectedLocationName: '',
+        lockedLocationId: undefined,
+        availableMachines: [],
+        collectedMachines: [],
+        selectedMachineId: undefined,
+        selectedMachineData: null,
+        collectionTime: new Date(),
+        financials: initialFinancials,
+        formData: makeInitialFormData(),
+      });
+    },
   }));
 };
 
@@ -303,4 +309,3 @@ const getClientStore = () => {
 // Use this store only on client side
 export const useCollectionModalStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);
-

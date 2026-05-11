@@ -12,7 +12,7 @@ export const LoginPageSkeleton = () => (
       <div className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex flex-col md:flex-row">
           {/* Left side - Login form */}
-          <div className="w-full p-8 sm:p-10 md:p-12 md:w-1/2">
+          <div className="w-full p-8 sm:p-10 md:w-1/2 md:p-12">
             <div className="mx-auto w-full max-w-sm">
               <div className="mb-6 text-center">
                 {/* Logo skeleton */}
@@ -70,4 +70,3 @@ export const LoginPageSkeleton = () => (
     </div>
   </>
 );
-

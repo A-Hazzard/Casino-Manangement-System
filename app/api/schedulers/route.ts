@@ -15,6 +15,11 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import Scheduler from '@/app/api/lib/models/scheduler';
 import type { MongoDBQueryValue } from '@/lib/types/common';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -36,6 +41,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/schedulers';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -47,7 +54,7 @@ export async function GET(request: NextRequest) {
     // STEP 2: Parse query parameters
     // ============================================================================
     const searchParams = request.nextUrl.searchParams;
-    const licencee = (searchParams.get('licencee'));
+    const licencee = searchParams.get('licencee');
     const location = searchParams.get('location');
     const collector = searchParams.get('collector');
     const status = searchParams.get('status');
@@ -190,6 +197,15 @@ export async function GET(request: NextRequest) {
     // STEP 5: Return schedulers list
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/schedulers',
+      schedulers.length,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
       console.warn(`[Schedulers API] Completed in ${duration}ms`);
     }
@@ -199,6 +215,7 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error occurred';
+    logRouteError(functionName, 'GET', '/api/schedulers', errorMessage, user);
     console.error(`[Schedulers API] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
       { error: 'Failed to fetch schedulers', details: errorMessage },
@@ -206,4 +223,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

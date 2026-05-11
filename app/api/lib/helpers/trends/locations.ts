@@ -21,9 +21,18 @@ import {
 } from '@/lib/helpers/rates';
 import { getDatesForTimePeriod } from '@/lib/utils/date';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
-import type { CountryDocument, GamingLocationDocument, GamingMachine, LicenceeDocument, TimePeriod } from '@/shared/types';
+import type {
+  CountryDocument,
+  GamingLocationDocument,
+  GamingMachine,
+  LicenceeDocument,
+  TimePeriod,
+} from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
-import type { LocationTrendPoint, LocationTrendsResponse } from '@/shared/types/reports';
+import type {
+  LocationTrendPoint,
+  LocationTrendsResponse,
+} from '@/shared/types/reports';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 import type { PipelineStage } from 'mongoose';
 
@@ -61,7 +70,14 @@ function determineAggregationGranularity(
 } {
   if (!timePeriod) {
     console.error('[determineAggregationGranularity] timePeriod is required');
-    return { useHourly: false, useMinute: false, useMonthly: false, useYearly: false, useWeekly: false, useDaily: true };
+    return {
+      useHourly: false,
+      useMinute: false,
+      useMonthly: false,
+      useYearly: false,
+      useWeekly: false,
+      useDaily: true,
+    };
   }
 
   // If granularity is manually specified, use it
@@ -221,7 +237,9 @@ function buildLocationTrendsPipeline(
   matchingMachineIds?: string[]
 ): PipelineStage[] {
   if (!Array.isArray(targetLocations) || !queryStartDate || !queryEndDate) {
-    console.error('[buildLocationTrendsPipeline] targetLocations (array), queryStartDate, and queryEndDate are required');
+    console.error(
+      '[buildLocationTrendsPipeline] targetLocations (array), queryStartDate, and queryEndDate are required'
+    );
     return [];
   }
 
@@ -267,7 +285,8 @@ function buildLocationTrendsPipeline(
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
+          { 'locationDetails.rel.licencee': licencee },
+          { 'locationDetails.rel.licencee': licencee },
         ],
       },
     } as PipelineStage);
@@ -418,8 +437,13 @@ function buildLocationTrendsPipeline(
         gross: 1,
         netGross: {
           $cond: [
-            { $eq: [{ $ifNull: ['$licenceeDetails.includeJackpot', false] }, true] },
-            { 
+            {
+              $eq: [
+                { $ifNull: ['$licenceeDetails.includeJackpot', false] },
+                true,
+              ],
+            },
+            {
               $subtract: [
                 {
                   $subtract: [
@@ -427,11 +451,11 @@ function buildLocationTrendsPipeline(
                     { $ifNull: ['$movement.totalCancelledCredits', 0] },
                   ],
                 },
-                { $ifNull: ['$movement.jackpot', 0] }
-              ]
+                { $ifNull: ['$movement.jackpot', 0] },
+              ],
             },
-            { $literal: undefined }
-          ]
+            { $literal: undefined },
+          ],
         },
       },
     } as PipelineStage
@@ -482,7 +506,8 @@ async function getLocationCurrencies(
 
   const locationCurrencies = new Map<string, string>();
   locationsData.forEach(loc => {
-    const locationLicenceeId = loc.rel?.licencee || (loc.rel as Record<string, unknown>)?.licencee;
+    const locationLicenceeId =
+      loc.rel?.licencee || (loc.rel as Record<string, unknown>)?.licencee;
     if (locationLicenceeId) {
       const licenceeName =
         licenceeIdToName.get(locationLicenceeId.toString()) || 'Unknown';
@@ -510,22 +535,52 @@ function convertDailyTrendItems(
   locationCurrencies: Map<string, string>,
   displayCurrency: CurrencyCode
 ): DailyTrendItem[] {
-  if (!Array.isArray(dailyData) || !(locationCurrencies instanceof Map) || !displayCurrency) {
-    console.error('[convertDailyTrendItems] dailyData (array), locationCurrencies (Map), and displayCurrency are required');
+  if (
+    !Array.isArray(dailyData) ||
+    !(locationCurrencies instanceof Map) ||
+    !displayCurrency
+  ) {
+    console.error(
+      '[convertDailyTrendItems] dailyData (array), locationCurrencies (Map), and displayCurrency are required'
+    );
     return [];
   }
 
   return dailyData.map(item => {
     const nativeCurrency = locationCurrencies.get(item.location) || 'USD';
-    
+
     // Step 1: Currency Conversion
-    const handle = convertFromUSD(convertToUSD(item.handle, nativeCurrency), displayCurrency);
-    const winLoss = convertFromUSD(convertToUSD(item.winLoss, nativeCurrency), displayCurrency);
-    const jackpot = convertFromUSD(convertToUSD(item.jackpot, nativeCurrency), displayCurrency);
-    const drop = convertFromUSD(convertToUSD(item.drop, nativeCurrency), displayCurrency);
-    const totalCancelledCredits = convertFromUSD(convertToUSD(item.totalCancelledCredits, nativeCurrency), displayCurrency);
-    const gross = convertFromUSD(convertToUSD(item.gross, nativeCurrency), displayCurrency);
-    const netGross = item.netGross !== undefined ? convertFromUSD(convertToUSD(item.netGross, nativeCurrency), displayCurrency) : undefined;
+    const handle = convertFromUSD(
+      convertToUSD(item.handle, nativeCurrency),
+      displayCurrency
+    );
+    const winLoss = convertFromUSD(
+      convertToUSD(item.winLoss, nativeCurrency),
+      displayCurrency
+    );
+    const jackpot = convertFromUSD(
+      convertToUSD(item.jackpot, nativeCurrency),
+      displayCurrency
+    );
+    const drop = convertFromUSD(
+      convertToUSD(item.drop, nativeCurrency),
+      displayCurrency
+    );
+    const totalCancelledCredits = convertFromUSD(
+      convertToUSD(item.totalCancelledCredits, nativeCurrency),
+      displayCurrency
+    );
+    const gross = convertFromUSD(
+      convertToUSD(item.gross, nativeCurrency),
+      displayCurrency
+    );
+    const netGross =
+      item.netGross !== undefined
+        ? convertFromUSD(
+            convertToUSD(item.netGross, nativeCurrency),
+            displayCurrency
+          )
+        : undefined;
 
     return {
       ...item,
@@ -540,7 +595,6 @@ function convertDailyTrendItems(
   });
 }
 
-
 /**
  * Convert daily trend items to location trends format (for minute-level data)
  * This preserves the minute-level time data without filling missing hours
@@ -550,7 +604,9 @@ function convertDailyTrendsToLocationTrends(
   targetLocations: string[]
 ): LocationTrendPoint[] {
   if (!Array.isArray(convertedData) || !Array.isArray(targetLocations)) {
-    console.error('[convertDailyTrendsToLocationTrends] convertedData and targetLocations must be arrays');
+    console.error(
+      '[convertDailyTrendsToLocationTrends] convertedData and targetLocations must be arrays'
+    );
     return [];
   }
 
@@ -612,8 +668,15 @@ function formatDailyTrends(
   queryStartDate: Date,
   queryEndDate: Date
 ): LocationTrendPoint[] {
-  if (!Array.isArray(convertedData) || !Array.isArray(targetLocations) || !queryStartDate || !queryEndDate) {
-    console.error('[formatDailyTrends] convertedData (array), targetLocations (array), queryStartDate, and queryEndDate are required');
+  if (
+    !Array.isArray(convertedData) ||
+    !Array.isArray(targetLocations) ||
+    !queryStartDate ||
+    !queryEndDate
+  ) {
+    console.error(
+      '[formatDailyTrends] convertedData (array), targetLocations (array), queryStartDate, and queryEndDate are required'
+    );
     return [];
   }
 
@@ -629,9 +692,9 @@ function formatDailyTrends(
       day: dayKey,
     };
 
-    targetLocations.forEach((locationId) => {
+    targetLocations.forEach(locationId => {
       const locationData = convertedData.find(
-        (item) => item.location === locationId && item.day === dayKey
+        item => item.location === locationId && item.day === dayKey
       );
       trendItem[locationId] = {
         handle: locationData?.handle || 0,
@@ -660,8 +723,15 @@ function formatWeeklyTrends(
   queryStartDate: Date,
   queryEndDate: Date
 ): LocationTrendPoint[] {
-  if (!Array.isArray(convertedData) || !Array.isArray(targetLocations) || !queryStartDate || !queryEndDate) {
-    console.error('[formatWeeklyTrends] convertedData (array), targetLocations (array), queryStartDate, and queryEndDate are required');
+  if (
+    !Array.isArray(convertedData) ||
+    !Array.isArray(targetLocations) ||
+    !queryStartDate ||
+    !queryEndDate
+  ) {
+    console.error(
+      '[formatWeeklyTrends] convertedData (array), targetLocations (array), queryStartDate, and queryEndDate are required'
+    );
     return [];
   }
 
@@ -680,9 +750,9 @@ function formatWeeklyTrends(
       day: dayKey,
     };
 
-    targetLocations.forEach((locationId) => {
+    targetLocations.forEach(locationId => {
       const locationData = convertedData.find(
-        (item) => item.location === locationId && item.day === dayKey
+        item => item.location === locationId && item.day === dayKey
       );
       trendItem[locationId] = {
         handle: locationData?.handle || 0,
@@ -711,8 +781,15 @@ function formatMonthlyTrends(
   queryStartDate: Date,
   queryEndDate: Date
 ): LocationTrendPoint[] {
-  if (!Array.isArray(convertedData) || !Array.isArray(targetLocations) || !queryStartDate || !queryEndDate) {
-    console.error('[formatMonthlyTrends] convertedData (array), targetLocations (array), queryStartDate, and queryEndDate are required');
+  if (
+    !Array.isArray(convertedData) ||
+    !Array.isArray(targetLocations) ||
+    !queryStartDate ||
+    !queryEndDate
+  ) {
+    console.error(
+      '[formatMonthlyTrends] convertedData (array), targetLocations (array), queryStartDate, and queryEndDate are required'
+    );
     return [];
   }
 
@@ -733,9 +810,9 @@ function formatMonthlyTrends(
       day: dayKey,
     };
 
-    targetLocations.forEach((locationId) => {
+    targetLocations.forEach(locationId => {
       const locationData = convertedData.find(
-        (item) => item.location === locationId && item.day === dayKey
+        item => item.location === locationId && item.day === dayKey
       );
       trendItem[locationId] = {
         handle: locationData?.handle || 0,
@@ -775,7 +852,9 @@ function calculateLocationTotals(
   }
 > {
   if (!Array.isArray(convertedData) || !Array.isArray(targetLocations)) {
-    console.error('[calculateLocationTotals] convertedData and targetLocations must be arrays');
+    console.error(
+      '[calculateLocationTotals] convertedData and targetLocations must be arrays'
+    );
     return {};
   }
 
@@ -815,7 +894,7 @@ function calculateLocationTotals(
       totals[item.location].drop += item.drop;
       totals[item.location].totalCancelledCredits += item.totalCancelledCredits;
       totals[item.location].gross += item.gross;
-      totals[item.location].netGross += (item.netGross || 0);
+      totals[item.location].netGross += item.netGross || 0;
     }
   });
 
@@ -827,10 +906,10 @@ function calculateLocationTotals(
  */
 /**
  * Fetches location trends data (financials over time).
- * 
+ *
  * Aggregates data from Meters collection based on location, time period, and machine filters.
  * Supports hourly, daily, weekly, and monthly granularity.
- * 
+ *
  * @param {string} locationIds - Comma-separated location IDs
  * @param {TimePeriod} timePeriod - Preset time range (Today, 7d, etc.)
  * @param {string | null} licencee - Licencee ID for filtering
@@ -842,7 +921,7 @@ function calculateLocationTotals(
  * @param {string | null} [gameType] - Machine game type filter
  * @param {string} [searchTerm] - Keyword for machine search
  * @param {boolean} [includeArchived=false] - Whether to include deleted machines
- * 
+ *
  * @returns {Promise<LocationTrendsResponse & { totals: Record<string, any>; converted: boolean; startDate: string; endDate: string; locationIds: string[]; currency: CurrencyCode }>}
  */
 export async function getLocationTrends(
@@ -857,33 +936,39 @@ export async function getLocationTrends(
   gameType?: string | null,
   searchTerm?: string,
   includeArchived: boolean = false
-): Promise<LocationTrendsResponse & {
-  locationIds: string[];
-  timePeriod: TimePeriod;
-  startDate: string;
-  endDate: string;
-  totals: Record<
-    string,
-    {
-      handle: number;
-      winLoss: number;
-      jackpot: number;
-      plays: number;
-      drop: number;
-      gross: number;
-      netGross: number;
-    }
-  >;
-  currency: CurrencyCode;
-  converted: boolean;
-  dataSpan?: {
-    minDate: string;
-    maxDate: string;
-  };
-}> {
+): Promise<
+  LocationTrendsResponse & {
+    locationIds: string[];
+    timePeriod: TimePeriod;
+    startDate: string;
+    endDate: string;
+    totals: Record<
+      string,
+      {
+        handle: number;
+        winLoss: number;
+        jackpot: number;
+        plays: number;
+        drop: number;
+        gross: number;
+        netGross: number;
+      }
+    >;
+    currency: CurrencyCode;
+    converted: boolean;
+    dataSpan?: {
+      minDate: string;
+      maxDate: string;
+    };
+  }
+> {
   if (!locationIds || !timePeriod) {
-    console.error('[getLocationTrends] locationIds and timePeriod are required');
-    throw new Error('[getLocationTrends] locationIds and timePeriod are required');
+    console.error(
+      '[getLocationTrends] locationIds and timePeriod are required'
+    );
+    throw new Error(
+      '[getLocationTrends] locationIds and timePeriod are required'
+    );
   }
 
   const targetLocations = locationIds.split(',').map(id => id.trim());
@@ -1008,7 +1093,9 @@ export async function getLocationTrends(
 
   // ALWAYS filter machines to ensure graph matches summary cards and visible machines
   // Implement the same Archive logic as the Location Detail API
-  const machineQuery: Record<string, unknown> = { gamingLocation: { $in: targetLocations } };
+  const machineQuery: Record<string, unknown> = {
+    gamingLocation: { $in: targetLocations },
+  };
 
   if (!includeArchived) {
     // Only Active machines (null or legacy date < 2025)
@@ -1059,15 +1146,12 @@ export async function getLocationTrends(
       $or: [
         { lastActivity: { $lt: threeMinutesAgo } },
         { lastActivity: { $exists: false } },
-        { lastActivity: null }
-      ]
+        { lastActivity: null },
+      ],
     });
   } else if (normalizedStatus === 'never-online') {
     andClauses.push({
-      $or: [
-        { lastActivity: { $exists: false } },
-        { lastActivity: null }
-      ]
+      $or: [{ lastActivity: { $exists: false } }, { lastActivity: null }],
     });
   }
 
@@ -1075,10 +1159,14 @@ export async function getLocationTrends(
     machineQuery.$and = andClauses;
   }
 
-  const matchingMachines = await Machine.find(machineQuery).select('_id').lean<GamingMachine[]>();
+  const matchingMachines = await Machine.find(machineQuery)
+    .select('_id')
+    .lean<GamingMachine[]>();
   const matchingMachineIds = matchingMachines.map(m => String(m._id));
 
-  console.log(`[Location Trends] Query — period: ${timePeriod}, locations: ${validLocationIds.length}, granularity: ${granularity ?? 'auto'}, window: ${queryStartDate.toISOString()} → ${queryEndDate.toISOString()}`);
+  console.log(
+    `[Location Trends] Query — period: ${timePeriod}, locations: ${validLocationIds.length}, granularity: ${granularity ?? 'auto'}, window: ${queryStartDate.toISOString()} → ${queryEndDate.toISOString()}`
+  );
 
   // Build and execute pipeline
   const pipeline = buildLocationTrendsPipeline(
@@ -1105,7 +1193,9 @@ export async function getLocationTrends(
     dailyData.push(doc as DailyTrendItem);
   }
 
-  console.log(`[Location Trends] Meters aggregation returned ${dailyData.length} bucket(s)`);
+  console.log(
+    `[Location Trends] Meters aggregation returned ${dailyData.length} bucket(s)`
+  );
 
   // Create location names mapping
   const locationNames: Record<string, string> = {};
@@ -1125,38 +1215,41 @@ export async function getLocationTrends(
   }
 
   // Format trends data based on granularity
-  const trends = useMinute || useHourly
-    ? // For minute/hourly data: group by day+time without zero-filling a single calendar day.
-      // formatHourlyTrends only handled one calendar day; gaming day ranges span two UTC
-      // calendar days (e.g. Feb 1 12:00 UTC → Feb 2 11:59 UTC) so data from the second
-      // day was silently dropped.  convertDailyTrendsToLocationTrends handles any number
-      // of calendar days correctly and is already used for minute data.
-    convertDailyTrendsToLocationTrends(convertedData, targetLocations)
-    : useMonthly
+  const trends =
+    useMinute || useHourly
+      ? // For minute/hourly data: group by day+time without zero-filling a single calendar day.
+        // formatHourlyTrends only handled one calendar day; gaming day ranges span two UTC
+        // calendar days (e.g. Feb 1 12:00 UTC → Feb 2 11:59 UTC) so data from the second
+        // day was silently dropped.  convertDailyTrendsToLocationTrends handles any number
+        // of calendar days correctly and is already used for minute data.
+        convertDailyTrendsToLocationTrends(convertedData, targetLocations)
+      : useMonthly
         ? formatMonthlyTrends(
-          convertedData,
-          targetLocations,
-          queryStartDate,
-          queryEndDate
-        )
-        : useWeekly
-          ? formatWeeklyTrends(
             convertedData,
             targetLocations,
             queryStartDate,
             queryEndDate
           )
+        : useWeekly
+          ? formatWeeklyTrends(
+              convertedData,
+              targetLocations,
+              queryStartDate,
+              queryEndDate
+            )
           : formatDailyTrends(
-            convertedData,
-            targetLocations,
-            queryStartDate,
-            queryEndDate
-          );
+              convertedData,
+              targetLocations,
+              queryStartDate,
+              queryEndDate
+            );
 
   // Calculate totals
   const totals = calculateLocationTotals(convertedData, targetLocations);
 
-  console.log(`[Location Trends] Response — ${trends.length} trend point(s), converted: ${shouldApplyCurrencyConversion(licencee)}`);
+  console.log(
+    `[Location Trends] Response — ${trends.length} trend point(s), converted: ${shouldApplyCurrencyConversion(licencee)}`
+  );
 
   return {
     locationIds: targetLocations,
@@ -1173,9 +1266,9 @@ export async function getLocationTrends(
     dataSpan:
       actualDataSpan && actualDataSpan.minDate && actualDataSpan.maxDate
         ? {
-          minDate: actualDataSpan.minDate.toISOString(),
-          maxDate: actualDataSpan.maxDate.toISOString(),
-        }
+            minDate: actualDataSpan.minDate.toISOString(),
+            maxDate: actualDataSpan.maxDate.toISOString(),
+          }
         : undefined,
   };
 }

@@ -21,6 +21,11 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * Main GET handler for fetching machine status
@@ -42,14 +47,15 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/cabinets/status';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
     // STEP 1: Parse and validate request parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
-    const licencee =
-      searchParams.get('licencee');
+    const licencee = searchParams.get('licencee');
     const effectiveLicencee =
       licencee && licencee.toLowerCase() !== 'all' ? licencee : undefined;
     const locationId = searchParams.get('locationId');
@@ -63,6 +69,13 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const db = await connectDB();
     if (!db) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cabinets/status',
+        'Database connection failed',
+        user
+      );
       return NextResponse.json(
         {
           error: 'Database connection failed',
@@ -131,14 +144,17 @@ export async function GET(req: NextRequest) {
             {
               $match: {
                 $expr: {
-                  $eq: [{ $toString: '$_id' }, { $ifNull: [{ $toString: '$$locId' }, ''] }]
+                  $eq: [
+                    { $toString: '$_id' },
+                    { $ifNull: [{ $toString: '$$locId' }, ''] },
+                  ],
                 },
                 $or: [
                   { deletedAt: null },
                   { deletedAt: { $lt: new Date('2025-01-01') } },
                 ],
-              }
-            }
+              },
+            },
           ],
           as: 'locationDetails',
         },
@@ -158,7 +174,7 @@ export async function GET(req: NextRequest) {
         { relayId: searchRegex },
         { smibBoard: searchRegex },
         { 'custom.name': searchRegex },
-        { 'Custom.name': searchRegex }
+        { 'Custom.name': searchRegex },
       ];
 
       if (isObjectIdFormat) {
@@ -186,8 +202,9 @@ export async function GET(req: NextRequest) {
       aggregationPipeline.push({
         $match: {
           $or: [
-            { 'locationDetails.rel.licencee': effectiveLicencee  }, { 'locationDetails.rel.licencee': effectiveLicencee  }
-          ]
+            { 'locationDetails.rel.licencee': effectiveLicencee },
+            { 'locationDetails.rel.licencee': effectiveLicencee },
+          ],
         },
       });
     }
@@ -196,21 +213,44 @@ export async function GET(req: NextRequest) {
       const locationIds = locationId.split(',').filter(id => id.trim() !== '');
       if (allowedLocationIds !== 'all') {
         if (!Array.isArray(allowedLocationIds)) {
-          return NextResponse.json({ totalMachines: 0, onlineMachines: 0, offlineMachines: 0 });
+          return NextResponse.json({
+            totalMachines: 0,
+            onlineMachines: 0,
+            offlineMachines: 0,
+          });
         }
-        const hasAccess = locationIds.every(id => allowedLocationIds.includes(id));
-        if (!hasAccess) return NextResponse.json({ totalMachines: 0, onlineMachines: 0, offlineMachines: 0 });
+        const hasAccess = locationIds.every(id =>
+          allowedLocationIds.includes(id)
+        );
+        if (!hasAccess)
+          return NextResponse.json({
+            totalMachines: 0,
+            onlineMachines: 0,
+            offlineMachines: 0,
+          });
       }
       if (locationIds.length > 0) {
         aggregationPipeline.push({
-          $match: { gamingLocation: locationIds.length === 1 ? locationIds[0] : { $in: locationIds } },
+          $match: {
+            gamingLocation:
+              locationIds.length === 1 ? locationIds[0] : { $in: locationIds },
+          },
         });
       }
     } else if (allowedLocationIds !== 'all') {
-      if (!Array.isArray(allowedLocationIds) || allowedLocationIds.length === 0) {
-        return NextResponse.json({ totalMachines: 0, onlineMachines: 0, offlineMachines: 0 });
+      if (
+        !Array.isArray(allowedLocationIds) ||
+        allowedLocationIds.length === 0
+      ) {
+        return NextResponse.json({
+          totalMachines: 0,
+          onlineMachines: 0,
+          offlineMachines: 0,
+        });
       }
-      aggregationPipeline.push({ $match: { gamingLocation: { $in: allowedLocationIds } } });
+      aggregationPipeline.push({
+        $match: { gamingLocation: { $in: allowedLocationIds } },
+      });
     }
 
     // Apply machine type filters
@@ -223,13 +263,20 @@ export async function GET(req: NextRequest) {
             filterConditions.push({ 'locationDetails.isLocalServer': true });
             break;
           case 'SMIBLocationsOnly':
-            filterConditions.push({ 'locationDetails.noSMIBLocation': { $ne: true } });
+            filterConditions.push({
+              'locationDetails.noSMIBLocation': { $ne: true },
+            });
             break;
           case 'NoSMIBLocation':
             filterConditions.push({ 'locationDetails.noSMIBLocation': true });
             break;
           case 'MembershipOnly':
-            filterConditions.push({ $or: [{ 'locationDetails.membershipEnabled': true }, { 'locationDetails.enableMembership': true }] });
+            filterConditions.push({
+              $or: [
+                { 'locationDetails.membershipEnabled': true },
+                { 'locationDetails.enableMembership': true },
+              ],
+            });
             break;
         }
       });
@@ -248,10 +295,23 @@ export async function GET(req: NextRequest) {
               {
                 $and: [
                   { lastActivity: { $exists: true, $ne: null } },
-                  { $expr: { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] } }
-                ]
-              }
-            ]
+                  {
+                    $expr: {
+                      $gte: [
+                        {
+                          $convert: {
+                            input: '$lastActivity',
+                            to: 'date',
+                            onError: new Date(0),
+                          },
+                        },
+                        threeMinutesAgo,
+                      ],
+                    },
+                  },
+                ],
+              },
+            ],
           },
         });
       } else if (onlineStatus === 'offline') {
@@ -261,15 +321,31 @@ export async function GET(req: NextRequest) {
             $or: [
               { lastActivity: { $exists: false } },
               { lastActivity: null },
-              { $expr: { $lt: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] } }
+              {
+                $expr: {
+                  $lt: [
+                    {
+                      $convert: {
+                        input: '$lastActivity',
+                        to: 'date',
+                        onError: new Date(0),
+                      },
+                    },
+                    threeMinutesAgo,
+                  ],
+                },
+              },
             ],
           },
         });
-      } else if (onlineStatus === 'never-online' || onlineStatus === 'neveronline') {
+      } else if (
+        onlineStatus === 'never-online' ||
+        onlineStatus === 'neveronline'
+      ) {
         aggregationPipeline.push({
           $match: {
             'locationDetails.aceEnabled': { $ne: true },
-            $or: [{ lastActivity: { $exists: false } }, { lastActivity: null }]
+            $or: [{ lastActivity: { $exists: false } }, { lastActivity: null }],
           },
         });
       }
@@ -278,10 +354,14 @@ export async function GET(req: NextRequest) {
     // Apply game type filter from query params
     const gameType = searchParams.get('gameType');
     if (gameType) {
-      const types = gameType.split(',').filter(t => t.trim() !== '' && t !== 'all');
+      const types = gameType
+        .split(',')
+        .filter(t => t.trim() !== '' && t !== 'all');
       if (types.length > 0) {
         aggregationPipeline.push({
-          $match: { $or: [{ game: { $in: types } }, { installedGame: { $in: types } }] }
+          $match: {
+            $or: [{ game: { $in: types } }, { installedGame: { $in: types } }],
+          },
         });
       }
     }
@@ -304,10 +384,23 @@ export async function GET(req: NextRequest) {
             {
               $and: [
                 { lastActivity: { $exists: true, $ne: null } },
-                { $expr: { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] } }
-              ]
-            }
-          ]
+                {
+                  $expr: {
+                    $gte: [
+                      {
+                        $convert: {
+                          input: '$lastActivity',
+                          to: 'date',
+                          onError: new Date(0),
+                        },
+                      },
+                      threeMinutesAgo,
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
         },
       },
       { $count: 'total' },
@@ -331,7 +424,20 @@ export async function GET(req: NextRequest) {
           $or: [
             { lastActivity: { $exists: false } },
             { lastActivity: null },
-            { $expr: { $lt: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, twentyFourHoursAgo] } }
+            {
+              $expr: {
+                $lt: [
+                  {
+                    $convert: {
+                      input: '$lastActivity',
+                      to: 'date',
+                      onError: new Date(0),
+                    },
+                  },
+                  twentyFourHoursAgo,
+                ],
+              },
+            },
           ],
         },
       },
@@ -351,11 +457,33 @@ export async function GET(req: NextRequest) {
             {
               $expr: {
                 $and: [
-                  { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, fourHoursAgo] },
-                  { $lt: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] }
-                ]
-              }
-            }
+                  {
+                    $gte: [
+                      {
+                        $convert: {
+                          input: '$lastActivity',
+                          to: 'date',
+                          onError: new Date(0),
+                        },
+                      },
+                      fourHoursAgo,
+                    ],
+                  },
+                  {
+                    $lt: [
+                      {
+                        $convert: {
+                          input: '$lastActivity',
+                          to: 'date',
+                          onError: new Date(0),
+                        },
+                      },
+                      threeMinutesAgo,
+                    ],
+                  },
+                ],
+              },
+            },
           ],
         },
       },
@@ -378,25 +506,36 @@ export async function GET(req: NextRequest) {
                     {
                       $and: [
                         { $gt: ['$lastActivity', null] },
-                        { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, threeMinutesAgo] }
-                      ]
-                    }
-                  ]
+                        {
+                          $gte: [
+                            {
+                              $convert: {
+                                input: '$lastActivity',
+                                to: 'date',
+                                onError: new Date(0),
+                              },
+                            },
+                            threeMinutesAgo,
+                          ],
+                        },
+                      ],
+                    },
+                  ],
                 },
                 1,
-                0
-              ]
-            }
-          }
-        }
+                0,
+              ],
+            },
+          },
+        },
       },
       {
         $group: {
           _id: null,
           totalLocations: { $sum: 1 },
-          onlineLocations: { $sum: '$isOnline' }
-        }
-      }
+          onlineLocations: { $sum: '$isOnline' },
+        },
+      },
     ]).exec();
 
     const totalLocations = locationStatusResult[0]?.totalLocations || 0;
@@ -407,12 +546,14 @@ export async function GET(req: NextRequest) {
     // STEP 6: Return machine status counts
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(
-        `[Machine Status API] Completed in ${duration}ms for ${totalCount} machines`
-      );
-    }
-
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/cabinets/status',
+      totalCount,
+      user,
+      duration
+    );
     return NextResponse.json({
       totalMachines: totalCount,
       onlineMachines: onlineCount,
@@ -426,6 +567,13 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     const duration = Date.now() - startTime;
     const errorMessage = err instanceof Error ? err.message : 'Server Error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/cabinets/status',
+      errorMessage,
+      user
+    );
     console.error(
       `[Machine Status API] Error after ${duration}ms:`,
       errorMessage
@@ -443,5 +591,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-
-

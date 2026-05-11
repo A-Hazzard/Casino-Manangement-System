@@ -9,7 +9,12 @@
  */
 
 import { getUserIdFromServer } from '@/app/api/lib/helpers/users/users';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 export const runtime = 'nodejs';
 
@@ -21,8 +26,10 @@ export const runtime = 'nodejs';
  * 2. Validate token and return user ID if valid
  * 3. Return error response if token is invalid or missing
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/test-current-user';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -45,6 +52,13 @@ export async function GET() {
       if (duration > 100) {
         console.warn(`[Test Current User GET API] Completed in ${duration}ms`);
       }
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/test-current-user',
+        'No valid authentication token found',
+        user
+      );
       return NextResponse.json(
         {
           success: false,
@@ -65,6 +79,14 @@ export async function GET() {
       console.warn(`[Test Current User GET API] Completed in ${duration}ms`);
     }
 
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/test-current-user',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json(
       {
         success: true,
@@ -81,6 +103,13 @@ export async function GET() {
       `❌ [TEST-CURRENT-USER] Token verification error after ${duration}ms:`,
       errorMessage
     );
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/test-current-user',
+      errorMessage,
+      user
+    );
     return NextResponse.json(
       {
         success: false,
@@ -92,4 +121,3 @@ export async function GET() {
     );
   }
 }
-

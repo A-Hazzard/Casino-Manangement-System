@@ -14,16 +14,21 @@
  * - Orchestrates complete collection creation with all calculations.
  */
 
-import { connectDB } from "@/app/api/lib/middleware/db";
-import { Meters } from "@/app/api/lib/models/meters";
-import { Machine } from "@/app/api/lib/models/machines";
-import { calculateMovement } from "@/lib/utils/movement";
+import { connectDB } from '@/app/api/lib/middleware/db';
+import { Meters } from '@/app/api/lib/models/meters';
+import { Machine } from '@/app/api/lib/models/machines';
+import { calculateMovement } from '@/lib/utils/movement';
 import type {
   SasMetricsCalculation,
   PreviousCollectionMeters,
   MovementCalculation,
-} from "@/lib/types/collection";
-import type { GamingMachine, MeterDocument, CollectionDocument, GamingLocationDocument } from "@shared/types";
+} from '@/lib/types/collection';
+import type {
+  GamingMachine,
+  MeterDocument,
+  CollectionDocument,
+  GamingLocationDocument,
+} from '@shared/types';
 
 // ============================================================================
 // Machine Identifier Operations
@@ -36,17 +41,15 @@ async function getMachineIdentifier(machineId: string): Promise<string> {
   await connectDB();
 
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const machine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
+  const machine = await Machine.findOne({
+    _id: machineId,
+  }).lean<GamingMachine>();
   if (!machine) {
     throw new Error(`Machine not found: ${machineId}`);
   }
 
   // Priority: serialNumber -> customName -> machineId
-  return (
-    machine.serialNumber ||
-    (machine.custom?.name) ||
-    machineId
-  );
+  return machine.serialNumber || machine.custom?.name || machineId;
 }
 
 // ============================================================================
@@ -64,15 +67,39 @@ export async function calculateSasMetrics(
 ): Promise<SasMetricsCalculation> {
   if (!machineId) {
     console.error('[calculateSasMetrics] machineId is required');
-    return { drop: 0, totalCancelledCredits: 0, gross: 0, sasStartTime: '', sasEndTime: '', gamesPlayed: 0, jackpot: 0 };
+    return {
+      drop: 0,
+      totalCancelledCredits: 0,
+      gross: 0,
+      sasStartTime: new Date(0),
+      sasEndTime: new Date(0),
+      gamesPlayed: 0,
+      jackpot: 0,
+    };
   }
   if (!sasStartTime) {
     console.error('[calculateSasMetrics] sasStartTime is required');
-    return { drop: 0, totalCancelledCredits: 0, gross: 0, sasStartTime: '', sasEndTime: '', gamesPlayed: 0, jackpot: 0 };
+    return {
+      drop: 0,
+      totalCancelledCredits: 0,
+      gross: 0,
+      sasStartTime: new Date(0),
+      sasEndTime: new Date(0),
+      gamesPlayed: 0,
+      jackpot: 0,
+    };
   }
   if (!sasEndTime) {
     console.error('[calculateSasMetrics] sasEndTime is required');
-    return { drop: 0, totalCancelledCredits: 0, gross: 0, sasStartTime: '', sasEndTime: '', gamesPlayed: 0, jackpot: 0 };
+    return {
+      drop: 0,
+      totalCancelledCredits: 0,
+      gross: 0,
+      sasStartTime: new Date(0),
+      sasEndTime: new Date(0),
+      gamesPlayed: 0,
+      jackpot: 0,
+    };
   }
   // NOTE: Manual overrides (prevIn/prevOut) from the collection form only affect movement/gross.
   // SAS metrics (drop, cancelled credits, gross) are derived strictly from the Meters collection deltas.
@@ -94,8 +121,8 @@ export async function calculateSasMetrics(
       drop: 0,
       totalCancelledCredits: 0,
       gross: 0,
-      sasStartTime: sasStartTime.toISOString(),
-      sasEndTime: sasEndTime.toISOString(),
+      sasStartTime,
+      sasEndTime,
       gamesPlayed: 0,
       jackpot: 0,
     };
@@ -137,8 +164,8 @@ export async function calculateSasMetrics(
     drop,
     totalCancelledCredits,
     gross,
-    sasStartTime: sasStartTime.toISOString(),
-    sasEndTime: sasEndTime.toISOString(),
+    sasStartTime,
+    sasEndTime,
     gamesPlayed,
     jackpot,
   };
@@ -171,7 +198,7 @@ export async function getSasTimePeriod(
   // This prevents accidental use of current time which caused inverted/misaligned windows
   if (!customEndTime) {
     throw new Error(
-      "SAS end time is required. Ensure the collection timestamp is passed to getSasTimePeriod."
+      'SAS end time is required. Ensure the collection timestamp is passed to getSasTimePeriod.'
     );
   }
   let sasEndTime = customEndTime;
@@ -181,7 +208,7 @@ export async function getSasTimePeriod(
 
   try {
     // Import Collections model
-    const { Collections } = await import("@/app/api/lib/models/collections");
+    const { Collections } = await import('@/app/api/lib/models/collections');
 
     // Find the most recent collection for this machine before the current collection time
     // Try multiple identifiers: machineId, machineCustomName, then machineName
@@ -189,7 +216,9 @@ export async function getSasTimePeriod(
 
     // Get machine data once to avoid multiple queries
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const machine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
+    const machine = await Machine.findOne({
+      _id: machineId,
+    }).lean<GamingMachine>();
     const machineCustomName = machine?.custom?.name;
     const machineName = machine?.serialNumber;
 
@@ -199,7 +228,7 @@ export async function getSasTimePeriod(
     const minTimeBuffer = new Date(sasEndTime.getTime() - 60 * 1000); // 1 minute buffer
 
     // First try: machineId (if it exists and has a value)
-    if (machineId && machineId.trim() !== "") {
+    if (machineId && machineId.trim() !== '') {
       previousCollection = await Collections.findOne({
         machineId: machineId,
         timestamp: { $lt: minTimeBuffer }, // Use buffer instead of sasEndTime
@@ -212,7 +241,7 @@ export async function getSasTimePeriod(
     if (
       !previousCollection &&
       machineCustomName &&
-      machineCustomName.trim() !== ""
+      machineCustomName.trim() !== ''
     ) {
       previousCollection = await Collections.findOne({
         machineCustomName: machineCustomName,
@@ -223,7 +252,7 @@ export async function getSasTimePeriod(
     }
 
     // Third try: machineName (if machineCustomName didn't work)
-    if (!previousCollection && machineName && machineName.trim() !== "") {
+    if (!previousCollection && machineName && machineName.trim() !== '') {
       previousCollection = await Collections.findOne({
         machineName: machineName,
         timestamp: { $lt: minTimeBuffer }, // Use buffer instead of sasEndTime
@@ -250,10 +279,10 @@ export async function getSasTimePeriod(
           timeDifference: sasEndTime.getTime() - sasStartTime.getTime(),
           foundBy:
             previousCollection.machineId === machineId
-              ? "machineId"
+              ? 'machineId'
               : previousCollection.machineCustomName
-              ? "machineCustomName"
-              : "machineName",
+                ? 'machineCustomName'
+                : 'machineName',
         });
         // Use 24-hour fallback instead
         sasStartTime = new Date(sasEndTime.getTime() - 24 * 60 * 60 * 1000);
@@ -266,13 +295,13 @@ export async function getSasTimePeriod(
         );
       } else {
         // Determine which identifier was used to find the collection
-        let foundBy = "unknown";
+        let foundBy = 'unknown';
         if (previousCollection.machineId === machineId) {
-          foundBy = "machineId";
+          foundBy = 'machineId';
         } else if (previousCollection.machineCustomName) {
-          foundBy = "machineCustomName";
+          foundBy = 'machineCustomName';
         } else if (previousCollection.machineName) {
-          foundBy = "machineName";
+          foundBy = 'machineName';
         }
 
         console.warn(
@@ -284,7 +313,7 @@ export async function getSasTimePeriod(
               Math.round(
                 (sasEndTime.getTime() - sasStartTime.getTime()) /
                   (1000 * 60 * 60)
-              ) + " hours",
+              ) + ' hours',
             foundBy: foundBy,
             previousCollectionId: previousCollection._id,
             minTimeBuffer: minTimeBuffer.toISOString(),
@@ -300,9 +329,7 @@ export async function getSasTimePeriod(
       );
 
       if (machine?.collectionTime) {
-        const machineCollectionTime = new Date(
-          machine.collectionTime as Date
-        );
+        const machineCollectionTime = new Date(machine.collectionTime as Date);
         // Only use machine collectionTime if it's before the current collection time
         if (machineCollectionTime < sasEndTime) {
           sasStartTime = machineCollectionTime;
@@ -344,7 +371,10 @@ export async function getSasTimePeriod(
       );
     }
   } catch (error) {
-    console.error('[getSasTimePeriod] Error:', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[getSasTimePeriod] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     // Final fallback: 24 hours before current collection time
     sasStartTime = new Date(sasEndTime.getTime() - 24 * 60 * 60 * 1000);
     console.warn(`🆘 Using emergency fallback for machine ${machineId}:`, {
@@ -380,24 +410,23 @@ async function getPreviousCollectionMeters(
   await connectDB();
 
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const machine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
+  const machine = await Machine.findOne({
+    _id: machineId,
+  }).lean<GamingMachine>();
   if (!machine) {
     throw new Error(`Machine not found: ${machineId}`);
   }
 
   // CRITICAL: Look for the actual previous collection to get correct prevIn/prevOut
   // This is more reliable than using machine.collectionMeters which might be outdated
-  const { Collections } = await import("@/app/api/lib/models/collections");
-  
+  const { Collections } = await import('@/app/api/lib/models/collections');
+
   // Find the most recent completed collection for this machine
   const previousCollection = await Collections.findOne({
     machineId: machineId,
     isCompleted: true,
-    locationReportId: { $exists: true, $ne: "" }, // Ensure it's from a completed report
-    $or: [
-      { deletedAt: { $exists: false } },
-      { deletedAt: null }
-    ]
+    locationReportId: { $exists: true, $ne: '' }, // Ensure it's from a completed report
+    $or: [{ deletedAt: { $exists: false } }, { deletedAt: null }],
   })
     .sort({ timestamp: -1 })
     .lean<CollectionDocument>();
@@ -410,9 +439,11 @@ async function getPreviousCollectionMeters(
     // Use the actual previous collection's metersIn/metersOut as the baseline
     prevMetersIn = previousCollection.metersIn || 0;
     prevMetersOut = previousCollection.metersOut || 0;
-    collectionTime = previousCollection.timestamp ? new Date(previousCollection.timestamp) : undefined;
+    collectionTime = previousCollection.timestamp
+      ? new Date(previousCollection.timestamp)
+      : undefined;
 
-    console.warn("🔍 Found previous collection for prev meters:", {
+    console.warn('🔍 Found previous collection for prev meters:', {
       machineId,
       previousCollectionId: previousCollection._id,
       previousTimestamp: collectionTime?.toISOString(),
@@ -430,24 +461,27 @@ async function getPreviousCollectionMeters(
     const legacyOut = machine.collectionMeters?.metersOut ?? null;
 
     // Use sasMeters if present and non-zero, otherwise fall back to collectionMeters, then 0
-    prevMetersIn = (sasIn !== null && sasIn > 0) ? sasIn : (legacyIn ?? 0);
-    prevMetersOut = (sasOut !== null && sasOut > 0) ? sasOut : (legacyOut ?? 0);
+    prevMetersIn = sasIn !== null && sasIn > 0 ? sasIn : (legacyIn ?? 0);
+    prevMetersOut = sasOut !== null && sasOut > 0 ? sasOut : (legacyOut ?? 0);
 
-    console.warn("⚠️ No previous collection found, using machine sasMeters as initial prev values:", {
-      machineId,
-      sasMetersIn: sasIn,
-      sasMetersOut: sasOut,
-      legacyMetersIn: legacyIn,
-      legacyMetersOut: legacyOut,
-      resolvedPrevIn: prevMetersIn,
-      resolvedPrevOut: prevMetersOut,
-    });
+    console.warn(
+      '⚠️ No previous collection found, using machine sasMeters as initial prev values:',
+      {
+        machineId,
+        sasMetersIn: sasIn,
+        sasMetersOut: sasOut,
+        legacyMetersIn: legacyIn,
+        legacyMetersOut: legacyOut,
+        resolvedPrevIn: prevMetersIn,
+        resolvedPrevOut: prevMetersOut,
+      }
+    );
 
     // Get previousCollectionTime from gaming location, not machine
     const gamingLocationId = machine.gamingLocation;
     if (gamingLocationId) {
       const GamingLocations = (
-        await import("@/app/api/lib/models/gaminglocations")
+        await import('@/app/api/lib/models/gaminglocations')
       ).GamingLocations;
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
       const gamingLocation = await GamingLocations.findOne({
@@ -489,7 +523,9 @@ async function updateMachineCollectionMeters(
 
   // Get current machine data to access previous meters for history
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const currentMachine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
+  const currentMachine = await Machine.findOne({
+    _id: machineId,
+  }).lean<GamingMachine>();
   if (!currentMachine) {
     throw new Error(`Machine with ID ${machineId} not found`);
   }
@@ -504,8 +540,8 @@ async function updateMachineCollectionMeters(
   // CRITICAL: Only update machine collectionMeters when explicitly requested
   // This prevents premature meter updates when creating collections
   if (updateMachineMeters) {
-    updateData["collectionMeters.metersIn"] = metersIn;
-    updateData["collectionMeters.metersOut"] = metersOut;
+    updateData['collectionMeters.metersIn'] = metersIn;
+    updateData['collectionMeters.metersOut'] = metersOut;
   }
 
   // Only update collectionTime if explicitly requested (when report is finalized)
@@ -517,10 +553,12 @@ async function updateMachineCollectionMeters(
   // locationReportId should only be set when the collection report is actually created
   // This prevents orphaned collections and ensures proper timing
   let finalLocationReportId = locationReportId;
-  if (!finalLocationReportId || finalLocationReportId.trim() === "") {
+  if (!finalLocationReportId || finalLocationReportId.trim() === '') {
     // Keep it empty - will be set when report is created
-    finalLocationReportId = "";
-    console.warn("🔧 Collection created without locationReportId - will be set when report is created");
+    finalLocationReportId = '';
+    console.warn(
+      '🔧 Collection created without locationReportId - will be set when report is created'
+    );
   }
 
   // CRITICAL: Do NOT create history entries when adding machines to the list
@@ -529,12 +567,69 @@ async function updateMachineCollectionMeters(
 
   // Update machine without creating history entries
   // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-  await Machine.findOneAndUpdate({ _id: machineId }, {
-    $set: updateData,
-  });
+  await Machine.findOneAndUpdate(
+    { _id: machineId },
+    {
+      $set: updateData,
+    }
+  );
 
   // Machine collection meters updated successfully
   return finalLocationReportId;
+}
+
+// ============================================================================
+// Meter readAt / updatedAt Update Operations
+// ============================================================================
+
+/**
+ * Updates readAt and updatedAt on the regular meter and (if present) the RAM-clear
+ * meter linked to a collection, so they reflect the collection's new end time.
+ *
+ * Called after any PATCH that changes sasEndTime / timestamp so the Meters
+ * collection stays in sync with the updated collection document.
+ */
+export async function updateRegularAndRamClearMeters(
+  meterId: string | undefined,
+  ramClearMeterId: string | undefined,
+  newReadAt: Date | string
+): Promise<void> {
+  await connectDB();
+
+  if (!meterId && !ramClearMeterId) {
+    console.log(
+      '[updateRegularAndRamClearMeters] No meter IDs provided — nothing to update'
+    );
+    return;
+  }
+
+  const readAtDate =
+    typeof newReadAt === 'string' ? new Date(newReadAt) : newReadAt;
+  console.log(
+    `[updateRegularAndRamClearMeters] Updating meters readAt → ${readAtDate.toISOString()}`
+  );
+
+  if (meterId) {
+    const result = await Meters.findOneAndUpdate(
+      { _id: meterId },
+      { $set: { readAt: readAtDate, updatedAt: new Date() } }
+    );
+    console.log(
+      `[updateRegularAndRamClearMeters] meter ${meterId}:`,
+      result ? 'updated' : 'not found'
+    );
+  }
+
+  if (ramClearMeterId) {
+    const result = await Meters.findOneAndUpdate(
+      { _id: ramClearMeterId },
+      { $set: { readAt: readAtDate, updatedAt: new Date() } }
+    );
+    console.log(
+      `[updateRegularAndRamClearMeters] ramClearMeter ${ramClearMeterId}:`,
+      result ? 'updated' : 'not found'
+    );
+  }
 }
 
 // ============================================================================
@@ -551,46 +646,52 @@ function validateCollectionPayload(payload: unknown): {
   const errors: string[] = [];
 
   // Type guard to ensure payload is an object
-  if (!payload || typeof payload !== "object") {
-    errors.push("Payload must be a valid object");
+  if (!payload || typeof payload !== 'object') {
+    errors.push('Payload must be a valid object');
     return { isValid: false, errors };
   }
 
   const payloadRecord = payload as Record<string, unknown>;
 
   if (!payloadRecord.machineId) {
-    errors.push("Machine ID is required");
+    errors.push('Machine ID is required');
   }
 
   if (!payloadRecord.location) {
-    errors.push("Location is required");
+    errors.push('Location is required');
   }
 
   if (!payloadRecord.collector) {
-    errors.push("Collector is required");
+    errors.push('Collector is required');
   }
 
-  if (typeof payloadRecord.metersIn !== "number" || payloadRecord.metersIn < 0) {
-    errors.push("Meters In must be a valid non-negative number");
+  if (
+    typeof payloadRecord.metersIn !== 'number' ||
+    payloadRecord.metersIn < 0
+  ) {
+    errors.push('Meters In must be a valid non-negative number');
   }
 
-  if (typeof payloadRecord.metersOut !== "number" || payloadRecord.metersOut < 0) {
-    errors.push("Meters Out must be a valid non-negative number");
+  if (
+    typeof payloadRecord.metersOut !== 'number' ||
+    payloadRecord.metersOut < 0
+  ) {
+    errors.push('Meters Out must be a valid non-negative number');
   }
 
   if (payloadRecord.sasStartTime) {
     if (!(payloadRecord.sasStartTime instanceof Date)) {
-      errors.push("SAS Start Time must be a valid Date object");
+      errors.push('SAS Start Time must be a valid Date object');
     } else if (isNaN(payloadRecord.sasStartTime.getTime())) {
-      errors.push("SAS Start Time is an invalid Date");
+      errors.push('SAS Start Time is an invalid Date');
     }
   }
 
   if (payloadRecord.sasEndTime) {
     if (!(payloadRecord.sasEndTime instanceof Date)) {
-      errors.push("SAS End Time must be a valid Date object");
+      errors.push('SAS End Time must be a valid Date object');
     } else if (isNaN(payloadRecord.sasEndTime.getTime())) {
-      errors.push("SAS End Time is an invalid Date");
+      errors.push('SAS End Time is an invalid Date');
     }
   }
 
@@ -619,7 +720,7 @@ export async function createCollectionWithCalculations(
   // Validate payload
   const validation = validateCollectionPayload(payload);
   if (!validation.isValid) {
-    throw new Error(`Validation failed: ${validation.errors.join(", ")}`);
+    throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
   }
 
   // Get SAS time period with custom times if provided
@@ -658,8 +759,14 @@ export async function createCollectionWithCalculations(
   // This ensures accuracy when the user manually provides the correct previous meters
   const previousMeters: PreviousCollectionMeters = {
     ...historicalMeters,
-    metersIn: payload.prevIn !== undefined ? Number(payload.prevIn) : historicalMeters.metersIn,
-    metersOut: payload.prevOut !== undefined ? Number(payload.prevOut) : historicalMeters.metersOut,
+    metersIn:
+      payload.prevIn !== undefined
+        ? Number(payload.prevIn)
+        : historicalMeters.metersIn,
+    metersOut:
+      payload.prevOut !== undefined
+        ? Number(payload.prevOut)
+        : historicalMeters.metersOut,
   };
 
   // Calculate movement (gross) - uses final previousMeters (manual or historical)
@@ -701,4 +808,3 @@ export async function createCollectionWithCalculations(
     locationReportId: finalLocationReportId,
   };
 }
-

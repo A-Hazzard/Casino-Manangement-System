@@ -9,7 +9,7 @@ import {
   validatePasswordStrength,
   validatePhoneNumber,
   validateProfileField,
-  validateUsername
+  validateUsername,
 } from '@/lib/utils/validation';
 
 type NullableString = string | undefined | null;
@@ -94,8 +94,6 @@ function extractPhone(profile?: ProfileLike['profile']): string {
   return phone ? phone.toString() : '';
 }
 
-
-
 type ValidationOptions = {
   rawPassword?: string;
 };
@@ -148,8 +146,7 @@ export function getInvalidProfileFields(
       emailAddress &&
       username.toLowerCase() === emailAddress.toLowerCase()
     ) {
-      reasons.username =
-        'Username must be different from your email address.';
+      reasons.username = 'Username must be different from your email address.';
     } else {
       reasons.username = 'Please update your username.';
     }
@@ -158,33 +155,27 @@ export function getInvalidProfileFields(
   if (firstName && !validateNameField(firstName)) {
     invalidFields.firstName = true;
     if (containsPhonePattern(firstName)) {
-      reasons.firstName =
-        'First name cannot look like a phone number.';
+      reasons.firstName = 'First name cannot look like a phone number.';
     } else {
-      reasons.firstName =
-        'First name may only include letters and spaces.';
+      reasons.firstName = 'First name may only include letters and spaces.';
     }
   }
 
   if (lastName && !validateNameField(lastName)) {
     invalidFields.lastName = true;
     if (containsPhonePattern(lastName)) {
-      reasons.lastName =
-        'Last name cannot look like a phone number.';
+      reasons.lastName = 'Last name cannot look like a phone number.';
     } else {
-      reasons.lastName =
-        'Last name may only include letters and spaces.';
+      reasons.lastName = 'Last name may only include letters and spaces.';
     }
   }
 
   if (otherName && !validateNameField(otherName)) {
     invalidFields.otherName = true;
     if (containsPhonePattern(otherName)) {
-      reasons.otherName =
-        'Other name cannot look like a phone number.';
+      reasons.otherName = 'Other name cannot look like a phone number.';
     } else {
-      reasons.otherName =
-        'Other name may only include letters and spaces.';
+      reasons.otherName = 'Other name may only include letters and spaces.';
     }
   }
 
@@ -232,32 +223,26 @@ export function getInvalidProfileFields(
       reasons.emailAddress =
         'Email address must be different from your username.';
     } else if (containsPhonePattern(emailAddress)) {
-      reasons.emailAddress =
-        'Email address cannot look like a phone number.';
+      reasons.emailAddress = 'Email address cannot look like a phone number.';
     } else {
       reasons.emailAddress = 'Please update your email address.';
     }
   }
 
   if (
-    phone && (
-    !validatePhoneNumber(phone) ||
-    containsEmailPattern(phone) ||
-    (!!username && normalizePhoneNumber(username) === normalizedPhone))
+    phone &&
+    (!validatePhoneNumber(phone) ||
+      containsEmailPattern(phone) ||
+      (!!username && normalizePhoneNumber(username) === normalizedPhone))
   ) {
     invalidFields.phone = true;
     if (!validatePhoneNumber(phone)) {
       reasons.phone =
         'Provide a valid phone number (digits, spaces, parentheses, hyphen, optional leading +).';
     } else if (containsEmailPattern(phone)) {
-      reasons.phone =
-        'Phone number cannot contain email-like patterns.';
-    } else if (
-      username &&
-      normalizePhoneNumber(username) === normalizedPhone
-    ) {
-      reasons.phone =
-        'Phone number cannot match your username.';
+      reasons.phone = 'Phone number cannot contain email-like patterns.';
+    } else if (username && normalizePhoneNumber(username) === normalizedPhone) {
+      reasons.phone = 'Phone number cannot match your username.';
     } else {
       reasons.phone = 'Please review your phone number.';
     }
@@ -268,7 +253,10 @@ export function getInvalidProfileFields(
     : null;
 
   // Only ask for password change in profile completion if tempPassword is null or empty
-  if (!user.tempPassword && (!user.passwordUpdatedAt || user.tempPasswordChanged === false)) {
+  if (
+    !user.tempPassword &&
+    (!user.passwordUpdatedAt || user.tempPasswordChanged === false)
+  ) {
     if (passwordValidation && passwordValidation.isValid) {
       // Treat as valid if we can confirm current password meets strength rules
       // No action needed, but note for caller
@@ -308,5 +296,3 @@ export function hasInvalidProfileFields(
   if (!fields) return false;
   return Object.values(fields).some(Boolean);
 }
-
-

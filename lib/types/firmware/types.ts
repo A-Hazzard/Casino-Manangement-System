@@ -12,5 +12,3 @@ export type Firmware = {
   updatedAt: string;
   deletedAt?: string | null;
 };
-
-

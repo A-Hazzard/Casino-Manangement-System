@@ -1,8 +1,8 @@
 # Members Page Implementation (`/members`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -62,7 +62,7 @@ A full-screen profile view accessed by clicking any row in the Members List.
 ## 3. CRUD & Operational Triggers
 
 - **Enrol Member**: Triggers `POST /api/members` via the "Register Member" modal. Requires legal name, DOB (age verification), and photo ID.
-- **Upload ID Document**: Triggers `POST /api/upload/id-card` — streams directly to GridFS for secure storage.
+- **Upload ID Document**: Triggers `POST /api/members` — streams directly to GridFS for secure storage.
 - **Adjust Points**: Triggers `PATCH /api/members/[id]/adjust-points` with a mandatory audit note explaining the reason for the manual adjustment.
 - **Suspend Member**: Triggers `PUT /api/members/[id]` with `{ isActive: false }`. Sets a "Self-Exclusion" or "Banned" flag for compliance reporting.
 - **Verify KYC**: Triggers `PATCH /api/members/[id]/kyc-verify`. Creates an audit log with the verifying staff member's ID.

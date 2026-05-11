@@ -1,6 +1,6 @@
 /**
  * Collection Settings Content Component
- * 
+ *
  * Handles editing of machine-level collection settings.
  * Allows updating last collection meters, time, and collector denomination.
  */

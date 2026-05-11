@@ -12,34 +12,68 @@
 
 // Minimal shape needed — avoids coupling to a specific JWT/DB type.
 type UserForScale = {
-  multiplier?: number | null;
+  moneyInMultiplier?: number | null;
+  moneyOutAndJackpotMultiplier?: number | null;
   roles?: string[] | unknown[];
 };
 
 // ============================================================================
-// Scale factor
+// Scale factors for dual multiplier system
 // ============================================================================
 
 /**
- * Computes the view scale factor for the given user.
+ * Computes the money-in view scale factor for the given user.
  *
- * Returns `1 - multiplier` for reviewer-role users with a non-zero multiplier,
- * or `1` for everyone else (admin, manager, cashier, etc.).
+ * Returns `1 - moneyInMultiplier` for reviewer-role users with a non-zero multiplier,
+ * or `1` for everyone else.
  *
  * @example
- * getReviewerScale({ roles: ['reviewer'], multiplier: 0.3 }) // → 0.7
- * getReviewerScale({ roles: ['admin'],    multiplier: 0.3 }) // → 1
- * getReviewerScale({ roles: ['reviewer'], multiplier: 0   }) // → 1
+ * getMoneyInScale({ roles: ['reviewer'], moneyInMultiplier: 0.3 }) // → 0.7
+ * getMoneyInScale({ roles: ['admin'],    moneyInMultiplier: 0.3 }) // → 1
+ * getMoneyInScale({ roles: ['reviewer'], moneyInMultiplier: 0   }) // → 1
  */
-export function getReviewerScale(user: UserForScale): number {
+export function getMoneyInScale(user: UserForScale): number {
   if (!user || typeof user !== 'object') {
-    console.error('[getReviewerScale] user is required and must be an object');
+    console.error('[getMoneyInScale] user is required and must be an object');
     return 1;
   }
 
-  const multiplier = user.multiplier ?? 0;
+  const multiplier = user.moneyInMultiplier ?? 0;
   const isReviewer = (user.roles as string[])?.includes('reviewer') ?? false;
   return isReviewer && multiplier ? 1 - multiplier : 1;
+}
+
+/**
+ * Computes the money-out & jackpot view scale factor for the given user.
+ *
+ * Returns `1 - moneyOutAndJackpotMultiplier` for reviewer-role users with a non-zero multiplier,
+ * or `1` for everyone else.
+ *
+ * @example
+ * getMoneyOutAndJackpotScale({ roles: ['reviewer'], moneyOutAndJackpotMultiplier: 0.5 }) // → 0.5
+ * getMoneyOutAndJackpotScale({ roles: ['admin'],    moneyOutAndJackpotMultiplier: 0.5 }) // → 1
+ * getMoneyOutAndJackpotScale({ roles: ['reviewer'], moneyOutAndJackpotMultiplier: 0   }) // → 1
+ */
+export function getMoneyOutAndJackpotScale(user: UserForScale): number {
+  if (!user || typeof user !== 'object') {
+    console.error(
+      '[getMoneyOutAndJackpotScale] user is required and must be an object'
+    );
+    return 1;
+  }
+
+  const multiplier = user.moneyOutAndJackpotMultiplier ?? 0;
+  const isReviewer = (user.roles as string[])?.includes('reviewer') ?? false;
+  return isReviewer && multiplier ? 1 - multiplier : 1;
+}
+
+/**
+ * @deprecated Use getMoneyInScale() and getMoneyOutAndJackpotScale() instead.
+ *
+ * Kept for backward compatibility. Defaults to money-in scale behavior.
+ */
+export function getReviewerScale(user: UserForScale): number {
+  return getMoneyInScale(user);
 }
 
 // ============================================================================
@@ -80,20 +114,37 @@ export type MachineValuesScaled = {
 };
 
 /**
- * Applies the reviewer scale factor to all per-machine financial values in one call.
+ * Applies the reviewer scale factors to all per-machine financial values in one call.
  *
- * When `hasNoSasData` is true the output `sasGross` is forced to `0` regardless of scale,
- * matching the existing "No SAS Data" guard used in the response formatter.
+ * Scales money-in values (drop, meterGross) with moneyInScale.
+ * Scales money-out and jackpot values (cancelled, jackpot) with moneyOutScale.
+ * NetGross is recalculated from scaled components.
+ * Variation uses moneyInScale.
+ *
+ * When `hasNoSasData` is true the output `sasGross` is forced to `0` regardless of scale.
  */
 export function scaleMachineValues(
   values: MachineValuesInput,
-  scale: number
+  moneyInScale: number,
+  moneyOutScale: number
 ): MachineValuesScaled {
-  if (!values || typeof values !== 'object' || typeof scale !== 'number') {
-    console.error('[scaleMachineValues] values (object) and scale (number) are required');
+  if (
+    !values ||
+    typeof values !== 'object' ||
+    typeof moneyInScale !== 'number' ||
+    typeof moneyOutScale !== 'number'
+  ) {
+    console.error(
+      '[scaleMachineValues] values (object), moneyInScale (number), and moneyOutScale (number) are required'
+    );
     return {
-      drop: 0, cancelled: 0, meterGross: 0, jackpot: 0,
-      netGross: 0, sasGross: 0, variation: 0
+      drop: 0,
+      cancelled: 0,
+      meterGross: 0,
+      jackpot: 0,
+      netGross: 0,
+      sasGross: 0,
+      variation: 0,
     };
   }
 
@@ -102,20 +153,24 @@ export function scaleMachineValues(
     cancelled,
     meterGross,
     jackpot,
-    netGross,
     sasGross,
     variation,
     hasNoSasData,
   } = values;
 
+  const scaledDrop = drop * moneyInScale;
+  const scaledCancelled = cancelled * moneyOutScale;
+  const scaledMeterGross = meterGross * moneyInScale;
+  const scaledJackpot = jackpot * moneyOutScale;
+
   return {
-    drop: drop * scale,
-    cancelled: cancelled * scale,
-    meterGross: meterGross * scale,
-    jackpot: jackpot * scale,
-    netGross: netGross * scale,
-    sasGross: hasNoSasData ? 0 : sasGross * scale,
-    variation: variation * scale,
+    drop: scaledDrop,
+    cancelled: scaledCancelled,
+    meterGross: scaledMeterGross,
+    jackpot: scaledJackpot,
+    netGross: scaledMeterGross - scaledJackpot,
+    sasGross: hasNoSasData ? 0 : sasGross * moneyInScale,
+    variation: variation * moneyInScale,
   };
 }
 
@@ -138,36 +193,47 @@ export type ReportFinancials = {
 };
 
 /**
- * Applies the reviewer scale factor to report-level summary financial fields.
+ * Applies the reviewer scale factors to report-level summary financial fields.
  *
- * Fast-paths when `scale === 1` so non-reviewer traffic pays no allocation cost.
+ * Scales money-in related fields (amountCollected, amountToCollect, amountUncollected, partnerProfit, variance) with moneyInScale.
+ * Scales money-out related fields (taxes, advance, previousBalance, balanceCorrection, currentBalance) with moneyOutScale.
+ *
+ * Fast-paths when both scales === 1 so non-reviewer traffic pays no allocation cost.
  * Non-numeric `variance` values (display strings) are passed through unchanged.
  */
 export function scaleReportFinancials<T extends ReportFinancials>(
   report: T,
-  scale: number
+  moneyInScale: number,
+  moneyOutScale: number
 ): T {
-  if (!report || typeof report !== 'object' || typeof scale !== 'number') {
-    console.error('[scaleReportFinancials] report (object) and scale (number) are required');
+  if (
+    !report ||
+    typeof report !== 'object' ||
+    typeof moneyInScale !== 'number' ||
+    typeof moneyOutScale !== 'number'
+  ) {
+    console.error(
+      '[scaleReportFinancials] report (object), moneyInScale (number), and moneyOutScale (number) are required'
+    );
     return report;
   }
 
-  if (scale === 1) return report;
+  if (moneyInScale === 1 && moneyOutScale === 1) return report;
 
   return {
     ...report,
-    amountCollected:  (report.amountCollected  ?? 0) * scale,
-    amountToCollect:  (report.amountToCollect  ?? 0) * scale,
-    amountUncollected:(report.amountUncollected ?? 0) * scale,
-    partnerProfit:    (report.partnerProfit    ?? 0) * scale,
-    taxes:            (report.taxes            ?? 0) * scale,
-    advance:          (report.advance          ?? 0) * scale,
-    previousBalance:  (report.previousBalance  ?? 0) * scale,
-    balanceCorrection:(report.balanceCorrection ?? 0) * scale,
-    currentBalance:   (report.currentBalance   ?? 0) * scale,
+    amountCollected: (report.amountCollected ?? 0) * moneyInScale,
+    amountToCollect: (report.amountToCollect ?? 0) * moneyInScale,
+    amountUncollected: (report.amountUncollected ?? 0) * moneyInScale,
+    partnerProfit: (report.partnerProfit ?? 0) * moneyInScale,
+    taxes: (report.taxes ?? 0) * moneyOutScale,
+    advance: (report.advance ?? 0) * moneyOutScale,
+    previousBalance: (report.previousBalance ?? 0) * moneyOutScale,
+    balanceCorrection: (report.balanceCorrection ?? 0) * moneyOutScale,
+    currentBalance: (report.currentBalance ?? 0) * moneyOutScale,
     variance:
       typeof report.variance === 'number'
-        ? report.variance * scale
+        ? report.variance * moneyInScale
         : report.variance,
   };
 }

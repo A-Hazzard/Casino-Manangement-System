@@ -11,6 +11,7 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import mongoose from 'mongoose';
 import { NextResponse } from 'next/server';
+import { logRouteFetch, logRouteError } from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/admin/migrations/rename-licencee
@@ -22,6 +23,9 @@ import { NextResponse } from 'next/server';
  * was modified. No request body or query parameters are required.
  */
 export async function GET() {
+  const startTime = Date.now();
+  const functionName = 'GET /api/admin/migrations/rename-licencee';
+
   try {
     await connectDB();
 
@@ -29,22 +33,60 @@ export async function GET() {
     // we just use the native mongoose connection to get all collections and update them
     const db = mongoose.connection.db;
     if (!db) {
-      return NextResponse.json({ error: 'DB connection not ready' }, { status: 500 });
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/admin/migrations/rename-licencee',
+        'DB connection not ready',
+        null
+      );
+      return NextResponse.json(
+        { error: 'DB connection not ready' },
+        { status: 500 }
+      );
     }
 
     const collections = await db.collections();
-    const results: Array<{ collection: string; desc: string; modifiedCount: number }> = [];
+    const results: Array<{
+      collection: string;
+      desc: string;
+      modifiedCount: number;
+    }> = [];
 
     for (const collection of collections) {
       const collectionName = collection.collectionName;
 
       // Group all rename operations we might need
-      const renames: Array<{ filter: Record<string, unknown>, rename: Record<string, string>, desc: string }> = [
-        { filter: { licencee: { $exists: true } }, rename: { licencee: 'licencee' }, desc: 'licencee -> licencee' },
-        { filter: { 'rel.licencee': { $exists: true } }, rename: { 'rel.licencee': 'rel.licencee' }, desc: 'rel.licencee -> rel.licencee' },
-        { filter: { assignedLicencees: { $exists: true } }, rename: { assignedLicencees: 'assignedLicencees' }, desc: 'assignedLicencees -> assignedLicencees' },
-        { filter: { licenceeId: { $exists: true } }, rename: { licenceeId: 'licenceeId' }, desc: 'licenceeId -> licenceeId' },
-        { filter: { 'rel.licenceeId': { $exists: true } }, rename: { 'rel.licenceeId': 'rel.licenceeId' }, desc: 'rel.licenceeId -> rel.licenceeId' },
+      const renames: Array<{
+        filter: Record<string, unknown>;
+        rename: Record<string, string>;
+        desc: string;
+      }> = [
+        {
+          filter: { licencee: { $exists: true } },
+          rename: { licencee: 'licencee' },
+          desc: 'licencee -> licencee',
+        },
+        {
+          filter: { 'rel.licencee': { $exists: true } },
+          rename: { 'rel.licencee': 'rel.licencee' },
+          desc: 'rel.licencee -> rel.licencee',
+        },
+        {
+          filter: { assignedLicencees: { $exists: true } },
+          rename: { assignedLicencees: 'assignedLicencees' },
+          desc: 'assignedLicencees -> assignedLicencees',
+        },
+        {
+          filter: { licenceeId: { $exists: true } },
+          rename: { licenceeId: 'licenceeId' },
+          desc: 'licenceeId -> licenceeId',
+        },
+        {
+          filter: { 'rel.licenceeId': { $exists: true } },
+          rename: { 'rel.licenceeId': 'rel.licenceeId' },
+          desc: 'rel.licenceeId -> rel.licenceeId',
+        },
       ];
 
       for (const { filter, rename, desc } of renames) {
@@ -53,15 +95,34 @@ export async function GET() {
           results.push({
             collection: collectionName,
             desc,
-            modifiedCount: result.modifiedCount
+            modifiedCount: result.modifiedCount,
           });
         }
       }
     }
 
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/admin/migrations/rename-licencee',
+      results.length,
+      null,
+      duration
+    );
     return NextResponse.json({ success: true, results });
   } catch (e) {
-    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/admin/migrations/rename-licencee',
+      errorMessage,
+      null
+    );
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

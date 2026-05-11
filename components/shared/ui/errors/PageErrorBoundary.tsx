@@ -1,6 +1,6 @@
 'use client';
 
-import {  useState, useCallback  } from 'react';
+import { useState, useCallback } from 'react';
 import { ReactNode } from 'react';
 import { ErrorInfo } from 'react';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';

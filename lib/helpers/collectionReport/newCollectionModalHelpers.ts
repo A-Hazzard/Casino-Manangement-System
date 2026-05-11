@@ -19,13 +19,16 @@ export async function addMachineCollection(
   data: Partial<CollectionDocument>
 ): Promise<CollectionDocument> {
   try {
-    console.log('📤 [addMachineCollection] Sending POST to /api/collection-reports/collections', {
-      machineId: data.machineId,
-      location: data.location,
-      collector: data.collector,
-      metersIn: data.metersIn,
-      metersOut: data.metersOut,
-    });
+    console.log(
+      '📤 [addMachineCollection] Sending POST to /api/collection-reports/collections',
+      {
+        machineId: data.machineId,
+        location: data.location,
+        collector: data.collector,
+        metersIn: data.metersIn,
+        metersOut: data.metersOut,
+      }
+    );
     const res = await axios.post('/api/collection-reports/collections', data);
     console.log('✅ [addMachineCollection] Response received:', res.status);
     // The API returns { success: true, data: created, calculations: {...} }
@@ -48,7 +51,9 @@ export async function addMachineCollection(
 export async function deleteMachineCollection(
   id: string
 ): Promise<{ success: boolean }> {
-  const res = await axios.delete(`/api/collection-reports/collections?id=${id}`);
+  const res = await axios.delete(
+    `/api/collection-reports/collections?id=${id}`
+  );
   return res.data;
 }
 
@@ -62,10 +67,13 @@ export async function updateCollectionsWithReportId(
   // Update each collection with the correct locationReportId and mark as completed
   const updatePromises = collections.map(async collection => {
     try {
-      await axios.patch(`/api/collection-reports/collections?id=${collection._id}`, {
-        locationReportId: reportId,
-        isCompleted: true,
-      });
+      await axios.patch(
+        `/api/collection-reports/collections?id=${collection._id}`,
+        {
+          locationReportId: reportId,
+          isCompleted: true,
+        }
+      );
     } catch (error) {
       console.error(`Failed to update collection ${collection._id}:`, error);
       throw error;
@@ -159,5 +167,3 @@ export async function logActivity(
     console.error('Error logging activity:', error);
   }
 }
-
-

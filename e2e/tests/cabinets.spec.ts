@@ -52,42 +52,40 @@ async function mockCabinetsListAPIs(
   page: Page,
   listPayload = MOCK_CABINETS_LIST
 ) {
-  await page.route('**/api/auth/current-user**', (route) =>
+  await page.route('**/api/auth/current-user**', route =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
   );
-  await page.route('**/api/cabinets/aggregation**', (route) =>
+  await page.route('**/api/cabinets/aggregation**', route =>
     route.fulfill({ status: 200, json: listPayload })
   );
-  await page.route('**/api/cabinets**', (route) =>
+  await page.route('**/api/cabinets**', route =>
     route.fulfill({ status: 200, json: listPayload })
   );
-  await page.route('**/api/locations**', (route) =>
+  await page.route('**/api/locations**', route =>
     route.fulfill({
       status: 200,
       json: { success: true, locations: MOCK_LOCATIONS_LIST || [] },
     })
   );
-  await page.route('**/api/manufacturers**', (route) =>
+  await page.route('**/api/manufacturers**', route =>
     route.fulfill({ status: 200, json: MOCK_MANUFACTURERS })
   );
-  await page.route('**/api/licencees**', (route) =>
+  await page.route('**/api/licencees**', route =>
     route.fulfill({ status: 200, json: MOCK_LICENCEES_LIST })
   );
 }
 
-async function mockCabinetDetailAPIs(
-  page: Page
-) {
-  await page.route('**/api/auth/current-user**', (route) =>
+async function mockCabinetDetailAPIs(page: Page) {
+  await page.route('**/api/auth/current-user**', route =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
   );
-  await page.route(`**/api/cabinets/${CABINET_ID}**`, (route) =>
+  await page.route(`**/api/cabinets/${CABINET_ID}**`, route =>
     route.fulfill({ status: 200, json: MOCK_CABINET_DETAIL })
   );
-  await page.route(`**/api/cabinets/${CABINET_ID}**`, (route) =>
+  await page.route(`**/api/cabinets/${CABINET_ID}**`, route =>
     route.fulfill({ status: 200, json: MOCK_CABINET_DETAIL })
   );
-  await page.route('**/api/meters**', (route) =>
+  await page.route('**/api/meters**', route =>
     route.fulfill({ status: 200, json: MOCK_METER_HISTORY })
   );
 }
@@ -128,10 +126,16 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('Intercept POST cabinet creation endpoint', async () => {
-      await page.route('**/api/cabinets', async (route) => {
+      await page.route('**/api/cabinets', async route => {
         if (route.request().method() === 'POST') {
-          createRequestBody = route.request().postDataJSON() as Record<string, unknown>;
-          await route.fulfill({ status: 201, json: MOCK_CABINET_CREATE_SUCCESS });
+          createRequestBody = route.request().postDataJSON() as Record<
+            string,
+            unknown
+          >;
+          await route.fulfill({
+            status: 201,
+            json: MOCK_CABINET_CREATE_SUCCESS,
+          });
         } else {
           await route.continue();
         }
@@ -139,7 +143,7 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('After creation, return updated list including the new cabinet', async () => {
-      await page.route('**/api/cabinets/aggregation**', (route) =>
+      await page.route('**/api/cabinets/aggregation**', route =>
         route.fulfill({
           status: 200,
           json: {
@@ -258,9 +262,12 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('Intercept PUT cabinet update endpoint', async () => {
-      await page.route('**/api/cabinets/**', async (route) => {
+      await page.route('**/api/cabinets/**', async route => {
         if (route.request().method() === 'PUT') {
-          await route.fulfill({ status: 200, json: MOCK_CABINET_UPDATE_SUCCESS });
+          await route.fulfill({
+            status: 200,
+            json: MOCK_CABINET_UPDATE_SUCCESS,
+          });
         } else {
           await route.continue();
         }
@@ -268,14 +275,17 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('After edit, return updated list with renamed cabinet', async () => {
-      await page.route('**/api/cabinets/aggregation**', (route) =>
+      await page.route('**/api/cabinets/aggregation**', route =>
         route.fulfill({
           status: 200,
           json: {
             ...MOCK_CABINETS_LIST,
             data: {
               machines: [
-                { ...MOCK_CABINETS_LIST.data.machines[0], custom: { name: 'Lucky Dragon (Renamed)' } },
+                {
+                  ...MOCK_CABINETS_LIST.data.machines[0],
+                  custom: { name: 'Lucky Dragon (Renamed)' },
+                },
                 MOCK_CABINETS_LIST.data.machines[1],
               ],
               pagination: MOCK_CABINETS_LIST.data.pagination,
@@ -298,7 +308,9 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('Update the custom name field', async () => {
-      await cabinetsPage.fillEditCabinetForm({ customName: 'Lucky Dragon (Renamed)' });
+      await cabinetsPage.fillEditCabinetForm({
+        customName: 'Lucky Dragon (Renamed)',
+      });
     });
 
     await test.step('Submit the edit form', async () => {
@@ -319,9 +331,12 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('Intercept DELETE cabinet endpoint', async () => {
-      await page.route('**/api/cabinets/**', async (route) => {
+      await page.route('**/api/cabinets/**', async route => {
         if (route.request().method() === 'DELETE') {
-          await route.fulfill({ status: 200, json: MOCK_CABINET_DELETE_SUCCESS });
+          await route.fulfill({
+            status: 200,
+            json: MOCK_CABINET_DELETE_SUCCESS,
+          });
         } else {
           await route.continue();
         }
@@ -342,7 +357,7 @@ test.describe('Cabinets List', () => {
     });
 
     await test.step('Swap list mock to post-delete payload then confirm', async () => {
-      await page.route('**/api/cabinets/aggregation**', (route) =>
+      await page.route('**/api/cabinets/aggregation**', route =>
         route.fulfill({ status: 200, json: MOCK_CABINETS_LIST_AFTER_DELETE })
       );
       await cabinetsPage.confirmDelete();
@@ -412,9 +427,11 @@ test.describe('Cabinet Detail', () => {
 
     await test.step('Mock cabinet detail API and capture requests', async () => {
       await mockCabinetDetailAPIs(page);
-      page.on('request', (req) => {
-        if (req.url().includes(`/api/cabinets/${CABINET_ID}`) ||
-            req.url().includes(`/api/cabinets/${CABINET_ID}`)) {
+      page.on('request', req => {
+        if (
+          req.url().includes(`/api/cabinets/${CABINET_ID}`) ||
+          req.url().includes(`/api/cabinets/${CABINET_ID}`)
+        ) {
           capturedUrls.push(req.url());
         }
       });
@@ -527,4 +544,3 @@ test.describe('Cabinets — Role-based access', () => {
     await expect(page).toHaveURL(/collection-report/);
   });
 });
-

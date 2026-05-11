@@ -1,13 +1,13 @@
 'use client';
 
 import { ReactNode } from 'react';
-import { 
+import {
   createContext,
   useCallback,
   useContext,
   useMemo,
   useState,
- } from 'react';
+} from 'react';
 
 type MembersHandlersContextType = {
   onRefresh?: () => void;
@@ -22,11 +22,7 @@ const MembersHandlersContext = createContext<
   MembersHandlersContextType | undefined
 >(undefined);
 
-export function MembersHandlersProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function MembersHandlersProvider({ children }: { children: ReactNode }) {
   const [refreshHandler, setRefreshHandler] = useState<
     (() => void) | undefined
   >(undefined);
@@ -72,4 +68,3 @@ export function useMembersHandlers() {
   }
   return context;
 }
-

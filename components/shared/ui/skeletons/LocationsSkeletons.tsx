@@ -12,10 +12,18 @@
 
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { ChartSkeleton } from './CommonSkeletons';
-import { MachineHourlyChartsSkeleton, TopMachinesTableSkeleton } from './MachinesSkeletons';
+import {
+  MachineHourlyChartsSkeleton,
+  TopMachinesTableSkeleton,
+} from './MachinesSkeletons';
 
 /**
  * Skeleton component for revenue analysis charts grid
@@ -257,5 +265,3 @@ export const LocationsRevenueAnalysisSkeleton = () => (
     </Card>
   </div>
 );
-
-

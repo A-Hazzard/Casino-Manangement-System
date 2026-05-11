@@ -137,21 +137,34 @@ export function useCabinetPageData() {
       return true;
     }
     if (
-      activeMetricsFilter === 'Custom' && (
-        (customDateRange?.startDate && customDateRange?.endDate) ||
-        (customDateRange?.from && customDateRange?.to)
-      )
+      activeMetricsFilter === 'Custom' &&
+      ((customDateRange?.startDate && customDateRange?.endDate) ||
+        (customDateRange?.from && customDateRange?.to))
     ) {
       // Show minute/hourly selector only for same-day custom ranges
-      const customStart = customDateRange?.startDate || customDateRange?.from || (customDateRange as Record<string, unknown>)?.start;
-      const customEnd = customDateRange?.endDate || customDateRange?.to || (customDateRange as Record<string, unknown>)?.end;
+      const customStart =
+        customDateRange?.startDate ||
+        customDateRange?.from ||
+        (customDateRange as Record<string, unknown>)?.start;
+      const customEnd =
+        customDateRange?.endDate ||
+        customDateRange?.to ||
+        (customDateRange as Record<string, unknown>)?.end;
 
-      const sd = customStart instanceof Date ? customStart : new Date(customStart as unknown as string);
-      const ed = customEnd instanceof Date ? customEnd : new Date(customEnd as unknown as string);
+      const sd =
+        customStart instanceof Date
+          ? customStart
+          : new Date(customStart as unknown as string);
+      const ed =
+        customEnd instanceof Date
+          ? customEnd
+          : new Date(customEnd as unknown as string);
       // Compare calendar dates (same year, month, day)
-      return sd.getFullYear() === ed.getFullYear() &&
+      return (
+        sd.getFullYear() === ed.getFullYear() &&
         sd.getMonth() === ed.getMonth() &&
-        sd.getDate() === ed.getDate();
+        sd.getDate() === ed.getDate()
+      );
     }
     // Show daily/weekly selector for Last 30 Days
     if (activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days') {
@@ -210,7 +223,10 @@ export function useCabinetPageData() {
           toast.success(`${label} copied to clipboard`);
           return;
         } catch (clipboardError) {
-          console.warn('Clipboard API failed, trying fallback:', clipboardError);
+          console.warn(
+            'Clipboard API failed, trying fallback:',
+            clipboardError
+          );
           // Fall through to fallback
         }
       }
@@ -245,7 +261,9 @@ export function useCabinetPageData() {
       }
     } catch (err) {
       console.error(`Failed to copy ${label}:`, err);
-      toast.error(`Could not copy ${label}. Please try selecting and copying manually.`);
+      toast.error(
+        `Could not copy ${label}. Please try selecting and copying manually.`
+      );
     }
   }, []);
 
@@ -350,26 +368,45 @@ export function useCabinetPageData() {
 
   // Check if Custom range is same-day (warrants minute/hourly granularity control)
   const isCustomShortPeriod = useMemo(() => {
-    const customStart = customDateRange?.startDate || customDateRange?.from || (customDateRange as Record<string, unknown>)?.start;
-    const customEnd = customDateRange?.endDate || customDateRange?.to || (customDateRange as Record<string, unknown>)?.end;
+    const customStart =
+      customDateRange?.startDate ||
+      customDateRange?.from ||
+      (customDateRange as Record<string, unknown>)?.start;
+    const customEnd =
+      customDateRange?.endDate ||
+      customDateRange?.to ||
+      (customDateRange as Record<string, unknown>)?.end;
 
-    if (activeMetricsFilter !== 'Custom' || !customStart || !customEnd) return false;
+    if (activeMetricsFilter !== 'Custom' || !customStart || !customEnd)
+      return false;
 
-    const sd = customStart instanceof Date ? customStart : new Date(customStart as unknown as string);
-    const ed = customEnd instanceof Date ? customEnd : new Date(customEnd as unknown as string);
+    const sd =
+      customStart instanceof Date
+        ? customStart
+        : new Date(customStart as unknown as string);
+    const ed =
+      customEnd instanceof Date
+        ? customEnd
+        : new Date(customEnd as unknown as string);
 
-    return sd.getFullYear() === ed.getFullYear() &&
+    return (
+      sd.getFullYear() === ed.getFullYear() &&
       sd.getMonth() === ed.getMonth() &&
-      sd.getDate() === ed.getDate();
+      sd.getDate() === ed.getDate()
+    );
   }, [activeMetricsFilter, customDateRange]);
 
   // Memoize effective granularity - triggers refetch when granularity changes for supported periods
   const effectiveGranularity = useMemo(() => {
     const isShortPeriod =
       activeMetricsFilter === 'Today' || activeMetricsFilter === 'Yesterday';
-    const is30d = activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days';
-    const isLongPeriod = activeMetricsFilter === 'Quarterly' || activeMetricsFilter === 'All Time';
-    return (isShortPeriod || isCustomShortPeriod || is30d || isLongPeriod) ? chartGranularity : null;
+    const is30d =
+      activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days';
+    const isLongPeriod =
+      activeMetricsFilter === 'Quarterly' || activeMetricsFilter === 'All Time';
+    return isShortPeriod || isCustomShortPeriod || is30d || isLongPeriod
+      ? chartGranularity
+      : null;
   }, [activeMetricsFilter, chartGranularity, isCustomShortPeriod]);
 
   // Fetch chart data
@@ -390,22 +427,38 @@ export function useCabinetPageData() {
         const isShortPeriod =
           activeMetricsFilter === 'Today' ||
           activeMetricsFilter === 'Yesterday';
-        const is30d = activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days';
-        const isLongPeriod = activeMetricsFilter === 'Quarterly' || activeMetricsFilter === 'All Time';
-        const granularity = (isShortPeriod || isCustomShortPeriod || is30d || isLongPeriod) ? chartGranularity : undefined;
-
-        const customStart = customDateRange?.startDate || customDateRange?.from || (customDateRange as Record<string, unknown>)?.start;
-        const customEnd = customDateRange?.endDate || customDateRange?.to || (customDateRange as Record<string, unknown>)?.end;
-
-        const effectiveStartDate = customStart instanceof Date
-          ? customStart
-          : customStart ? new Date(customStart as unknown as string)
+        const is30d =
+          activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days';
+        const isLongPeriod =
+          activeMetricsFilter === 'Quarterly' ||
+          activeMetricsFilter === 'All Time';
+        const granularity =
+          isShortPeriod || isCustomShortPeriod || is30d || isLongPeriod
+            ? chartGranularity
             : undefined;
 
-        const effectiveEndDate = customEnd instanceof Date
-          ? customEnd
-          : customEnd ? new Date(customEnd as unknown as string)
-            : undefined;
+        const customStart =
+          customDateRange?.startDate ||
+          customDateRange?.from ||
+          (customDateRange as Record<string, unknown>)?.start;
+        const customEnd =
+          customDateRange?.endDate ||
+          customDateRange?.to ||
+          (customDateRange as Record<string, unknown>)?.end;
+
+        const effectiveStartDate =
+          customStart instanceof Date
+            ? customStart
+            : customStart
+              ? new Date(customStart as unknown as string)
+              : undefined;
+
+        const effectiveEndDate =
+          customEnd instanceof Date
+            ? customEnd
+            : customEnd
+              ? new Date(customEnd as unknown as string)
+              : undefined;
 
         const result = await getMachineChartData(
           String(cabinet._id),
@@ -425,7 +478,10 @@ export function useCabinetPageData() {
         }
       } catch (err) {
         // Don't clear chart data on abort — keep skeleton showing for the next request
-        if (err instanceof Error && (err.name === 'AbortError' || err.message === 'canceled')) {
+        if (
+          err instanceof Error &&
+          (err.name === 'AbortError' || err.message === 'canceled')
+        ) {
           return;
         }
         setChartData([]);
@@ -502,5 +558,3 @@ export function useCabinetPageData() {
     onLocationClick: (id: string) => router.push(`/locations/${id}`),
   };
 }
-
-

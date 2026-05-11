@@ -22,7 +22,9 @@
  * @param value - The Money In value
  * @returns CSS class for text color
  */
-export function getMoneyInColorClass(value?: number | null | undefined): string {
+export function getMoneyInColorClass(
+  value?: number | null | undefined
+): string {
   if (value === 0 || value === null || value === undefined || isNaN(value)) {
     return ''; // No color for zero values
   }
@@ -168,4 +170,3 @@ export function getPerformanceLevel(
   if (pct >= PERFORMANCE_CONFIG.average.minPct) return 'average';
   return 'poor';
 }
-

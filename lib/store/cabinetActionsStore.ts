@@ -6,12 +6,15 @@ type CabinetsActionsState = {
   isEditModalOpen: boolean;
   isDeleteModalOpen: boolean;
   isRestoreModalOpen: boolean;
+  isPermanentDeleteModalOpen: boolean;
   openEditModal: (cabinet: GamingMachine) => void;
   openDeleteModal: (cabinet: GamingMachine) => void;
   openRestoreModal: (cabinet: GamingMachine) => void;
+  openPermanentDeleteModal: (cabinet: GamingMachine) => void;
   closeEditModal: () => void;
   closeDeleteModal: () => void;
   closeRestoreModal: () => void;
+  closePermanentDeleteModal: () => void;
 };
 
 // Define a no-op version for SSR
@@ -20,12 +23,15 @@ const dummyState: CabinetsActionsState = {
   isEditModalOpen: false,
   isDeleteModalOpen: false,
   isRestoreModalOpen: false,
+  isPermanentDeleteModalOpen: false,
   openEditModal: () => {},
   openDeleteModal: () => {},
   openRestoreModal: () => {},
+  openPermanentDeleteModal: () => {},
   closeEditModal: () => {},
   closeDeleteModal: () => {},
   closeRestoreModal: () => {},
+  closePermanentDeleteModal: () => {},
 };
 
 // Make sure store is created only on client-side
@@ -35,18 +41,23 @@ const createStore = () => {
     isEditModalOpen: false,
     isDeleteModalOpen: false,
     isRestoreModalOpen: false,
+    isPermanentDeleteModalOpen: false,
     openEditModal: cabinet =>
       set({ selectedCabinet: cabinet, isEditModalOpen: true }),
     openDeleteModal: cabinet =>
       set({ selectedCabinet: cabinet, isDeleteModalOpen: true }),
     openRestoreModal: cabinet =>
       set({ selectedCabinet: cabinet, isRestoreModalOpen: true }),
+    openPermanentDeleteModal: cabinet =>
+      set({ selectedCabinet: cabinet, isPermanentDeleteModalOpen: true }),
     closeEditModal: () =>
       set({ selectedCabinet: null, isEditModalOpen: false }),
     closeDeleteModal: () =>
       set({ selectedCabinet: null, isDeleteModalOpen: false }),
     closeRestoreModal: () =>
       set({ selectedCabinet: null, isRestoreModalOpen: false }),
+    closePermanentDeleteModal: () =>
+      set({ selectedCabinet: null, isPermanentDeleteModalOpen: false }),
   }));
 };
 
@@ -62,10 +73,10 @@ const getClientStore = () => {
 };
 
 /**
- * Zustand store for managing cabinets actions (edit/delete/restore modals).
+ * Zustand store for managing cabinets actions (edit/delete/restore/permanent delete modals).
  *
  * - Tracks selected cabinet and modal open/close state.
- * - Provides actions to open/close edit, delete, and restore modals.
+ * - Provides actions to open/close edit, delete, restore, and permanent delete modals.
  * - Returns a dummy state for SSR.
  *
  * @returns Zustand hook for accessing and updating cabinets actions state.

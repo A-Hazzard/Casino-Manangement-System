@@ -11,12 +11,18 @@
  */
 
 import {
-    getUserById,
-    updateUser as updateUserHelper,
+  getUserById,
+  updateUser as updateUserHelper,
 } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { apiLogger } from '../../lib/services/loggerService';
+import {
+  logRouteFetch,
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/users/[id]
@@ -26,16 +32,13 @@ import { apiLogger } from '../../lib/services/loggerService';
  * URL params:
  * @param id {string} Required (path). The string `_id` of the user to retrieve.
  */
-export async function GET(
-  request: NextRequest
-): Promise<Response> {
+export async function GET(request: NextRequest): Promise<Response> {
   const startTime = Date.now();
+  const functionName = 'GET /api/users/[id]';
+  const logUser = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const userId = pathname.split('/').pop();
-  const context = apiLogger.createContext(
-    request,
-    `/api/users/${userId}`
-  );
+  const context = apiLogger.createContext(request, `/api/users/${userId}`);
   apiLogger.startLogging();
 
   try {
@@ -86,12 +89,27 @@ export async function GET(
       console.warn(`[Users API] GET completed in ${duration}ms`);
     }
 
+    logRouteFetch(
+      functionName,
+      'GET',
+      `/api/users/${userId}`,
+      1,
+      logUser,
+      duration
+    );
     apiLogger.logSuccess(context, `Successfully fetched user ${userId}`);
     return NextResponse.json({ success: true, user: formattedUser });
   } catch (err: unknown) {
     const duration = Date.now() - startTime;
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     console.error(`[Users API] GET error after ${duration}ms:`, errorMsg);
+    logRouteError(
+      functionName,
+      'GET',
+      `/api/users/${userId}`,
+      errorMsg,
+      logUser
+    );
     apiLogger.logError(context, 'User fetch failed', errorMsg);
     return NextResponse.json(
       {
@@ -124,7 +142,9 @@ export async function GET(
  * @param assignedLicencees  {string[]} Optional. Licencee IDs that scope the user's data visibility.
  *                                    Restricted to admin/owner/developer; silently stripped for others.
  * @param isEnabled        {boolean}  Optional. Activates or deactivates the user account.
- * @param multiplier       {number}   Optional. Reviewer-scale multiplier (reviewer role only).
+ * @param moneyInMultiplier {number}   Optional. Money-in reduction (reviewer role only).
+ *                                    Restricted to admin/owner/developer; silently stripped for others.
+ * @param moneyOutAndJackpotMultiplier {number} Optional. Money-out/jackpot reduction (reviewer role only).
  *                                    Restricted to admin/owner/developer; silently stripped for others.
  * @param profile          {object}   Optional. Nested profile fields: `firstName`, `lastName`,
  *                                    `gender`, `phoneNumber`, `identification` (idType/idNumber).
@@ -132,16 +152,13 @@ export async function GET(
  * @param emailAddress     {string}   Optional. Login email; must be unique across all users.
  * @param password         {string}   Optional. New plain-text password; hashed before storage.
  */
-export async function PUT(
-  request: NextRequest
-): Promise<Response> {
+export async function PUT(request: NextRequest): Promise<Response> {
   const startTime = Date.now();
+  const functionName = 'PUT /api/users/[id]';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const userId = pathname.split('/').pop();
-  const context = apiLogger.createContext(
-    request,
-    `/api/users/${userId}`
-  );
+  const context = apiLogger.createContext(request, `/api/users/${userId}`);
   apiLogger.startLogging();
 
   try {
@@ -193,12 +210,21 @@ export async function PUT(
       console.warn(`[Users API] PUT completed in ${duration}ms`);
     }
 
+    logRouteUpdate(
+      functionName,
+      'PUT',
+      `/api/users/${userId}`,
+      1,
+      user,
+      duration
+    );
     apiLogger.logSuccess(context, `Successfully updated user ${userId}`);
     return NextResponse.json({ success: true, user: formattedUser });
   } catch (err: unknown) {
     const duration = Date.now() - startTime;
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     console.error(`[Users API] PUT error after ${duration}ms:`, errorMsg);
+    logRouteError(functionName, 'PUT', `/api/users/${userId}`, errorMsg, user);
     apiLogger.logError(context, 'User update failed', errorMsg);
     return NextResponse.json(
       {
@@ -230,7 +256,9 @@ export async function PUT(
  * @param assignedLicencees  {string[]} Licencee IDs that scope the user's data visibility.
  *                                    Restricted to admin/owner/developer; silently stripped for others.
  * @param isEnabled        {boolean}  Activates or deactivates the user account.
- * @param multiplier       {number}   Reviewer-scale multiplier (reviewer role only).
+ * @param moneyInMultiplier {number}   Money-in reduction (reviewer role only).
+ *                                    Restricted to admin/owner/developer; silently stripped for others.
+ * @param moneyOutAndJackpotMultiplier {number} Money-out/jackpot reduction (reviewer role only).
  *                                    Restricted to admin/owner/developer; silently stripped for others.
  * @param profile          {object}   Nested profile fields: `firstName`, `lastName`,
  *                                    `gender`, `phoneNumber`, `identification` (idType/idNumber).
@@ -238,16 +266,13 @@ export async function PUT(
  * @param emailAddress     {string}   Login email; must be unique across all users.
  * @param password         {string}   New plain-text password; hashed before storage.
  */
-export async function PATCH(
-  request: NextRequest
-): Promise<Response> {
+export async function PATCH(request: NextRequest): Promise<Response> {
   const startTime = Date.now();
+  const functionName = 'PATCH /api/users/[id]';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const userId = pathname.split('/').pop();
-  const context = apiLogger.createContext(
-    request,
-    `/api/users/${userId}`
-  );
+  const context = apiLogger.createContext(request, `/api/users/${userId}`);
   apiLogger.startLogging();
 
   try {
@@ -299,12 +324,27 @@ export async function PATCH(
       console.warn(`[Users API] PATCH completed in ${duration}ms`);
     }
 
+    logRouteUpdate(
+      functionName,
+      'PATCH',
+      `/api/users/${userId}`,
+      1,
+      user,
+      duration
+    );
     apiLogger.logSuccess(context, `Successfully updated user ${userId}`);
     return NextResponse.json({ success: true, user: formattedUser });
   } catch (err: unknown) {
     const duration = Date.now() - startTime;
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     console.error(`[Users API] PATCH error after ${duration}ms:`, errorMsg);
+    logRouteError(
+      functionName,
+      'PATCH',
+      `/api/users/${userId}`,
+      errorMsg,
+      user
+    );
     apiLogger.logError(context, 'User update failed', errorMsg);
     return NextResponse.json(
       {

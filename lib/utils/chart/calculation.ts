@@ -41,4 +41,3 @@ export function calculatePieChartLabelData(props: CustomizedLabelProps) {
     text: `${(props.percent * 100).toFixed(0)}%`,
   };
 }
-

@@ -10,11 +10,11 @@ import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSele
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import { useMembersActionsStore } from '@/lib/store/memberActionsStore';
 import { useUserStore } from '@/lib/store/userStore';
@@ -118,7 +118,9 @@ export default function MembersListTab({
       search: string = '',
       sortBy: string = 'name',
       sortOrder: 'asc' | 'desc' = 'asc',
-      locFilter: string | string[] = forcedLocationId ? [forcedLocationId] : locationFilter
+      locFilter: string | string[] = forcedLocationId
+        ? [forcedLocationId]
+        : locationFilter
     ) => {
       try {
         setLoading(true);
@@ -129,7 +131,11 @@ export default function MembersListTab({
           search: search,
           sortBy: sortBy,
           sortOrder: sortOrder,
-          locationFilter: Array.isArray(locFilter) ? locFilter.join(',') : (locFilter !== 'all' ? locFilter : ''),
+          locationFilter: Array.isArray(locFilter)
+            ? locFilter.join(',')
+            : locFilter !== 'all'
+              ? locFilter
+              : '',
         });
 
         const response = await axios.get(`/api/members?${params}`);
@@ -147,7 +153,15 @@ export default function MembersListTab({
           });
           if (result.data.pagination) {
             // Store total members if available
-            setSummaryStats(prev => prev ? ({ ...prev, totalMembers: result.data.pagination.totalMembers }) : { totalMembers: result.data.pagination.totalMembers, totalLocations: 0, activeMembers: 0 });
+            setSummaryStats(prev =>
+              prev
+                ? { ...prev, totalMembers: result.data.pagination.totalMembers }
+                : {
+                    totalMembers: result.data.pagination.totalMembers,
+                    totalLocations: 0,
+                    activeMembers: 0,
+                  }
+            );
           }
         } else {
           console.error('Invalid response format:', result);
@@ -676,7 +690,7 @@ export default function MembersListTab({
       <div className="w-full flex-1">
         {/* Mobile View */}
         <div className="mt-4 space-y-4 pb-24 lg:hidden">
-          {loading || (searchTerm !== debouncedSearchTerm) ? (
+          {loading || searchTerm !== debouncedSearchTerm ? (
             Array.from({ length: 3 }).map((_, i) => (
               <MembersMemberSkeleton key={i} />
             ))
@@ -708,7 +722,7 @@ export default function MembersListTab({
 
         {/* Desktop View */}
         <div className="hidden lg:block">
-          {loading || (searchTerm !== debouncedSearchTerm) ? (
+          {loading || searchTerm !== debouncedSearchTerm ? (
             <MembersMemberTableSkeleton
               hideLocationColumn={!!forcedLocationId}
             />
@@ -734,7 +748,9 @@ export default function MembersListTab({
 
       <PaginationControls
         currentPage={currentPage}
-        totalPages={Math.ceil((summaryStats?.totalMembers || allMembers.length) / itemsPerPage)}
+        totalPages={Math.ceil(
+          (summaryStats?.totalMembers || allMembers.length) / itemsPerPage
+        )}
         totalCount={summaryStats?.totalMembers || allMembers.length}
         setCurrentPage={setCurrentPage}
         showTotalCount
@@ -761,5 +777,3 @@ export default function MembersListTab({
     </>
   );
 }
-
-

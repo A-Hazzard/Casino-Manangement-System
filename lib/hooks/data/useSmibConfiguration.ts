@@ -619,336 +619,352 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
   );
 
   // Establish SSE connection for live updates
-  const connectToConfigStream = useCallback((relayId: string) => {
-    console.warn(
-      `🔗 [HOOK] connectToConfigStream called with relayId: ${relayId}`
-    );
-
-    // 🔧 FIX: Only close existing EventSource if relayId is different
-    // This prevents unregistering callbacks when the same relayId is requested multiple times
-    if (eventSourceRef.current) {
-      const currentRelayId = currentRelayIdRef.current;
-      if (currentRelayId === relayId) {
-        console.warn(
-          `🔗 [HOOK] EventSource already exists for relayId ${relayId}, reusing connection`
-        );
-        return; // Already connected to this relayId, don't recreate
-      }
+  const connectToConfigStream = useCallback(
+    (relayId: string) => {
       console.warn(
-        `🔗 [HOOK] Closing existing EventSource (switching from ${currentRelayId} to ${relayId})`
+        `🔗 [HOOK] connectToConfigStream called with relayId: ${relayId}`
       );
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
 
-    currentRelayIdRef.current = relayId;
-
-    // 🔧 FIX: Fetch initial online status from MQTT broker when connecting
-    // This prevents the bug where dropdown shows "Online" but detail shows "Offline"
-    (async () => {
-      try {
-        console.log(
-          `🔍 [SMIB FIX] Fetching initial status for relay ${relayId}`
-        );
-        const response = await fetch('/api/mqtt/discover-smibs');
-        const data = await response.json();
-
-        if (data.smibs && Array.isArray(data.smibs)) {
-          const smib = data.smibs.find(
-            (s: { relayId: string; online?: boolean }) => s.relayId === relayId
+      // 🔧 FIX: Only close existing EventSource if relayId is different
+      // This prevents unregistering callbacks when the same relayId is requested multiple times
+      if (eventSourceRef.current) {
+        const currentRelayId = currentRelayIdRef.current;
+        if (currentRelayId === relayId) {
+          console.warn(
+            `🔗 [HOOK] EventSource already exists for relayId ${relayId}, reusing connection`
           );
-          if (smib) {
-            const brokerStatus = Boolean(smib.online);
-            console.log(
-              `✅ [SMIB FIX] Broker reports ${relayId} as ${brokerStatus ? 'ONLINE' : 'OFFLINE'}`
-            );
-
-            // Set initial connection status based on broker status
-            // This will be updated later by config responses and heartbeat monitoring
-            setIsConnectedToMqtt(brokerStatus);
-
-            // Update heartbeat ref so monitoring doesn't immediately mark it offline
-            if (brokerStatus) {
-              lastHeartbeatRef.current = Date.now();
-            }
-          } else {
-            console.warn(
-              `⚠️ [SMIB FIX] SMIB ${relayId} not found in broker list`
-            );
-          }
+          return; // Already connected to this relayId, don't recreate
         }
-      } catch (error) {
-        console.error('❌ [SMIB FIX] Error fetching initial status:', error);
-        // Don't change status on error - let config responses handle it
+        console.warn(
+          `🔗 [HOOK] Closing existing EventSource (switching from ${currentRelayId} to ${relayId})`
+        );
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
       }
-    })();
 
-    const sseUrl = `/api/mqtt/config/subscribe?relayId=${relayId}`;
+      currentRelayIdRef.current = relayId;
 
-    const eventSource = new EventSource(sseUrl);
-    eventSourceRef.current = eventSource;
+      // 🔧 FIX: Fetch initial online status from MQTT broker when connecting
+      // This prevents the bug where dropdown shows "Online" but detail shows "Offline"
+      (async () => {
+        try {
+          console.log(
+            `🔍 [SMIB FIX] Fetching initial status for relay ${relayId}`
+          );
+          const response = await fetch('/api/mqtt/discover-smibs');
+          const data = await response.json();
 
-    eventSource.onopen = () => {
-      // Don't set isConnectedToMqtt(true) here - wait for actual SMIB data
-    };
+          if (data.smibs && Array.isArray(data.smibs)) {
+            const smib = data.smibs.find(
+              (s: { relayId: string; online?: boolean }) =>
+                s.relayId === relayId
+            );
+            if (smib) {
+              const brokerStatus = Boolean(smib.online);
+              console.log(
+                `✅ [SMIB FIX] Broker reports ${relayId} as ${brokerStatus ? 'ONLINE' : 'OFFLINE'}`
+              );
 
-    eventSource.onmessage = event => {
-      // Update heartbeat for ANY message received (including ping/heartbeat)
-      lastHeartbeatRef.current = Date.now();
+              // Set initial connection status based on broker status
+              // This will be updated later by config responses and heartbeat monitoring
+              setIsConnectedToMqtt(brokerStatus);
 
-      try {
-        const message = JSON.parse(event.data);
-
-        // Notify all subscribers of the message
-        messageSubscribersRef.current.forEach(callback => {
-          try {
-            callback(message);
-          } catch (error) {
-            console.error('Error in message subscriber callback:', error);
+              // Update heartbeat ref so monitoring doesn't immediately mark it offline
+              if (brokerStatus) {
+                lastHeartbeatRef.current = Date.now();
+              }
+            } else {
+              console.warn(
+                `⚠️ [SMIB FIX] SMIB ${relayId} not found in broker list`
+              );
+            }
           }
-        });
-
-        // Handle callback_ready message - SSE is ready for meter requests
-        if (message.type === 'callback_ready') {
-          setIsSSEConnected(true);
+        } catch (error) {
+          console.error('❌ [SMIB FIX] Error fetching initial status:', error);
+          // Don't change status on error - let config responses handle it
         }
+      })();
 
-        // Handle heartbeat/keepalive messages
-        if (message.type === 'heartbeat' || message.type === 'keepalive') {
-          // Heartbeats are from the SSE server, not the SMIB device
-          // Don't set isConnectedToMqtt here - only actual SMIB responses should do that
-          // The heartbeat just keeps the SSE connection alive
-          return;
-        }
+      const sseUrl = `/api/mqtt/config/subscribe?relayId=${relayId}`;
 
-        if (message.type === 'config_update' && message.data) {
-          // Update form data with live MQTT data
-          const configData = message.data;
+      const eventSource = new EventSource(sseUrl);
+      eventSourceRef.current = eventSource;
 
-          // ANY message from SMIB indicates it's alive (rsp, err, exp, etc.)
-          // If we previously had real data and went offline, mark as back online
-          // Use refs to avoid dependency on state values that would recreate the callback
-          if (!isConnectedToMqttRef.current && hasReceivedRealSmibDataRef.current) {
-            setIsConnectedToMqtt(true);
-          }
+      eventSource.onopen = () => {
+        // Don't set isConnectedToMqtt(true) here - wait for actual SMIB data
+      };
 
-          // For non-config messages (rsp, err, exp), just update heartbeat and return
-          if (!configData || !configData.comp) {
-            return;
-          }
+      eventSource.onmessage = event => {
+        // Update heartbeat for ANY message received (including ping/heartbeat)
+        lastHeartbeatRef.current = Date.now();
 
-          // Skip processing if this is just a connection message without actual data
-          if (message.type === 'connected' || message.type === 'ping') {
-            return;
-          }
+        try {
+          const message = JSON.parse(event.data);
 
-          // Check if this is actual SMIB data (not just connection messages)
-          const hasRealData =
-            (configData.comp === 'net' &&
-              configData.netStaSSID &&
-              configData.netStaSSID !== 'No Value Provided') ||
-            (configData.comp === 'coms' &&
-              configData.comsMode !== undefined &&
-              configData.comsMode !== null) ||
-            (configData.comp === 'mqtt' &&
-              configData.mqttURI &&
-              configData.mqttURI !== 'No Value Provided');
-
-          console.warn(`🔍 [HOOK] hasRealData check:`, {
-            comp: configData.comp,
-            hasRealData,
-            netStaSSID: configData.netStaSSID,
-            comsMode: configData.comsMode,
-            mqttURI: configData.mqttURI,
+          // Notify all subscribers of the message
+          messageSubscribersRef.current.forEach(callback => {
+            try {
+              callback(message);
+            } catch (error) {
+              console.error('Error in message subscriber callback:', error);
+            }
           });
 
-          if (!hasRealData) {
-            console.warn(
-              `🔍 [HOOK] Skipping SSE update - no real data from SMIB (still offline)`
-            );
+          // Handle callback_ready message - SSE is ready for meter requests
+          if (message.type === 'callback_ready') {
+            setIsSSEConnected(true);
+          }
+
+          // Handle heartbeat/keepalive messages
+          if (message.type === 'heartbeat' || message.type === 'keepalive') {
+            // Heartbeats are from the SSE server, not the SMIB device
+            // Don't set isConnectedToMqtt here - only actual SMIB responses should do that
+            // The heartbeat just keeps the SSE connection alive
             return;
           }
 
-          console.warn(
-            `🔍 [HOOK] SMIB is now ONLINE - processing live data for component: ${configData.comp}`
-          );
-          console.warn(`🔍 [HOOK] Config data received:`, configData);
+          if (message.type === 'config_update' && message.data) {
+            // Update form data with live MQTT data
+            const configData = message.data;
 
-          if (configData.comp === 'mqtt') {
-            console.warn(`🔍 [HOOK] Processing MQTT data:`, configData);
-
-            // Only update if we have actual data from the SMIB (not just empty responses)
-            // Check if we have real values that are not empty strings, null, undefined, or "No Value Provided"
-            const hasActualData =
-              (configData.mqttURI &&
-                configData.mqttURI !== 'No Value Provided' &&
-                configData.mqttURI !== '' &&
-                configData.mqttURI !== null &&
-                configData.mqttURI !== undefined &&
-                configData.mqttURI.length > 0) ||
-              (configData.mqttPubTopic &&
-                configData.mqttPubTopic !== 'No Value Provided' &&
-                configData.mqttPubTopic !== '' &&
-                configData.mqttPubTopic !== null &&
-                configData.mqttPubTopic !== undefined &&
-                configData.mqttPubTopic.length > 0) ||
-              (configData.mqttCfgTopic &&
-                configData.mqttCfgTopic !== 'No Value Provided' &&
-                configData.mqttCfgTopic !== '' &&
-                configData.mqttCfgTopic !== null &&
-                configData.mqttCfgTopic !== undefined &&
-                configData.mqttCfgTopic.length > 0);
-
-            if (hasActualData) {
-              // Use SMIB data, but fallback to existing machine values if SMIB returns "No Value Provided"
-              setFormData(prev => {
-                const newFormData = {
-                  ...prev, // Keep all existing values
-                  mqttHost: configData.mqttURI || prev.mqttHost,
-                  mqttTLS: configData.mqttSecure?.toString() || prev.mqttTLS,
-                  mqttIdleTimeout:
-                    configData.mqttIdleTimeS?.toString() ||
-                    prev.mqttIdleTimeout,
-                  mqttUsername: configData.mqttUsername || prev.mqttUsername,
-                  mqttPassword: configData.mqttPassword || prev.mqttPassword,
-                  // MQTT Topics fields - use SMIB data or fallback to existing machine values
-                  mqttPubTopic: configData.mqttPubTopic || prev.mqttPubTopic,
-                  mqttCfgTopic: configData.mqttCfgTopic || prev.mqttCfgTopic,
-                  mqttURI: configData.mqttURI || prev.mqttURI,
-                };
-
-                console.warn(
-                  `🔍 [HOOK] Updating form data with MQTT (SMIB connected):`,
-                  newFormData
-                );
-                console.warn(
-                  '🔍 [HOOK] SSE updating formData with:',
-                  newFormData
-                );
-                console.warn('🔍 [HOOK] SSE result formData:', newFormData);
-                return newFormData;
-              });
-              setIsConnectedToMqtt(true); // SMIB is actually connected and responding
-              setHasReceivedRealSmibData(true); // Mark that we've received real data from SMIB
-              lastHeartbeatRef.current = Date.now(); // Update heartbeat timestamp
-
-              // Also update mqttConfig state for the MQTT Topics section
-              const newMqttConfig = {
-                mqttSecure: configData.mqttSecure || 0,
-                mqttQOS: configData.mqttQOS || 0,
-                mqttURI: configData.mqttURI || '',
-                mqttSubTopic: configData.mqttSubTopic || '',
-                mqttPubTopic: configData.mqttPubTopic || '',
-                mqttCfgTopic: configData.mqttCfgTopic || '',
-                mqttIdleTimeS: configData.mqttIdleTimeS || 0,
-              };
-
-              console.warn(
-                `🔍 [HOOK] Updating mqttConfig with:`,
-                newMqttConfig
-              );
-            } else {
-              console.warn(
-                `🔍 [HOOK] Skipping MQTT update - no actual data from SMIB (SMIB likely disconnected)`
-              );
-              console.warn(
-                `🔍 [HOOK] Config data that was rejected:`,
-                configData
-              );
-              console.warn(
-                `🔍 [HOOK] Preserving initial machine data for MQTT Topics`
-              );
+            // ANY message from SMIB indicates it's alive (rsp, err, exp, etc.)
+            // If we previously had real data and went offline, mark as back online
+            // Use refs to avoid dependency on state values that would recreate the callback
+            if (
+              !isConnectedToMqttRef.current &&
+              hasReceivedRealSmibDataRef.current
+            ) {
+              setIsConnectedToMqtt(true);
             }
-          } else if (configData.comp === 'coms') {
-            // Only update if we have actual data from the SMIB
-            const hasActualData =
-              (configData.comsMode !== undefined &&
-                configData.comsMode !== null) ||
-              (configData.comsAddr !== undefined &&
-                configData.comsAddr !== null);
 
-            if (hasActualData) {
-              const modeString =
-                configData.comsMode === 0
-                  ? 'sas'
-                  : configData.comsMode === 1
-                    ? 'non sas'
-                    : 'IGT';
-              // Use SMIB data, but fallback to existing machine values if SMIB returns "No Value Provided"
-              setFormData(prev => {
-                const newFormData = {
-                  ...prev, // Keep all existing values
-                  communicationMode: modeString,
-                  comsMode: configData.comsMode?.toString() || prev.comsMode,
-                  comsAddr: configData.comsAddr?.toString() || prev.comsAddr,
-                  comsRateMs:
-                    configData.comsRateMs?.toString() || prev.comsRateMs,
-                  comsRTE: configData.comsRTE?.toString() || prev.comsRTE,
-                  comsGPC: configData.comsGPC?.toString() || prev.comsGPC,
-                };
-                console.warn(
-                  `🔍 [HOOK] Updating COMS data (SMIB connected):`,
-                  newFormData
-                );
-                return newFormData;
-              });
-              setCommunicationMode(modeString);
-              setIsConnectedToMqtt(true); // SMIB is actually connected and responding
-              setHasReceivedRealSmibData(true); // Mark that we've received real data from SMIB
-              lastHeartbeatRef.current = Date.now(); // Update heartbeat timestamp
-            } else {
-              console.warn(
-                `🔍 [HOOK] Skipping COMS update - no actual data from SMIB (SMIB likely disconnected)`
-              );
+            // For non-config messages (rsp, err, exp), just update heartbeat and return
+            if (!configData || !configData.comp) {
+              return;
             }
-          } else if (configData.comp === 'net') {
-            // Only update if we have actual data from the SMIB
-            const hasActualData =
-              (configData.netStaSSID &&
+
+            // Skip processing if this is just a connection message without actual data
+            if (message.type === 'connected' || message.type === 'ping') {
+              return;
+            }
+
+            // Check if this is actual SMIB data (not just connection messages)
+            const hasRealData =
+              (configData.comp === 'net' &&
+                configData.netStaSSID &&
                 configData.netStaSSID !== 'No Value Provided') ||
-              (configData.netStaPwd &&
-                configData.netStaPwd !== 'No Value Provided') ||
-              (configData.netStaChan && configData.netStaChan !== null);
+              (configData.comp === 'coms' &&
+                configData.comsMode !== undefined &&
+                configData.comsMode !== null) ||
+              (configData.comp === 'mqtt' &&
+                configData.mqttURI &&
+                configData.mqttURI !== 'No Value Provided');
 
-            if (hasActualData) {
-              // Use SMIB data, but fallback to existing machine values if SMIB returns "No Value Provided"
-              setFormData(prev => {
-                const newFormData = {
-                  ...prev, // Keep all existing values
-                  networkSSID: configData.netStaSSID || prev.networkSSID,
-                  networkPassword: configData.netStaPwd || prev.networkPassword,
-                  networkChannel:
-                    configData.netStaChan?.toString() || prev.networkChannel,
-                };
-                console.warn(
-                  `🔍 [HOOK] Updating Network data (SMIB connected):`,
-                  newFormData
-                );
-                return newFormData;
-              });
-              setIsConnectedToMqtt(true); // SMIB is actually connected and responding
-              setHasReceivedRealSmibData(true); // Mark that we've received real data from SMIB
-              lastHeartbeatRef.current = Date.now(); // Update heartbeat timestamp
-            } else {
+            console.warn(`🔍 [HOOK] hasRealData check:`, {
+              comp: configData.comp,
+              hasRealData,
+              netStaSSID: configData.netStaSSID,
+              comsMode: configData.comsMode,
+              mqttURI: configData.mqttURI,
+            });
+
+            if (!hasRealData) {
               console.warn(
-                `🔍 [HOOK] Skipping Network update - no actual data from SMIB (SMIB likely disconnected)`
+                `🔍 [HOOK] Skipping SSE update - no real data from SMIB (still offline)`
               );
+              return;
             }
-          }
-        } else if (message.type === 'error') {
-          console.error('❌ [HOOK] MQTT config stream error:', message.error);
-          setIsConnectedToMqtt(false);
-        }
-      } catch (error) {
-        console.error('❌ [HOOK] Error parsing SSE message:', error);
-      }
-    };
 
-    eventSource.onerror = error => {
-      console.error('❌ [HOOK] EventSource error:', error);
-      setIsConnectedToMqtt(false);
-    };
-  }, [setFormData, setIsConnectedToMqtt, setHasReceivedRealSmibData, setCommunicationMode, setIsSSEConnected, lastHeartbeatRef, messageSubscribersRef]);
+            console.warn(
+              `🔍 [HOOK] SMIB is now ONLINE - processing live data for component: ${configData.comp}`
+            );
+            console.warn(`🔍 [HOOK] Config data received:`, configData);
+
+            if (configData.comp === 'mqtt') {
+              console.warn(`🔍 [HOOK] Processing MQTT data:`, configData);
+
+              // Only update if we have actual data from the SMIB (not just empty responses)
+              // Check if we have real values that are not empty strings, null, undefined, or "No Value Provided"
+              const hasActualData =
+                (configData.mqttURI &&
+                  configData.mqttURI !== 'No Value Provided' &&
+                  configData.mqttURI !== '' &&
+                  configData.mqttURI !== null &&
+                  configData.mqttURI !== undefined &&
+                  configData.mqttURI.length > 0) ||
+                (configData.mqttPubTopic &&
+                  configData.mqttPubTopic !== 'No Value Provided' &&
+                  configData.mqttPubTopic !== '' &&
+                  configData.mqttPubTopic !== null &&
+                  configData.mqttPubTopic !== undefined &&
+                  configData.mqttPubTopic.length > 0) ||
+                (configData.mqttCfgTopic &&
+                  configData.mqttCfgTopic !== 'No Value Provided' &&
+                  configData.mqttCfgTopic !== '' &&
+                  configData.mqttCfgTopic !== null &&
+                  configData.mqttCfgTopic !== undefined &&
+                  configData.mqttCfgTopic.length > 0);
+
+              if (hasActualData) {
+                // Use SMIB data, but fallback to existing machine values if SMIB returns "No Value Provided"
+                setFormData(prev => {
+                  const newFormData = {
+                    ...prev, // Keep all existing values
+                    mqttHost: configData.mqttURI || prev.mqttHost,
+                    mqttTLS: configData.mqttSecure?.toString() || prev.mqttTLS,
+                    mqttIdleTimeout:
+                      configData.mqttIdleTimeS?.toString() ||
+                      prev.mqttIdleTimeout,
+                    mqttUsername: configData.mqttUsername || prev.mqttUsername,
+                    mqttPassword: configData.mqttPassword || prev.mqttPassword,
+                    // MQTT Topics fields - use SMIB data or fallback to existing machine values
+                    mqttPubTopic: configData.mqttPubTopic || prev.mqttPubTopic,
+                    mqttCfgTopic: configData.mqttCfgTopic || prev.mqttCfgTopic,
+                    mqttURI: configData.mqttURI || prev.mqttURI,
+                  };
+
+                  console.warn(
+                    `🔍 [HOOK] Updating form data with MQTT (SMIB connected):`,
+                    newFormData
+                  );
+                  console.warn(
+                    '🔍 [HOOK] SSE updating formData with:',
+                    newFormData
+                  );
+                  console.warn('🔍 [HOOK] SSE result formData:', newFormData);
+                  return newFormData;
+                });
+                setIsConnectedToMqtt(true); // SMIB is actually connected and responding
+                setHasReceivedRealSmibData(true); // Mark that we've received real data from SMIB
+                lastHeartbeatRef.current = Date.now(); // Update heartbeat timestamp
+
+                // Also update mqttConfig state for the MQTT Topics section
+                const newMqttConfig = {
+                  mqttSecure: configData.mqttSecure || 0,
+                  mqttQOS: configData.mqttQOS || 0,
+                  mqttURI: configData.mqttURI || '',
+                  mqttSubTopic: configData.mqttSubTopic || '',
+                  mqttPubTopic: configData.mqttPubTopic || '',
+                  mqttCfgTopic: configData.mqttCfgTopic || '',
+                  mqttIdleTimeS: configData.mqttIdleTimeS || 0,
+                };
+
+                console.warn(
+                  `🔍 [HOOK] Updating mqttConfig with:`,
+                  newMqttConfig
+                );
+              } else {
+                console.warn(
+                  `🔍 [HOOK] Skipping MQTT update - no actual data from SMIB (SMIB likely disconnected)`
+                );
+                console.warn(
+                  `🔍 [HOOK] Config data that was rejected:`,
+                  configData
+                );
+                console.warn(
+                  `🔍 [HOOK] Preserving initial machine data for MQTT Topics`
+                );
+              }
+            } else if (configData.comp === 'coms') {
+              // Only update if we have actual data from the SMIB
+              const hasActualData =
+                (configData.comsMode !== undefined &&
+                  configData.comsMode !== null) ||
+                (configData.comsAddr !== undefined &&
+                  configData.comsAddr !== null);
+
+              if (hasActualData) {
+                const modeString =
+                  configData.comsMode === 0
+                    ? 'sas'
+                    : configData.comsMode === 1
+                      ? 'non sas'
+                      : 'IGT';
+                // Use SMIB data, but fallback to existing machine values if SMIB returns "No Value Provided"
+                setFormData(prev => {
+                  const newFormData = {
+                    ...prev, // Keep all existing values
+                    communicationMode: modeString,
+                    comsMode: configData.comsMode?.toString() || prev.comsMode,
+                    comsAddr: configData.comsAddr?.toString() || prev.comsAddr,
+                    comsRateMs:
+                      configData.comsRateMs?.toString() || prev.comsRateMs,
+                    comsRTE: configData.comsRTE?.toString() || prev.comsRTE,
+                    comsGPC: configData.comsGPC?.toString() || prev.comsGPC,
+                  };
+                  console.warn(
+                    `🔍 [HOOK] Updating COMS data (SMIB connected):`,
+                    newFormData
+                  );
+                  return newFormData;
+                });
+                setCommunicationMode(modeString);
+                setIsConnectedToMqtt(true); // SMIB is actually connected and responding
+                setHasReceivedRealSmibData(true); // Mark that we've received real data from SMIB
+                lastHeartbeatRef.current = Date.now(); // Update heartbeat timestamp
+              } else {
+                console.warn(
+                  `🔍 [HOOK] Skipping COMS update - no actual data from SMIB (SMIB likely disconnected)`
+                );
+              }
+            } else if (configData.comp === 'net') {
+              // Only update if we have actual data from the SMIB
+              const hasActualData =
+                (configData.netStaSSID &&
+                  configData.netStaSSID !== 'No Value Provided') ||
+                (configData.netStaPwd &&
+                  configData.netStaPwd !== 'No Value Provided') ||
+                (configData.netStaChan && configData.netStaChan !== null);
+
+              if (hasActualData) {
+                // Use SMIB data, but fallback to existing machine values if SMIB returns "No Value Provided"
+                setFormData(prev => {
+                  const newFormData = {
+                    ...prev, // Keep all existing values
+                    networkSSID: configData.netStaSSID || prev.networkSSID,
+                    networkPassword:
+                      configData.netStaPwd || prev.networkPassword,
+                    networkChannel:
+                      configData.netStaChan?.toString() || prev.networkChannel,
+                  };
+                  console.warn(
+                    `🔍 [HOOK] Updating Network data (SMIB connected):`,
+                    newFormData
+                  );
+                  return newFormData;
+                });
+                setIsConnectedToMqtt(true); // SMIB is actually connected and responding
+                setHasReceivedRealSmibData(true); // Mark that we've received real data from SMIB
+                lastHeartbeatRef.current = Date.now(); // Update heartbeat timestamp
+              } else {
+                console.warn(
+                  `🔍 [HOOK] Skipping Network update - no actual data from SMIB (SMIB likely disconnected)`
+                );
+              }
+            }
+          } else if (message.type === 'error') {
+            console.error('❌ [HOOK] MQTT config stream error:', message.error);
+            setIsConnectedToMqtt(false);
+          }
+        } catch (error) {
+          console.error('❌ [HOOK] Error parsing SSE message:', error);
+        }
+      };
+
+      eventSource.onerror = error => {
+        console.error('❌ [HOOK] EventSource error:', error);
+        setIsConnectedToMqtt(false);
+      };
+    },
+    [
+      setFormData,
+      setIsConnectedToMqtt,
+      setHasReceivedRealSmibData,
+      setCommunicationMode,
+      setIsSSEConnected,
+      lastHeartbeatRef,
+      messageSubscribersRef,
+    ]
+  );
 
   // Subscribe to SSE messages - allows multiple components to listen
   const subscribeToMessages = useCallback(
@@ -1340,4 +1356,3 @@ export function useSmibConfiguration(): UseSmibConfigurationReturn {
     fetchSmibConfiguration,
   };
 }
-

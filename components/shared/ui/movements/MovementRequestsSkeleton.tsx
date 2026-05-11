@@ -1,4 +1,3 @@
-
 export function MovementRequestCardSkeleton() {
   return (
     <div className="mt-4 space-y-4">
@@ -83,4 +82,3 @@ export function MovementRequestsTableSkeleton() {
     </div>
   );
 }
-

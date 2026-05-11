@@ -12,6 +12,11 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 interface CashierPerformanceQuery {
   locationId?: string;
@@ -29,12 +34,23 @@ interface CashierPerformanceQuery {
  * @param {string} endDate - ISO date for range end
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/reports/cashier-performance';
+  const user = extractUserFromRequest(request);
+
   try {
     // ============================================================================
     // STEP 1: Authentication & Authorization
     // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/reports/cashier-performance',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -95,16 +111,16 @@ export async function GET(request: NextRequest) {
       const duration =
         shift.closedAt && shift.openedAt
           ? (shift.closedAt.getTime() - shift.openedAt.getTime()) /
-          (1000 * 60 * 60) // hours
+            (1000 * 60 * 60) // hours
           : 0;
 
       const discrepancy = shift.discrepancy || 0;
       const accuracy =
         shift.expectedClosingBalance && shift.expectedClosingBalance > 0
           ? Math.max(
-            0,
-            1 - Math.abs(discrepancy) / shift.expectedClosingBalance
-          )
+              0,
+              1 - Math.abs(discrepancy) / shift.expectedClosingBalance
+            )
           : 1;
 
       return {
@@ -134,11 +150,11 @@ export async function GET(request: NextRequest) {
       totalShifts: shifts.length,
       averageAccuracy:
         performance.reduce((sum, p) => sum + p.accuracy, 0) /
-        performance.length || 0,
+          performance.length || 0,
       totalPayouts: performance.reduce((sum, p) => sum + p.payoutsTotal, 0),
       averageShiftDuration:
         performance.reduce((sum, p) => sum + p.duration, 0) /
-        performance.length || 0,
+          performance.length || 0,
       byCashier: {} as Record<string, CashierSummary>,
     };
 
@@ -164,6 +180,16 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 8: Return success response
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/reports/cashier-performance',
+      performance.length,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: true,
       performance,
@@ -171,7 +197,15 @@ export async function GET(request: NextRequest) {
       filters: query,
     });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/reports/cashier-performance',
+      errorMessage,
+      user
+    );
     console.error('Error fetching cashier performance reports:', errorMessage);
     return NextResponse.json(
       { success: false, error: errorMessage },

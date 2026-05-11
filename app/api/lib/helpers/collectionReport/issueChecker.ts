@@ -15,6 +15,16 @@ import type { CollectionDocument } from '@/lib/types/collection';
 import type { GamingMachine } from '@shared/types';
 import type { CollectionReportDocument } from '@shared/types';
 
+function toDate(value: string | Date | undefined): Date | undefined {
+  if (!value) return undefined;
+  return typeof value === 'string' ? new Date(value) : value;
+}
+
+function formatSasTime(value: string | Date | undefined): string {
+  const dateVal = toDate(value);
+  return dateVal ? dateVal.toISOString() : '';
+}
+
 /**
  * Finds the previous collection for a machine
  *
@@ -57,7 +67,8 @@ function findPreviousCollection(
     .filter(
       collection =>
         collection.machineId === machineId &&
-        new Date(collection.timestamp || collection.collectionTime || 0) < currentTimestamp &&
+        new Date(collection.timestamp || collection.collectionTime || 0) <
+          currentTimestamp &&
         collection.isCompleted === true &&
         collection.locationReportId &&
         collection.locationReportId.trim() !== '' &&
@@ -85,8 +96,8 @@ function validateSasTimes(
     machineName?: string;
     machineCustomName?: string;
     sasMeters?: {
-      sasStartTime?: string;
-      sasEndTime?: string;
+      sasStartTime?: string | Date;
+      sasEndTime?: string | Date;
     };
   },
   expectedSasStartTime: Date,
@@ -109,8 +120,14 @@ function validateSasTimes(
   const issues: CollectionIssue[] = [];
 
   if (collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime) {
-    const sasStartTime = new Date(collection.sasMeters.sasStartTime);
-    const sasEndTime = new Date(collection.sasMeters.sasEndTime);
+    const sasStartTimeVal = collection.sasMeters.sasStartTime;
+    const sasEndTimeVal = collection.sasMeters.sasEndTime;
+    const sasStartTime = toDate(sasStartTimeVal);
+    const sasEndTime = toDate(sasEndTimeVal);
+
+    if (!sasStartTime || !sasEndTime) {
+      return [];
+    }
 
     // Check for inverted SAS times
     if (sasStartTime >= sasEndTime) {
@@ -121,8 +138,8 @@ function validateSasTimes(
         issueType: 'inverted_times',
         details: {
           current: {
-            sasStartTime: sasStartTime.toISOString(),
-            sasEndTime: sasEndTime.toISOString(),
+            sasStartTime: formatSasTime(sasStartTimeVal),
+            sasEndTime: formatSasTime(sasEndTimeVal),
           },
           expected: {
             sasStartTime: expectedSasStartTime.toISOString(),
@@ -147,7 +164,7 @@ function validateSasTimes(
         issueType: 'wrong_sas_start_time',
         details: {
           current: {
-            sasStartTime: sasStartTime.toISOString(),
+            sasStartTime: formatSasTime(sasStartTimeVal),
           },
           expected: {
             sasStartTime: expectedSasStartTime.toISOString(),
@@ -415,16 +432,20 @@ async function checkCollectionHistoryIssues(
       .filter((id): id is NonNullable<typeof id> => id !== null);
 
     const machinesWithHistory = await Machine.find({
-        _id: { $in: machineObjectIds },
-        collectionMetersHistory: { $exists: true, $ne: [] },
-      })
+      _id: { $in: machineObjectIds },
+      collectionMetersHistory: { $exists: true, $ne: [] },
+    })
       .lean<GamingMachine[]>()
       .exec();
 
     for (const machine of machinesWithHistory) {
       const history = machine.collectionMetersHistory || [];
 
-      for (let historyIndex = 0; historyIndex < history.length; historyIndex++) {
+      for (
+        let historyIndex = 0;
+        historyIndex < history.length;
+        historyIndex++
+      ) {
         const entry = history[historyIndex];
 
         if (!entry.locationReportId) continue;
@@ -472,7 +493,10 @@ async function checkCollectionHistoryIssues(
       }
     }
   } catch (error) {
-    console.error('[checkCollectionHistoryIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[checkCollectionHistoryIssues] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 
   return issues;
@@ -489,7 +513,10 @@ export async function checkCollectionReportIssues(
 ): Promise<CollectionIssueDetails> {
   if (!reportId) {
     console.error('[checkCollectionReportIssues] reportId is required');
-    return { issues: [], summary: { totalIssues: 0, affectedMachines: 0, affectedReports: 0 } };
+    return {
+      issues: [],
+      summary: { totalIssues: 0, affectedMachines: 0, affectedReports: 0 },
+    };
   }
   const collections = await Collections.find({
     locationReportId: reportId,
@@ -600,7 +627,9 @@ export async function checkCollectionReportIssues(
 
   // Check collection history issues
   const machineIdsInReport = [
-    ...new Set(collections.map(collection => collection.machineId).filter(Boolean)),
+    ...new Set(
+      collections.map(collection => collection.machineId).filter(Boolean)
+    ),
   ];
   const historyIssues = await checkCollectionHistoryIssues(machineIdsInReport);
   issues.push(...historyIssues);
@@ -652,7 +681,8 @@ export async function investigateMostRecentReport(): Promise<{
   }>;
   error?: string;
 }> {
-  const { CollectionReport } = await import('@/app/api/lib/models/collectionReport');
+  const { CollectionReport } =
+    await import('@/app/api/lib/models/collectionReport');
   const { Collections } = await import('@/app/api/lib/models/collections');
   const { Machine } = await import('@/app/api/lib/models/machines');
 
@@ -694,8 +724,8 @@ export async function investigateMostRecentReport(): Promise<{
 
     // Check SAS Times Issues
     if (collection.sasMeters) {
-      const sasStart = new Date(collection.sasMeters.sasStartTime || 0);
-      const sasEnd = new Date(collection.sasMeters.sasEndTime || 0);
+      const sasStart = collection.sasMeters.sasStartTime ?? new Date(0);
+      const sasEnd = collection.sasMeters.sasEndTime ?? new Date(0);
 
       if (sasStart >= sasEnd) {
         collectionIssues.push({
@@ -766,10 +796,7 @@ export async function investigateMostRecentReport(): Promise<{
       const machine = await Machine.findOne({
         _id: collection.machineId,
       }).lean<GamingMachine>();
-      if (
-        machine &&
-        machine.collectionMetersHistory
-      ) {
+      if (machine && machine.collectionMetersHistory) {
         const history = machine.collectionMetersHistory as Array<{
           metersIn?: number;
           metersOut?: number;
@@ -845,4 +872,3 @@ export async function investigateMostRecentReport(): Promise<{
     issues,
   };
 }
-

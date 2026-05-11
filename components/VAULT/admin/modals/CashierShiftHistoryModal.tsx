@@ -11,10 +11,10 @@
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -94,7 +94,9 @@ export default function CashierShiftHistoryModal({
         params.append('variance', 'true');
       }
 
-      const res = await fetch(`/api/vault/cashier-shift/history?${params.toString()}`);
+      const res = await fetch(
+        `/api/vault/cashier-shift/history?${params.toString()}`
+      );
       const data = await res.json();
 
       if (data.success) {
@@ -132,7 +134,13 @@ export default function CashierShiftHistoryModal({
     : cashier.username;
 
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+    const statusMap: Record<
+      string,
+      {
+        label: string;
+        variant: 'default' | 'secondary' | 'destructive' | 'outline';
+      }
+    > = {
       active: { label: 'Active', variant: 'default' },
       closed: { label: 'Closed', variant: 'secondary' },
       pending_review: { label: 'Pending Review', variant: 'destructive' },
@@ -154,8 +162,8 @@ export default function CashierShiftHistoryModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
-        className="max-w-6xl max-h-[90vh] overflow-y-auto !z-[200]"
+      <DialogContent
+        className="!z-[200] max-h-[90vh] max-w-6xl overflow-y-auto"
         backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
       >
         <DialogHeader>
@@ -172,27 +180,31 @@ export default function CashierShiftHistoryModal({
               <BarChart3 className="h-5 w-5" />
               <DialogTitle>Shift History - {cashierName}</DialogTitle>
             </div>
-            
+
             {/* Filter Toggle */}
-            <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-                <button
-                    onClick={() => setShowVarianceOnly(false)}
-                    className={cn(
-                        "px-3 py-1 text-xs font-semibold rounded-md transition-all",
-                        !showVarianceOnly ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-900"
-                    )}
-                >
-                    All Shifts
-                </button>
-                <button
-                    onClick={() => setShowVarianceOnly(true)}
-                    className={cn(
-                        "px-3 py-1 text-xs font-semibold rounded-md transition-all",
-                        showVarianceOnly ? "bg-white shadow text-orangeHighlight" : "text-gray-500 hover:text-gray-900"
-                    )}
-                >
-                    Variance Only
-                </button>
+            <div className="flex items-center gap-2 rounded-lg bg-gray-100 p-1">
+              <button
+                onClick={() => setShowVarianceOnly(false)}
+                className={cn(
+                  'rounded-md px-3 py-1 text-xs font-semibold transition-all',
+                  !showVarianceOnly
+                    ? 'bg-white text-gray-900 shadow'
+                    : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                All Shifts
+              </button>
+              <button
+                onClick={() => setShowVarianceOnly(true)}
+                className={cn(
+                  'rounded-md px-3 py-1 text-xs font-semibold transition-all',
+                  showVarianceOnly
+                    ? 'bg-white text-orangeHighlight shadow'
+                    : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                Variance Only
+              </button>
             </div>
           </div>
         </DialogHeader>
@@ -209,34 +221,47 @@ export default function CashierShiftHistoryModal({
           ) : (
             <>
               <div className="space-y-4">
-                {shifts.map((shift) => (
-                  <div key={shift._id} className="rounded-xl border bg-white shadow-sm overflow-hidden">
+                {shifts.map(shift => (
+                  <div
+                    key={shift._id}
+                    className="overflow-hidden rounded-xl border bg-white shadow-sm"
+                  >
                     {/* Header Row */}
                     <div className="flex items-center justify-between border-b bg-gray-50/50 px-4 py-3">
                       <div className="flex items-center gap-4">
                         <div>
                           <div className="font-bold text-gray-900">
-                             {safeFormatDate(shift.openedAt)}
+                            {safeFormatDate(shift.openedAt)}
                           </div>
-                          <div className="text-xs text-gray-500 font-medium">
-                             Duration: {calculateShiftDuration(shift.openedAt, shift.closedAt)}
+                          <div className="text-xs font-medium text-gray-500">
+                            Duration:{' '}
+                            {calculateShiftDuration(
+                              shift.openedAt,
+                              shift.closedAt
+                            )}
                           </div>
                         </div>
                         {getStatusBadge(shift.status)}
                       </div>
-                      
+
                       {/* Variance Badge in Header if significant */}
-                      {shift.discrepancy !== undefined && shift.discrepancy !== 0 && (
-                         <div className={cn(
-                           "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border",
-                           shift.discrepancy > 0 
-                             ? "bg-green-50 text-green-700 border-green-200" 
-                             : "bg-red-50 text-red-700 border-red-200"
-                         )}>
-                             <span>Variance:</span>
-                             <span>{shift.discrepancy > 0 ? '+' : ''}{formatAmount(shift.discrepancy)}</span>
-                         </div>
-                      )}
+                      {shift.discrepancy !== undefined &&
+                        shift.discrepancy !== 0 && (
+                          <div
+                            className={cn(
+                              'flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-bold',
+                              shift.discrepancy > 0
+                                ? 'border-green-200 bg-green-50 text-green-700'
+                                : 'border-red-200 bg-red-50 text-red-700'
+                            )}
+                          >
+                            <span>Variance:</span>
+                            <span>
+                              {shift.discrepancy > 0 ? '+' : ''}
+                              {formatAmount(shift.discrepancy)}
+                            </span>
+                          </div>
+                        )}
                     </div>
 
                     {/* Content Grid */}
@@ -244,7 +269,9 @@ export default function CashierShiftHistoryModal({
                       <div className="grid grid-cols-2 gap-6 md:grid-cols-4 lg:grid-cols-5">
                         {/* Column 1: Opening */}
                         <div className="space-y-1">
-                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Opening Balance</div>
+                          <div className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Opening Balance
+                          </div>
                           <div className="font-mono text-lg font-bold text-gray-900">
                             {formatAmount(shift.openingBalance)}
                           </div>
@@ -252,42 +279,65 @@ export default function CashierShiftHistoryModal({
 
                         {/* Column 2: Payouts */}
                         <div className="space-y-1">
-                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Payouts</div>
+                          <div className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Payouts
+                          </div>
                           <div className="font-mono text-lg font-medium text-gray-700">
                             {formatAmount(shift.payoutsTotal)}
-                            <span className="ml-1 text-xs text-gray-400 font-normal">({shift.payoutsCount})</span>
+                            <span className="ml-1 text-xs font-normal text-gray-400">
+                              ({shift.payoutsCount})
+                            </span>
                           </div>
                         </div>
 
                         {/* Column 3: Float Adjustments */}
                         <div className="space-y-1">
-                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Float Adj.</div>
+                          <div className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Float Adj.
+                          </div>
                           <div className="font-mono text-lg font-medium text-gray-700">
-                            {shift.floatAdjustmentsTotal ? formatAmount(shift.floatAdjustmentsTotal) : '-'}
+                            {shift.floatAdjustmentsTotal
+                              ? formatAmount(shift.floatAdjustmentsTotal)
+                              : '-'}
                           </div>
                         </div>
 
                         {/* Column 4: Closing */}
                         <div className="space-y-1">
-                          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider">Closing Balance</div>
+                          <div className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                            Closing Balance
+                          </div>
                           <div className="font-mono text-lg font-bold text-gray-900">
-                            {shift.closingBalance !== undefined ? formatAmount(shift.closingBalance) : '-'}
+                            {shift.closingBalance !== undefined
+                              ? formatAmount(shift.closingBalance)
+                              : '-'}
                           </div>
                         </div>
 
                         {/* Column 5: Variance (Detailed) */}
-                        <div className="space-y-1 bg-gray-50 p-2 rounded-lg border border-gray-100 -my-2 flex flex-col justify-center">
-                           <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Variance</div>
-                           <div className={cn(
-                             "font-mono text-lg font-black",
-                             !shift.discrepancy ? "text-gray-400" : shift.discrepancy > 0 ? "text-green-600" : "text-red-600"
-                           )}>
-                             {shift.discrepancy ? (
-                               <>{shift.discrepancy > 0 ? '+' : ''}{formatAmount(shift.discrepancy)}</>
-                             ) : (
-                               <span className="text-gray-300">—</span>
-                             )}
-                           </div>
+                        <div className="-my-2 flex flex-col justify-center space-y-1 rounded-lg border border-gray-100 bg-gray-50 p-2">
+                          <div className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                            Variance
+                          </div>
+                          <div
+                            className={cn(
+                              'font-mono text-lg font-black',
+                              !shift.discrepancy
+                                ? 'text-gray-400'
+                                : shift.discrepancy > 0
+                                  ? 'text-green-600'
+                                  : 'text-red-600'
+                            )}
+                          >
+                            {shift.discrepancy ? (
+                              <>
+                                {shift.discrepancy > 0 ? '+' : ''}
+                                {formatAmount(shift.discrepancy)}
+                              </>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -295,14 +345,16 @@ export default function CashierShiftHistoryModal({
                       {shift.vmReviewNotes && (
                         <div className="mt-4 border-t pt-3">
                           <div className="flex items-start gap-2">
-                             <div className="bg-yellow-100 text-yellow-800 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase mt-0.5">Note</div>
-                             <div className="text-sm text-gray-600 italic">
-                                "{shift.vmReviewNotes}"
-                             </div>
+                            <div className="mt-0.5 rounded bg-yellow-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-yellow-800">
+                              Note
+                            </div>
+                            <div className="text-sm italic text-gray-600">
+                              "{shift.vmReviewNotes}"
+                            </div>
                           </div>
                           {shift.reviewedAt && (
-                            <div className="mt-1 text-xs text-gray-400 ml-12">
-                               Reviewed: {safeFormatDate(shift.reviewedAt)}
+                            <div className="ml-12 mt-1 text-xs text-gray-400">
+                              Reviewed: {safeFormatDate(shift.reviewedAt)}
                             </div>
                           )}
                         </div>

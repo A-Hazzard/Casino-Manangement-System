@@ -13,4 +13,3 @@ export type ErrorBoundaryState = {
   error?: Error;
   errorInfo?: ErrorInfo;
 };
-

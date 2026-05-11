@@ -22,11 +22,9 @@ type CollectionReportDetailsPaginationProps = {
   onPageChange: (page: number) => void;
 };
 
-export const CollectionReportDetailsPagination: FC<CollectionReportDetailsPaginationProps> = ({ 
-  currentPage, 
-  totalPages, 
-  onPageChange 
-}) => {
+export const CollectionReportDetailsPagination: FC<
+  CollectionReportDetailsPaginationProps
+> = ({ currentPage, totalPages, onPageChange }) => {
   return (
     <div className="flex items-center justify-center gap-2 py-4">
       <Button
@@ -53,7 +51,7 @@ export const CollectionReportDetailsPagination: FC<CollectionReportDetailsPagina
           min={1}
           max={totalPages}
           value={currentPage}
-          onChange={(e) => onPageChange(Number(e.target.value))}
+          onChange={e => onPageChange(Number(e.target.value))}
           className="w-12 rounded border border-gray-300 p-1 text-center text-sm focus:border-blue-500 focus:outline-none"
         />
         <span className="text-sm text-gray-500">of {totalPages}</span>

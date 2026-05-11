@@ -5,4 +5,3 @@ export type MachineAggregationMatchStage = {
   }>;
   [key: string]: unknown;
 };
-

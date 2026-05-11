@@ -43,5 +43,3 @@ export function formatCurrency(value: number): string {
  * The actual implementation is in lib/utils/date/formatting.ts
  */
 export { formatDate, formatDateString } from './date/formatting';
-
-

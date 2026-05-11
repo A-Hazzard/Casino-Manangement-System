@@ -36,7 +36,7 @@ export function MachineWithVariationBadge({
     <div className={`relative ${className}`}>
       {children}
       {/* Badge */}
-      <div className="absolute -top-2 -right-2 flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-white shadow-md">
+      <div className="absolute -right-2 -top-2 flex items-center gap-1 rounded-full bg-amber-500 px-2 py-1 text-white shadow-md">
         <AlertCircle className="h-4 w-4" />
         <span className="text-xs font-semibold">Variation</span>
       </div>

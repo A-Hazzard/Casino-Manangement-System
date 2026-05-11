@@ -1,8 +1,8 @@
 # Sessions API (`/api/sessions`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -15,9 +15,11 @@ Manages player journey records — linking a loyalty card swipe to a machine for
 ## 2. Core Endpoints
 
 ### 📋 `GET /api/sessions`
+
 Returns a paginated, searchable list of machine sessions with joined machine and location context.
 
 **Steps:**
+
 1. **Connect to database** — Establishes the Mongoose connection.
 2. **Parse query params** — Reads `page`, `limit`, `search`, `sortBy`, `sortOrder`, `licencee`, `dateFilter` (`today`/`yesterday`/`7d`/`30d`/`all`), and explicit `startDate`/`endDate`.
 3. **Build base query with date filters** — Constructs a MongoDB `$match` for `startTime`. If explicit `startDate`/`endDate` are provided, uses them directly. Otherwise resolves a date range from the `dateFilter` shorthand (e.g. `today` = current day's midnight to 23:59:59).
@@ -36,9 +38,11 @@ Returns a paginated, searchable list of machine sessions with joined machine and
 ---
 
 ### 🔍 `GET /api/sessions/[sessionId]`
+
 Returns the full detail for a single session including member and machine context.
 
 **Steps:**
+
 1. **Connect to database** — Establishes the Mongoose connection.
 2. **Validate `sessionId`** — Checks it is a non-empty string. Returns `400` if invalid.
 3. **Build aggregation pipeline** — Constructs a pipeline with:
@@ -55,7 +59,9 @@ Returns the full detail for a single session including member and machine contex
 ## 3. Business Logic
 
 ### 📊 Relevance Scoring
+
 When a `search` query is provided, the pipeline adds a `relevanceScore` calculated as:
+
 - `+20` for an exact prefix match on `profile.firstName` or `profile.lastName`
 - `+10` for a prefix match on `_id` or `machineId`
 - `+1` for a substring match
@@ -63,7 +69,9 @@ When a `search` query is provided, the pipeline adds a `relevanceScore` calculat
 Results are sorted by score descending before pagination so the most relevant results appear first.
 
 ### 🔒 Licencee Filtering
+
 Licencee filtering is not done at the `MachineSessions` document level — sessions don't directly store licencee IDs. The filter is enforced via the aggregation join chain: `Sessions → Machines → GamingLocations → Licencees`. Only sessions where the resolved licencee ID matches the requested `licencee` query param are returned.
 
 ---
+
 **Technical Reference** - Operations & Session Team

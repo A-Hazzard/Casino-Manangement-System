@@ -61,36 +61,69 @@ export class LocationDetailPage {
     this.machineRows = page.locator('table tbody tr');
 
     // Header buttons
-    this.addMachineButton = page.getByRole('button', { name: /add machine|create machine|new machine/i });
+    this.addMachineButton = page.getByRole('button', {
+      name: /add machine|create machine|new machine/i,
+    });
     this.settingsButton = page.getByRole('button', { name: /settings/i });
     this.backButton = page.getByRole('link', { name: /back|locations/i });
 
     // Machine modal — identified by "Add" or "Edit" in its title
-    this.machineModal = page.locator('[role="dialog"]').filter({ hasText: /add.*machine|create.*machine|edit.*machine|new.*cabinet|add.*cabinet/i });
+    this.machineModal = page
+      .locator('[role="dialog"]')
+      .filter({
+        hasText:
+          /add.*machine|create.*machine|edit.*machine|new.*cabinet|add.*cabinet/i,
+      });
 
-    this.serialNumberInput = this.machineModal.locator('input[name="serialNumber"], #serialNumber');
+    this.serialNumberInput = this.machineModal.locator(
+      'input[name="serialNumber"], #serialNumber'
+    );
     this.gameInput = this.machineModal.locator('input[name="game"], #game');
-    this.gameTypeSelect = this.machineModal.locator('select[name="gameType"], #gameType');
-    this.relayIdInput = this.machineModal.locator('input[name="relayId"], #relayId');
-    this.manufacturerSelect = this.machineModal.locator('select[name="manufacturer"], #manufacturer');
-    this.customNameInput = this.machineModal.locator('input[name="custom.name"], input[name="customName"], #customName');
-    this.cabinetTypeSelect = this.machineModal.locator('select[name="cabinetType"], #cabinetType');
-    this.assetStatusSelect = this.machineModal.locator('select[name="assetStatus"], #assetStatus');
+    this.gameTypeSelect = this.machineModal.locator(
+      'select[name="gameType"], #gameType'
+    );
+    this.relayIdInput = this.machineModal.locator(
+      'input[name="relayId"], #relayId'
+    );
+    this.manufacturerSelect = this.machineModal.locator(
+      'select[name="manufacturer"], #manufacturer'
+    );
+    this.customNameInput = this.machineModal.locator(
+      'input[name="custom.name"], input[name="customName"], #customName'
+    );
+    this.cabinetTypeSelect = this.machineModal.locator(
+      'select[name="cabinetType"], #cabinetType'
+    );
+    this.assetStatusSelect = this.machineModal.locator(
+      'select[name="assetStatus"], #assetStatus'
+    );
 
     this.submitMachineButton = this.machineModal.getByRole('button', {
       name: /create cabinet|add machine|save|update/i,
     });
-    this.cancelMachineButton = this.machineModal.getByRole('button', { name: /cancel/i });
+    this.cancelMachineButton = this.machineModal.getByRole('button', {
+      name: /cancel/i,
+    });
 
-    this.serialNumberError = this.machineModal.locator('#serialNumber-error, [id*="serialNumber"][id*="error"]');
+    this.serialNumberError = this.machineModal.locator(
+      '#serialNumber-error, [id*="serialNumber"][id*="error"]'
+    );
 
     // Delete dialog
-    this.deleteDialog = page.locator('[role="dialog"]').filter({ hasText: /are you absolutely sure/i });
-    this.confirmDeleteButton = this.deleteDialog.getByRole('button', { name: /delete/i });
-    this.cancelDeleteButton = this.deleteDialog.getByRole('button', { name: /cancel/i });
+    this.deleteDialog = page
+      .locator('[role="dialog"]')
+      .filter({ hasText: /are you absolutely sure/i });
+    this.confirmDeleteButton = this.deleteDialog.getByRole('button', {
+      name: /delete/i,
+    });
+    this.cancelDeleteButton = this.deleteDialog.getByRole('button', {
+      name: /cancel/i,
+    });
 
     // Meter data section
-    this.meterDataSection = page.locator('[data-testid="meter-data"], text=Meter Data, text=SAS Meters').locator('..');
+    this.meterDataSection = page
+      .locator('[data-testid="meter-data"], text=Meter Data, text=SAS Meters')
+      .locator('..');
   }
 
   // ─── Navigation ────────────────────────────────────────────────────────────
@@ -116,12 +149,20 @@ export class LocationDetailPage {
 
   async clickMachineEdit(rowIndex: number) {
     const row = this.machineRows.nth(rowIndex);
-    await row.locator('button[aria-label*="edit" i], img[alt*="edit" i], [title*="edit" i]').click();
+    await row
+      .locator(
+        'button[aria-label*="edit" i], img[alt*="edit" i], [title*="edit" i]'
+      )
+      .click();
   }
 
   async clickMachineDelete(rowIndex: number) {
     const row = this.machineRows.nth(rowIndex);
-    await row.locator('button[aria-label*="delete" i], img[alt*="delete" i], [title*="delete" i]').click();
+    await row
+      .locator(
+        'button[aria-label*="delete" i], img[alt*="delete" i], [title*="delete" i]'
+      )
+      .click();
   }
 
   // ─── Add machine modal actions ──────────────────────────────────────────────
@@ -145,10 +186,13 @@ export class LocationDetailPage {
     if (data.game) await this.gameInput.fill(data.game);
     if (data.gameType) await this.gameTypeSelect.selectOption(data.gameType);
     if (data.relayId) await this.relayIdInput.fill(data.relayId);
-    if (data.manufacturer) await this.manufacturerSelect.selectOption({ label: data.manufacturer });
+    if (data.manufacturer)
+      await this.manufacturerSelect.selectOption({ label: data.manufacturer });
     if (data.customName) await this.customNameInput.fill(data.customName);
-    if (data.cabinetType) await this.cabinetTypeSelect.selectOption(data.cabinetType);
-    if (data.assetStatus) await this.assetStatusSelect.selectOption(data.assetStatus);
+    if (data.cabinetType)
+      await this.cabinetTypeSelect.selectOption(data.cabinetType);
+    if (data.assetStatus)
+      await this.assetStatusSelect.selectOption(data.assetStatus);
   }
 
   async submitMachineForm() {
@@ -183,9 +227,11 @@ export class LocationDetailPage {
   }
 
   async expectMachinesTabActive() {
-    await expect(this.machinesTab).toHaveAttribute('data-state', 'active').catch(async () => {
-      await expect(this.machinesTab).toHaveClass(/active|selected/);
-    });
+    await expect(this.machinesTab)
+      .toHaveAttribute('data-state', 'active')
+      .catch(async () => {
+        await expect(this.machinesTab).toHaveClass(/active|selected/);
+      });
   }
 
   async expectMembersTabVisible() {
@@ -194,7 +240,9 @@ export class LocationDetailPage {
 
   async expectSerialNumberValidationError() {
     await expect(this.serialNumberError).toBeVisible();
-    await expect(this.serialNumberError).toContainText(/3 characters|required/i);
+    await expect(this.serialNumberError).toContainText(
+      /3 characters|required/i
+    );
   }
 
   async expectMeterDataVisible() {

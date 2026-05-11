@@ -19,6 +19,11 @@ import {
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/analytics/machines
@@ -40,6 +45,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/analytics/machines';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -47,8 +54,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(request.url);
     const limit = Number(searchParams.get('limit')) || 5;
-    const selectedLicencee =
-      searchParams.get('licencee') || undefined;
+    const selectedLicencee = searchParams.get('licencee') || undefined;
     const selectedLocation = searchParams.get('location') || undefined;
 
     // ============================================================================
@@ -63,8 +69,13 @@ export async function GET(request: NextRequest) {
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
     let userLocationPermissions: string[] = [];
-    if (Array.isArray((userPayload as { assignedLocations?: string[] })?.assignedLocations)) {
-      userLocationPermissions = (userPayload as { assignedLocations: string[] }).assignedLocations;
+    if (
+      Array.isArray(
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations
+      )
+    ) {
+      userLocationPermissions = (userPayload as { assignedLocations: string[] })
+        .assignedLocations;
     }
 
     const allowedLocationIds = await getUserLocationFilter(
@@ -78,10 +89,15 @@ export async function GET(request: NextRequest) {
     // STEP 4: Validate location access
     // ============================================================================
     if (allowedLocationIds !== 'all') {
-      if (!Array.isArray(allowedLocationIds) || allowedLocationIds.length === 0) {
+      if (
+        !Array.isArray(allowedLocationIds) ||
+        allowedLocationIds.length === 0
+      ) {
         const duration = Date.now() - startTime;
         if (duration > 1000) {
-          console.warn(`[Analytics Machines GET API] No access after ${duration}ms`);
+          console.warn(
+            `[Analytics Machines GET API] No access after ${duration}ms`
+          );
         }
         return NextResponse.json({ machines: [] });
       }
@@ -89,7 +105,9 @@ export async function GET(request: NextRequest) {
       if (selectedLocation && !allowedLocationIds.includes(selectedLocation)) {
         const duration = Date.now() - startTime;
         if (duration > 1000) {
-          console.warn(`[Analytics Machines GET API] Location not accessible after ${duration}ms`);
+          console.warn(
+            `[Analytics Machines GET API] Location not accessible after ${duration}ms`
+          );
         }
         return NextResponse.json({ machines: [] });
       }
@@ -109,6 +127,15 @@ export async function GET(request: NextRequest) {
     // STEP 6: Return machine analytics
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/analytics/machines',
+      Array.isArray(machines) ? machines.length : 1,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
       console.warn(`[Analytics Machines GET API] Completed in ${duration}ms`);
     }
@@ -117,6 +144,13 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal Server Error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/analytics/machines',
+      errorMessage,
+      user
+    );
     console.error(
       `[Machine Analytics GET API] Error after ${duration}ms:`,
       errorMessage
@@ -124,4 +158,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-

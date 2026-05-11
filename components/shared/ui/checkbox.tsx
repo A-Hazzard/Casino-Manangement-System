@@ -10,7 +10,6 @@
  */
 'use client';
 
-
 import { forwardRef } from 'react';
 import { ComponentPropsWithoutRef, ElementRef } from 'react';
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
@@ -40,4 +39,3 @@ const Checkbox = forwardRef<
 Checkbox.displayName = CheckboxPrimitive.Root.displayName;
 
 export { Checkbox };
-

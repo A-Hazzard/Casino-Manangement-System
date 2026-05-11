@@ -47,5 +47,3 @@ export type UseReportsTabContentReturn = {
   isTabTransitioning: boolean;
   currentTabComponent: ReactElement;
 };
-
-

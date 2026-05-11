@@ -13,9 +13,14 @@ type CollectionSasMetrics = {
   drop: number;
   totalCancelledCredits: number;
   gross: number;
-  sasStartTime: string;
-  sasEndTime: string;
+  sasStartTime: Date | string;
+  sasEndTime: Date | string;
 };
+
+function toDate(value: string | Date | undefined): Date {
+  if (!value) return new Date();
+  return typeof value === 'string' ? new Date(value) : value;
+}
 
 type MeterSyncResult = {
   machineId: string;
@@ -98,8 +103,8 @@ async function calculateSasMetricsFromMeters(
     drop: dropMovement,
     totalCancelledCredits: cancelledMovement,
     gross: sasGross,
-    sasStartTime: sasStartTime.toISOString(),
-    sasEndTime: sasEndTime.toISOString(),
+    sasStartTime,
+    sasEndTime,
   };
 }
 
@@ -113,8 +118,8 @@ async function syncCollectionSasMetrics(collection: {
   _id: string;
   machineId?: string;
   sasMeters?: {
-    sasStartTime?: string;
-    sasEndTime?: string;
+    sasStartTime?: string | Date;
+    sasEndTime?: string | Date;
   };
 }): Promise<MeterSyncResult | null> {
   const machineId = collection.machineId;
@@ -123,13 +128,14 @@ async function syncCollectionSasMetrics(collection: {
   }
 
   // Determine SAS time period for this collection
-  const sasStartTime = collection.sasMeters?.sasStartTime
-    ? new Date(collection.sasMeters.sasStartTime)
-    : new Date(Date.now() - 24 * 60 * 60 * 1000); // Default to 24 hours ago
+  const sasStartTimeVal =
+    collection.sasMeters?.sasStartTime ??
+    new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const sasEndTime = collection.sasMeters?.sasEndTime
-    ? new Date(collection.sasMeters.sasEndTime)
-    : new Date(); // Default to current time
+  const sasEndTimeVal = collection.sasMeters?.sasEndTime ?? new Date();
+
+  const sasStartTime = toDate(sasStartTimeVal);
+  const sasEndTime = toDate(sasEndTimeVal);
 
   // Calculate SAS metrics from meters
   const sasMetrics = await calculateSasMetricsFromMeters(
@@ -195,8 +201,14 @@ async function syncCollectionSasMetrics(collection: {
       },
     },
     timePeriod: {
-      start: sasMetrics.sasStartTime,
-      end: sasMetrics.sasEndTime,
+      start:
+        typeof sasMetrics.sasStartTime === 'string'
+          ? sasMetrics.sasStartTime
+          : sasMetrics.sasStartTime.toISOString(),
+      end:
+        typeof sasMetrics.sasEndTime === 'string'
+          ? sasMetrics.sasEndTime
+          : sasMetrics.sasEndTime.toISOString(),
     },
   };
 }
@@ -214,7 +226,11 @@ export async function syncReportMeters(reportId: string): Promise<{
 }> {
   if (!reportId) {
     console.error('[syncReportMeters] reportId is required');
-    return { updatedCollections: 0, results: [], totals: { drop: 0, cancelled: 0, gross: 0 } };
+    return {
+      updatedCollections: 0,
+      results: [],
+      totals: { drop: 0, cancelled: 0, gross: 0 },
+    };
   }
   const collections = await Collections.find({
     locationReportId: reportId,
@@ -271,4 +287,3 @@ export async function syncReportMeters(reportId: string): Promise<{
     },
   };
 }
-

@@ -2,8 +2,8 @@ import { generateSecret, generateURI, verifySync } from 'otplib';
 
 /**
  * TOTP Helper Functions
- * 
- * Provides utilities for generating secrets, verifying codes, 
+ *
+ * Provides utilities for generating secrets, verifying codes,
  * and creating authentication URIs for Google Authenticator.
  * Uses otplib v13 functional API.
  */
@@ -35,7 +35,10 @@ export function verifyTOTPCode(token: string, secret: string): boolean {
     });
     // In otplib v13, verifySync returns a result object { valid: boolean, delta?: number }
     if (!result?.valid) {
-      console.warn(`[TOTP] Verification FAILED. Token: ${token}, Secret: ${secret.substring(0, 4)}..., Result:`, result);
+      console.warn(
+        `[TOTP] Verification FAILED. Token: ${token}, Secret: ${secret.substring(0, 4)}..., Result:`,
+        result
+      );
     } else {
       console.log(`[TOTP] Verification SUCCESS. Delta: ${result.delta}`);
     }
@@ -52,7 +55,11 @@ export function verifyTOTPCode(token: string, secret: string): boolean {
  * @param issuer The name of the application (Evolution One).
  * @param secret The user's secret.
  */
-export function generateOTPAuthURI(user: string, issuer: string, secret: string): string {
+export function generateOTPAuthURI(
+  user: string,
+  issuer: string,
+  secret: string
+): string {
   if (!user || !issuer || !secret) {
     console.error('[generateOTPAuthURI] user, issuer, and secret are required');
     return '';

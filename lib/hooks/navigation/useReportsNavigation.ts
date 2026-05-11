@@ -31,7 +31,8 @@ export function useReportsNavigation(reportsTabsConfig: ReportTab[]) {
       setActiveView('meters');
     } else {
       // Default to first available tab (meters is now the first tab)
-      const defaultTab = availableTabs.length > 0 ? availableTabs[0].id : 'meters';
+      const defaultTab =
+        availableTabs.length > 0 ? availableTabs[0].id : 'meters';
       setActiveView(defaultTab as ReportView);
     }
   }, [searchParams, setActiveView, availableTabs]);
@@ -91,4 +92,3 @@ export function useReportsNavigation(reportsTabsConfig: ReportTab[]) {
     handleTabChange,
   };
 }
-

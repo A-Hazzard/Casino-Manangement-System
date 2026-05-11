@@ -4,6 +4,11 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
@@ -19,17 +24,29 @@ import { NextRequest, NextResponse } from 'next/server';
  * @body {Object} approvedDenominations - Denomination breakdown for the approval.
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/float-request/approve';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const hasVaultAccess = normalizedRoles.some(role =>
         ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
       );
-      if (!hasVaultAccess)
+      if (!hasVaultAccess) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/float-request/approve',
+          'Insufficient permissions',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient permissions' },
           { status: 403 }
         );
+      }
 
       const {
         requestId,
@@ -38,23 +55,47 @@ export async function POST(request: NextRequest) {
         approvedDenominations,
         vmNotes,
       } = await request.json();
-      if (!requestId || !status)
+      if (!requestId || !status) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/float-request/approve',
+          'Missing required fields',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Missing required fields' },
           { status: 400 }
         );
+      }
 
       const floatRequest = await FloatRequestModel.findOne({ _id: requestId });
-      if (!floatRequest)
+      if (!floatRequest) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/float-request/approve',
+          'Float request not found',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Float request not found' },
           { status: 404 }
         );
-      if (floatRequest.status !== 'pending')
+      }
+      if (floatRequest.status !== 'pending') {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/float-request/approve',
+          `Invalid status: ${floatRequest.status}`,
+          user
+        );
         return NextResponse.json(
           { success: false, error: `Invalid status: ${floatRequest.status}` },
           { status: 400 }
         );
+      }
 
       const now = new Date();
       floatRequest.processedBy = userPayload._id;
@@ -95,6 +136,15 @@ export async function POST(request: NextRequest) {
             floatRequestId: requestId,
           },
         });
+        const duration = Date.now() - startTime;
+        logRouteUpdate(
+          functionName,
+          'POST',
+          '/api/vault/float-request/approve',
+          1,
+          user,
+          duration
+        );
         return NextResponse.json({
           success: true,
           status: 'denied',
@@ -106,27 +156,51 @@ export async function POST(request: NextRequest) {
         const vaultShift = await VaultShiftModel.findOne({
           _id: floatRequest.vaultShiftId,
         });
-        if (!vaultShift)
+        if (!vaultShift) {
+          logRouteError(
+            functionName,
+            'POST',
+            '/api/vault/float-request/approve',
+            'Vault shift not found',
+            user
+          );
           return NextResponse.json(
             { success: false, error: 'Vault shift not found' },
             { status: 404 }
           );
+        }
 
         let finalAmount = floatRequest.requestedAmount;
         let finalDenoms = floatRequest.requestedDenominations;
 
         if (status === 'edited') {
-          if (approvedAmount === undefined || !approvedDenominations)
+          if (approvedAmount === undefined || !approvedDenominations) {
+            logRouteError(
+              functionName,
+              'POST',
+              '/api/vault/float-request/approve',
+              'Missing edited data',
+              user
+            );
             return NextResponse.json(
               { success: false, error: 'Missing edited data' },
               { status: 400 }
             );
+          }
           const val = validateDenominations(approvedDenominations);
-          if (!val.valid || val.total !== approvedAmount)
+          if (!val.valid || val.total !== approvedAmount) {
+            logRouteError(
+              functionName,
+              'POST',
+              '/api/vault/float-request/approve',
+              'Invalid edited denoms',
+              user
+            );
             return NextResponse.json(
               { success: false, error: 'Invalid edited denoms' },
               { status: 400 }
             );
+          }
           finalAmount = approvedAmount;
           finalDenoms = approvedDenominations;
           floatRequest.approvedAmount = finalAmount;
@@ -142,19 +216,35 @@ export async function POST(request: NextRequest) {
         if (floatRequest.type === 'increase' || !floatRequest.type) {
           const { validateVaultBalance, validateVaultDenominations } =
             await import('@/lib/helpers/vault/validation');
-          if (!validateVaultBalance(finalAmount, currentVaultBal).valid)
+          if (!validateVaultBalance(finalAmount, currentVaultBal).valid) {
+            logRouteError(
+              functionName,
+              'POST',
+              '/api/vault/float-request/approve',
+              'Insufficient vault funds',
+              user
+            );
             return NextResponse.json(
               { success: false, error: 'Insufficient vault funds' },
               { status: 400 }
             );
+          }
           const vDenoms = vaultShift.currentDenominations?.length
             ? vaultShift.currentDenominations
             : vaultShift.openingDenominations;
-          if (!validateVaultDenominations(finalDenoms, vDenoms || []).valid)
+          if (!validateVaultDenominations(finalDenoms, vDenoms || []).valid) {
+            logRouteError(
+              functionName,
+              'POST',
+              '/api/vault/float-request/approve',
+              'Vault missing denominations',
+              user
+            );
             return NextResponse.json(
               { success: false, error: 'Vault missing denominations' },
               { status: 400 }
             );
+          }
         }
 
         await floatRequest.save();
@@ -167,6 +257,15 @@ export async function POST(request: NextRequest) {
             userPayload._id,
             userPayload.username as string,
             vmNotes || ''
+          );
+          const duration = Date.now() - startTime;
+          logRouteUpdate(
+            functionName,
+            'POST',
+            '/api/vault/float-request/approve',
+            1,
+            user,
+            duration
           );
           return NextResponse.json({
             success: true,
@@ -195,7 +294,9 @@ export async function POST(request: NextRequest) {
             { $set: { 'metadata.entityStatus': 'approved_vm' } }
           );
           if (notifUpdateResult.modifiedCount === 0) {
-            console.warn(`[float-request/approve] No notifications updated for requestId: ${requestId}`);
+            console.warn(
+              `[float-request/approve] No notifications updated for requestId: ${requestId}`
+            );
           }
         } catch (e) {
           console.error('Notification fix failed:', e);
@@ -213,6 +314,15 @@ export async function POST(request: NextRequest) {
             status: 'approved_vm',
           },
         });
+        const duration = Date.now() - startTime;
+        logRouteUpdate(
+          functionName,
+          'POST',
+          '/api/vault/float-request/approve',
+          1,
+          user,
+          duration
+        );
         return NextResponse.json({
           success: true,
           status: 'approved_vm',
@@ -220,13 +330,35 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/float-request/approve',
+        'Invalid status',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Invalid status' },
         { status: 400 }
       );
     } catch (e) {
-      console.error('[Float Approve API] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to approve float request';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/float-request/approve',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[Float Approve API] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        { status: 500 }
+      );
     }
   });
 }

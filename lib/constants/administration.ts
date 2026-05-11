@@ -47,4 +47,3 @@ export const ADMINISTRATION_TABS_CONFIG: AdministrationTab[] = [
     available: isTabAvailable('administration', 'feedback'),
   },
 ];
-

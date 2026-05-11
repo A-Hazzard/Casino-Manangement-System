@@ -13,7 +13,9 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import type { Firmware } from '@/lib/types/firmware';
 
-export default function SMIBFirmwareSection({ refreshTrigger = 0 }: { refreshTrigger?: number } = {}) {
+export default function SMIBFirmwareSection({
+  refreshTrigger = 0,
+}: { refreshTrigger?: number } = {}) {
   const [firmwares, setFirmwares] = useState<Firmware[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -63,22 +65,22 @@ export default function SMIBFirmwareSection({ refreshTrigger = 0 }: { refreshTri
   // Loading skeleton for cards
   const renderCardSkeleton = () => (
     <Card>
-      <CardContent className="p-4 space-y-3">
+      <CardContent className="space-y-3 p-4">
         <div>
-          <Skeleton className="h-3 w-16 mb-1" />
+          <Skeleton className="mb-1 h-3 w-16" />
           <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-3 w-40 mt-1" />
+          <Skeleton className="mt-1 h-3 w-40" />
         </div>
         <div>
-          <Skeleton className="h-3 w-16 mb-1" />
+          <Skeleton className="mb-1 h-3 w-16" />
           <Skeleton className="h-5 w-20" />
         </div>
         <div>
-          <Skeleton className="h-3 w-20 mb-1" />
+          <Skeleton className="mb-1 h-3 w-20" />
           <Skeleton className="h-4 w-28" />
         </div>
-        <div className="pt-2 border-t border-gray-200">
-          <Skeleton className="h-3 w-16 mb-2" />
+        <div className="border-t border-gray-200 pt-2">
+          <Skeleton className="mb-2 h-3 w-16" />
           <div className="flex gap-4">
             <Skeleton className="h-8 w-24" />
             <Skeleton className="h-8 w-20" />
@@ -139,7 +141,7 @@ export default function SMIBFirmwareSection({ refreshTrigger = 0 }: { refreshTri
         {/* Mobile & Tablet: Card Grid (below lg) */}
         <div className="lg:hidden">
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {[...Array(4)].map((_, i) => (
                 <div key={i}>{renderCardSkeleton()}</div>
               ))}
@@ -147,7 +149,7 @@ export default function SMIBFirmwareSection({ refreshTrigger = 0 }: { refreshTri
           ) : firmwares.length === 0 ? (
             renderEmptyState()
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {firmwares.map(firmware => (
                 <SMIBFirmwareCard key={firmware._id} firmware={firmware} />
               ))}
@@ -156,7 +158,7 @@ export default function SMIBFirmwareSection({ refreshTrigger = 0 }: { refreshTri
         </div>
 
         {/* Desktop: Table (lg and above) */}
-        <div className="hidden lg:block overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="hidden overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm lg:block">
           <SMIBFirmwareTable
             firmwares={firmwares}
             loading={loading}
@@ -167,4 +169,3 @@ export default function SMIBFirmwareSection({ refreshTrigger = 0 }: { refreshTri
     </>
   );
 }
-

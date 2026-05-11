@@ -18,21 +18,21 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
 import {
-    calculateTopMachines,
-    handleExportMeters,
+  calculateTopMachines,
+  handleExportMeters,
 } from '@/lib/helpers/reports/metersTabHelpers';
 import { useMetersTabData } from '@/lib/hooks/reports/useMetersTabData';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -40,13 +40,13 @@ import { useReportsStore } from '@/lib/store/reportsStore';
 import type { TopPerformingItem } from '@/lib/types';
 import { useDebounce } from '@/lib/utils/hooks';
 import {
-    AlertCircle,
-    BarChart3,
-    ChevronDown,
-    Download,
-    FileSpreadsheet,
-    FileText,
-    RefreshCw,
+  AlertCircle,
+  BarChart3,
+  ChevronDown,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  RefreshCw,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -174,8 +174,6 @@ export default function ReportsMetersTab() {
     calculateTop();
   }, [allMetersData]);
 
-
-
   // ============================================================================
   // Handlers
   // ============================================================================
@@ -200,7 +198,8 @@ export default function ReportsMetersTab() {
       handleRefresh();
     };
     window.addEventListener('refreshReports', handleGlobalRefresh);
-    return () => window.removeEventListener('refreshReports', handleGlobalRefresh);
+    return () =>
+      window.removeEventListener('refreshReports', handleGlobalRefresh);
   }, [handleRefresh]);
 
   const handleExport = useCallback(
@@ -392,4 +391,3 @@ export default function ReportsMetersTab() {
     </div>
   );
 }
-

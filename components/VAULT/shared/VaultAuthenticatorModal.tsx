@@ -24,7 +24,7 @@ export default function VaultAuthenticatorModal({
   open,
   onClose,
   onVerified,
-  actionName
+  actionName,
 }: VaultAuthenticatorModalProps) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,7 +34,9 @@ export default function VaultAuthenticatorModal({
   const [userRole, setUserRole] = useState<string | null>(null);
   const [currentEmail, setCurrentEmail] = useState<string | null>(null);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
-  const [recoveryStep, setRecoveryStep] = useState<'none' | 'confirm' | 'edit'>('none');
+  const [recoveryStep, setRecoveryStep] = useState<'none' | 'confirm' | 'edit'>(
+    'none'
+  );
   const [recoveryNewEmail, setRecoveryNewEmail] = useState('');
   const [recoveryPassword, setRecoveryPassword] = useState('');
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
@@ -55,11 +57,11 @@ export default function VaultAuthenticatorModal({
     try {
       const response = await fetch('/api/auth/totp/status');
       const data = await response.json();
-      
+
       if (response.ok) {
         setNeedsSetup(data.needsSetup);
         setHasSecret(data.hasSecret);
-        setUserRole(data.role); 
+        setUserRole(data.role);
         setCurrentEmail(data.email);
       } else if (response.status === 401) {
         toast.error('Session expired. Please log in again.');
@@ -105,24 +107,33 @@ export default function VaultAuthenticatorModal({
   };
 
   const handleRecovery = async () => {
-    const isVM = userRole?.toLowerCase() === 'vault-manager' || userRole?.toLowerCase() === 'admin' || userRole?.toLowerCase() === 'developer' || userRole?.toLowerCase() === 'manager' || userRole?.toLowerCase() === 'location admin';
-    
+    const isVM =
+      userRole?.toLowerCase() === 'vault-manager' ||
+      userRole?.toLowerCase() === 'admin' ||
+      userRole?.toLowerCase() === 'developer' ||
+      userRole?.toLowerCase() === 'manager' ||
+      userRole?.toLowerCase() === 'location admin';
+
     if (isVM && recoveryStep === 'none') {
       setRecoveryStep('confirm');
       return;
     }
 
-    const endpoint = isVM ? '/api/auth/totp/recover/vm' : '/api/auth/totp/recover/cashier';
-    
+    const endpoint = isVM
+      ? '/api/auth/totp/recover/vm'
+      : '/api/auth/totp/recover/cashier';
+
     setRecoveryLoading(true);
     try {
       const response = await fetch(endpoint, { method: 'POST' });
       const data = await response.json();
-      
+
       if (response.ok) {
-        toast.success(isVM 
-          ? 'Recovery email sent. Please check your inbox.' 
-          : 'Help request sent to Vault Managers.');
+        toast.success(
+          isVM
+            ? 'Recovery email sent. Please check your inbox.'
+            : 'Help request sent to Vault Managers.'
+        );
         setRecoveryStep('none');
       } else {
         toast.error(data.error || 'Recovery request failed');
@@ -145,7 +156,10 @@ export default function VaultAuthenticatorModal({
       const updateRes = await fetch('/api/auth/profile/update-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newEmail: recoveryNewEmail, password: recoveryPassword }),
+        body: JSON.stringify({
+          newEmail: recoveryNewEmail,
+          password: recoveryPassword,
+        }),
       });
       const updateData = await updateRes.json();
 
@@ -156,11 +170,18 @@ export default function VaultAuthenticatorModal({
 
       toast.success('Email updated successfully');
       setCurrentEmail(recoveryNewEmail);
-      
+
       // Now proceed with recovery
-    const isVM = userRole?.toLowerCase() === 'vault-manager' || userRole?.toLowerCase() === 'admin' || userRole?.toLowerCase() === 'developer' || userRole?.toLowerCase() === 'manager' || userRole?.toLowerCase() === 'location admin';
-      const endpoint = isVM ? '/api/auth/totp/recover/vm' : '/api/auth/totp/recover/cashier';
-      
+      const isVM =
+        userRole?.toLowerCase() === 'vault-manager' ||
+        userRole?.toLowerCase() === 'admin' ||
+        userRole?.toLowerCase() === 'developer' ||
+        userRole?.toLowerCase() === 'manager' ||
+        userRole?.toLowerCase() === 'location admin';
+      const endpoint = isVM
+        ? '/api/auth/totp/recover/vm'
+        : '/api/auth/totp/recover/cashier';
+
       const recoverRes = await fetch(endpoint, { method: 'POST' });
       const recoverData = await recoverRes.json();
 
@@ -181,79 +202,89 @@ export default function VaultAuthenticatorModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="w-full h-full md:h-auto md:w-[95vw] md:max-w-lg md:max-h-[90dvh] rounded-none md:rounded-3xl p-4 md:p-6 gap-0 flex flex-col overflow-y-auto transition-all duration-300 !z-[300]" backdropClassName="!z-[290] bg-black/60 backdrop-blur-sm">
-        <DialogHeader className="pb-4 border-b border-gray-50">
+      <DialogContent
+        className="!z-[300] flex h-full w-full flex-col gap-0 overflow-y-auto rounded-none p-4 transition-all duration-300 md:h-auto md:max-h-[90dvh] md:w-[95vw] md:max-w-lg md:rounded-3xl md:p-6"
+        backdropClassName="!z-[290] bg-black/60 backdrop-blur-sm"
+      >
+        <DialogHeader className="border-b border-gray-50 pb-4">
           <DialogTitle className="flex items-center gap-2 text-xl font-black text-gray-900">
             <ShieldCheck className="h-6 w-6 text-violet-600" />
             Two-Factor Authentication
           </DialogTitle>
           {!checkingSetup && !needsSetup && recoveryStep === 'none' && (
-            <DialogDescription className="text-sm font-medium text-gray-500 mt-2">
-              Please enter the 6-digit code from your Google Authenticator app to perform <b>{actionName}</b>.
+            <DialogDescription className="mt-2 text-sm font-medium text-gray-500">
+              Please enter the 6-digit code from your Google Authenticator app
+              to perform <b>{actionName}</b>.
             </DialogDescription>
           )}
           {recoveryStep === 'confirm' && (
-             <DialogDescription className="text-sm font-medium text-gray-500 mt-2">
-               Verify your email address to receive the 2FA reset link.
-             </DialogDescription>
+            <DialogDescription className="mt-2 text-sm font-medium text-gray-500">
+              Verify your email address to receive the 2FA reset link.
+            </DialogDescription>
           )}
           {recoveryStep === 'edit' && (
-             <DialogDescription className="text-sm font-medium text-gray-500 mt-2">
-               Update your email address to regain access.
-             </DialogDescription>
+            <DialogDescription className="mt-2 text-sm font-medium text-gray-500">
+              Update your email address to regain access.
+            </DialogDescription>
           )}
         </DialogHeader>
 
-        <div className="py-4 flex flex-col flex-1">
+        <div className="flex flex-1 flex-col py-4">
           {checkingSetup ? (
-            <div className="flex flex-col items-center justify-center flex-1 py-12 space-y-4">
+            <div className="flex flex-1 flex-col items-center justify-center space-y-4 py-12">
               <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
-              <p className="text-sm font-black text-gray-400 uppercase tracking-widest">Verifying Security...</p>
+              <p className="text-sm font-black uppercase tracking-widest text-gray-400">
+                Verifying Security...
+              </p>
             </div>
           ) : needsSetup ? (
-            <VaultAuthenticatorSetup 
+            <VaultAuthenticatorSetup
               initialShowQr={!hasSecret}
               onConfirmed={() => {
                 setNeedsSetup(false);
-              }} 
-              onCancel={onClose} 
+              }}
+              onCancel={onClose}
             />
           ) : recoveryStep === 'confirm' ? (
-            <div className="flex flex-col flex-1 py-4 space-y-6">
-              <div className="text-center space-y-2">
+            <div className="flex flex-1 flex-col space-y-6 py-4">
+              <div className="space-y-2 text-center">
                 <p className="text-sm font-medium text-gray-500">
                   A verification link will be sent to your registered email:
                 </p>
-                <p className="text-lg font-black text-violet-600 tracking-tight break-all">
+                <p className="break-all text-lg font-black tracking-tight text-violet-600">
                   {currentEmail || 'No email on file'}
                 </p>
-                <p className="text-xs text-gray-400 mt-4 italic">
+                <p className="mt-4 text-xs italic text-gray-400">
                   Is this the correct email address for your account?
                 </p>
               </div>
 
-              <DialogFooter className="flex flex-col gap-2 pt-6 border-t border-gray-50 mt-auto">
-                <Button 
-                  onClick={handleRecovery} 
+              <DialogFooter className="mt-auto flex flex-col gap-2 border-t border-gray-50 pt-6">
+                <Button
+                  onClick={handleRecovery}
                   disabled={recoveryLoading}
-                  className="w-full bg-violet-600 text-white hover:bg-violet-700 font-black py-4 shadow-lg shadow-violet-200"
+                  className="w-full bg-violet-600 py-4 font-black text-white shadow-lg shadow-violet-200 hover:bg-violet-700"
                 >
-                  {recoveryLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Yes, Send Recovery Link'}
+                  {recoveryLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Yes, Send Recovery Link'
+                  )}
                 </Button>
-                <div className="flex flex-col sm:flex-row gap-2 w-full">
-                  <Button 
-                    variant="outline" 
+                <div className="flex w-full flex-col gap-2 sm:flex-row">
+                  <Button
+                    variant="outline"
                     onClick={() => setRecoveryStep('edit')}
                     disabled={recoveryLoading}
-                    className="flex-1 border-2 border-violet-100 text-violet-600 font-bold hover:bg-violet-50 py-4"
+                    className="flex-1 border-2 border-violet-100 py-4 font-bold text-violet-600 hover:bg-violet-50"
                   >
                     No, Update Email
                   </Button>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     onClick={() => setRecoveryStep('none')}
                     disabled={recoveryLoading}
-                    className="flex-1 text-gray-400 font-bold py-4"
+                    className="flex-1 py-4 font-bold text-gray-400"
                   >
                     Cancel
                   </Button>
@@ -261,46 +292,58 @@ export default function VaultAuthenticatorModal({
               </DialogFooter>
             </div>
           ) : recoveryStep === 'edit' ? (
-            <div className="flex flex-col flex-1 py-4 space-y-6">
+            <div className="flex flex-1 flex-col space-y-6 py-4">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">New Email Address</label>
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    New Email Address
+                  </label>
                   <Input
                     type="email"
                     placeholder="Enter your new email"
                     value={recoveryNewEmail}
-                    onChange={(e) => setRecoveryNewEmail(e.target.value)}
-                    className="h-12 border-2 border-gray-100 focus:border-violet-500 rounded-xl bg-gray-50/50"
+                    onChange={e => setRecoveryNewEmail(e.target.value)}
+                    className="h-12 rounded-xl border-2 border-gray-100 bg-gray-50/50 focus:border-violet-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Confirm Identity (Password)</label>
+                  <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    Confirm Identity (Password)
+                  </label>
                   <Input
                     type="password"
                     placeholder="Enter login password"
                     value={recoveryPassword}
-                    onChange={(e) => setRecoveryPassword(e.target.value)}
-                    className="h-12 border-2 border-gray-100 focus:border-violet-500 rounded-xl bg-gray-50/50"
+                    onChange={e => setRecoveryPassword(e.target.value)}
+                    className="h-12 rounded-xl border-2 border-gray-100 bg-gray-50/50 focus:border-violet-500"
                   />
                 </div>
-                <p className="text-[10px] text-gray-400 leading-relaxed px-1">
-                  Updating your email requires your current account password for security. Once updated, the 2FA recovery link will be sent to the new address.
+                <p className="px-1 text-[10px] leading-relaxed text-gray-400">
+                  Updating your email requires your current account password for
+                  security. Once updated, the 2FA recovery link will be sent to
+                  the new address.
                 </p>
               </div>
 
-              <DialogFooter className="flex flex-col gap-2 pt-6 border-t border-gray-50 mt-auto">
-                <Button 
-                  onClick={handleUpdateEmailAndRecover} 
-                  disabled={isUpdatingEmail || !recoveryNewEmail || !recoveryPassword}
-                  className="w-full bg-violet-600 text-white hover:bg-violet-700 font-black py-4 shadow-lg shadow-violet-200"
+              <DialogFooter className="mt-auto flex flex-col gap-2 border-t border-gray-50 pt-6">
+                <Button
+                  onClick={handleUpdateEmailAndRecover}
+                  disabled={
+                    isUpdatingEmail || !recoveryNewEmail || !recoveryPassword
+                  }
+                  className="w-full bg-violet-600 py-4 font-black text-white shadow-lg shadow-violet-200 hover:bg-violet-700"
                 >
-                  {isUpdatingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Update & Send Link'}
+                  {isUpdatingEmail ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Update & Send Link'
+                  )}
                 </Button>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   onClick={() => setRecoveryStep('confirm')}
                   disabled={isUpdatingEmail}
-                  className="w-full text-gray-400 font-bold py-2"
+                  className="w-full py-2 font-bold text-gray-400"
                 >
                   Go Back
                 </Button>
@@ -308,9 +351,11 @@ export default function VaultAuthenticatorModal({
             </div>
           ) : (
             <>
-              <div className="flex flex-col items-center justify-center flex-1 py-6 md:py-10 space-y-6">
-                <div className="space-y-4 text-center w-full">
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-violet-400">Authenticator Code</p>
+              <div className="flex flex-1 flex-col items-center justify-center space-y-6 py-6 md:py-10">
+                <div className="w-full space-y-4 text-center">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-violet-400">
+                    Authenticator Code
+                  </p>
                   <Input
                     type="text"
                     inputMode="numeric"
@@ -318,9 +363,9 @@ export default function VaultAuthenticatorModal({
                     maxLength={6}
                     placeholder="000 000"
                     value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                    className="text-center text-4xl md:text-4xl tracking-[0.3em] font-black h-20 md:h-20 w-full max-w-[280px] border-2 border-violet-100 focus:border-violet-500 rounded-2xl bg-violet-50/30 transition-all shadow-inner mx-auto"
-                    onKeyDown={(e) => {
+                    onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+                    className="mx-auto h-20 w-full max-w-[280px] rounded-2xl border-2 border-violet-100 bg-violet-50/30 text-center text-4xl font-black tracking-[0.3em] shadow-inner transition-all focus:border-violet-500 md:h-20 md:text-4xl"
+                    onKeyDown={e => {
                       if (e.key === 'Enter' && code.length === 6) {
                         handleVerify();
                       }
@@ -330,14 +375,19 @@ export default function VaultAuthenticatorModal({
                 </div>
               </div>
 
-              <DialogFooter className="flex flex-col md:flex-row gap-2 mt-auto pt-6 border-t border-gray-50">
-                <Button variant="ghost" onClick={onClose} disabled={loading} className="order-2 md:order-1 flex-1 font-bold text-gray-400 py-6 md:py-2">
+              <DialogFooter className="mt-auto flex flex-col gap-2 border-t border-gray-50 pt-6 md:flex-row">
+                <Button
+                  variant="ghost"
+                  onClick={onClose}
+                  disabled={loading}
+                  className="order-2 flex-1 py-6 font-bold text-gray-400 md:order-1 md:py-2"
+                >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleVerify}
                   disabled={loading || code.length !== 6}
-                  className="order-1 md:order-2 flex-1 bg-violet-600 text-white hover:bg-violet-700 font-black py-6 md:py-2 shadow-lg shadow-violet-200"
+                  className="order-1 flex-1 bg-violet-600 py-6 font-black text-white shadow-lg shadow-violet-200 hover:bg-violet-700 md:order-2 md:py-2"
                 >
                   {loading ? (
                     <div className="flex items-center gap-2">
@@ -356,9 +406,13 @@ export default function VaultAuthenticatorModal({
                     type="button"
                     onClick={handleRecovery}
                     disabled={recoveryLoading}
-                    className="text-[11px] font-bold text-violet-500 hover:text-violet-700 underline underline-offset-4 disabled:opacity-50"
+                    className="text-[11px] font-bold text-violet-500 underline underline-offset-4 hover:text-violet-700 disabled:opacity-50"
                   >
-                    {recoveryLoading ? 'Processing...' : (userRole?.toLowerCase() === 'cashier' ? 'Help! I lost my authenticator' : 'Lost Authenticator? Reset via Email')}
+                    {recoveryLoading
+                      ? 'Processing...'
+                      : userRole?.toLowerCase() === 'cashier'
+                        ? 'Help! I lost my authenticator'
+                        : 'Lost Authenticator? Reset via Email'}
                   </button>
                 </div>
               )}

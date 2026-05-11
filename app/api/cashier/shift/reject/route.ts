@@ -20,15 +20,31 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/cashier/shift/reject';
+  const user = extractUserFromRequest(request);
+
   try {
     // ============================================================================
     // STEP 1: Authentication & Authorization
     // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/reject',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -42,6 +58,13 @@ export async function POST(request: NextRequest) {
       )
     );
     if (!hasVMAccess) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/reject',
+        'Insufficient permissions',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Insufficient permissions' },
         { status: 403 }
@@ -55,6 +78,13 @@ export async function POST(request: NextRequest) {
     const { shiftId, reason = '' } = body;
 
     if (!shiftId) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/reject',
+        'Missing required field: shiftId',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Missing required field: shiftId' },
         { status: 400 }
@@ -72,6 +102,13 @@ export async function POST(request: NextRequest) {
     const cashierShift = await CashierShiftModel.findOne({ _id: shiftId });
 
     if (!cashierShift) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/reject',
+        'Cashier shift not found',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Cashier shift not found' },
         { status: 404 }
@@ -79,6 +116,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (cashierShift.status !== 'pending_review') {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/reject',
+        `Shift is not pending review (status: ${cashierShift.status})`,
+        user
+      );
       return NextResponse.json(
         {
           success: false,
@@ -98,7 +142,7 @@ export async function POST(request: NextRequest) {
     cashierShift.reviewedBy = vaultManagerId;
     cashierShift.reviewedAt = now;
     cashierShift.updatedAt = now;
-    
+
     // We keep the entered closing data so the cashier can see what they entered vs expected
     // It will be overwritten when they re-submit.
 
@@ -116,9 +160,19 @@ export async function POST(request: NextRequest) {
         resourceName: 'Cashier Shift',
         vaultShiftId: cashierShift.vaultShiftId,
         reason,
-        status: 'active'
+        status: 'active',
       },
     });
+
+    const duration = Date.now() - startTime;
+    logRouteUpdate(
+      functionName,
+      'POST',
+      '/api/cashier/shift/reject',
+      1,
+      user,
+      duration
+    );
 
     // ============================================================================
     // STEP 7: Update Vault Shift canClose status
@@ -131,6 +185,15 @@ export async function POST(request: NextRequest) {
       shift: cashierShift,
     });
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/cashier/shift/reject',
+      errorMessage,
+      user
+    );
     console.error('Error rejecting cashier shift review:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
@@ -154,6 +217,8 @@ async function updateVaultCanClose(vaultShiftId: string) {
     { canClose: !hasActiveOrPending }
   );
   if (vaultUpdateResult.modifiedCount === 0) {
-    console.warn(`[updateVaultCanClose] Vault shift ${vaultShiftId} not found or not modified`);
+    console.warn(
+      `[updateVaultCanClose] Vault shift ${vaultShiftId} not found or not modified`
+    );
   }
 }

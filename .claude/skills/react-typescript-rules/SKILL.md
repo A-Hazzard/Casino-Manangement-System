@@ -22,6 +22,7 @@ import { useState, useEffect, useMemo, useCallback, FC } from 'react';
 ```
 
 **Common direct imports:**
+
 - Hooks: `useState`, `useEffect`, `useCallback`, `useMemo`, `useRef`, `useContext`, `useReducer`
 - Types: `FC`, `ReactNode`, `ReactElement`, `PropsWithChildren`, `ComponentPropsWithoutRef`
 - Utilities: `forwardRef`, `memo`, `Children`, `createContext`, `Fragment`
@@ -48,7 +49,9 @@ Prefer specific types over generic `Record` types. `Record<string, unknown>` obs
 const updateFields: Record<string, unknown> = {};
 
 // ✅ CORRECT — specific type or Pick
-type MachineUpdateFields = Partial<Pick<MachineDocument, 'serialNumber' | 'game' | 'assetStatus'>> & {
+type MachineUpdateFields = Partial<
+  Pick<MachineDocument, 'serialNumber' | 'game' | 'assetStatus'>
+> & {
   updatedAt: Date;
 };
 const updateFields: MachineUpdateFields = { updatedAt: new Date() };
@@ -111,13 +114,19 @@ const [items, setItems] = useState<Item[]>([]);
 import { useReducer } from 'react';
 
 type State = { loading: boolean; error: string | null; data: Data[] };
-type Action = { type: 'FETCH' } | { type: 'SUCCESS'; payload: Data[] } | { type: 'ERROR'; payload: string };
+type Action =
+  | { type: 'FETCH' }
+  | { type: 'SUCCESS'; payload: Data[] }
+  | { type: 'ERROR'; payload: string };
 
 const reducer = (state: State, action: Action): State => {
   switch (action.type) {
-    case 'FETCH': return { ...state, loading: true };
-    case 'SUCCESS': return { ...state, loading: false, data: action.payload };
-    case 'ERROR': return { ...state, loading: false, error: action.payload };
+    case 'FETCH':
+      return { ...state, loading: true };
+    case 'SUCCESS':
+      return { ...state, loading: false, data: action.payload };
+    case 'ERROR':
+      return { ...state, loading: false, error: action.payload };
   }
 };
 
@@ -130,9 +139,9 @@ const [state, dispatch] = useReducer(reducer, initialState);
 import { create } from 'zustand';
 import { type DashboardStore } from '@/lib/types/stores';
 
-export const useDashboardStore = create<DashboardStore>((set) => ({
+export const useDashboardStore = create<DashboardStore>(set => ({
   selectedLicencee: '',
-  setSelectedLicencee: (licencee) => set({ selectedLicencee: licencee }),
+  setSelectedLicencee: licencee => set({ selectedLicencee: licencee }),
   // ... other state
 }));
 ```
@@ -255,12 +264,14 @@ enum ReportStatus {
 All JSDoc `@param` and `@returns` annotations MUST include proper TypeScript type annotations in curly braces.
 
 ### Rule
+
 1. Always use `{Type}` format for parameter types
 2. Match types to actual function signatures (use imported types when available)
 3. Use `[paramName]` syntax for optional parameters
 4. Do NOT add types to inline comments or module-level JSDoc blocks
 
 ### Example
+
 ```typescript
 // ❌ WRONG — missing type braces
 /**
@@ -333,6 +344,7 @@ bun run type-check
 ```
 
 Strict mode enabled with:
+
 - `noUnusedLocals`
 - `noImplicitReturns`
 - `noFallthroughCases`

@@ -1,8 +1,8 @@
 /**
  * Members Edit Member Modal Component
- * 
+ *
  * Modal for editing member information with validation and change tracking.
- * 
+ *
  * Features:
  * - Form validation with real-time feedback
  * - Uniqueness checks for username and email
@@ -45,7 +45,13 @@ type MembersEditMemberModalProps = {
 /**
  * Helper function to get proper user display name for activity logging
  */
-function getUserDisplayName(user: { profile?: { firstName?: string; lastName?: string }; username?: string; emailAddress?: string } | null): string {
+function getUserDisplayName(
+  user: {
+    profile?: { firstName?: string; lastName?: string };
+    username?: string;
+    emailAddress?: string;
+  } | null
+): string {
   if (!user) return 'Unknown User';
 
   if (user.profile?.firstName && user.profile?.lastName) {
@@ -135,22 +141,19 @@ export default function MembersEditMemberModal({
     handleLocationChange,
     handleSubmit: handleFormSubmit,
   } = useMembersEditMemberForm({
-    selectedMember: selectedMember && selectedMember._id ? (selectedMember as Member) : null,
+    selectedMember:
+      selectedMember && selectedMember._id ? (selectedMember as Member) : null,
     onMemberUpdated,
     onClose,
     logActivity,
   });
 
   // Validation
-  const {
-    errors,
-    checkingUniqueness,
-    setTouched,
-    setSubmitAttempted,
-  } = useMembersEditMemberValidation({
-    formData,
-    selectedMemberId: selectedMember?._id,
-  });
+  const { errors, checkingUniqueness, setTouched, setSubmitAttempted } =
+    useMembersEditMemberValidation({
+      formData,
+      selectedMemberId: selectedMember?._id,
+    });
 
   // Locations state
   const [locations, setLocations] = useState<
@@ -276,7 +279,7 @@ export default function MembersEditMemberModal({
       <div className="pointer-events-none fixed inset-0 z-[110] flex items-end justify-center lg:items-center">
         <div
           ref={modalRef}
-          className="pointer-events-auto relative flex h-auto max-h-[90vh] w-full max-w-full flex-col overflow-y-auto bg-gray-50 animate-in md:max-w-2xl lg:max-w-4xl lg:rounded-xl shadow-2xl"
+          className="pointer-events-auto relative flex h-auto max-h-[90vh] w-full max-w-full flex-col overflow-y-auto bg-gray-50 shadow-2xl animate-in md:max-w-2xl lg:max-w-4xl lg:rounded-xl"
           style={{ opacity: 1 }}
         >
           {/* Modern Header - Sticky */}
@@ -373,5 +376,3 @@ export default function MembersEditMemberModal({
     </>
   );
 }
-
-

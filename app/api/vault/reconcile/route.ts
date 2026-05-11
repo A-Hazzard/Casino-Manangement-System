@@ -4,12 +4,17 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  logRouteError,
+  extractUserFromRequest,
+  logRouteUpdate,
+} from '@/app/api/lib/utils/routeLogger';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
-import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { validateDenominations } from '@/lib/helpers/vault/calculations';
 import { generateMongoId } from '@/lib/utils/id';
 import { NextRequest, NextResponse } from 'next/server';
+import VaultShiftModel from '../../lib/models/vaultShift';
 
 /**
  * Main POST handler for vault reconciliation
@@ -21,6 +26,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @body {string} comment - Optional. Additional details.
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/reconcile';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {
       const hasVaultAccess = userRoles
@@ -28,18 +37,33 @@ export async function POST(request: NextRequest) {
         .some(role =>
           ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
         );
-      if (!hasVaultAccess)
+      if (!hasVaultAccess) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/reconcile',
+          'Insufficient permissions',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient permissions' },
           { status: 403 }
         );
+      }
 
       const { vaultShiftId, newBalance, denominations, reason, comment } =
         await request.json();
       const finalDesc = (reason || comment || '').trim();
 
       const validation = validateDenominations(denominations);
-      if (!validation.valid)
+      if (!validation.valid) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/reconcile',
+          'Invalid denominations',
+          user
+        );
         return NextResponse.json(
           {
             success: false,
@@ -48,7 +72,15 @@ export async function POST(request: NextRequest) {
           },
           { status: 400 }
         );
-      if (validation.total !== newBalance)
+      }
+      if (validation.total !== newBalance) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/reconcile',
+          `Balance mismatch: $${validation.total} vs $${newBalance}`,
+          user
+        );
         return NextResponse.json(
           {
             success: false,
@@ -56,18 +88,35 @@ export async function POST(request: NextRequest) {
           },
           { status: 400 }
         );
+      }
 
       const vaultShift = await VaultShiftModel.findOne({ _id: vaultShiftId });
-      if (!vaultShift)
+      if (!vaultShift) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/reconcile',
+          'Vault shift not found',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Vault shift not found' },
           { status: 404 }
         );
-      if (vaultShift.status === 'closed')
+      }
+      if (vaultShift.status === 'closed') {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/reconcile',
+          'Cannot reconcile closed shift',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Cannot reconcile closed shift' },
           { status: 400 }
         );
+      }
 
       const allowedLocIds = await getUserLocationFilter(
         payload.assignedLicencees || [],
@@ -79,6 +128,13 @@ export async function POST(request: NextRequest) {
         allowedLocIds !== 'all' &&
         !allowedLocIds.includes(String(vaultShift.locationId))
       ) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/reconcile',
+          'Access denied for this location vault',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Access denied for this location vault' },
           { status: 403 }
@@ -141,6 +197,16 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      const duration = Date.now() - startTime;
+      logRouteUpdate(
+        functionName,
+        'POST',
+        '/api/vault/reconcile',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         vaultShift: vaultShift.toObject(),
@@ -148,7 +214,19 @@ export async function POST(request: NextRequest) {
         adjustment: adj,
       });
     } catch (e) {
-      console.error('[Vault Reconcile] Error:', e instanceof Error ? e.message : 'Unknown error');
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to reconcile vault';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/reconcile',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[Vault Reconcile] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
       return NextResponse.json(
         { success: false, error: 'Internal server error' },
         { status: 500 }

@@ -9,7 +9,6 @@
  */
 'use client';
 
-
 import { forwardRef } from 'react';
 import { ComponentPropsWithoutRef, ElementRef } from 'react';
 import * as SeparatorPrimitive from '@radix-ui/react-separator';
@@ -39,4 +38,3 @@ const Separator = forwardRef<
 Separator.displayName = SeparatorPrimitive.Root.displayName;
 
 export { Separator };
-

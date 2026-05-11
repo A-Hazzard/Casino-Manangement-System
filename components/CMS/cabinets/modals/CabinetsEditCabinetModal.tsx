@@ -144,8 +144,6 @@ export default function CabinetsEditCabinetModal({
     }
   };
 
-
-
   const checkSerialNumberAvailability = async (serialNumber: string) => {
     if (!serialNumber || serialNumber.trim().length < 3) return;
     if (!formData._id) return;
@@ -337,6 +335,18 @@ export default function CabinetsEditCabinetModal({
         : new Date();
       setCollectionTime(initialCollectionTime);
 
+      console.log(
+        `[CabinetsEditCabinetModal] selectedCabinet status:`,
+        selectedCabinet.status
+      );
+      console.log(
+        `[CabinetsEditCabinetModal] selectedCabinet assetStatus:`,
+        selectedCabinet.assetStatus
+      );
+      console.log(
+        `[CabinetsEditCabinetModal] selectedCabinet machineStatus:`,
+        selectedCabinet.machineStatus
+      );
       const initialFormData: ExtendedCabinetFormData = {
         _id: selectedCabinet._id,
         assetNumber: selectedCabinet.assetNumber || '',
@@ -365,16 +375,20 @@ export default function CabinetsEditCabinetModal({
           multiplier: selectedCabinet.collectionMultiplier || '1',
           lastCollectionTime: initialCollectionTime.toISOString(),
           // Prefer sasMeters (source of truth for CR baseline) over legacy collectionMeters
-          lastMetersIn: selectedCabinet.sasMeters?.drop != null && selectedCabinet.sasMeters.drop > 0
-            ? String(selectedCabinet.sasMeters.drop)
-            : selectedCabinet.collectionMeters
-              ? String(selectedCabinet.collectionMeters.metersIn ?? '')
-              : '',
-          lastMetersOut: selectedCabinet.sasMeters?.totalCancelledCredits != null && selectedCabinet.sasMeters.totalCancelledCredits > 0
-            ? String(selectedCabinet.sasMeters.totalCancelledCredits)
-            : selectedCabinet.collectionMeters
-              ? String(selectedCabinet.collectionMeters.metersOut ?? '')
-              : '',
+          lastMetersIn:
+            selectedCabinet.sasMeters?.drop != null &&
+            selectedCabinet.sasMeters.drop > 0
+              ? String(selectedCabinet.sasMeters.drop)
+              : selectedCabinet.collectionMeters
+                ? String(selectedCabinet.collectionMeters.metersIn ?? '')
+                : '',
+          lastMetersOut:
+            selectedCabinet.sasMeters?.totalCancelledCredits != null &&
+            selectedCabinet.sasMeters.totalCancelledCredits > 0
+              ? String(selectedCabinet.sasMeters.totalCancelledCredits)
+              : selectedCabinet.collectionMeters
+                ? String(selectedCabinet.collectionMeters.metersOut ?? '')
+                : '',
         },
       };
       setFormData(initialFormData);
@@ -479,15 +493,19 @@ export default function CabinetsEditCabinetModal({
                       initialCollectionTime.toISOString(),
                     // Prefer sasMeters as source of truth; fall back to collectionMeters then prev state
                     lastMetersIn:
-                      cabinetDetails.sasMeters?.drop != null && cabinetDetails.sasMeters.drop > 0
+                      cabinetDetails.sasMeters?.drop != null &&
+                      cabinetDetails.sasMeters.drop > 0
                         ? String(cabinetDetails.sasMeters.drop)
-                        : cabinetDetails.collectionMeters?.metersIn !== undefined
+                        : cabinetDetails.collectionMeters?.metersIn !==
+                            undefined
                           ? String(cabinetDetails.collectionMeters.metersIn)
                           : prevData.collectionSettings?.lastMetersIn || '',
                     lastMetersOut:
-                      cabinetDetails.sasMeters?.totalCancelledCredits != null && cabinetDetails.sasMeters.totalCancelledCredits > 0
+                      cabinetDetails.sasMeters?.totalCancelledCredits != null &&
+                      cabinetDetails.sasMeters.totalCancelledCredits > 0
                         ? String(cabinetDetails.sasMeters.totalCancelledCredits)
-                        : cabinetDetails.collectionMeters?.metersOut !== undefined
+                        : cabinetDetails.collectionMeters?.metersOut !==
+                            undefined
                           ? String(cabinetDetails.collectionMeters.metersOut)
                           : prevData.collectionSettings?.lastMetersOut || '',
                   },
@@ -501,15 +519,21 @@ export default function CabinetsEditCabinetModal({
                       ? cabinetDetails.gameType || prevData.gameType
                       : '',
                   // Ensure SMIB board fields are updated from detail fetch
-                  smbId: userModifiedFieldsRef.current.has('smbId') || userModifiedFieldsRef.current.has('relayId')
-                    ? prevData.smbId
-                    : cabinetDetails.smbId || prevData.smbId,
-                  relayId: userModifiedFieldsRef.current.has('relayId') || userModifiedFieldsRef.current.has('smbId')
-                    ? prevData.relayId
-                    : cabinetDetails.relayId || prevData.relayId,
-                  smibBoard: userModifiedFieldsRef.current.has('smbId') || userModifiedFieldsRef.current.has('relayId')
-                    ? prevData.smibBoard
-                    : cabinetDetails.relayId || prevData.smibBoard,
+                  smbId:
+                    userModifiedFieldsRef.current.has('smbId') ||
+                    userModifiedFieldsRef.current.has('relayId')
+                      ? prevData.smbId
+                      : cabinetDetails.smbId || prevData.smbId,
+                  relayId:
+                    userModifiedFieldsRef.current.has('relayId') ||
+                    userModifiedFieldsRef.current.has('smbId')
+                      ? prevData.relayId
+                      : cabinetDetails.relayId || prevData.relayId,
+                  smibBoard:
+                    userModifiedFieldsRef.current.has('smbId') ||
+                    userModifiedFieldsRef.current.has('relayId')
+                      ? prevData.smibBoard
+                      : cabinetDetails.relayId || prevData.smibBoard,
                 };
                 // console.log(
                 //   "Updated form data with gameType:",
@@ -670,16 +694,20 @@ export default function CabinetsEditCabinetModal({
             ? new Date(selectedCabinet.collectionTime).toISOString()
             : '',
           // Match what the form displays — prefer sasMeters for change detection baseline
-          lastMetersIn: selectedCabinet.sasMeters?.drop != null && selectedCabinet.sasMeters.drop > 0
-            ? String(selectedCabinet.sasMeters.drop)
-            : selectedCabinet.collectionMeters
-              ? String(selectedCabinet.collectionMeters.metersIn ?? '')
-              : '',
-          lastMetersOut: selectedCabinet.sasMeters?.totalCancelledCredits != null && selectedCabinet.sasMeters.totalCancelledCredits > 0
-            ? String(selectedCabinet.sasMeters.totalCancelledCredits)
-            : selectedCabinet.collectionMeters
-              ? String(selectedCabinet.collectionMeters.metersOut ?? '')
-              : '',
+          lastMetersIn:
+            selectedCabinet.sasMeters?.drop != null &&
+            selectedCabinet.sasMeters.drop > 0
+              ? String(selectedCabinet.sasMeters.drop)
+              : selectedCabinet.collectionMeters
+                ? String(selectedCabinet.collectionMeters.metersIn ?? '')
+                : '',
+          lastMetersOut:
+            selectedCabinet.sasMeters?.totalCancelledCredits != null &&
+            selectedCabinet.sasMeters.totalCancelledCredits > 0
+              ? String(selectedCabinet.sasMeters.totalCancelledCredits)
+              : selectedCabinet.collectionMeters
+                ? String(selectedCabinet.collectionMeters.metersOut ?? '')
+                : '',
         },
       };
 
@@ -720,6 +748,39 @@ export default function CabinetsEditCabinetModal({
         setLoading(false);
         return;
       }
+
+      console.log(
+        `[CabinetsEditCabinetModal] Meaningful changes:`,
+        JSON.stringify(meaningfulChanges, null, 2)
+      );
+      console.log(
+        `[CabinetsEditCabinetModal] Form data status:`,
+        formData.status
+      );
+      console.log(
+        `[CabinetsEditCabinetModal] Form data assetStatus:`,
+        formData.assetStatus
+      );
+      console.log(
+        `[CabinetsEditCabinetModal] Selected cabinet status:`,
+        selectedCabinet.status
+      );
+      console.log(
+        `[CabinetsEditCabinetModal] Selected cabinet assetStatus:`,
+        selectedCabinet.assetStatus
+      );
+      console.log(
+        `[CabinetsEditCabinetModal] Original data normalized status:`,
+        normalizeStatusValue(selectedCabinet.status)
+      );
+      console.log(
+        `[CabinetsEditCabinetModal] Form data comparison status:`,
+        formData.status
+      );
+      console.log(
+        `[CabinetsEditCabinetModal] Status fields are equal:`,
+        normalizeStatusValue(selectedCabinet.status) === formData.status
+      );
 
       // Build update payload with only changed fields + required _id
       const updatePayload: Record<string, unknown> = { _id: formData._id };
@@ -792,6 +853,11 @@ export default function CabinetsEditCabinetModal({
         }
       }
 
+      console.log(
+        `[CabinetsEditCabinetModal] Update payload being sent:`,
+        JSON.stringify(updatePayload, null, 2)
+      );
+
       // Pass only the changed fields to reduce unnecessary updates and logging
       // Convert customDateRange to DateRange format expected by updateCabinet
       const success = await updateCabinet(updatePayload);
@@ -860,8 +926,7 @@ export default function CabinetsEditCabinetModal({
       <div className="fixed inset-0 flex items-start justify-center overflow-y-auto p-2 md:items-center md:p-4">
         <div
           ref={modalRef}
-          className="flex max-h-[95vh] w-full flex-col bg-container shadow-lg md:max-w-2xl md:rounded-md md:shadow-lg"
-          style={{ opacity: 0, transform: 'translateY(-20px)' }}
+          className="modal-initial flex max-h-[95vh] w-full flex-col bg-container shadow-lg md:max-w-2xl md:rounded-md md:shadow-lg"
         >
           <div className="flex flex-shrink-0 items-center border-b border-border p-3 sm:p-4">
             <h2 className="flex-1 text-center text-xl font-semibold">
@@ -963,7 +1028,7 @@ export default function CabinetsEditCabinetModal({
                     ),
                     locationId: formData.locationId || '',
                     smbId: formData.relayId || formData.smbId || '',
-                    status: formData.assetStatus || 'functional',
+                    status: formData.status || 'functional',
                     custom: formData.custom,
                   }}
                   locations={locations}
@@ -985,8 +1050,9 @@ export default function CabinetsEditCabinetModal({
 
                     // Map smbId back to relayId and smibBoard for formData
                     // We also ensure smbId itself is updated so detectChanges works correctly
-                    const formDataUpdates: Partial<ExtendedCabinetFormData> = {};
-                    
+                    const formDataUpdates: Partial<ExtendedCabinetFormData> =
+                      {};
+
                     if ('smbId' in updates) {
                       const smibValue = updates.smbId || '';
                       formDataUpdates.relayId = smibValue;
@@ -995,6 +1061,11 @@ export default function CabinetsEditCabinetModal({
                     }
 
                     if (updates.status) {
+                      console.log(
+                        `[CabinetsEditCabinetModal] Status change detected in onFormDataChange:`,
+                        updates.status
+                      );
+                      formDataUpdates.status = updates.status;
                       formDataUpdates.assetStatus = updates.status;
                     }
 
@@ -1080,4 +1151,3 @@ export default function CabinetsEditCabinetModal({
     </div>
   );
 }
-

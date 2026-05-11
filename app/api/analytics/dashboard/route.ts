@@ -12,6 +12,11 @@ import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion'
 import { convertFromUSD } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/analytics/dashboard
@@ -28,29 +33,61 @@ import { NextRequest, NextResponse } from 'next/server';
  *                                 Defaults to 'USD' (no conversion applied).
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/analytics/dashboard';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async () => {
     const { searchParams } = new URL(request.url);
     const licencee = searchParams.get('licencee');
-    const displayCurrency = (searchParams.get('currency') as CurrencyCode) || 'USD';
+    const displayCurrency =
+      (searchParams.get('currency') as CurrencyCode) || 'USD';
 
     if (!licencee) {
-      return NextResponse.json({ message: 'Licencee is required' }, { status: 400 });
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/analytics/dashboard',
+        'Licencee is required',
+        user
+      );
+      return NextResponse.json(
+        { message: 'Licencee is required' },
+        { status: 400 }
+      );
     }
 
     const globalStats = await getDashboardAnalytics(licencee);
 
     let convertedStats = globalStats;
     if (shouldApplyCurrencyConversion(licencee)) {
-      const financialFields = ['totalDrop', 'totalCancelledCredits', 'totalGross'];
+      const financialFields = [
+        'totalDrop',
+        'totalCancelledCredits',
+        'totalGross',
+      ];
       convertedStats = { ...globalStats };
 
       financialFields.forEach(field => {
         const value = (globalStats as Record<string, unknown>)[field];
         if (typeof value === 'number') {
-          (convertedStats as Record<string, unknown>)[field] = convertFromUSD(value, displayCurrency);
+          (convertedStats as Record<string, unknown>)[field] = convertFromUSD(
+            value,
+            displayCurrency
+          );
         }
       });
     }
+
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/analytics/dashboard',
+      1,
+      user,
+      duration
+    );
 
     return NextResponse.json({
       globalStats: convertedStats,

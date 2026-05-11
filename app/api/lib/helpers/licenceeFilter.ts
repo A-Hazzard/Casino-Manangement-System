@@ -4,7 +4,11 @@ import { GamingLocations } from '../models/gaminglocations';
 import { Licencee } from '../models/licencee';
 import UserModel from '../models/user';
 import { getUserFromServer } from './users';
-import type { UserDocument, GamingLocationDocument, LicenceeDocument } from '@shared/types';
+import type {
+  UserDocument,
+  GamingLocationDocument,
+  LicenceeDocument,
+} from '@shared/types';
 
 /**
  * Gets the licencees a user can access from JWT token
@@ -203,11 +207,15 @@ export async function getUserLocationFilter(
   userRoles: User['roles'] = []
 ): Promise<string[] | 'all'> {
   if (!userAccessibleLicencees) {
-    console.error('[getUserLocationFilter] userAccessibleLicencees is required');
+    console.error(
+      '[getUserLocationFilter] userAccessibleLicencees is required'
+    );
     return [];
   }
   if (!Array.isArray(userLocationPermissions)) {
-    console.error('[getUserLocationFilter] userLocationPermissions must be an array');
+    console.error(
+      '[getUserLocationFilter] userLocationPermissions must be an array'
+    );
     return [];
   }
   // Check if user is admin, manager, or location admin

@@ -42,10 +42,13 @@ type ReportsLocationsMapProps = {
 // ============================================================================
 
 // We import the entire map implementation dynamically to avoid SSR issues with Leaflet
-const MapImplementation = dynamic(() => import('./ReportsLocationsMapImplementation'), {
-  ssr: false,
-  loading: () => <LocationMapSkeleton />,
-});
+const MapImplementation = dynamic(
+  () => import('./ReportsLocationsMapImplementation'),
+  {
+    ssr: false,
+    loading: () => <LocationMapSkeleton />,
+  }
+);
 
 // ============================================================================
 // Main Component
@@ -68,4 +71,3 @@ export default function ReportsLocationsMap(props: ReportsLocationsMapProps) {
 
   return <MapImplementation {...props} />;
 }
-

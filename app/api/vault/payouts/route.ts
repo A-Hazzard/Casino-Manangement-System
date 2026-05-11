@@ -3,6 +3,12 @@
  */
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import { getMoneyOutAndJackpotScale } from '@/app/api/lib/utils/reviewerScale';
 import PayoutModel from '@/app/api/lib/models/payout';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -16,6 +22,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param {string} type - Optional. Filter by specific payout type.
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/vault/payouts';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
@@ -24,19 +34,35 @@ export async function GET(request: NextRequest) {
           role
         )
       );
-      if (!hasVaultAccess)
+      if (!hasVaultAccess) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/vault/payouts',
+          'Insufficient permissions',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient permissions' },
           { status: 403 }
         );
+      }
 
       const { searchParams } = new URL(request.url);
       const locationId = searchParams.get('locationId');
-      if (!locationId)
+      if (!locationId) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/vault/payouts',
+          'Location ID is required',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Location ID is required' },
           { status: 400 }
         );
+      }
 
       const page = parseInt(searchParams.get('page') || '1');
       const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
@@ -107,15 +133,29 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // Reviewer Multiplier Scaling
       // ============================================================================
-      const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
-      if (reviewerMult !== null) {
-        const mult = 1 - reviewerMult;
+      const moneyOutScale = getMoneyOutAndJackpotScale(
+        userPayload as {
+          moneyOutAndJackpotMultiplier?: number | null;
+          roles?: string[];
+        }
+      );
+      if (moneyOutScale !== 1) {
         payouts.forEach((payoutItem: { amount: number }) => {
           if (typeof payoutItem.amount === 'number') {
-            payoutItem.amount *= mult;
+            payoutItem.amount *= moneyOutScale;
           }
         });
       }
+
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/vault/payouts',
+        payouts.length,
+        user,
+        duration
+      );
 
       return NextResponse.json({
         success: true,
@@ -128,6 +168,15 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to fetch payouts';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/vault/payouts',
+        errorMessage,
+        user
+      );
       console.error('[Payouts API] Error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       return NextResponse.json(

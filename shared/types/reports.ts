@@ -2,7 +2,14 @@ import { type MachineData, type MachineStats } from './machines';
 import type { AggregatedLocation } from '@/shared/types/entities';
 export type { MachineData, MachineStats, AggregatedLocation };
 
-export type ReportView = 'machines' | 'locations' | 'meters' | 'sas-evaluation' | 'revenue-analysis' | 'Cabinets' | 'overview';
+export type ReportView =
+  | 'machines'
+  | 'locations'
+  | 'meters'
+  | 'sas-evaluation'
+  | 'revenue-analysis'
+  | 'Cabinets'
+  | 'overview';
 
 export type DashboardTotals = {
   moneyIn: number;
@@ -318,8 +325,10 @@ export type SASReportResult = {
   trendData: LocationTrendsResponse | null;
 };
 
-
-export type MachineSortKey = keyof MachineData | 'offlineDurationHours' | string;
+export type MachineSortKey =
+  | keyof MachineData
+  | 'offlineDurationHours'
+  | string;
 
 export type ReportsMachinesOverviewProps = {
   overviewMachines: MachineData[];

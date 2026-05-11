@@ -55,18 +55,28 @@ export default function CollectionReportMonthlySummaryTable({
   };
 
   const copy = async (text: string, label: string) => {
-    if (!text || text === '-') { toast.error(`No ${label} value to copy`); return; }
+    if (!text || text === '-') {
+      toast.error(`No ${label} value to copy`);
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(text.replace('$', '').replace(/,/g, '').trim());
+      await navigator.clipboard.writeText(
+        text.replace('$', '').replace(/,/g, '').trim()
+      );
       toast.success(`${label} copied to clipboard`);
-    } catch { toast.error(`Failed to copy ${label}`); }
+    } catch {
+      toast.error(`Failed to copy ${label}`);
+    }
   };
 
   if (loading) {
     return (
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {[1, 2, 3, 4].map(i => (
-          <div key={i} className="h-[120px] animate-pulse rounded-lg bg-gray-200" />
+          <div
+            key={i}
+            className="h-[120px] animate-pulse rounded-lg bg-gray-200"
+          />
         ))}
       </div>
     );
@@ -94,7 +104,9 @@ export default function CollectionReportMonthlySummaryTable({
                 className="hover:opacity-70"
                 title="Click to copy"
               >
-                <span className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${cls || 'text-gray-900'}`}>
+                <span
+                  className={`overflow-hidden break-words text-sm font-bold sm:text-base md:text-lg lg:text-xl ${cls || 'text-gray-900'}`}
+                >
                   {formatted}
                 </span>
               </button>

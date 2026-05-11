@@ -83,7 +83,8 @@ export default function CabinetsDetailsChartSection({
                 </>
               )}
               {/* Show daily/weekly options for Last 30 Days */}
-              {(activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days') && (
+              {(activeMetricsFilter === '30d' ||
+                activeMetricsFilter === 'last30days') && (
                 <>
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
@@ -99,7 +100,8 @@ export default function CabinetsDetailsChartSection({
               {/* Show daily/weekly options for medium time periods */}
               {availableGranularityOptions.includes('daily') &&
                 !availableGranularityOptions.includes('monthly') &&
-                activeMetricsFilter !== '30d' && activeMetricsFilter !== 'last30days' && (
+                activeMetricsFilter !== '30d' &&
+                activeMetricsFilter !== 'last30days' && (
                   <>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
@@ -124,4 +126,3 @@ export default function CabinetsDetailsChartSection({
     </motion.div>
   );
 }
-

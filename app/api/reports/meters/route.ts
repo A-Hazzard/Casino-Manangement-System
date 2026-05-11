@@ -36,6 +36,14 @@ import {
 import { Licencee } from '@/app/api/lib/models/licencee';
 import type { LicenceeDocument } from '@shared/types';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import {
+  logRouteFetch,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import {
+  getMoneyInScale,
+  getMoneyOutAndJackpotScale,
+} from '@/app/api/lib/utils/reviewerScale';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -106,308 +114,362 @@ function createEmptyResponse(
  * 10. Paginate and return results
  */
 export async function GET(req: NextRequest) {
-  return withApiAuth(req, async ({ user: userPayload, userRoles, isAdminOrDev }) => {
-    const startTime = Date.now();
+  return withApiAuth(
+    req,
+    async ({ user: userPayload, userRoles, isAdminOrDev }) => {
+      const startTime = Date.now();
+      const functionName = 'GET /api/reports/meters';
+      const user = extractUserFromRequest(req);
 
-    // ============================================================================
-    // STEP 1: Parse and validate request parameters
-    // ============================================================================
-    // Example: GET /api/reports/meters?locations=Mapau,Stabroek&timePeriod=Yesterday&page=1&limit=50&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&includeHourlyData=true&granularity=hourly
-    console.log('[Meters Report API] STEP 1: Parsing parameters...');
-    const { searchParams } = new URL(req.url);
-    const params = parseMetersReportParams(searchParams);
+      // ============================================================================
+      // STEP 1: Parse and validate request parameters
+      // ============================================================================
+      // Example: GET /api/reports/meters?locations=Mapau,Stabroek&timePeriod=Yesterday&page=1&limit=50&licencee=9a5db2cb29ffd2d962fd1d91&currency=TTD&includeHourlyData=true&granularity=hourly
+      console.log('[Meters Report API] STEP 1: Parsing parameters...');
+      const { searchParams } = new URL(req.url);
+      const params = parseMetersReportParams(searchParams);
 
-    // ============================================================================
-    // STEP 3: Get user permissions and determine accessible locations
-    // ============================================================================
-    console.log('[Meters Report API] STEP 3: Determining accessible locations...');
-    const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
-    let userLocationPermissions: string[] = [];
-    if (
-      Array.isArray(
-        (userPayload as { assignedLocations?: string[] })?.assignedLocations
-      )
-    ) {
-      userLocationPermissions = (userPayload as { assignedLocations: string[] })
-        .assignedLocations;
-    }
-
-    const allowedLocationIds = await getUserLocationFilter(
-      userAccessibleLicencees,
-      params.licencee || undefined,
-      userLocationPermissions,
-      userRoles
-    );
-
-    // Determine if user is a location admin
-    const isLocationAdmin = userRoles.includes('location admin');
-
-    // Determine final location list to query
-    const locationList = determineLocationList(
-      params.requestedLocationList,
-      allowedLocationIds,
-      isLocationAdmin
-    );
-
-    // Return empty response if user has no accessible locations
-    if (
-      allowedLocationIds !== 'all' &&
-      allowedLocationIds.length === 0 &&
-      locationList.length === 0
-    ) {
-      const now = new Date();
-      return createEmptyResponse(params, now, now);
-    }
-
-    // ============================================================================
-    // STEP 4: Fetch location data and calculate gaming day ranges
-    // ============================================================================
-    console.log('[Meters Report API] STEP 4: Fetch location data and calculate gaming day ranges...');
-    const locationsToQuery =
-      locationList.length > 0
-        ? locationList
-        : allowedLocationIds === 'all'
-          ? []
-          : allowedLocationIds;
-
-    const locationsData = await fetchLocationData(locationsToQuery);
-
-    // Create location name map for quick lookup
-    const locationMap = new Map<string, string>();
-    const locationLicenceeMap = new Map<string, string>();
-    locationsData.forEach(loc => {
-      locationMap.set(loc._id, loc.name);
-      if (loc.rel?.licencee) {
-        locationLicenceeMap.set(loc._id, String(loc.rel.licencee));
+      // ============================================================================
+      // STEP 3: Get user permissions and determine accessible locations
+      // ============================================================================
+      console.log(
+        '[Meters Report API] STEP 3: Determining accessible locations...'
+      );
+      const userAccessibleLicencees =
+        await getUserAccessibleLicenceesFromToken();
+      let userLocationPermissions: string[] = [];
+      if (
+        Array.isArray(
+          (userPayload as { assignedLocations?: string[] })?.assignedLocations
+        )
+      ) {
+        userLocationPermissions = (
+          userPayload as { assignedLocations: string[] }
+        ).assignedLocations;
       }
-    });
 
-    // Fetch licencee includeJackpot settings
-    const licencees = await Licencee.find({}, { _id: 1, includeJackpot: 1 }).lean<LicenceeDocument[]>().exec();
-    const licenceeSettingsMap = new Map<string, boolean>();
-    licencees.forEach((licencee) => {
-      licenceeSettingsMap.set(String(licencee._id), Boolean(licencee.includeJackpot));
-    });
-
-    // Calculate gaming day ranges for all locations
-    const { gamingDayRanges, queryStartDate, queryEndDate } = calculateGamingDayRanges(
-      locationsData,
-      params.timePeriod,
-      params.customStartDate,
-      params.customEndDate
-    );
-
-    // ============================================================================
-    // STEP 5: Fetch machines data
-    // ============================================================================
-    console.log(`[Meters Report API] STEP 5: Fetching machines for ${locationList.length} defined locations...`);
-    const machinesData = await fetchMachinesData(
-      locationList,
-      params.licencee
-    );
-
-    if (machinesData.length === 0) {
-      return createEmptyResponse(params, queryStartDate, queryEndDate);
-    }
-
-    const machineIds = machinesData.map(machine => machine._id);
-
-    // ============================================================================
-    // STEP 6: Get last meter document per machine
-    // ============================================================================
-    console.log(`[Meters Report API] STEP 6: Fetching last meter for ${machineIds.length} machines...`);
-    /**
-     * CRITICAL: We get the LAST meter document for each machine, not a sum.
-     * The aggregation sorts by readAt descending and uses $first to get
-     * the latest document's absolute values (drop, coinIn, coinOut, etc.).
-     * These are cumulative totals from the meter, representing the final
-     * state at the end of the gaming day period.
-     */
-    const metersMap = await getLastMeterPerMachine(
-      machineIds,
-      gamingDayRanges
-    );
-
-    // ============================================================================
-    // STEP 7: Optionally aggregate hourly chart data
-    // ============================================================================
-    console.log(`[Meters Report API] STEP 7: Optionally aggregate hourly chart data (includeHourlyData: ${params.includeHourlyData})...`);
-    /**
-     * Hourly chart data uses movement fields (deltas) and sums them by hour.
-     * This is different from the main meter aggregation which uses absolute values.
-     *
-     * If hourlyDataMachineIds is provided, only aggregate data for those specific machines.
-     * Otherwise, aggregate data for all machines in the selected locations.
-     */
-    let hourlyChartData = null;
-    if (params.includeHourlyData && locationList.length > 0) {
-      const machineIdsForHourlyData =
-        params.hourlyDataMachineIds && params.hourlyDataMachineIds.length > 0
-          ? params.hourlyDataMachineIds
-          : machineIds;
-
-      hourlyChartData = await getHourlyChartData(
-        machineIdsForHourlyData,
-        queryStartDate,
-        queryEndDate,
-        params.granularity || 'hourly'
+      const allowedLocationIds = await getUserLocationFilter(
+        userAccessibleLicencees,
+        params.licencee || undefined,
+        userLocationPermissions,
+        userRoles
       );
-    }
 
-    // ============================================================================
-    // STEP 8: Transform machine and meter data into report format
-    // ============================================================================
-    console.log(`[Meters Report API] STEP 8: Transforming meter data for ${machinesData.length} machines...`);
-    let transformedData = transformMeterData(
-      machinesData,
-      metersMap,
-      locationMap,
-      licenceeSettingsMap,
-      locationLicenceeMap
-    );
+      // Determine if user is a location admin
+      const isLocationAdmin = userRoles.includes('location admin');
 
-    // ============================================================================
-    // STEP 9: Apply search filter if provided
-    // ============================================================================
-    console.log(`[Meters Report API] STEP 9: Applying search filter ('${params.search}') if provided...`);
-    transformedData = filterMeterDataBySearch(
-      transformedData,
-      machinesData,
-      params.search
-    );
+      // Determine final location list to query
+      const locationList = determineLocationList(
+        params.requestedLocationList,
+        allowedLocationIds,
+        isLocationAdmin
+      );
 
-    // ============================================================================
-    // STEP 9.5: Apply reviewer multiplier scaling
-    // ============================================================================
-    console.log('[Meters Report API] STEP 9.5: Applying reviewer multiplier if present...');
-    const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
-    if (reviewerMult !== null) {
-      const mult = 1 - reviewerMult;
-      transformedData = transformedData.map(item => ({
+      // Return empty response if user has no accessible locations
+      if (
+        allowedLocationIds !== 'all' &&
+        allowedLocationIds.length === 0 &&
+        locationList.length === 0
+      ) {
+        const now = new Date();
+        return createEmptyResponse(params, now, now);
+      }
+
+      // ============================================================================
+      // STEP 4: Fetch location data and calculate gaming day ranges
+      // ============================================================================
+      console.log(
+        '[Meters Report API] STEP 4: Fetch location data and calculate gaming day ranges...'
+      );
+      const locationsToQuery =
+        locationList.length > 0
+          ? locationList
+          : allowedLocationIds === 'all'
+            ? []
+            : allowedLocationIds;
+
+      const locationsData = await fetchLocationData(locationsToQuery);
+
+      // Create location name map for quick lookup
+      const locationMap = new Map<string, string>();
+      const locationLicenceeMap = new Map<string, string>();
+      locationsData.forEach(loc => {
+        locationMap.set(loc._id, loc.name);
+        if (loc.rel?.licencee) {
+          locationLicenceeMap.set(loc._id, String(loc.rel.licencee));
+        }
+      });
+
+      // Fetch licencee includeJackpot settings
+      const licencees = await Licencee.find({}, { _id: 1, includeJackpot: 1 })
+        .lean<LicenceeDocument[]>()
+        .exec();
+      const licenceeSettingsMap = new Map<string, boolean>();
+      licencees.forEach(licencee => {
+        licenceeSettingsMap.set(
+          String(licencee._id),
+          Boolean(licencee.includeJackpot)
+        );
+      });
+
+      // Calculate gaming day ranges for all locations
+      const { gamingDayRanges, queryStartDate, queryEndDate } =
+        calculateGamingDayRanges(
+          locationsData,
+          params.timePeriod,
+          params.customStartDate,
+          params.customEndDate
+        );
+
+      // ============================================================================
+      // STEP 5: Fetch machines data
+      // ============================================================================
+      console.log(
+        `[Meters Report API] STEP 5: Fetching machines for ${locationList.length} defined locations...`
+      );
+      const machinesData = await fetchMachinesData(
+        locationList,
+        params.licencee
+      );
+
+      if (machinesData.length === 0) {
+        return createEmptyResponse(params, queryStartDate, queryEndDate);
+      }
+
+      const machineIds = machinesData.map(machine => machine._id);
+
+      // ============================================================================
+      // STEP 6: Get last meter document per machine
+      // ============================================================================
+      console.log(
+        `[Meters Report API] STEP 6: Fetching last meter for ${machineIds.length} machines...`
+      );
+      /**
+       * CRITICAL: We get the LAST meter document for each machine, not a sum.
+       * The aggregation sorts by readAt descending and uses $first to get
+       * the latest document's absolute values (drop, coinIn, coinOut, etc.).
+       * These are cumulative totals from the meter, representing the final
+       * state at the end of the gaming day period.
+       */
+      const metersMap = await getLastMeterPerMachine(
+        machineIds,
+        gamingDayRanges
+      );
+
+      // ============================================================================
+      // STEP 7: Optionally aggregate hourly chart data
+      // ============================================================================
+      console.log(
+        `[Meters Report API] STEP 7: Optionally aggregate hourly chart data (includeHourlyData: ${params.includeHourlyData})...`
+      );
+      /**
+       * Hourly chart data uses movement fields (deltas) and sums them by hour.
+       * This is different from the main meter aggregation which uses absolute values.
+       *
+       * If hourlyDataMachineIds is provided, only aggregate data for those specific machines.
+       * Otherwise, aggregate data for all machines in the selected locations.
+       */
+      let hourlyChartData = null;
+      if (params.includeHourlyData && locationList.length > 0) {
+        const machineIdsForHourlyData =
+          params.hourlyDataMachineIds && params.hourlyDataMachineIds.length > 0
+            ? params.hourlyDataMachineIds
+            : machineIds;
+
+        hourlyChartData = await getHourlyChartData(
+          machineIdsForHourlyData,
+          queryStartDate,
+          queryEndDate,
+          params.granularity || 'hourly'
+        );
+      }
+
+      // ============================================================================
+      // STEP 8: Transform machine and meter data into report format
+      // ============================================================================
+      console.log(
+        `[Meters Report API] STEP 8: Transforming meter data for ${machinesData.length} machines...`
+      );
+      let transformedData = transformMeterData(
+        machinesData,
+        metersMap,
+        locationMap,
+        licenceeSettingsMap,
+        locationLicenceeMap
+      );
+
+      // ============================================================================
+      // STEP 9: Apply search filter if provided
+      // ============================================================================
+      console.log(
+        `[Meters Report API] STEP 9: Applying search filter ('${params.search}') if provided...`
+      );
+      transformedData = filterMeterDataBySearch(
+        transformedData,
+        machinesData,
+        params.search
+      );
+
+      // ============================================================================
+      // STEP 9.5: Apply reviewer multiplier scaling
+      // ============================================================================
+      console.log(
+        '[Meters Report API] STEP 9.5: Applying reviewer multiplier if present...'
+      );
+      const moneyInScale = getMoneyInScale(
+        userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+      );
+      const moneyOutScale = getMoneyOutAndJackpotScale(
+        userPayload as {
+          moneyOutAndJackpotMultiplier?: number | null;
+          roles?: string[];
+        }
+      );
+      if (moneyInScale !== 1 || moneyOutScale !== 1) {
+        transformedData = transformedData.map(item => {
+          const scaledMetersIn = item.metersIn * moneyInScale;
+          const scaledMetersOut = item.metersOut * moneyOutScale;
+          const scaledJackpot = item.jackpot * moneyOutScale;
+          const scaledAttPaidCredits = item.attPaidCredits * moneyOutScale;
+          return {
+            ...item,
+            metersIn: scaledMetersIn,
+            metersOut: scaledMetersOut,
+            jackpot: scaledJackpot,
+            billIn: item.billIn * moneyInScale,
+            voucherOut: item.voucherOut * moneyOutScale,
+            attPaidCredits: scaledAttPaidCredits,
+            netGross: scaledMetersIn - scaledMetersOut - scaledJackpot,
+          };
+        });
+      }
+
+      console.log('[Meters Report API] After search and multiplier:', {
+        filteredCount: transformedData.length,
+        searchTerm: params.search,
+        hasMultiplier: moneyInScale !== 1 || moneyOutScale !== 1,
+      });
+
+      // ============================================================================
+      // STEP 10: Paginate data
+      // ============================================================================
+      console.log(
+        `[Meters Report API] STEP 10: Paginating data (Page: ${params.page}, Limit: ${params.limit})...`
+      );
+      const { paginatedData, totalCount, totalPages } = paginateMeterData(
+        transformedData,
+        params.page,
+        params.limit
+      );
+
+      // ============================================================================
+      // STEP 11: Apply currency conversion if needed
+      // ============================================================================
+      console.log(
+        '[Meters Report API] STEP 11: Applying currency conversion if necessary...'
+      );
+      /**
+       * Currency conversion is ONLY applied when:
+       * 1. User is Admin/Developer
+       * 2. "All Licencees" is selected (params.licencee is null, undefined, or "all")
+       * 3. A display currency is explicitly selected (currency param is provided)
+       *
+       * When viewing a specific licencee, NO conversion should happen - values should
+       * be displayed in that licencee's native currency.
+       */
+      let convertedData = paginatedData;
+      // Currency conversion should ONLY happen when:
+      // 1. User is Admin/Developer
+      // 2. "All Licencees" is EXPLICITLY selected (licencee parameter must be "all")
+      // 3. Currency parameter is explicitly provided in the request
+      //
+      // IMPORTANT: The frontend only sends licencee parameter when it's NOT "all".
+      // So if licencee is missing, we're NOT viewing "all licencees" mode.
+      // Only convert when licencee is explicitly "all".
+      const licenceeParam = searchParams.get('licencee');
+      const currencyParamProvided = searchParams.get('currency') !== null;
+
+      // Only convert when explicitly viewing "all licencees" mode
+      const shouldConvert =
+        isAdminOrDev && licenceeParam === 'all' && currencyParamProvided;
+
+      if (shouldConvert) {
+        const { locationDetailsMap, licenceeMap } =
+          await buildCurrencyMaps(locationsData);
+
+        convertedData = applyCurrencyConversion(
+          paginatedData,
+          locationDetailsMap,
+          licenceeMap,
+          params.displayCurrency
+        );
+      }
+
+      // ============================================================================
+      // STEP 12: Build and return response
+      // ============================================================================
+      const actualLocationIds = locationsData.map(loc => loc._id);
+      const responseLocationList =
+        locationList.length > 0 ? locationList : actualLocationIds;
+
+      const duration = Date.now() - startTime;
+      console.log(
+        `[Meters Report API] STEP 12: Building response. Processed total items: ${totalCount}. Duration: ${duration}ms`
+      );
+      if (duration > 2000) {
+        console.warn(
+          `[Meters Report API] Slow response: ${duration}ms for ${totalCount} machines`
+        );
+      }
+
+      // Convert Date objects to ISO strings for JSON serialization
+      const serializedData = convertedData.map(item => ({
         ...item,
-        metersIn: item.metersIn * mult,
-        metersOut: item.metersOut * mult,
-        jackpot: item.jackpot * mult,
-        billIn: item.billIn * mult,
-        voucherOut: item.voucherOut * mult,
-        attPaidCredits: item.attPaidCredits * mult,
-        netGross: item.netGross * mult,
+        createdAt: item.createdAt
+          ? new Date(item.createdAt).toISOString()
+          : new Date().toISOString(),
       }));
-    }
 
-    console.log('[Meters Report API] After search and multiplier:', {
-      filteredCount: transformedData.length,
-      searchTerm: params.search,
-      hasMultiplier: reviewerMult !== null,
-    });
-
-    // ============================================================================
-    // STEP 10: Paginate data
-    // ============================================================================
-    console.log(`[Meters Report API] STEP 10: Paginating data (Page: ${params.page}, Limit: ${params.limit})...`);
-    const { paginatedData, totalCount, totalPages } = paginateMeterData(
-      transformedData,
-      params.page,
-      params.limit
-    );
-
-    // ============================================================================
-    // STEP 11: Apply currency conversion if needed
-    // ============================================================================
-    console.log('[Meters Report API] STEP 11: Applying currency conversion if necessary...');
-    /**
-     * Currency conversion is ONLY applied when:
-     * 1. User is Admin/Developer
-     * 2. "All Licencees" is selected (params.licencee is null, undefined, or "all")
-     * 3. A display currency is explicitly selected (currency param is provided)
-     *
-     * When viewing a specific licencee, NO conversion should happen - values should
-     * be displayed in that licencee's native currency.
-     */
-    let convertedData = paginatedData;
-    // Currency conversion should ONLY happen when:
-    // 1. User is Admin/Developer
-    // 2. "All Licencees" is EXPLICITLY selected (licencee parameter must be "all")
-    // 3. Currency parameter is explicitly provided in the request
-    //
-    // IMPORTANT: The frontend only sends licencee parameter when it's NOT "all".
-    // So if licencee is missing, we're NOT viewing "all licencees" mode.
-    // Only convert when licencee is explicitly "all".
-    const licenceeParam = (searchParams.get('licencee'));
-    const currencyParamProvided = searchParams.get('currency') !== null;
-
-    // Only convert when explicitly viewing "all licencees" mode
-    const shouldConvert =
-      isAdminOrDev && licenceeParam === 'all' && currencyParamProvided;
-
-    if (shouldConvert) {
-      const { locationDetailsMap, licenceeMap } = await buildCurrencyMaps(
-        locationsData
-      );
-
-      convertedData = applyCurrencyConversion(
-        paginatedData,
-        locationDetailsMap,
-        licenceeMap,
-        params.displayCurrency
-      );
-    }
-
-    // ============================================================================
-    // STEP 12: Build and return response
-    // ============================================================================
-    const actualLocationIds = locationsData.map(loc => loc._id);
-    const responseLocationList =
-      locationList.length > 0 ? locationList : actualLocationIds;
-
-    const duration = Date.now() - startTime;
-    console.log(`[Meters Report API] STEP 12: Building response. Processed total items: ${totalCount}. Duration: ${duration}ms`);
-    if (duration > 2000) {
-      console.warn(
-        `[Meters Report API] Slow response: ${duration}ms for ${totalCount} machines`
-      );
-    }
-
-    // Convert Date objects to ISO strings for JSON serialization
-    const serializedData = convertedData.map(item => ({
-      ...item,
-      createdAt: item.createdAt
-        ? new Date(item.createdAt).toISOString()
-        : new Date().toISOString(),
-    }));
-
-    const response = {
-      data: serializedData,
-      totalCount,
-      totalPages,
-      currentPage: params.page,
-      limit: params.limit,
-      locations: responseLocationList,
-      dateRange: { start: queryStartDate, end: queryEndDate },
-      timePeriod: params.timePeriod,
-      currency: params.displayCurrency,
-      converted: shouldConvert,
-      pagination: {
-        page: params.page,
-        limit: params.limit,
+      const response = {
+        data: serializedData,
         totalCount,
         totalPages,
-        hasNextPage: params.page < totalPages,
-        hasPrevPage: params.page > 1,
-      },
-      ...(hourlyChartData && { hourlyChartData }),
-    };
+        currentPage: params.page,
+        limit: params.limit,
+        locations: responseLocationList,
+        dateRange: { start: queryStartDate, end: queryEndDate },
+        timePeriod: params.timePeriod,
+        currency: params.displayCurrency,
+        converted: shouldConvert,
+        pagination: {
+          page: params.page,
+          limit: params.limit,
+          totalCount,
+          totalPages,
+          hasNextPage: params.page < totalPages,
+          hasPrevPage: params.page > 1,
+        },
+        ...(hourlyChartData && { hourlyChartData }),
+      };
 
-    // Prevent caching to avoid stale data issues
-    return NextResponse.json(response, {
-      headers: {
-        'Cache-Control':
-          'no-store, no-cache, must-revalidate, proxy-revalidate',
-        Pragma: 'no-cache',
-        Expires: '0',
-        'X-Content-Type-Options': 'nosniff',
-      },
-    });
-  });
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/reports/meters',
+        totalCount,
+        user,
+        duration
+      );
+
+      return NextResponse.json(response, {
+        headers: {
+          'Cache-Control':
+            'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      });
+    }
+  );
 }
-

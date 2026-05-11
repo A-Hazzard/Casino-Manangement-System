@@ -116,4 +116,3 @@ function AdministrationLicenceeSuccessModal({
 }
 
 export default AdministrationLicenceeSuccessModal;
-

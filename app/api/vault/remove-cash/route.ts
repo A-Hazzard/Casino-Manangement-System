@@ -4,6 +4,11 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import {
   updateVaultShiftInventory,
@@ -23,34 +28,62 @@ import { NextRequest, NextResponse } from 'next/server';
  * @body {string} notes - Optional. Additional context.
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/remove-cash';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const hasVMAccess = normalizedRoles.some(role =>
         ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
       );
-      if (!hasVMAccess)
+      if (!hasVMAccess) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/remove-cash',
+          'Insufficient permissions',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient permissions' },
           { status: 403 }
         );
+      }
 
       const { reason, amount, denominations, notes } = await request.json();
-      if (!reason || !amount || !denominations)
+      if (!reason || !amount || !denominations) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/remove-cash',
+          'Missing required fields',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Missing required fields' },
           { status: 400 }
         );
+      }
 
       const activeVaultShift = await VaultShiftModel.findOne({
         vaultManagerId: userPayload._id,
         status: 'active',
       });
-      if (!activeVaultShift)
+      if (!activeVaultShift) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/remove-cash',
+          'No active vault shift found',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'No active vault shift found' },
           { status: 400 }
         );
+      }
 
       const allowedLocationIds = await getUserLocationFilter(
         userPayload.assignedLicencees || [],
@@ -63,6 +96,13 @@ export async function POST(request: NextRequest) {
         allowedLocationIds !== 'all' &&
         !allowedLocationIds.includes(String(activeVaultShift.locationId))
       ) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/remove-cash',
+          `Access denied for location ${activeVaultShift.locationId}`,
+          user
+        );
         return NextResponse.json(
           {
             success: false,
@@ -72,11 +112,19 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (!validateDenominationTotal(amount, denominations))
+      if (!validateDenominationTotal(amount, denominations)) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/remove-cash',
+          'Denomination total mismatch',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Denomination total mismatch' },
           { status: 400 }
         );
+      }
 
       const transactionId = await generateMongoId();
       const now = new Date();
@@ -123,11 +171,32 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      const duration = Date.now() - startTime;
+      logRouteCreate(
+        functionName,
+        'POST',
+        '/api/vault/remove-cash',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         transaction: vaultTransaction,
       });
     } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to remove cash from vault';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/remove-cash',
+        errorMessage,
+        user
+      );
       console.error('[Remove Cash API] Error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       return NextResponse.json(

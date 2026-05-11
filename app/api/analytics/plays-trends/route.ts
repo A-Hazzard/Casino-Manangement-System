@@ -14,6 +14,11 @@ import { getPlaysTrends } from '@/app/api/lib/helpers/trends/general';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/analytics/plays-trends
@@ -33,6 +38,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/analytics/plays-trends';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -41,7 +48,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = (searchParams.get('licencee'));
+    const licencee = searchParams.get('licencee');
     const locationIds = searchParams.get('locationIds');
 
     // ============================================================================
@@ -49,6 +56,13 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const db = await connectDB();
     if (!db) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/analytics/plays-trends',
+        'Database connection not established',
+        user
+      );
       return NextResponse.json(
         { error: 'Database connection not established' },
         { status: 500 }
@@ -58,18 +72,25 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 3: Fetch plays trends data
     // ============================================================================
-    const playsTrends = await getPlaysTrends(
-      timePeriod,
-      licencee,
-      locationIds
-    );
+    const playsTrends = await getPlaysTrends(timePeriod, licencee, locationIds);
 
     // ============================================================================
     // STEP 4: Return plays trends
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/analytics/plays-trends',
+      1,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
-      console.warn(`[Analytics Plays Trends GET API] Completed in ${duration}ms`);
+      console.warn(
+        `[Analytics Plays Trends GET API] Completed in ${duration}ms`
+      );
     }
     return NextResponse.json({
       success: true,
@@ -81,6 +102,13 @@ export async function GET(req: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch plays trends';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/analytics/plays-trends',
+      errorMessage,
+      user
+    );
     console.error(
       `[Plays Trends Analytics GET API] Error after ${duration}ms:`,
       errorMessage
@@ -88,4 +116,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-

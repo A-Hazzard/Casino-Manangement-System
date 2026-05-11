@@ -23,6 +23,7 @@ const count = await db.collection('members').countDocuments(query);
 ```
 
 **Benefits:**
+
 - Automatic indexing
 - Type safety
 - Validation
@@ -162,18 +163,12 @@ const pipeline: PipelineStage[] = [
 ```typescript
 // ✅ CORRECT - Exclude soft-deleted
 const locations = await GamingLocations.find({
-  $or: [
-    { deletedAt: null },
-    { deletedAt: { $lt: new Date('2025-01-01') } },
-  ],
+  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
 });
 
 const machines = await Machine.find({
   gamingLocation: { $in: locationIds },
-  $or: [
-    { deletedAt: null },
-    { deletedAt: { $lt: new Date('2025-01-01') } },
-  ],
+  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }],
 });
 ```
 
@@ -196,7 +191,11 @@ try {
   const errorMessage = err instanceof Error ? err.message : 'Unknown error';
   console.error('[Route Name] Error:', errorMessage);
   return NextResponse.json(
-    { success: false, error: errorMessage, message: 'Database operation failed' },
+    {
+      success: false,
+      error: errorMessage,
+      message: 'Database operation failed',
+    },
     { status: 500 }
   );
 }
@@ -236,10 +235,7 @@ const updated = await Model.findOneAndUpdate(
 ### Update Multiple Documents
 
 ```typescript
-const result = await Model.updateMany(
-  { query },
-  { $set: updateObject }
-);
+const result = await Model.updateMany({ query }, { $set: updateObject });
 ```
 
 ### Delete (Soft Delete)
@@ -290,7 +286,7 @@ const count = await Machine.countDocuments(query); // ✅ No lean needed
 // ❌ WRONG
 response.cookies.set('token', value, {
   httpOnly: true,
-  secure: true,       // Hardcoded — breaks local dev
+  secure: true, // Hardcoded — breaks local dev
   sameSite: 'lax',
 });
 
@@ -307,15 +303,15 @@ response.cookies.set('token', value, { ...cookieOptions, httpOnly: true });
 
 **The `isEditing` flag controls whether a report is safe to use in financial reporting:**
 
-| State | `isEditing` | Meaning | Use in reports? |
-|-------|-------------|---------|----------------|
-| Checked Out | `true` | Collections being modified, machine histories NOT synced | ❌ Never |
-| Finalized | `false` | Machine histories synchronized, fully auditable | ✅ Always |
+| State       | `isEditing` | Meaning                                                  | Use in reports? |
+| ----------- | ----------- | -------------------------------------------------------- | --------------- |
+| Checked Out | `true`      | Collections being modified, machine histories NOT synced | ❌ Never        |
+| Finalized   | `false`     | Machine histories synchronized, fully auditable          | ✅ Always       |
 
 ```typescript
 // ✅ Only query finalized reports for financial data
 const reports = await CollectionReport.find({
-  isEditing: false,  // State 3: Finalized only
+  isEditing: false, // State 3: Finalized only
   locationId: { $in: allowedLocationIds },
 });
 ```
@@ -329,9 +325,7 @@ const reports = await CollectionReport.find({
 // 1st: actual metersIn from the machine's previous completed collection
 // 2nd: machine.collectionMeters values (fallback)
 const prevIn =
-  previousCompletedCollection?.metersIn
-  ?? machine.collectionMeters?.in
-  ?? 0;
+  previousCompletedCollection?.metersIn ?? machine.collectionMeters?.in ?? 0;
 
 // ❌ WRONG — machine defaults should never be primary source
 const prevIn = machine.collectionMeters?.in ?? 0;
@@ -365,6 +359,7 @@ const displayRevenue = Math.round(actualRevenue * scale);
 ## Type Safety & DTOs
 
 **Key Backend Rules:**
+
 1. **Explicit Return Types**: All API helpers must have explicit return type annotations.
 2. **DTO Mapping**: When returning data to the frontend, ensure the mapped object matches a type defined in `shared/types/`.
 3. **Zero `any`**: Use `unknown` or specific types for database query results. Never `interface` — always `type`.

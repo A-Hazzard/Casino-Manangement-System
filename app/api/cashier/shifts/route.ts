@@ -25,15 +25,31 @@
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/cashier/shifts';
+  const user = extractUserFromRequest(request);
+
   try {
     // ============================================================================
     // STEP 1: Authentication & Authorization
     // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cashier/shifts',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -146,19 +162,25 @@ export async function GET(request: NextRequest) {
               },
               in: {
                 $cond: {
-                  if: { $and: [{ $ne: ['$$fullName', null] }, { $ne: ['$$fullName', ''] }, { $ne: ['$$fullName', ' '] }] },
+                  if: {
+                    $and: [
+                      { $ne: ['$$fullName', null] },
+                      { $ne: ['$$fullName', ''] },
+                      { $ne: ['$$fullName', ' '] },
+                    ],
+                  },
                   then: {
                     $concat: [
                       { $ifNull: ['$matchedUser.username', 'Cashier'] },
                       ' (',
                       '$$fullName',
-                      ')'
-                    ]
+                      ')',
+                    ],
                   },
-                  else: { $ifNull: ['$matchedUser.username', '$cashierId'] }
-                }
-              }
-            }
+                  else: { $ifNull: ['$matchedUser.username', '$cashierId'] },
+                },
+              },
+            },
           },
         },
       },
@@ -175,12 +197,37 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 5: Return response
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/cashier/shifts',
+      shifts.length,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: true,
       shifts,
     });
-  } catch (e) {
-    console.error('[GET] Error:', e instanceof Error ? e.message : 'Unknown error');
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/cashier/shifts',
+      errorMessage,
+      user
+    );
+    console.error(
+      '[GET] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

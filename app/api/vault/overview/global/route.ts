@@ -6,6 +6,11 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Meters } from '@/app/api/lib/models/meters';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import type { LocationDocument } from '@/lib/types/common';
 import type {
@@ -15,7 +20,11 @@ import type {
   EnrichedVaultTransactionOverview,
 } from '@/shared/types/vault';
 import type { UserOverview } from '@/shared/types/models';
-import type { CashierShiftDocument, VaultShiftDocument, VaultTransactionDocument } from '@shared/types';
+import type {
+  CashierShiftDocument,
+  VaultShiftDocument,
+  VaultTransactionDocument,
+} from '@shared/types';
 
 /**
  * Main GET handler for global vault overview.
@@ -36,12 +45,24 @@ import type { CashierShiftDocument, VaultShiftDocument, VaultTransactionDocument
  * @returns {Promise<NextResponse>} Structured global vault overview data.
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/vault/overview/global';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ isAdminOrDev }) => {
-    if (!isAdminOrDev)
+    if (!isAdminOrDev) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/vault/overview/global',
+        'Insufficient permissions',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Insufficient permissions' },
         { status: 403 }
       );
+    }
 
     try {
       const { searchParams } = new URL(request.url);
@@ -170,10 +191,12 @@ export async function GET(request: NextRequest) {
         payouts = 0,
         payoutsCount = 0;
 
-      const filteredTransactions = await VaultTransactionModel.find({
+      const filteredTransactions = (await VaultTransactionModel.find({
         locationId: { $in: locationIds },
         timestamp: { $gte: rangeStart, $lte: rangeEnd },
-      }).lean<VaultTransactionDocument[]>() as unknown as VaultTransactionOverview[];
+      }).lean<
+        VaultTransactionDocument[]
+      >()) as unknown as VaultTransactionOverview[];
       filteredTransactions.forEach(tx => {
         if (tx.to?.type === 'vault') totalIn += tx.amount;
         if (tx.from?.type === 'vault') totalOut += tx.amount;
@@ -309,7 +332,28 @@ export async function GET(request: NextRequest) {
           rangeEnd: rangeEnd.toISOString(),
         },
       });
+
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/vault/overview/global',
+        1,
+        user,
+        duration
+      );
     } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch global vault overview';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/vault/overview/global',
+        errorMessage,
+        user
+      );
       console.error('[Global Vault API] Error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       return NextResponse.json(

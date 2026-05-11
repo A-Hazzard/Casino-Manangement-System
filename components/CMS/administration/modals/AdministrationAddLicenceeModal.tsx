@@ -67,9 +67,7 @@ function AdministrationAddLicenceeModal({
   }, [open]);
 
   const handleChange = (
-    e: ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     setFormState({ [e.target.name]: e.target.value });
   };
@@ -218,9 +216,7 @@ function AdministrationAddLicenceeModal({
               type="checkbox"
               id="includeJackpot"
               checked={formState.includeJackpot || false}
-              onChange={e =>
-                setFormState({ includeJackpot: e.target.checked })
-              }
+              onChange={e => setFormState({ includeJackpot: e.target.checked })}
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label
@@ -244,4 +240,3 @@ function AdministrationAddLicenceeModal({
 }
 
 export default AdministrationAddLicenceeModal;
-

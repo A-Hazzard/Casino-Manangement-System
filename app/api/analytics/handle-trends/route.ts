@@ -15,6 +15,11 @@ import { getHandleTrends } from '@/app/api/lib/helpers/trends/general';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/analytics/handle-trends
@@ -34,6 +39,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/analytics/handle-trends';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -42,7 +49,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = (searchParams.get('licencee'));
+    const licencee = searchParams.get('licencee');
     const locationIds = searchParams.get('locationIds');
 
     // ============================================================================
@@ -50,6 +57,13 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const db = await connectDB();
     if (!db) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/analytics/handle-trends',
+        'Database connection not established',
+        user
+      );
       return NextResponse.json(
         { error: 'Database connection not established' },
         { status: 500 }
@@ -69,9 +83,14 @@ export async function GET(req: NextRequest) {
     // STEP 4: Return handle trends data
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Analytics Handle Trends GET API] Completed in ${duration}ms`);
-    }
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/analytics/handle-trends',
+      Array.isArray(handleTrends) ? handleTrends.length : 1,
+      user,
+      duration
+    );
 
     return NextResponse.json({
       success: true,
@@ -83,6 +102,13 @@ export async function GET(req: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/analytics/handle-trends',
+      errorMessage,
+      user
+    );
     console.error(
       `[Analytics Handle Trends GET API] Error after ${duration}ms:`,
       errorMessage
@@ -93,4 +119,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

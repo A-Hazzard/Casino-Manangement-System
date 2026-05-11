@@ -12,10 +12,10 @@
 import { FormEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -23,7 +23,13 @@ import { Textarea } from '@/components/shared/ui/textarea';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import type { Denomination } from '@/shared/types/vault';
-import { ArrowLeftCircle, ArrowRightCircle, ArrowRightLeft, MessageSquare, Star } from 'lucide-react';
+import {
+  ArrowLeftCircle,
+  ArrowRightCircle,
+  ArrowRightLeft,
+  MessageSquare,
+  Star,
+} from 'lucide-react';
 import { useState } from 'react';
 
 type InterLocationTransferFormProps = {
@@ -59,7 +65,9 @@ export default function InterLocationTransferForm({
   const [denominations, setDenominations] = useState<Denomination[]>(
     DEFAULT_DENOMINATIONS.map(denom => ({ denomination: denom, quantity: 0 }))
   );
-  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(new Set());
+  const [touchedDenominations, setTouchedDenominations] = useState<Set<number>>(
+    new Set()
+  );
   const [notes, setNotes] = useState('');
 
   const totalAmount = denominations.reduce(
@@ -74,14 +82,16 @@ export default function InterLocationTransferForm({
     newDenominations[index] = { ...newDenominations[index], quantity };
     setDenominations(newDenominations as Denomination[]);
     setTouchedDenominations(prev => {
-        const next = new Set(prev);
-        next.add(Number(denomVal));
-        return next;
+      const next = new Set(prev);
+      next.add(Number(denomVal));
+      return next;
     });
   };
 
-  const isAllTouched = DEFAULT_DENOMINATIONS.every(d => touchedDenominations.has(Number(d)));
-  const isValid = (totalAmount > 0 || isAllTouched);
+  const isAllTouched = DEFAULT_DENOMINATIONS.every(d =>
+    touchedDenominations.has(Number(d))
+  );
+  const isValid = totalAmount > 0 || isAllTouched;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -202,8 +212,9 @@ export default function InterLocationTransferForm({
                       updateQuantity(index, parseInt(e.target.value) || 0)
                     }
                     className={cn(
-                      "text-center transition-all",
-                      touchedDenominations.has(Number(denom.denomination)) && "text-violet-600"
+                      'text-center transition-all',
+                      touchedDenominations.has(Number(denom.denomination)) &&
+                        'text-violet-600'
                     )}
                   />
                 </div>
@@ -228,45 +239,80 @@ export default function InterLocationTransferForm({
           </div>
 
           <div>
-            <Label className="text-[11px] font-black uppercase tracking-widest text-gray-400 ml-1">
+            <Label className="ml-1 text-[11px] font-black uppercase tracking-widest text-gray-400">
               Transfer Reason
             </Label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {[
-                { label: 'Replenish', icon: ArrowRightCircle, color: 'text-violet-500', bg: 'hover:bg-violet-50' },
-                { label: 'Excess', icon: ArrowLeftCircle, color: 'text-amber-500', bg: 'hover:bg-amber-50' },
-                { label: 'Special', icon: Star, color: 'text-blue-500', bg: 'hover:bg-blue-50' },
-                { label: 'Other', icon: MessageSquare, color: 'text-gray-500', bg: 'hover:bg-gray-50' }
+                {
+                  label: 'Replenish',
+                  icon: ArrowRightCircle,
+                  color: 'text-violet-500',
+                  bg: 'hover:bg-violet-50',
+                },
+                {
+                  label: 'Excess',
+                  icon: ArrowLeftCircle,
+                  color: 'text-amber-500',
+                  bg: 'hover:bg-amber-50',
+                },
+                {
+                  label: 'Special',
+                  icon: Star,
+                  color: 'text-blue-500',
+                  bg: 'hover:bg-blue-50',
+                },
+                {
+                  label: 'Other',
+                  icon: MessageSquare,
+                  color: 'text-gray-500',
+                  bg: 'hover:bg-gray-50',
+                },
               ].map(item => {
-                const isSelected = notes === item.label || (item.label === 'Other' && notes.length > 0 && !['Replenish', 'Excess', 'Special'].includes(notes));
+                const isSelected =
+                  notes === item.label ||
+                  (item.label === 'Other' &&
+                    notes.length > 0 &&
+                    !['Replenish', 'Excess', 'Special'].includes(notes));
                 const Icon = item.icon;
                 return (
                   <button
                     key={item.label}
                     type="button"
-                    onClick={() => setNotes(item.label === 'Other' ? '' : item.label)}
+                    onClick={() =>
+                      setNotes(item.label === 'Other' ? '' : item.label)
+                    }
                     className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all gap-1.5",
-                      notes === item.label 
-                        ? "bg-violet-600 border-violet-600 text-white shadow-md shadow-violet-200" 
-                        : "bg-white border-gray-100 text-gray-600",
+                      'flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 p-3 transition-all',
+                      notes === item.label
+                        ? 'border-violet-600 bg-violet-600 text-white shadow-md shadow-violet-200'
+                        : 'border-gray-100 bg-white text-gray-600',
                       !isSelected && item.bg
                     )}
                   >
-                    <Icon className={cn("h-4 w-4", notes === item.label ? "text-white" : item.color)} />
-                    <span className="text-[10px] font-black uppercase tracking-tight">{item.label}</span>
+                    <Icon
+                      className={cn(
+                        'h-4 w-4',
+                        notes === item.label ? 'text-white' : item.color
+                      )}
+                    />
+                    <span className="text-[10px] font-black uppercase tracking-tight">
+                      {item.label}
+                    </span>
                   </button>
                 );
               })}
             </div>
-            {(notes === 'Other' || (notes.length > 0 && !['Replenish', 'Excess', 'Special'].includes(notes))) && (
+            {(notes === 'Other' ||
+              (notes.length > 0 &&
+                !['Replenish', 'Excess', 'Special'].includes(notes))) && (
               <Textarea
                 id="transfer-notes"
                 placeholder="Briefly explain the transfer (Optional)..."
                 value={notes === 'Other' ? '' : notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={2}
-                className="resize-none bg-gray-50/50 border-gray-200 rounded-xl focus:bg-white transition-all text-sm mt-3"
+                className="mt-3 resize-none rounded-xl border-gray-200 bg-gray-50/50 text-sm transition-all focus:bg-white"
               />
             )}
           </div>
@@ -278,7 +324,7 @@ export default function InterLocationTransferForm({
               !fromLocation.trim() ||
               !toLocation.trim() ||
               fromLocation === toLocation ||
-              totalAmount === 0 && !isAllTouched
+              (totalAmount === 0 && !isAllTouched)
             }
             className="w-full bg-button text-white hover:bg-button/90"
           >

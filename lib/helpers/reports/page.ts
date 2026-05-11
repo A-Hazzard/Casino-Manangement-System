@@ -542,7 +542,8 @@ export async function handleExportMeters(
           label: 'Total Net Win',
           value: `$${machinesToExport
             .reduce(
-              (sum: number, machineData: MachineData) => sum + (machineData.netWin || 0),
+              (sum: number, machineData: MachineData) =>
+                sum + (machineData.netWin || 0),
               0
             )
             .toLocaleString()}`,
@@ -551,7 +552,8 @@ export async function handleExportMeters(
           label: 'Total Drop',
           value: `$${machinesToExport
             .reduce(
-              (sum: number, machineData: MachineData) => sum + (machineData.drop || 0),
+              (sum: number, machineData: MachineData) =>
+                sum + (machineData.drop || 0),
               0
             )
             .toLocaleString()}`,
@@ -579,4 +581,3 @@ export async function handleExportMeters(
     toast.error('Failed to export machine data');
   }
 }
-

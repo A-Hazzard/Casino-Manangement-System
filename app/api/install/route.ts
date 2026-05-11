@@ -22,14 +22,22 @@ import { generateUniqueLicenceKey } from '@/app/api/lib/utils/licenceKey';
 import { hashPassword } from '@/app/api/lib/utils/validation';
 import type { LeanUserDocument } from '@/shared/types/auth';
 import { generateMongoId } from '@/lib/utils/id';
-import { NextResponse } from 'next/server';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main GET handler for initial system setup
  *
  * (No query parameters)
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/install';
+  const user = extractUserFromRequest(request);
   try {
     // ============================================================================
     // STEP 1: Connect to database
@@ -39,20 +47,27 @@ export async function GET() {
     // ============================================================================
     // STEP 2: Check if system is already initialized
     // ============================================================================
-    const [existingUser, existingCountryCount, existingLicenceeCount] = await Promise.all([
-      UserModel.findOne({
-        $or: [{ username: 'admin' }, { emailAddress: 'admin@gmail.com' }],
-      }).lean<LeanUserDocument | null>(),
-      Countries.countDocuments({
-        name: { $in: ['Trinidad & Tobago', 'Guyana', 'Barbados', 'St. Lucia'] },
-      }),
-      Licencee.countDocuments({
-        name: { $in: ['TTG', 'Cabana', 'Barbados'] },
-      }),
-    ]);
+    const [existingUser, existingCountryCount, existingLicenceeCount] =
+      await Promise.all([
+        UserModel.findOne({
+          $or: [{ username: 'admin' }, { emailAddress: 'admin@gmail.com' }],
+        }).lean<LeanUserDocument | null>(),
+        Countries.countDocuments({
+          name: {
+            $in: ['Trinidad & Tobago', 'Guyana', 'Barbados', 'St. Lucia'],
+          },
+        }),
+        Licencee.countDocuments({
+          name: { $in: ['TTG', 'Cabana', 'Barbados'] },
+        }),
+      ]);
 
     // Only block installation if ALL prerequisite data exists
-    if (existingUser && existingCountryCount >= 4 && existingLicenceeCount >= 3) {
+    if (
+      existingUser &&
+      existingCountryCount >= 4 &&
+      existingLicenceeCount >= 3
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -66,7 +81,8 @@ export async function GET() {
     // STEP 3: Hash the default password
     // ============================================================================
     const defaultPassword = process.env.DEFAULT_PASSWORD;
-    if (!defaultPassword) throw new Error('DEFAULT_PASSWORD environment variable is not set');
+    if (!defaultPassword)
+      throw new Error('DEFAULT_PASSWORD environment variable is not set');
     const hashedPassword = await hashPassword(defaultPassword);
 
     // ============================================================================
@@ -84,7 +100,7 @@ export async function GET() {
       let countryDoc = await Countries.findOne({ name: country.name });
       if (!countryDoc) {
         countryDoc = await Countries.create({
-          _id: country._id || await generateMongoId(),
+          _id: country._id || (await generateMongoId()),
           name: country.name,
         });
       }
@@ -99,46 +115,46 @@ export async function GET() {
     const currentDateTime = new Date();
     const licenceesData = [
       {
-        _id: "9a5db2cb29ffd2d962fd1d91",
-        name: "TTG",
-        country: "699ef6e695fc27943db16c14",
-        startDate: new Date("2026-02-25T19:19:34.435Z"),
-        expiryDate: new Date("2027-02-25T19:19:34.435Z"),
+        _id: '9a5db2cb29ffd2d962fd1d91',
+        name: 'TTG',
+        country: '699ef6e695fc27943db16c14',
+        startDate: new Date('2026-02-25T19:19:34.435Z'),
+        expiryDate: new Date('2027-02-25T19:19:34.435Z'),
         isPaid: true,
-        licenceKey: "LIC-MM2F4UKI-1NW5E1",
-        status: "active",
+        licenceKey: 'LIC-MM2F4UKI-1NW5E1',
+        status: 'active',
         deletedAt: null,
         createdAt: currentDateTime,
         updatedAt: null,
       },
       {
-        _id: "732b094083226f216b3fc11a",
-        name: "Barbados",
-        country: "699ef6e695fc27943db16c18",
-        startDate: new Date("2026-02-25T19:19:35.029Z"),
-        expiryDate: new Date("2027-02-25T19:19:35.029Z"),
+        _id: '732b094083226f216b3fc11a',
+        name: 'Barbados',
+        country: '699ef6e695fc27943db16c18',
+        startDate: new Date('2026-02-25T19:19:35.029Z'),
+        expiryDate: new Date('2027-02-25T19:19:35.029Z'),
         isPaid: true,
-        licenceKey: "LIC-MM2F4V11-6Y189A",
-        status: "active",
+        licenceKey: 'LIC-MM2F4V11-6Y189A',
+        status: 'active',
         deletedAt: null,
         createdAt: currentDateTime,
         updatedAt: null,
       },
       {
-        _id: "c03b094083226f216b3fc39c",
-        name: "Cabana",
-        country: "175d649e49f7a95dc32e72fc",
-        startDate: new Date("2025-06-01T14:31:00.000Z"),
-        expiryDate: new Date("2025-07-01T03:18:00.000Z"),
+        _id: 'c03b094083226f216b3fc39c',
+        name: 'Cabana',
+        country: '175d649e49f7a95dc32e72fc',
+        startDate: new Date('2025-06-01T14:31:00.000Z'),
+        expiryDate: new Date('2025-07-01T03:18:00.000Z'),
         isPaid: true,
-        description: "Licence to operate in Guyana",
-        licenceKey: "LIC-CABANA-AUTO-GEN", // Added to satisfy required field
+        description: 'Licence to operate in Guyana',
+        licenceKey: 'LIC-CABANA-AUTO-GEN', // Added to satisfy required field
         geoCoords: {
           zoomRatio: 9,
           latitude: 5.570307,
-          longitude: -59.026519
+          longitude: -59.026519,
         },
-        prevExpiryDate: new Date("2025-06-30T04:00:00.000Z"),
+        prevExpiryDate: new Date('2025-06-30T04:00:00.000Z'),
         deletedAt: null,
         createdAt: currentDateTime,
         updatedAt: null,
@@ -147,11 +163,8 @@ export async function GET() {
 
     const seededLicenceeIds = [];
     for (const lic of licenceesData) {
-      let licenceeDoc = await Licencee.findOne({ 
-        $or: [
-          { _id: lic._id },
-          { name: lic.name }
-        ]
+      let licenceeDoc = await Licencee.findOne({
+        $or: [{ _id: lic._id }, { name: lic.name }],
       });
 
       if (!licenceeDoc) {
@@ -180,8 +193,8 @@ export async function GET() {
         profile: {
           firstName: 'Evolution',
           lastName: 'Admin',
-          gender: "Other",
-          phoneNumber: "18681234566",
+          gender: 'Other',
+          phoneNumber: '18681234566',
         },
 
         assignedLocations: [], // Empty initially
@@ -199,17 +212,20 @@ export async function GET() {
     // ============================================================================
     // STEP 7: Return success
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteCreate(functionName, 'GET', '/api/install', 1, user, duration);
     return NextResponse.json(
       {
         success: true,
-        message: 'System initialized successfully. Admin user, countries, and licencees created.',
+        message:
+          'System initialized successfully. Admin user, countries, and licencees created.',
       },
       { status: 201 }
     );
   } catch (error: unknown) {
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Install API] Error:', errorMessage);
+    logRouteError(functionName, 'GET', '/api/install', errorMessage, user);
 
     return NextResponse.json(
       { success: false, error: 'Failed to initialize the system.' },

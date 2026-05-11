@@ -1,8 +1,8 @@
 # Collection Reporting Pillar (Collections)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -11,6 +11,7 @@
 The Collection Reporting system is the primary workflow for reconciling physical machine cash with electronic SAS meters. It ensures that the casino's reported profit matches the actual bank deposits.
 
 ### Key Capabilities
+
 - **Multi-Step Collection Wizard**: Guided flow for Drop, Soft Count, and Variance Audit.
 - **SAS Calibration**: Real-time tools to identify SMIB/Meter drift.
 - **Master History Fix**: Automated resolution of "Ghost Meter" entries or overlapping reporting periods.
@@ -25,6 +26,7 @@ The Collection Reporting system is the primary workflow for reconciling physical
 - **`History`**: High-performance time-series entries that link collections to historical machine status.
 
 ### Performance Strategies
+
 - **Batch Processing**: The system processes hundreds of machines in parallel during "Finalization."
 - **Immutable Records**: Once a report is "Closed," it cannot be modified; any corrections require a `Fix Report` transaction.
 
@@ -49,7 +51,9 @@ The Collection Reporting system is the primary workflow for reconciling physical
 ---
 
 ## 5. Technical Documentation
+
 For deep-dive documentation on API endpoints, data flow, and the calculation pipeline, refer to the [Collections Technical Reference](./COLLECTIONS_TECHNICAL_REFERENCE.md).
 
 ---
+
 **Maintained By**: Evolution One Development Team

@@ -11,7 +11,6 @@
  * - Hover and selected states
  */
 
-
 import { HTMLAttributes, forwardRef } from 'react';
 import { TdHTMLAttributes, ThHTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
@@ -20,18 +19,17 @@ import { cn } from '@/lib/utils';
 // Table Components
 // ============================================================================
 
-const Table = forwardRef<
-  HTMLTableElement,
-  HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
-    <table
-      ref={ref}
-      className={cn('w-full caption-bottom text-sm', className)}
-      {...props}
-    />
-  </div>
-));
+const Table = forwardRef<HTMLTableElement, HTMLAttributes<HTMLTableElement>>(
+  ({ className, ...props }, ref) => (
+    <div className="relative w-full overflow-auto">
+      <table
+        ref={ref}
+        className={cn('w-full caption-bottom text-sm', className)}
+        {...props}
+      />
+    </div>
+  )
+);
 Table.displayName = 'Table';
 
 const TableHeader = forwardRef<
@@ -134,12 +132,4 @@ const TableCaption = forwardRef<
 ));
 TableCaption.displayName = 'TableCaption';
 
-export {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-};
-
+export { Table, TableHeader, TableBody, TableHead, TableRow, TableCell };

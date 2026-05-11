@@ -9,7 +9,11 @@
 
 'use client';
 
-import { deleteScheduler, editScheduler, fetchSchedulersWithFilters } from '@/lib/helpers/schedulers';
+import {
+  deleteScheduler,
+  editScheduler,
+  fetchSchedulersWithFilters,
+} from '@/lib/helpers/schedulers';
 import { useUserStore } from '@/lib/store/userStore';
 import type { SchedulerTableRow } from '@/lib/types/components';
 import type { SchedulerData } from '@/lib/types/api';
@@ -17,7 +21,13 @@ import type { LocationSelectItem } from '@/lib/types/location';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const ITEMS_PER_PAGE = 20;
-const MANAGE_ROLES = ['manager', 'admin', 'location admin', 'owner', 'developer'];
+const MANAGE_ROLES = [
+  'manager',
+  'admin',
+  'location admin',
+  'owner',
+  'developer',
+];
 
 export function useManagerScheduleData(
   selectedLicencee: string | null,
@@ -30,14 +40,16 @@ export function useManagerScheduleData(
   // Permission
   // ============================================================================
   const canManage = useMemo(
-    () => user?.roles?.some((role: string) => MANAGE_ROLES.includes(role)) ?? false,
+    () =>
+      user?.roles?.some((role: string) => MANAGE_ROLES.includes(role)) ?? false,
     [user]
   );
 
   // ============================================================================
   // Filter State
   // ============================================================================
-  const [selectedSchedulerLocation, setSelectedSchedulerLocation] = useState<string>('all');
+  const [selectedSchedulerLocation, setSelectedSchedulerLocation] =
+    useState<string>('all');
   const [selectedCollector, setSelectedCollector] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
@@ -53,7 +65,9 @@ export function useManagerScheduleData(
   // Edit / Delete State
   // ============================================================================
   const [editingRow, setEditingRow] = useState<SchedulerTableRow | null>(null);
-  const [deletingRow, setDeletingRow] = useState<SchedulerTableRow | null>(null);
+  const [deletingRow, setDeletingRow] = useState<SchedulerTableRow | null>(
+    null
+  );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -78,7 +92,10 @@ export function useManagerScheduleData(
     try {
       const data = await fetchSchedulersWithFilters({
         licencee: selectedLicencee || undefined,
-        location: selectedSchedulerLocation === 'all' ? undefined : selectedSchedulerLocation,
+        location:
+          selectedSchedulerLocation === 'all'
+            ? undefined
+            : selectedSchedulerLocation,
         collector: selectedCollector === 'all' ? undefined : selectedCollector,
         status: selectedStatus === 'all' ? undefined : selectedStatus,
       });
@@ -90,8 +107,12 @@ export function useManagerScheduleData(
         collector: item.collectorName || item.collector || '-',
         location: item.locationName || item.location || '-',
         creator: item.creatorName || item.creator || '-',
-        visitTime: item.startTime ? new Date(item.startTime).toLocaleString() : '-',
-        createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString() : '-',
+        visitTime: item.startTime
+          ? new Date(item.startTime).toLocaleString()
+          : '-',
+        createdAt: item.createdAt
+          ? new Date(item.createdAt).toLocaleString()
+          : '-',
         status: item.status || 'pending',
         rawStartTime: item.startTime || '',
         rawEndTime: item.endTime || '',
@@ -106,7 +127,12 @@ export function useManagerScheduleData(
     } finally {
       setLoadingSchedulers(false);
     }
-  }, [selectedLicencee, selectedSchedulerLocation, selectedCollector, selectedStatus]);
+  }, [
+    selectedLicencee,
+    selectedSchedulerLocation,
+    selectedCollector,
+    selectedStatus,
+  ]);
 
   // ============================================================================
   // Edit Handler

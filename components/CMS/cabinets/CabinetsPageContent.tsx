@@ -382,10 +382,9 @@ export default function CabinetsPageContent() {
             const userRoles = (user?.roles || []).filter(
               (r): r is string => typeof r === 'string'
             );
-            const isAuthorized =
-              !userRoles.some((role: string) =>
-                EXCLUDED_MOVEMENT_ROLES.includes(role)
-              );
+            const isAuthorized = !userRoles.some((role: string) =>
+              EXCLUDED_MOVEMENT_ROLES.includes(role)
+            );
 
             if (!isAuthorized) {
               return <AccessRestricted sectionName="Movement Requests" />;

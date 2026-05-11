@@ -14,28 +14,33 @@
 
 import { FC, FormEvent, useEffect } from 'react';
 import { Button } from '@/components/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { ModernDateRangePicker } from '@/components/shared/ui/ModernDateRangePicker';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from '@/components/shared/ui/tooltip';
 import { ConfirmationDialog } from '@/components/shared/ui/ConfirmationDialog';
 import {
@@ -50,14 +55,14 @@ import { Label } from '@/components/shared/ui/label';
 import { useUserStore } from '@/lib/store/userStore';
 import axios from 'axios';
 import {
-    ChevronDown,
-    ChevronsUpDown,
-    ChevronUp,
-    Edit,
-    Trash2
+  ChevronDown,
+  ChevronsUpDown,
+  ChevronUp,
+  Edit,
+  Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import {  useMemo, useState  } from 'react';
+import { useMemo, useState } from 'react';
 
 import type { DateRange } from 'react-day-picker';
 import { toast } from 'sonner';
@@ -119,7 +124,16 @@ type CollectionData = {
 
 type SortField = 'timestamp' | 'metersIn' | 'metersOut' | 'prevIn' | 'prevOut';
 type SortDirection = 'asc' | 'desc' | null;
-export type TimeFilter = 'all' | 'today' | 'yesterday' | '7d' | '30d' | '90d' | '1y' | '2y' | 'custom';
+export type TimeFilter =
+  | 'all'
+  | 'today'
+  | 'yesterday'
+  | '7d'
+  | '30d'
+  | '90d'
+  | '1y'
+  | '2y'
+  | 'custom';
 
 type CabinetsDetailsCollectionHistoryTableProps = {
   data: CollectionData[];
@@ -148,7 +162,9 @@ export function CabinetsDetailsCollectionHistoryTable({
   const pageSize = 20;
 
   const [isDeleting, setIsDeleting] = useState(false);
-  const [entryToDelete, setEntryToDelete] = useState<CollectionData | null>(null);
+  const [entryToDelete, setEntryToDelete] = useState<CollectionData | null>(
+    null
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [entryToEdit, setEntryToEdit] = useState<CollectionData | null>(null);
   const [editFormData, setEditFormData] = useState({
@@ -163,10 +179,13 @@ export function CabinetsDetailsCollectionHistoryTable({
     if (!entryToDelete || !entryToDelete.machineId) return;
 
     try {
-      const res = await axios.patch(`/api/cabinets/${entryToDelete.machineId}/collection-history`, {
-        operation: 'delete',
-        entryId: entryToDelete._id,
-      });
+      const res = await axios.patch(
+        `/api/cabinets/${entryToDelete.machineId}/collection-history`,
+        {
+          operation: 'delete',
+          entryId: entryToDelete._id,
+        }
+      );
 
       if (res.data.success) {
         toast.success('Collection entry deleted successfully');
@@ -188,18 +207,21 @@ export function CabinetsDetailsCollectionHistoryTable({
     if (!entryToEdit || !entryToEdit.machineId) return;
 
     try {
-      const res = await axios.patch(`/api/cabinets/${entryToEdit.machineId}/collection-history`, {
-        operation: 'update',
-        entryId: entryToEdit._id,
-        entry: {
-          metersIn: Number(editFormData.metersIn),
-          metersOut: Number(editFormData.metersOut),
-          prevMetersIn: Number(editFormData.prevIn),
-          prevMetersOut: Number(editFormData.prevOut),
-          timestamp: entryToEdit.timestamp,
-          locationReportId: entryToEdit.locationReportId,
+      const res = await axios.patch(
+        `/api/cabinets/${entryToEdit.machineId}/collection-history`,
+        {
+          operation: 'update',
+          entryId: entryToEdit._id,
+          entry: {
+            metersIn: Number(editFormData.metersIn),
+            metersOut: Number(editFormData.metersOut),
+            prevMetersIn: Number(editFormData.prevIn),
+            prevMetersOut: Number(editFormData.prevOut),
+            timestamp: entryToEdit.timestamp,
+            locationReportId: entryToEdit.locationReportId,
+          },
         }
-      });
+      );
 
       if (res.data.success) {
         toast.success('Collection entry updated successfully');
@@ -228,9 +250,11 @@ export function CabinetsDetailsCollectionHistoryTable({
   }, [entryToEdit]);
 
   // Local state for custom date range picker
-  const [localDateRange, setLocalDateDateRange] = useState<DateRange | undefined>({
+  const [localDateRange, setLocalDateDateRange] = useState<
+    DateRange | undefined
+  >({
     from: customRange?.from,
-    to: customRange?.to
+    to: customRange?.to,
   });
 
   // Sync with defaultTimeFilter when it changes globally
@@ -245,7 +269,7 @@ export function CabinetsDetailsCollectionHistoryTable({
     if (customRange) {
       setLocalDateDateRange({
         from: customRange.from,
-        to: customRange.to
+        to: customRange.to,
       });
     }
   }, [customRange]);
@@ -256,7 +280,7 @@ export function CabinetsDetailsCollectionHistoryTable({
     if (timeFilter !== 'all') {
       const tz = 'America/Port_of_Spain';
       const now = new Date();
-      
+
       // Get current date parts in target timezone
       const formatter = new Intl.DateTimeFormat('en-CA', {
         timeZone: tz,
@@ -275,7 +299,7 @@ export function CabinetsDetailsCollectionHistoryTable({
       switch (timeFilter) {
         case 'today':
           // AST 00:00:00 = UTC 04:00:00 (AST is UTC-4)
-          // We use UTC 04:00:00 because the server pre-adjusts dates by -4 hours 
+          // We use UTC 04:00:00 because the server pre-adjusts dates by -4 hours
           // AND the data is stored as AST 00:00:00.
           // Wait, if the server ALREADY adjusted it to AST, we should compare against AST boundaries.
           startDate = new Date(Date.UTC(year, month, day, 4, 0, 0, 0));
@@ -310,7 +334,7 @@ export function CabinetsDetailsCollectionHistoryTable({
         case 'custom':
           startDate = localDateRange?.from || customRange?.from || new Date(0);
           endDate = localDateRange?.to || customRange?.to || new Date();
-          
+
           // Ensure end date includes the whole day if manually picked
           if (localDateRange?.to) {
             endDate = new Date(localDateRange.to);
@@ -362,7 +386,10 @@ export function CabinetsDetailsCollectionHistoryTable({
     return filtered;
   }, [data, timeFilter, sortField, sortDirection, customRange, localDateRange]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredAndSortedData.length / pageSize));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredAndSortedData.length / pageSize)
+  );
   const paged = useMemo(
     () => filteredAndSortedData.slice((page - 1) * pageSize, page * pageSize),
     [filteredAndSortedData, page]
@@ -385,7 +412,8 @@ export function CabinetsDetailsCollectionHistoryTable({
   };
 
   const getSortIcon = (field: SortField) => {
-    if (sortField !== field) return <ChevronsUpDown className="h-4 w-4 opacity-50" />;
+    if (sortField !== field)
+      return <ChevronsUpDown className="h-4 w-4 opacity-50" />;
     if (sortDirection === 'asc') return <ChevronUp className="h-4 w-4" />;
     if (sortDirection === 'desc') return <ChevronDown className="h-4 w-4" />;
     return <ChevronsUpDown className="h-4 w-4 opacity-50" />;
@@ -423,7 +451,9 @@ export function CabinetsDetailsCollectionHistoryTable({
                 <SelectItem value="today">Today</SelectItem>
                 <SelectItem value="yesterday">Yesterday</SelectItem>
                 <SelectItem value="7d">Last 7 days</SelectItem>
-                {isDeveloper && <SelectItem value="30d">Last 30 days</SelectItem>}
+                {isDeveloper && (
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                )}
                 <SelectItem value="90d">Last 90 days</SelectItem>
                 <SelectItem value="1y">Last year</SelectItem>
                 <SelectItem value="2y">Last 2 years</SelectItem>
@@ -450,19 +480,26 @@ export function CabinetsDetailsCollectionHistoryTable({
                 }}
                 onSetLastMonth={() => {
                   const now = new Date();
-                  const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                  const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+                  const firstDay = new Date(
+                    now.getFullYear(),
+                    now.getMonth() - 1,
+                    1
+                  );
+                  const lastDay = new Date(
+                    now.getFullYear(),
+                    now.getMonth(),
+                    0
+                  );
                   setLocalDateDateRange({ from: firstDay, to: lastDay });
                 }}
               />
             </div>
           )}
 
-          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4 ml-auto">
+          <div className="ml-auto flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
             <div className="text-sm text-muted-foreground">
               Showing {filteredAndSortedData.length} of {data.length} entries
             </div>
-
           </div>
         </div>
 
@@ -515,7 +552,7 @@ export function CabinetsDetailsCollectionHistoryTable({
                     {getSortIcon('prevOut')}
                   </div>
                 </TableHead>
-                 <TableHead className="w-[110px] px-2 text-left">
+                <TableHead className="w-[110px] px-2 text-left">
                   Collection Report
                 </TableHead>
                 {canModifyHistory && (
@@ -530,7 +567,7 @@ export function CabinetsDetailsCollectionHistoryTable({
                 <TableRow
                   key={`${row.locationReportId}-${row.timestamp}-${index}`}
                 >
-                  <TableCell className="text-left py-2">
+                  <TableCell className="py-2 text-left">
                     <div className="flex flex-col">
                       <span className="whitespace-nowrap text-sm font-medium">
                         {new Date(row.timestamp).toLocaleDateString('en-US', {
@@ -549,70 +586,71 @@ export function CabinetsDetailsCollectionHistoryTable({
                       </span>
                     </div>
                   </TableCell>
-                    <TableCell className="truncate px-2 text-left">
-                      <SmartNumberDisplay value={row.metersIn || 0} />
-                    </TableCell>
-                    <TableCell className="truncate px-2 text-left">
-                      <SmartNumberDisplay value={row.metersOut || 0} />
-                    </TableCell>
-                    <TableCell className="truncate px-2 text-left">
-                      <SmartNumberDisplay value={row.prevIn || 0} />
-                    </TableCell>
-                    <TableCell className="truncate px-2 text-left">
-                      <SmartNumberDisplay value={row.prevOut || 0} />
-                    </TableCell>
-                     <TableCell className="truncate px-2 text-left">
-                      {row.locationReportId && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="px-2 py-1 text-xs"
-                          onClick={() => router.push(`/collection-report/report/${row.locationReportId}`)}
-                        >
-                          VIEW REPORT
-                        </Button>
-                      )}
-                    </TableCell>
-                    {canModifyHistory && (
-                      <TableCell className="px-2 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-                            onClick={() => {
-                              setEntryToEdit(row);
-                              setIsEditing(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-red-600 hover:bg-red-50"
-                            onClick={() => {
-                              setEntryToDelete(row);
-                              setIsDeleting(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                  <TableCell className="truncate px-2 text-left">
+                    <SmartNumberDisplay value={row.metersIn || 0} />
+                  </TableCell>
+                  <TableCell className="truncate px-2 text-left">
+                    <SmartNumberDisplay value={row.metersOut || 0} />
+                  </TableCell>
+                  <TableCell className="truncate px-2 text-left">
+                    <SmartNumberDisplay value={row.prevIn || 0} />
+                  </TableCell>
+                  <TableCell className="truncate px-2 text-left">
+                    <SmartNumberDisplay value={row.prevOut || 0} />
+                  </TableCell>
+                  <TableCell className="truncate px-2 text-left">
+                    {row.locationReportId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="px-2 py-1 text-xs"
+                        onClick={() =>
+                          router.push(
+                            `/collection-report/report/${row.locationReportId}`
+                          )
+                        }
+                      >
+                        VIEW REPORT
+                      </Button>
                     )}
-                  </TableRow>
-                )
-              )}
+                  </TableCell>
+                  {canModifyHistory && (
+                    <TableCell className="px-2 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                          onClick={() => {
+                            setEntryToEdit(row);
+                            setIsEditing(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-red-600 hover:bg-red-50"
+                          onClick={() => {
+                            setEntryToDelete(row);
+                            setIsDeleting(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>
 
         <div className="w-full space-y-3 xl:hidden">
           {paged.map((row, index) => (
-            <Card
-              key={`${row.locationReportId}-${row.timestamp}-${index}`}
-            >
+            <Card key={`${row.locationReportId}-${row.timestamp}-${index}`}>
               <CardHeader className="pb-2">
                 <CardTitle className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
                   <span className="flex items-center gap-2">
@@ -634,20 +672,36 @@ export function CabinetsDetailsCollectionHistoryTable({
               <CardContent className="space-y-2">
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-muted-foreground">Meters In:</span>
-                    <span className="font-semibold"><SmartNumberDisplay value={row.metersIn || 0} /></span>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Meters In:
+                    </span>
+                    <span className="font-semibold">
+                      <SmartNumberDisplay value={row.metersIn || 0} />
+                    </span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-muted-foreground">Meters Out:</span>
-                    <span className="font-semibold"><SmartNumberDisplay value={row.metersOut || 0} /></span>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Meters Out:
+                    </span>
+                    <span className="font-semibold">
+                      <SmartNumberDisplay value={row.metersOut || 0} />
+                    </span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-muted-foreground">Prev. In:</span>
-                    <span className="font-semibold"><SmartNumberDisplay value={row.prevIn || 0} /></span>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Prev. In:
+                    </span>
+                    <span className="font-semibold">
+                      <SmartNumberDisplay value={row.prevIn || 0} />
+                    </span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs font-medium text-muted-foreground">Prev. Out:</span>
-                    <span className="font-semibold"><SmartNumberDisplay value={row.prevOut || 0} /></span>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Prev. Out:
+                    </span>
+                    <span className="font-semibold">
+                      <SmartNumberDisplay value={row.prevOut || 0} />
+                    </span>
                   </div>
                 </div>
                 {row.locationReportId && (
@@ -655,7 +709,11 @@ export function CabinetsDetailsCollectionHistoryTable({
                     variant="outline"
                     size="sm"
                     className="w-full"
-                    onClick={() => router.push(`/collection-report/report/${row.locationReportId}`)}
+                    onClick={() =>
+                      router.push(
+                        `/collection-report/report/${row.locationReportId}`
+                      )
+                    }
                   >
                     VIEW REPORT
                   </Button>
@@ -692,11 +750,41 @@ export function CabinetsDetailsCollectionHistoryTable({
         </div>
 
         <div className="mt-6 flex items-center justify-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setPage(1)} disabled={page === 1}>{'<<'}</Button>
-          <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>{'<'}</Button>
-          <span className="px-2 text-sm">Page {page} of {totalPages}</span>
-          <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>{'>'}</Button>
-          <Button variant="outline" size="sm" onClick={() => setPage(totalPages)} disabled={page === totalPages}>{'>>'}</Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(1)}
+            disabled={page === 1}
+          >
+            {'<<'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            {'<'}
+          </Button>
+          <span className="px-2 text-sm">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+          >
+            {'>'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage(totalPages)}
+            disabled={page === totalPages}
+          >
+            {'>>'}
+          </Button>
         </div>
 
         {/* Delete Confirmation Dialog */}
@@ -715,55 +803,92 @@ export function CabinetsDetailsCollectionHistoryTable({
 
         {/* Edit Collection Entry Dialog */}
         <Dialog open={isEditing} onOpenChange={setIsEditing}>
-          <DialogContent className="sm:max-w-[425px]" isMobileFullScreen={false}>
+          <DialogContent
+            className="sm:max-w-[425px]"
+            isMobileFullScreen={false}
+          >
             <DialogHeader>
               <DialogTitle>Edit Collection Entry</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleEditSubmit}>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="metersIn" className="text-right">Meters In</Label>
+                  <Label htmlFor="metersIn" className="text-right">
+                    Meters In
+                  </Label>
                   <Input
                     id="metersIn"
                     type="number"
                     value={editFormData.metersIn}
-                    onChange={(e) => setEditFormData({ ...editFormData, metersIn: Number(e.target.value) })}
+                    onChange={e =>
+                      setEditFormData({
+                        ...editFormData,
+                        metersIn: Number(e.target.value),
+                      })
+                    }
                     className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="metersOut" className="text-right">Meters Out</Label>
+                  <Label htmlFor="metersOut" className="text-right">
+                    Meters Out
+                  </Label>
                   <Input
                     id="metersOut"
                     type="number"
                     value={editFormData.metersOut}
-                    onChange={(e) => setEditFormData({ ...editFormData, metersOut: Number(e.target.value) })}
+                    onChange={e =>
+                      setEditFormData({
+                        ...editFormData,
+                        metersOut: Number(e.target.value),
+                      })
+                    }
                     className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="prevIn" className="text-right">Prev. In</Label>
+                  <Label htmlFor="prevIn" className="text-right">
+                    Prev. In
+                  </Label>
                   <Input
                     id="prevIn"
                     type="number"
                     value={editFormData.prevIn}
-                    onChange={(e) => setEditFormData({ ...editFormData, prevIn: Number(e.target.value) })}
+                    onChange={e =>
+                      setEditFormData({
+                        ...editFormData,
+                        prevIn: Number(e.target.value),
+                      })
+                    }
                     className="col-span-3"
                   />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="prevOut" className="text-right">Prev. Out</Label>
+                  <Label htmlFor="prevOut" className="text-right">
+                    Prev. Out
+                  </Label>
                   <Input
                     id="prevOut"
                     type="number"
                     value={editFormData.prevOut}
-                    onChange={(e) => setEditFormData({ ...editFormData, prevOut: Number(e.target.value) })}
+                    onChange={e =>
+                      setEditFormData({
+                        ...editFormData,
+                        prevOut: Number(e.target.value),
+                      })
+                    }
                     className="col-span-3"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                >
+                  Cancel
+                </Button>
                 <Button type="submit">Save Changes</Button>
               </DialogFooter>
             </form>
@@ -773,5 +898,3 @@ export function CabinetsDetailsCollectionHistoryTable({
     </TooltipProvider>
   );
 }
-
-

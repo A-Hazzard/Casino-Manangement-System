@@ -73,8 +73,10 @@ export function useCabinetDetailsData({
       // Read latest values from store at call time to avoid stale closures
       // (e.g. when called via onCustomRangeGo setTimeout callback)
       const storeState = useDashBoardStore.getState();
-      const currentActiveMetricsFilter = storeState.activeMetricsFilter || activeMetricsFilter;
-      const currentCustomDateRange = storeState.customDateRange || customDateRange;
+      const currentActiveMetricsFilter =
+        storeState.activeMetricsFilter || activeMetricsFilter;
+      const currentCustomDateRange =
+        storeState.customDateRange || customDateRange;
 
       // Fetch cabinet data with current date filter - no default fallback
       if (!currentActiveMetricsFilter) {
@@ -84,11 +86,11 @@ export function useCabinetDetailsData({
 
       // Robustly check for custom dates - support both {from, to} and {startDate, endDate}
       const hasCustomDates =
-        currentActiveMetricsFilter === 'Custom' && (
-          (currentCustomDateRange?.startDate && currentCustomDateRange?.endDate) ||
+        currentActiveMetricsFilter === 'Custom' &&
+        ((currentCustomDateRange?.startDate &&
+          currentCustomDateRange?.endDate) ||
           (currentCustomDateRange?.from && currentCustomDateRange?.to) ||
-          (currentCustomDateRange?.start && currentCustomDateRange?.end)
-        );
+          (currentCustomDateRange?.start && currentCustomDateRange?.end));
 
       if (currentActiveMetricsFilter === 'Custom' && !hasCustomDates) {
         setMetricsLoading(false);
@@ -96,15 +98,22 @@ export function useCabinetDetailsData({
       }
 
       // Resolve effective custom ranges into a standard { from, to } Date format
-      const from = currentCustomDateRange?.startDate || currentCustomDateRange?.from || currentCustomDateRange?.start;
-      const to = currentCustomDateRange?.endDate || currentCustomDateRange?.to || currentCustomDateRange?.end;
-      
-      const effectiveRange = currentActiveMetricsFilter === 'Custom' && from && to
-        ? {
-            from: from instanceof Date ? from : new Date(String(from)),
-            to: to instanceof Date ? to : new Date(String(to))
-          }
-        : undefined;
+      const from =
+        currentCustomDateRange?.startDate ||
+        currentCustomDateRange?.from ||
+        currentCustomDateRange?.start;
+      const to =
+        currentCustomDateRange?.endDate ||
+        currentCustomDateRange?.to ||
+        currentCustomDateRange?.end;
+
+      const effectiveRange =
+        currentActiveMetricsFilter === 'Custom' && from && to
+          ? {
+              from: from instanceof Date ? from : new Date(String(from)),
+              to: to instanceof Date ? to : new Date(String(to)),
+            }
+          : undefined;
 
       // Always pass current display currency so cabinet detail values
       // are returned in the header-selected currency.
@@ -267,4 +276,3 @@ export function useCabinetDetailsData({
     handleCabinetUpdated,
   };
 }
-

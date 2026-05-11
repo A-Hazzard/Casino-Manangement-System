@@ -20,4 +20,3 @@ export { useReportsTabContent } from './useReportsTabContent';
 export { useSessions } from './useSessions';
 export { useSessionsFilters } from './useSessionsFilters';
 export { useSmibConfiguration } from './useSmibConfiguration';
-

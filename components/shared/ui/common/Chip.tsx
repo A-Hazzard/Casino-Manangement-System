@@ -49,4 +49,3 @@ const Chip: FC<ChipProps> = ({ label, onRemove, className }) => (
 );
 
 export default Chip;
-

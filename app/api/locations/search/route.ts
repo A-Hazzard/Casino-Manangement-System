@@ -15,6 +15,11 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Meters } from '@/app/api/lib/models/meters';
 import { LocationResponse, MeterMatchStage } from '@/lib/types/location';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 /**
@@ -36,13 +41,15 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/locations/search';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
     // STEP 1: Parse query parameters
     // ============================================================================
     const searchParams = new URL(request.url).searchParams;
-    const licencee = (searchParams.get('licencee')) ?? '';
+    const licencee = searchParams.get('licencee') ?? '';
     const search = searchParams.get('search')?.trim() || '';
 
     // ============================================================================
@@ -63,9 +70,7 @@ export async function GET(request: NextRequest) {
         locationMatch.$and = [];
       }
       (locationMatch.$and as unknown[]).push({
-        $or: [
-          { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  },
-        ],
+        $or: [{ 'rel.licencee': licencee }, { 'rel.licencee': licencee }],
       });
     }
 
@@ -86,7 +91,7 @@ export async function GET(request: NextRequest) {
     const { searchParams: searchParamsFromRequest } = new URL(request.url);
     const startDate = new Date(
       searchParamsFromRequest.get('startDate') ??
-      Date.now() - 30 * 24 * 60 * 60 * 1000
+        Date.now() - 30 * 24 * 60 * 60 * 1000
     );
     const endDate = new Date(
       searchParamsFromRequest.get('endDate') ?? Date.now()
@@ -97,7 +102,8 @@ export async function GET(request: NextRequest) {
     };
     if (licencee) {
       (matchStage as Record<string, unknown>).$or = [
-        { 'rel.licencee': licencee  }, { 'rel.licencee': licencee  },
+        { 'rel.licencee': licencee },
+        { 'rel.licencee': licencee },
       ];
     }
 
@@ -174,7 +180,10 @@ export async function GET(request: NextRequest) {
                       $and: [
                         { $ne: ['$machineDetails.lastActivity', null] },
                         {
-                          $gte: ['$machineDetails.lastActivity', threeMinutesAgo],
+                          $gte: [
+                            '$machineDetails.lastActivity',
+                            threeMinutesAgo,
+                          ],
                         },
                       ],
                     },
@@ -217,13 +226,17 @@ export async function GET(request: NextRequest) {
     ];
 
     // Use cursor for performance (MANDATORY for Meters aggregations)
-    const locations: Array<LocationResponse & { moneyIn?: number; moneyOut?: number }> = [];
+    const locations: Array<
+      LocationResponse & { moneyIn?: number; moneyOut?: number }
+    > = [];
     const cursor = Meters.aggregate<
       LocationResponse & { moneyIn?: number; moneyOut?: number }
     >(aggregationPipeline).cursor({ batchSize: 1000 });
 
     for await (const doc of cursor) {
-      locations.push(doc as LocationResponse & { moneyIn?: number; moneyOut?: number });
+      locations.push(
+        doc as LocationResponse & { moneyIn?: number; moneyOut?: number }
+      );
     }
 
     // ============================================================================
@@ -247,6 +260,15 @@ export async function GET(request: NextRequest) {
     }));
 
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/locations/search',
+      response.length,
+      user,
+      duration
+    );
+
     if (duration > 2000) {
       console.warn(`[Locations Search API] Completed in ${duration}ms`);
     }
@@ -256,6 +278,13 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/locations/search',
+      errorMessage,
+      user
+    );
     console.error(
       `[Locations Search API] Error after ${duration}ms:`,
       errorMessage
@@ -266,4 +295,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

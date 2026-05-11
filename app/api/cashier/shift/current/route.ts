@@ -19,13 +19,27 @@ import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import { calculateExpectedBalance } from '@/lib/helpers/vault/calculations';
-import { NextResponse } from 'next/server';
+import {
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const functionName = 'GET /api/cashier/shift/current';
+  const user = extractUserFromRequest(request);
+
   try {
     // STEP 1: Authorization
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cashier/shift/current',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -105,6 +119,15 @@ export async function GET() {
       pendingRequest: pendingRequest ? pendingRequest.toObject() : null,
     });
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/cashier/shift/current',
+      errorMessage,
+      user
+    );
     console.error('Error fetching current shift:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },

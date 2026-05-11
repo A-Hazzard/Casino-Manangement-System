@@ -60,6 +60,7 @@ export const MAINTENANCE_CONFIG = {
       monthly: env('NEXT_PUBLIC_COLLECTION_REPORT_MONTHLY'),
       manager: env('NEXT_PUBLIC_COLLECTION_REPORT_MANAGER'),
       collector: env('NEXT_PUBLIC_COLLECTION_REPORT_COLLECTOR'),
+      'collection-v2': env('NEXT_PUBLIC_COLLECTION_REPORT_COLLECTION_V2'),
     },
     cabinets: {
       cabinets: env('NEXT_PUBLIC_CABINETS_MACHINES'),
@@ -75,14 +76,16 @@ export const MAINTENANCE_CONFIG = {
 // ---------------------------------------------------------------------------
 
 /** Returns true when a full page is available (not under maintenance). */
-export function isPageAvailable(page: keyof typeof MAINTENANCE_CONFIG.pages): boolean {
+export function isPageAvailable(
+  page: keyof typeof MAINTENANCE_CONFIG.pages
+): boolean {
   return MAINTENANCE_CONFIG.pages[page] ?? true;
 }
 
 /** Returns true when a specific tab is available (not under maintenance). */
 export function isTabAvailable(
   page: keyof typeof MAINTENANCE_CONFIG.tabs,
-  tab: string,
+  tab: string
 ): boolean {
   const pageTabs = MAINTENANCE_CONFIG.tabs[page];
   if (!pageTabs) return true;

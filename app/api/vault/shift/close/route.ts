@@ -3,6 +3,11 @@
  */
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import {
+  logRouteUpdate,
+  extractUserFromRequest,
+  logRouteError,
+} from '@/app/api/lib/utils/routeLogger';
 import { getAttributionDate } from '@/app/api/lib/helpers/vault/gamingDay';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
@@ -22,6 +27,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @body {Object} denominations - REQUIRED. Denomination breakdown of the closing balance.
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/shift/close';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {
       const hasVaultAccess = userRoles
@@ -29,22 +38,45 @@ export async function POST(request: NextRequest) {
         .some(role =>
           ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
         );
-      if (!hasVaultAccess)
+      if (!hasVaultAccess) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/shift/close',
+          'Insufficient permissions',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient permissions' },
           { status: 403 }
         );
+      }
 
       const { vaultShiftId, closingBalance, denominations } =
         await request.json();
-      if (!vaultShiftId || closingBalance === undefined || !denominations)
+      if (!vaultShiftId || closingBalance === undefined || !denominations) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/shift/close',
+          'Missing fields',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Missing fields' },
           { status: 400 }
         );
+      }
 
       const validation = validateDenominations(denominations);
-      if (!validation.valid)
+      if (!validation.valid) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/shift/close',
+          'Invalid denominations',
+          user
+        );
         return NextResponse.json(
           {
             success: false,
@@ -53,27 +85,59 @@ export async function POST(request: NextRequest) {
           },
           { status: 400 }
         );
+      }
 
       const vaultShift = await VaultShiftModel.findOne({ _id: vaultShiftId });
-      if (!vaultShift)
+      if (!vaultShift) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/shift/close',
+          'Vault shift not found',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Vault shift not found' },
           { status: 404 }
         );
-      if (vaultShift.status === 'closed')
+      }
+      if (vaultShift.status === 'closed') {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/shift/close',
+          'Shift already closed',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Shift already closed' },
           { status: 400 }
         );
-      if (!vaultShift.isReconciled)
+      }
+      if (!vaultShift.isReconciled) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/shift/close',
+          'Must reconcile before closing',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Must reconcile before closing' },
           { status: 400 }
         );
+      }
 
       const cashierShifts = await CashierShiftModel.find({ vaultShiftId });
       const closeVal = canCloseVaultShift(cashierShifts.map(s => s.toObject()));
-      if (!closeVal.canClose)
+      if (!closeVal.canClose) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/shift/close',
+          closeVal.reason || 'Cannot close shift',
+          user
+        );
         return NextResponse.json(
           {
             success: false,
@@ -83,6 +147,7 @@ export async function POST(request: NextRequest) {
           },
           { status: 400 }
         );
+      }
 
       const now = new Date(),
         attrDate = await getAttributionDate(
@@ -130,13 +195,35 @@ export async function POST(request: NextRequest) {
         createdAt: now,
       });
 
+      const duration = Date.now() - startTime;
+      logRouteUpdate(
+        functionName,
+        'POST',
+        '/api/vault/shift/close',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         vaultShift: vaultShift.toObject(),
         transaction: transaction.toObject(),
       });
     } catch (e) {
-      console.error('[Vault Close] Error:', e instanceof Error ? e.message : 'Unknown error');
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to close vault shift';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/shift/close',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[Vault Close] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
       return NextResponse.json(
         { success: false, error: 'Internal server error' },
         { status: 500 }

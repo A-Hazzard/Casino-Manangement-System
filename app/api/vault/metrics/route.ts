@@ -10,9 +10,16 @@ import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { TimePeriod } from '@/app/api/lib/types';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import {
+  getMoneyInScale,
+  getMoneyOutAndJackpotScale,
+} from '@/app/api/lib/utils/reviewerScale';
 import { NextRequest, NextResponse } from 'next/server';
 import type { LocationDocument } from '@/lib/types/common';
-import type { CashierShiftDocument, VaultTransactionDocument } from '@shared/types';
+import type {
+  CashierShiftDocument,
+  VaultTransactionDocument,
+} from '@shared/types';
 
 /**
  * Main GET handler for vault metrics
@@ -129,16 +136,23 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // Reviewer Multiplier Scaling
       // ============================================================================
-      const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
-      if (reviewerMult !== null) {
-        const mult = 1 - reviewerMult;
-        metrics.totalCashIn *= mult;
-        metrics.totalCashOut *= mult;
-        metrics.netCashFlow *= mult;
-        metrics.payouts *= mult;
-        metrics.totalMachineBalance *= mult;
-        metrics.totalCashierFloats *= mult;
-        metrics.expenses *= mult;
+      const moneyInScale = getMoneyInScale(
+        userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+      );
+      const moneyOutScale = getMoneyOutAndJackpotScale(
+        userPayload as {
+          moneyOutAndJackpotMultiplier?: number | null;
+          roles?: string[];
+        }
+      );
+      if (moneyInScale !== 1 || moneyOutScale !== 1) {
+        metrics.totalCashIn *= moneyInScale;
+        metrics.totalCashOut *= moneyOutScale;
+        metrics.netCashFlow = metrics.totalCashIn - metrics.totalCashOut;
+        metrics.payouts *= moneyOutScale;
+        metrics.totalMachineBalance *= moneyOutScale;
+        metrics.totalCashierFloats *= moneyOutScale;
+        metrics.expenses *= moneyOutScale;
       }
 
       return NextResponse.json({

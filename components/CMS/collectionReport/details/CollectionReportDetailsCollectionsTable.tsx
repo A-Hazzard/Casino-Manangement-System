@@ -9,9 +9,11 @@ import {
 } from '@/components/shared/ui/table';
 import type { MachineMetric } from '@/lib/types/api';
 import { formatSasTime } from '@/lib/utils/collection';
+import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
+import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import { Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 // === Sub-components ===
 import {
@@ -86,9 +88,11 @@ export function CollectionReportDetailsCollectionsTable({
     const numericValue = Number(value);
     if (isNaN(numericValue)) return String(value);
     const fractionalPart = Math.abs(numericValue % 1);
-    return numericValue.toLocaleString(undefined, fractionalPart >= 0.1
-      ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-      : { minimumFractionDigits: 0, maximumFractionDigits: 0 }
+    return numericValue.toLocaleString(
+      undefined,
+      fractionalPart >= 0.1
+        ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+        : { minimumFractionDigits: 0, maximumFractionDigits: 0 }
     );
   };
   const smartCurrency = (value: number | string) => '$' + smartNum(value);
@@ -97,6 +101,16 @@ export function CollectionReportDetailsCollectionsTable({
   // Router & Component State
   // ============================================================================
   const router = useRouter();
+
+  // Online/offline status — collect actualMachineId for each metric that has one
+  const detailsMachineIds = useMemo(
+    () =>
+      metrics
+        .map(m => m.actualMachineId)
+        .filter((id): id is string => Boolean(id)),
+    [metrics]
+  );
+  const detailsMachineStatusMap = useMachineOnlineStatus(detailsMachineIds);
 
   // ============================================================================
   // Metric Summary & Indicators Checks
@@ -136,7 +150,12 @@ export function CollectionReportDetailsCollectionsTable({
         <div className="flex items-center gap-3 rounded-lg border-l-4 border-orange-500 bg-orange-50 p-4 text-orange-800">
           <Zap className="h-5 w-5 text-orange-500" />
           <p className="text-sm font-semibold">
-            {metrics.filter(m => m.ramClear).length} {metrics.filter(m => m.ramClear).length > 1 ? 'machines' : 'machine'} {metrics.filter(m => m.ramClear).length > 1 ? 'were' : 'was'} ram cleared
+            {metrics.filter(m => m.ramClear).length}{' '}
+            {metrics.filter(m => m.ramClear).length > 1
+              ? 'machines'
+              : 'machine'}{' '}
+            {metrics.filter(m => m.ramClear).length > 1 ? 'were' : 'was'} ram
+            cleared
           </p>
         </div>
       )}
@@ -196,14 +215,19 @@ export function CollectionReportDetailsCollectionsTable({
                 }`}
               >
                 <TableCell className="px-4 py-4">
-                  <div className="flex items-center gap-2">
-                    <div className="min-w-0 flex-1">
-                      <CollectionReportDetailsMachineDisplay
-                        name={metric.machineId}
-                        onClick={() => handleMachineClick(metric)}
-                      />
-                    </div>
-                    <div className="flex flex-shrink-0 items-center gap-1">
+                  <div className="flex flex-col gap-1">
+                    <CollectionReportDetailsMachineDisplay
+                      name={metric.machineId}
+                      onClick={() => handleMachineClick(metric)}
+                    />
+                    <div className="flex items-center gap-1.5">
+                      {metric.actualMachineId && (
+                        <MachineOnlineStatusDot
+                          isOnline={
+                            detailsMachineStatusMap[metric.actualMachineId]
+                          }
+                        />
+                      )}
                       {metric.ramClear && (
                         <CollectionReportDetailsRamClearIndicator />
                       )}
@@ -223,7 +247,9 @@ export function CollectionReportDetailsCollectionsTable({
                   {metric.dropCancelled || '0 / 0'}
                 </TableCell>
 
-                <TableCell className={`px-4 py-4 font-medium ${Number(metric.metersGross ?? 0) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                <TableCell
+                  className={`px-4 py-4 font-medium ${Number(metric.metersGross ?? 0) < 0 ? 'text-red-600' : 'text-green-600'}`}
+                >
                   {smartCurrency(metric.metersGross ?? 0)}
                 </TableCell>
 
@@ -269,12 +295,17 @@ export function CollectionReportDetailsCollectionsTable({
                 metric.ramClear ? 'border-l-4 border-l-orange-500' : ''
               }`}
             >
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex flex-col gap-1">
                 <CollectionReportDetailsMachineDisplay
                   name={metric.machineId}
                   onClick={() => handleMachineClick(metric)}
                 />
-                <div className="flex shrink-0 items-center gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  {metric.actualMachineId && (
+                    <MachineOnlineStatusDot
+                      isOnline={detailsMachineStatusMap[metric.actualMachineId]}
+                    />
+                  )}
                   {metric.ramClear && (
                     <CollectionReportDetailsRamClearIndicator />
                   )}
@@ -294,7 +325,11 @@ export function CollectionReportDetailsCollectionsTable({
                 <CollectionReportDetailsMobileField
                   label="Machine Gross"
                   value={smartCurrency(metric.metersGross ?? 0)}
-                  className={Number(metric.metersGross ?? 0) < 0 ? 'text-red-600' : 'text-green-600'}
+                  className={
+                    Number(metric.metersGross ?? 0) < 0
+                      ? 'text-red-600'
+                      : 'text-green-600'
+                  }
                 />
                 <div>
                   <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
@@ -302,24 +337,30 @@ export function CollectionReportDetailsCollectionsTable({
                   </p>
                   <p
                     className={`mt-0.5 font-medium ${
-                      metric.sasGross === 'No SAS Data'
+                      metric.sasGross === 'No SAS Data' ||
+                      metric.sasGross === 'No SMIB for this Machine'
                         ? ''
                         : displaySasGross < 0
-                        ? 'text-red-600'
-                        : 'text-green-600'
+                          ? 'text-red-600'
+                          : 'text-green-600'
                     }`}
                   >
-                    {metric.sasGross === 'No SAS Data' ? (
+                    {metric.sasGross === 'No SMIB for this Machine' ? (
+                      <span className="italic text-gray-500">
+                        No SMIB for this Machine
+                      </span>
+                    ) : metric.sasGross === 'No SAS Data' ? (
                       <span className="italic text-gray-500">No SAS Data</span>
                     ) : (
                       smartCurrency(displaySasGross)
                     )}
                   </p>
-                  {hasJackpotDeduction && (
-                    <p className="mt-0.5 text-[10px] text-amber-600">
-                      Jackpot: -{smartCurrency(jackpot)}
-                    </p>
-                  )}
+                  {hasJackpotDeduction &&
+                    metric.sasGross !== 'No SMIB for this Machine' && (
+                      <p className="mt-0.5 text-[10px] text-amber-600">
+                        Jackpot: -{smartCurrency(jackpot)}
+                      </p>
+                    )}
                 </div>
                 <CollectionReportDetailsMobileField
                   label="Variation"

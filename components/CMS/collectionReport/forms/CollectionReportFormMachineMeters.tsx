@@ -53,8 +53,10 @@ export default function CollectionReportFormMachineMeters({
   const inputsEnabled = !disabled;
 
   // Validation checks
+  // When RAM clear is checked the current meters are post-reset readings (expected to be lower)
   const metersInTooLow =
     showValidation &&
+    !ramClear &&
     metersIn &&
     prevIn !== null &&
     prevIn !== undefined &&
@@ -62,6 +64,7 @@ export default function CollectionReportFormMachineMeters({
 
   const metersOutTooLow =
     showValidation &&
+    !ramClear &&
     metersOut &&
     prevOut !== null &&
     prevOut !== undefined &&
@@ -86,14 +89,14 @@ export default function CollectionReportFormMachineMeters({
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Meters In and Meters Out - Side by Side */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Meters In */}
         <div>
-          <label className="flex items-center text-sm font-medium mb-1">
-            Meters In: <span className="text-red-500 ml-1">*</span>
-            <CalculationHelp 
-              title="Meters In" 
-              formula="Current In - Previous In" 
+          <label className="mb-1 flex items-center text-sm font-medium">
+            Meters In: <span className="ml-1 text-red-500">*</span>
+            <CalculationHelp
+              title="Meters In"
+              formula="Current In - Previous In"
               description="Calculates the total credits or cash inserted into the machine since the last collection."
             />
           </label>
@@ -101,7 +104,7 @@ export default function CollectionReportFormMachineMeters({
             type="text"
             placeholder="0"
             value={metersIn}
-            onChange={(e) => {
+            onChange={e => {
               const val = e.target.value;
               if (/^-?\d*\.?\d*$/.test(val) || val === '') {
                 onMetersInChange(val);
@@ -109,26 +112,28 @@ export default function CollectionReportFormMachineMeters({
             }}
             onClick={!inputsEnabled ? onDisabledClick : undefined}
             disabled={disabled}
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
           />
           <div className="mt-1 flex items-center gap-2">
-            <label className="text-xs text-gray-500 whitespace-nowrap">Prev In:</label>
+            <label className="whitespace-nowrap text-xs text-gray-500">
+              Prev In:
+            </label>
             <input
               type="text"
               value={prevIn || ''}
-              onChange={(e) => {
+              onChange={e => {
                 const val = e.target.value;
                 if (/^-?\d*\.?\d*$/.test(val) || val === '') {
                   onPrevInChange?.(val);
                 }
               }}
               disabled={disabled}
-              className="w-full text-[10px] p-1 border rounded bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className="w-full rounded border bg-gray-50 p-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
           </div>
           {metersInTooLow && (
-            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-600 text-xs">
+            <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
+              <p className="text-xs text-red-600">
                 Warning: Meters In ({metersIn}) should be greater than or equal
                 to Previous Meters In ({prevIn})
               </p>
@@ -138,11 +143,11 @@ export default function CollectionReportFormMachineMeters({
 
         {/* Meters Out */}
         <div>
-          <label className="flex items-center text-sm font-medium mb-1">
-            Meters Out: <span className="text-red-500 ml-1">*</span>
-            <CalculationHelp 
-              title="Meters Out" 
-              formula="Current Out - Previous Out" 
+          <label className="mb-1 flex items-center text-sm font-medium">
+            Meters Out: <span className="ml-1 text-red-500">*</span>
+            <CalculationHelp
+              title="Meters Out"
+              formula="Current Out - Previous Out"
               description="Calculates the total payouts or credits won by players since the last collection."
             />
           </label>
@@ -150,7 +155,7 @@ export default function CollectionReportFormMachineMeters({
             type="text"
             placeholder="0"
             value={metersOut}
-            onChange={(e) => {
+            onChange={e => {
               const val = e.target.value;
               if (/^-?\d*\.?\d*$/.test(val) || val === '') {
                 onMetersOutChange(val);
@@ -158,26 +163,28 @@ export default function CollectionReportFormMachineMeters({
             }}
             onClick={!inputsEnabled ? onDisabledClick : undefined}
             disabled={disabled}
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
           />
           <div className="mt-1 flex items-center gap-2">
-            <label className="text-xs text-gray-500 whitespace-nowrap">Prev Out:</label>
+            <label className="whitespace-nowrap text-xs text-gray-500">
+              Prev Out:
+            </label>
             <input
               type="text"
               value={prevOut || ''}
-              onChange={(e) => {
+              onChange={e => {
                 const val = e.target.value;
                 if (/^-?\d*\.?\d*$/.test(val) || val === '') {
                   onPrevOutChange?.(val);
                 }
               }}
               disabled={disabled}
-              className="w-full text-[10px] p-1 border rounded bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className="w-full rounded border bg-gray-50 p-1 text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-400"
             />
           </div>
           {metersOutTooLow && (
-            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-600 text-xs">
+            <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
+              <p className="text-xs text-red-600">
                 Warning: Meters Out ({metersOut}) should be greater than or
                 equal to Previous Meters Out ({prevOut})
               </p>
@@ -196,12 +203,12 @@ export default function CollectionReportFormMachineMeters({
         />
         <Label
           htmlFor="ramClear"
-          className="text-sm font-medium cursor-pointer"
+          className="cursor-pointer text-sm font-medium"
         >
           RAM Clear
-          <CalculationHelp 
-            title="RAM Clear" 
-            formula="(RAM_Clear_Meters - Previous_Meters) + Current_Meters" 
+          <CalculationHelp
+            title="RAM Clear"
+            formula="(RAM_Clear_Meters - Previous_Meters) + Current_Meters"
             description="Used when machine meters are reset to zero. This formula ensures no data is lost during the reset."
           />
         </Label>
@@ -209,31 +216,31 @@ export default function CollectionReportFormMachineMeters({
 
       {/* RAM Clear Meters - Side by Side (only shown if RAM Clear is checked) */}
       {ramClear && onRamClearMetersInChange && onRamClearMetersOutChange && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <div className="grid grid-cols-1 gap-4 rounded-lg border border-yellow-200 bg-yellow-50 p-4 md:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="mb-1 block text-sm font-medium">
               RAM Clear Meters In: <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               placeholder="0"
               value={ramClearMetersIn}
-              onChange={(e) => {
+              onChange={e => {
                 const val = e.target.value;
                 if (/^-?\d*\.?\d*$/.test(val) || val === '') {
                   onRamClearMetersInChange(val);
                 }
               }}
               disabled={disabled}
-              className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="mt-1 text-xs text-gray-500">
               Meters before RAM clear
             </p>
             {ramClearMetersInTooLow && (
-              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-600 text-xs">
-                  Warning: RAM Clear Meters In ({ramClearMetersIn}) should be
+              <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
+                <p className="text-xs text-red-600">
+                  Warning: RAM Clear Meters In ({ramClearMetersIn}) must be
                   greater than or equal to Previous Meters In ({prevIn})
                 </p>
               </div>
@@ -241,29 +248,29 @@ export default function CollectionReportFormMachineMeters({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <label className="mb-1 block text-sm font-medium">
               RAM Clear Meters Out: <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               placeholder="0"
               value={ramClearMetersOut}
-              onChange={(e) => {
+              onChange={e => {
                 const val = e.target.value;
                 if (/^-?\d*\.?\d*$/.test(val) || val === '') {
                   onRamClearMetersOutChange(val);
                 }
               }}
               disabled={disabled}
-              className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="mt-1 text-xs text-gray-500">
               Meters before RAM clear
             </p>
             {ramClearMetersOutTooLow && (
-              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-red-600 text-xs">
-                  Warning: RAM Clear Meters Out ({ramClearMetersOut}) should be
+              <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
+                <p className="text-xs text-red-600">
+                  Warning: RAM Clear Meters Out ({ramClearMetersOut}) must be
                   greater than or equal to Previous Meters Out ({prevOut})
                 </p>
               </div>
@@ -273,6 +280,4 @@ export default function CollectionReportFormMachineMeters({
       )}
     </div>
   );
-};
-
-
+}

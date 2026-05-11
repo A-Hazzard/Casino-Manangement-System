@@ -23,14 +23,17 @@ type CollectionReportDetailsLocationSummaryProps = {
   isMobile?: boolean;
 };
 
-export const CollectionReportDetailsLocationSummary: FC<CollectionReportDetailsLocationSummaryProps> = ({ 
-  data, 
-  isMobile = false 
-}) => {
+export const CollectionReportDetailsLocationSummary: FC<
+  CollectionReportDetailsLocationSummaryProps
+> = ({ data, isMobile = false }) => {
   const { droppedCancelled, metersGross, sasGross, variation } = data;
 
   const rows = [
-    { label: 'Total Drop / Total Cancelled', value: droppedCancelled || '0 / 0', raw: null },
+    {
+      label: 'Total Drop / Total Cancelled',
+      value: droppedCancelled || '0 / 0',
+      raw: null,
+    },
     { label: 'Total Machine Gross', value: metersGross, isCurrency: true },
     { label: 'Total SAS Gross', value: sasGross, isCurrency: true },
     { label: 'Total Variation', value: variation, isCurrency: true },
@@ -40,14 +43,18 @@ export const CollectionReportDetailsLocationSummary: FC<CollectionReportDetailsL
     return (
       <div className="overflow-hidden rounded-lg bg-white shadow-md">
         <div className="bg-button p-3 text-white">
-          <h3 className="font-semibold">Collection Report Machine Total Gross</h3>
+          <h3 className="font-semibold">
+            Collection Report Machine Total Gross
+          </h3>
         </div>
         <div className="space-y-2 p-4 text-sm">
           {rows.map((row, i) => (
             <div key={i} className="flex justify-between">
               <span className="text-gray-600">{row.label}</span>
-              <span className={`font-medium ${row.isCurrency ? getFinancialColorClass(row.value as number) : 'text-gray-800'}`}>
-                {row.isCurrency 
+              <span
+                className={`font-medium ${row.isCurrency ? getFinancialColorClass(row.value as number) : 'text-gray-800'}`}
+              >
+                {row.isCurrency
                   ? `$${(row.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
                   : row.value}
               </span>
@@ -66,10 +73,15 @@ export const CollectionReportDetailsLocationSummary: FC<CollectionReportDetailsL
       <table className="w-full text-sm">
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className={i < rows.length - 1 ? "border-b border-gray-200" : ""}>
+            <tr
+              key={i}
+              className={i < rows.length - 1 ? 'border-b border-gray-200' : ''}
+            >
               <td className="p-3 font-medium text-gray-700">{row.label}</td>
-              <td className={`p-3 text-right ${row.isCurrency ? getFinancialColorClass(row.value as number) : ''}`}>
-                {row.isCurrency 
+              <td
+                className={`p-3 text-right ${row.isCurrency ? getFinancialColorClass(row.value as number) : ''}`}
+              >
+                {row.isCurrency
                   ? `$${(row.value as number)?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`
                   : row.value}
               </td>

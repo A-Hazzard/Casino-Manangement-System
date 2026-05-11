@@ -18,6 +18,11 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import { TimePeriod } from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/analytics/location-trends
@@ -45,6 +50,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/analytics/location-trends';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -52,6 +59,13 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const db = await connectDB();
     if (!db) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/analytics/location-trends',
+        'Database connection not established',
+        user
+      );
       return NextResponse.json(
         { error: 'Database connection not established' },
         { status: 500 }
@@ -66,20 +80,38 @@ export async function GET(req: NextRequest) {
     const locationIds = searchParams.get('locationIds');
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = (searchParams.get('licencee'));
+    const licencee = searchParams.get('licencee');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
-    const granularity = searchParams.get('granularity') as  'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
-    const status = searchParams.get('status') as 'Online' | 'Offline' | 'All' | null;
+    const granularity = searchParams.get('granularity') as
+      | 'hourly'
+      | 'minute'
+      | 'daily'
+      | 'weekly'
+      | 'monthly';
+    const status = searchParams.get('status') as
+      | 'Online'
+      | 'Offline'
+      | 'All'
+      | null;
     const gameType = searchParams.get('gameType');
     const searchTerm = searchParams.get('search');
     const includeArchived = searchParams.get('includeArchived') === 'true';
 
-    console.log(`[Location Trends API] Request — locationIds: ${locationIds}, timePeriod: ${timePeriod}, startDate: ${startDateParam ?? 'none'}, endDate: ${endDateParam ?? 'none'}, granularity: ${granularity ?? 'auto'}, currency: ${displayCurrency}`);
+    console.log(
+      `[Location Trends API] Request — locationIds: ${locationIds}, timePeriod: ${timePeriod}, startDate: ${startDateParam ?? 'none'}, endDate: ${endDateParam ?? 'none'}, granularity: ${granularity ?? 'auto'}, currency: ${displayCurrency}`
+    );
 
     if (!locationIds) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/analytics/location-trends',
+        'Location IDs are required',
+        user
+      );
       return NextResponse.json(
         { error: 'Location IDs are required' },
         { status: 400 }
@@ -109,6 +141,15 @@ export async function GET(req: NextRequest) {
     // STEP 4: Return location trends data
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/analytics/location-trends',
+      1,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
       console.warn(`[Location Trends API] Slow response — ${duration}ms`);
     } else {
@@ -120,6 +161,13 @@ export async function GET(req: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/analytics/location-trends',
+      errorMessage,
+      user
+    );
     console.error(
       `[Location Trends API] Error after ${duration}ms:`,
       errorMessage

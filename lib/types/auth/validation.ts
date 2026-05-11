@@ -16,6 +16,3 @@ export type ProfileValidationFormData = ProfileValidationModalData & {
   newPassword?: string;
   confirmPassword?: string;
 };
-
-
-

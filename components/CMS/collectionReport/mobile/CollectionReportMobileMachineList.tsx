@@ -24,6 +24,7 @@
 import { ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 
@@ -33,6 +34,7 @@ type MobileMachineListProps = {
   searchTerm: string;
   selectedMachine: string | null;
   isLoadingMachines: boolean;
+  machineStatusMap?: Record<string, boolean>;
   onSearchChange: (value: string) => void;
   onMachineSelect: (machine: CollectionReportMachineSummary) => void;
   onBack: () => void;
@@ -44,14 +46,17 @@ export default function CollectionReportMobileMachineList({
   searchTerm,
   selectedMachine,
   isLoadingMachines,
+  machineStatusMap = {},
   onSearchChange,
   onMachineSelect,
   onBack,
 }: MobileMachineListProps) {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 p-4 border-b">
-        <button onClick={onBack}><ArrowLeft className="h-6 w-6" /></button>
+      <div className="flex items-center gap-3 border-b p-4">
+        <button onClick={onBack}>
+          <ArrowLeft className="h-6 w-6" />
+        </button>
         <h3 className="font-bold">Select Machine</h3>
       </div>
       <div className="p-4">
@@ -63,34 +68,48 @@ export default function CollectionReportMobileMachineList({
           onChange={e => onSearchChange(e.target.value)}
         />
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 space-y-3 overflow-y-auto p-4">
         {isLoadingMachines ? (
           <Skeleton className="h-20 w-full" />
         ) : (
-          machines.filter(m => {
-            if (!searchTerm.trim()) return true;
-            const term = searchTerm.toLowerCase();
-            return (
-              (m.name && m.name.toLowerCase().includes(term)) ||
-              (m.serialNumber && m.serialNumber.toLowerCase().includes(term)) ||
-              (m.custom?.name && m.custom.name.toLowerCase().includes(term))
-            );
-          }).map(machine => (
-            <button
-              key={String(machine._id)}
-              onClick={() => onMachineSelect(machine)}
-              className={`w-full rounded-lg border p-4 text-left ${selectedMachine === machine._id ? 'border-blue-600 bg-blue-50' : ''}`}
-            >
-              {formatMachineDisplayNameWithBold(machine)}
-              {collectedMachines.find(c => c.machineId === machine._id) && (
-                <span className="ml-2 text-xs text-green-600">(Added)</span>
-              )}
-            </button>
-          ))
+          machines
+            .filter(m => {
+              if (!searchTerm.trim()) return true;
+              const term = searchTerm.toLowerCase();
+              return (
+                (m.name && m.name.toLowerCase().includes(term)) ||
+                (m.serialNumber &&
+                  m.serialNumber.toLowerCase().includes(term)) ||
+                (m.custom?.name && m.custom.name.toLowerCase().includes(term))
+              );
+            })
+            .map(machine => (
+              <button
+                key={String(machine._id)}
+                onClick={() => onMachineSelect(machine)}
+                className={`w-full rounded-lg border p-4 text-left ${selectedMachine === machine._id ? 'border-blue-600 bg-blue-50' : ''}`}
+              >
+                <span className="flex flex-col gap-1">
+                  <span className="flex items-center gap-1.5">
+                    {formatMachineDisplayNameWithBold(machine)}
+                    {collectedMachines.find(
+                      c => c.machineId === machine._id
+                    ) && (
+                      <span className="ml-2 text-xs text-green-600">
+                        (Added)
+                      </span>
+                    )}
+                  </span>
+                  {machine.relayId && (
+                    <MachineOnlineStatusDot
+                      isOnline={machineStatusMap[String(machine._id)]}
+                    />
+                  )}
+                </span>
+              </button>
+            ))
         )}
       </div>
     </div>
   );
 }
-
-

@@ -15,7 +15,11 @@
  */
 'use client';
 
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/shared/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/shared/ui/popover';
 import { Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -38,7 +42,7 @@ export default function MobileValuePopover({
       {showIcon && (
         <Popover>
           <PopoverTrigger asChild>
-            <Info className="h-3 w-3 text-gray-400 cursor-pointer hover:text-gray-600" />
+            <Info className="h-3 w-3 cursor-pointer text-gray-400 hover:text-gray-600" />
           </PopoverTrigger>
           <PopoverContent className="w-auto text-sm">
             {fullValue}
@@ -48,5 +52,3 @@ export default function MobileValuePopover({
     </span>
   );
 }
-
-

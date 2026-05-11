@@ -10,7 +10,12 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -38,7 +43,10 @@ import {
 import { ReportsManufacturerMultiSelect } from './ReportsManufacturerMultiSelect';
 import { ReportsManufacturerPerformanceTooltip } from './ReportsManufacturerPerformanceTooltip';
 import { useManufacturerPerformanceData } from './useManufacturerPerformanceData';
-import { type ManufacturerPerformanceData, type MachineEvaluationData } from '@/shared/types/reports';
+import {
+  type ManufacturerPerformanceData,
+  type MachineEvaluationData,
+} from '@/shared/types/reports';
 
 type ReportsManufacturerPerformanceChartProps = {
   data: ManufacturerPerformanceData[];
@@ -726,4 +734,3 @@ export default function ReportsManufacturerPerformanceChart({
     </Card>
   );
 }
-

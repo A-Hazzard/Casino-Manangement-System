@@ -5,8 +5,14 @@ import CollectionReportEditLocationMachineSelection from '@/components/CMS/colle
 import { VariationsCollapsibleSection } from '@/components/CMS/collectionReport/variations/VariationsCollapsibleSection';
 import { Info } from 'lucide-react';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
-import type { CollectionReportLocationWithMachines, CollectionReportMachineSummary, VariationsCheckResponse, MachineVariationData } from '@/lib/types/api';
+import type {
+  CollectionReportLocationWithMachines,
+  CollectionReportMachineSummary,
+  VariationsCheckResponse,
+  MachineVariationData,
+} from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
+import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 
 type DesktopEditLayoutProps = {
   selectedLocationId: string | undefined;
@@ -60,7 +66,7 @@ type DesktopEditLayoutProps = {
     balanceCorrectionReason: string;
     reasonForShortagePayment: string;
   };
-  setFinancials: (fin: Partial<DesktopEditLayoutProps["financials"]>) => void;
+  setFinancials: (fin: Partial<DesktopEditLayoutProps['financials']>) => void;
   baseBalanceCorrection: string;
   setBaseBalanceCorrection: (val: string) => void;
   calculateCarryover: (val: string, corr: string) => void;
@@ -104,10 +110,6 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
     collectedMachineEntries,
     editingEntryId,
     machineForDataEntry,
-    currentCollectionTime,
-    setCurrentCollectionTime,
-    showAdvancedSas,
-    setShowAdvancedSas,
     sasStartTime,
     setSasStartTime,
     sasEndTime,
@@ -156,10 +158,15 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
 
   const isMobile = useMediaQuery('(max-width: 768px)');
 
+  const desktopMachineIds = machinesOfSelectedLocation.map(m => String(m._id));
+  const desktopMachineStatusMap = useMachineOnlineStatus(desktopMachineIds);
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row">
       {/* Left sidebar: Location selector and machine list - 1/5 width */}
-      <div className={`flex min-h-0 w-full flex-shrink-0 flex-col overflow-hidden md:w-1/5 border-r border-gray-200 ${isMobile && (selectedMachineId || collectedMachineEntries.length > 0) ? 'hidden md:flex' : 'flex'}`}>
+      <div
+        className={`flex min-h-0 w-full flex-shrink-0 flex-col overflow-hidden border-r border-gray-200 md:w-1/5 ${isMobile && (selectedMachineId || collectedMachineEntries.length > 0) ? 'hidden md:flex' : 'flex'}`}
+      >
         <CollectionReportEditLocationMachineSelection
           locations={locations}
           selectedLocationId={selectedLocationId ?? ''}
@@ -175,11 +182,14 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
           setSelectedMachineId={setSelectedMachineId}
           collectedMachineEntries={collectedMachineEntries}
           editingEntryId={editingEntryId}
+          machineStatusMap={desktopMachineStatusMap}
         />
       </div>
 
       {/* Middle section: Form fields - 3/5 width (60%) */}
-      <div className={`flex min-h-0 w-full flex-1 flex-col space-y-3 overflow-y-auto p-3 md:w-3/5 md:p-4 border-gray-200 ${isMobile && !selectedMachineId ? 'hidden md:flex' : 'flex'}`}>
+      <div
+        className={`flex min-h-0 w-full flex-1 flex-col space-y-3 overflow-y-auto border-gray-200 p-3 md:w-3/5 md:p-4 ${isMobile && !selectedMachineId ? 'hidden md:flex' : 'flex'}`}
+      >
         {/* Variation summary when popover is minimized - MOVED TO TOP FOR VISIBILITY */}
         {isMinimized && variationsData && checkComplete && (
           <div className="mb-4">
@@ -197,12 +207,6 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
             <CollectionReportEditFormFields
               selectedLocationName={selectedLocationName}
               machineForDataEntry={machineForDataEntry}
-              currentCollectionTime={currentCollectionTime ?? new Date()}
-              setCurrentCollectionTime={(date: Date) => {
-                if (date) setCurrentCollectionTime(date);
-              }}
-              showAdvancedSas={showAdvancedSas}
-              setShowAdvancedSas={setShowAdvancedSas}
               sasStartTime={sasStartTime}
               setSasStartTime={setSasStartTime}
               sasEndTime={sasEndTime}
@@ -246,25 +250,39 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
               }}
             />
 
-
             {/* Reconciliation Guide Note */}
-            <div className="mt-4 rounded-lg bg-blue-50/50 p-4 border border-blue-100">
-              <p className="text-[11px] font-bold text-blue-900 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+            <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/50 p-4">
+              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-blue-900">
                 <Info className="h-3 w-3" />
                 Reconciliation Guide:
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white/60 p-2.5 rounded border border-blue-50">
-                  <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">Target</p>
-                  <p className="text-[10px] text-gray-600 leading-relaxed text-pretty">Based on machines, profit share, plus Opening Balance/Correction.</p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="rounded border border-blue-50 bg-white/60 p-2.5">
+                  <p className="mb-1 text-[9px] font-bold uppercase text-blue-600">
+                    Target
+                  </p>
+                  <p className="text-pretty text-[10px] leading-relaxed text-gray-600">
+                    Based on machines, profit share, plus Opening
+                    Balance/Correction.
+                  </p>
                 </div>
-                <div className="bg-white/60 p-2.5 rounded border border-blue-50">
-                  <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">Collected</p>
-                  <p className="text-[10px] text-gray-600 leading-relaxed text-pretty">The physical cash retrieved. This field unlocks after setting Correction.</p>
+                <div className="rounded border border-blue-50 bg-white/60 p-2.5">
+                  <p className="mb-1 text-[9px] font-bold uppercase text-blue-600">
+                    Collected
+                  </p>
+                  <p className="text-pretty text-[10px] leading-relaxed text-gray-600">
+                    The physical cash retrieved. This field unlocks after
+                    setting Correction.
+                  </p>
                 </div>
-                <div className="bg-white/60 p-2.5 rounded border border-blue-50">
-                  <p className="text-[9px] font-bold text-blue-600 uppercase mb-1">Carryover</p>
-                  <p className="text-[10px] text-gray-600 leading-relaxed text-pretty">Collected minus Target. This value starts the next collection cycle.</p>
+                <div className="rounded border border-blue-50 bg-white/60 p-2.5">
+                  <p className="mb-1 text-[9px] font-bold uppercase text-blue-600">
+                    Carryover
+                  </p>
+                  <p className="text-pretty text-[10px] leading-relaxed text-gray-600">
+                    Collected minus Target. This value starts the next
+                    collection cycle.
+                  </p>
                 </div>
               </div>
             </div>
@@ -280,7 +298,9 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
       </div>
 
       {/* Right sidebar: Collected machines list - 1/5 width */}
-      <div className={`flex min-h-0 w-full flex-shrink-0 flex-col overflow-hidden md:w-1/5 ${isMobile && (selectedMachineId || collectedMachineEntries.length === 0) ? 'hidden md:flex' : 'flex'}`}>
+      <div
+        className={`flex min-h-0 w-full flex-shrink-0 flex-col overflow-hidden md:w-1/5 ${isMobile && (selectedMachineId || collectedMachineEntries.length === 0) ? 'hidden md:flex' : 'flex'}`}
+      >
         <CollectionReportEditCollectedMachines
           collectedMachineEntries={collectedMachineEntries}
           isProcessing={isProcessing}
@@ -291,10 +311,13 @@ export default function DesktopEditLayout(props: DesktopEditLayoutProps) {
           updateAllSasEndDate={updateAllSasEndDate}
           setUpdateAllSasEndDate={setUpdateAllSasEndDate}
           onRefresh={onRefresh}
-          financials={financials}
-
           onApplyAllDates={handleApplyAllDates}
-          variationMachineIds={variationsData?.machines.filter((m: MachineVariationData) => typeof m.variation === 'number' && Math.abs(m.variation) > 0.1).map((m: MachineVariationData) => m.machineId)}
+          variationMachineIds={variationsData?.machines
+            .filter(
+              (m: MachineVariationData) =>
+                typeof m.variation === 'number' && Math.abs(m.variation) > 0.1
+            )
+            .map((m: MachineVariationData) => m.machineId)}
         />
       </div>
     </div>

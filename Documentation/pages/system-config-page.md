@@ -1,8 +1,8 @@
 # System Configuration Page Implementation
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -15,34 +15,37 @@ Global management of firmware binaries, localization, and hardware profiles.
 ## 2. Data & API Architecture (By Section)
 
 ### 📁 Firmware Repository
-| Data Element | Source API | Trigger |
-| :--- | :--- | :--- |
-| **File List** | `GET /api/config/firmware` | Page Load |
-| **Checksum / Size** | `GET /api/config/firmware` | Page Load |
-| **Upload Status** | `POST /api/upload/firmware` | File Drop |
+
+| Data Element        | Source API            | Trigger   |
+| :------------------ | :-------------------- | :-------- |
+| **File List**       | `GET /api/firmwares`  | Page Load |
+| **Checksum / Size** | `GET /api/firmwares`  | Page Load |
+| **Upload Status**   | `POST /api/firmwares` | File Drop |
 
 - **Implementation**: Files are streamed to GridFS. Progress tracked via an XHR upload event listener.
 
 ### 📡 Migration Monitor
-| Data Element | Source API | Trigger |
-| :--- | :--- | :--- |
-| **Job Progress (%)** | `GET /api/config/firmware/jobs` | 5s Polling |
-| **Target Machines** | `GET /api/config/firmware/jobs/[id]` | On Expand |
+
+| Data Element         | Source API                     | Trigger    |
+| :------------------- | :----------------------------- | :--------- |
+| **Job Progress (%)** | `GET /api/firmwares/jobs`      | 5s Polling |
+| **Target Machines**  | `GET /api/firmwares/jobs/[id]` | On Expand  |
 
 - **Logic**: Migration commands are sent via MQTT; progress is updated in the DB as SMIBs report download completion.
 
 ### 🌍 Localization
-| Data Element | Source API | Trigger |
-| :--- | :--- | :--- |
-| **Active Rates** | `GET /api/config/rates` | Page Load |
-| **Jurisdiction Flags**| `GET /api/config/settings` | Page Load |
+
+| Data Element           | Source API           | Trigger   |
+| :--------------------- | :------------------- | :-------- |
+| **Active Rates**       | `GET /api/rates`     | Page Load |
+| **Jurisdiction Flags** | `GET /api/licencees` | Page Load |
 
 ---
 
 ## 3. Feature Triggers
 
-- **Push Update**: Triggers `POST /api/config/firmware/migrate` with a list of target `MachineIDs`.
-- **Set Tax Rate**: Triggers `PUT /api/config/jurisdiction`.
+- **Push Update**: Triggers `POST /api/firmwares/migrate` with a list of target `MachineIDs`.
+- **Set Tax Rate**: Triggers `PUT /api/licencees`.
 
 ---
 
@@ -59,4 +62,5 @@ Global management of firmware binaries, localization, and hardware profiles.
 - 🚀 **Progress Bar**: Blue (Downloading), Green (Installing), Red (Failed).
 
 ---
+
 **Internal Document** - Engineering Team

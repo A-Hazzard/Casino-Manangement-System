@@ -1,8 +1,8 @@
 /**
  * Custom hook for Members Edit Member form state management
- * 
+ *
  * Handles form data state, original data tracking, and form submission logic
- * 
+ *
  * @param props - Hook props
  */
 
@@ -100,7 +100,9 @@ export function useMembersEditMemberForm({
       ...prev,
       [name]:
         name === 'points' || name === 'uaccount'
-          ? value === '' ? 0 : Number(value)
+          ? value === ''
+            ? 0
+            : Number(value)
           : value,
     }));
   };
@@ -271,4 +273,3 @@ export function useMembersEditMemberForm({
     handleSubmit,
   };
 }
-

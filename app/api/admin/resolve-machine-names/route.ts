@@ -14,6 +14,11 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import type { ActivityLogDocument, GamingMachine } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -35,9 +40,23 @@ const OBJECT_ID_REGEX = /^[a-fA-F0-9]{24}$/;
  */
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async ({ userRoles }) => {
+    const startTime = Date.now();
+    const functionName = 'GET /api/admin/resolve-machine-names';
+    const user = extractUserFromRequest(request);
+
     const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
     if (!normalizedRoles.includes('developer')) {
-      return NextResponse.json({ success: false, message: 'Developer access required' }, { status: 403 });
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/admin/resolve-machine-names',
+        'Developer access required',
+        user
+      );
+      return NextResponse.json(
+        { success: false, message: 'Developer access required' },
+        { status: 403 }
+      );
     }
 
     await connectDB();
@@ -52,17 +71,39 @@ export async function GET(request: NextRequest) {
     });
 
     if (total === 0) {
-      return NextResponse.json({ success: true, updated: 0, total: 0, remaining: 0 });
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/admin/resolve-machine-names',
+        0,
+        user,
+        duration
+      );
+      return NextResponse.json({
+        success: true,
+        updated: 0,
+        total: 0,
+        remaining: 0,
+      });
     }
 
     // Fetch a batch of logs to process
     const logsToResolve = await ActivityLog.find(
       { resourceName: { $regex: /^[a-fA-F0-9]{24}$/ }, deletedAt: null },
       { _id: 1, resourceName: 1 }
-    ).limit(limit).lean<ActivityLogDocument[]>();
+    )
+      .limit(limit)
+      .lean<ActivityLogDocument[]>();
 
     // Collect unique ObjectIDs
-    const objectIds = [...new Set(logsToResolve.map(l => String(l.resourceName)).filter(n => OBJECT_ID_REGEX.test(n)))];
+    const objectIds = [
+      ...new Set(
+        logsToResolve
+          .map(l => String(l.resourceName))
+          .filter(n => OBJECT_ID_REGEX.test(n))
+      ),
+    ];
 
     // Batch-query machines
     const machines = await Machine.find(
@@ -81,7 +122,12 @@ export async function GET(request: NextRequest) {
 
     // Update logs whose machine was resolved
     let updated = 0;
-    const bulkOps: Array<{ updateOne: { filter: { _id: string }; update: { $set: { resourceName: string } } } }> = [];
+    const bulkOps: Array<{
+      updateOne: {
+        filter: { _id: string };
+        update: { $set: { resourceName: string } };
+      };
+    }> = [];
 
     for (const log of logsToResolve) {
       const rawName = String(log.resourceName);
@@ -99,7 +145,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (bulkOps.length > 0) {
-      await ActivityLog.bulkWrite(bulkOps as Parameters<typeof ActivityLog.bulkWrite>[0]);
+      await ActivityLog.bulkWrite(
+        bulkOps as Parameters<typeof ActivityLog.bulkWrite>[0]
+      );
     }
 
     // Re-count remaining after update
@@ -108,6 +156,15 @@ export async function GET(request: NextRequest) {
       deletedAt: null,
     });
 
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/admin/resolve-machine-names',
+      updated,
+      user,
+      duration
+    );
     return NextResponse.json({ success: true, updated, total, remaining });
   });
 }

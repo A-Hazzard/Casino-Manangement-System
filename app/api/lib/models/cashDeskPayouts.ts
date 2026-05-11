@@ -1,17 +1,4 @@
-/**
- * Cash Desk Payout Model
- *
- * Mongoose model for player payouts processed by cashiers.
- * Tracks ticket, hand-pay, and cash-desk payments.
- *
- * @module app/api/lib/models/cashDeskPayouts
- */
-
 import { model, models, Schema } from 'mongoose';
-
-// ============================================================================
-// Schema Definition
-// ============================================================================
 
 const PAYOUT_TYPES = ['Ticket', 'Hand-Pay', 'Cash-Desk'] as const;
 
@@ -50,35 +37,21 @@ const payoutSchema = new Schema(
   { timestamps: true, collection: 'cashdeskpayouts' }
 );
 
-// ============================================================================
-// Indexes
-// ============================================================================
-
 payoutSchema.index({ locationId: 1, createdAt: -1 });
-// Note: cashierId, shiftId, and type single indexes are already created by index: true in schema (lines 32, 35, 38)
+
 payoutSchema.index({ ticketNumber: 1 });
 
-// ============================================================================
-// Validation
-// ============================================================================
-
 payoutSchema.pre('save', function (next) {
-  // Validate ticketNumber is provided for Ticket type
   if (this.type === 'Ticket' && !this.ticketNumber) {
     return next(new Error('Ticket number is required for Ticket payouts'));
   }
 
-  // Validate amount is positive
   if (this.amount <= 0) {
     return next(new Error('Payout amount must be positive'));
   }
 
   next();
 });
-
-// ============================================================================
-// Model Export
-// ============================================================================
 
 export const CashDeskPayout =
   models.cashdeskpayouts || model('cashdeskpayouts', payoutSchema);

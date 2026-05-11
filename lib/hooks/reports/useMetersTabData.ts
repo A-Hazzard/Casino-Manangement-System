@@ -21,7 +21,10 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useReportsStore } from '@/lib/store/reportsStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { isAbortError } from '@/lib/utils/errors';
-import type { MetersReportData, MetersReportResponse } from '@/shared/types/meters';
+import type {
+  MetersReportData,
+  MetersReportResponse,
+} from '@/shared/types/meters';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -107,7 +110,9 @@ export function useMetersTabData({
     );
   }, [user?.roles]);
 
-  const [fetchedLocationPermissions, setFetchedLocationPermissions] = useState<string[]>([]);
+  const [fetchedLocationPermissions, setFetchedLocationPermissions] = useState<
+    string[]
+  >([]);
 
   const locationAdminLocations = useMemo(() => {
     if (!isLocationAdmin) return [];
@@ -198,16 +203,18 @@ export function useMetersTabData({
 
         let fetchedLocations: Location[] = [];
         if (Array.isArray(response.data?.locations)) {
-          fetchedLocations = response.data.locations.map((loc: {
-            _id: string;
-            id?: string;
-            name: string;
-            sasEnabled?: boolean;
-          }) => ({
-            id: loc.id || String(loc._id),
-            name: loc.name || '',
-            sasEnabled: loc.sasEnabled || false,
-          }));
+          fetchedLocations = response.data.locations.map(
+            (loc: {
+              _id: string;
+              id?: string;
+              name: string;
+              sasEnabled?: boolean;
+            }) => ({
+              id: loc.id || String(loc._id),
+              name: loc.name || '',
+              sasEnabled: loc.sasEnabled || false,
+            })
+          );
         }
 
         // Filter locations for location admin
@@ -261,14 +268,21 @@ export function useMetersTabData({
           limit: itemsPerBatch.toString(),
         });
 
-        if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
+        if (
+          activeMetricsFilter === 'Custom' &&
+          customDateRange?.startDate &&
+          customDateRange?.endDate
+        ) {
           const formatLocalDate = (date: Date) => {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
           };
-          params.append('startDate', formatLocalDate(customDateRange.startDate));
+          params.append(
+            'startDate',
+            formatLocalDate(customDateRange.startDate)
+          );
           params.append('endDate', formatLocalDate(customDateRange.endDate));
           // "locations=Mapau,Stabroek&timePeriod=Custom&page=1&limit=50&startDate=2026-01-01&endDate=2026-01-31"
         }
@@ -313,13 +327,15 @@ export function useMetersTabData({
             const existingIds = new Set(
               prev.map(
                 meterData =>
-                  meterData.machineId || ((meterData as Record<string, unknown>)._id as string)
+                  meterData.machineId ||
+                  ((meterData as Record<string, unknown>)._id as string)
               )
             );
             const uniqueNewMeters = newMetersData.filter(
               (meterData: MetersReportData) => {
                 const id =
-                  meterData.machineId || ((meterData as Record<string, unknown>)._id as string);
+                  meterData.machineId ||
+                  ((meterData as Record<string, unknown>)._id as string);
                 return !existingIds.has(id);
               }
             );
@@ -489,14 +505,21 @@ export function useMetersTabData({
             granularity: chartGranularity,
           });
 
-          if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
+          if (
+            activeMetricsFilter === 'Custom' &&
+            customDateRange?.startDate &&
+            customDateRange?.endDate
+          ) {
             const formatLocalDate = (date: Date) => {
               const year = date.getFullYear();
               const month = String(date.getMonth() + 1).padStart(2, '0');
               const day = String(date.getDate()).padStart(2, '0');
               return `${year}-${month}-${day}`;
             };
-            params.append('startDate', formatLocalDate(customDateRange.startDate));
+            params.append(
+              'startDate',
+              formatLocalDate(customDateRange.startDate)
+            );
             params.append('endDate', formatLocalDate(customDateRange.endDate));
             // "...&startDate=2026-01-01&endDate=2026-01-31"
           }
@@ -616,5 +639,3 @@ export function useMetersTabData({
     metersTabFilterInitialized,
   };
 }
-
-

@@ -79,7 +79,10 @@ export async function switchFilter(
       setChartData([]);
     }
   } catch (e) {
-    console.error('[switchFilter] Error:', e instanceof Error ? e.message : 'Unknown error');
+    console.error(
+      '[switchFilter] Error:',
+      e instanceof Error ? e.message : 'Unknown error'
+    );
     // Error handled by caller or silently failed for UI
   }
 }
@@ -87,5 +90,3 @@ export async function switchFilter(
 // ============================================================================
 // Collection Calculation Functions
 // ============================================================================
-
-

@@ -31,7 +31,8 @@ export async function fetchCollectionReportsByLicencee(
   if (limit) params.append('limit', String(limit));
   if (skip) params.append('skip', String(skip));
   if (locationName) params.append('locationName', locationName);
-  if (locationIds && locationIds.length > 0) params.append('locationIds', locationIds.join(','));
+  if (locationIds && locationIds.length > 0)
+    params.append('locationIds', locationIds.join(','));
   if (search) params.append('search', search);
 
   const response = await axios.get(
@@ -40,7 +41,6 @@ export async function fetchCollectionReportsByLicencee(
   );
   return response.data;
 }
-
 
 /**
  * Fetches locations with their machines for creating new reports
@@ -66,6 +66,25 @@ export async function getLocationsWithMachines(
 export async function fetchCollectionReportById(reportId: string) {
   const response = await axios.get(`/api/collection-reports/${reportId}`);
   return response.data || null;
+}
+
+/**
+ * Lightweight check: queries the gaming locations collection directly to determine
+ * whether a location is flagged as `noSMIBLocation: true`. Returns false on any error
+ * so callers fall back to the normal variation flow.
+ */
+export async function checkLocationNoSMIB(
+  locationId: string
+): Promise<boolean> {
+  if (!locationId) return false;
+  try {
+    const response = await axios.get(
+      `/api/locations/${encodeURIComponent(locationId)}/no-smib-check`
+    );
+    return Boolean(response.data?.data?.noSMIBLocation);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -121,4 +140,3 @@ export async function fetchMonthlyReportSummaryAndDetails(params: {
   );
   return response.data;
 }
-

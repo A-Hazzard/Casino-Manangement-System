@@ -30,12 +30,16 @@ import { useState, useEffect } from 'react';
 type ScheduleEditModalProps = {
   open: boolean;
   onClose: () => void;
-  onSave: (data: { startTime: string; endTime: string; status: string }) => Promise<void>;
+  onSave: (data: {
+    startTime: string;
+    endTime: string;
+    status: string;
+  }) => Promise<void>;
   initialData: {
     collectorName: string;
     locationName: string;
     startTime: string; // ISO string
-    endTime: string;   // ISO string
+    endTime: string; // ISO string
     status: string;
   } | null;
   saving?: boolean;
@@ -109,11 +113,15 @@ export default function ScheduleEditModal({
           <div className="grid grid-cols-2 gap-4 rounded-lg bg-gray-50 p-3 text-sm">
             <div>
               <span className="font-medium text-gray-500">Collector</span>
-              <p className="mt-0.5 text-gray-900">{initialData?.collectorName || '—'}</p>
+              <p className="mt-0.5 text-gray-900">
+                {initialData?.collectorName || '—'}
+              </p>
             </div>
             <div>
               <span className="font-medium text-gray-500">Location</span>
-              <p className="mt-0.5 text-gray-900">{initialData?.locationName || '—'}</p>
+              <p className="mt-0.5 text-gray-900">
+                {initialData?.locationName || '—'}
+              </p>
             </div>
           </div>
 
@@ -158,16 +166,18 @@ export default function ScheduleEditModal({
             </Select>
           </div>
 
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving} className="bg-button hover:bg-buttonHover text-white">
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="hover:bg-buttonHover bg-button text-white"
+          >
             {saving ? 'Saving…' : 'Save Changes'}
           </Button>
         </DialogFooter>

@@ -1,8 +1,8 @@
 /**
  * CabinetsDetailsSMIBOTAUpdate Component
- * 
+ *
  * Handles over-the-air firmware updates for SMIB devices.
- * 
+ *
  * @param props - Component props
  */
 
@@ -19,7 +19,12 @@ import {
   AlertDialogTitle,
 } from '@/components/shared/ui/alert-dialog';
 import { Button } from '@/components/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import {
   Select,
   SelectContent,
@@ -82,7 +87,7 @@ export function CabinetsDetailsSMIBOTAUpdate({
 
   return (
     <>
-      <Card className="w-full max-w-full min-w-0 overflow-x-hidden">
+      <Card className="w-full min-w-0 max-w-full overflow-x-hidden">
         <CardHeader className="min-w-0">
           <div className="flex flex-col gap-1">
             <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-700">
@@ -94,7 +99,7 @@ export function CabinetsDetailsSMIBOTAUpdate({
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 min-w-0 overflow-x-hidden">
+        <CardContent className="min-w-0 space-y-4 overflow-x-hidden">
           <p className="text-sm text-gray-600">
             Deploy over-the-air firmware updates to the SMIB device. Select a
             firmware version and initiate the update.
@@ -225,4 +230,3 @@ export function CabinetsDetailsSMIBOTAUpdate({
     </>
   );
 }
-

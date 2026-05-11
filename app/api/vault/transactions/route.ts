@@ -3,12 +3,22 @@
  */
 
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import { getMoneyOutAndJackpotScale } from '@/app/api/lib/utils/reviewerScale';
 import type { ExtendedVaultTransaction } from '@/shared/types/vault';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { NextRequest, NextResponse } from 'next/server';
 import { GamingLocations } from '../../lib/models/gaminglocations';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
-import type { GamingMachine, GamingLocationDocument, VaultTransactionDocument } from '@shared/types';
+import type {
+  GamingMachine,
+  GamingLocationDocument,
+  VaultTransactionDocument,
+} from '@shared/types';
 import type { LeanUserDocument } from 'shared/types/auth';
 
 /**
@@ -34,17 +44,29 @@ import type { LeanUserDocument } from 'shared/types/auth';
  * @returns {Promise<NextResponse>} Paginated vault transaction list with enriched metadata.
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/vault/transactions';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
       const hasVMAccess = normalizedRoles.some(role =>
         ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
       );
-      if (!hasVMAccess)
+      if (!hasVMAccess) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/vault/transactions',
+          'Insufficient permissions',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient permissions' },
           { status: 403 }
         );
+      }
 
       const { searchParams } = new URL(request.url);
       const locationId = searchParams.get('locationId');
@@ -68,6 +90,13 @@ export async function GET(request: NextRequest) {
           allowedLocationIds !== 'all' &&
           !allowedLocationIds.includes(locationId)
         ) {
+          logRouteError(
+            functionName,
+            'GET',
+            '/api/vault/transactions',
+            'Access denied',
+            user
+          );
           return NextResponse.json(
             { success: false, error: 'Access denied' },
             { status: 403 }
@@ -114,9 +143,7 @@ export async function GET(request: NextRequest) {
           { _id: 1, name: 1 }
         )
           .lean<GamingLocationDocument[]>()
-          .then(loc =>
-            loc.map(l => ({ _id: String(l._id), name: l.name }))
-          );
+          .then(loc => loc.map(l => ({ _id: String(l._id), name: l.name })));
         const nMap = locations.reduce(
           (acc, loc) => {
             acc[loc._id] = loc.name;
@@ -245,10 +272,13 @@ export async function GET(request: NextRequest) {
                   gameType?: string;
                 }
               | undefined;
-            if (!machineData) return { identifier: id, game: 'N/A', gameType: 'N/A' };
+            if (!machineData)
+              return { identifier: id, game: 'N/A', gameType: 'N/A' };
             const sn = String(machineData.serialNumber || '').trim();
             const nm = String(machineData.custom?.name || '').trim();
-            const game = String(machineData.game || machineData.installedGame || '');
+            const game = String(
+              machineData.game || machineData.installedGame || ''
+            );
             const gameType = String(machineData.gameType || '');
             const main = sn || nm || 'N/A';
             return {
@@ -264,12 +294,16 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // Reviewer Multiplier Scaling
       // ============================================================================
-      const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
-      if (reviewerMult !== null) {
-        const mult = 1 - reviewerMult;
+      const moneyOutScale = getMoneyOutAndJackpotScale(
+        userPayload as {
+          moneyOutAndJackpotMultiplier?: number | null;
+          roles?: string[];
+        }
+      );
+      if (moneyOutScale !== 1) {
         populated.forEach(t => {
           if (typeof t.amount === 'number') {
-            t.amount *= mult;
+            t.amount *= moneyOutScale;
           }
         });
       }
@@ -282,6 +316,17 @@ export async function GET(request: NextRequest) {
           | undefined;
         if (expenseDetails?.machineIds) delete expenseDetails.machineIds;
       });
+
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/vault/transactions',
+        populated.length,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         items: populated,
@@ -294,6 +339,17 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch vault transactions';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/vault/transactions',
+        errorMessage,
+        user
+      );
       console.error('[Vault Transactions API] Error:', error);
       return NextResponse.json(
         {

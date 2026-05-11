@@ -15,10 +15,6 @@ type MachineDataEntryFormProps = {
   currentMetersOut?: number | null;
   onViewMachine?: () => void;
 
-  // Collection time
-  collectionTime: Date;
-  onCollectionTimeChange: (date: Date | undefined) => void;
-
   // Meters data
   metersIn: string;
   metersOut: string;
@@ -50,9 +46,7 @@ type MachineDataEntryFormProps = {
   disabled?: boolean;
   isProcessing?: boolean;
 
-  // SAS manual overrides
-  showAdvancedSas?: boolean;
-  onAdvancedSasToggle?: () => void;
+  // SAS times
   sasStartTime?: Date | null;
   onSasStartTimeChange?: (date: Date | null) => void;
   sasEndTime?: Date | null;
@@ -70,8 +64,6 @@ export default function CollectionReportFormMachineDataEntry({
   currentMetersIn,
   currentMetersOut,
   onViewMachine,
-  collectionTime,
-  onCollectionTimeChange,
   metersIn,
   metersOut,
   ramClear,
@@ -93,8 +85,6 @@ export default function CollectionReportFormMachineDataEntry({
   onAdvanceChange,
   disabled = false,
   isProcessing = false,
-  showAdvancedSas = false,
-  onAdvancedSasToggle,
   sasStartTime = null,
   onSasStartTimeChange,
   sasEndTime = null,
@@ -115,68 +105,41 @@ export default function CollectionReportFormMachineDataEntry({
         onViewMachine={onViewMachine}
       />
 
-      {/* Advanced SAS Overrides Toggle */}
-      <div className="mb-2">
-        <button
-          type="button"
-          className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-semibold bg-blue-50 px-3 py-2 rounded-lg w-full justify-center border border-blue-100"
-          onClick={onAdvancedSasToggle}
-        >
-          {showAdvancedSas ? '← Hide Manual SAS Options' : 'Advanced: Manual SAS Times'}
-        </button>
-      </div>
-
-      {!showAdvancedSas ? (
-        <CollectionReportFormTimeInput
-          date={collectionTime}
-          onDateChange={onCollectionTimeChange}
-          disabled={isProcessing}
-        />
-      ) : (
-        <div className="space-y-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
-          <p className="text-[10px] font-bold text-blue-900 uppercase tracking-widest text-center">
-            Manual SAS Reporting Period
-          </p>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-gray-700">
-                SAS Start Time
-              </label>
-              <CollectionReportFormTimeInput
-                date={
-                  sasStartTime && !isNaN(new Date(sasStartTime).getTime())
-                    ? new Date(sasStartTime)
-                    : new Date()
-                }
-                onDateChange={date => onSasStartTimeChange?.(date || null)}
-                disabled={isProcessing}
-                showHelpText={false}
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-gray-700">
-                SAS End Time
-              </label>
-              <CollectionReportFormTimeInput
-                date={
-                  sasEndTime && !isNaN(new Date(sasEndTime).getTime())
-                    ? new Date(sasEndTime)
-                    : new Date()
-                }
-                onDateChange={date => onSasEndTimeChange?.(date || null)}
-                disabled={isProcessing}
-                showHelpText={false}
-              />
-            </div>
+      {/* Collection Time */}
+      <div className="mb-2 space-y-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+        <p className="text-center text-[10px] font-bold uppercase tracking-widest text-blue-900">
+          Collection Time
+        </p>
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-bold text-gray-700">
+              Start Time
+            </label>
+            <CollectionReportFormTimeInput
+              date={sasStartTime ?? new Date()}
+              onDateChange={date => onSasStartTimeChange?.(date || null)}
+              disabled={isProcessing}
+              showHelpText={false}
+              maxDate={sasEndTime ?? new Date()}
+            />
           </div>
-          
-          <p className="text-[10px] text-blue-600 italic leading-relaxed text-center px-2">
-            * Overrides automatic calculation based on collection time.
-          </p>
+          <div>
+            <label className="mb-1.5 block text-xs font-bold text-gray-700">
+              End Time
+            </label>
+            <CollectionReportFormTimeInput
+              date={sasEndTime ?? new Date()}
+              onDateChange={date => onSasEndTimeChange?.(date || null)}
+              disabled={isProcessing}
+              showHelpText={false}
+              minDate={sasStartTime ?? undefined}
+            />
+          </div>
         </div>
-      )}
+        <p className="px-2 text-center text-[10px] italic leading-relaxed text-blue-600">
+          Start time is automatically set from the previous collection time.
+        </p>
+      </div>
 
       {/* Meter Inputs */}
       <CollectionReportFormMachineMeters
@@ -205,19 +168,21 @@ export default function CollectionReportFormMachineDataEntry({
       />
 
       {/* Financial Data (only for first machine) */}
-      {showFinancials && taxes !== undefined && advance !== undefined && onTaxesChange && onAdvanceChange && (
-        <div className="border-t pt-4">
-          <CollectionReportFormSharedFinancials
-            taxes={taxes}
-            advance={advance}
-            onTaxesChange={onTaxesChange}
-            onAdvanceChange={onAdvanceChange}
-            disabled={isProcessing}
-          />
-        </div>
-      )}
+      {showFinancials &&
+        taxes !== undefined &&
+        advance !== undefined &&
+        onTaxesChange &&
+        onAdvanceChange && (
+          <div className="border-t pt-4">
+            <CollectionReportFormSharedFinancials
+              taxes={taxes}
+              advance={advance}
+              onTaxesChange={onTaxesChange}
+              onAdvanceChange={onAdvanceChange}
+              disabled={isProcessing}
+            />
+          </div>
+        )}
     </div>
   );
 }
-
-

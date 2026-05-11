@@ -110,5 +110,3 @@ export function useSmibMeters() {
     resetMeters,
   };
 }
-
-

@@ -5,13 +5,7 @@
  */
 
 import type { NavigationConfig } from '@/lib/types/layout/navigation';
-import {
-    BarChart3,
-    FileText,
-    History,
-    Receipt,
-    Wallet
-} from 'lucide-react';
+import { BarChart3, FileText, History, Receipt, Wallet } from 'lucide-react';
 
 export const vaultNavigationConfig: NavigationConfig = {
   items: [

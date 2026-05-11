@@ -26,11 +26,11 @@ import LocationsDetailsCabinetsSection from '@/components/CMS/locations/sections
 import { useLocationCabinetsData } from '@/lib/hooks/locations/useLocationCabinetsData';
 import { useLocationChartData } from '@/lib/hooks/locations/useLocationChartData';
 import {
-    canEditMachines,
-    canManageLocations,
-    canViewArchivedMachines,
-    hasAdminAccess,
-    UserRole
+  canEditMachines,
+  canManageLocations,
+  canViewArchivedMachines,
+  hasAdminAccess,
+  UserRole,
 } from '@/lib/utils/permissions';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
@@ -128,7 +128,9 @@ export default function LocationsDetailsPageContent() {
   const { machineStats, machineStatsLoading, refreshMachineStats } =
     useLocationMachineStats(
       locationId,
-      cabinetsData.selectedGameType === 'all' ? undefined : cabinetsData.selectedGameType,
+      cabinetsData.selectedGameType === 'all'
+        ? undefined
+        : cabinetsData.selectedGameType,
       cabinetsData.searchTerm
     );
   const { membershipStats, membershipStatsLoading, refreshMembershipStats } =
@@ -239,6 +241,8 @@ export default function LocationsDetailsPageContent() {
       return;
     }
 
+    // Refresh location document (re-runs SMIB auto-tag + updates locationData)
+    await cabinetsData.refreshLocation();
     // Refresh machine status and membership stats
     await Promise.all([refreshMachineStats(), refreshMembershipStats()]);
     // Refresh cabinets data (hook handles the refresh)
@@ -260,29 +264,42 @@ export default function LocationsDetailsPageContent() {
    * Restores a soft-deleted cabinet by clearing its deletedAt field.
    */
   const handleRestoreCabinet = async (cabinet: Cabinet) => {
-    if (!confirm(`Are you sure you want to restore machine ${cabinet.serialNumber || cabinet.custom?.name || 'N/A'}?`)) {
+    if (
+      !confirm(
+        `Are you sure you want to restore machine ${cabinet.serialNumber || cabinet.custom?.name || 'N/A'}?`
+      )
+    ) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/locations/${locationId}/cabinets/${cabinet._id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'restore' }),
-      });
+      const response = await fetch(
+        `/api/locations/${locationId}/cabinets/${cabinet._id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'restore' }),
+        }
+      );
 
       const result = await response.json();
       if (result.success) {
-        import('sonner').then(({ toast }) => toast.success('Machine restored successfully'));
+        import('sonner').then(({ toast }) =>
+          toast.success('Machine restored successfully')
+        );
         handleRefresh();
       } else {
-        import('sonner').then(({ toast }) => toast.error(result.error || 'Failed to restore machine'));
+        import('sonner').then(({ toast }) =>
+          toast.error(result.error || 'Failed to restore machine')
+        );
       }
     } catch (error) {
-       console.error('Error restoring cabinet:', error);
-       import('sonner').then(({ toast }) => toast.error('An error occurred during restoration'));
+      console.error('Error restoring cabinet:', error);
+      import('sonner').then(({ toast }) =>
+        toast.error('An error occurred during restoration')
+      );
     }
   };
 
@@ -291,25 +308,38 @@ export default function LocationsDetailsPageContent() {
    * This action is restricted to admins and developers.
    */
   const handlePermanentDeleteCabinet = async (cabinet: Cabinet) => {
-    if (!confirm(`CRITICAL: Are you sure you want to PERMANENTLY delete machine ${cabinet.serialNumber || cabinet.custom?.name || 'N/A'}? This action cannot be undone.`)) {
+    if (
+      !confirm(
+        `CRITICAL: Are you sure you want to PERMANENTLY delete machine ${cabinet.serialNumber || cabinet.custom?.name || 'N/A'}? This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/locations/${locationId}/cabinets/${cabinet._id}?hardDelete=true`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `/api/locations/${locationId}/cabinets/${cabinet._id}?hardDelete=true`,
+        {
+          method: 'DELETE',
+        }
+      );
 
       const result = await response.json();
       if (result.success) {
-        import('sonner').then(({ toast }) => toast.success('Machine permanently deleted'));
+        import('sonner').then(({ toast }) =>
+          toast.success('Machine permanently deleted')
+        );
         handleRefresh();
       } else {
-        import('sonner').then(({ toast }) => toast.error(result.error || 'Failed to delete machine permanently'));
+        import('sonner').then(({ toast }) =>
+          toast.error(result.error || 'Failed to delete machine permanently')
+        );
       }
     } catch (error) {
       console.error('Error permanently deleting cabinet:', error);
-      import('sonner').then(({ toast }) => toast.error('An error occurred during permanent deletion'));
+      import('sonner').then(({ toast }) =>
+        toast.error('An error occurred during permanent deletion')
+      );
     }
   };
 
@@ -326,7 +356,6 @@ export default function LocationsDetailsPageContent() {
           setSelectedLicencee,
           disabled: false,
         }}
-        
         hideOptions={true}
         hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
@@ -359,7 +388,6 @@ export default function LocationsDetailsPageContent() {
             cabinetsData.cabinetsLoading ||
             cabinetsData.refreshing,
         }}
-        
         hideOptions={true}
         hideLicenceeFilter={true}
         mainClassName="flex flex-col flex-1 px-2 py-4 sm:p-6 w-full max-w-full"
@@ -375,7 +403,7 @@ export default function LocationsDetailsPageContent() {
           activeView={activeView}
           canManageMachines={canManageMachines}
           onRefresh={handleRefresh}
-          onEditLocation={(loc) => {
+          onEditLocation={loc => {
             if (canEditLocation) {
               openEditModal(loc);
             }

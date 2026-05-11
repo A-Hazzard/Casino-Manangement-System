@@ -1,5 +1,10 @@
 import PageLayout from '@/components/shared/layout/PageLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 type CabinetDetailsLoadingStateProps = {
@@ -99,7 +104,7 @@ const CabinetDetailPageSkeleton = () => (
     </div>
 
     {/* Chart skeleton - Above Accounting Details on md+ screens */}
-    <div className="hidden md:block mb-6">
+    <div className="mb-6 hidden md:block">
       <div className="rounded-lg bg-container p-6 shadow-md">
         <div className="mb-4 flex items-center justify-between">
           <Skeleton className="h-6 w-32" />
@@ -180,7 +185,7 @@ const CabinetDetailPageSkeleton = () => (
     </div>
 
     {/* Chart skeleton - Below Accounting Details on mobile */}
-    <div className="md:hidden mt-6">
+    <div className="mt-6 md:hidden">
       <div className="rounded-lg bg-container p-6 shadow-md">
         <div className="mb-4 flex items-center justify-between">
           <Skeleton className="h-6 w-32" />
@@ -205,7 +210,6 @@ export const CabinetDetailsLoadingState = ({
       selectedLicencee,
       setSelectedLicencee,
     }}
-    
     hideOptions={true}
     hideLicenceeFilter={false}
     mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
@@ -268,5 +272,3 @@ export const ConfigurationsSkeleton = () => (
     ))}
   </div>
 );
-
-

@@ -59,11 +59,13 @@ export default function CollectionReportHeader({
           className="flex-shrink-0 p-1.5 text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 md:p-2"
           aria-label="Refresh"
         >
-          <RefreshCw className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={`h-4 w-4 sm:h-5 sm:w-5 ${refreshing ? 'animate-spin' : ''}`}
+          />
         </button>
 
         {/* Create Button */}
-        {activeTab === 'collection' && (
+        {(activeTab === 'collection' || activeTab === 'collection-v2') && (
           <Button
             onClick={() => {
               if (window.innerWidth < 1280) {
@@ -72,18 +74,20 @@ export default function CollectionReportHeader({
                 onCreateDesktop();
               }
             }}
-            className="flex items-center gap-1 rounded-md bg-buttonActive text-white px-2 py-1 text-xs font-medium hover:bg-purple-700 transition-colors shadow-sm sm:gap-2 sm:px-4 sm:py-2 sm:text-sm flex-shrink-0"
+            className="flex flex-shrink-0 items-center gap-1 rounded-md bg-buttonActive px-2 py-1 text-xs font-medium text-white shadow-sm transition-colors hover:bg-purple-700 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
           >
             <PlusCircle className="h-4 w-4" />
-            <span className="hidden sm:inline">Create Collection Report</span>
-            <span className="sm:hidden">Create</span>
+            <span className="hidden sm:inline">
+              {activeTab === 'collection-v2'
+                ? 'Start Collection Report'
+                : 'Create Collection Report'}
+            </span>
+            <span className="sm:hidden">
+              {activeTab === 'collection-v2' ? 'Start' : 'Create'}
+            </span>
           </Button>
         )}
       </div>
     </div>
   );
 }
-
-
-
-

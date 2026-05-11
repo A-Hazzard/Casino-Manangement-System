@@ -26,10 +26,10 @@ import { NextResponse } from 'next/server';
 
 /**
  * Applies currency conversion to a list of aggregated locations.
- * 
+ *
  * Determines the native currency for each location based on its licencee or country,
  * then converts financial figures (moneyIn, moneyOut, gross) to the display currency.
- * 
+ *
  * @param {AggregatedLocation[]} paginatedData - The list of location data to convert
  * @param {string | undefined} licencee - The licencee filter from request
  * @param {CurrencyCode} displayCurrency - The target currency code
@@ -43,11 +43,15 @@ export async function applyLocationsCurrencyConversion(
   isAdminOrDev: boolean
 ): Promise<AggregatedLocation[]> {
   if (!Array.isArray(paginatedData)) {
-    console.error('[applyLocationsCurrencyConversion] paginatedData must be an array');
+    console.error(
+      '[applyLocationsCurrencyConversion] paginatedData must be an array'
+    );
     return paginatedData ?? [];
   }
   if (!displayCurrency) {
-    console.error('[applyLocationsCurrencyConversion] displayCurrency is required');
+    console.error(
+      '[applyLocationsCurrencyConversion] displayCurrency is required'
+    );
     return paginatedData ?? [];
   }
   if (!isAdminOrDev || !shouldApplyCurrencyConversion(licencee)) {
@@ -91,14 +95,21 @@ export async function applyLocationsCurrencyConversion(
 
       if (!locationLicenceeId) {
         const countryId = location.country as string | undefined;
-        const countryName = countryId ? countryIdToName.get(countryId.toString()) : undefined;
+        const countryName = countryId
+          ? countryIdToName.get(countryId.toString())
+          : undefined;
         nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
       } else {
-        const licenceeName = licenceeIdToName.get(locationLicenceeId.toString()) || 'Unknown';
+        const licenceeName =
+          licenceeIdToName.get(locationLicenceeId.toString()) || 'Unknown';
         if (!licenceeName || licenceeName === 'Unknown') {
           const countryId = location.country as string | undefined;
-          const countryName = countryId ? countryIdToName.get(countryId.toString()) : undefined;
-          nativeCurrency = countryName ? getCountryCurrency(countryName) : 'USD';
+          const countryName = countryId
+            ? countryIdToName.get(countryId.toString())
+            : undefined;
+          nativeCurrency = countryName
+            ? getCountryCurrency(countryName)
+            : 'USD';
         } else {
           nativeCurrency = getLicenceeCurrency(licenceeName);
         }
@@ -110,15 +121,21 @@ export async function applyLocationsCurrencyConversion(
 
       const convertedLocation = { ...location };
       const convert = (val: number) =>
-        Math.round(convertFromUSD(convertToUSD(val, nativeCurrency), displayCurrency) * 100) / 100;
+        Math.round(
+          convertFromUSD(convertToUSD(val, nativeCurrency), displayCurrency) *
+            100
+        ) / 100;
 
-      if (typeof location.moneyIn === 'number') convertedLocation.moneyIn = convert(location.moneyIn);
-      if (typeof location.moneyOut === 'number') convertedLocation.moneyOut = convert(location.moneyOut);
-      if (typeof location.gross === 'number') convertedLocation.gross = convert(location.gross);
+      if (typeof location.moneyIn === 'number')
+        convertedLocation.moneyIn = convert(location.moneyIn);
+      if (typeof location.moneyOut === 'number')
+        convertedLocation.moneyOut = convert(location.moneyOut);
+      if (typeof location.gross === 'number')
+        convertedLocation.gross = convert(location.gross);
 
       return convertedLocation;
     });
-    } catch (error) {
+  } catch (error) {
     console.error(
       '[applyLocationsCurrencyConversion] Currency conversion failed:',
       error instanceof Error ? error.message : 'Unknown error'
@@ -129,10 +146,10 @@ export async function applyLocationsCurrencyConversion(
 
 /**
  * Handles the summary mode for locations (used for dropdowns and quick lists).
- * 
+ *
  * Aggregates machine counts (total, SAS, online) for each provided location.
  * aceEnabled locations have their online machine count forced to match total machines.
- * 
+ *
  * @param {LocationDocument[]} locations - The list of raw location documents
  * @param {string} displayCurrency - The currency to report in the response
  * @param {number} perfStart - Performance hook timestamp
@@ -157,28 +174,57 @@ export async function handleSummaryMode(
     locations.filter(loc => loc.aceEnabled === true).map(loc => String(loc._id))
   );
   const machineCounts = await Machine.aggregate([
-    { $match: { gamingLocation: { $in: allLocationIds }, deletedAt: { $in: [null, new Date(-1)] } } },
+    {
+      $match: {
+        gamingLocation: { $in: allLocationIds },
+        deletedAt: { $in: [null, new Date(-1)] },
+      },
+    },
     {
       $group: {
         _id: '$gamingLocation',
         totalMachines: { $sum: 1 },
-        sasMachines: { $sum: { $cond: [{ $eq: ['$isSasMachine', true] }, 1, 0] } },
-        onlineMachines: { $sum: { $cond: [{ $gt: ['$lastActivity', new Date(Date.now() - 3 * 60 * 1000)] }, 1, 0] } },
-      }
+        sasMachines: {
+          $sum: { $cond: [{ $eq: ['$isSasMachine', true] }, 1, 0] },
+        },
+        onlineMachines: {
+          $sum: {
+            $cond: [
+              { $gt: ['$lastActivity', new Date(Date.now() - 3 * 60 * 1000)] },
+              1,
+              0,
+            ],
+          },
+        },
+      },
     },
   ]);
 
   const countsMap = new Map(machineCounts.map(c => [c._id, c]));
   const summaryResults = locations.map(loc => {
     const locId = String(loc._id);
-    const counts = countsMap.get(locId) || { totalMachines: 0, sasMachines: 0, onlineMachines: 0 };
+    const counts = countsMap.get(locId) || {
+      totalMachines: 0,
+      sasMachines: 0,
+      onlineMachines: 0,
+    };
     // aceEnabled locations treat all their machines as online
-    const onlineMachines = aceEnabledLocIds.has(locId) ? counts.totalMachines : counts.onlineMachines;
+    const onlineMachines = aceEnabledLocIds.has(locId)
+      ? counts.totalMachines
+      : counts.onlineMachines;
     return {
-      _id: locId, location: locId, locationName: loc.name,
-      totalMachines: counts.totalMachines, sasMachines: counts.sasMachines,
-      onlineMachines, moneyIn: 0, moneyOut: 0, gross: 0,
-      rel: loc.rel, isLocalServer: loc.isLocalServer, geoCoords: loc.geoCoords,
+      _id: locId,
+      location: locId,
+      locationName: loc.name,
+      totalMachines: counts.totalMachines,
+      sasMachines: counts.sasMachines,
+      onlineMachines,
+      moneyIn: 0,
+      moneyOut: 0,
+      gross: 0,
+      rel: loc.rel,
+      isLocalServer: loc.isLocalServer,
+      geoCoords: loc.geoCoords,
       membershipEnabled: loc.membershipEnabled || loc.enableMembership || false,
       aceEnabled: loc.aceEnabled || false,
     };
@@ -192,13 +238,10 @@ export async function handleSummaryMode(
       totalCount: locations.length,
       totalPages: 1,
       hasNextPage: false,
-      hasPrevPage: false
+      hasPrevPage: false,
     },
     currency: displayCurrency,
     converted: false,
     performance: { totalTime: Date.now() - perfStart, mode: 'summary' },
   });
 }
-
-
-

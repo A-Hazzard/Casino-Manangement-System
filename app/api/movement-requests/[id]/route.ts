@@ -14,6 +14,11 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { MovementRequest } from '@/app/api/lib/models/movementrequests';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import {
+  logRouteDelete,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -29,10 +34,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * Query params:
  * @param deleteType {string}  Optional. 'soft' (default) sets `deletedAt`; 'hard' permanently removes the document (developer only).
  */
-export async function DELETE(
-  request: NextRequest
-): Promise<Response> {
+export async function DELETE(request: NextRequest): Promise<Response> {
   const startTime = Date.now();
+  const functionName = 'DELETE /api/movement-requests/[id]';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -41,7 +46,10 @@ export async function DELETE(
     await connectDB();
     const currentUser = await getUserFromServer();
     if (!currentUser) {
-      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
     // ============================================================================
@@ -64,6 +72,13 @@ export async function DELETE(
     // ============================================================================
     const movementRequestToDelete = await MovementRequest.findOne({ _id: id });
     if (!movementRequestToDelete) {
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/movement-requests/[id]',
+        'MovementRequest not found',
+        user
+      );
       return NextResponse.json(
         {
           success: false,
@@ -77,31 +92,70 @@ export async function DELETE(
     // STEP 4: Delete movement request (with permission check)
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const deleteType = (searchParams.get('deleteType') || 'soft') as 'soft' | 'hard';
+    const deleteType = (searchParams.get('deleteType') || 'soft') as
+      | 'soft'
+      | 'hard';
 
     const userRoles = (currentUser.roles as string[]) || [];
-    const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role.toLowerCase()));
-    const isCreator = movementRequestToDelete.createdBy === String(currentUser._id) ||
+    const isAdminOrDev = userRoles.some(role =>
+      ['admin', 'developer'].includes(role.toLowerCase())
+    );
+    const isCreator =
+      movementRequestToDelete.createdBy === String(currentUser._id) ||
       movementRequestToDelete.createdBy === currentUser.emailAddress;
 
     if (!isAdminOrDev && !isCreator) {
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/movement-requests/[id]',
+        'Forbidden: You do not have permission to delete this movement request',
+        user
+      );
       return NextResponse.json(
-        { success: false, message: 'Forbidden: You do not have permission to delete this movement request' },
+        {
+          success: false,
+          message:
+            'Forbidden: You do not have permission to delete this movement request',
+        },
         { status: 403 }
       );
     }
 
     if (deleteType === 'hard') {
-      const isDeveloper = userRoles.some(role => role.toLowerCase() === 'developer');
+      const isDeveloper = userRoles.some(
+        role => role.toLowerCase() === 'developer'
+      );
       if (!isDeveloper) {
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/movement-requests/[id]',
+          'Forbidden: Only developers can hard-delete movement requests',
+          user
+        );
         return NextResponse.json(
-          { success: false, message: 'Forbidden: Only developers can hard-delete movement requests' },
+          {
+            success: false,
+            message:
+              'Forbidden: Only developers can hard-delete movement requests',
+          },
           { status: 403 }
         );
       }
       const deleteResult = await MovementRequest.deleteOne({ _id: id });
       if (deleteResult.deletedCount === 0) {
-        return NextResponse.json({ success: false, message: 'Failed to delete movement request' }, { status: 500 });
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/movement-requests/[id]',
+          'Failed to delete movement request',
+          user
+        );
+        return NextResponse.json(
+          { success: false, message: 'Failed to delete movement request' },
+          { status: 500 }
+        );
       }
     } else {
       const softDeleted = await MovementRequest.findOneAndUpdate(
@@ -110,7 +164,17 @@ export async function DELETE(
         { new: true }
       );
       if (!softDeleted) {
-        return NextResponse.json({ success: false, message: 'Failed to soft-delete movement request' }, { status: 500 });
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/movement-requests/[id]',
+          'Failed to soft-delete movement request',
+          user
+        );
+        return NextResponse.json(
+          { success: false, message: 'Failed to soft-delete movement request' },
+          { status: 500 }
+        );
       }
     }
 
@@ -151,7 +215,9 @@ export async function DELETE(
           action: 'DELETE',
           details: `Deleted movement request for cabinet ${movementRequestToDelete.cabinetIn} from ${movementRequestToDelete.locationFrom} to ${movementRequestToDelete.locationTo}`,
           userId: currentUser._id as string,
-          username: (currentUser.emailAddress || currentUser.username || 'unknown') as string,
+          username: (currentUser.emailAddress ||
+            currentUser.username ||
+            'unknown') as string,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
@@ -173,6 +239,14 @@ export async function DELETE(
     // STEP 6: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteDelete(
+      functionName,
+      'DELETE',
+      '/api/movement-requests/[id]',
+      1,
+      user,
+      duration
+    );
     if (duration > 1000) {
       console.warn(`[Movement Requests [id] API] Completed in ${duration}ms`);
     }
@@ -213,9 +287,7 @@ export async function DELETE(
  * @param status      {string}  Optional. Updated status of the request (e.g. 'pending', 'approved', 'completed').
  * @param requestTo   {string}  Optional. ID or email of the user the request is directed to.
  */
-export async function PATCH(
-  request: NextRequest
-): Promise<Response> {
+export async function PATCH(request: NextRequest): Promise<Response> {
   const startTime = Date.now();
 
   try {
@@ -225,7 +297,10 @@ export async function PATCH(
     await connectDB();
     const currentUser = await getUserFromServer();
     if (!currentUser) {
-      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, message: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
     // ============================================================================
@@ -271,21 +346,38 @@ export async function PATCH(
     }
 
     const userRoles = (currentUser.roles as string[]) || [];
-    const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role.toLowerCase()));
+    const isAdminOrDev = userRoles.some(role =>
+      ['admin', 'developer'].includes(role.toLowerCase())
+    );
     // Comparison by ID if possible, fallback to email if old data
-    const isCreator = originalMovementRequest.createdBy === currentUser._id || originalMovementRequest.createdBy === currentUser.emailAddress;
-    const isRecipient = originalMovementRequest.requestTo === currentUser._id || originalMovementRequest.requestTo === currentUser.emailAddress;
+    const isCreator =
+      originalMovementRequest.createdBy === currentUser._id ||
+      originalMovementRequest.createdBy === currentUser.emailAddress;
+    const isRecipient =
+      originalMovementRequest.requestTo === currentUser._id ||
+      originalMovementRequest.requestTo === currentUser.emailAddress;
 
     // Check if user is a Loc Admin/Tech assigned to the destination location
     const destinationLocationId = String(originalMovementRequest.locationTo);
-    const userAssignedLocations = (currentUser.assignedLocations as string[]) || [];
+    const userAssignedLocations =
+      (currentUser.assignedLocations as string[]) || [];
     const isDestinationAuthorized =
-      userRoles.some(role => ['location admin', 'technician', 'manager'].includes(role.toLowerCase())) &&
-      userAssignedLocations.includes(destinationLocationId);
+      userRoles.some(role =>
+        ['location admin', 'technician', 'manager'].includes(role.toLowerCase())
+      ) && userAssignedLocations.includes(destinationLocationId);
 
-    if (!isAdminOrDev && !isCreator && !isRecipient && !isDestinationAuthorized) {
+    if (
+      !isAdminOrDev &&
+      !isCreator &&
+      !isRecipient &&
+      !isDestinationAuthorized
+    ) {
       return NextResponse.json(
-        { success: false, message: 'Forbidden: You do not have permission to update this request' },
+        {
+          success: false,
+          message:
+            'Forbidden: You do not have permission to update this request',
+        },
         { status: 403 }
       );
     }
@@ -310,12 +402,18 @@ export async function PATCH(
         const updateChanges = Object.keys(body)
           .filter(
             key =>
-              String(originalMovementRequest[key as keyof typeof originalMovementRequest]) !==
-              String(body[key as keyof typeof body])
+              String(
+                originalMovementRequest[
+                  key as keyof typeof originalMovementRequest
+                ]
+              ) !== String(body[key as keyof typeof body])
           )
           .map(key => ({
             field: key,
-            oldValue: originalMovementRequest[key as keyof typeof originalMovementRequest],
+            oldValue:
+              originalMovementRequest[
+                key as keyof typeof originalMovementRequest
+              ],
             newValue: body[key as keyof typeof body],
           }));
 
@@ -323,7 +421,9 @@ export async function PATCH(
           action: 'UPDATE',
           details: `Updated movement request for cabinet ${body.cabinetIn || originalMovementRequest.cabinetIn}`,
           userId: currentUser._id as string,
-          username: (currentUser.emailAddress || currentUser.username || 'unknown') as string,
+          username: (currentUser.emailAddress ||
+            currentUser.username ||
+            'unknown') as string,
           ipAddress: getClientIP(request) || undefined,
           userAgent: request.headers.get('user-agent') || undefined,
           metadata: {
@@ -346,7 +446,9 @@ export async function PATCH(
     // ============================================================================
     const duration = Date.now() - startTime;
     if (duration > 1000) {
-      console.warn(`[Movement Requests [id] PATCH API] Completed in ${duration}ms`);
+      console.warn(
+        `[Movement Requests [id] PATCH API] Completed in ${duration}ms`
+      );
     }
     return NextResponse.json(updated);
   } catch (err: unknown) {

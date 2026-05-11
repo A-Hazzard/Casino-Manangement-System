@@ -49,4 +49,3 @@ export function AdministrationUserCardSkeleton() {
     </div>
   );
 }
-

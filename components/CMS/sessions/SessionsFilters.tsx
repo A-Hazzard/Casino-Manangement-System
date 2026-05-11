@@ -16,7 +16,6 @@ export function SessionsFilters({
   setSortOrder,
   onSortChange,
 }: SessionsFiltersProps) {
-  
   const handleSortFieldChange = (value: string) => {
     if (setSortBy) setSortBy(value);
     if (onSortChange) onSortChange(value);
@@ -30,11 +29,15 @@ export function SessionsFilters({
     <div className="w-full max-w-full space-y-4">
       {/* Date Filters */}
       <div>
-        <DateFilters hideAllTime={false} mode="desktop" customRangeGoLabel="Get Sessions" />
+        <DateFilters
+          hideAllTime={false}
+          mode="desktop"
+          customRangeGoLabel="Get Sessions"
+        />
       </div>
 
       {/* Mobile: Search + Horizontal scroll filters */}
-      <div className="bg-buttonActive p-4 rounded-lg md:hidden">
+      <div className="rounded-lg bg-buttonActive p-4 md:hidden">
         {/* Search */}
         <div className="relative mb-3 w-full">
           <Input
@@ -132,4 +135,3 @@ export function SessionsFilters({
     </div>
   );
 }
-

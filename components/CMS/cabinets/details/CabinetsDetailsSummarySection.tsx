@@ -22,7 +22,10 @@ import { Copy, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import RefreshButton from '@/components/shared/ui/RefreshButton';
-import { formatMachineDisplayNameWithBold, formatMachineDisplayName } from '@/components/shared/ui/machineDisplay';
+import {
+  formatMachineDisplayNameWithBold,
+  formatMachineDisplayName,
+} from '@/components/shared/ui/machineDisplay';
 
 type CabinetsDetailsSummarySectionProps = {
   cabinet: Cabinet | null;
@@ -51,8 +54,12 @@ export default function CabinetsDetailsSummarySection({
   onCopyToClipboard,
   onLocationClick,
 }: CabinetsDetailsSummarySectionProps) {
-  const cabinetDisplayName = cabinet ? formatMachineDisplayNameWithBold(cabinet) : 'Unknown';
-  const cabinetCopyName = cabinet ? formatMachineDisplayName(cabinet) : 'Unknown';
+  const cabinetDisplayName = cabinet
+    ? formatMachineDisplayNameWithBold(cabinet)
+    : 'Unknown';
+  const cabinetCopyName = cabinet
+    ? formatMachineDisplayName(cabinet)
+    : 'Unknown';
 
   return (
     <div className="space-y-6">
@@ -91,7 +98,9 @@ export default function CabinetsDetailsSummarySection({
               />
               <span>{cabinetDisplayName}</span>
               <button
-                onClick={() => onCopyToClipboard(cabinetCopyName, 'Cabinet Name')}
+                onClick={() =>
+                  onCopyToClipboard(cabinetCopyName, 'Cabinet Name')
+                }
                 className="ml-1 rounded p-1 transition-colors hover:bg-gray-100"
                 title="Copy cabinet name"
               >
@@ -111,17 +120,21 @@ export default function CabinetsDetailsSummarySection({
             </h1>
 
             {/* Show deleted status badge if cabinet has been deleted */}
-            {cabinet?.deletedAt && new Date(cabinet.deletedAt).getFullYear() > 2020 && (
-              <div className="mt-2">
-                <span className="inline-flex items-center rounded-full border border-red-200 bg-red-100 px-3 py-1 text-sm font-medium text-red-800">
-                  <span className="mr-2 h-2 w-2 rounded-full bg-red-400"></span>
-                  DELETED - {new Date(cabinet.deletedAt).toLocaleDateString()}
-                </span>
-              </div>
-            )}
+            {cabinet?.deletedAt &&
+              new Date(cabinet.deletedAt).getFullYear() > 2020 && (
+                <div className="mt-2">
+                  <span className="inline-flex items-center rounded-full border border-red-200 bg-red-100 px-3 py-1 text-sm font-medium text-red-800">
+                    <span className="mr-2 h-2 w-2 rounded-full bg-red-400"></span>
+                    DELETED - {new Date(cabinet.deletedAt).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
 
             <p className="mt-2 text-gray-500">
-              Manufacturer: {cabinet?.gameConfig?.theoreticalRtp ? 'Some Manufacturer' : 'None'}
+              Manufacturer:{' '}
+              {cabinet?.gameConfig?.theoreticalRtp
+                ? 'Some Manufacturer'
+                : 'None'}
             </p>
             <p className="mt-1 text-gray-500">
               Game Type: {cabinet?.gameType || 'None'}
@@ -135,7 +148,10 @@ export default function CabinetsDetailsSummarySection({
                   <span className="text-gray-500">No Location Assigned</span>
                 ) : (
                   <button
-                    onClick={() => cabinet?.gamingLocation && onLocationClick(cabinet.gamingLocation)}
+                    onClick={() =>
+                      cabinet?.gamingLocation &&
+                      onLocationClick(cabinet.gamingLocation)
+                    }
                     className="cursor-pointer hover:text-blue-600 hover:underline"
                     disabled={!cabinet?.gamingLocation}
                   >
@@ -144,27 +160,44 @@ export default function CabinetsDetailsSummarySection({
                 )}
               </span>
               {/* Show external link icon if location is valid and assigned */}
-              {cabinet?.gamingLocation && !['Location Not Found', 'No Location Assigned'].includes(locationName) && (
-                <button onClick={() => onLocationClick(cabinet.gamingLocation!)}>
-                  <ExternalLink className="h-4 w-4 text-gray-500 hover:text-blue-600" />
-                </button>
-              )}
-              <span className="text-gray-400">, {selectedLicencee === 'TTG' ? 'Trinidad and Tobago' : 'International'}</span>
+              {cabinet?.gamingLocation &&
+                !['Location Not Found', 'No Location Assigned'].includes(
+                  locationName
+                ) && (
+                  <button
+                    onClick={() => onLocationClick(cabinet.gamingLocation!)}
+                  >
+                    <ExternalLink className="h-4 w-4 text-gray-500 hover:text-blue-600" />
+                  </button>
+                )}
+              <span className="text-gray-400">
+                ,{' '}
+                {selectedLicencee === 'TTG'
+                  ? 'Trinidad and Tobago'
+                  : 'International'}
+              </span>
             </p>
           </div>
 
           <div className="mt-2 flex items-center gap-2 md:absolute md:right-0 md:top-0 md:mt-0">
-            <div className="flex items-center rounded-lg border bg-white px-3 py-1.5 shadow-sm">
-              <div className={`mr-2 h-2.5 w-2.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
-              <span className={`text-sm font-semibold ${isOnline ? 'text-green-600' : 'text-red-600'}`}>
+            <div className="hidden items-center rounded-lg border bg-white px-3 py-1.5 shadow-sm md:flex">
+              <div
+                className={`mr-2 h-2.5 w-2.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}
+              />
+              <span
+                className={`text-sm font-semibold ${isOnline ? 'text-green-600' : 'text-red-600'}`}
+              >
                 {isOnline ? 'ONLINE' : 'OFFLINE'}
               </span>
             </div>
-            <RefreshButton onClick={onRefresh} isSyncing={refreshing} label="Refresh" />
+            <RefreshButton
+              onClick={onRefresh}
+              isSyncing={refreshing}
+              label="Refresh"
+            />
           </div>
         </div>
       </motion.div>
     </div>
   );
 }
-

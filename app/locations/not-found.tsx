@@ -45,7 +45,6 @@ function LocationsNotFoundContent() {
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
-            
             hideOptions={true}
             hideLicenceeFilter={false}
           />
@@ -62,4 +61,3 @@ function LocationsNotFoundContent() {
     </>
   );
 }
-

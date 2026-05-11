@@ -1,9 +1,5 @@
 import mongoose, { model, Schema } from 'mongoose';
 
-/**
- * Denomination Schema
- * Tracks specific bill denominations and quantities
- */
 const DenominationSchema = new Schema(
   {
     denomination: {
@@ -20,9 +16,6 @@ const DenominationSchema = new Schema(
   { _id: false }
 );
 
-/**
- * Movement Source/Destination Schema
- */
 const MovementEndpointSchema = new Schema(
   {
     type: {
@@ -30,16 +23,11 @@ const MovementEndpointSchema = new Schema(
       enum: ['vault', 'cashier', 'machine', 'external'],
       required: true,
     },
-    id: { type: String }, // cashier ID, machine ID, etc.
+    id: { type: String },
   },
   { _id: false }
 );
 
-/**
- * Vault Transaction Schema
- * Immutable ledger of all cash movements (BR-03)
- * Technical Consideration: Transactional ledger for audit trail
- */
 const VaultTransactionSchema = new Schema(
   {
     _id: { type: String, required: true },
@@ -67,39 +55,33 @@ const VaultTransactionSchema = new Schema(
       index: true,
     },
 
-    // Movement tracking
     from: { type: MovementEndpointSchema, required: true },
     to: { type: MovementEndpointSchema, required: true },
-    fromName: { type: String }, // Human-readable source label
-    toName: { type: String },   // Human-readable destination label
+    fromName: { type: String },
+    toName: { type: String },
 
     amount: { type: Number, required: true },
     denominations: [DenominationSchema],
 
-    // Balance tracking
     vaultBalanceBefore: { type: Number },
     vaultBalanceAfter: { type: Number },
     cashierBalanceBefore: { type: Number },
     cashierBalanceAfter: { type: Number },
 
-    // References
     vaultShiftId: { type: String },
     cashierShiftId: { type: String },
     floatRequestId: { type: String },
     payoutId: { type: String },
 
-    // Audit (BR-03)
-    performedBy: { type: String, required: true }, // user ID
-    performedByName: { type: String }, // user display name/username
+    performedBy: { type: String, required: true },
+    performedByName: { type: String },
     notes: { type: String },
-    reason: { type: String }, // Mandatory for removals/adjustments
-    auditComment: { type: String }, // Mandatory for reconciliations
+    reason: { type: String },
+    auditComment: { type: String },
 
-    // Attachments
-    attachmentId: { type: Schema.Types.ObjectId }, // GridFS file ID
+    attachmentId: { type: Schema.Types.ObjectId },
     attachmentName: { type: String },
 
-    // Expense Specific Data
     bankDetails: {
       bankName: { type: String },
       accountNumber: { type: String },
@@ -114,18 +96,19 @@ const VaultTransactionSchema = new Schema(
       serviceProvider: { type: String },
       isMachineRepair: { type: Boolean },
       machineIds: [{ type: String }],
-      machineDetails: [{ 
-         identifier: { type: String },
-         game: { type: String },
-         gameType: { type: String }
-      }],
+      machineDetails: [
+        {
+          identifier: { type: String },
+          game: { type: String },
+          gameType: { type: String },
+        },
+      ],
       billerName: { type: String },
       billingPeriod: { type: String },
       referenceNumber: { type: String },
-      description: { type: String }, // Detailed description for 'Other' or general use
+      description: { type: String },
     },
 
-    // Immutability - transactions cannot be deleted, only voided
     isVoid: { type: Boolean, default: false },
     voidReason: { type: String },
     voidedBy: { type: String },
@@ -133,10 +116,9 @@ const VaultTransactionSchema = new Schema(
 
     createdAt: { type: Date, default: Date.now },
   },
-  { timestamps: false } // Use createdAt only, no updates allowed
+  { timestamps: false }
 );
 
-// Indexes for performance and querying
 VaultTransactionSchema.index({ locationId: 1, timestamp: -1 });
 VaultTransactionSchema.index({ type: 1, timestamp: -1 });
 VaultTransactionSchema.index({ performedBy: 1, timestamp: -1 });

@@ -10,7 +10,10 @@
  * DELETE /api/locations  - Soft-delete or hard-delete a location (and its machines)
  * PATCH  /api/locations  - Restore a soft-deleted location (and its machines)
  */
-import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  calculateChanges,
+  logActivity,
+} from '@/app/api/lib/helpers/activityLogger';
 import { getUserAccessibleLicenceesFromToken } from '@/app/api/lib/helpers/licenceeFilter';
 import { buildLocationQueryFilter } from '@/app/api/lib/helpers/locations';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
@@ -18,12 +21,20 @@ import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Licencee } from '@/app/api/lib/models/licencee';
 import { Countries } from '@/app/api/lib/models/countries';
-import type { CountryDocument, LicenceeDocument } from '@shared/types';
+import type { CountryDocument, LicenceeDocument } from '@/shared/types';
 import type { UpdateLocationData } from '@/shared/types/entities';
 import type { LocationDocument } from '@/shared/types/models';
 import { generateMongoId } from '@/lib/utils/id';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { revalidatePath } from 'next/cache';
+import {
+  logRouteFetch,
+  logRouteCreate,
+  logRouteUpdate,
+  logRouteDelete,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import { apiLogger } from '../lib/services/loggerService';
 
@@ -55,8 +66,11 @@ import { apiLogger } from '../lib/services/loggerService';
  * 4. Fetch locations and enrich with licencee jackpot flag
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/locations';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
-    const startTime = Date.now();
     const context = apiLogger.createContext(request, '/api/locations');
     apiLogger.startLogging();
 
@@ -64,12 +78,18 @@ export async function GET(request: NextRequest) {
       const { searchParams } = new URL(request.url);
       const licencee = searchParams.get('licencee');
       const ids = searchParams.get('ids');
-      const forceAll = searchParams.get('forceAll') === 'true' || searchParams.get('forceAll') === '1';
-      const showArchived = searchParams.get('archived') === 'true' || searchParams.get('includeDeleted') === 'true';
+      const forceAll =
+        searchParams.get('forceAll') === 'true' ||
+        searchParams.get('forceAll') === '1';
+      const showArchived =
+        searchParams.get('archived') === 'true' ||
+        searchParams.get('includeDeleted') === 'true';
 
-      const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
+      const userAccessibleLicencees =
+        await getUserAccessibleLicenceesFromToken();
       const userLocationPermissions =
-        (userPayload as { assignedLocations?: string[] })?.assignedLocations || [];
+        (userPayload as { assignedLocations?: string[] })?.assignedLocations ||
+        [];
 
       // Build the query filter using all permission and licencee context
       const queryFilter = await buildLocationQueryFilter({
@@ -82,7 +102,10 @@ export async function GET(request: NextRequest) {
       });
 
       if (ids) {
-        const idArray = ids.split(',').map(id => id.trim()).filter(id => id);
+        const idArray = ids
+          .split(',')
+          .map(id => id.trim())
+          .filter(id => id);
         if (idArray.length > 0) {
           queryFilter._id = { $in: idArray };
         }
@@ -109,7 +132,10 @@ export async function GET(request: NextRequest) {
         { includeJackpot: 1 }
       ).lean<LicenceeDocument[]>();
       const jackpotMap = new Map(
-        licenceeDocs.map(licenceeDoc => [String(licenceeDoc._id), !!licenceeDoc.includeJackpot])
+        licenceeDocs.map(licenceeDoc => [
+          String(licenceeDoc._id),
+          !!licenceeDoc.includeJackpot,
+        ])
       );
 
       const results = locations.map(location => {
@@ -124,21 +150,34 @@ export async function GET(request: NextRequest) {
         return {
           ...location,
           licenceeId: licenceeId,
-          includeJackpot: licenceeId ? jackpotMap.get(licenceeId) || false : false,
+          includeJackpot: licenceeId
+            ? jackpotMap.get(licenceeId) || false
+            : false,
         };
       });
 
       const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/locations',
+        results.length,
+        user,
+        duration
+      );
       apiLogger.logSuccess(
         context,
         `Fetched ${locations.length} in ${duration}ms`
       );
       return NextResponse.json({ locations: results }, { status: 200 });
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to fetch locations';
+      logRouteError(functionName, 'GET', '/api/locations', errorMessage, user);
       console.error(`[Locations GET API] Error:`, error);
       return NextResponse.json(
-          { success: false, message: 'Failed' },
-          { status: 500 }
+        { success: false, message: 'Failed' },
+        { status: 500 }
       );
     }
   });
@@ -160,7 +199,6 @@ export async function GET(request: NextRequest) {
  * @param {number} [gameDayOffset] - Optional. Hour at which the gaming day starts (default 8 = 8 AM Trinidad time).
  *                                             Used by all financial metric queries for this location.
  * @param {boolean} [isLocalServer] - Optional. Whether this location runs a local SMIB server.
- * @param {boolean} [noSMIBLocation] - Optional. Marks the location as having no SMIB hardware (filter flag).
  * @param {object} [geoCoords] - Optional. `{ latitude, longitude }` — used for map pin placement.
  * @param {object} [billValidatorOptions] - Optional. Per-denomination bill validator enable flags
  *                                             (denom1–denom10000). Controls which bill denominations
@@ -172,9 +210,23 @@ export async function GET(request: NextRequest) {
  *                                             free play amounts, game type restrictions, etc.
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/locations';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: currentUser, isAdminOrDev }) => {
     if (!isAdminOrDev) {
-      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/locations',
+        'Access denied',
+        user
+      );
+      return NextResponse.json(
+        { success: false, error: 'Access denied' },
+        { status: 403 }
+      );
     }
     try {
       const body = await request.json();
@@ -185,7 +237,6 @@ export async function POST(request: NextRequest) {
         gameDayOffset,
         rel,
         isLocalServer,
-        noSMIBLocation,
         geoCoords,
         billValidatorOptions,
         membershipEnabled,
@@ -193,19 +244,37 @@ export async function POST(request: NextRequest) {
         locationMembershipSettings,
       } = body;
 
-      if (!name)
+      if (!name) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/locations',
+          'Name required',
+          user
+        );
         return NextResponse.json(
           { success: false, message: 'Name required' },
           { status: 400 }
         );
+      }
 
       if (country) {
-        const countryDoc = await Countries.findOne({ _id: country }).lean<CountryDocument>();
-        if (!countryDoc)
+        const countryDoc = await Countries.findOne({
+          _id: country,
+        }).lean<CountryDocument>();
+        if (!countryDoc) {
+          logRouteError(
+            functionName,
+            'POST',
+            '/api/locations',
+            'Invalid country',
+            user
+          );
           return NextResponse.json(
             { success: false, message: 'Invalid country' },
             { status: 400 }
           );
+        }
       }
 
       const locationId = await generateMongoId();
@@ -221,7 +290,6 @@ export async function POST(request: NextRequest) {
         profitShare: profitShare || 50,
         gameDayOffset: gameDayOffset ?? 8,
         isLocalServer: isLocalServer || false,
-        noSMIBLocation: noSMIBLocation || false,
         geoCoords: {
           latitude: geoCoords?.latitude || 0,
           longitude: geoCoords?.longitude || 0,
@@ -281,14 +349,18 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      const duration = Date.now() - startTime;
+      logRouteCreate(functionName, 'POST', '/api/locations', 1, user, duration);
+
       revalidatePath('/locations');
       return NextResponse.json(
         { success: true, location: newLocation },
         { status: 201 }
       );
     } catch (error: unknown) {
-      console.error(`[Locations POST API] Error:`, error);
       const message = error instanceof Error ? error.message : 'Unknown error';
+      logRouteError(functionName, 'POST', '/api/locations', message, user);
+      console.error(`[Locations POST API] Error:`, error);
       return NextResponse.json({ success: false, message }, { status: 500 });
     }
   });
@@ -312,7 +384,6 @@ export async function POST(request: NextRequest) {
  * @param {number} [gameDayOffset] - Optional. Updated gaming day start hour. Affects how
  *                                             "Today" and period queries are calculated for this location.
  * @param {boolean} [isLocalServer] - Optional. Updated local server flag.
- * @param {boolean} [noSMIBLocation] - Optional. Updated no-SMIB flag.
  * @param {object} [geoCoords] - Optional. Updated `{ latitude, longitude }` map coordinates.
  * @param {object} [billValidatorOptions] - Optional. Updated per-denomination bill validator flags.
  * @param {boolean} [membershipEnabled] - Optional. Toggle player membership system on/off.
@@ -320,9 +391,23 @@ export async function POST(request: NextRequest) {
  * @param {object} [locationMembershipSettings] - Optional. Updated membership configuration.
  */
 export async function PUT(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'PUT /api/locations';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: currentUser, isAdminOrDev }) => {
     if (!isAdminOrDev) {
-      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
+      logRouteError(
+        functionName,
+        'PUT',
+        '/api/locations',
+        'Access denied',
+        user
+      );
+      return NextResponse.json(
+        { success: false, error: 'Access denied' },
+        { status: 403 }
+      );
     }
     try {
       const body = await request.json();
@@ -334,7 +419,6 @@ export async function PUT(request: NextRequest) {
         gameDayOffset,
         rel,
         isLocalServer,
-        noSMIBLocation,
         geoCoords,
         billValidatorOptions,
         membershipEnabled,
@@ -342,11 +426,19 @@ export async function PUT(request: NextRequest) {
         locationMembershipSettings,
       } = body;
 
-      if (!locationName)
+      if (!locationName) {
+        logRouteError(
+          functionName,
+          'PUT',
+          '/api/locations',
+          'ID required',
+          user
+        );
         return NextResponse.json(
           { success: false, message: 'ID required' },
           { status: 400 }
         );
+      }
 
       const location = await GamingLocations.findOne({
         _id: locationName,
@@ -375,8 +467,6 @@ export async function PUT(request: NextRequest) {
         updateData.gameDayOffset = gameDayOffset;
       if (typeof isLocalServer === 'boolean')
         updateData.isLocalServer = isLocalServer;
-      if (typeof noSMIBLocation === 'boolean')
-        updateData.noSMIBLocation = noSMIBLocation;
 
       if (geoCoords && geoCoords.latitude && geoCoords.longitude) {
         updateData.geoCoords = {
@@ -391,8 +481,7 @@ export async function PUT(request: NextRequest) {
       }
       if (membershipEnabled !== undefined)
         updateData.membershipEnabled = Boolean(membershipEnabled);
-      if (aceEnabled !== undefined)
-        updateData.aceEnabled = Boolean(aceEnabled);
+      if (aceEnabled !== undefined) updateData.aceEnabled = Boolean(aceEnabled);
       if (locationMembershipSettings)
         updateData.locationMembershipSettings = locationMembershipSettings;
 
@@ -405,7 +494,11 @@ export async function PUT(request: NextRequest) {
         { strict: false }
       );
 
-      console.log(`[Locations PUT] Updated location "${location.name}" (${location._id})`);
+      const duration = Date.now() - startTime;
+      logRouteUpdate(functionName, 'PUT', '/api/locations', 1, user, duration);
+      console.log(
+        `[Locations PUT] Updated location "${location.name}" (${location._id})`
+      );
       if (currentUser && currentUser.emailAddress) {
         await logActivity({
           action: 'UPDATE',
@@ -434,8 +527,9 @@ export async function PUT(request: NextRequest) {
         { status: 200 }
       );
     } catch (error: unknown) {
-      console.error(`[Locations PUT API] Error:`, error);
       const message = error instanceof Error ? error.message : 'Unknown error';
+      logRouteError(functionName, 'PUT', '/api/locations', message, user);
+      console.error(`[Locations PUT API] Error:`, error);
       return NextResponse.json({ success: false, message }, { status: 500 });
     }
   });
@@ -455,94 +549,161 @@ export async function PUT(request: NextRequest) {
  *                             which moves the location to the Archived view instead of deleting it.
  */
 export async function DELETE(request: NextRequest) {
-  return withApiAuth(request, async ({ user: currentUser, userRoles, isAdminOrDev }) => {
-    if (!isAdminOrDev) {
-      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
-    }
-    try {
-      const { searchParams } = new URL(request.url);
-      const id = searchParams.get('id');
-      if (!id)
-        return NextResponse.json(
-          { success: false, message: 'ID required' },
-          { status: 400 }
+  const startTime = Date.now();
+  const functionName = 'DELETE /api/locations';
+  const user = extractUserFromRequest(request);
+
+  return withApiAuth(
+    request,
+    async ({ user: currentUser, userRoles, isAdminOrDev }) => {
+      if (!isAdminOrDev) {
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/locations',
+          'Access denied',
+          user
         );
-
-      const locationToDelete = await GamingLocations.findOne({ _id: id });
-      if (!locationToDelete)
         return NextResponse.json(
-          { success: false, message: 'Not found' },
-          { status: 404 }
+          { success: false, error: 'Access denied' },
+          { status: 403 }
         );
-
-      const hardDelete = searchParams.get('hardDelete') === 'true';
-      const isDev = userRoles
-        .map(r => r.toLowerCase())
-        .some(r => r === 'developer' || r === 'owner');
-
-      const archiveTimestamp = new Date();
-
-      if (hardDelete && isDev) {
-        const deleteLocationResult = await GamingLocations.deleteOne({ _id: id });
-        if (deleteLocationResult.deletedCount === 0) {
+      }
+      try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+        if (!id) {
+          logRouteError(
+            functionName,
+            'DELETE',
+            '/api/locations',
+            'ID required',
+            user
+          );
           return NextResponse.json(
-            { success: false, message: 'Location not found' },
+            { success: false, message: 'ID required' },
+            { status: 400 }
+          );
+        }
+
+        const locationToDelete = await GamingLocations.findOne({ _id: id });
+        if (!locationToDelete) {
+          logRouteError(
+            functionName,
+            'DELETE',
+            '/api/locations',
+            'Not found',
+            user
+          );
+          return NextResponse.json(
+            { success: false, message: 'Not found' },
             { status: 404 }
           );
         }
-        const deleteMachinesResult = await Machine.deleteMany({ gamingLocation: id });
-        if (deleteMachinesResult.deletedCount === 0) {
-          console.warn(`[Locations DELETE] No machines found for location ${id}`);
-        }
-      } else {
-        const archiveLocationResult = await GamingLocations.findOneAndUpdate(
-          { _id: id },
-          { deletedAt: archiveTimestamp },
-          { new: true }
-        );
-        if (!archiveLocationResult) {
-          return NextResponse.json(
-            { success: false, message: 'Location not found' },
-            { status: 404 }
+
+        const hardDelete = searchParams.get('hardDelete') === 'true';
+        const isDev = userRoles
+          .map(r => r.toLowerCase())
+          .some(r => r === 'developer' || r === 'owner');
+
+        const archiveTimestamp = new Date();
+
+        if (hardDelete && isDev) {
+          const deleteLocationResult = await GamingLocations.deleteOne({
+            _id: id,
+          });
+          if (deleteLocationResult.deletedCount === 0) {
+            logRouteError(
+              functionName,
+              'DELETE',
+              '/api/locations',
+              'Location not found',
+              user
+            );
+            return NextResponse.json(
+              { success: false, message: 'Location not found' },
+              { status: 404 }
+            );
+          }
+          const deleteMachinesResult = await Machine.deleteMany({
+            gamingLocation: id,
+          });
+          if (deleteMachinesResult.deletedCount === 0) {
+            console.warn(
+              `[Locations DELETE] No machines found for location ${id}`
+            );
+          }
+        } else {
+          const archiveLocationResult = await GamingLocations.findOneAndUpdate(
+            { _id: id },
+            { deletedAt: archiveTimestamp },
+            { new: true }
           );
+          if (!archiveLocationResult) {
+            logRouteError(
+              functionName,
+              'DELETE',
+              '/api/locations',
+              'Location not found',
+              user
+            );
+            return NextResponse.json(
+              { success: false, message: 'Location not found' },
+              { status: 404 }
+            );
+          }
+          // Archive all machines belonging to this location
+          const archiveMachinesResult = await Machine.updateMany(
+            { gamingLocation: id },
+            { deletedAt: archiveTimestamp }
+          );
+          if (archiveMachinesResult.modifiedCount === 0) {
+            console.warn(
+              `[Locations DELETE] No machines archived for location ${id}`
+            );
+          }
         }
-        // Archive all machines belonging to this location
-        const archiveMachinesResult = await Machine.updateMany(
-          { gamingLocation: id },
-          { deletedAt: archiveTimestamp }
+
+        if (currentUser && currentUser.emailAddress) {
+          await logActivity({
+            action: 'DELETE',
+            details: `Deleted location "${locationToDelete.name}"`,
+            ipAddress: getClientIP(request) || undefined,
+            userAgent: request.headers.get('user-agent') || undefined,
+            userId: currentUser._id,
+            username: currentUser.emailAddress,
+            metadata: {
+              resource: 'location',
+              resourceId: id,
+              resourceName: locationToDelete.name,
+            },
+          });
+        }
+
+        const duration = Date.now() - startTime;
+        logRouteDelete(
+          functionName,
+          'DELETE',
+          '/api/locations',
+          1,
+          user,
+          duration
         );
-        if (archiveMachinesResult.modifiedCount === 0) {
-          console.warn(`[Locations DELETE] No machines archived for location ${id}`);
-        }
-      }
 
-      if (currentUser && currentUser.emailAddress) {
-        await logActivity({
-          action: 'DELETE',
-          details: `Deleted location "${locationToDelete.name}"`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          userId: currentUser._id,
-          username: currentUser.emailAddress,
-          metadata: {
-            resource: 'location',
-            resourceId: id,
-            resourceName: locationToDelete.name,
-          },
-        });
+        revalidatePath('/locations');
+        return NextResponse.json(
+          { success: true, message: 'Deleted' },
+          { status: 200 }
+        );
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : 'Unknown error';
+        logRouteError(functionName, 'DELETE', '/api/locations', message, user);
+        console.error(`[Locations DELETE API] Error:`, error);
+        return NextResponse.json({ success: false, message }, { status: 500 });
       }
-
-      revalidatePath('/locations');
-      return NextResponse.json(
-        { success: true, message: 'Deleted' },
-        { status: 200 }
-      );
-    } catch (error: unknown) {
-      console.error(`[Locations DELETE API] Error:`, error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return NextResponse.json({ success: false, message }, { status: 500 });
     }
-  });
+  );
 }
 
 /**
@@ -556,18 +717,40 @@ export async function DELETE(request: NextRequest) {
  * @param {'restore'} action - Required. Must be exactly `'restore'` — guards against accidental partial updates.
  */
 export async function PATCH(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'PATCH /api/locations';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: currentUser, isAdminOrDev }) => {
     if (!isAdminOrDev) {
-      return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/locations',
+        'Access denied',
+        user
+      );
+      return NextResponse.json(
+        { success: false, error: 'Access denied' },
+        { status: 403 }
+      );
     }
     try {
       const { id, action } = await request.json();
 
-      if (!id || action !== 'restore')
+      if (!id || action !== 'restore') {
+        logRouteError(
+          functionName,
+          'PATCH',
+          '/api/locations',
+          'Invalid request',
+          user
+        );
         return NextResponse.json(
           { success: false, message: 'Invalid' },
           { status: 400 }
         );
+      }
 
       const location = await GamingLocations.findOne({ _id: id });
       if (!location)
@@ -582,6 +765,13 @@ export async function PATCH(request: NextRequest) {
         { new: true }
       );
       if (!restoreLocationResult) {
+        logRouteError(
+          functionName,
+          'PATCH',
+          '/api/locations',
+          'Location not found',
+          user
+        );
         return NextResponse.json(
           { success: false, message: 'Location not found' },
           { status: 404 }
@@ -593,7 +783,9 @@ export async function PATCH(request: NextRequest) {
         { $unset: { deletedAt: 1 } }
       );
       if (restoreMachinesResult.modifiedCount === 0) {
-        console.warn(`[Locations PATCH] No machines restored for location ${id}`);
+        console.warn(
+          `[Locations PATCH] No machines restored for location ${id}`
+        );
       }
 
       if (currentUser && currentUser.emailAddress) {
@@ -612,14 +804,25 @@ export async function PATCH(request: NextRequest) {
         });
       }
 
+      const duration = Date.now() - startTime;
+      logRouteUpdate(
+        functionName,
+        'PATCH',
+        '/api/locations',
+        1,
+        user,
+        duration
+      );
+
       revalidatePath('/locations');
       return NextResponse.json(
         { success: true, message: 'Restored' },
         { status: 200 }
       );
     } catch (error: unknown) {
-      console.error(`[Locations PATCH API] Error:`, error);
       const message = error instanceof Error ? error.message : 'Unknown error';
+      logRouteError(functionName, 'PATCH', '/api/locations', message, user);
+      console.error(`[Locations PATCH API] Error:`, error);
       return NextResponse.json({ success: false, message }, { status: 500 });
     }
   });

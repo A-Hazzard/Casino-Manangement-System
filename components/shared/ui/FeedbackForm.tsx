@@ -9,12 +9,22 @@
 
 import { ChangeEvent, FormEvent, KeyboardEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
-import { Dialog, DialogContent, DialogTitle } from '@/components/shared/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from '@/components/shared/ui/dialog';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, CheckCircle2, MessageSquare, Send, X } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  MessageSquare,
+  Send,
+  X,
+} from 'lucide-react';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import profaneWords from 'profane-words';
@@ -27,13 +37,13 @@ import { cn } from '@/lib/utils';
 // ============================================================================
 
 const FEEDBACK_CATEGORIES = [
-  { value: 'bug',            label: 'Bug Report',       emoji: '🐛' },
-  { value: 'suggestion',     label: 'Suggestion',        emoji: '💡' },
-  { value: 'general-review', label: 'General Review',    emoji: '⭐' },
-  { value: 'feature-request',label: 'Feature Request',   emoji: '✨' },
-  { value: 'performance',    label: 'Performance',        emoji: '⚡' },
-  { value: 'ui-ux',          label: 'UI / UX',            emoji: '🎨' },
-  { value: 'other',          label: 'Other',              emoji: '📝' },
+  { value: 'bug', label: 'Bug Report', emoji: '🐛' },
+  { value: 'suggestion', label: 'Suggestion', emoji: '💡' },
+  { value: 'general-review', label: 'General Review', emoji: '⭐' },
+  { value: 'feature-request', label: 'Feature Request', emoji: '✨' },
+  { value: 'performance', label: 'Performance', emoji: '⚡' },
+  { value: 'ui-ux', label: 'UI / UX', emoji: '🎨' },
+  { value: 'other', label: 'Other', emoji: '📝' },
 ] as const;
 
 type FeedbackFormProps = {
@@ -71,7 +81,9 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     return allWords;
   }, []);
 
-  const checkProfanity = (text: string): { hasProfanity: boolean; badWord?: string } => {
+  const checkProfanity = (
+    text: string
+  ): { hasProfanity: boolean; badWord?: string } => {
     const words = text.toLowerCase().split(/\s+/);
     for (const word of words) {
       const cleanWord = word.replace(/[^\w]/g, '');
@@ -107,7 +119,9 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     const check = checkProfanity(newValue);
     if (check.hasProfanity) {
       setHasProfanity(true);
-      setProfanityError('Inappropriate language detected. Please remove the offensive word to continue.');
+      setProfanityError(
+        'Inappropriate language detected. Please remove the offensive word to continue.'
+      );
       setDescription(newValue);
       previousLengthRef.current = newLength;
     } else {
@@ -119,8 +133,24 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
   };
 
   const handleDescriptionKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    const allowedKeys = ['Backspace','Delete','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','Tab','Enter'];
-    if (hasProfanity && !allowedKeys.includes(e.key) && !e.ctrlKey && !e.metaKey) {
+    const allowedKeys = [
+      'Backspace',
+      'Delete',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowUp',
+      'ArrowDown',
+      'Home',
+      'End',
+      'Tab',
+      'Enter',
+    ];
+    if (
+      hasProfanity &&
+      !allowedKeys.includes(e.key) &&
+      !e.ctrlKey &&
+      !e.metaKey
+    ) {
       e.preventDefault();
       toast.error('Please remove the inappropriate word before continuing');
     }
@@ -138,7 +168,9 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     if (check.hasProfanity) {
       toast.error('Please remove inappropriate language before submitting');
       setHasProfanity(true);
-      setProfanityError('Inappropriate language detected. Please remove the offensive word to continue.');
+      setProfanityError(
+        'Inappropriate language detected. Please remove the offensive word to continue.'
+      );
       return;
     }
 
@@ -207,7 +239,9 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
     } catch (error) {
       console.error('Error submitting feedback:', error);
       toast.error(
-        error instanceof Error ? error.message : 'Failed to submit feedback. Please try again later.'
+        error instanceof Error
+          ? error.message
+          : 'Failed to submit feedback. Please try again later.'
       );
     } finally {
       setIsSubmitting(false);
@@ -268,18 +302,28 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
                     <MessageSquare className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-base font-semibold text-white">Share Feedback</h2>
-                    <p className="text-xs text-blue-200">Help us improve the platform</p>
+                    <h2 className="text-base font-semibold text-white">
+                      Share Feedback
+                    </h2>
+                    <p className="text-xs text-blue-200">
+                      Help us improve the platform
+                    </p>
                   </div>
                 </div>
               </div>
 
               {/* ── Form body ── */}
-              <form onSubmit={handleSubmit} className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+              <form
+                onSubmit={handleSubmit}
+                className="flex-1 space-y-5 overflow-y-auto px-6 py-5"
+              >
                 {/* Email — only for guests */}
                 {!isLoggedIn && (
                   <div className="space-y-1.5">
-                    <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    <Label
+                      htmlFor="email"
+                      className="text-xs font-semibold uppercase tracking-wider text-gray-500"
+                    >
                       Email Address
                     </Label>
                     <Input
@@ -297,7 +341,9 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
 
                 {/* Category pills */}
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Category</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Category
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {FEEDBACK_CATEGORIES.map(cat => (
                       <button
@@ -321,7 +367,10 @@ export default function FeedbackForm({ isOpen, onClose }: FeedbackFormProps) {
 
                 {/* Description */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="description" className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <Label
+                    htmlFor="description"
+                    className="text-xs font-semibold uppercase tracking-wider text-gray-500"
+                  >
                     Description
                   </Label>
                   <Textarea

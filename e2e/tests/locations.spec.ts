@@ -39,19 +39,23 @@ async function mockLocationsAPIs(
   page: Page,
   listPayload = MOCK_LOCATIONS_LIST
 ) {
-  await page.route('**/api/auth/current-user**', (route) =>
+  await page.route('**/api/auth/current-user**', route =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
   );
-  await page.route('**/api/locations**', (route) =>
+  await page.route('**/api/locations**', route =>
     route.fulfill({ status: 200, json: listPayload })
   );
-  await page.route('**/api/licencees**', (route) =>
+  await page.route('**/api/licencees**', route =>
     route.fulfill({ status: 200, json: MOCK_LICENCEES_LIST })
   );
-  await page.route('**/api/countries**', (route) =>
+  await page.route('**/api/countries**', route =>
     route.fulfill({
       status: 200,
-      json: { success: true, data: ['Trinidad and Tobago', 'Jamaica', 'Barbados'], timestamp: '' },
+      json: {
+        success: true,
+        data: ['Trinidad and Tobago', 'Jamaica', 'Barbados'],
+        timestamp: '',
+      },
     })
   );
 }
@@ -90,10 +94,16 @@ test.describe('Locations', () => {
     });
 
     await test.step('Intercept POST /api/locations and respond with created location', async () => {
-      await page.route('**/api/locations', async (route) => {
+      await page.route('**/api/locations', async route => {
         if (route.request().method() === 'POST') {
-          createRequestBody = route.request().postDataJSON() as Record<string, unknown>;
-          await route.fulfill({ status: 201, json: MOCK_LOCATION_CREATE_SUCCESS });
+          createRequestBody = route.request().postDataJSON() as Record<
+            string,
+            unknown
+          >;
+          await route.fulfill({
+            status: 201,
+            json: MOCK_LOCATION_CREATE_SUCCESS,
+          });
         } else {
           await route.continue();
         }
@@ -102,12 +112,15 @@ test.describe('Locations', () => {
 
     await test.step('After creation, mock list returns 3 locations', async () => {
       // Re-route the list endpoint to return an updated list
-      await page.route('**/api/locations**', (route) =>
+      await page.route('**/api/locations**', route =>
         route.fulfill({
           status: 200,
           json: {
             ...MOCK_LOCATIONS_LIST,
-            locations: [...(MOCK_LOCATIONS_LIST.locations || []), MOCK_LOCATION_CREATE_SUCCESS.location],
+            locations: [
+              ...(MOCK_LOCATIONS_LIST.locations || []),
+              MOCK_LOCATION_CREATE_SUCCESS.location,
+            ],
           },
         })
       );
@@ -182,9 +195,12 @@ test.describe('Locations', () => {
     });
 
     await test.step('Intercept PUT /api/locations and respond with updated location', async () => {
-      await page.route('**/api/locations**', async (route) => {
+      await page.route('**/api/locations**', async route => {
         if (route.request().method() === 'PUT') {
-          await route.fulfill({ status: 200, json: MOCK_LOCATION_UPDATE_SUCCESS });
+          await route.fulfill({
+            status: 200,
+            json: MOCK_LOCATION_UPDATE_SUCCESS,
+          });
         } else {
           await route.continue();
         }
@@ -192,7 +208,7 @@ test.describe('Locations', () => {
     });
 
     await test.step('After edit, mock list returns updated name', async () => {
-      await page.route('**/api/locations**', (route) =>
+      await page.route('**/api/locations**', route =>
         route.fulfill({ status: 200, json: MOCK_LOCATIONS_LIST_AFTER_EDIT })
       );
     });
@@ -210,11 +226,15 @@ test.describe('Locations', () => {
     });
 
     await test.step('Assert the name field is pre-populated', async () => {
-      await expect(locationsPage.editNameInput).toHaveValue('Grand Casino North');
+      await expect(locationsPage.editNameInput).toHaveValue(
+        'Grand Casino North'
+      );
     });
 
     await test.step('Clear the name field and type the new name', async () => {
-      await locationsPage.fillEditForm({ name: 'Grand Casino North (Updated)' });
+      await locationsPage.fillEditForm({
+        name: 'Grand Casino North (Updated)',
+      });
     });
 
     await test.step('Submit the edit form', async () => {
@@ -235,9 +255,12 @@ test.describe('Locations', () => {
     });
 
     await test.step('Intercept DELETE /api/locations and respond with success', async () => {
-      await page.route('**/api/locations**', async (route) => {
+      await page.route('**/api/locations**', async route => {
         if (route.request().method() === 'DELETE') {
-          await route.fulfill({ status: 200, json: MOCK_LOCATION_DELETE_SUCCESS });
+          await route.fulfill({
+            status: 200,
+            json: MOCK_LOCATION_DELETE_SUCCESS,
+          });
         } else {
           await route.continue();
         }
@@ -259,12 +282,14 @@ test.describe('Locations', () => {
 
     await test.step('Assert the delete confirmation dialog is displayed', async () => {
       await locationsPage.expectDeleteDialogVisible();
-      await expect(locationsPage.deleteDialog).toContainText('Grand Casino North');
+      await expect(locationsPage.deleteDialog).toContainText(
+        'Grand Casino North'
+      );
     });
 
     await test.step('Confirm deletion', async () => {
       // Swap the list mock to return the post-delete list before confirming
-      await page.route('**/api/locations**', (route) =>
+      await page.route('**/api/locations**', route =>
         route.fulfill({ status: 200, json: MOCK_LOCATIONS_LIST_AFTER_DELETE })
       );
       await locationsPage.confirmDelete();
@@ -292,15 +317,21 @@ test.describe('Locations', () => {
     });
 
     await test.step('Assert Money In column header is visible', async () => {
-      await expect(page.getByRole('columnheader', { name: /money in/i })).toBeVisible();
+      await expect(
+        page.getByRole('columnheader', { name: /money in/i })
+      ).toBeVisible();
     });
 
     await test.step('Assert Money Out column header is visible', async () => {
-      await expect(page.getByRole('columnheader', { name: /money out/i })).toBeVisible();
+      await expect(
+        page.getByRole('columnheader', { name: /money out/i })
+      ).toBeVisible();
     });
 
     await test.step('Assert Gross column header is visible', async () => {
-      await expect(page.getByRole('columnheader', { name: /gross/i })).toBeVisible();
+      await expect(
+        page.getByRole('columnheader', { name: /gross/i })
+      ).toBeVisible();
     });
   });
 
@@ -391,7 +422,9 @@ test.describe('Locations — Role-based access', () => {
     await expect(page).toHaveURL(/collection-report/);
   });
 
-  test('technician is redirected from /locations to /unauthorized', async ({ page }) => {
+  test('technician is redirected from /locations to /unauthorized', async ({
+    page,
+  }) => {
     await setRoleAuthCookie(page, MOCK_USER_TECHNICIAN);
     await page.goto('/locations');
     await page.waitForURL(/unauthorized/, { timeout: 10_000 });

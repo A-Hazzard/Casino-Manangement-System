@@ -47,7 +47,10 @@ async function closeConnection() {
     try {
       await mongooseCache.conn.close();
     } catch (err) {
-      console.error('[closeConnection] Error:', err instanceof Error ? err.message : 'Unknown error');
+      console.error(
+        '[closeConnection] Error:',
+        err instanceof Error ? err.message : 'Unknown error'
+      );
     }
     mongooseCache.conn = null;
     mongooseCache.promise = null;
@@ -64,7 +67,6 @@ import { mongo } from 'mongoose';
  * @returns Promise resolving to a MongoDB database instance (native MongoDB driver).
  */
 export async function connectDB(): Promise<mongo.Db> {
-
   // Only run on server-side
   if (typeof window !== 'undefined') {
     throw new Error('connectDB can only be called on the server-side');
@@ -107,7 +109,10 @@ export async function connectDB(): Promise<mongo.Db> {
       .catch(err => {
         mongooseCache.promise = null;
         mongooseCache.connectionString = null;
-        console.error('[connectDB] Error:', err instanceof Error ? err.message : 'Unknown error');
+        console.error(
+          '[connectDB] Error:',
+          err instanceof Error ? err.message : 'Unknown error'
+        );
         throw err;
       });
   }
@@ -127,7 +132,6 @@ export async function connectDB(): Promise<mongo.Db> {
   }
 
   return mongooseCache.conn.db;
-
 }
 
 /**
@@ -137,4 +141,3 @@ export async function connectDB(): Promise<mongo.Db> {
 export async function disconnectDB() {
   await closeConnection();
 }
-

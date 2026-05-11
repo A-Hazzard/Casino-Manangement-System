@@ -68,5 +68,3 @@ export async function updateCollection(
     throw error;
   }
 }
-
-

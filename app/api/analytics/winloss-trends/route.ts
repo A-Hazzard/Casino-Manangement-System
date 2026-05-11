@@ -10,6 +10,10 @@ import { getWinLossTrends } from '@/app/api/lib/helpers/trends/general';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import type { TimePeriod } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/analytics/winloss-trends
@@ -22,9 +26,14 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param locationIds {string}     Optional. Comma-separated location IDs to filter results.
  */
 export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/analytics/winloss-trends';
+  const user = extractUserFromRequest(req);
+
   return withApiAuth(req, async () => {
     const { searchParams } = new URL(req.url);
-    const timePeriod = (searchParams.get('timePeriod') as TimePeriod) || 'Today';
+    const timePeriod =
+      (searchParams.get('timePeriod') as TimePeriod) || 'Today';
     const licencee = searchParams.get('licencee');
     const locationIds = searchParams.get('locationIds');
 
@@ -33,7 +42,17 @@ export async function GET(req: NextRequest) {
       licencee,
       locationIds
     );
-    
+
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/analytics/winloss-trends',
+      1,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: true,
       data: winLossTrends,

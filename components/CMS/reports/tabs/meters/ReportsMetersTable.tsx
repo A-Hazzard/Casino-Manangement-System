@@ -15,7 +15,7 @@
  */
 
 'use client';
- 
+
 import { CalculationHelp } from '@/components/shared/ui/CalculationHelp';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
@@ -55,9 +55,9 @@ export default function ReportsMetersTable({
     return (
       <>
         {/* Search bar - Always visible, even when no data */}
-        <div className="mb-4 bg-white p-4 rounded-lg border border-gray-200">
+        <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400 z-10" />
+            <Search className="absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
             <Input
               type="text"
               placeholder="Search by Serial Number, Custom Name, or Location..."
@@ -81,9 +81,9 @@ export default function ReportsMetersTable({
   return (
     <div className="flex flex-col">
       {/* Search bar - Right above the table */}
-      <div className="mb-4 bg-white p-4 rounded-lg border border-gray-200">
+      <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4">
         <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400 z-10" />
+          <Search className="absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
           <Input
             type="text"
             placeholder="Search by Serial Number, Custom Name, or Location..."
@@ -109,70 +109,70 @@ export default function ReportsMetersTable({
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   <div className="flex items-center">
                     Meters In
-                    <CalculationHelp 
-                      title="Meters In" 
-                      formula="SAS: coinIn" 
-                      description="The lifetime total of all money wagered/played on the machine." 
+                    <CalculationHelp
+                      title="Meters In"
+                      formula="SAS: coinIn"
+                      description="The lifetime total of all money wagered/played on the machine."
                     />
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   <div className="flex items-center">
                     Meters Out
-                    <CalculationHelp 
-                      title="Meters Out" 
-                      formula="SAS: totalWonCredits" 
-                      description="The lifetime total of all credits won by players." 
+                    <CalculationHelp
+                      title="Meters Out"
+                      formula="SAS: totalWonCredits"
+                      description="The lifetime total of all credits won by players."
                     />
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   <div className="flex items-center">
                     Jackpot
-                    <CalculationHelp 
-                      title="Jackpot" 
-                      formula="SAS: jackpot" 
-                      description="The lifetime total of all hand-paid jackpot events." 
+                    <CalculationHelp
+                      title="Jackpot"
+                      formula="SAS: jackpot"
+                      description="The lifetime total of all hand-paid jackpot events."
                     />
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   <div className="flex items-center">
                     Bill In
-                    <CalculationHelp 
-                      title="Bill In" 
-                      formula="SAS: drop (stacker)" 
-                      description="The lifetime total of all physical cash inserted into the machine." 
+                    <CalculationHelp
+                      title="Bill In"
+                      formula="SAS: drop (stacker)"
+                      description="The lifetime total of all physical cash inserted into the machine."
                     />
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   <div className="flex items-center">
                     Voucher Out
-                    <CalculationHelp 
-                      title="Voucher Out" 
-                      formula="SAS: totalCancelledCredits + jackpot" 
-                      description="The total of all winning tickets printed plus hand-paid jackpots." 
+                    <CalculationHelp
+                      title="Voucher Out"
+                      formula="SAS: totalCancelledCredits + jackpot"
+                      description="The total of all winning tickets printed plus hand-paid jackpots."
                     />
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   <div className="flex items-center whitespace-nowrap">
-                    Hand Paid 
-                    <CalculationHelp 
-                      title="Att. Paid Credits" 
-                      formula="SAS: totalHandPaidCancelledCredits" 
-                      description="Credits that were paid out manually by an attendant." 
+                    Hand Paid
+                    <CalculationHelp
+                      title="Att. Paid Credits"
+                      formula="SAS: totalHandPaidCancelledCredits"
+                      description="Credits that were paid out manually by an attendant."
                     />
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   <div className="flex items-center whitespace-nowrap">
                     Games Played
-                    <CalculationHelp 
-                      title="Games Played" 
-                      formula="SAS: gamesPlayed" 
-                      description="The total number of games initiated on the machine." 
+                    <CalculationHelp
+                      title="Games Played"
+                      formula="SAS: gamesPlayed"
+                      description="The total number of games initiated on the machine."
                     />
                   </div>
                 </th>
@@ -343,9 +343,9 @@ export default function ReportsMetersTable({
                     <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                       Meters In
                     </p>
-                    <CalculationHelp 
-                      title="Meters In" 
-                      formula="SAS: coinIn" 
+                    <CalculationHelp
+                      title="Meters In"
+                      formula="SAS: coinIn"
                       className="ml-0"
                     />
                   </div>
@@ -360,9 +360,9 @@ export default function ReportsMetersTable({
                     <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                       Meters Out
                     </p>
-                    <CalculationHelp 
-                      title="Meters Out" 
-                      formula="SAS: totalWonCredits" 
+                    <CalculationHelp
+                      title="Meters Out"
+                      formula="SAS: totalWonCredits"
                       className="ml-0"
                     />
                   </div>
@@ -377,9 +377,9 @@ export default function ReportsMetersTable({
                     <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                       Jackpot
                     </p>
-                    <CalculationHelp 
-                      title="Jackpot" 
-                      formula="SAS: jackpot" 
+                    <CalculationHelp
+                      title="Jackpot"
+                      formula="SAS: jackpot"
                       className="ml-0"
                     />
                   </div>
@@ -394,9 +394,9 @@ export default function ReportsMetersTable({
                     <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                       Bill In
                     </p>
-                    <CalculationHelp 
-                      title="Bill In" 
-                      formula="SAS: drop" 
+                    <CalculationHelp
+                      title="Bill In"
+                      formula="SAS: drop"
                       className="ml-0"
                     />
                   </div>
@@ -411,9 +411,9 @@ export default function ReportsMetersTable({
                     <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                       Voucher Out
                     </p>
-                    <CalculationHelp 
-                      title="Voucher Out" 
-                      formula="SAS: totalCancelledCredits + jackpot" 
+                    <CalculationHelp
+                      title="Voucher Out"
+                      formula="SAS: totalCancelledCredits + jackpot"
                       className="ml-0"
                     />
                   </div>
@@ -428,9 +428,9 @@ export default function ReportsMetersTable({
                     <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
                       Hand Paid
                     </p>
-                    <CalculationHelp 
-                      title="Hand Paid" 
-                      formula="SAS: totalHandPaidCancelledCredits" 
+                    <CalculationHelp
+                      title="Hand Paid"
+                      formula="SAS: totalHandPaidCancelledCredits"
                       className="ml-0"
                     />
                   </div>
@@ -445,9 +445,9 @@ export default function ReportsMetersTable({
                     <p className="text-xs font-medium uppercase tracking-wide text-gray-600">
                       Games Played
                     </p>
-                    <CalculationHelp 
-                      title="Games Played" 
-                      formula="SAS: gamesPlayed" 
+                    <CalculationHelp
+                      title="Games Played"
+                      formula="SAS: gamesPlayed"
                       className="ml-0"
                     />
                   </div>

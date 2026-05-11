@@ -87,6 +87,7 @@ export type User = {
 ```
 
 **Files:**
+
 - `api.ts` - API request/response types
 - `entities.ts` - Core entity types
 - `auth.ts` - Authentication types
@@ -269,10 +270,10 @@ app/api/
 // @shared/* → shared/ directory (shorthand for shared types/utils)
 
 // ✅ CORRECT — always use aliases, never relative paths for cross-directory imports
-import { type User } from '@/shared/types/entities';         // Shared types
-import { useLocationData } from '@/lib/helpers/locations';   // Frontend helpers
-import { Button } from '@/components/ui/Button';             // Components
-import { User } from '@/app/api/lib/models/user';            // Models (backend only)
+import { type User } from '@/shared/types/entities'; // Shared types
+import { useLocationData } from '@/lib/helpers/locations'; // Frontend helpers
+import { Button } from '@/components/ui/Button'; // Components
+import { User } from '@/app/api/lib/models/user'; // Models (backend only)
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 
 // ❌ WRONG — relative paths are fragile
@@ -286,7 +287,10 @@ import { type User } from '../../../shared/types/entities';
 export type ReportParams = { startDate: string; endDate: string };
 
 // ❌
-export interface ReportParams { startDate: string; endDate: string }
+export interface ReportParams {
+  startDate: string;
+  endDate: string;
+}
 ```
 
 ## File Naming Conventions

@@ -21,18 +21,18 @@ import ProfileValidationGate from '@/components/shared/providers/ProfileValidati
 import TempPasswordGate from '@/components/shared/providers/TempPasswordGate';
 import { SidebarInset, SidebarProvider } from '@/components/shared/ui/sidebar';
 import {
-    cashierNavigationConfig,
-    getCmsNavigationConfig,
-    NavigationConfig,
-    vaultNavigationConfig,
+  cashierNavigationConfig,
+  getCmsNavigationConfig,
+  NavigationConfig,
+  vaultNavigationConfig,
 } from '@/lib/constants';
 import { CurrencyProvider } from '@/lib/contexts/CurrencyContext';
 import { QueryProvider } from '@/lib/providers/QueryProvider';
 import { useUserStore } from '@/lib/store/userStore';
 import {
-    hasCmsAccess,
-    isCashierOnly,
-    isVaultManagerOnly,
+  hasCmsAccess,
+  isCashierOnly,
+  isVaultManagerOnly,
 } from '@/lib/utils/permissions/client';
 import { useMemo } from 'react';
 import { Toaster } from 'sonner';
@@ -55,13 +55,13 @@ export default function VaultLayoutWrapper({
   /**
    * Filter navigation items based on shift status
    */
-   /**
-    * Filter navigation items based on shift status
-    */
-   const filterNavItems = (config: NavigationConfig) => {
-     // Currently no complex filtering needed as end-of-day is handled via dashboard
-     return config;
-   };
+  /**
+   * Filter navigation items based on shift status
+   */
+  const filterNavItems = (config: NavigationConfig) => {
+    // Currently no complex filtering needed as end-of-day is handled via dashboard
+    return config;
+  };
 
   // Select navigation config based on user's roles
   const navConfig = useMemo(() => {

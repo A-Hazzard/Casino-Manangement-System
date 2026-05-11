@@ -15,6 +15,11 @@ import {
   findFirmwareByVersion,
 } from '@/app/api/lib/helpers/firmware';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -29,18 +34,22 @@ import { NextRequest, NextResponse } from 'next/server';
  * URL params:
  * @param version {string} Required (path). The firmware version string to look up (e.g. "1.2.3").
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/firmwares/download/[version]';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const version = pathname.split('/').pop();
 
   if (!version) {
-    return NextResponse.json({ error: 'Firmware version is required' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Firmware version is required' },
+      { status: 400 }
+    );
   }
 
-  try { await connectDB();
+  try {
+    await connectDB();
 
     // ============================================================================
     // STEP 2: Find firmware document by version
@@ -62,9 +71,14 @@ export async function GET(
     // STEP 4: Return file with appropriate headers for SMIB OTA
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Firmware Download by Version API] Completed in ${duration}ms`);
-    }
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/firmwares/download/[version]',
+      1,
+      user,
+      duration
+    );
     return new NextResponse(buffer as unknown as BodyInit, {
       status: 200,
       headers: {
@@ -77,12 +91,14 @@ export async function GET(
       },
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to download firmware';
-    console.error(
-      `[Firmware Download by Version API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/firmwares/download/[version]',
+      errorMessage,
+      user
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }

@@ -1,8 +1,8 @@
 # Analytics Dashboard API (`/api/analytics/dashboard`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -15,11 +15,13 @@ Provides aggregated real-time financial and operational statistics for the dashb
 ## 2. Core Endpoints
 
 ### 📊 `GET /api/analytics/dashboard`
+
 Returns the top-level KPI summary for the dashboard.
 
 **Required Params**: `licencee` (returns `400` if missing).
 
 **Steps:**
+
 1. **Parse & validate params** — Reads `licencee` and optional `currency` (defaults to `USD`) from the query string. Returns `400` if `licencee` is absent.
 2. **Connect to database** — Establishes the Mongoose connection.
 3. **Fetch dashboard analytics** — Delegates to `getDashboardAnalytics(licencee)` helper. This runs an aggregation pipeline against the `Meters` collection to compute `totalDrop`, `totalCancelledCredits`, `totalGross`, and `onlineCount` for the selected licencee.
@@ -29,9 +31,11 @@ Returns the top-level KPI summary for the dashboard.
 ---
 
 ## 3. `GET /api/metrics/meters`
+
 Provides time-series meter data for the dashboard's **Performance Chart**.
 
 **Steps:**
+
 1. **Parse & validate params** — Reads `licencee`, `timePeriod`, `granularity` (`Hourly`/`Daily`/`Weekly`/`Monthly`), `startDate`, `endDate`.
 2. **Authenticate user** — Retrieves the user from the JWT cookie. Returns `401` if absent.
 3. **Determine accessible locations** — Calls `getUserAccessibleLicenceesFromToken()` and `getUserLocationFilter()` to build the RBAC-filtered list of location IDs the user can see.
@@ -46,9 +50,11 @@ Provides time-series meter data for the dashboard's **Performance Chart**.
 ---
 
 ## 4. `GET /api/analytics/top-machines`
+
 Returns the top-performing machines for a specific location.
 
 **Steps:**
+
 1. **Parse params** — Reads `locationId`, `timePeriod`, `startDate`, `endDate`.
 2. **Connect to database** — Establishes the Mongoose connection.
 3. **Fetch top machines** — Delegates to `getTopMachinesByLocation(locationId, timePeriod, ...)` which aggregates the `Meters` collection grouped by `machineId`, summing `movement.drop` and sorting descending.
@@ -59,13 +65,16 @@ Returns the top-performing machines for a specific location.
 ## 5. Business Logic
 
 ### ⏱️ Gaming Day Offset
+
 Each property has a configurable `gameDayOffset` (typically `8`, meaning 8 AM). All date range queries are shifted by this offset so that "Today" for a casino means `8:00 AM Today → 7:59 AM Tomorrow`, not midnight-to-midnight.
 
 ### 💹 Gross Calculation
+
 `Gross = totalDrop - totalCancelledCredits`.
 
 If the Licencee has `includeJackpot: true`, jackpot payouts are also deducted:
 `Gross = totalDrop - totalCancelledCredits - totalJackpots`.
 
 ---
+
 **Technical Reference** - Analytics & BI Team

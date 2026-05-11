@@ -14,46 +14,54 @@ import { VaultBalance } from '@/shared/types/vault';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export function useVaultShift() {
-  const { user, setHasActiveVaultShift, setIsVaultReconciled, setIsStaleShift: setGlobalIsStale } = useUserStore();
+  const {
+    user,
+    setHasActiveVaultShift,
+    setIsVaultReconciled,
+    setIsStaleShift: setGlobalIsStale,
+  } = useUserStore();
   const [vaultBalance, setVaultBalance] = useState<VaultBalance | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const locationId = user?.assignedLocations?.[0];
 
-  const fetchBalance = useCallback(async (isSilent = false) => {
-    if (!locationId) {
-      setLoading(false);
-      return;
-    }
-
-    if (!isSilent) setLoading(true);
-    else setRefreshing(true);
-
-    try {
-      const res = await fetch(`/api/vault/balance?locationId=${locationId}`);
-      const data = await res.json();
-
-      if (data.success) {
-        setVaultBalance(data.data);
-        
-        // Update global store
-        setHasActiveVaultShift(!!data.data.activeShiftId);
-        setIsVaultReconciled(!!data.data.isReconciled);
-        
-        // Check for stale shift
-        const stale = data.data.isStale ?? isShiftStale(data.data.openedAt);
-        setGlobalIsStale(stale);
-      } else {
-        console.error('Failed to fetch vault balance:', data.error);
+  const fetchBalance = useCallback(
+    async (isSilent = false) => {
+      if (!locationId) {
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error('Error fetching vault balance:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [locationId, setHasActiveVaultShift, setIsVaultReconciled, setGlobalIsStale]);
+
+      if (!isSilent) setLoading(true);
+      else setRefreshing(true);
+
+      try {
+        const res = await fetch(`/api/vault/balance?locationId=${locationId}`);
+        const data = await res.json();
+
+        if (data.success) {
+          setVaultBalance(data.data);
+
+          // Update global store
+          setHasActiveVaultShift(!!data.data.activeShiftId);
+          setIsVaultReconciled(!!data.data.isReconciled);
+
+          // Check for stale shift
+          const stale = data.data.isStale ?? isShiftStale(data.data.openedAt);
+          setGlobalIsStale(stale);
+        } else {
+          console.error('Failed to fetch vault balance:', data.error);
+        }
+      } catch (error) {
+        console.error('Error fetching vault balance:', error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [locationId, setHasActiveVaultShift, setIsVaultReconciled, setGlobalIsStale]
+  );
 
   useEffect(() => {
     fetchBalance();
@@ -63,8 +71,14 @@ export function useVaultShift() {
     return vaultBalance?.isStale ?? isShiftStale(vaultBalance?.openedAt);
   }, [vaultBalance?.isStale, vaultBalance?.openedAt]);
 
-  const isActive = useMemo(() => !!vaultBalance?.activeShiftId, [vaultBalance?.activeShiftId]);
-  const isReconciled = useMemo(() => !!vaultBalance?.isReconciled, [vaultBalance?.isReconciled]);
+  const isActive = useMemo(
+    () => !!vaultBalance?.activeShiftId,
+    [vaultBalance?.activeShiftId]
+  );
+  const isReconciled = useMemo(
+    () => !!vaultBalance?.isReconciled,
+    [vaultBalance?.isReconciled]
+  );
 
   return {
     vaultBalance,
@@ -73,6 +87,6 @@ export function useVaultShift() {
     isStaleShift,
     isActive,
     isReconciled,
-    refresh: fetchBalance
+    refresh: fetchBalance,
   };
 }

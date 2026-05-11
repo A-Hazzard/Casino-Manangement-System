@@ -9,14 +9,29 @@
  * @module app/api/schedulers/[schedulerId]/route
  */
 
-import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  calculateChanges,
+  logActivity,
+} from '@/app/api/lib/helpers/activityLogger';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import Scheduler from '@/app/api/lib/models/scheduler';
 import type { SchedulerDocument } from '@shared/types';
+import {
+  logRouteUpdate,
+  logRouteDelete,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
-const MANAGE_ROLES = ['manager', 'admin', 'location admin', 'owner', 'developer'];
+const MANAGE_ROLES = [
+  'manager',
+  'admin',
+  'location admin',
+  'owner',
+  'developer',
+];
 
 type RouteContext = { params: Promise<{ schedulerId: string }> };
 
@@ -39,6 +54,10 @@ type RouteContext = { params: Promise<{ schedulerId: string }> };
  * @param {string} [status] - Optional. New status value for the schedule.
  */
 export async function PATCH(request: NextRequest, context: RouteContext) {
+  const timerStart = Date.now();
+  const functionName = 'PATCH /api/schedulers/[schedulerId]';
+  const logUser = extractUserFromRequest(request);
+
   try {
     await connectDB();
 
@@ -47,7 +66,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const userRoles = (user?.roles as string[]) || [];
     if (!user || !userRoles.some((r: string) => MANAGE_ROLES.includes(r))) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized', message: 'Insufficient permissions', timestamp: new Date().toISOString() },
+        {
+          success: false,
+          error: 'Unauthorized',
+          message: 'Insufficient permissions',
+          timestamp: new Date().toISOString(),
+        },
         { status: 403 }
       );
     }
@@ -68,18 +92,33 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
-        { success: false, error: 'No fields to update', message: 'Provide at least one field to update', timestamp: new Date().toISOString() },
+        {
+          success: false,
+          error: 'No fields to update',
+          message: 'Provide at least one field to update',
+          timestamp: new Date().toISOString(),
+        },
         { status: 400 }
       );
     }
 
-    console.log(`[Scheduler PATCH] Request — schedulerId: ${schedulerId}, fields: ${Object.keys(updateData).join(', ')}`);
+    console.log(
+      `[Scheduler PATCH] Request — schedulerId: ${schedulerId}, fields: ${Object.keys(updateData).join(', ')}`
+    );
 
     // Pre-fetch for before-state
-    const existingScheduler = await Scheduler.findOne({ _id: schedulerId, deletedAt: { $exists: false } }).lean<SchedulerDocument>();
+    const existingScheduler = await Scheduler.findOne({
+      _id: schedulerId,
+      deletedAt: { $exists: false },
+    }).lean<SchedulerDocument>();
     if (!existingScheduler) {
       return NextResponse.json(
-        { success: false, error: 'Not found', message: 'Schedule not found', timestamp: new Date().toISOString() },
+        {
+          success: false,
+          error: 'Not found',
+          message: 'Schedule not found',
+          timestamp: new Date().toISOString(),
+        },
         { status: 404 }
       );
     }
@@ -92,7 +131,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (!updated) {
       return NextResponse.json(
-        { success: false, error: 'Not found', message: 'Schedule not found', timestamp: new Date().toISOString() },
+        {
+          success: false,
+          error: 'Not found',
+          message: 'Schedule not found',
+          timestamp: new Date().toISOString(),
+        },
         { status: 404 }
       );
     }
@@ -102,7 +146,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       action: 'update',
       details: `Schedule ${schedulerId} updated`,
       userId: String(user._id),
-      username: String((user as Record<string, unknown>).emailAddress || (user as Record<string, unknown>).username || user._id),
+      username: String(
+        (user as Record<string, unknown>).emailAddress ||
+          (user as Record<string, unknown>).username ||
+          user._id
+      ),
       metadata: {
         resource: 'scheduler',
         resourceId: schedulerId,
@@ -114,7 +162,19 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         previousData: existingScheduler,
         newData: updated.toObject(),
       },
-    }).catch(err => console.error('[Scheduler PATCH] Activity log failed:', err));
+    }).catch(err =>
+      console.error('[Scheduler PATCH] Activity log failed:', err)
+    );
+
+    const duration = Date.now() - timerStart;
+    logRouteUpdate(
+      functionName,
+      'PATCH',
+      '/api/schedulers/[schedulerId]',
+      1,
+      logUser,
+      duration
+    );
 
     return NextResponse.json({
       success: true,
@@ -124,9 +184,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'PATCH',
+      '/api/schedulers/[schedulerId]',
+      msg,
+      logUser
+    );
     console.error('[Scheduler PATCH] Error:', msg);
     return NextResponse.json(
-      { success: false, error: 'Failed to update schedule', message: msg, timestamp: new Date().toISOString() },
+      {
+        success: false,
+        error: 'Failed to update schedule',
+        message: msg,
+        timestamp: new Date().toISOString(),
+      },
       { status: 500 }
     );
   }
@@ -146,6 +218,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
  * @param {string} schedulerId - Required. The ID of the schedule to delete.
  */
 export async function DELETE(_request: NextRequest, context: RouteContext) {
+  const startTime = Date.now();
+  const functionName = 'DELETE /api/schedulers/[schedulerId]';
+  const logUser = extractUserFromRequest(_request);
+
   try {
     await connectDB();
 
@@ -154,7 +230,12 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     const userRoles = (user?.roles as string[]) || [];
     if (!user || !userRoles.some((r: string) => MANAGE_ROLES.includes(r))) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized', message: 'Insufficient permissions', timestamp: new Date().toISOString() },
+        {
+          success: false,
+          error: 'Unauthorized',
+          message: 'Insufficient permissions',
+          timestamp: new Date().toISOString(),
+        },
         { status: 403 }
       );
     }
@@ -171,7 +252,12 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
 
     if (!updated) {
       return NextResponse.json(
-        { success: false, error: 'Not found', message: 'Schedule not found or already deleted', timestamp: new Date().toISOString() },
+        {
+          success: false,
+          error: 'Not found',
+          message: 'Schedule not found or already deleted',
+          timestamp: new Date().toISOString(),
+        },
         { status: 404 }
       );
     }
@@ -181,13 +267,29 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
       action: 'delete',
       details: `Schedule ${schedulerId} deleted`,
       userId: String(user._id),
-      username: String((user as Record<string, unknown>).emailAddress || (user as Record<string, unknown>).username || user._id),
+      username: String(
+        (user as Record<string, unknown>).emailAddress ||
+          (user as Record<string, unknown>).username ||
+          user._id
+      ),
       metadata: {
         resource: 'scheduler',
         resourceId: schedulerId,
         resourceName: `Schedule ${schedulerId}`,
       },
-    }).catch(err => console.error('[Scheduler DELETE] Activity log failed:', err));
+    }).catch(err =>
+      console.error('[Scheduler DELETE] Activity log failed:', err)
+    );
+
+    const duration = Date.now() - startTime;
+    logRouteDelete(
+      functionName,
+      'DELETE',
+      '/api/schedulers/[schedulerId]',
+      1,
+      logUser,
+      duration
+    );
 
     return NextResponse.json({
       success: true,
@@ -197,9 +299,21 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'DELETE',
+      '/api/schedulers/[schedulerId]',
+      msg,
+      logUser
+    );
     console.error('[Scheduler DELETE] Error:', msg);
     return NextResponse.json(
-      { success: false, error: 'Failed to delete schedule', message: msg, timestamp: new Date().toISOString() },
+      {
+        success: false,
+        error: 'Failed to delete schedule',
+        message: msg,
+        timestamp: new Date().toISOString(),
+      },
       { status: 500 }
     );
   }

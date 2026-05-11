@@ -27,7 +27,9 @@ export async function calculateTotalCashOnPremises(
   denominationBreakdown: DenominationBreakdown;
 }> {
   if (!locationId || typeof locationId !== 'string') {
-    console.error('[calculateTotalCashOnPremises] locationId is required and must be a string');
+    console.error(
+      '[calculateTotalCashOnPremises] locationId is required and must be a string'
+    );
     return { totalCash: 0, denominationBreakdown: {} };
   }
 
@@ -72,7 +74,9 @@ export async function getDenominationBreakdown(
   dateRange?: { start: Date; end: Date }
 ): Promise<DenominationBreakdown> {
   if (!locationId || typeof locationId !== 'string') {
-    console.error('[getDenominationBreakdown] locationId is required and must be a string');
+    console.error(
+      '[getDenominationBreakdown] locationId is required and must be a string'
+    );
     return {};
   }
 

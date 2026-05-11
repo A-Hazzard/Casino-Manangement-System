@@ -23,7 +23,10 @@ export type SessionGetParams = {
  * @returns A MongoDB query object for use in a $match stage.
  */
 export function buildSessionMatchQuery(
-  params: Pick<SessionGetParams, 'search' | 'dateFilter' | 'startDateParam' | 'endDateParam'>
+  params: Pick<
+    SessionGetParams,
+    'search' | 'dateFilter' | 'startDateParam' | 'endDateParam'
+  >
 ): Record<string, unknown> {
   if (!params || typeof params !== 'object') {
     console.error('[buildSessionMatchQuery] params is required');
@@ -52,11 +55,31 @@ export function buildSessionMatchQuery(
     switch (params.dateFilter) {
       case 'today':
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          23,
+          59,
+          59,
+          999
+        );
         break;
       case 'yesterday':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
+        startDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 1
+        );
+        endDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate() - 1,
+          23,
+          59,
+          59,
+          999
+        );
         break;
       case 'week':
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -96,11 +119,32 @@ export function buildSessionBasePipeline(
   }
   return [
     { $match: query },
-    { $lookup: { from: 'machines', localField: 'machineId', foreignField: '_id', as: 'machine' } },
+    {
+      $lookup: {
+        from: 'machines',
+        localField: 'machineId',
+        foreignField: '_id',
+        as: 'machine',
+      },
+    },
     { $unwind: { path: '$machine', preserveNullAndEmptyArrays: true } },
-    { $lookup: { from: 'gaminglocations', localField: 'machine.gamingLocation', foreignField: '_id', as: 'location' } },
+    {
+      $lookup: {
+        from: 'gaminglocations',
+        localField: 'machine.gamingLocation',
+        foreignField: '_id',
+        as: 'location',
+      },
+    },
     { $unwind: { path: '$location', preserveNullAndEmptyArrays: true } },
-    { $lookup: { from: 'licencees', localField: 'location.rel.licencee', foreignField: '_id', as: 'licencee' } },
+    {
+      $lookup: {
+        from: 'licencees',
+        localField: 'location.rel.licencee',
+        foreignField: '_id',
+        as: 'licencee',
+      },
+    },
     { $unwind: { path: '$licencee', preserveNullAndEmptyArrays: true } },
     ...(licencee && licencee !== 'All Licencees'
       ? [{ $match: { 'licencee.name': licencee } } as PipelineStage]
@@ -118,7 +162,10 @@ export function buildSessionBasePipeline(
  */
 export function buildSessionFullPipeline(
   basePipeline: PipelineStage[],
-  params: Pick<SessionGetParams, 'sortBy' | 'sortOrder' | 'page' | 'limit' | 'search'>
+  params: Pick<
+    SessionGetParams,
+    'sortBy' | 'sortOrder' | 'page' | 'limit' | 'search'
+  >
 ): PipelineStage[] {
   if (!Array.isArray(basePipeline)) {
     console.error('[buildSessionFullPipeline] basePipeline must be an array');
@@ -132,11 +179,20 @@ export function buildSessionFullPipeline(
 
   return [
     ...basePipeline,
-    { $lookup: { from: 'members', localField: 'memberId', foreignField: '_id', as: 'member' } },
+    {
+      $lookup: {
+        from: 'members',
+        localField: 'memberId',
+        foreignField: '_id',
+        as: 'member',
+      },
+    },
     { $unwind: { path: '$member', preserveNullAndEmptyArrays: true } },
     {
       $addFields: {
-        machineName: { $ifNull: ['$machine.custom.name', '$machine.serialNumber', 'Unknown'] },
+        machineName: {
+          $ifNull: ['$machine.custom.name', '$machine.serialNumber', 'Unknown'],
+        },
         memberName: {
           $cond: {
             if: { $ne: ['$member', null] },
@@ -170,11 +226,24 @@ export function buildSessionFullPipeline(
         endTime: 1,
         gamesPlayed: 1,
         points: 1,
-        status: { $cond: { if: { $eq: ['$endTime', null] }, then: 'active', else: 'completed' } },
+        status: {
+          $cond: {
+            if: { $eq: ['$endTime', null] },
+            then: 'active',
+            else: 'completed',
+          },
+        },
         duration: {
           $cond: {
-            if: { $and: [{ $ne: ['$startTime', null] }, { $ne: ['$endTime', null] }] },
-            then: { $divide: [{ $subtract: ['$endTime', '$startTime'] }, 60000] },
+            if: {
+              $and: [
+                { $ne: ['$startTime', null] },
+                { $ne: ['$endTime', null] },
+              ],
+            },
+            then: {
+              $divide: [{ $subtract: ['$endTime', '$startTime'] }, 60000],
+            },
             else: null,
           },
         },

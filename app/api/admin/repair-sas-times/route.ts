@@ -17,6 +17,11 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { repairSasTimesForCollections } from '@/app/api/lib/helpers/collectionReport/fixes/adminRepair';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -41,6 +46,8 @@ type RepairMode = 'dry-run' | 'commit';
  */
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/admin/repair-sas-times';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -81,19 +88,27 @@ export async function POST(req: NextRequest) {
     // STEP 5: Return repair results
     // ============================================================================
     const duration = Date.now() - startTime;
-    console.log(
-      `[Admin Repair SAS Times POST API] Processed ${results.count} collections, ${results.changed} changed in ${mode} mode after ${duration}ms.`
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/admin/repair-sas-times',
+      results.count ?? 0,
+      user,
+      duration
     );
 
     return NextResponse.json(results);
   } catch (error: unknown) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
-    console.error(
-      `[Admin Repair SAS Times POST API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/admin/repair-sas-times',
+      errorMessage,
+      user
     );
+    console.error('[Admin Repair SAS Times] Error:', errorMessage);
 
     return NextResponse.json(
       { success: false, error: errorMessage },
@@ -101,4 +116,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

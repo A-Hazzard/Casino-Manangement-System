@@ -16,4 +16,3 @@ export type LogResult = {
   error?: string;
   data?: Record<string, unknown>;
 };
-

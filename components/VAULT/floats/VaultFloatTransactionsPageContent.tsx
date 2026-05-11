@@ -20,19 +20,17 @@ import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { TableSkeleton } from '@/components/shared/ui/skeletons/CommonSkeletons';
 import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from '@/components/shared/ui/tabs';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
+import { DEFAULT_CASHIER_FLOATS } from '@/components/VAULT/overview/data/defaults';
 import {
-    DEFAULT_CASHIER_FLOATS
-} from '@/components/VAULT/overview/data/defaults';
-import {
-    fetchFloatTransactionsData,
-    handleApproveFloatTransaction,
-    handleRejectFloatTransaction,
+  fetchFloatTransactionsData,
+  handleApproveFloatTransaction,
+  handleRejectFloatTransaction,
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
@@ -68,7 +66,9 @@ export default function VaultFloatTransactionsPageContent() {
   const [cashierFloats, setCashierFloats] = useState<CashierFloat[]>(
     DEFAULT_CASHIER_FLOATS
   );
-  const [floatTransactions, setFloatTransactions] = useState<FloatTransaction[]>([]);
+  const [floatTransactions, setFloatTransactions] = useState<
+    FloatTransaction[]
+  >([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [totalTransactions, setTotalTransactions] = useState(0);
@@ -109,7 +109,6 @@ export default function VaultFloatTransactionsPageContent() {
     fetchData();
   }, [user?.assignedLocations, currentPage]);
 
-
   // ============================================================================
   // Computed Values
   // ============================================================================
@@ -128,7 +127,6 @@ export default function VaultFloatTransactionsPageContent() {
     () => cashierFloats.filter(f => f.status === 'active').length,
     [cashierFloats]
   );
-
 
   /**
    * Sort cashier floats based on sort option and order
@@ -219,15 +217,14 @@ export default function VaultFloatTransactionsPageContent() {
     toast.success('Data refreshed');
   };
 
-
-
   /**
    * Handle approve transaction action
    */
   const handleApprove = async (transactionId: string) => {
     if (!isVaultReconciled) {
       toast.error('Reconciliation Required', {
-        description: 'Please perform the mandatory opening reconciliation before approving transactions.'
+        description:
+          'Please perform the mandatory opening reconciliation before approving transactions.',
       });
       return;
     }
@@ -251,7 +248,8 @@ export default function VaultFloatTransactionsPageContent() {
   const handleReject = async (transactionId: string) => {
     if (!isVaultReconciled) {
       toast.error('Reconciliation Required', {
-        description: 'Please perform the mandatory opening reconciliation before rejecting transactions.'
+        description:
+          'Please perform the mandatory opening reconciliation before rejecting transactions.',
       });
       return;
     }
@@ -326,9 +324,9 @@ export default function VaultFloatTransactionsPageContent() {
     <PageLayout onRefresh={handleRefresh} refreshing={loading}>
       <div className="space-y-6">
         <VaultManagerHeader
-            title="Float Transactions"
-            description="Manage and monitor vault float statuses"
-            onFloatActionComplete={() => fetchData()}
+          title="Float Transactions"
+          description="Manage and monitor vault float statuses"
+          onFloatActionComplete={() => fetchData()}
         >
           <Button
             onClick={handleRefresh}
@@ -351,7 +349,7 @@ export default function VaultFloatTransactionsPageContent() {
               {[1, 2].map(i => (
                 <Card key={i} className="rounded-lg bg-container shadow-md">
                   <CardContent className="p-6">
-                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="mb-2 h-4 w-24" />
                     <Skeleton className="h-8 w-32" />
                   </CardContent>
                 </Card>
@@ -389,7 +387,6 @@ export default function VaultFloatTransactionsPageContent() {
                   </div>
                 </CardContent>
               </Card>
-
             </>
           )}
         </div>
@@ -399,10 +396,12 @@ export default function VaultFloatTransactionsPageContent() {
              Mobile: tab slider to switch between them */}
 
         {/* Desktop: both sections stacked */}
-        <div className="hidden lg:block space-y-6">
+        <div className="hidden space-y-6 lg:block">
           {/* Current Cashier Floats */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Current Cashier Floats</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Current Cashier Floats
+            </h2>
             {loading ? (
               <TableSkeleton rows={5} cols={7} />
             ) : (
@@ -417,7 +416,9 @@ export default function VaultFloatTransactionsPageContent() {
 
           {/* Float Transaction History */}
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Float Transaction History</h2>
+            <h2 className="text-lg font-semibold text-gray-900">
+              Float Transaction History
+            </h2>
             {loading ? (
               <TableSkeleton rows={5} cols={6} />
             ) : (
@@ -438,8 +439,8 @@ export default function VaultFloatTransactionsPageContent() {
         {/* Mobile: tab slider */}
         <div className="lg:hidden">
           <Tabs defaultValue="floats">
-            <div className="overflow-x-auto -mx-1 px-1 mb-4">
-              <TabsList className="inline-flex h-11 min-w-max rounded-xl border border-gray-200 bg-white p-1 shadow-sm gap-1">
+            <div className="-mx-1 mb-4 overflow-x-auto px-1">
+              <TabsList className="inline-flex h-11 min-w-max gap-1 rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
                 <TabsTrigger
                   value="floats"
                   className="whitespace-nowrap rounded-lg px-5 text-sm font-semibold text-gray-500 transition-all data-[state=active]:bg-button data-[state=active]:text-white data-[state=active]:shadow-none"
@@ -457,7 +458,7 @@ export default function VaultFloatTransactionsPageContent() {
 
             <TabsContent value="floats">
               {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {[1, 2, 3, 4].map(i => (
                     <Card key={i} className="h-32 animate-pulse bg-gray-50" />
                   ))}
@@ -469,7 +470,7 @@ export default function VaultFloatTransactionsPageContent() {
 
             <TabsContent value="history">
               {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {[1, 2, 3, 4].map(i => (
                     <Card key={i} className="h-32 animate-pulse bg-gray-50" />
                   ))}

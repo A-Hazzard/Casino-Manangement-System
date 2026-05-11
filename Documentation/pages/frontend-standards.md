@@ -1,19 +1,21 @@
 # Frontend Architecture & Standards
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
 ## 1. Page Implementation Standard
 
 Every page in the CMS must follow the **Lean Page Pattern**:
+
 - **`Page.tsx`**: Must be a server component shell. It handles authentication checks and meta-data.
 - **`Layout.tsx`**: Manages the sidebars and global nav.
 - **`Content.tsx`**: The primary client-side component where business logic resides.
 
 ### 📐 Component Structure
+
 1. **Hooks**: (Zustand, React Query, useForm)
 2. **Computed State**: (Memoized totals, filtered lists)
 3. **Handlers**: (Submit, Toggle, Delete)
@@ -25,6 +27,7 @@ Every page in the CMS must follow the **Lean Page Pattern**:
 ## 2. Skeleton UX (No Spinner Zone)
 
 **Rule:** Generic spinners or "Loading..." text are prohibited.
+
 - **How it works**: Every feature has a corresponding skeleton in `@/components/ui/skeletons/`.
 - **Accuracy**: The skeleton must match the layout (Table, Grid, or Card) within 5px accuracy to prevent "Layout Shift" (CLS).
 
@@ -33,10 +36,13 @@ Every page in the CMS must follow the **Lean Page Pattern**:
 ## 3. State & Search Logic
 
 ### 🔄 Zustand Stores
+
 Values like `activeLicencee`, `dateRange`, and `selectedLocation` are stored in global Zustand PERSISTENT stores. This allows users to switch between the Dashboard and Locations page without losing their filters.
 
 ### 🔍 Search Debounce
+
 All top-level search inputs must implement a 500ms debounce.
+
 ```typescript
 const debouncedSearch = useDebounce(searchTerm, 500);
 // The API call only triggers after the user stops typing for 500ms.
@@ -64,4 +70,5 @@ const debouncedSearch = useDebounce(searchTerm, 500);
 - [ ] Error Boundaries are wrapped around each major Dashboard widget.
 
 ---
+
 **Technical Standard** - Engineering Team

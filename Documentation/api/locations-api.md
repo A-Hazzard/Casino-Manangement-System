@@ -1,8 +1,8 @@
 # Location API (`/api/locations`, `/api/reports/locations`, `/api/locations/search-all`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -15,9 +15,11 @@ The Location API provides property-level financial metrics, machine connectivity
 ## 2. Core Endpoints
 
 ### 📊 `GET /api/reports/locations`
+
 Primary data source for the **Locations list page**. Returns enriched location records with aggregated financial metrics for a given time period.
 
 **Key steps:**
+
 1. Parse params: `timePeriod`, `licencee`, `currency`, `machineTypeFilter`, `onlineStatus`, `search`, `page`, `limit`, `locations`, `sortBy`, `sortOrder`.
 2. Determine user's accessible licencees and location permissions via `getUserLocationFilter()`.
 3. Build gaming day ranges per location using `getGamingDayRangesForLocations()`.
@@ -32,6 +34,7 @@ Primary data source for the **Locations list page**. Returns enriched location r
 ---
 
 ### 🔍 `GET /api/locations/search-all`
+
 Handles **search** on the Locations page. Returns filtered location records with financial metrics.
 
 - Same reviewer multiplier logic as `/api/reports/locations`.
@@ -40,9 +43,11 @@ Handles **search** on the Locations page. Returns filtered location records with
 ---
 
 ### 🏢 `GET /api/locations/[locationId]`
+
 Returns full location details including a machine-level financial breakdown.
 
 **Key steps:**
+
 1. Verify user has access to the location via `checkUserLocationAccess()`.
 2. Fetch location, licencee `includeJackpot` setting, and gaming day range.
 3. For each machine in the location, aggregate `moneyIn`, `moneyOut`, `jackpot` from the `Meters` collection.
@@ -52,6 +57,7 @@ Returns full location details including a machine-level financial breakdown.
 ---
 
 ### 🏢 `GET /api/locations/[locationId]/cabinets/[cabinetId]`
+
 Returns a single cabinet's financial metrics within a location.
 
 - After aggregating raw meter values, calls `getUserFromServer()` to read `multiplier`.
@@ -60,6 +66,7 @@ Returns a single cabinet's financial metrics within a location.
 ---
 
 ### 📋 `GET /api/locations`
+
 Returns basic location records (non-aggregated) for dropdowns, search, and the location list skeleton.
 
 ---
@@ -82,6 +89,7 @@ displayedValue = rawValue * (1 - user.multiplier)
 ## 4. Online Status Calculation
 
 A machine is `online` if:
+
 - Location has `aceEnabled: true` (ACE-managed locations always show all machines online), **or**
 - Machine's `lastActivity` timestamp is within the last 3 minutes.
 

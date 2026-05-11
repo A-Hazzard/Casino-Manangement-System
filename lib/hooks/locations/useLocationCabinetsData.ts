@@ -25,16 +25,16 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { dateRange as DateRange } from '@/lib/types';
 import { getAuthHeaders } from '@/lib/utils/auth';
 import { isAbortError } from '@/lib/utils/errors';
-import { 
+import {
   calculateCabinetFinancialTotals,
-  type FinancialTotals 
+  type FinancialTotals,
 } from '@/lib/utils/financial/totals';
 import { useDebounce } from '@/lib/utils/hooks';
 import { getSerialNumberIdentifier } from '@/lib/utils/serialNumber';
 import { filterAndSortCabinets } from '@/lib/utils/ui';
-import type { 
+import type {
   GamingMachine as Cabinet,
-  AggregatedLocation
+  AggregatedLocation,
 } from '@/shared/types/entities';
 import axios from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -92,7 +92,9 @@ export function useLocationCabinetsData({
   const [locationName, setLocationName] = useState('');
   const [locationMembershipEnabled, setLocationMembershipEnabled] =
     useState<boolean>(false);
-  const [locationData, setLocationData] = useState<AggregatedLocation | null>(null);
+  const [locationData, setLocationData] = useState<AggregatedLocation | null>(
+    null
+  );
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedGameType, setSelectedGameType] = useState<string>('all');
   const [allCabinets, setAllCabinets] = useState<Cabinet[]>([]);
@@ -103,7 +105,9 @@ export function useLocationCabinetsData({
   const [sortOption, setSortOption] = useState<CabinetSortOption>('moneyIn');
   const [currentPage, setCurrentPage] = useState(0);
   const [totalCount, setTotalCount] = useState<number>(0);
-  const [metricsTotals, setMetricsTotals] = useState<FinancialTotals | null>(null);
+  const [metricsTotals, setMetricsTotals] = useState<FinancialTotals | null>(
+    null
+  );
   const [metricsTotalsLoading, setMetricsTotalsLoading] = useState(false);
   const [includeJackpot, setIncludeJackpot] = useState<boolean>(false);
   const [showArchived, setShowArchived] = useState<boolean>(false);
@@ -116,7 +120,11 @@ export function useLocationCabinetsData({
     } else if (selectedStatus === 'OfflineShortest') {
       setSortOption('offlineTime');
       setSortOrder('asc');
-    } else if (selectedStatus === 'All' || selectedStatus === 'all' || selectedStatus === 'Online') {
+    } else if (
+      selectedStatus === 'All' ||
+      selectedStatus === 'all' ||
+      selectedStatus === 'Online'
+    ) {
       // If we are currently sorting by offlineTime but switched away from offline status,
       // reset to default moneyIn-desc sort to ensure Online machines have priority again
       if (sortOption === 'offlineTime') {
@@ -139,12 +147,10 @@ export function useLocationCabinetsData({
   const cabinetsRequestInProgress = useRef(false);
   const prevCabinetsFetchKey = useRef<string>('');
 
-
   // ============================================================================
   // Computed Values
   // ============================================================================
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
-
 
   const gameTypes = useMemo(() => {
     const uniqueGameTypes = Array.from(
@@ -157,12 +163,9 @@ export function useLocationCabinetsData({
     return uniqueGameTypes;
   }, [allCabinets]);
 
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / PAGES_PER_BATCH) + 1;
-    },
-    []
-  );
+  const calculateBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / PAGES_PER_BATCH) + 1;
+  }, []);
 
   // Determine the full source set to work from (all loaded cabinets for the period)
   const sourceCabinets = useMemo(
@@ -184,11 +187,15 @@ export function useLocationCabinetsData({
     );
 
     if (selectedGameType && selectedGameType !== 'all') {
-      result = result.filter(cabinet => (cabinet.game || cabinet.installedGame) === selectedGameType);
+      result = result.filter(
+        cabinet => (cabinet.game || cabinet.installedGame) === selectedGameType
+      );
     }
 
     // Remove machines with no identifiable serial / name / ID
-    result = result.filter(cabinet => getSerialNumberIdentifier(cabinet) !== 'N/A');
+    result = result.filter(
+      cabinet => getSerialNumberIdentifier(cabinet) !== 'N/A'
+    );
 
     return result;
   }, [sourceCabinets, sortOption, sortOrder, selectedGameType]);
@@ -196,7 +203,8 @@ export function useLocationCabinetsData({
   // effectiveTotalPages is always derived from filteredCabinets (synchronous).
   // Adds +1 only when there is confirmed unfetched server data.
   const effectiveTotalPages = useMemo(() => {
-    const displayedPages = Math.ceil(filteredCabinets.length / ITEMS_PER_PAGE) || 1;
+    const displayedPages =
+      Math.ceil(filteredCabinets.length / ITEMS_PER_PAGE) || 1;
 
     if (accumulatedCabinets.length < totalCount && totalCount > 0) {
       const serverTotalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
@@ -213,8 +221,17 @@ export function useLocationCabinetsData({
     // the server says there's more to fetch (totalCount).
     // Note: When searching, we fetch all at once, so accumulatedCabinets is []
     // but totalCount is set to the full search result count, so this correctly bypasses.
-    return !debouncedSearchTerm?.trim() && startIndex >= accumulatedCabinets.length && accumulatedCabinets.length < totalCount;
-  }, [accumulatedCabinets.length, currentPage, totalCount, debouncedSearchTerm]);
+    return (
+      !debouncedSearchTerm?.trim() &&
+      startIndex >= accumulatedCabinets.length &&
+      accumulatedCabinets.length < totalCount
+    );
+  }, [
+    accumulatedCabinets.length,
+    currentPage,
+    totalCount,
+    debouncedSearchTerm,
+  ]);
 
   // Get paginated cabinets for current page (slice from synchronous filteredCabinets)
   const paginatedCabinets = useMemo(() => {
@@ -239,8 +256,16 @@ export function useLocationCabinetsData({
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(0);
-  }, [sortOption, sortOrder, selectedStatus, selectedGameType, selectedSmibStatus, activeMetricsFilter, customDateRange, showArchived]);
-
+  }, [
+    sortOption,
+    sortOrder,
+    selectedStatus,
+    selectedGameType,
+    selectedSmibStatus,
+    activeMetricsFilter,
+    customDateRange,
+    showArchived,
+  ]);
 
   // Reset to default view when search is cleared
   useEffect(() => {
@@ -295,59 +320,60 @@ export function useLocationCabinetsData({
               : selectedStatus.startsWith('Offline')
                 ? 'offline'
                 : 'all';
- 
-       fetchCabinetsForLocation(
-         locationId,
-         selectedLicencee ?? undefined,
-         activeMetricsFilter,
-         undefined, // No searchTerm for batch fetching
-         activeMetricsFilter === 'Custom' && customDateRange
-           ? {
-             from:
-               customDateRange.startDate instanceof Date
-                 ? customDateRange.startDate
-                 : customDateRange.startDate
-                   ? new Date(customDateRange.startDate)
-                   : customDateRange.from
-                     ? new Date(customDateRange.from)
-                     : undefined,
-             to:
-               customDateRange.endDate instanceof Date
-                 ? customDateRange.endDate
-                 : customDateRange.endDate
-                   ? new Date(customDateRange.endDate)
-                   : customDateRange.to
-                     ? new Date(customDateRange.to)
-                     : undefined,
-           }
-           : undefined,
-         nextBatchNumber,
-         ITEMS_PER_BATCH,
-         undefined, // displayCurrency
-         onlineStatus,
-         showArchived,
-         selectedSmibStatus,
-         undefined // signal
-       ).then(result => {
 
-        if (result.data.length > 0) {
-          setLoadedBatches(prev => new Set([...prev, nextBatchNumber]));
-          if (result.pagination?.total) {
-            setTotalCount(result.pagination.total);
+      fetchCabinetsForLocation(
+        locationId,
+        selectedLicencee ?? undefined,
+        activeMetricsFilter,
+        undefined, // No searchTerm for batch fetching
+        activeMetricsFilter === 'Custom' && customDateRange
+          ? {
+              from:
+                customDateRange.startDate instanceof Date
+                  ? customDateRange.startDate
+                  : customDateRange.startDate
+                    ? new Date(customDateRange.startDate)
+                    : customDateRange.from
+                      ? new Date(customDateRange.from)
+                      : undefined,
+              to:
+                customDateRange.endDate instanceof Date
+                  ? customDateRange.endDate
+                  : customDateRange.endDate
+                    ? new Date(customDateRange.endDate)
+                    : customDateRange.to
+                      ? new Date(customDateRange.to)
+                      : undefined,
+            }
+          : undefined,
+        nextBatchNumber,
+        ITEMS_PER_BATCH,
+        undefined, // displayCurrency
+        onlineStatus,
+        showArchived,
+        selectedSmibStatus,
+        undefined // signal
+      )
+        .then(result => {
+          if (result.data.length > 0) {
+            setLoadedBatches(prev => new Set([...prev, nextBatchNumber]));
+            if (result.pagination?.total) {
+              setTotalCount(result.pagination.total);
+            }
+            setAccumulatedCabinets(prev => {
+              const existingIds = new Set(prev.map(cab => cab._id));
+              const newCabinets = result.data.filter(
+                cab => !existingIds.has(cab._id)
+              );
+              return [...prev, ...newCabinets];
+            });
           }
-          setAccumulatedCabinets(prev => {
-            const existingIds = new Set(prev.map(cab => cab._id));
-            const newCabinets = result.data.filter(
-              cab => !existingIds.has(cab._id)
-            );
-            return [...prev, ...newCabinets];
-          });
-        }
-      }).catch(err => {
-        if (!isAbortError(err)) {
-          console.error('[BATCH FETCH] Error fetching next batch:', err);
-        }
-      });
+        })
+        .catch(err => {
+          if (!isAbortError(err)) {
+            console.error('[BATCH FETCH] Error fetching next batch:', err);
+          }
+        });
     }
 
     // Also ensure current batch is loaded
@@ -376,23 +402,23 @@ export function useLocationCabinetsData({
         undefined, // No searchTerm for batch fetching
         activeMetricsFilter === 'Custom' && customDateRange
           ? {
-            from:
-              customDateRange.startDate instanceof Date
-                ? customDateRange.startDate
-                : customDateRange.startDate
-                  ? new Date(customDateRange.startDate)
-                  : customDateRange.from
-                    ? new Date(customDateRange.from)
-                    : undefined,
-            to:
-              customDateRange.endDate instanceof Date
-                ? customDateRange.endDate
-                : customDateRange.endDate
-                  ? new Date(customDateRange.endDate)
-                  : customDateRange.to
-                    ? new Date(customDateRange.to)
-                    : undefined,
-          }
+              from:
+                customDateRange.startDate instanceof Date
+                  ? customDateRange.startDate
+                  : customDateRange.startDate
+                    ? new Date(customDateRange.startDate)
+                    : customDateRange.from
+                      ? new Date(customDateRange.from)
+                      : undefined,
+              to:
+                customDateRange.endDate instanceof Date
+                  ? customDateRange.endDate
+                  : customDateRange.endDate
+                    ? new Date(customDateRange.endDate)
+                    : customDateRange.to
+                      ? new Date(customDateRange.to)
+                      : undefined,
+            }
           : undefined,
         currentBatch,
         ITEMS_PER_BATCH,
@@ -401,26 +427,27 @@ export function useLocationCabinetsData({
         showArchived,
         selectedSmibStatus,
         undefined // signal
-      ).then(result => {
-
-        if (result.data.length > 0) {
-          setLoadedBatches(prev => new Set([...prev, currentBatch]));
-          if (result.pagination?.total) {
-            setTotalCount(result.pagination.total);
+      )
+        .then(result => {
+          if (result.data.length > 0) {
+            setLoadedBatches(prev => new Set([...prev, currentBatch]));
+            if (result.pagination?.total) {
+              setTotalCount(result.pagination.total);
+            }
+            setAccumulatedCabinets(prev => {
+              const existingIds = new Set(prev.map(cab => cab._id));
+              const newCabinets = result.data.filter(
+                cab => !existingIds.has(cab._id)
+              );
+              return [...prev, ...newCabinets];
+            });
           }
-          setAccumulatedCabinets(prev => {
-            const existingIds = new Set(prev.map(cab => cab._id));
-            const newCabinets = result.data.filter(
-              cab => !existingIds.has(cab._id)
-            );
-            return [...prev, ...newCabinets];
-          });
-        }
-      }).catch(err => {
-        if (!isAbortError(err)) {
-          console.error('[BATCH FETCH] Error fetching current batch:', err);
-        }
-      });
+        })
+        .catch(err => {
+          if (!isAbortError(err)) {
+            console.error('[BATCH FETCH] Error fetching current batch:', err);
+          }
+        });
     }
   }, [
     currentPage,
@@ -439,14 +466,19 @@ export function useLocationCabinetsData({
 
   // Effect to fetch metrics totals reliably when filters change
   useEffect(() => {
-    if (!activeMetricsFilter || !dateFilterInitialized || !filtersInitialized || !locationId) {
+    if (
+      !activeMetricsFilter ||
+      !dateFilterInitialized ||
+      !filtersInitialized ||
+      !locationId
+    ) {
       return;
     }
 
-    // Skip if searching (totals come from search result calculation in useMemo for now, 
+    // Skip if searching (totals come from search result calculation in useMemo for now,
     // or we could fetch totals for search term too)
     // Actually, it's better to fetch totals for EVERYTHING matching the filters
-    
+
     setMetricsTotalsLoading(true);
     (async () => {
       try {
@@ -489,7 +521,10 @@ export function useLocationCabinetsData({
         if (isAbortError(error)) {
           return;
         }
-        console.error('[useLocationCabinetsData] Failed to fetch metrics totals:', error);
+        console.error(
+          '[useLocationCabinetsData] Failed to fetch metrics totals:',
+          error
+        );
         setMetricsTotals(null);
       } finally {
         setMetricsTotalsLoading(false);
@@ -521,7 +556,6 @@ export function useLocationCabinetsData({
         : 'none';
 
     const fetchKey = `${locationId}-${selectedLicencee}-${activeMetricsFilter}-${dateRangeKey}-${debouncedSearchTerm}-${displayCurrency}-${selectedStatus}-${selectedSmibStatus}-${showArchived}`;
-
 
     const fetchData = async () => {
       // Only proceed if filters are initialized
@@ -573,15 +607,17 @@ export function useLocationCabinetsData({
           if (locationData) {
             const locationWithId = {
               ...locationData,
-              location: locationData._id ? String(locationData._id) : locationId,
+              location: locationData._id
+                ? String(locationData._id)
+                : locationId,
               // Map name to locationName for AggregatedLocation compatibility
-              locationName: locationData.name || 'Location'
+              locationName: locationData.name || 'Location',
             };
             setLocationName(locationData.name || 'Location');
             setSelectedLocationId(locationId);
             setLocationMembershipEnabled(
               locationData.membershipEnabled === true ||
-              locationData.enableMembership === true
+                locationData.enableMembership === true
             );
             setLocationData(locationWithId as AggregatedLocation);
             setIncludeJackpot(Boolean(locationData.includeJackpot));
@@ -711,23 +747,23 @@ export function useLocationCabinetsData({
               debouncedSearchTerm?.trim() || undefined,
               activeMetricsFilter === 'Custom' && customDateRange
                 ? {
-                  from:
-                    customDateRange.startDate instanceof Date
-                      ? customDateRange.startDate
-                      : customDateRange.startDate
-                        ? new Date(customDateRange.startDate)
-                        : customDateRange.from
-                          ? new Date(customDateRange.from)
-                          : undefined,
-                  to:
-                    customDateRange.endDate instanceof Date
-                      ? customDateRange.endDate
-                      : customDateRange.endDate
-                        ? new Date(customDateRange.endDate)
-                        : customDateRange.to
-                          ? new Date(customDateRange.to)
-                          : undefined,
-                }
+                    from:
+                      customDateRange.startDate instanceof Date
+                        ? customDateRange.startDate
+                        : customDateRange.startDate
+                          ? new Date(customDateRange.startDate)
+                          : customDateRange.from
+                            ? new Date(customDateRange.from)
+                            : undefined,
+                    to:
+                      customDateRange.endDate instanceof Date
+                        ? customDateRange.endDate
+                        : customDateRange.endDate
+                          ? new Date(customDateRange.endDate)
+                          : customDateRange.to
+                            ? new Date(customDateRange.to)
+                            : undefined,
+                  }
                 : undefined,
               effectivePage,
               effectiveLimit,
@@ -737,7 +773,6 @@ export function useLocationCabinetsData({
               selectedSmibStatus,
               signal
             );
-
           });
 
           if (!result) {
@@ -797,7 +832,10 @@ export function useLocationCabinetsData({
         }
       } finally {
         // Only turn off loading if the request completed and wasn't aborted/superseded
-        if (cabinetsRequestInProgress.current && prevCabinetsFetchKey.current === fetchKey) {
+        if (
+          cabinetsRequestInProgress.current &&
+          prevCabinetsFetchKey.current === fetchKey
+        ) {
           setLoading(false);
           setCabinetsLoading(false);
           cabinetsRequestInProgress.current = false;
@@ -823,7 +861,6 @@ export function useLocationCabinetsData({
     showArchived,
   ]);
 
-
   // Clear isFilterResetting when new data arrives
   useEffect(() => {
     if (allCabinets.length > 0) {
@@ -841,7 +878,13 @@ export function useLocationCabinetsData({
         setFiltersInitialized(true);
       }
     }
-  }, [activeMetricsFilter, dateFilterInitialized, filtersInitialized, setDateFilterInitialized, setFiltersInitialized]);
+  }, [
+    activeMetricsFilter,
+    dateFilterInitialized,
+    filtersInitialized,
+    setDateFilterInitialized,
+    setFiltersInitialized,
+  ]);
 
   // ============================================================================
   // Refresh Handler
@@ -856,14 +899,43 @@ export function useLocationCabinetsData({
     setRefreshing(false);
   }, []);
 
+  const refreshLocation = useCallback(async () => {
+    try {
+      const locationResponse = await axios.get(`/api/locations/${locationId}`, {
+        headers: getAuthHeaders(),
+      });
+      const data = locationResponse.data?.location || locationResponse.data;
+      if (data) {
+        const locationWithId = {
+          ...data,
+          location: data._id ? String(data._id) : locationId,
+          locationName: data.name || 'Location',
+        };
+        setLocationName(data.name || 'Location');
+        setLocationMembershipEnabled(
+          data.membershipEnabled === true || data.enableMembership === true
+        );
+        setLocationData(locationWithId as AggregatedLocation);
+      }
+    } catch (err) {
+      console.error('[useLocationCabinetsData] refreshLocation error:', err);
+    }
+  }, [locationId]);
+
   // ============================================================================
   // Return
   // ============================================================================
   return {
     // State
     filteredCabinets,
-    loading: loading || cabinetsLoading || isFilterResetting || isDataMissingForPage || metricsTotalsLoading,
-    cabinetsLoading: cabinetsLoading || isFilterResetting || isDataMissingForPage,
+    loading:
+      loading ||
+      cabinetsLoading ||
+      isFilterResetting ||
+      isDataMissingForPage ||
+      metricsTotalsLoading,
+    cabinetsLoading:
+      cabinetsLoading || isFilterResetting || isDataMissingForPage,
     metricsTotalsLoading,
     isDebouncingSearch: searchTerm !== debouncedSearchTerm,
     searchTerm,
@@ -891,12 +963,15 @@ export function useLocationCabinetsData({
     totalCount,
     includeJackpot,
     // Setters
-    setSearchTerm: useCallback((term: string) => {
-      if (term !== searchTerm) {
-        setIsFilterResetting(true);
-        setSearchTerm(term);
-      }
-    }, [searchTerm]),
+    setSearchTerm: useCallback(
+      (term: string) => {
+        if (term !== searchTerm) {
+          setIsFilterResetting(true);
+          setSearchTerm(term);
+        }
+      },
+      [searchTerm]
+    ),
     setSelectedStatus: useCallback((status: string) => {
       setIsFilterResetting(true);
       setAccumulatedCabinets([]);
@@ -919,5 +994,6 @@ export function useLocationCabinetsData({
     setShowArchived,
     // Handlers
     refreshCabinets,
+    refreshLocation,
   };
 }

@@ -11,7 +11,10 @@
  * - Responsive design (mobile only)
  */
 import { Button } from '@/components/shared/ui/button';
-import type { CollectionReportManagerScheduleCardsProps, SchedulerTableRow } from '@/lib/types/components';
+import type {
+  CollectionReportManagerScheduleCardsProps,
+  SchedulerTableRow,
+} from '@/lib/types/components';
 import { Pencil, Trash2 } from 'lucide-react';
 
 export default function CollectionReportManagerScheduleCards({
@@ -92,7 +95,9 @@ export default function CollectionReportManagerScheduleCards({
           <div className="px-3 py-3 sm:px-4 sm:py-4">
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <div>
-                <div className="text-xs font-medium text-gray-500">Collector</div>
+                <div className="text-xs font-medium text-gray-500">
+                  Collector
+                </div>
                 <div className="mt-0.5 truncate text-sm font-medium text-gray-900 sm:mt-1">
                   {row.collector}
                 </div>
@@ -104,12 +109,20 @@ export default function CollectionReportManagerScheduleCards({
                 </div>
               </div>
               <div>
-                <div className="text-xs font-medium text-gray-500">Visit Time</div>
-                <div className="mt-0.5 text-xs text-gray-900 sm:mt-1 sm:text-sm">{row.visitTime}</div>
+                <div className="text-xs font-medium text-gray-500">
+                  Visit Time
+                </div>
+                <div className="mt-0.5 text-xs text-gray-900 sm:mt-1 sm:text-sm">
+                  {row.visitTime}
+                </div>
               </div>
               <div>
-                <div className="text-xs font-medium text-gray-500">Created At</div>
-                <div className="mt-0.5 text-xs text-gray-900 sm:mt-1 sm:text-sm">{row.createdAt}</div>
+                <div className="text-xs font-medium text-gray-500">
+                  Created At
+                </div>
+                <div className="mt-0.5 text-xs text-gray-900 sm:mt-1 sm:text-sm">
+                  {row.createdAt}
+                </div>
               </div>
             </div>
           </div>

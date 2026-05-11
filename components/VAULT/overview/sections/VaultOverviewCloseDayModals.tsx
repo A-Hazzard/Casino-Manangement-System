@@ -2,7 +2,7 @@
  * Vault Overview Close Day Modals Component
  *
  * Orchestrates all modals related to the daily vault closure process.
- * 
+ *
  * @module components/VAULT/overview/sections/VaultOverviewCloseDayModals
  */
 'use client';
@@ -16,7 +16,11 @@ import VaultOverviewSoftCountModal from '@/components/VAULT/overview/modals/Vaul
 import VaultOverviewActiveShiftsModal from '@/components/VAULT/overview/sections/VaultOverviewActiveShiftsModal';
 import type { CloseDayStep } from '@/lib/hooks/vault/useVaultCloseDay';
 import type { GamingMachine } from '@/shared/types/entities';
-import type { CashDesk, UnbalancedShiftInfo, VaultBalance } from '@/shared/types/vault';
+import type {
+  CashDesk,
+  UnbalancedShiftInfo,
+  VaultBalance,
+} from '@/shared/types/vault';
 
 // Type that matches what VaultOverviewForceEndShiftModal expects
 type ForceEndShiftCashier = {
@@ -51,11 +55,14 @@ export default function VaultOverviewCloseDayModals({
   locationId,
   onClose,
   onConfirm,
-  onRefresh
+  onRefresh,
 }: VaultOverviewCloseDayModalsProps) {
   const { licenceeId: selectedLicencee } = useVaultLicencee();
-  const [forceCloseCashier, setForceCloseCashier] = useState<ForceEndShiftCashier | null>(null);
-  const [reviewShift, setReviewShift] = useState<UnbalancedShiftInfo | null>(null);
+  const [forceCloseCashier, setForceCloseCashier] =
+    useState<ForceEndShiftCashier | null>(null);
+  const [reviewShift, setReviewShift] = useState<UnbalancedShiftInfo | null>(
+    null
+  );
 
   return (
     <>
@@ -75,20 +82,20 @@ export default function VaultOverviewCloseDayModals({
         activeShifts={activeShifts}
         pendingShifts={pendingShifts}
         isBlurred={!!forceCloseCashier || !!reviewShift}
-        onReviewShift={(shiftId) => {
-           // Find the shift info from the pending list
-           const shiftObj = pendingShifts.find(s => s.shiftId === shiftId);
-           if (shiftObj) {
-              setReviewShift(shiftObj);
-           }
+        onReviewShift={shiftId => {
+          // Find the shift info from the pending list
+          const shiftObj = pendingShifts.find(s => s.shiftId === shiftId);
+          if (shiftObj) {
+            setReviewShift(shiftObj);
+          }
         }}
-        onForceCloseShift={(cashier) => {
-           setForceCloseCashier({
-             _id: cashier._id,
-             cashierId: cashier.cashierId,
-             username: cashier.name || cashier.cashierName || cashier._id,
-             cashierName: cashier.cashierName,
-           });
+        onForceCloseShift={cashier => {
+          setForceCloseCashier({
+            _id: cashier._id,
+            cashierId: cashier.cashierId,
+            username: cashier.name || cashier.cashierName || cashier._id,
+            cashierName: cashier.cashierName,
+          });
         }}
       />
 

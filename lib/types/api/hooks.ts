@@ -16,4 +16,3 @@ export type UseApiWithRetryReturn<T> = {
   execute: (...args: unknown[]) => Promise<T | null>;
   reset: () => void;
 };
-

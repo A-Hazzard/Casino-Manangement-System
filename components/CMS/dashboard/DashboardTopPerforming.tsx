@@ -50,7 +50,8 @@ export default function DashboardTopPerforming({ locationId }: Props) {
           : (json?.topPerformers ?? []);
         if (mounted) setData(items);
       } catch (err: unknown) {
-        if (mounted) setError((err as Error)?.message ?? 'Failed to load top performers');
+        if (mounted)
+          setError((err as Error)?.message ?? 'Failed to load top performers');
       } finally {
         if (mounted) setLoading(false);
       }

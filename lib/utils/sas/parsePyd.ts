@@ -114,10 +114,17 @@ export function parseSasPyd(pyd: string): SasMetersParsed {
       }
     }
   } catch (e) {
-    console.error('[parseSasPyd] Error:', e instanceof Error ? e.message : 'Unknown error');
-    return { error: 'Failed to parse pyd: ' + (e instanceof Error ? e.message : 'Unknown error'), pyd };
+    console.error(
+      '[parseSasPyd] Error:',
+      e instanceof Error ? e.message : 'Unknown error'
+    );
+    return {
+      error:
+        'Failed to parse pyd: ' +
+        (e instanceof Error ? e.message : 'Unknown error'),
+      pyd,
+    };
   }
 
   return result;
 }
-

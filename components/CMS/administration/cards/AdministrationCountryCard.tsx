@@ -51,7 +51,6 @@ function AdministrationCountryCard({
           />
         </div>
       </div>
-
     </div>
   );
 }

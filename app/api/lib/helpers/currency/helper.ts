@@ -42,7 +42,9 @@ function convertFinancialFields<T extends Record<string, unknown>>(
     return data;
   }
   if (!fromCurrency || !toCurrency) {
-    console.error('[convertFinancialFields] fromCurrency and toCurrency are required');
+    console.error(
+      '[convertFinancialFields] fromCurrency and toCurrency are required'
+    );
     return data;
   }
   if (fromCurrency === toCurrency) {
@@ -54,11 +56,7 @@ function convertFinancialFields<T extends Record<string, unknown>>(
   for (const field of FINANCIAL_FIELDS) {
     const value = converted[field];
     if (typeof value === 'number') {
-      converted[field] = convertCurrency(
-        value,
-        fromCurrency,
-        toCurrency
-      );
+      converted[field] = convertCurrency(value, fromCurrency, toCurrency);
     }
   }
 
@@ -78,7 +76,9 @@ export async function applyCurrencyConversionToMetrics<T>(
   displayCurrency: CurrencyCode
 ): Promise<T> {
   if (!displayCurrency) {
-    console.error('[applyCurrencyConversionToMetrics] displayCurrency is required');
+    console.error(
+      '[applyCurrencyConversionToMetrics] displayCurrency is required'
+    );
     return data;
   }
 
@@ -123,14 +123,14 @@ export async function applyCurrencyConversionToMetrics<T>(
   return convertObject(data) as T;
 }
 
-
-
 /**
  * Get currency query parameter from request
  * @param searchParams - URLSearchParams object
  * @returns Currency code or 'USD' as default
  */
-export function getCurrencyFromQuery(searchParams: URLSearchParams): CurrencyCode {
+export function getCurrencyFromQuery(
+  searchParams: URLSearchParams
+): CurrencyCode {
   if (!searchParams) {
     console.error('[getCurrencyFromQuery] searchParams is required');
     return 'USD';
@@ -142,4 +142,3 @@ export function getCurrencyFromQuery(searchParams: URLSearchParams): CurrencyCod
     ? (currency as CurrencyCode)
     : 'USD';
 }
-

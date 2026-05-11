@@ -18,9 +18,9 @@
 import { Button } from '@/components/shared/ui/button';
 import type { Licencee } from '@/lib/types/common';
 import {
-    canChangePaymentStatus,
-    formatLicenceeDate,
-    isLicenceePaid,
+  canChangePaymentStatus,
+  formatLicenceeDate,
+  isLicenceePaid,
 } from '@/lib/utils/licencee';
 import { ChevronDownIcon } from '@radix-ui/react-icons';
 import { CreditCard, Pencil, Trash2 } from 'lucide-react';
@@ -175,12 +175,12 @@ function AdministrationLicenceeCard({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 border-t border-gray-200 pt-3 mt-3">
+        <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
           <Button
             onClick={() => onPaymentHistory(licencee)}
             variant="outline"
             size="sm"
-            className="flex items-center justify-center gap-1.5 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+            className="flex items-center justify-center gap-1.5 text-xs text-purple-600 hover:bg-purple-50 hover:text-purple-700"
           >
             <CreditCard className="h-3.5 w-3.5" />
             <span>History</span>
@@ -189,7 +189,7 @@ function AdministrationLicenceeCard({
             onClick={() => onEdit(licencee)}
             variant="outline"
             size="sm"
-            className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            className="flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
           >
             <Pencil className="h-3.5 w-3.5" />
             <span>Edit</span>
@@ -198,7 +198,7 @@ function AdministrationLicenceeCard({
             onClick={() => onDelete(licencee)}
             variant="outline"
             size="sm"
-            className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+            className="flex items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
           >
             <Trash2 className="h-3.5 w-3.5" />
             <span>Delete</span>
@@ -210,4 +210,3 @@ function AdministrationLicenceeCard({
 }
 
 export default AdministrationLicenceeCard;
-

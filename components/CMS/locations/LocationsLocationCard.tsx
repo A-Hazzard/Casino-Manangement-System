@@ -27,18 +27,24 @@ import {
   Archive,
   BadgeCheck,
   Eye,
-   FileWarning,
-   HelpCircle,
-   Home,
-   MapPinOff,
-   MonitorOff,
-   Pencil,
-   RotateCcw,
-   Server,
-   Trash2,
- } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/shared/ui/tooltip';
+  FileWarning,
+  HelpCircle,
+  Home,
+  MapPinOff,
+  MonitorOff,
+  Pencil,
+  RotateCcw,
+  Server,
+  Trash2,
+} from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/shared/ui/tooltip';
 import { format, formatDistanceToNow } from 'date-fns';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 
@@ -66,12 +72,13 @@ export default function LocationsLocationCard({
   const router = useRouter();
   const cardRef = useRef<HTMLDivElement>(null);
   const { displayCurrency } = useCurrencyFormat();
-  const formatCurrency = (amount: number) => formatCurrencyWithCodeString(amount, displayCurrency);
+  const formatCurrency = (amount: number) =>
+    formatCurrencyWithCodeString(amount, displayCurrency);
 
   return (
     <div
       ref={cardRef}
-      className={`relative mx-auto w-full rounded-lg border p-4 shadow-sm transition-shadow hover:shadow-md ${showArchived ? 'bg-gray-50 border-amber-100' : 'bg-white border-border'}`}
+      className={`relative mx-auto w-full rounded-lg border p-4 shadow-sm transition-shadow hover:shadow-md ${showArchived ? 'border-amber-100 bg-gray-50' : 'border-border bg-white'}`}
     >
       <div className="mb-3 flex flex-col gap-2">
         {/* Location Name with Membership Icon */}
@@ -91,22 +98,32 @@ export default function LocationsLocationCard({
             {(location as Record<string, unknown>).locationName as string}
           </span>
           <TooltipProvider delayDuration={200}>
-            {/* SMIB Icon */}
-            {Boolean(
-              (location as { hasSmib?: boolean }).hasSmib ||
-                !(location as { noSMIBLocation?: boolean }).noSMIBLocation
-            ) && !(location as { noSMIBLocation?: boolean }).noSMIBLocation && (
+            {/* Full SMIB Icon */}
+            {Boolean((location as { fullSMIBs?: boolean }).fullSMIBs) && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="mt-0.5 inline-flex flex-shrink-0">
                     <Server className="h-4 w-4 text-blue-600" />
                   </span>
                 </TooltipTrigger>
-                <TooltipContent side="top">SMIB Location</TooltipContent>
+                <TooltipContent side="top">Full SMIB Location</TooltipContent>
+              </Tooltip>
+            )}
+            {/* Semi SMIB Icon */}
+            {Boolean((location as { semiSMIBs?: boolean }).semiSMIBs) && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="mt-0.5 inline-flex flex-shrink-0">
+                    <Server className="h-4 w-4 text-amber-500" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">Semi SMIB Location</TooltipContent>
               </Tooltip>
             )}
             {/* No SMIB Icon */}
-            {Boolean((location as { noSMIBLocation?: boolean }).noSMIBLocation) && (
+            {Boolean(
+              (location as { noSMIBLocation?: boolean }).noSMIBLocation
+            ) && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="mt-0.5 inline-flex flex-shrink-0">
@@ -117,7 +134,9 @@ export default function LocationsLocationCard({
               </Tooltip>
             )}
             {/* Local Server Icon */}
-            {Boolean((location as { isLocalServer?: boolean }).isLocalServer) && (
+            {Boolean(
+              (location as { isLocalServer?: boolean }).isLocalServer
+            ) && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="mt-0.5 inline-flex flex-shrink-0">
@@ -128,7 +147,9 @@ export default function LocationsLocationCard({
               </Tooltip>
             )}
             {/* Membership Icon */}
-            {Boolean((location as { membershipEnabled?: boolean }).membershipEnabled) && (
+            {Boolean(
+              (location as { membershipEnabled?: boolean }).membershipEnabled
+            ) && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="mt-0.5 inline-flex flex-shrink-0">
@@ -140,16 +161,21 @@ export default function LocationsLocationCard({
             )}
             {/* Warning Icon - no recent collection report */}
             {selectedFilters.some(f => f === 'NoSMIBLocation') &&
-              Boolean((location as { hasNoRecentCollectionReport?: boolean }).hasNoRecentCollectionReport) && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="mt-0.5 inline-flex flex-shrink-0">
-                    <FileWarning className="h-4 w-4 text-red-600" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top">No collection report in past 3 months</TooltipContent>
-              </Tooltip>
-            )}
+              Boolean(
+                (location as { hasNoRecentCollectionReport?: boolean })
+                  .hasNoRecentCollectionReport
+              ) && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="mt-0.5 inline-flex flex-shrink-0">
+                      <FileWarning className="h-4 w-4 text-red-600" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    No collection report in past 3 months
+                  </TooltipContent>
+                </Tooltip>
+              )}
             {/* Missing Coordinates Icon */}
             {hasMissingCoordinates(location) && (
               <Tooltip>
@@ -158,22 +184,32 @@ export default function LocationsLocationCard({
                     <MapPinOff className="h-4 w-4 text-red-600" />
                   </span>
                 </TooltipTrigger>
-                <TooltipContent side="top">This location&apos;s coordinates have not been set</TooltipContent>
+                <TooltipContent side="top">
+                  This location&apos;s coordinates have not been set
+                </TooltipContent>
               </Tooltip>
             )}
             {/* Unknown Type Icon */}
             {(() => {
               const hasSmib = Boolean(
-                (location as { hasSmib?: boolean }).hasSmib ||
-                  !(location as { noSMIBLocation?: boolean }).noSMIBLocation
+                (location as { fullSMIBs?: boolean }).fullSMIBs ||
+                (location as { semiSMIBs?: boolean }).semiSMIBs ||
+                (location as { noSMIBLocation?: boolean }).noSMIBLocation
               );
-              const isLocalServer = Boolean((location as { isLocalServer?: boolean }).isLocalServer);
+              const isLocalServer = Boolean(
+                (location as { isLocalServer?: boolean }).isLocalServer
+              );
               const hasMembership = Boolean(
-                (location as { membershipEnabled?: boolean }).membershipEnabled ||
-                  (location as { enableMembership?: boolean }).enableMembership
+                (location as { membershipEnabled?: boolean })
+                  .membershipEnabled ||
+                (location as { enableMembership?: boolean }).enableMembership
               );
               const hasMissingCoords = hasMissingCoordinates(location);
-              const isUnknownType = !hasSmib && !isLocalServer && !hasMembership && !hasMissingCoords;
+              const isUnknownType =
+                !hasSmib &&
+                !isLocalServer &&
+                !hasMembership &&
+                !hasMissingCoords;
 
               return isUnknownType ? (
                 <Tooltip>
@@ -182,7 +218,9 @@ export default function LocationsLocationCard({
                       <HelpCircle className="h-4 w-4 text-gray-500" />
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="top">Unknown location type</TooltipContent>
+                  <TooltipContent side="top">
+                    Unknown location type
+                  </TooltipContent>
                 </Tooltip>
               ) : null;
             })()}
@@ -238,7 +276,8 @@ export default function LocationsLocationCard({
             <button
               onClick={e => {
                 e.stopPropagation();
-                const locationId = (location.location as string) || location._id;
+                const locationId =
+                  (location.location as string) || location._id;
                 if (locationId) {
                   router.push(`/locations/${locationId}?tab=members`);
                 }
@@ -269,7 +308,7 @@ export default function LocationsLocationCard({
             moneyIn={location.moneyIn ?? 0}
             jackpot={location.jackpot ?? 0}
             displayValue={formatCurrency(location.moneyOut ?? 0)}
-            includeJackpot={!!(location).includeJackpot}
+            includeJackpot={!!location.includeJackpot}
             showInfoIcon={true}
           />
         </div>
@@ -287,13 +326,24 @@ export default function LocationsLocationCard({
 
       {/* Archived Info */}
       {showArchived && (location as { deletedAt?: string }).deletedAt && (
-        <div className="mb-3 flex flex-col gap-1 text-[11px] text-amber-700 bg-amber-50/50 p-2 rounded border border-amber-100/50">
+        <div className="mb-3 flex flex-col gap-1 rounded border border-amber-100/50 bg-amber-50/50 p-2 text-[11px] text-amber-700">
           <div className="flex items-center gap-1.5">
             <Archive className="h-3.5 w-3.5" />
-            <span>Archived: {format(new Date((location as { deletedAt: string }).deletedAt), 'MMM d, yyyy • h:mm a')}</span>
+            <span>
+              Archived:{' '}
+              {format(
+                new Date((location as { deletedAt: string }).deletedAt),
+                'MMM d, yyyy • h:mm a'
+              )}
+            </span>
           </div>
           <div className="ml-[18px] italic opacity-80">
-            ({formatDistanceToNow(new Date((location as { deletedAt: string }).deletedAt), { addSuffix: true })})
+            (
+            {formatDistanceToNow(
+              new Date((location as { deletedAt: string }).deletedAt),
+              { addSuffix: true }
+            )}
+            )
           </div>
         </div>
       )}
@@ -329,20 +379,13 @@ export default function LocationsLocationCard({
         ) : (
           /* Active view: View, Edit, Delete */
           <>
-            <Button
-              onClick={() => {
-                const locationId = (location.location as string) || location._id;
-                if (locationId) {
-                  onLocationClick(locationId);
-                }
-              }}
-              variant="outline"
-              size="sm"
-              className="flex flex-1 items-center justify-center gap-1.5 text-xs"
+            <Link
+              href={`/locations/${(location.location as string) || location._id}`}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md border px-2 py-1 text-xs hover:bg-accent"
             >
               <Eye className="h-3.5 w-3.5" />
               <span>View</span>
-            </Button>
+            </Link>
             {canManageLocations && (
               <>
                 <Button
@@ -371,4 +414,3 @@ export default function LocationsLocationCard({
     </div>
   );
 }
-

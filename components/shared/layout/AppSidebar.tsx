@@ -29,8 +29,8 @@ import { cmsNavigationConfig } from '@/lib/constants';
 import { logoutUser } from '@/lib/helpers/client';
 import { fetchUserId } from '@/lib/helpers/user';
 import {
-    CACHE_KEYS,
-    fetchUserWithCache,
+  CACHE_KEYS,
+  fetchUserWithCache,
 } from '@/lib/services/userCacheService';
 import { useUserStore } from '@/lib/store/userStore';
 import type { NavigationConfig } from '@/lib/types/layout/navigation';
@@ -256,7 +256,8 @@ export default function AppSidebar({
 
           if (data?.success && data?.user) {
             const userData = data.user;
-            if (userData.profilePicture) setAvatarUrl(userData.profilePicture as string);
+            if (userData.profilePicture)
+              setAvatarUrl(userData.profilePicture as string);
             if (userData.username) setDisplayName(userData.username as string);
             if (userData.email) setEmail(userData.email as string);
           } else {
@@ -412,8 +413,9 @@ export default function AppSidebar({
               items
                 .filter(item => {
                   // Normalised user roles (defensive — filter null/undefined entries)
-                  const userRolesNorm = (user?.roles || [])
-                    .filter((r): r is string => typeof r === 'string');
+                  const userRolesNorm = (user?.roles || []).filter(
+                    (r): r is string => typeof r === 'string'
+                  );
                   const isDeveloper = userRolesNorm.includes('developer');
 
                   // Under-maintenance items are only shown to developers
@@ -897,10 +899,10 @@ export default function AppSidebar({
                 })
             )}
           </nav>
-          
+
           {/* Mobile Currency Selector: Shown only on mobile devices in the sidebar */}
-          <div className="md:hidden border-t border-border/50 px-3 py-4 mt-2">
-            <CurrencyFilter 
+          <div className="mt-2 border-t border-border/50 px-3 py-4 md:hidden">
+            <CurrencyFilter
               userRoles={user?.roles as string[]}
               hasMultipleLicencees={(user?.assignedLicencees || []).length > 1}
               className="w-full"
@@ -980,7 +982,7 @@ export default function AppSidebar({
                   <div className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900">
                     {displayName}
                     {(user?.roles || []).includes('owner') && (
-                      <span className="flex-shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm animate-pulse">
+                      <span className="flex-shrink-0 animate-pulse rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 shadow-sm ring-1 ring-inset ring-amber-600/20">
                         OWNER
                       </span>
                     )}
@@ -1028,7 +1030,7 @@ export default function AppSidebar({
                       <div className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900">
                         {displayName}
                         {(user?.roles || []).includes('owner') && (
-                          <span className="flex-shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm animate-pulse">
+                          <span className="flex-shrink-0 animate-pulse rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 shadow-sm ring-1 ring-inset ring-amber-600/20">
                             OWNER
                           </span>
                         )}
@@ -1156,7 +1158,7 @@ export default function AppSidebar({
                 <div className="flex items-center gap-1.5 truncate text-sm font-medium text-gray-900">
                   {displayName}
                   {(user?.roles || []).includes('owner') && (
-                    <span className="flex-shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-inset ring-amber-600/20 shadow-sm animate-pulse">
+                    <span className="flex-shrink-0 animate-pulse rounded bg-amber-100 px-1 py-0.5 text-[10px] font-bold text-amber-700 shadow-sm ring-1 ring-inset ring-amber-600/20">
                       OWNER
                     </span>
                   )}

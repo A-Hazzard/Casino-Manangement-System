@@ -31,18 +31,18 @@ import MembersPlayerTotalsCardSkeleton from '@/components/CMS/members/MembersPla
 import { Button } from '@/components/shared/ui/button';
 import DateFilters from '@/components/shared/ui/common/DateFilters';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import {
-    ChevronLeft,
-    Download,
-    FileSpreadsheet,
-    FileText,
-    RefreshCw,
+  ChevronLeft,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -69,11 +69,11 @@ export default function MembersDetailsPageContent() {
   // ============================================================================
   const params = useParams();
   const memberId = params.id as string;
-  const { 
-    selectedLicencee, 
+  const {
+    selectedLicencee,
     setSelectedLicencee,
     activeMetricsFilter,
-    customDateRange
+    customDateRange,
   } = useDashBoardStore();
 
   // ============================================================================
@@ -109,26 +109,34 @@ export default function MembersDetailsPageContent() {
       queryParams.append('page', (currentPage + 1).toString());
       queryParams.append('limit', '20');
       // Always view sessions list, filtered by date
-      queryParams.append('filter', 'session'); 
+      queryParams.append('filter', 'session');
 
       // Date filtering logic
-      if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
-        const startDate = customDateRange.startDate instanceof Date
-          ? customDateRange.startDate
-          : new Date(customDateRange.startDate);
-        const endDate = customDateRange.endDate instanceof Date
-          ? customDateRange.endDate
-          : new Date(customDateRange.endDate);
+      if (
+        activeMetricsFilter === 'Custom' &&
+        customDateRange?.startDate &&
+        customDateRange?.endDate
+      ) {
+        const startDate =
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate);
+        const endDate =
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate);
         queryParams.append('startDate', startDate.toISOString().split('T')[0]);
         queryParams.append('endDate', endDate.toISOString().split('T')[0]);
       } else if (activeMetricsFilter && activeMetricsFilter !== 'All Time') {
         const timePeriodMap: Record<string, string> = {
-          'Today': 'today',
-          'Yesterday': 'yesterday',
+          Today: 'today',
+          Yesterday: 'yesterday',
           '7d': '7d',
           '30d': '30d',
         };
-        const apiTimePeriod = timePeriodMap[activeMetricsFilter] || activeMetricsFilter.toLowerCase();
+        const apiTimePeriod =
+          timePeriodMap[activeMetricsFilter] ||
+          activeMetricsFilter.toLowerCase();
         queryParams.append('timePeriod', apiTimePeriod);
       }
 
@@ -182,8 +190,6 @@ export default function MembersDetailsPageContent() {
     setCurrentPage(page);
   };
 
-
-
   const handleSortToggle = () => {
     setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'));
   };
@@ -209,23 +215,31 @@ export default function MembersDetailsPageContent() {
       queryParams.append('filter', 'session');
 
       // Date filtering logic
-      if (activeMetricsFilter === 'Custom' && customDateRange?.startDate && customDateRange?.endDate) {
-        const startDate = customDateRange.startDate instanceof Date
-          ? customDateRange.startDate
-          : new Date(customDateRange.startDate);
-        const endDate = customDateRange.endDate instanceof Date
-          ? customDateRange.endDate
-          : new Date(customDateRange.endDate);
+      if (
+        activeMetricsFilter === 'Custom' &&
+        customDateRange?.startDate &&
+        customDateRange?.endDate
+      ) {
+        const startDate =
+          customDateRange.startDate instanceof Date
+            ? customDateRange.startDate
+            : new Date(customDateRange.startDate);
+        const endDate =
+          customDateRange.endDate instanceof Date
+            ? customDateRange.endDate
+            : new Date(customDateRange.endDate);
         queryParams.append('startDate', startDate.toISOString().split('T')[0]);
         queryParams.append('endDate', endDate.toISOString().split('T')[0]);
       } else if (activeMetricsFilter && activeMetricsFilter !== 'All Time') {
         const timePeriodMap: Record<string, string> = {
-          'Today': 'today',
-          'Yesterday': 'yesterday',
+          Today: 'today',
+          Yesterday: 'yesterday',
           '7d': '7d',
           '30d': '30d',
         };
-        const apiTimePeriod = timePeriodMap[activeMetricsFilter] || activeMetricsFilter.toLowerCase();
+        const apiTimePeriod =
+          timePeriodMap[activeMetricsFilter] ||
+          activeMetricsFilter.toLowerCase();
         queryParams.append('timePeriod', apiTimePeriod);
       }
 
@@ -413,13 +427,13 @@ export default function MembersDetailsPageContent() {
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:space-x-4 sm:space-y-0">
-               <DateFilters
-                 onCustomRangeGo={handleRefresh}
-                 hideAllTime={false}
-                 mode="auto"
-                 hideIndicator
-                 customRangeGoLabel="Get Activity"
-               />
+              <DateFilters
+                onCustomRangeGo={handleRefresh}
+                hideAllTime={false}
+                mode="auto"
+                hideIndicator
+                customRangeGoLabel="Get Activity"
+              />
             </div>
 
             {/* Export Controls */}
@@ -486,4 +500,3 @@ export default function MembersDetailsPageContent() {
     </>
   );
 }
-

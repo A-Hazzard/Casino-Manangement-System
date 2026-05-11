@@ -61,7 +61,7 @@ export default function AdministrationCountriesSection({
 
     const searchLower = searchValue.toLowerCase().trim();
     const filtered = countries.filter(
-      (country) =>
+      country =>
         country.name.toLowerCase().includes(searchLower) ||
         country.alpha2.toLowerCase().includes(searchLower) ||
         country.alpha3.toLowerCase().includes(searchLower)
@@ -73,7 +73,7 @@ export default function AdministrationCountriesSection({
       const bName = b.name.toLowerCase();
       const aStarts = aName.startsWith(searchLower) ? 1 : 0;
       const bStarts = bName.startsWith(searchLower) ? 1 : 0;
-      
+
       if (aStarts !== bStarts) return bStarts - aStarts;
       return aName.localeCompare(bName);
     });
@@ -132,9 +132,7 @@ export default function AdministrationCountriesSection({
             ))}
           </div>
         ) : (
-          <p className="py-4 text-center text-gray-500">
-            No countries found.
-          </p>
+          <p className="py-4 text-center text-gray-500">No countries found.</p>
         )}
       </div>
 

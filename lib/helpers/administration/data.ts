@@ -14,10 +14,7 @@
  * - Handles search across multiple fields
  */
 
-import type {
-  SortKey,
-  User,
-} from '@/lib/types/administration';
+import type { SortKey, User } from '@/lib/types/administration';
 import axios from 'axios';
 
 /**
@@ -207,8 +204,9 @@ export const createUser = async (user: {
   profilePicture?: string | null;
   assignedLicencees?: string[];
   assignedLocations?: string[];
+  moneyInMultiplier?: number;
+  moneyOutAndJackpotMultiplier?: number;
 }) => {
   const response = await axios.post('/api/users', user);
   return response.data.user;
 };
-

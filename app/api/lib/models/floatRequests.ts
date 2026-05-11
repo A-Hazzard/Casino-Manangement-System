@@ -1,17 +1,4 @@
-/**
- * Float Request Model
- *
- * Mongoose model for cashier float requests (increase/decrease).
- * Tracks float requests from cashiers and their approval status.
- *
- * @module app/api/lib/models/floatRequests
- */
-
 import { model, models, Schema } from 'mongoose';
-
-// ============================================================================
-// Schema Definition
-// ============================================================================
 
 const FLOAT_REQUEST_TYPES = ['FLOAT_INCREASE', 'FLOAT_DECREASE'] as const;
 
@@ -85,19 +72,9 @@ const floatRequestSchema = new Schema(
   { timestamps: true, collection: 'floatrequests' }
 );
 
-// ============================================================================
-// Indexes
-// ============================================================================
-
 floatRequestSchema.index({ locationId: 1, status: 1, createdAt: -1 });
-// Note: cashierId and shiftId single indexes are already created by index: true in schema (lines 36, 47)
-
-// ============================================================================
-// Validation
-// ============================================================================
 
 floatRequestSchema.pre('save', function (next) {
-  // Validate requestedTotalAmount matches sum of requestedDenom
   if (this.requestedDenom && typeof this.requestedDenom === 'object') {
     const denom = this.requestedDenom as Record<string, number>;
     const calculatedTotal = Object.entries(denom).reduce(
@@ -114,7 +91,6 @@ floatRequestSchema.pre('save', function (next) {
     }
   }
 
-  // Validate approvedTotalAmount matches sum of approvedDenom when approved
   if (
     this.status === 'APPROVED' &&
     this.approvedDenom &&
@@ -128,17 +104,15 @@ floatRequestSchema.pre('save', function (next) {
 
     if (Math.abs(calculatedTotal - this.approvedTotalAmount) > 0.01) {
       return next(
-        new Error('Approved total amount does not match approved denomination breakdown')
+        new Error(
+          'Approved total amount does not match approved denomination breakdown'
+        )
       );
     }
   }
 
   next();
 });
-
-// ============================================================================
-// Model Export
-// ============================================================================
 
 export const FloatRequest =
   models.floatrequests || model('floatrequests', floatRequestSchema);

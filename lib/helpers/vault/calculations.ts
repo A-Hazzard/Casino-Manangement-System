@@ -1,6 +1,6 @@
 /**
  * Vault Calculation Helpers
- * 
+ *
  * Helper functions for vault balance calculations, denomination validation,
  * and business rule enforcement.
  */
@@ -17,7 +17,7 @@ export type Denomination = {
 
 /**
  * Validate denomination totals and calculate sum
- * 
+ *
  * @param denominations - Array of denomination objects
  * @returns Object with validation status and total amount
  */
@@ -58,9 +58,9 @@ export function validateDenominations(denominations: Denomination[]): {
 
 /**
  * Calculate expected cashier closing balance
- * 
+ *
  * Formula: Opening Balance + Float Adjustments - Payouts
- * 
+ *
  * @param openingBalance - Starting float amount
  * @param payoutsTotal - Total amount paid out during shift
  * @param floatAdjustmentsTotal - Net float changes (increases - decreases)
@@ -76,10 +76,10 @@ export function calculateExpectedBalance(
 
 /**
  * Check if vault shift can close (BR-01)
- * 
+ *
  * Business Rule: A Vault Manager cannot close their shift if any Cashier shifts
  * are currently "Active" or "Pending Review."
- * 
+ *
  * @param cashierShifts - All cashier shifts associated with this vault shift
  * @returns Object indicating if vault can close and reason if not
  */
@@ -111,17 +111,15 @@ export function canCloseVaultShift(cashierShifts: CashierShift[]): {
       reason += `${pendingReviewCashiers.length} cashier shift(s) are pending review. `;
     }
 
-    reason += 'All cashier shifts must be closed before closing the vault shift.';
+    reason +=
+      'All cashier shifts must be closed before closing the vault shift.';
 
     return {
       canClose: false,
       reason,
-      activeCashiers:
-        activeCashiers.length > 0 ? activeCashiers : undefined,
+      activeCashiers: activeCashiers.length > 0 ? activeCashiers : undefined,
       pendingReviewCashiers:
-        pendingReviewCashiers.length > 0
-          ? pendingReviewCashiers
-          : undefined,
+        pendingReviewCashiers.length > 0 ? pendingReviewCashiers : undefined,
     };
   }
 
@@ -130,7 +128,7 @@ export function canCloseVaultShift(cashierShifts: CashierShift[]): {
 
 /**
  * Calculate total from denominations
- * 
+ *
  * @param denominations - Array of denomination objects
  * @returns Total amount
  */
@@ -138,14 +136,15 @@ export function calculateDenominationTotal(
   denominations: Denomination[]
 ): number {
   return denominations.reduce(
-    (sum, denominationItem) => sum + denominationItem.denomination * denominationItem.quantity,
+    (sum, denominationItem) =>
+      sum + denominationItem.denomination * denominationItem.quantity,
     0
   );
 }
 
 /**
  * Compare two denomination arrays for equality
- * 
+ *
  * @param denom1 - First denomination array
  * @param denom2 - Second denomination array
  * @returns True if denominations match exactly
@@ -157,8 +156,12 @@ export function denominationsMatch(
   if (denom1.length !== denom2.length) return false;
 
   // Sort both arrays by denomination for comparison
-  const sorted1 = [...denom1].sort((first, second) => first.denomination - second.denomination);
-  const sorted2 = [...denom2].sort((first, second) => first.denomination - second.denomination);
+  const sorted1 = [...denom1].sort(
+    (first, second) => first.denomination - second.denomination
+  );
+  const sorted2 = [...denom2].sort(
+    (first, second) => first.denomination - second.denomination
+  );
 
   for (let denomIndex = 0; denomIndex < sorted1.length; denomIndex++) {
     if (
@@ -174,21 +177,27 @@ export function denominationsMatch(
 
 /**
  * Format denomination breakdown for display
- * 
+ *
  * @param denominations - Array of denomination objects
  * @returns Formatted string (e.g., "$100 × 10, $20 × 50")
  */
 export function formatDenominations(denominations: Denomination[]): string {
   return denominations
-    .filter((denom) => denom.quantity > 0)
-    .sort((firstDenom, secondDenom) => secondDenom.denomination - firstDenom.denomination)
-    .map((denominationItem) => `$${denominationItem.denomination} × ${denominationItem.quantity}`)
+    .filter(denom => denom.quantity > 0)
+    .sort(
+      (firstDenom, secondDenom) =>
+        secondDenom.denomination - firstDenom.denomination
+    )
+    .map(
+      denominationItem =>
+        `$${denominationItem.denomination} × ${denominationItem.quantity}`
+    )
     .join(', ');
 }
 
 /**
  * Update denomination inventory (add or subtract)
- * 
+ *
  * @param current - Current denominations
  * @param adjustment - Denominations to add or subtract
  * @param type - 'add' or 'subtract'
@@ -200,20 +209,28 @@ export function updateDenominationInventory(
   type: 'add' | 'subtract'
 ): Denomination[] {
   const currentMap = new Map<number, number>();
-  
+
   // Initialize with current values
-  current.forEach(denominationItem => currentMap.set(denominationItem.denomination, denominationItem.quantity));
+  current.forEach(denominationItem =>
+    currentMap.set(denominationItem.denomination, denominationItem.quantity)
+  );
 
   // Apply adjustments
   adjustment.forEach(adjustmentItem => {
     const currentQty = currentMap.get(adjustmentItem.denomination) || 0;
     if (type === 'add') {
-      currentMap.set(adjustmentItem.denomination, currentQty + adjustmentItem.quantity);
+      currentMap.set(
+        adjustmentItem.denomination,
+        currentQty + adjustmentItem.quantity
+      );
     } else {
-      currentMap.set(adjustmentItem.denomination, Math.max(0, currentQty - adjustmentItem.quantity));
+      currentMap.set(
+        adjustmentItem.denomination,
+        Math.max(0, currentQty - adjustmentItem.quantity)
+      );
     }
   });
-  
+
   // Convert back to array
   return Array.from(currentMap.entries()).map(([denomination, quantity]) => ({
     denomination: denomination as 1 | 5 | 10 | 20 | 50 | 100,

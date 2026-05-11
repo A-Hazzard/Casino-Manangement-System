@@ -10,12 +10,12 @@
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import type { SortKey, User } from '@/lib/types/administration';
 import defaultAvatar from '@/public/defaultAvatar.svg';
@@ -58,8 +58,6 @@ export function AdministrationUserTable({
         )
     ) || false;
 
-
-
   // Helper function to check if a user is a manager, developer, or admin
   const isProtectedRole = (targetUser: User): boolean => {
     const roles = (targetUser.roles || []).map(r => r?.toLowerCase());
@@ -69,7 +67,6 @@ export function AdministrationUserTable({
       roles.includes('manager')
     );
   };
-
 
   // Map column headers to their corresponding sort keys
   const columnConfig = [
@@ -94,7 +91,9 @@ export function AdministrationUserTable({
                 <TableHead
                   key={header}
                   className={`text-left font-semibold text-white ${
-                    isSortable ? 'cursor-pointer select-none hover:bg-buttonActive/80' : ''
+                    isSortable
+                      ? 'cursor-pointer select-none hover:bg-buttonActive/80'
+                      : ''
                   }`}
                   onClick={() => {
                     if (isSortable && sortKey) {
@@ -103,7 +102,8 @@ export function AdministrationUserTable({
                   }}
                 >
                   {header}
-                  {isSortable && sortConfig?.key === sortKey &&
+                  {isSortable &&
+                    sortConfig?.key === sortKey &&
                     (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}
                 </TableHead>
               );
@@ -187,7 +187,9 @@ export function AdministrationUserTable({
               </TableCell>
               <TableCell className="text-left text-gray-600">
                 {user.loginCount !== undefined ? (
-                  <span className="font-semibold text-blue-600">{user.loginCount}</span>
+                  <span className="font-semibold text-blue-600">
+                    {user.loginCount}
+                  </span>
                 ) : (
                   <span className="italic text-gray-400">0</span>
                 )}
@@ -211,7 +213,7 @@ export function AdministrationUserTable({
               </TableCell>
               <TableCell className="text-left">
                 {user.sessionVersion !== undefined ? (
-                  <span className="rounded bg-purple-100 px-2 py-1 text-xs font-mono text-purple-700">
+                  <span className="rounded bg-purple-100 px-2 py-1 font-mono text-xs text-purple-700">
                     v{user.sessionVersion}
                   </span>
                 ) : (
@@ -259,4 +261,3 @@ export function AdministrationUserTable({
     </div>
   );
 }
-

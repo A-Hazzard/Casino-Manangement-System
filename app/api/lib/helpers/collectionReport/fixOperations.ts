@@ -18,6 +18,11 @@ import {
 } from '@/shared/types/reports';
 import { calculateMovement } from '@/lib/utils/movement';
 import { calculateSasMetrics } from './creation';
+
+function toDate(value: string | Date | undefined): Date | undefined {
+  if (!value) return undefined;
+  return typeof value === 'string' ? new Date(value) : value;
+}
 import type { GamingMachine, CollectionReportDocument } from '@shared/types';
 
 /**
@@ -107,7 +112,8 @@ export async function fixReportIssues(
 
     targetReport = {
       _id: foundReport._id.toString(),
-      locationReportId: foundReport.locationReportId ?? foundReport._id.toString(),
+      locationReportId:
+        foundReport.locationReportId ?? foundReport._id.toString(),
       timestamp: foundReport.timestamp,
     };
 
@@ -145,8 +151,15 @@ export async function fixReportIssues(
   // 🚀 OPTIMIZED: Parallel batch processing for much faster execution
   const BATCH_SIZE = 50; // Process 50 collections in parallel
 
-  for (let collectionIndex = 0; collectionIndex < targetCollections.length; collectionIndex += BATCH_SIZE) {
-    const batch = targetCollections.slice(collectionIndex, collectionIndex + BATCH_SIZE);
+  for (
+    let collectionIndex = 0;
+    collectionIndex < targetCollections.length;
+    collectionIndex += BATCH_SIZE
+  ) {
+    const batch = targetCollections.slice(
+      collectionIndex,
+      collectionIndex + BATCH_SIZE
+    );
 
     // Process batch in parallel
     await Promise.all(
@@ -193,10 +206,9 @@ export async function fixReportIssues(
       progress - lastProgressLog >= 10 ||
       fixResults.collectionsProcessed % 500 === 0
     ) {
-      const totalIssues = (Object.values(fixResults.issuesFixed) as number[]).reduce(
-        (sum, value) => sum + value,
-        0
-      );
+      const totalIssues = (
+        Object.values(fixResults.issuesFixed) as number[]
+      ).reduce((sum, value) => sum + value, 0);
       console.log(
         `⏳ ${fixResults.collectionsProcessed}/${totalCollections} (${progress.toFixed(0)}%) | ` +
           `Fixed: ${totalIssues} | Errors: ${fixResults.errors.length}`
@@ -206,10 +218,9 @@ export async function fixReportIssues(
   }
 
   // Final progress for Phase 1
-  const totalIssuesPhase1 = (Object.values(fixResults.issuesFixed) as number[]).reduce(
-    (sum, value) => sum + value,
-    0
-  );
+  const totalIssuesPhase1 = (
+    Object.values(fixResults.issuesFixed) as number[]
+  ).reduce((sum, value) => sum + value, 0);
   console.log(
     `✅ Phase 1 Complete: ${fixResults.collectionsProcessed}/${totalCollections} | ` +
       `Fixed: ${totalIssuesPhase1} | Errors: ${fixResults.errors.length}\n`
@@ -222,8 +233,15 @@ export async function fixReportIssues(
   let lastPhase2Log = 0;
 
   // 🚀 OPTIMIZED: Parallel batch processing for Phase 2
-  for (let collectionIndex = 0; collectionIndex < targetCollections.length; collectionIndex += BATCH_SIZE) {
-    const batch = targetCollections.slice(collectionIndex, collectionIndex + BATCH_SIZE);
+  for (
+    let collectionIndex = 0;
+    collectionIndex < targetCollections.length;
+    collectionIndex += BATCH_SIZE
+  ) {
+    const batch = targetCollections.slice(
+      collectionIndex,
+      collectionIndex + BATCH_SIZE
+    );
 
     // Process batch in parallel
     await Promise.all(
@@ -284,10 +302,9 @@ export async function fixReportIssues(
   console.log(`\n${'='.repeat(80)}`);
   console.log('✅ FIX COMPLETED');
   console.log(`${'='.repeat(80)}`);
-  const totalIssuesFixed = (Object.values(fixResults.issuesFixed) as number[]).reduce(
-    (sum, value) => sum + value,
-    0
-  );
+  const totalIssuesFixed = (
+    Object.values(fixResults.issuesFixed) as number[]
+  ).reduce((sum, value) => sum + value, 0);
   console.log(`\n📊 Summary:`);
   console.log(
     `   Collections Processed: ${fixResults.collectionsProcessed}/${totalCollections}`
@@ -311,9 +328,19 @@ export async function fixReportIssues(
   // Log errors if any
   if (fixResults.errors.length > 0) {
     console.log('⚠️  Errors encountered:');
-    fixResults.errors.slice(0, 5).forEach((errorItem: { collectionId: string; error: string; machineId?: string }) => {
-      console.log(`   - Collection ${errorItem.collectionId}: ${errorItem.error}`);
-    });
+    fixResults.errors
+      .slice(0, 5)
+      .forEach(
+        (errorItem: {
+          collectionId: string;
+          error: string;
+          machineId?: string;
+        }) => {
+          console.log(
+            `   - Collection ${errorItem.collectionId}: ${errorItem.error}`
+          );
+        }
+      );
     if (fixResults.errors.length > 5) {
       console.log(`   ... and ${fixResults.errors.length - 5} more errors`);
     }
@@ -409,30 +436,34 @@ async function fixSasTimesIssues(
     if (!hasSasTimes) {
       needsUpdate = true;
     } else {
-      const sasStartTime = new Date(
-        collection.sasMeters!.sasStartTime as string
-      );
-      const sasEndTime = new Date(collection.sasMeters!.sasEndTime as string);
+      const sasStartTimeVal = collection.sasMeters!.sasStartTime!;
+      const sasEndTimeVal = collection.sasMeters!.sasEndTime!;
+      const sasStartTime = toDate(sasStartTimeVal);
+      const sasEndTime = toDate(sasEndTimeVal);
 
       // Check for inverted times
-      if (sasStartTime >= sasEndTime) {
+      if (sasStartTime && sasEndTime && sasStartTime >= sasEndTime) {
         needsUpdate = true;
       }
 
       // Check if sasStartTime matches expected
-      const startDiff = Math.abs(
-        sasStartTime.getTime() - expectedSasStartTime.getTime()
-      );
-      if (startDiff > 1000) {
-        needsUpdate = true;
+      if (sasStartTime) {
+        const startDiff = Math.abs(
+          sasStartTime.getTime() - expectedSasStartTime.getTime()
+        );
+        if (startDiff > 1000) {
+          needsUpdate = true;
+        }
       }
 
       // Check if sasEndTime matches expected
-      const endDiff = Math.abs(
-        sasEndTime.getTime() - expectedSasEndTime.getTime()
-      );
-      if (endDiff > 1000) {
-        needsUpdate = true;
+      if (sasEndTime) {
+        const endDiff = Math.abs(
+          sasEndTime.getTime() - expectedSasEndTime.getTime()
+        );
+        if (endDiff > 1000) {
+          needsUpdate = true;
+        }
       }
     }
 
@@ -543,7 +574,10 @@ async function fixMovementCalculationIssues(
       fixResults.issuesFixed.movementCalculationsFixed++;
     }
   } catch (error) {
-    console.error('[fixMovementCalculationIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[fixMovementCalculationIssues] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 }
 
@@ -682,7 +716,10 @@ async function fixPrevMetersIssues(
       }
     }
   } catch (error) {
-    console.error('[fixPrevMetersIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[fixPrevMetersIssues] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 }
 
@@ -710,7 +747,9 @@ async function fixMachineCollectionMetersIssues(
     }
 
     // Get the machine's current collectionMeters
-    const machine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
+    const machine = await Machine.findOne({
+      _id: machineId,
+    }).lean<GamingMachine>();
     if (!machine) {
       return; // Skip silently
     }
@@ -745,7 +784,10 @@ async function fixMachineCollectionMetersIssues(
         (fixResults.issuesFixed.machineCollectionMetersFixed || 0) + 1;
     }
   } catch (error) {
-    console.error('[fixMachineCollectionMetersIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[fixMachineCollectionMetersIssues] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 }
 
@@ -792,7 +834,10 @@ async function fixCollectionHistoryIssues(
       }
     }
   } catch (error) {
-    console.error('[fixCollectionHistoryIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[fixCollectionHistoryIssues] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 }
 
@@ -918,7 +963,10 @@ async function fixMachineHistoryIssues(
       }
     );
   } catch (error) {
-    console.error('[fixMachineHistoryIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[fixMachineHistoryIssues] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 }
 
@@ -967,16 +1015,20 @@ async function fixMachineHistoryEntryIssues(
         (prevOut === 0 || prevOut === undefined || prevOut === null)
       ) {
         // Get the expected values from the previous entry
-        const expectedPrevIn = historyIndex > 0 ? history[historyIndex - 1]?.metersIn || 0 : 0;
-        const expectedPrevOut = historyIndex > 0 ? history[historyIndex - 1]?.metersOut || 0 : 0;
+        const expectedPrevIn =
+          historyIndex > 0 ? history[historyIndex - 1]?.metersIn || 0 : 0;
+        const expectedPrevOut =
+          historyIndex > 0 ? history[historyIndex - 1]?.metersOut || 0 : 0;
 
         // Update the specific history entry using array filters
         await Machine.findOneAndUpdate(
           { _id: machineId }, // 🔧 FIX: Use machineId from helper
           {
             $set: {
-              [`collectionMetersHistory.${historyIndex}.prevMetersIn`]: expectedPrevIn,
-              [`collectionMetersHistory.${historyIndex}.prevMetersOut`]: expectedPrevOut,
+              [`collectionMetersHistory.${historyIndex}.prevMetersIn`]:
+                expectedPrevIn,
+              [`collectionMetersHistory.${historyIndex}.prevMetersOut`]:
+                expectedPrevOut,
             },
           }
         );
@@ -985,7 +1037,8 @@ async function fixMachineHistoryEntryIssues(
         const updatedMachine = await Machine.findOne({
           _id: machineId,
         }).lean<MachineWithHistory>();
-        const updatedEntry = updatedMachine?.collectionMetersHistory?.[historyIndex];
+        const updatedEntry =
+          updatedMachine?.collectionMetersHistory?.[historyIndex];
 
         if (
           updatedEntry &&
@@ -997,7 +1050,10 @@ async function fixMachineHistoryEntryIssues(
       }
     }
   } catch (error) {
-    console.error('[fixMachineHistoryEntryIssues] Error:', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[fixMachineHistoryEntryIssues] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 }
 
@@ -1010,11 +1066,15 @@ async function fixMachineHistoryOrphanedAndDuplicates(
   isMachineSpecific: boolean = false
 ) {
   if (!reportIdOrMachineId) {
-    console.error('[fixMachineHistoryOrphanedAndDuplicates] reportIdOrMachineId is required');
+    console.error(
+      '[fixMachineHistoryOrphanedAndDuplicates] reportIdOrMachineId is required'
+    );
     return;
   }
   if (!fixResults) {
-    console.error('[fixMachineHistoryOrphanedAndDuplicates] fixResults is required');
+    console.error(
+      '[fixMachineHistoryOrphanedAndDuplicates] fixResults is required'
+    );
     return;
   }
 
@@ -1043,7 +1103,9 @@ async function fixMachineHistoryOrphanedAndDuplicates(
       }
 
       // Get unique machine IDs
-      const machineIds = [...new Set(collections.map(collection => collection.machineId))];
+      const machineIds = [
+        ...new Set(collections.map(collection => collection.machineId)),
+      ];
       await processMachinesForHistoryFix(
         machineIds,
         collections as unknown as Record<string, unknown>[],
@@ -1051,7 +1113,10 @@ async function fixMachineHistoryOrphanedAndDuplicates(
       );
     }
   } catch (error) {
-    console.error('[fixMachineHistoryOrphanedAndDuplicates] Error:', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[fixMachineHistoryOrphanedAndDuplicates] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     fixResults.errors.push({
       collectionId: 'machine-history-cleanup',
       error: error instanceof Error ? error.message : String(error),
@@ -1083,10 +1148,15 @@ async function processMachinesForHistoryFix(
   try {
     for (const machineId of machineIds) {
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const machine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
+      const machine = await Machine.findOne({
+        _id: machineId,
+      }).lean<GamingMachine>();
       if (!machine) continue;
 
-      const history = (machine.collectionMetersHistory || []) as Record<string, unknown>[];
+      const history = (machine.collectionMetersHistory || []) as Record<
+        string,
+        unknown
+      >[];
 
       if (history.length === 0) continue;
       let cleanedHistory = [...history];
@@ -1099,9 +1169,8 @@ async function processMachinesForHistoryFix(
       }).lean<CollectionData[]>();
 
       // Also check if collection reports exist
-      const { CollectionReport } = await import(
-        '@/app/api/lib/models/collectionReport'
-      );
+      const { CollectionReport } =
+        await import('@/app/api/lib/models/collectionReport');
 
       // Process each history entry to check for orphaned entries
       const validHistoryEntries = [];
@@ -1325,7 +1394,10 @@ async function processMachinesForHistoryFix(
       }
     }
   } catch (error) {
-    console.error('[processMachinesForHistoryFix] Error:', error instanceof Error ? error.message : 'Unknown error');
+    console.error(
+      '[processMachinesForHistoryFix] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
     fixResults.errors.push({
       collectionId: 'machine-history-cleanup',
       error: error instanceof Error ? error.message : String(error),

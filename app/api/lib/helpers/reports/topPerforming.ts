@@ -24,7 +24,9 @@ export async function getTopPerformingMetrics(
   customEndDate?: Date
 ) {
   if (!activeTab || !timePeriod) {
-    console.error('[getTopPerformingMetrics] activeTab and timePeriod are required');
+    console.error(
+      '[getTopPerformingMetrics] activeTab and timePeriod are required'
+    );
     return [];
   }
 
@@ -94,14 +96,15 @@ function aggregateMetersForTop5Locations(
     // Filter by licencee if specified
     ...(licencee
       ? [
-        {
-          $match: {
-            $or: [
-              { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
-            ],
+          {
+            $match: {
+              $or: [
+                { 'locationDetails.rel.licencee': licencee },
+                { 'locationDetails.rel.licencee': licencee },
+              ],
+            },
           },
-        },
-      ]
+        ]
       : []),
     {
       $project: {
@@ -187,14 +190,15 @@ function aggregateMetersForTop5Machines(
     // Filter by licencee if specified
     ...(licencee
       ? [
-        {
-          $match: {
-            $or: [
-              { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
-            ],
+          {
+            $match: {
+              $or: [
+                { 'locationDetails.rel.licencee': licencee },
+                { 'locationDetails.rel.licencee': licencee },
+              ],
+            },
           },
-        },
-      ]
+        ]
       : []),
     {
       $project: {

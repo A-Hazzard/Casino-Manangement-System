@@ -1,8 +1,8 @@
 # Identity & Authentication API (`/api/auth`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -15,9 +15,11 @@ The Identity system manages secure access, session persistence, and multi-factor
 ## 2. Core Endpoints
 
 ### 🔐 `POST /api/auth/login`
+
 Authenticates a user and issues a secure session.
 
 **Steps:**
+
 1. **Connect to database** — Establishes the Mongoose connection.
 2. **Parse & validate request body** — Extracts `identifier`, `password`, and optional `rememberMe` flag.
 3. **Validate identifier format** — Checks if the identifier is an email (`/\S+@\S+\.\S+/`) or a username (min 3 characters). Returns `400` if neither.
@@ -30,9 +32,11 @@ Authenticates a user and issues a secure session.
 ---
 
 ### 🏁 `POST /api/auth/logout`
+
 Terminates a session.
 
 **Steps:**
+
 1. Decode JWT to read the user ID.
 2. **Increment `sessionVersion`** — Invalidates all currently issued tokens for that user across all devices.
 3. **Clear cookies** — Sets `token` and `refreshToken` to empty with `expires: past`.
@@ -40,6 +44,7 @@ Terminates a session.
 ---
 
 ### 🎫 `GET /api/auth/current-user`
+
 Returns the current authenticated user's full profile.
 
 **Returns:** `{ user: { _id, username, emailAddress, roles, assignedLicencees, assignedLocations, multiplier, profile, ... } }`
@@ -47,14 +52,17 @@ Returns the current authenticated user's full profile.
 ---
 
 ### 🔑 `POST /api/auth/refresh`
+
 Issues a new access token using the refresh token cookie.
 
 ---
 
 ### 🔒 `POST /api/auth/totp/setup` / `confirm` / `status` / `reset`
+
 TOTP 2FA management endpoints. Setup returns a QR code URI. Confirm activates 2FA. Reset removes it (admin only).
 
 ### 🔒 `POST /api/auth/totp/recover/cashier` | `/vm`
+
 Recovery flows for cashier and vault-manager roles respectively. Validates recovery code and issues a temporary bypass.
 
 ---
@@ -62,34 +70,38 @@ Recovery flows for cashier and vault-manager roles respectively. Validates recov
 ## 3. Security Architecture
 
 ### 🛡️ JWT Strategy (`jose`)
+
 - **Algorithm**: HS256 with server-side `JWT_SECRET`.
 - **Cookie**: HTTP-only, `SameSite=Lax`. `Secure` flag auto-detected from `x-forwarded-proto` header or request URL protocol — never hardcoded.
 - **Payload**: `{ userId, roles, sessionVersion, multiplier, dbContext, assignedLocations, assignedLicencees, iat, exp }`.
 
 ### 🔄 Session Versioning (Kill Switch)
+
 Every JWT contains a `sessionVersion` field. On each authenticated request, `getUserFromServer()` re-hydrates from the DB and compares. Mismatch = `401 Unauthorized`. The version is **incremented on logout and permission changes**, but **not on login** (to allow multi-device sessions).
 
 ### 🏦 Database Context Validation
+
 The JWT embeds a hash of the current `MONGODB_URI`. The middleware validates this on every request. If the URI has changed (e.g. environment swap), the token is silently rejected and the user is redirected to login without an error — preventing cross-database data leakage.
 
 ### 🔢 Reviewer Multiplier Hydration
+
 `getUserFromServer()` always overwrites the JWT's `multiplier` value with the live DB value (`dbUser.multiplier`). This ensures that multiplier changes made by an admin take effect immediately on the next API call — the user does not need to re-login.
 
 ---
 
 ## 4. Roles (9 Total)
 
-| Role | Level | Key Permissions |
-| :--- | :--- | :--- |
-| `developer` | 1 (highest) | Full access, system config, migrations |
-| `admin` | 2 | User management, licencee management, all reports |
-| `manager` | 3 | Location reports, collection approval, vault oversight |
-| `location admin` | 4 | Location-scoped management |
-| `vault-manager` | 5 | Vault shifts, float approval, cash management |
-| `cashier` | 6 | Cashier shifts, payouts, float requests |
-| `technician` | 7 | Machine configuration, SMIB, firmware |
-| `collector` | 8 | Collection report creation |
-| `reviewer` | 9 (lowest) | Read-only financial views with multiplier-scaled figures |
+| Role             | Level       | Key Permissions                                          |
+| :--------------- | :---------- | :------------------------------------------------------- |
+| `developer`      | 1 (highest) | Full access, system config, migrations                   |
+| `admin`          | 2           | User management, licencee management, all reports        |
+| `manager`        | 3           | Location reports, collection approval, vault oversight   |
+| `location admin` | 4           | Location-scoped management                               |
+| `vault-manager`  | 5           | Vault shifts, float approval, cash management            |
+| `cashier`        | 6           | Cashier shifts, payouts, float requests                  |
+| `technician`     | 7           | Machine configuration, SMIB, firmware                    |
+| `collector`      | 8           | Collection report creation                               |
+| `reviewer`       | 9 (lowest)  | Read-only financial views with multiplier-scaled figures |
 
 ---
 

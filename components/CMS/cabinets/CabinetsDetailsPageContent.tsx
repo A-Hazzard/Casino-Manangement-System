@@ -71,7 +71,6 @@ export default function CabinetsDetailsPageContent() {
     return (
       <PageLayout
         headerProps={{ selectedLicencee, setSelectedLicencee }}
-        
         hideOptions
         hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6"
@@ -93,7 +92,7 @@ export default function CabinetsDetailsPageContent() {
     );
   }
   if (error || !cabinet) return null; // Error handling handled by hook/page skeleton
-  
+
   return (
     <>
       <CabinetsEditCabinetModal onCabinetUpdated={handleCabinetUpdated} />
@@ -101,7 +100,6 @@ export default function CabinetsDetailsPageContent() {
 
       <PageLayout
         headerProps={{ selectedLicencee, setSelectedLicencee }}
-        
         hideOptions
         hideLicenceeFilter
         mainClassName="flex flex-col flex-1 p-4 md:p-6 overflow-x-hidden"
@@ -148,7 +146,7 @@ export default function CabinetsDetailsPageContent() {
             onSaveConfig={async cmd => {
               const relayId = cabinet.relayId || cabinet.smibBoard;
               if (!relayId) return;
-              
+
               // Handle machine control commands
               if (cmd) {
                 const success = await smibHook.saveConfiguration(
@@ -163,32 +161,32 @@ export default function CabinetsDetailsPageContent() {
                 }
                 return;
               }
-              
+
               // Handle section-based configuration updates
               const { toast } = await import('sonner');
-              
+
               if (editingSection === 'network') {
                 try {
                   const networkData = {
                     netStaSSID:
                       smibHook.formData.networkSSID !== 'No Value Provided'
-                      ? smibHook.formData.networkSSID
-                      : undefined,
+                        ? smibHook.formData.networkSSID
+                        : undefined,
                     netStaPwd:
                       smibHook.formData.networkPassword !== 'No Value Provided'
-                      ? smibHook.formData.networkPassword
-                      : undefined,
+                        ? smibHook.formData.networkPassword
+                        : undefined,
                     netStaChan:
                       smibHook.formData.networkChannel !== 'No Value Provided'
-                      ? parseInt(smibHook.formData.networkChannel)
-                      : undefined,
+                        ? parseInt(smibHook.formData.networkChannel)
+                        : undefined,
                   };
-                  
+
                   // If SMIB is online, send MQTT command
                   if (smibHook.isConnectedToMqtt) {
                     await smibHook.updateNetworkConfig(relayId, networkData);
                   }
-                  
+
                   // Always update database
                   await fetch('/api/mqtt/update-machine-config', {
                     // Update to axios for consistency if needed, but fetch is fine for simple POST
@@ -199,18 +197,18 @@ export default function CabinetsDetailsPageContent() {
                       smibConfig: { net: networkData },
                     }),
                   });
-                  
+
                   toast.success(
                     smibHook.isConnectedToMqtt
                       ? 'Network configuration sent to SMIB and saved to database'
                       : 'Network configuration saved to database (SMIB offline)'
                   );
-                  
+
                   // Wait for SMIB to process, then request updated config
                   setTimeout(async () => {
                     await smibHook.requestLiveConfig(relayId, 'net');
                   }, 3000);
-                  
+
                   setEditingSection(null);
                 } catch (error) {
                   console.error('Failed to update network config:', error);
@@ -251,4 +249,3 @@ export default function CabinetsDetailsPageContent() {
     </>
   );
 }
-

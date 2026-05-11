@@ -212,4 +212,3 @@ function isLocalIP(ip: string): boolean {
 
   return privateRanges.some(range => range.test(ip));
 }
-

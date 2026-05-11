@@ -137,7 +137,8 @@ export default function ReportsLocationsSASEvaluation({
 }: ReportsLocationsSASEvaluationProps) {
   const router = useRouter();
   const { formatAmount } = useCurrencyFormat();
-  const formatCurrency = (val: number | null | undefined) => formatAmount(val || 0);
+  const formatCurrency = (val: number | null | undefined) =>
+    formatAmount(val || 0);
   const { activeMetricsFilter } = useDashBoardStore();
 
   // Calculate display totals from selected locations
@@ -372,6 +373,8 @@ export default function ReportsLocationsSASEvaluation({
                   hasNonSasMachines: loc.hasNonSasMachines,
                   isLocalServer: loc.isLocalServer,
                   noSMIBLocation: !loc.hasSasMachines,
+                  fullSMIBs: false,
+                  semiSMIBs: false,
                   hasSmib: !!loc.hasSasMachines,
                   gamesPlayed: loc.gamesPlayed,
                 }))}
@@ -454,7 +457,9 @@ export default function ReportsLocationsSASEvaluation({
                           moneyOut={displayTotals?.moneyOut || 0}
                           moneyIn={displayTotals?.moneyIn || 0}
                           jackpot={displayTotals?.jackpot || 0}
-                          displayValue={formatCurrency(displayTotals?.moneyOut || 0)}
+                          displayValue={formatCurrency(
+                            displayTotals?.moneyOut || 0
+                          )}
                           includeJackpot={anyIncludeJackpot}
                           showInfoIcon={true}
                         />
@@ -1024,4 +1029,3 @@ export default function ReportsLocationsSASEvaluation({
     </div>
   );
 }
-

@@ -51,45 +51,85 @@ export class CabinetsPage {
     this.page = page;
 
     // Page controls
-    this.newCabinetButton = page.getByRole('button', { name: /new cabinet|add cabinet|create machine/i });
+    this.newCabinetButton = page.getByRole('button', {
+      name: /new cabinet|add cabinet|create machine/i,
+    });
     this.tableBody = page.locator('table tbody');
     this.tableRows = page.locator('table tbody tr');
 
     // Column header buttons for sorting
     this.grossColumnHeader = page.getByRole('columnheader', { name: /gross/i });
-    this.moneyInColumnHeader = page.getByRole('columnheader', { name: /money in/i });
+    this.moneyInColumnHeader = page.getByRole('columnheader', {
+      name: /money in/i,
+    });
 
     // ── Create modal ────────────────────────────────────────────────────────────
     this.createModal = page.locator('[role="dialog"]').filter({
       hasText: /new cabinet|create cabinet|add machine/i,
     });
 
-    this.serialNumberInput = this.createModal.locator('input[name="serialNumber"], #serialNumber');
+    this.serialNumberInput = this.createModal.locator(
+      'input[name="serialNumber"], #serialNumber'
+    );
     this.gameInput = this.createModal.locator('input[name="game"], #game');
-    this.gameTypeSelect = this.createModal.locator('select[name="gameType"], #gameType');
-    this.relayIdInput = this.createModal.locator('input[name="relayId"], #relayId');
-    this.locationSelect = this.createModal.locator('select[name="gamingLocation"], #gamingLocation');
-    this.manufacturerSelect = this.createModal.locator('select[name="manufacturer"], #manufacturer');
-    this.customNameInput = this.createModal.locator('input[name="custom.name"], #customName, input[placeholder*="custom name" i]');
-    this.smibBoardInput = this.createModal.locator('input[name="smibBoard"], #smibBoard');
+    this.gameTypeSelect = this.createModal.locator(
+      'select[name="gameType"], #gameType'
+    );
+    this.relayIdInput = this.createModal.locator(
+      'input[name="relayId"], #relayId'
+    );
+    this.locationSelect = this.createModal.locator(
+      'select[name="gamingLocation"], #gamingLocation'
+    );
+    this.manufacturerSelect = this.createModal.locator(
+      'select[name="manufacturer"], #manufacturer'
+    );
+    this.customNameInput = this.createModal.locator(
+      'input[name="custom.name"], #customName, input[placeholder*="custom name" i]'
+    );
+    this.smibBoardInput = this.createModal.locator(
+      'input[name="smibBoard"], #smibBoard'
+    );
 
-    this.submitCreateButton = this.createModal.getByRole('button', { name: /create cabinet|add|save/i });
-    this.cancelCreateButton = this.createModal.getByRole('button', { name: /cancel/i });
+    this.submitCreateButton = this.createModal.getByRole('button', {
+      name: /create cabinet|add|save/i,
+    });
+    this.cancelCreateButton = this.createModal.getByRole('button', {
+      name: /cancel/i,
+    });
 
     // Validation errors
-    this.serialNumberError = this.createModal.locator('#serialNumber-error, [id*="serial"][id*="error"]');
-    this.smibBoardError = this.createModal.locator('#smibBoard-error, [id*="smib"][id*="error"]');
+    this.serialNumberError = this.createModal.locator(
+      '#serialNumber-error, [id*="serial"][id*="error"]'
+    );
+    this.smibBoardError = this.createModal.locator(
+      '#smibBoard-error, [id*="smib"][id*="error"]'
+    );
 
     // ── Edit modal ──────────────────────────────────────────────────────────────
-    this.editModal = page.locator('[role="dialog"]').filter({ hasText: /edit.*cabinet|edit.*machine/i });
-    this.editCustomNameInput = this.editModal.locator('input[name="custom.name"], #customName');
-    this.submitEditButton = this.editModal.getByRole('button', { name: /save|update/i });
-    this.cancelEditButton = this.editModal.getByRole('button', { name: /cancel/i });
+    this.editModal = page
+      .locator('[role="dialog"]')
+      .filter({ hasText: /edit.*cabinet|edit.*machine/i });
+    this.editCustomNameInput = this.editModal.locator(
+      'input[name="custom.name"], #customName'
+    );
+    this.submitEditButton = this.editModal.getByRole('button', {
+      name: /save|update/i,
+    });
+    this.cancelEditButton = this.editModal.getByRole('button', {
+      name: /cancel/i,
+    });
 
     // ── Delete dialog ───────────────────────────────────────────────────────────
-    this.deleteDialog = page.locator('[role="dialog"]').filter({ hasText: /are you absolutely sure/i });
-    this.confirmDeleteButton = this.deleteDialog.getByRole('button', { name: /delete/i });
-    this.cancelDeleteButton = this.deleteDialog.getByRole('button', { name: /cancel/i });
+    this.deleteDialog = page
+      .locator('[role="dialog"]')
+      .filter({ hasText: /are you absolutely sure/i });
+    this.confirmDeleteButton = this.deleteDialog.getByRole('button', {
+      name: /delete/i,
+    });
+    this.cancelDeleteButton = this.deleteDialog.getByRole('button', {
+      name: /cancel/i,
+    });
   }
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
@@ -107,17 +147,23 @@ export class CabinetsPage {
 
   async clickEdit(rowIndex: number) {
     const row = this.tableRows.nth(rowIndex);
-    await row.locator('button[aria-label*="edit" i], img[alt*="edit" i]').click();
+    await row
+      .locator('button[aria-label*="edit" i], img[alt*="edit" i]')
+      .click();
   }
 
   async clickDelete(rowIndex: number) {
     const row = this.tableRows.nth(rowIndex);
-    await row.locator('button[aria-label*="delete" i], img[alt*="delete" i]').click();
+    await row
+      .locator('button[aria-label*="delete" i], img[alt*="delete" i]')
+      .click();
   }
 
   async clickView(rowIndex: number) {
     const row = this.tableRows.nth(rowIndex);
-    await row.locator('button[aria-label*="view" i], [aria-label*="eye" i]').click();
+    await row
+      .locator('button[aria-label*="view" i], [aria-label*="eye" i]')
+      .click();
   }
 
   // ─── Create modal actions ───────────────────────────────────────────────────
@@ -141,8 +187,10 @@ export class CabinetsPage {
     if (data.game) await this.gameInput.fill(data.game);
     if (data.gameType) await this.gameTypeSelect.selectOption(data.gameType);
     if (data.relayId) await this.relayIdInput.fill(data.relayId);
-    if (data.location) await this.locationSelect.selectOption({ label: data.location });
-    if (data.manufacturer) await this.manufacturerSelect.selectOption({ label: data.manufacturer });
+    if (data.location)
+      await this.locationSelect.selectOption({ label: data.location });
+    if (data.manufacturer)
+      await this.manufacturerSelect.selectOption({ label: data.manufacturer });
     if (data.customName) await this.customNameInput.fill(data.customName);
     if (data.smibBoard) await this.smibBoardInput.fill(data.smibBoard);
   }
@@ -206,12 +254,16 @@ export class CabinetsPage {
 
   async expectSerialNumberValidationError() {
     await expect(this.serialNumberError).toBeVisible();
-    await expect(this.serialNumberError).toContainText(/3 characters|required/i);
+    await expect(this.serialNumberError).toContainText(
+      /3 characters|required/i
+    );
   }
 
   async expectSmibValidationError() {
     await expect(this.smibBoardError).toBeVisible();
-    await expect(this.smibBoardError).toContainText(/12 characters|hexadecimal/i);
+    await expect(this.smibBoardError).toContainText(
+      /12 characters|hexadecimal/i
+    );
   }
 
   async expectCreateModalVisible() {

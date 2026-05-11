@@ -40,7 +40,9 @@ export const CabinetsActions = ({
 
   const canCreateCabinet = useMemo(() => {
     const roles = user?.roles ?? [];
-    return ['developer', 'admin', 'technician'].some(role => roles.includes(role));
+    return ['developer', 'admin', 'technician'].some(role =>
+      roles.includes(role)
+    );
   }, [user]);
 
   const handleNewCabinet = useCallback(() => {
@@ -67,10 +69,10 @@ export const CabinetsActions = ({
     if (activeSection === 'cabinets') {
       if (!canCreateCabinet) return null;
       return (
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center gap-2">
           <Button
             onClick={handleNewCabinet}
-            className="bg-button hover:bg-buttonActive text-white rounded-md items-center gap-1 flex-shrink-0 px-2 py-1 text-xs font-medium sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+            className="flex-shrink-0 items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:bg-buttonActive sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
             title="Create new cabinet"
           >
             <PlusCircle className="h-4 w-4" />
@@ -83,13 +85,13 @@ export const CabinetsActions = ({
 
     if (activeSection === 'movement') {
       return (
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center gap-2">
           {loading ? (
             <ActionButtonSkeleton width="w-32 sm:w-48" showIcon={true} />
           ) : (
             <Button
               onClick={handleNewMovementRequest}
-              className="bg-button hover:bg-buttonActive text-white rounded-md items-center gap-1 flex-shrink-0 px-2 py-1 text-xs font-medium sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+              className="flex-shrink-0 items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:bg-buttonActive sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
             >
               <PlusCircle className="h-4 w-4" />
               <span className="hidden sm:inline">Create Movement Request</span>
@@ -103,10 +105,5 @@ export const CabinetsActions = ({
     return null;
   };
 
-  return (
-    <>
-      {renderActions()}
-    </>
-  );
+  return <>{renderActions()}</>;
 };
-

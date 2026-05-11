@@ -86,11 +86,13 @@ export default function FeedbackMobileCards({
                 variant="outline"
                 className={STATUS_COLORS[item.status] || ''}
               >
-                {item.status.charAt(0).toUpperCase() +
-                  item.status.slice(1)}
+                {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
               </Badge>
               {item.archived && (
-                <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
+                <Badge
+                  variant="outline"
+                  className="border-gray-200 bg-gray-100 text-gray-800"
+                >
                   Archived
                 </Badge>
               )}
@@ -98,10 +100,16 @@ export default function FeedbackMobileCards({
             {(item.firstName || item.lastName || item.licenceeName) && (
               <div className="mb-2 space-y-1 text-xs text-gray-500">
                 {(item.firstName || item.lastName) && (
-                  <p><span className="font-medium text-gray-600">Name:</span> {[item.firstName, item.lastName].filter(Boolean).join(' ')}</p>
+                  <p>
+                    <span className="font-medium text-gray-600">Name:</span>{' '}
+                    {[item.firstName, item.lastName].filter(Boolean).join(' ')}
+                  </p>
                 )}
                 {item.licenceeName && (
-                  <p className="break-words"><span className="font-medium text-gray-600">Licencee:</span> {item.licenceeName}</p>
+                  <p className="break-words">
+                    <span className="font-medium text-gray-600">Licencee:</span>{' '}
+                    {item.licenceeName}
+                  </p>
                 )}
               </div>
             )}

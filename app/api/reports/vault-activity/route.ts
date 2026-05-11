@@ -11,6 +11,11 @@
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface VaultActivityQuery {
@@ -31,12 +36,23 @@ interface VaultActivityQuery {
  * @param {string} endDate - ISO date for range end
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/reports/vault-activity';
+  const user = extractUserFromRequest(request);
+
   try {
     // ============================================================================
     // STEP 1: Authentication & Authorization
     // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/reports/vault-activity',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -117,6 +133,16 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 7: Return success response
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/reports/vault-activity',
+      activities.length,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: true,
       activities,
@@ -124,7 +150,15 @@ export async function GET(request: NextRequest) {
       filters: query,
     });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/reports/vault-activity',
+      errorMessage,
+      user
+    );
     console.error('Error fetching vault activity reports:', errorMessage);
     return NextResponse.json(
       { success: false, error: errorMessage },

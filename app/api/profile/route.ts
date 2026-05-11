@@ -52,9 +52,16 @@ import {
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import type { ProfileUpdatePayload } from '@/shared/types/users';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 export async function PUT(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'PUT /api/profile';
+  const logUser = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -67,9 +74,18 @@ export async function PUT(request: NextRequest) {
     // ============================================================================
     const userId = await getUserIdFromServer();
     if (!userId) {
-      console.warn('[Profile API] Unauthorized: getUserIdFromServer returned null');
+      logRouteError(
+        functionName,
+        'PUT',
+        '/api/profile',
+        'Unauthorized',
+        logUser
+      );
       return NextResponse.json(
-        { success: false, message: 'Unauthorized - Invalid or missing session' },
+        {
+          success: false,
+          message: 'Unauthorized - Invalid or missing session',
+        },
         { status: 401 }
       );
     }
@@ -129,8 +145,14 @@ export async function PUT(request: NextRequest) {
     }
 
     // Only enforce mandatory gender if it's being sent
-    if (body.gender !== undefined && body.gender !== '' && (!gender || !validateOptionalGender(gender))) {
-      errors.gender = !gender ? 'Gender is required.' : 'Select a valid gender option.';
+    if (
+      body.gender !== undefined &&
+      body.gender !== '' &&
+      (!gender || !validateOptionalGender(gender))
+    ) {
+      errors.gender = !gender
+        ? 'Gender is required.'
+        : 'Select a valid gender option.';
     }
 
     if (emailAddress && !validateEmail(emailAddress)) {
@@ -138,7 +160,7 @@ export async function PUT(request: NextRequest) {
     } else if (
       emailAddress &&
       (containsEmailPattern(username) ||
-      emailAddress.toLowerCase() === username.toLowerCase())
+        emailAddress.toLowerCase() === username.toLowerCase())
     ) {
       errors.emailAddress =
         'Email address must differ from username and other identifiers.';
@@ -148,7 +170,10 @@ export async function PUT(request: NextRequest) {
     if (phone && !validatePhoneNumber(phone)) {
       errors.phone =
         'Provide a valid phone number (digits, spaces, hyphen, parentheses, optional leading +).';
-    } else if (phone && normalizePhoneNumber(phone) === normalizePhoneNumber(username)) {
+    } else if (
+      phone &&
+      normalizePhoneNumber(phone) === normalizePhoneNumber(username)
+    ) {
       errors.phone = 'Phone number cannot match the username.';
     }
 
@@ -185,8 +210,6 @@ export async function PUT(request: NextRequest) {
         }
       }
     }
-
-
 
     const normalizeIdArray = (value: unknown): string[] | undefined => {
       if (!Array.isArray(value)) return undefined;
@@ -237,7 +260,9 @@ export async function PUT(request: NextRequest) {
         String(role).toLowerCase()
       ) || [];
     const canManageAssignments =
-      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
+      userRoles.includes('admin') ||
+      userRoles.includes('developer') ||
+      userRoles.includes('owner');
 
     // DO NOT require locations or licencees for admin and developer roles
     if (!canManageAssignments) {
@@ -245,12 +270,14 @@ export async function PUT(request: NextRequest) {
       // This allows users to update other fields without changing licencees/locations
       if (requestedLicenceeIds !== undefined) {
         if (requestedLicenceeIds.length === 0) {
-          errors.licenceeIds = 'Please contact your Administrator or Tech Support to be assigned to a licencee.';
+          errors.licenceeIds =
+            'Please contact your Administrator or Tech Support to be assigned to a licencee.';
         }
       }
       if (requestedLocationIds !== undefined) {
         if (requestedLocationIds.length === 0) {
-          errors.locationIds = 'Please contact your Administrator or Tech Support to be assigned to a location.';
+          errors.locationIds =
+            'Please contact your Administrator or Tech Support to be assigned to a location.';
         }
       }
     }
@@ -305,7 +332,10 @@ export async function PUT(request: NextRequest) {
     // against their hashed password so they can't bypass with any random input.
     // ============================================================================
     if (passwordChangeRequested && currentPassword) {
-      const matches = await comparePassword(currentPassword, user.password || '');
+      const matches = await comparePassword(
+        currentPassword,
+        user.password || ''
+      );
       if (!matches) {
         return NextResponse.json(
           {
@@ -322,7 +352,11 @@ export async function PUT(request: NextRequest) {
           { status: 400 }
         );
       }
-    } else if (passwordChangeRequested && !isTemporaryPassword && !currentPassword) {
+    } else if (
+      passwordChangeRequested &&
+      !isTemporaryPassword &&
+      !currentPassword
+    ) {
       // Non-cashier must provide current password
       return NextResponse.json(
         {
@@ -366,8 +400,6 @@ export async function PUT(request: NextRequest) {
       unsetMap['profile.gender'] = '';
     }
 
-
-
     const updateOperation: Record<string, unknown> = {
       $set: updateSet,
       $unset: unsetMap,
@@ -386,7 +418,10 @@ export async function PUT(request: NextRequest) {
           {
             success: false,
             message: 'New password cannot be the same as current password.',
-            errors: { newPassword: 'New password cannot be the same as current password.' },
+            errors: {
+              newPassword:
+                'New password cannot be the same as current password.',
+            },
           },
           { status: 400 }
         );
@@ -399,8 +434,12 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json(
               {
                 success: false,
-                message: 'New password cannot match any of your last 2 passwords.',
-                errors: { newPassword: 'New password cannot match any of your last 2 passwords.' },
+                message:
+                  'New password cannot match any of your last 2 passwords.',
+                errors: {
+                  newPassword:
+                    'New password cannot match any of your last 2 passwords.',
+                },
               },
               { status: 400 }
             );
@@ -421,7 +460,9 @@ export async function PUT(request: NextRequest) {
       if (oldPasswordHash) {
         previousPasswords.push(oldPasswordHash);
       }
-      updateSet.previousPasswords = Array.from(new Set(previousPasswords)).slice(-2);
+      updateSet.previousPasswords = Array.from(
+        new Set(previousPasswords)
+      ).slice(-2);
 
       if (!isTemporaryPassword) {
         incrementSession = true;
@@ -437,8 +478,6 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-
-
 
     // Update licencees if user can manage assignments and licenceeIds are provided
     if (canManageAssignments && requestedLicenceeIds !== undefined) {
@@ -485,20 +524,16 @@ export async function PUT(request: NextRequest) {
     // ============================================================================
     // STEP 10: Return updated user with validation status
     // ============================================================================
-    const { invalidFields, reasons } = getInvalidProfileFields(
-      updatedUser,
-      { rawPassword: newPassword || undefined }
-    );
+    const { invalidFields, reasons } = getInvalidProfileFields(updatedUser, {
+      rawPassword: newPassword || undefined,
+    });
     const requiresProfileUpdate = hasInvalidProfileFields(invalidFields);
 
     const updatedObject = updatedUser.toObject();
     delete updatedObject.password;
 
     const duration = Date.now() - startTime;
-    console.log(`[Profile PUT] User ${userId} profile updated — passwordChanged: ${passwordChangeRequested}, sessionIncremented: ${incrementSession}, ${duration}ms`);
-    if (duration > 2000) {
-      console.warn(`[Profile PUT] Slow response — ${duration}ms`);
-    }
+    logRouteUpdate(functionName, 'PUT', '/api/profile', 1, user, duration);
 
     // Fire-and-forget activity log — never fail the response for a logging error
     logActivity({
@@ -514,13 +549,41 @@ export async function PUT(request: NextRequest) {
         resourceName: user.username || String(userId),
         // Log only the non-sensitive changed fields (never log password values)
         changes: [
-          user.username !== username ? { field: 'username', oldValue: user.username, newValue: username } : null,
-          user.emailAddress !== emailAddress ? { field: 'emailAddress', oldValue: user.emailAddress, newValue: emailAddress } : null,
-          passwordChangeRequested ? { field: 'password', oldValue: '[redacted]', newValue: '[redacted]' } : null,
-          incrementSession ? { field: 'sessionVersion', oldValue: 'previous', newValue: 'incremented' } : null,
+          user.username !== username
+            ? { field: 'username', oldValue: user.username, newValue: username }
+            : null,
+          user.emailAddress !== emailAddress
+            ? {
+                field: 'emailAddress',
+                oldValue: user.emailAddress,
+                newValue: emailAddress,
+              }
+            : null,
+          passwordChangeRequested
+            ? {
+                field: 'password',
+                oldValue: '[redacted]',
+                newValue: '[redacted]',
+              }
+            : null,
+          incrementSession
+            ? {
+                field: 'sessionVersion',
+                oldValue: 'previous',
+                newValue: 'incremented',
+              }
+            : null,
         ].filter(Boolean),
       },
-    }).catch(err => console.error('[Profile PUT] Activity log failed:', err));
+    }).catch(err =>
+      logRouteError(
+        functionName,
+        'PUT',
+        '/api/profile',
+        err instanceof Error ? err : String(err),
+        user
+      )
+    );
 
     return NextResponse.json({
       success: true,
@@ -547,14 +610,12 @@ export async function PUT(request: NextRequest) {
       sessionVersionIncremented: incrementSession,
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to update profile';
-    console.error(`[Profile API] PUT error after ${duration}ms:`, errorMessage);
+    logRouteError(functionName, 'PUT', '/api/profile', errorMessage, logUser);
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }
     );
   }
 }
-

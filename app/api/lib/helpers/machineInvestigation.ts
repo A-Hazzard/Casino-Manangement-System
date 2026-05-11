@@ -104,7 +104,9 @@ export async function investigateSpecificMachine(machineId: string): Promise<{
 
   // Get machine document
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const machine = await Machine.findOne({ _id: machineId }).lean<MachineWithHistory | null>();
+  const machine = await Machine.findOne({
+    _id: machineId,
+  }).lean<MachineWithHistory | null>();
   if (!machine) {
     throw new Error('Machine not found');
   }
@@ -136,9 +138,7 @@ export async function investigateSpecificMachine(machineId: string): Promise<{
     success: true,
     machineId: machineId,
     machineSerialNumber:
-      machine.serialNumber ||
-      machine.origSerialNumber ||
-      machine.custom?.name,
+      machine.serialNumber || machine.origSerialNumber || machine.custom?.name,
     totalCollections: collections.length,
     totalHistoryEntries: (machine.collectionMetersHistory || []).length,
     historyAnalysis: historyAnalysis,
@@ -147,10 +147,14 @@ export async function investigateSpecificMachine(machineId: string): Promise<{
     summary: {
       totalIssues: issues.length,
       fieldNameIssues: issues.filter((historyEntry: HistoryAnalysisEntry) =>
-        historyEntry.issues.some((issue: string) => issue.includes('prevIn/prevOut'))
+        historyEntry.issues.some((issue: string) =>
+          issue.includes('prevIn/prevOut')
+        )
       ).length,
       prevMetersIssues: issues.filter((historyEntry: HistoryAnalysisEntry) =>
-        historyEntry.issues.some((issue: string) => issue.includes('prevMeters'))
+        historyEntry.issues.some((issue: string) =>
+          issue.includes('prevMeters')
+        )
       ).length,
     },
   };
@@ -290,7 +294,9 @@ async function investigateMachineInternal(
 ): Promise<MachineInvestigationResult> {
   // Get machine document
   // CRITICAL: Use findOne with _id instead of findById (repo rule)
-  const machine = await Machine.findOne({ _id: machineId }).lean<MachineWithHistory | null>();
+  const machine = await Machine.findOne({
+    _id: machineId,
+  }).lean<MachineWithHistory | null>();
   if (!machine) {
     throw new Error('Machine not found');
   }
@@ -303,9 +309,7 @@ async function investigateMachineInternal(
   return {
     machineId: machineId,
     machineSerialNumber:
-      machine.serialNumber ||
-      machine.origSerialNumber ||
-      machine.custom?.name,
+      machine.serialNumber || machine.origSerialNumber || machine.custom?.name,
     totalCollections: collections.length,
     totalHistoryEntries: (machine.collectionMetersHistory || []).length,
     historyAnalysis: historyAnalysis,
@@ -313,10 +317,14 @@ async function investigateMachineInternal(
     summary: {
       totalIssues: issues.length,
       fieldNameIssues: issues.filter((historyEntry: HistoryAnalysisEntry) =>
-        historyEntry.issues.some((issue: string) => issue.includes('prevIn/prevOut'))
+        historyEntry.issues.some((issue: string) =>
+          issue.includes('prevIn/prevOut')
+        )
       ).length,
       prevMetersIssues: issues.filter((historyEntry: HistoryAnalysisEntry) =>
-        historyEntry.issues.some((issue: string) => issue.includes('prevMeters'))
+        historyEntry.issues.some((issue: string) =>
+          issue.includes('prevMeters')
+        )
       ).length,
     },
   };
@@ -475,7 +483,3 @@ function matchCollectionsWithHistory(
     };
   });
 }
-
-
-
-

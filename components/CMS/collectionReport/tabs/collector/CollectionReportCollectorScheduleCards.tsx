@@ -12,7 +12,10 @@
  * - Responsive design (mobile only)
  */
 import { Button } from '@/components/shared/ui/button';
-import type { CollectionReportCollectorScheduleCardsProps, CollectorSchedule } from '@/lib/types/components';
+import type {
+  CollectionReportCollectorScheduleCardsProps,
+  CollectorSchedule,
+} from '@/lib/types/components';
 import { formatDateString } from '@/lib/utils/date';
 import { Pencil, Trash2 } from 'lucide-react';
 
@@ -45,7 +48,8 @@ export default function CollectionReportCollectorScheduleCards({
         const startTime = new Date(schedule.startTime);
         const endTime = new Date(schedule.endTime);
         const duration = (
-          (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)
+          (endTime.getTime() - startTime.getTime()) /
+          (1000 * 60 * 60)
         ).toFixed(1);
 
         return (
@@ -62,7 +66,8 @@ export default function CollectionReportCollectorScheduleCards({
                 <div className="flex items-center gap-1.5">
                   <span
                     className={`flex-shrink-0 rounded-full px-2 py-0.5 text-xs font-medium capitalize sm:px-2.5 sm:py-1 ${
-                      schedule.status === 'scheduled' || schedule.status === 'in-progress'
+                      schedule.status === 'scheduled' ||
+                      schedule.status === 'in-progress'
                         ? 'bg-yellow-100 text-yellow-800'
                         : schedule.status === 'completed'
                           ? 'bg-green-100 text-green-800'
@@ -101,23 +106,33 @@ export default function CollectionReportCollectorScheduleCards({
             <div className="px-3 py-3 sm:px-4 sm:py-4">
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div>
-                  <div className="text-xs font-medium text-gray-500">Collector</div>
+                  <div className="text-xs font-medium text-gray-500">
+                    Collector
+                  </div>
                   <div className="mt-0.5 truncate text-sm font-medium text-gray-900 sm:mt-1">
                     {schedule.collectorName || schedule.collector || 'Unknown'}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-gray-500">Duration</div>
-                  <div className="mt-0.5 text-sm text-gray-900 sm:mt-1">{duration} hours</div>
+                  <div className="text-xs font-medium text-gray-500">
+                    Duration
+                  </div>
+                  <div className="mt-0.5 text-sm text-gray-900 sm:mt-1">
+                    {duration} hours
+                  </div>
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-gray-500">Start Time</div>
+                  <div className="text-xs font-medium text-gray-500">
+                    Start Time
+                  </div>
                   <div className="mt-0.5 text-xs text-gray-900 sm:mt-1 sm:text-sm">
                     {formatDateString(schedule.startTime)}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-gray-500">End Time</div>
+                  <div className="text-xs font-medium text-gray-500">
+                    End Time
+                  </div>
                   <div className="mt-0.5 text-xs text-gray-900 sm:mt-1 sm:text-sm">
                     {formatDateString(schedule.endTime)}
                   </div>

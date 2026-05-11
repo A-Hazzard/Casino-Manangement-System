@@ -33,35 +33,37 @@ export default function UnauthorizedError({
 
   const getDefaultMessage = () => {
     if (message) return message;
-    
-    const resourceName = resourceType === 'cabinet' 
-      ? 'this cabinet' 
-      : resourceType === 'machine'
-      ? 'this machine'
-      : resourceType === 'location'
-      ? 'this location'
-      : resourceType === 'report'
-      ? 'this collection report'
-      : 'this resource';
-    
+
+    const resourceName =
+      resourceType === 'cabinet'
+        ? 'this cabinet'
+        : resourceType === 'machine'
+          ? 'this machine'
+          : resourceType === 'location'
+            ? 'this location'
+            : resourceType === 'report'
+              ? 'this collection report'
+              : 'this resource';
+
     return `You are not authorized to view details for ${resourceName}.`;
   };
 
   const getResourceName = () => {
-    return resourceType === 'cabinet' 
-      ? 'cabinet' 
+    return resourceType === 'cabinet'
+      ? 'cabinet'
       : resourceType === 'machine'
-      ? 'machine'
-      : resourceType === 'location'
-      ? 'location'
-      : resourceType === 'report'
-      ? 'collection report'
-      : 'resource';
+        ? 'machine'
+        : resourceType === 'location'
+          ? 'location'
+          : resourceType === 'report'
+            ? 'collection report'
+            : 'resource';
   };
 
   const getRedirectPath = useCallback(() => {
     if (customBackHref) return customBackHref;
-    if (resourceType === 'cabinet' || resourceType === 'machine') return '/cabinets';
+    if (resourceType === 'cabinet' || resourceType === 'machine')
+      return '/cabinets';
     if (resourceType === 'location') return '/locations';
     if (resourceType === 'report') return '/collection-report';
     return '/';
@@ -145,7 +147,8 @@ export default function UnauthorizedError({
                 Need access to this {getResourceName()}?
               </p>
               <p className="text-sm text-gray-700">
-                Please contact your manager or customer support if you would like to have access to this {getResourceName()}.
+                Please contact your manager or customer support if you would
+                like to have access to this {getResourceName()}.
               </p>
             </div>
           </div>
@@ -191,5 +194,3 @@ export default function UnauthorizedError({
     </div>
   );
 }
-
-

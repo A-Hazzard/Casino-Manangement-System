@@ -10,7 +10,7 @@ import { RefObject } from 'react';
 import { CSSProperties } from 'react';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
-import {  useLayoutEffect, useState  } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { type GamesPerformanceData } from '@/shared/types/reports';
 
@@ -44,15 +44,17 @@ export function ReportsGamesRevenueTooltip({
   chartContainerRef,
 }: ReportsGamesRevenueTooltipProps) {
   const { displayCurrency } = useCurrencyFormat();
-  const formatCurrency = (value: number | null | undefined) => formatCurrencyWithCodeString(value, displayCurrency);
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(
-    null
-  );
+  const formatCurrency = (value: number | null | undefined) =>
+    formatCurrencyWithCodeString(value, displayCurrency);
+  const [position, setPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   useLayoutEffect(() => {
     if (active && coordinate && chartContainerRef?.current) {
       const rect = chartContainerRef.current.getBoundingClientRect();
-      
+
       const left = rect.left + (coordinate.x || 0);
       const top = rect.top + (coordinate.y || 0);
 
@@ -155,4 +157,3 @@ export function ReportsGamesRevenueTooltip({
 
   return createPortal(content, document.body);
 }
-

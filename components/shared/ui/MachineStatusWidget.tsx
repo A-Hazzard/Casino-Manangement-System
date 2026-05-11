@@ -44,7 +44,7 @@ export default function MachineStatusWidget({
   onlineLabel = 'Online',
   offlineLabel = 'Offline',
 }: MachineStatusWidgetProps) {
-  const total = totalCount ?? (onlineCount + offlineCount);
+  const total = totalCount ?? onlineCount + offlineCount;
   if (isLoading) {
     return (
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 bg-white px-3 py-2.5 sm:gap-3 sm:px-4">
@@ -53,7 +53,9 @@ export default function MachineStatusWidget({
         <div className="flex gap-1 sm:gap-2">
           <Skeleton className="h-5 w-12 flex-shrink-0 rounded-full sm:w-20" />
           <Skeleton className="h-5 w-12 flex-shrink-0 rounded-full sm:w-20" />
-          {showMembership && <Skeleton className="h-5 w-16 flex-shrink-0 rounded-full sm:w-24" />}
+          {showMembership && (
+            <Skeleton className="h-5 w-16 flex-shrink-0 rounded-full sm:w-24" />
+          )}
         </div>
       </div>
     );
@@ -78,10 +80,9 @@ export default function MachineStatusWidget({
         <span className="flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-green-50 px-1.5 py-1 text-xs text-green-700 sm:px-2">
           <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-green-500 sm:h-2 sm:w-2" />
           <span className="truncate">
-            {showTotal 
+            {showTotal
               ? `${onlineCount.toLocaleString()}/${total.toLocaleString()} ${onlineLabel}`
-              : `${onlineCount.toLocaleString()} ${onlineLabel}`
-            }
+              : `${onlineCount.toLocaleString()} ${onlineLabel}`}
           </span>
         </span>
         <span className="flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-red-50 px-1.5 py-1 text-xs text-red-700 sm:px-2">
@@ -94,7 +95,8 @@ export default function MachineStatusWidget({
           <span className="flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-blue-50 px-1.5 py-1 text-xs text-blue-700 sm:px-2">
             <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-500 sm:h-2 sm:w-2" />
             <span className="truncate">
-              {membershipCount.toLocaleString()} {membershipCount === 1 ? 'Member' : 'Members'}
+              {membershipCount.toLocaleString()}{' '}
+              {membershipCount === 1 ? 'Member' : 'Members'}
             </span>
           </span>
         )}
@@ -102,4 +104,3 @@ export default function MachineStatusWidget({
     </div>
   );
 }
-

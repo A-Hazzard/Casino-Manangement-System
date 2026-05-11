@@ -54,7 +54,9 @@ export async function generateAccessToken(
   payload: Omit<JwtPayload, 'iat' | 'exp' | 'jti'>
 ): Promise<string> {
   if (!payload || typeof payload !== 'object') {
-    console.error('[generateAccessToken] payload is required and must be an object');
+    console.error(
+      '[generateAccessToken] payload is required and must be an object'
+    );
     throw new Error('Invalid parameters provided');
   }
 
@@ -90,8 +92,15 @@ export async function generateRefreshToken(
   userId: string,
   sessionId: string
 ): Promise<string> {
-  if (!userId || typeof userId !== 'string' || !sessionId || typeof sessionId !== 'string') {
-    console.error('[generateRefreshToken] userId (string) and sessionId (string) are required');
+  if (
+    !userId ||
+    typeof userId !== 'string' ||
+    !sessionId ||
+    typeof sessionId !== 'string'
+  ) {
+    console.error(
+      '[generateRefreshToken] userId (string) and sessionId (string) are required'
+    );
     throw new Error('Invalid parameters provided');
   }
 
@@ -253,4 +262,3 @@ export function getAuthHeaders(): Record<string, string> {
 
   return {};
 }
-

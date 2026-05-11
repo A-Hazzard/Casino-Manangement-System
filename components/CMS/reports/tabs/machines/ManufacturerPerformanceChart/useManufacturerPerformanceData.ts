@@ -1,6 +1,6 @@
 /**
  * Custom hook for Manufacturer Performance data processing
- * 
+ *
  * Handles data aggregation, filtering, and transformation for the manufacturer performance chart
  */
 
@@ -40,7 +40,8 @@ export function useManufacturerPerformanceData({
       ) {
         const groupByManufacturer = filteredMachines
           .filter(
-            machine => machine.manufacturer && machine.manufacturer.trim() !== ''
+            machine =>
+              machine.manufacturer && machine.manufacturer.trim() !== ''
           )
           .reduce(
             (acc, machine) => {
@@ -54,44 +55,50 @@ export function useManufacturerPerformanceData({
             {} as Record<string, typeof allMachines>
           );
 
-        const manufacturerData = Object.keys(groupByManufacturer).map(manufacturer => {
-          const machines = groupByManufacturer[manufacturer];
-          const totals = machines.reduce(
-            (acc, machine) => ({
-              coinIn: acc.coinIn + (machine.coinIn || 0),
-              netWin: acc.netWin + (machine.netWin || 0),
-              drop: acc.drop + (machine.drop || 0),
-              gross: acc.gross + (machine.gross || 0),
-              cancelledCredits:
-                acc.cancelledCredits + (machine.cancelledCredits || 0),
-              gamesPlayed: acc.gamesPlayed + (machine.gamesPlayed || 0),
-            }),
-            {
-              coinIn: 0,
-              netWin: 0,
-              drop: 0,
-              gross: 0,
-              cancelledCredits: 0,
-              gamesPlayed: 0,
-            }
-          );
+        const manufacturerData = Object.keys(groupByManufacturer).map(
+          manufacturer => {
+            const machines = groupByManufacturer[manufacturer];
+            const totals = machines.reduce(
+              (acc, machine) => ({
+                coinIn: acc.coinIn + (machine.coinIn || 0),
+                netWin: acc.netWin + (machine.netWin || 0),
+                drop: acc.drop + (machine.drop || 0),
+                gross: acc.gross + (machine.gross || 0),
+                cancelledCredits:
+                  acc.cancelledCredits + (machine.cancelledCredits || 0),
+                gamesPlayed: acc.gamesPlayed + (machine.gamesPlayed || 0),
+              }),
+              {
+                coinIn: 0,
+                netWin: 0,
+                drop: 0,
+                gross: 0,
+                cancelledCredits: 0,
+                gamesPlayed: 0,
+              }
+            );
 
-          return {
-            manufacturer,
-            totalDrop: totals.drop,
-          };
-        });
+            return {
+              manufacturer,
+              totalDrop: totals.drop,
+            };
+          }
+        );
 
         manufacturerData.sort((a, b) => b.totalDrop - a.totalDrop);
 
         const selectedManufacturerNames = new Set<string>();
 
         if (selectedFilters.includes('top-5-manufacturers')) {
-          manufacturerData.slice(0, 5).forEach(m => selectedManufacturerNames.add(m.manufacturer));
+          manufacturerData
+            .slice(0, 5)
+            .forEach(m => selectedManufacturerNames.add(m.manufacturer));
         }
 
         if (selectedFilters.includes('bottom-5-manufacturers')) {
-          manufacturerData.slice(-5).forEach(m => selectedManufacturerNames.add(m.manufacturer));
+          manufacturerData
+            .slice(-5)
+            .forEach(m => selectedManufacturerNames.add(m.manufacturer));
         }
 
         filteredMachines = filteredMachines.filter(m =>
@@ -102,7 +109,9 @@ export function useManufacturerPerformanceData({
 
     // Standard grouping by manufacturer logic
     const groupByManufacturer = filteredMachines
-      .filter(machine => machine.manufacturer && machine.manufacturer.trim() !== '')
+      .filter(
+        machine => machine.manufacturer && machine.manufacturer.trim() !== ''
+      )
       .reduce(
         (acc, machine) => {
           const manufacturer = machine.manufacturer.trim();
@@ -199,7 +208,9 @@ export function useManufacturerPerformanceData({
 
   // Filter by selected manufacturers
   const filteredData = useMemo(() => {
-    return aggregatedData.filter(d => selectedManufacturers.includes(d.manufacturer));
+    return aggregatedData.filter(d =>
+      selectedManufacturers.includes(d.manufacturer)
+    );
   }, [aggregatedData, selectedManufacturers]);
 
   // Transform data for the chart
@@ -239,5 +250,3 @@ export function useManufacturerPerformanceData({
     minWidth,
   };
 }
-
-

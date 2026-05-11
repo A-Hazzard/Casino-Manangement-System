@@ -7,6 +7,11 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { MachineSession } from '@/app/api/lib/models/machineSessions';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -19,10 +24,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * URL params:
  * @param sessionId {string} Required (path). The string `_id` of the machine session to retrieve.
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/sessions/[sessionId]';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const sessionId = pathname.split('/').pop();
 
@@ -111,6 +116,16 @@ export async function GET(
 
     const data = sessionDetails[0];
 
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/sessions/[sessionId]',
+      1,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: true,
       data,
@@ -119,6 +134,13 @@ export async function GET(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/sessions/[sessionId]',
+      errorMessage,
+      user
+    );
     console.error(
       `[SessionDetails API] Error after ${duration}ms:`,
       errorMessage

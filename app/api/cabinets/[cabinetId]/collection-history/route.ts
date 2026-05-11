@@ -15,6 +15,11 @@ import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * PATCH /api/machines/[machineId]/collection-history
@@ -54,10 +59,10 @@ import { v4 as uuidv4 } from 'uuid';
  * 7. Save machine document
  * 8. Return success response
  */
-export async function PATCH(
-  request: NextRequest
-) {
+export async function PATCH(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'PATCH /api/cabinets/[cabinetId]/collection-history';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const machineId = pathname.split('/')[3];
 
@@ -71,6 +76,13 @@ export async function PATCH(
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const machine = await Machine.findOne({ _id: machineId });
     if (!machine) {
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/cabinets/[cabinetId]/collection-history',
+        `Not found: ${machineId}`,
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Machine not found' },
         { status: 404 }
@@ -93,6 +105,13 @@ export async function PATCH(
     switch (operation) {
       case 'add':
         if (!entry) {
+          logRouteError(
+            functionName,
+            'PATCH',
+            '/api/cabinets/[cabinetId]/collection-history',
+            "Entry data is required for 'add' operation",
+            user
+          );
           return NextResponse.json(
             {
               success: false,
@@ -119,6 +138,13 @@ export async function PATCH(
 
       case 'update':
         if (!entry || !entryId) {
+          logRouteError(
+            functionName,
+            'PATCH',
+            '/api/cabinets/[cabinetId]/collection-history',
+            "Entry data and entryId are required for 'update' operation",
+            user
+          );
           return NextResponse.json(
             {
               success: false,
@@ -136,6 +162,13 @@ export async function PATCH(
         );
 
         if (entryIndex === -1) {
+          logRouteError(
+            functionName,
+            'PATCH',
+            '/api/cabinets/[cabinetId]/collection-history',
+            'Collection history entry not found',
+            user
+          );
           return NextResponse.json(
             { success: false, error: 'Collection history entry not found' },
             { status: 404 }
@@ -156,6 +189,13 @@ export async function PATCH(
 
       case 'delete':
         if (!entryId && !entry?.locationReportId) {
+          logRouteError(
+            functionName,
+            'PATCH',
+            '/api/cabinets/[cabinetId]/collection-history',
+            "EntryId or locationReportId is required for 'delete' operation",
+            user
+          );
           return NextResponse.json(
             {
               success: false,
@@ -183,6 +223,13 @@ export async function PATCH(
         }
 
         if (deleteIndex === -1) {
+          logRouteError(
+            functionName,
+            'PATCH',
+            '/api/cabinets/[cabinetId]/collection-history',
+            'Collection history entry not found',
+            user
+          );
           return NextResponse.json(
             { success: false, error: 'Collection history entry not found' },
             { status: 404 }
@@ -206,9 +253,14 @@ export async function PATCH(
     // STEP 8: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Cabinet Collection History API] Completed in ${duration}ms`);
-    }
+    logRouteUpdate(
+      functionName,
+      'PATCH',
+      '/api/cabinets/[cabinetId]/collection-history',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json({
       success: true,
       message: `Collection history ${operation} operation completed successfully`,
@@ -222,6 +274,13 @@ export async function PATCH(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'PATCH',
+      '/api/cabinets/[cabinetId]/collection-history',
+      errorMessage,
+      user
+    );
     console.error(
       `[Cabinet Collection History API] Error after ${duration}ms:`,
       errorMessage
@@ -236,4 +295,3 @@ export async function PATCH(
     );
   }
 }
-

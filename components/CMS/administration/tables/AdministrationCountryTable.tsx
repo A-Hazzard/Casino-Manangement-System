@@ -12,12 +12,12 @@
 'use client';
 
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import type { Country } from '@/lib/types/country';
 import deleteIcon from '@/public/deleteIcon.svg';

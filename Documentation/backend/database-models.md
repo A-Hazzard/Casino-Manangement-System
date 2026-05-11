@@ -1,8 +1,8 @@
 # Database Models & Relationships
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ## Table of Contents
 
@@ -186,6 +186,7 @@ GamingLocation {
 The Vault Management System (VMS) is designed for strict audibility and cash control.
 
 **VaultShift**
+
 ```typescript
 {
   _id: string;
@@ -202,6 +203,7 @@ The Vault Management System (VMS) is designed for strict audibility and cash con
 ```
 
 **CashierShift**
+
 ```typescript
 {
   _id: string;
@@ -215,6 +217,7 @@ The Vault Management System (VMS) is designed for strict audibility and cash con
 ```
 
 **VaultTransaction (The Ledger)**
+
 ```typescript
 {
   _id: string;
@@ -233,6 +236,7 @@ The Vault Management System (VMS) is designed for strict audibility and cash con
 ```
 
 **FloatRequest**
+
 ```typescript
 {
   _id: string;
@@ -249,6 +253,7 @@ The Vault Management System (VMS) is designed for strict audibility and cash con
 ```
 
 **Payout**
+
 ```typescript
 {
   _id: string;
@@ -265,6 +270,7 @@ The Vault Management System (VMS) is designed for strict audibility and cash con
 ```
 
 **VaultNotification**
+
 ```typescript
 {
   _id: string;
@@ -284,19 +290,20 @@ The Vault Management System (VMS) is designed for strict audibility and cash con
 ## User Model (user.ts)
 
 ### Overview
+
 The User model manages authentication, authorization, and user profile data for the Evolution One CMS system.
 
 ### Schema Structure
 
 ```typescript
 interface User {
-  _id: string;              // Unique user identifier (string-based UUID)
-  isEnabled: boolean;       // Account enabled status (default: true)
-  roles: string[];          // User roles: ['developer', 'admin', 'manager', 'location admin', 'vault-manager', 'cashier', 'technician', 'collector']
-  username: string;         // Required username (unique, indexed)
-  emailAddress: string;     // Email address (unique, indexed, required)
-  assignedLocations?: string[];  // Array of location IDs user has access to
-  assignedLicencees?: string[];  // Array of licencee IDs user has access to
+  _id: string; // Unique user identifier (string-based UUID)
+  isEnabled: boolean; // Account enabled status (default: true)
+  roles: string[]; // User roles: ['developer', 'admin', 'manager', 'location admin', 'vault-manager', 'cashier', 'technician', 'collector']
+  username: string; // Required username (unique, indexed)
+  emailAddress: string; // Email address (unique, indexed, required)
+  assignedLocations?: string[]; // Array of location IDs user has access to
+  assignedLicencees?: string[]; // Array of licencee IDs user has access to
 
   profile?: {
     firstName?: string;
@@ -321,14 +328,14 @@ interface User {
     notes?: string;
   };
 
-  profilePicture?: string;   // Profile picture URL
-  password: string;          // Hashed password (bcrypt)
-  passwordUpdatedAt?: Date;  // Last password update timestamp
-  sessionVersion?: number;   // Session invalidation version (default: 1);
-  loginCount?: number;       // Number of successful logins
-  lastLoginAt?: Date;        // Last successful login timestamp
-  deletedAt?: Date;          // Soft delete timestamp
-  createdAt: Date;           // Account creation timestamp
-  updatedAt: Date;           // Last modification timestamp
+  profilePicture?: string; // Profile picture URL
+  password: string; // Hashed password (bcrypt)
+  passwordUpdatedAt?: Date; // Last password update timestamp
+  sessionVersion?: number; // Session invalidation version (default: 1);
+  loginCount?: number; // Number of successful logins
+  lastLoginAt?: Date; // Last successful login timestamp
+  deletedAt?: Date; // Soft delete timestamp
+  createdAt: Date; // Account creation timestamp
+  updatedAt: Date; // Last modification timestamp
 }
 ```

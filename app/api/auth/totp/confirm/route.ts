@@ -3,6 +3,11 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/auth/totp/confirm
@@ -16,61 +21,128 @@ import { NextRequest, NextResponse } from 'next/server';
  *                               when no active session exists, e.g. during the recovery flow.
  */
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/auth/totp/confirm';
+  const user = extractUserFromRequest(req);
+
   try {
     const { token, recoveryToken } = await req.json();
     if (!token) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/confirm',
+        'Token is required',
+        user
+      );
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
 
     const session = await getUserFromServer();
 
     await connectDB();
-    let user;
+    let foundUser;
 
     if (session && session._id) {
-      user = await UserModel.findOne({ _id: session._id });
+      foundUser = await UserModel.findOne({ _id: session._id });
     } else if (recoveryToken) {
       // Allow confirmation via recovery token if no session exists
-      user = await UserModel.findOne({
+      foundUser = await UserModel.findOne({
         totpRecoveryToken: recoveryToken,
-        totpRecoveryExpires: { $gt: new Date() }
+        totpRecoveryExpires: { $gt: new Date() },
       });
     }
 
-    if (!user) {
-      return NextResponse.json({ error: session ? 'User not found' : 'Unauthorized or invalid recovery link' }, { status: session ? 404 : 401 });
+    if (!foundUser) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/confirm',
+        session ? 'User not found' : 'Unauthorized or invalid recovery link',
+        user
+      );
+      return NextResponse.json(
+        {
+          error: session
+            ? 'User not found'
+            : 'Unauthorized or invalid recovery link',
+        },
+        { status: session ? 404 : 401 }
+      );
     }
 
     // Determine which secret to verify against
     // 1. Recovery setup uses totpTempSecret
     // 2. Initial setup uses totpSecret (where totpEnabled is false)
-    const secretToVerify = user.totpTempSecret || user.totpSecret;
+    const secretToVerify = foundUser.totpTempSecret || foundUser.totpSecret;
 
     if (!secretToVerify) {
-      return NextResponse.json({ error: 'Setup not initiated' }, { status: 400 });
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/confirm',
+        'Setup not initiated',
+        user
+      );
+      return NextResponse.json(
+        { error: 'Setup not initiated' },
+        { status: 400 }
+      );
     }
 
     const isValid = verifyTOTPCode(token, secretToVerify);
     if (isValid) {
       // If we verified a temp secret, promote it to the active secret
-      if (user.totpTempSecret) {
-        user.totpSecret = user.totpTempSecret;
-        user.totpTempSecret = null;
+      if (foundUser.totpTempSecret) {
+        foundUser.totpSecret = foundUser.totpTempSecret;
+        foundUser.totpTempSecret = null;
       }
 
-      user.totpEnabled = true;
+      foundUser.totpEnabled = true;
 
       // Clear recovery tokens if they exist
-      user.totpRecoveryToken = null;
-      user.totpRecoveryExpires = null;
+      foundUser.totpRecoveryToken = null;
+      foundUser.totpRecoveryExpires = null;
 
-      await user.save();
+      await foundUser.save();
+
+      const duration = Date.now() - startTime;
+      logRouteUpdate(
+        functionName,
+        'POST',
+        '/api/auth/totp/confirm',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json({ success: true });
     } else {
-      return NextResponse.json({ error: 'Invalid authenticator code' }, { status: 400 });
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/confirm',
+        'Invalid authenticator code',
+        user
+      );
+      return NextResponse.json(
+        { error: 'Invalid authenticator code' },
+        { status: 400 }
+      );
     }
   } catch (error: unknown) {
-    console.error('TOTP Confirm Error:', error instanceof Error ? error.message : error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/auth/totp/confirm',
+      errorMessage,
+      user
+    );
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

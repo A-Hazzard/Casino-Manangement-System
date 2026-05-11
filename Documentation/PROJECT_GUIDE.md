@@ -1,8 +1,8 @@
 # Evolution One CMS — Master Documentation Hub
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -19,20 +19,20 @@ Evolution One CMS is a full-stack casino management platform built on Next.js 16
 
 Technical and functional documentation for every frontend interface.
 
-| Page | Document | Key Features Covered |
-| :--- | :--- | :--- |
-| **Dashboard** | [dashboard-page.md](./pages/dashboard-page.md) | Financial Pulse, Charts, Map, Top Performers |
-| **Administration** | [administration-page.md](./pages/administration-page.md) | Users, Licencees, Activity Log, Role Inheritance |
-| **Locations** | [locations-page.md](./pages/locations-page.md) | Grid/Map Toggle, Coordinate Mapping, Reviewer Multiplier |
-| **Fleet / Cabinets** | [cabinets-page.md](./pages/cabinets-page.md) | Real-time Monitor, Remote Commands, Forensic Logs |
-| **Members (CRM)** | [members-page.md](./pages/members-page.md) | Loyalty Points, KYC, Win/Loss, Profile View |
-| **Operations (Pulse)** | [sessions-page.md](./pages/sessions-page.md) | Live Events (SSE), Replay Wizard, Active Count |
-| **Collections Wizard** | [collection-report-page.md](./pages/collection-report-page.md) | 3-Step Wizard, Variation Checking, Mobile Modal, SAS Defaults |
-| **Vault / Cage** | [vault-page.md](./pages/vault-page.md) | Shift Management, Blind Close, Ledger, TOTP |
-| **System Config** | [system-config-page.md](./pages/system-config-page.md) | Firmware Repository, Migrations, Localization |
-| **Login** | [login-page.md](./pages/login-page.md) | Auth Flow, TOTP, Profile Validation |
-| **History Fix** | [history-fix-page.md](./pages/history-fix-page.md) | Meter Gap Correction, Bulk Repairs |
-| **Engineering Standards** | [frontend-standards.md](./pages/frontend-standards.md) | Skeleton UX, Page Structure, Error Boundary |
+| Page                      | Document                                                       | Key Features Covered                                          |
+| :------------------------ | :------------------------------------------------------------- | :------------------------------------------------------------ |
+| **Dashboard**             | [dashboard-page.md](./pages/dashboard-page.md)                 | Financial Pulse, Charts, Map, Top Performers                  |
+| **Administration**        | [administration-page.md](./pages/administration-page.md)       | Users, Licencees, Activity Log, Role Inheritance              |
+| **Locations**             | [locations-page.md](./pages/locations-page.md)                 | Grid/Map Toggle, Coordinate Mapping, Reviewer Multiplier      |
+| **Fleet / Cabinets**      | [cabinets-page.md](./pages/cabinets-page.md)                   | Real-time Monitor, Remote Commands, Forensic Logs             |
+| **Members (CRM)**         | [members-page.md](./pages/members-page.md)                     | Loyalty Points, KYC, Win/Loss, Profile View                   |
+| **Operations (Pulse)**    | [sessions-page.md](./pages/sessions-page.md)                   | Live Events (SSE), Replay Wizard, Active Count                |
+| **Collections Wizard**    | [collection-report-page.md](./pages/collection-report-page.md) | 3-Step Wizard, Variation Checking, Mobile Modal, SAS Defaults |
+| **Vault / Cage**          | [vault-page.md](./pages/vault-page.md)                         | Shift Management, Blind Close, Ledger, TOTP                   |
+| **System Config**         | [system-config-page.md](./pages/system-config-page.md)         | Firmware Repository, Migrations, Localization                 |
+| **Login**                 | [login-page.md](./pages/login-page.md)                         | Auth Flow, TOTP, Profile Validation                           |
+| **History Fix**           | [history-fix-page.md](./pages/history-fix-page.md)             | Meter Gap Correction, Bulk Repairs                            |
+| **Engineering Standards** | [frontend-standards.md](./pages/frontend-standards.md)         | Skeleton UX, Page Structure, Error Boundary                   |
 
 ---
 
@@ -40,22 +40,22 @@ Technical and functional documentation for every frontend interface.
 
 Technical reference for backend endpoints and core business logic.
 
-| Module | Document | Core Logic / Endpoints |
-| :--- | :--- | :--- |
-| **Analytics Engine** | [calculation-engine.md](./api/calculation-engine.md) | Movement Delta, 8 AM Offset, Gaming Days, Reviewer Multiplier |
-| **Dashboard API** | [dashboard-api.md](./api/dashboard-api.md) | Money-In Query, Parallel Aggregation, Filters |
-| **Auth & IAM** | [auth-api.md](./api/auth-api.md) | JWT Strategy, Session Versioning, TOTP, 9 Roles |
-| **Administration** | [administration-api.md](./api/administration-api.md) | RBAC, User CRUD, Multi-tenant Isolation |
-| **Locations API** | [locations-api.md](./api/locations-api.md) | Property Config, Reviewer Multiplier, Coordinate Conversion |
-| **Cabinets API** | [cabinets-api.md](./api/cabinets-api.md) | Hardware Fleet, Status Computation, Commands, Reviewer Multiplier |
-| **Members API** | [members-api.md](./api/members-api.md) | Win/Loss Summation, Loyalty Ratios, KYC |
-| **Collections API** | [collections-api.md](./api/collections-api.md) | Finalization, History Bridge, Profit Sharing, SAS Time Defaults |
-| **Real-time Sync** | [sync-meters-api.md](./api/sync-meters-api.md) | MQTT Meter Handshake, Sync Accuracy |
-| **Vault & Ledger** | [vault-api.md](./api/vault-api.md) | Double-Entry, Blind Close Security, 2FA Gate |
-| **Exec Reporting** | [reports-api.md](./api/reports-api.md) | Month-end Audit, PDF/XLSX Gen, Summaries |
-| **IoT / MQTT** | [mqtt-system.md](./api/mqtt-system.md) | Topic Hierarchy, QoS, Heartbeats, Raw SAS |
-| **Forensic Audit** | [sessions-api.md](./api/sessions-api.md) | Event Mapping, Session IDs, Auto-Logout |
-| **System Config** | [system-config-api.md](./api/system-config-api.md) | Firmware GridFS, Localization, Migrations |
+| Module               | Document                                              | Core Logic / Endpoints                                            |
+| :------------------- | :---------------------------------------------------- | :---------------------------------------------------------------- |
+| **Analytics Engine** | [calculation-engine.md](./api/calculation-engine.md)  | Movement Delta, 8 AM Offset, Gaming Days, Reviewer Multiplier     |
+| **Dashboard API**    | [dashboard-api.md](./api/dashboard-api.md)            | Money-In Query, Parallel Aggregation, Filters                     |
+| **Auth & IAM**       | [auth-api.md](./api/auth-api.md)                      | JWT Strategy, Session Versioning, TOTP, 9 Roles                   |
+| **Administration**   | [administration-api.md](./api/administration-api.md)  | RBAC, User CRUD, Multi-tenant Isolation                           |
+| **Locations API**    | [locations-api.md](./api/locations-api.md)            | Property Config, Reviewer Multiplier, Coordinate Conversion       |
+| **Cabinets API**     | [cabinets-api.md](./api/cabinets-api.md)              | Hardware Fleet, Status Computation, Commands, Reviewer Multiplier |
+| **Members API**      | [members-api.md](./api/members-api.md)                | Win/Loss Summation, Loyalty Ratios, KYC                           |
+| **Collections API**  | [collections-api.md](./api/collection-reports-api.md) | Finalization, History Bridge, Profit Sharing, SAS Time Defaults   |
+| **Real-time Sync**   | [sync-meters-api.md](./api/sync-meters-api.md)        | MQTT Meter Handshake, Sync Accuracy                               |
+| **Vault & Ledger**   | [vault-api.md](./api/vault-api.md)                    | Double-Entry, Blind Close Security, 2FA Gate                      |
+| **Exec Reporting**   | [reports-api.md](./api/reports-api.md)                | Month-end Audit, PDF/XLSX Gen, Summaries                          |
+| **IoT / MQTT**       | [mqtt-system.md](./api/mqtt-system.md)                | Topic Hierarchy, QoS, Heartbeats, Raw SAS                         |
+| **Forensic Audit**   | [sessions-api.md](./api/sessions-api.md)              | Event Mapping, Session IDs, Auto-Logout                           |
+| **System Config**    | [system-config-api.md](./api/system-config-api.md)    | Firmware GridFS, Localization, Migrations                         |
 
 ---
 
@@ -86,16 +86,16 @@ High-level strategic guides for the five pillars of the platform.
 
 ## 7. Critical System Rules (Quick Reference)
 
-| Rule | Detail |
-| :--- | :--- |
-| **Gaming Day** | 8 AM → 8 AM Trinidad (UTC-4). Helper: `lib/utils/gamingDayRange.ts` |
-| **Financial Calc** | Movement Delta Method — sum of `movement.*` fields only |
-| **Multi-tenant** | All queries filtered by `userPayload.assignedLicencees` |
+| Rule                    | Detail                                                                   |
+| :---------------------- | :----------------------------------------------------------------------- |
+| **Gaming Day**          | 8 AM → 8 AM Trinidad (UTC-4). Helper: `lib/utils/gamingDayRange.ts`      |
+| **Financial Calc**      | Movement Delta Method — sum of `movement.*` fields only                  |
+| **Multi-tenant**        | All queries filtered by `userPayload.assignedLicencees`                  |
 | **Reviewer Multiplier** | `value * (1 - user.multiplier)` applied server-side in all metric routes |
-| **Cookies** | Never hardcode `secure: true` — use `getAuthCookieOptions(request)` |
-| **React Imports** | Named imports only — never `import React from 'react'` |
-| **Timezone Storage** | UTC in DB; convert to Trinidad for display and query ranges |
-| **Audit Logging** | `activityLogger.ts` required for all CRUD + security events |
+| **Cookies**             | Never hardcode `secure: true` — use `getAuthCookieOptions(request)`      |
+| **React Imports**       | Named imports only — never `import React from 'react'`                   |
+| **Timezone Storage**    | UTC in DB; convert to Trinidad for display and query ranges              |
+| **Audit Logging**       | `activityLogger.ts` required for all CRUD + security events              |
 
 ---
 

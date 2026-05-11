@@ -21,11 +21,23 @@
 
 import type { NextRequest } from 'next/server';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import { createSuccessResponse, createErrorResponse } from '@/app/api/lib/utils/apiResponse';
+import {
+  createSuccessResponse,
+  createErrorResponse,
+} from '@/app/api/lib/utils/apiResponse';
 import { Machine } from '@/app/api/lib/models/machines';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
-import type { GamingMachine, LicenceeDocument, MongooseId } from '@/shared/types';
-import type { GamingLocationDocument } from '@shared/types';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import type {
+  GamingMachine,
+  LicenceeDocument,
+  MongooseId,
+} from '@/shared/types';
+import type { GamingLocationDocument } from '@/shared/types';
 interface CheckVariationsRequest {
   locationId: string;
   machines: Array<{
@@ -91,13 +103,28 @@ interface CheckVariationsResponse {
  * 7. Return variation data and total variance
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/collection-reports/check-variations';
+  const user = extractUserFromRequest(request);
+
   try {
     await connectDB();
 
     const body = (await request.json()) as CheckVariationsRequest;
-    const { locationId, machines, includeJackpot: userProvidedIncludeJackpot } = body;
+    const {
+      locationId,
+      machines,
+      includeJackpot: userProvidedIncludeJackpot,
+    } = body;
 
     if (!locationId || !machines || machines.length === 0) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/collection-reports/check-variations',
+        'Invalid request: locationId and machines array required',
+        user
+      );
       return createErrorResponse(
         'Invalid request: locationId and machines array required',
         400,
@@ -123,18 +150,33 @@ export async function POST(request: NextRequest) {
         includeJackpot = Boolean(licenceeDoc?.includeJackpot);
       }
     } catch (err) {
-      console.warn('[Collection Report] Could not fetch licencee includeJackpot:', err);
+      console.warn(
+        '[Collection Report] Could not fetch licencee includeJackpot:',
+        err
+      );
       // Continue with default value
     }
 
-    // Fetch machine details (name, game) for display
-    const machineIds = machines.map(machine => machine.machineId as unknown as MongooseId);
+    // Fetch machine details (name, game, relayId) for display
+    const machineIds = machines.map(
+      machine => machine.machineId as unknown as MongooseId
+    );
     const machineDetails = await Machine.find(
       { _id: { $in: machineIds } },
-      { machineId: 1, serialNumber: 1, custom: 1, game: 1, machineCustomName: 1, machineName: 1 }
+      {
+        machineId: 1,
+        serialNumber: 1,
+        custom: 1,
+        game: 1,
+        machineCustomName: 1,
+        machineName: 1,
+        relayId: 1,
+      }
     ).lean<GamingMachine[]>();
 
-    const machineDetailsMap = new Map(machineDetails.map(machineDetail => [machineDetail._id, machineDetail]));
+    const machineDetailsMap = new Map(
+      machineDetails.map(machineDetail => [machineDetail._id, machineDetail])
+    );
 
     // Fetch SAS meter data for machines with SAS time ranges
     const { Meters } = await import('@/app/api/lib/models/meters');
@@ -143,8 +185,8 @@ export async function POST(request: NextRequest) {
       .filter(machine => machine.sasStartTime && machine.sasEndTime)
       .map(machine => ({
         machineId: machine.machineId,
-        startTime: new Date(machine.sasStartTime!),
-        endTime: new Date(machine.sasEndTime!),
+        startTime: machine.sasStartTime!,
+        endTime: machine.sasEndTime!,
       }));
 
     const allMeterData: Array<{
@@ -168,7 +210,9 @@ export async function POST(request: NextRequest) {
           $group: {
             _id: '$machine',
             totalDrop: { $sum: { $ifNull: ['$movement.drop', 0] } },
-            totalCancelled: { $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] } },
+            totalCancelled: {
+              $sum: { $ifNull: ['$movement.totalCancelledCredits', 0] },
+            },
             totalJackpot: { $sum: { $ifNull: ['$movement.jackpot', 0] } },
           },
         },
@@ -197,6 +241,7 @@ export async function POST(request: NextRequest) {
 
     for (const machine of machines) {
       const machineDetail = machineDetailsMap.get(machine.machineId);
+      const hasRelayId = machineDetail?.relayId;
 
       // Use provided machine name if it exists, otherwise build it
       let machineName = machine.machineName;
@@ -204,10 +249,7 @@ export async function POST(request: NextRequest) {
       if (!machineName) {
         // Get display name components from DB fetch results
         const serialNumber = (machineDetail?.serialNumber || '').trim();
-        const customName = (
-          machineDetail?.custom?.name ||
-          ''
-        ).trim();
+        const customName = (machineDetail?.custom?.name || '').trim();
         const game = (machineDetail?.game || '').trim();
 
         const mainIdentifier = serialNumber || customName || machine.machineId;
@@ -220,9 +262,10 @@ export async function POST(request: NextRequest) {
           bracketParts.push(game);
         }
 
-        machineName = bracketParts.length > 0 
-          ? `${mainIdentifier} (${bracketParts.join(', ')})`
-          : mainIdentifier;
+        machineName =
+          bracketParts.length > 0
+            ? `${mainIdentifier} (${bracketParts.join(', ')})`
+            : mainIdentifier;
       }
 
       // Calculate meter gross — prefer pre-calculated movement.gross when available (e.g. from saved
@@ -230,7 +273,8 @@ export async function POST(request: NextRequest) {
       const meterGross =
         machine.movementGross !== undefined
           ? machine.movementGross
-          : (machine.metersIn || 0) - (machine.prevMetersIn || 0) -
+          : (machine.metersIn || 0) -
+            (machine.prevMetersIn || 0) -
             ((machine.metersOut || 0) - (machine.prevMetersOut || 0));
 
       // Get SAS data
@@ -246,26 +290,55 @@ export async function POST(request: NextRequest) {
       }
 
       // Apply jackpot adjustment
-      const adjustedSasGross = includeJackpot ? sasGross - (jackpot || 0) : sasGross;
+      const adjustedSasGross = includeJackpot
+        ? sasGross - (jackpot || 0)
+        : sasGross;
 
       const hasNoSasData =
-        !machine.sasStartTime || !machine.sasEndTime || !meterDataMap.has(machine.machineId);
+        !machine.sasStartTime ||
+        !machine.sasEndTime ||
+        !meterDataMap.has(machine.machineId);
 
-      const variation = meterGross - (hasNoSasData ? 0 : adjustedSasGross);
-      totalVariation += variation;
+      // Skip variation check for no-SMIB machines (machines without relayId)
+      let variation = 0;
+      if (!hasRelayId) {
+        variation = 0; // No-SMIB machines don't contribute to variation
+      } else {
+        variation = meterGross - (hasNoSasData ? 0 : adjustedSasGross);
+        totalVariation += variation;
+      }
 
       machineVariations.push({
         machineId: machine.machineId,
         machineName,
-        variation,
-        sasGross: hasNoSasData ? 'No SAS Data' : adjustedSasGross,
+        variation: hasRelayId ? variation : 'No SMIB',
+        sasGross: hasRelayId
+          ? hasNoSasData
+            ? 'No SAS Data'
+            : adjustedSasGross
+          : 'No SMIB',
         meterGross,
         sasStartTime: machine.sasStartTime || null,
         sasEndTime: machine.sasEndTime || null,
       });
     }
 
-    const hasVariations = machineVariations.some(m => typeof m.variation === 'number' && Math.abs(m.variation) > 0.1);
+    const hasVariations = machineVariations.some(
+      m =>
+        typeof m.variation === 'number' &&
+        m.variation !== 0 &&
+        Math.abs(m.variation) > 0.1
+    );
+
+    const duration = Date.now() - startTime;
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/collection-reports/check-variations',
+      machines.length,
+      user,
+      duration
+    );
 
     return createSuccessResponse<CheckVariationsResponse>(
       {
@@ -276,6 +349,15 @@ export async function POST(request: NextRequest) {
       'Variation check completed'
     );
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/collection-reports/check-variations',
+      errorMessage,
+      user
+    );
     console.error('[API] check-variations error:', error);
     return createErrorResponse(
       'Failed to check variations',

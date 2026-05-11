@@ -7,6 +7,12 @@ import { InterLocationTransferModel } from '@/app/api/lib/models/interLocationTr
 import { generateMongoId } from '@/lib/utils/id';
 import type { CreateInterLocationTransferRequest } from '@/shared/types/vault';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import {
+  logRouteCreate,
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import type { InterLocationTransferDocument } from '@shared/types';
 
@@ -23,6 +29,10 @@ import type { InterLocationTransferDocument } from '@shared/types';
  * @body {string} notes - Transfer notes
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/transfers';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const vaultManagerId = userPayload._id as string;
@@ -31,17 +41,32 @@ export async function POST(request: NextRequest) {
         ['developer', 'admin', 'manager'].includes(role)
       );
 
-      if (!hasVMAccess)
+      if (!hasVMAccess) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/transfers',
+          'Insufficient permissions',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient permissions' },
           { status: 403 }
         );
+      }
 
       const body: CreateInterLocationTransferRequest = await request.json();
       const { fromLocationId, toLocationId, amount, denominations, notes } =
         body;
 
       if (!fromLocationId || !toLocationId || !amount || !denominations) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/transfers',
+          'Missing required fields',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Missing required fields' },
           { status: 400 }
@@ -49,6 +74,13 @@ export async function POST(request: NextRequest) {
       }
 
       if (fromLocationId === toLocationId) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/transfers',
+          'Source and destination locations must be different',
+          user
+        );
         return NextResponse.json(
           {
             success: false,
@@ -70,6 +102,13 @@ export async function POST(request: NextRequest) {
           !allowedLocationIds.includes(fromLocationId) ||
           !allowedLocationIds.includes(toLocationId)
         ) {
+          logRouteError(
+            functionName,
+            'POST',
+            '/api/vault/transfers',
+            'Access denied for one or both locations',
+            user
+          );
           return NextResponse.json(
             {
               success: false,
@@ -95,8 +134,28 @@ export async function POST(request: NextRequest) {
       });
 
       await transfer.save();
+
+      const duration = Date.now() - startTime;
+      logRouteCreate(
+        functionName,
+        'POST',
+        '/api/vault/transfers',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json({ success: true, transfer });
     } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to create transfer';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/transfers',
+        errorMessage,
+        user
+      );
       console.error('Error creating inter-location transfer:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       return NextResponse.json(
@@ -110,23 +169,35 @@ export async function POST(request: NextRequest) {
 /**
  * GET /api/vault/transfers
  */
+
 /**
  * Main GET handler for inter-location transfers
  *
  * @param {string} locationId - ID of the location to fetch transfers for (REQUIRED)
  * @param {number} page - Page number for pagination
- * @param {number} limit - Results per page
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/vault/transfers';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const { searchParams } = new URL(request.url);
       const locationId = searchParams.get('locationId');
-      if (!locationId)
+      if (!locationId) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/vault/transfers',
+          'Location ID is required',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Location ID is required' },
           { status: 400 }
         );
+      }
 
       const allowedLocationIds = await getUserLocationFilter(
         (userPayload?.assignedLicencees as string[]) || [],
@@ -139,6 +210,13 @@ export async function GET(request: NextRequest) {
         allowedLocationIds !== 'all' &&
         !allowedLocationIds.includes(locationId)
       ) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/vault/transfers',
+          'Access denied for this location',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Access denied for this location' },
           { status: 403 }
@@ -161,6 +239,16 @@ export async function GET(request: NextRequest) {
         InterLocationTransferModel.countDocuments(query),
       ]);
 
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/vault/transfers',
+        transfers.length,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         transfers,
@@ -172,6 +260,15 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to fetch transfers';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/vault/transfers',
+        errorMessage,
+        user
+      );
       console.error('Error fetching transfers:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       return NextResponse.json(

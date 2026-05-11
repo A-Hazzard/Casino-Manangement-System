@@ -62,7 +62,6 @@ function NotFoundContent() {
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
-            
             hideOptions={true}
             hideLicenceeFilter={true} // Hide licencee filter on 404
           />
@@ -79,4 +78,3 @@ function NotFoundContent() {
     </>
   );
 }
-

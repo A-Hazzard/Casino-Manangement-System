@@ -9,10 +9,7 @@
  */
 
 // Date range calculation
-export {
-  getDatesForTimePeriod,
-  type DateRange,
-} from './ranges';
+export { getDatesForTimePeriod, type DateRange } from './ranges';
 
 // Date formatting
 export {

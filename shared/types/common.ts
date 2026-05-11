@@ -30,7 +30,14 @@ export type DateRangeFilter = {
   $lte?: Date;
 };
 
-export type MongoDBQueryValue = string | number | boolean | Date | object | null | undefined;
+export type MongoDBQueryValue =
+  | string
+  | number
+  | boolean
+  | Date
+  | object
+  | null
+  | undefined;
 
 export type QueryFilter = Record<string, MongoDBQueryValue>;
 

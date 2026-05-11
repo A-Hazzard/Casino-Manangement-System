@@ -11,6 +11,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type { GamingLocationDocument } from '@/shared/types';
 import {
   getUserAccessibleLicenceesFromToken,
@@ -22,7 +27,7 @@ import { resolveLicenceeId } from '@/lib/utils/licencee';
 /**
  * Main GET handler for fetching collection report locations
  *
- * Returns locations accessible to the authenticated user, filtered by licencee, 
+ * Returns locations accessible to the authenticated user, filtered by licencee,
  * for use in collection report forms and filters.
  *
  * @param {NextRequest} req - Information about the incoming request
@@ -38,6 +43,8 @@ import { resolveLicenceeId } from '@/lib/utils/licencee';
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/collection-reports/locations';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -62,6 +69,13 @@ export async function GET(req: NextRequest) {
     const userAccessibleLicencees = await getUserAccessibleLicenceesFromToken();
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/collection-reports/locations',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json({ locations: [] }, { status: 401 });
     }
 
@@ -124,11 +138,28 @@ export async function GET(req: NextRequest) {
       name: loc.name,
     }));
 
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/collection-reports/locations',
+      locationsWithId.length,
+      user,
+      duration
+    );
+
     return NextResponse.json({ locations: locationsWithId });
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/collection-reports/locations',
+      errorMessage,
+      user
+    );
     console.error(
       `[Collection Report Locations GET API] Error after ${duration}ms:`,
       errorMessage

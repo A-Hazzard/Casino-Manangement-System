@@ -71,4 +71,3 @@ const AlertDescription = forwardRef<
 AlertDescription.displayName = 'AlertDescription';
 
 export { Alert, AlertTitle, AlertDescription };
-

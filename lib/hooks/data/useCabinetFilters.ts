@@ -4,8 +4,8 @@
  */
 
 import type {
-    UseCabinetFiltersProps,
-    UseCabinetFiltersReturn,
+  UseCabinetFiltersProps,
+  UseCabinetFiltersReturn,
 } from '@/lib/types/cabinet';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -63,7 +63,7 @@ export function useCabinetFilters({
   const handleMembershipChange = useCallback((membership: string) => {
     setSelectedMembership(membership);
   }, []);
- 
+
   // Handle SMIB status filter changes
   const handleSmibStatusChange = useCallback((status: string) => {
     setSelectedSmibStatus(status);

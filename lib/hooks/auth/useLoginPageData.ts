@@ -19,7 +19,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { UserRole } from '../../constants/roles';
 
-
 export function useLoginPageData() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -54,7 +53,8 @@ export function useLoginPageData() {
 
   // Derived: should the password update be forced (cannot be dismissed)?
   // Forced if it's a cashier's temp password OR if it's a weak password detected at login
-  const isForced = isCashierTempChange || !!pendingUserRef.current?.requiresPasswordUpdate;
+  const isForced =
+    isCashierTempChange || !!pendingUserRef.current?.requiresPasswordUpdate;
 
   // === Login Handler ===
   const handleLogin = useCallback(
@@ -94,7 +94,9 @@ export function useLoginPageData() {
           setMessageType('success');
           setRedirecting(true);
 
-          const path = getDefaultRedirectPathFromRoles(res.user?.roles as UserRole[] || []);
+          const path = getDefaultRedirectPathFromRoles(
+            (res.user?.roles as UserRole[]) || []
+          );
           window.location.href = path;
         } else {
           setMessage(res.message || 'Invalid credentials');
@@ -120,7 +122,11 @@ export function useLoginPageData() {
 
   // === Password Update Handler (called from modal) ===
   const handlePasswordUpdate = useCallback(
-    async (currentPassword: string, newPassword: string, phone?: string): Promise<string | null> => {
+    async (
+      currentPassword: string,
+      newPassword: string,
+      phone?: string
+    ): Promise<string | null> => {
       setLoading(true);
       try {
         const response = await fetch('/api/profile', {
@@ -223,7 +229,9 @@ export function useLoginPageData() {
       }
     }
     checkInitialization();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   // Remember Me Init

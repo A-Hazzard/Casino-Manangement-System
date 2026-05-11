@@ -1,4 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
 /**
@@ -6,7 +11,11 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
  * Matches the exact layout of FinancialMetricsCards component
  * Uses the same grid structure as the actual component
  */
-export const DashboardFinancialMetricsSkeleton = ({ count = 3 }: { count?: number }) => (
+export const DashboardFinancialMetricsSkeleton = ({
+  count = 3,
+}: {
+  count?: number;
+}) => (
   <div className="flex w-full flex-col gap-4 md:flex-row">
     {Array.from({ length: count }).map((_, i) => (
       <div
@@ -152,4 +161,3 @@ export const LocationMapSkeleton = () => (
     </CardContent>
   </Card>
 );
-

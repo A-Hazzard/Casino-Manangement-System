@@ -22,17 +22,21 @@
 'use client';
 
 import {
-    Dialog,
-    DialogContent,
-    DialogTitle,
-    DialogDescription,
-    DialogHeader,
-    DialogFooter,
-    DialogClose
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+  DialogHeader,
+  DialogFooter,
+  DialogClose,
 } from '@/components/shared/ui/dialog';
 import { Button } from '@/components/shared/ui/button';
 import { useEditCollectionModal } from '@/lib/hooks/collectionReport/useEditCollectionModal';
-import { useMobileEditCollectionModal, type MobileModalState } from '@/lib/hooks/collectionReport/useMobileEditCollectionModal';
+import { checkLocationNoSMIB } from '@/lib/helpers/collectionReport/fetching';
+import {
+  useMobileEditCollectionModal,
+  type MobileModalState,
+} from '@/lib/hooks/collectionReport/useMobileEditCollectionModal';
 import { useCollectionReportVariationCheck } from '@/lib/hooks/collectionReport/useCollectionReportVariationCheck';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { VariationsConfirmationDialog } from '@/components/CMS/collectionReport/variations/VariationsConfirmationDialog';
@@ -40,10 +44,15 @@ import { VariationCheckPopover } from '@/components/CMS/collectionReport/variati
 import { InfoConfirmationDialog } from '@/components/shared/ui/InfoConfirmationDialog';
 import { MobileCollectionModalSkeleton } from '@/components/shared/ui/skeletons/MobileCollectionModalSkeleton';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
+import { useCollectionModalStore } from '@/lib/store/collectionModalStore';
+import { useMachineOnlineStatus } from '@/lib/hooks/useMachineOnlineStatus';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
-import type { CollectionReportLocationWithMachines, MachineVariationData } from '@/lib/types/api';
+import type {
+  CollectionReportLocationWithMachines,
+  MachineVariationData,
+} from '@/lib/types/api';
 
 // Layouts
 import DesktopEditLayout from './edit/DesktopEditLayout';
@@ -73,14 +82,53 @@ type WrapperProps = {
   hasUnsavedEdits?: boolean;
   /** Ref to track if there are unsaved edits (set by hooks) */
   unsavedEditsRef?: React.MutableRefObject<boolean>;
+  /** Ref to force close the modal (bypass unsaved changes check) */
+  forceCloseRef?: React.MutableRefObject<boolean>;
 };
 
-function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gameDayOffset, onMachineEditingChange, unsavedEditsRef }: WrapperProps) {
-  const desktopHook = useEditCollectionModal({ show, reportId, locations, onRefresh, onClose });
+function DesktopEditWrapper({
+  show,
+  reportId,
+  locations,
+  onRefresh,
+  onClose,
+  gameDayOffset,
+  onMachineEditingChange,
+  unsavedEditsRef,
+  forceCloseRef,
+}: WrapperProps) {
+  // Wrap onClose to set force close flag before calling (bypasses unsaved changes check)
+  const handleCloseWithForce = useCallback(() => {
+    forceCloseRef && (forceCloseRef.current = true);
+    onClose();
+  }, [forceCloseRef, onClose]);
+
+  const desktopHook = useEditCollectionModal({
+    show,
+    reportId,
+    locations,
+    onRefresh,
+    onClose: handleCloseWithForce,
+  });
   const variation = useCollectionReportVariationCheck();
-  const [variationsCollapsibleExpanded, setVariationsCollapsibleExpanded] = useState(false);
+  const resetCollectionModalStore = useCollectionModalStore(
+    state => state.resetState
+  );
+  const [variationsCollapsibleExpanded, setVariationsCollapsibleExpanded] =
+    useState(false);
   const [showVariationPopover, setShowVariationPopover] = useState(false);
-  const [showVariationsConfirmation, setShowVariationsConfirmation] = useState(false);
+  const [showVariationsConfirmation, setShowVariationsConfirmation] =
+    useState(false);
+  const [showUpdateReportConfirmation, setShowUpdateReportConfirmation] =
+    useState(false);
+
+  // Clear shared collection-modal store whenever this edit modal closes,
+  // so opening the create/new collection modal afterwards starts with a clean slate.
+  useEffect(() => {
+    if (!show) {
+      resetCollectionModalStore();
+    }
+  }, [show, resetCollectionModalStore]);
 
   // Sync desktop hook's hasUnsavedEdits up to parent via ref
   useEffect(() => {
@@ -92,52 +140,111 @@ function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gam
     onMachineEditingChange?.(!!desktopHook.editingEntryId);
   }, [desktopHook.editingEntryId, onMachineEditingChange]);
 
+  // Reset variation check when modal closes
+  useEffect(() => {
+    if (!show) {
+      variation.reset();
+    }
+  }, [show, variation]);
+
   // Auto-check variations when collections are loaded
   const initialCheckPerformedRef = useRef(false);
   useEffect(() => {
-    if (show && !desktopHook.isLoadingCollections && desktopHook.collectedMachineEntries.length > 0 && !initialCheckPerformedRef.current) {
+    if (
+      show &&
+      !desktopHook.isLoadingCollections &&
+      desktopHook.collectedMachineEntries.length > 0 &&
+      !initialCheckPerformedRef.current
+    ) {
       initialCheckPerformedRef.current = true;
-      const machinesForCheck = desktopHook.collectedMachineEntries.map(entry => ({
-        machineId: entry.machineId,
-        machineName: entry.machineCustomName || entry.machineName || entry.serialNumber || entry.machineId,
-        metersIn: entry.metersIn || 0,
-        metersOut: entry.metersOut || 0,
-        sasStartTime: entry.sasMeters?.sasStartTime ? new Date(entry.sasMeters.sasStartTime).toISOString() : undefined,
-        sasEndTime: entry.sasMeters?.sasEndTime ? new Date(entry.sasMeters.sasEndTime).toISOString() : undefined,
-        prevMetersIn: entry.prevIn || 0,
-        prevMetersOut: entry.prevOut || 0,
-      }));
-      variation.checkVariations(desktopHook.selectedLocationId ?? '', machinesForCheck);
+
+      const runAutoCheck = async () => {
+        // Query gaminglocations to check noSMIBLocation; skip the variation check if true.
+        const isNoSmib = await checkLocationNoSMIB(
+          desktopHook.selectedLocationId ?? ''
+        );
+        if (isNoSmib) return;
+
+        const machinesForCheck = desktopHook.collectedMachineEntries.map(
+          entry => ({
+            machineId: entry.machineId,
+            machineName:
+              entry.machineCustomName ||
+              entry.machineName ||
+              entry.serialNumber ||
+              entry.machineId,
+            metersIn: entry.metersIn || 0,
+            metersOut: entry.metersOut || 0,
+            sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+            sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
+            prevMetersIn: entry.prevIn || 0,
+            prevMetersOut: entry.prevOut || 0,
+          })
+        );
+        variation.checkVariations(
+          desktopHook.selectedLocationId ?? '',
+          machinesForCheck
+        );
+      };
+      runAutoCheck();
     }
     if (!show) {
       initialCheckPerformedRef.current = false;
     }
-  }, [show, desktopHook.isLoadingCollections, desktopHook.collectedMachineEntries.length, desktopHook.selectedLocationId]);
+  }, [
+    show,
+    desktopHook.isLoadingCollections,
+    desktopHook.collectedMachineEntries.length,
+    desktopHook.selectedLocationId,
+  ]);
 
-  const handleDesktopSubmit = () => {
+  const handleDesktopSubmit = async () => {
     if (desktopHook.editingEntryId) {
       toast.warning('Save or cancel your current machine edit first.');
       return;
     }
-    if (desktopHook.collectedMachineEntries.length === 0 || desktopHook.isProcessing) return;
+    if (
+      desktopHook.collectedMachineEntries.length === 0 ||
+      desktopHook.isProcessing
+    )
+      return;
+
+    const locationId =
+      desktopHook.selectedLocationId ||
+      desktopHook.collectedMachineEntries[0]?.location ||
+      '';
+
+    // Query gaminglocations directly to check noSMIBLocation flag.
+    // If true, skip the /api/collection-reports/check-variations request entirely
+    // and show the standard "Are you sure?" update confirmation instead.
+    const isNoSmib = await checkLocationNoSMIB(locationId);
+    if (isNoSmib) {
+      setShowUpdateReportConfirmation(true);
+      return;
+    }
+
     setShowVariationPopover(true);
     const machinesForCheck = desktopHook.collectedMachineEntries.map(entry => ({
       machineId: entry.machineId,
-      machineName: entry.machineCustomName || entry.machineName || entry.serialNumber || entry.machineId,
+      machineName:
+        entry.machineCustomName ||
+        entry.machineName ||
+        entry.serialNumber ||
+        entry.machineId,
       metersIn: entry.metersIn || 0,
       metersOut: entry.metersOut || 0,
-      sasStartTime: entry.sasMeters?.sasStartTime ? new Date(entry.sasMeters.sasStartTime).toISOString() : undefined,
-      sasEndTime: entry.sasMeters?.sasEndTime ? new Date(entry.sasMeters.sasEndTime).toISOString() : undefined,
+      sasStartTime: entry.sasMeters?.sasStartTime ?? undefined,
+      sasEndTime: entry.sasMeters?.sasEndTime ?? undefined,
       prevMetersIn: entry.prevIn || 0,
       prevMetersOut: entry.prevOut || 0,
     }));
-    variation.checkVariations(desktopHook.selectedLocationId ?? '', machinesForCheck);
+    variation.checkVariations(locationId, machinesForCheck);
   };
 
   return (
     <>
       {/* Desktop Header */}
-      <DialogHeader className="p-4 pb-0 md:p-6 flex-shrink-0">
+      <DialogHeader className="flex-shrink-0 p-4 pb-0 md:p-6">
         <DialogTitle className="text-xl font-bold md:text-2xl">
           Edit Collection Report
         </DialogTitle>
@@ -158,10 +265,12 @@ function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gam
         gameDayOffset={gameDayOffset}
       />
 
-      <DialogFooter className="flex justify-center border-t border-gray-300 p-4 pt-2 md:p-6 md:pt-4 flex-shrink-0">
+      <DialogFooter className="flex flex-shrink-0 justify-center border-t border-gray-300 p-4 pt-2 md:p-6 md:pt-4">
         <Button
           onClick={handleDesktopSubmit}
-          disabled={!desktopHook.isUpdateReportEnabled || desktopHook.isProcessing}
+          disabled={
+            !desktopHook.isUpdateReportEnabled || desktopHook.isProcessing
+          }
           className={`w-auto bg-button px-8 py-3 text-base hover:bg-buttonActive ${
             !desktopHook.isUpdateReportEnabled || desktopHook.isProcessing
               ? 'cursor-not-allowed'
@@ -187,19 +296,38 @@ function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gam
         }}
         onSubmit={() => {
           setShowVariationPopover(false);
-          if (variation.hasVariations && variation.variationsData) {
-            setShowVariationsConfirmation(true);
+          // Filter out machines with "No SMIB" (no relayId)
+          const machinesWithSmib =
+            variation.variationsData?.machines.filter(
+              m => typeof m.variation === 'number'
+            ) || [];
+
+          // If no machines have SMIB or no variations, skip variation confirmation and go straight to update
+          if (machinesWithSmib.length === 0 || !variation.hasVariations) {
+            desktopHook.handleUpdateReport(
+              variation.variationsData || undefined
+            );
           } else {
-            desktopHook.handleUpdateReport(variation.variationsData || undefined);
+            // Show variations confirmation only if there are actual variations with SMIB machines
+            setShowVariationsConfirmation(true);
           }
         }}
-        onRetry={() => {/* retry logic */}}
-        onClose={() => setShowVariationPopover(false)}
+        onRetry={() => {
+          /* retry logic */
+        }}
+        onClose={() => {
+          setShowVariationPopover(false);
+          variation.reset();
+        }}
       />
 
       <VariationsConfirmationDialog
         isOpen={showVariationsConfirmation}
-        machineCount={variation.variationsData?.machines.filter((m: MachineVariationData) => typeof m.variation === 'number').length || 0}
+        machineCount={
+          variation.variationsData?.machines.filter(
+            (m: MachineVariationData) => typeof m.variation === 'number'
+          ).length || 0
+        }
         totalVariation={variation.variationsData?.totalVariation || 0}
         isLoading={desktopHook.isProcessing}
         onConfirm={() => {
@@ -207,6 +335,21 @@ function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gam
           setShowVariationsConfirmation(false);
         }}
         onCancel={() => setShowVariationsConfirmation(false)}
+      />
+
+      {/* Update Report Confirmation Dialog (no-SMIB locations skip variation flow) */}
+      <InfoConfirmationDialog
+        isOpen={showUpdateReportConfirmation}
+        onClose={() => setShowUpdateReportConfirmation(false)}
+        onConfirm={() => {
+          desktopHook.handleUpdateReport(undefined);
+          setShowUpdateReportConfirmation(false);
+        }}
+        title="Confirm Update Report"
+        message={`Are you sure you want to update this collection report for ${desktopHook.collectedMachineEntries.length} machine(s)?`}
+        confirmText="Yes, Update Report"
+        cancelText="Cancel"
+        isLoading={desktopHook.isProcessing}
       />
 
       {/* Shared Dialogs (Desktop side) */}
@@ -240,63 +383,156 @@ function DesktopEditWrapper({ show, reportId, locations, onRefresh, onClose, gam
   );
 }
 
-function MobileEditWrapper({ show, reportId, locations, onRefresh, onClose, onMachineEditingChange, unsavedEditsRef }: WrapperProps) {
-  const mobileHook = useMobileEditCollectionModal({ show, reportId, locations, onRefresh, onClose });
+function MobileEditWrapper({
+  show,
+  reportId,
+  locations,
+  onRefresh,
+  onClose,
+  onMachineEditingChange,
+  unsavedEditsRef,
+  forceCloseRef,
+}: WrapperProps) {
+  // Wrap onClose to set force close flag before calling (bypasses unsaved changes check)
+  const handleCloseWithForce = useCallback(() => {
+    forceCloseRef && (forceCloseRef.current = true);
+    onClose();
+  }, [forceCloseRef, onClose]);
+
+  const mobileHook = useMobileEditCollectionModal({
+    show,
+    reportId,
+    locations,
+    onRefresh,
+    onClose: handleCloseWithForce,
+  });
+
+  // Online/offline status for machines in the edit modal
+  const editMobileIds = mobileHook.availableMachines.map(m => String(m._id));
+  const editMachineStatusMap = useMachineOnlineStatus(editMobileIds);
 
   // Sync mobile hook's hasUnsavedEdits up to parent via ref
   useEffect(() => {
-    unsavedEditsRef && (unsavedEditsRef.current = mobileHook.modalState.hasUnsavedEdits);
+    unsavedEditsRef &&
+      (unsavedEditsRef.current = mobileHook.modalState.hasUnsavedEdits);
   }, [mobileHook.modalState.hasUnsavedEdits, unsavedEditsRef]);
   const variation = useCollectionReportVariationCheck();
+  const resetCollectionModalStore = useCollectionModalStore(
+    state => state.resetState
+  );
   const [showVariationPopover, setShowVariationPopover] = useState(false);
-  const [showVariationsConfirmation, setShowVariationsConfirmation] = useState(false);
+  const [showVariationsConfirmation, setShowVariationsConfirmation] =
+    useState(false);
+  const [showUpdateReportConfirmation, setShowUpdateReportConfirmation] =
+    useState(false);
+
+  // Clear shared collection-modal store whenever this edit modal closes,
+  // so opening the create/new collection modal afterwards starts with a clean slate.
+  useEffect(() => {
+    if (!show) {
+      resetCollectionModalStore();
+    }
+  }, [show, resetCollectionModalStore]);
 
   // Notify outer component when a machine form opens/closes
   useEffect(() => {
     onMachineEditingChange?.(!!mobileHook.modalState.editingEntryId);
   }, [mobileHook.modalState.editingEntryId, onMachineEditingChange]);
 
-  const handleMobileSubmit = () => {
+  // Reset variation check when modal closes
+  useEffect(() => {
+    if (!show) {
+      variation.reset();
+    }
+  }, [show, variation]);
+
+  const handleMobileSubmit = async () => {
     if (mobileHook.modalState.editingEntryId) {
       toast.warning('Save or cancel your current machine edit first.');
       return;
     }
-    if (mobileHook.collectedMachines.length === 0 || mobileHook.modalState.isProcessing) return;
+    if (
+      mobileHook.collectedMachines.length === 0 ||
+      mobileHook.modalState.isProcessing
+    )
+      return;
+
+    const locationId =
+      mobileHook.lockedLocationId || mobileHook.selectedLocationId || '';
+
+    // Query gaminglocations directly to check noSMIBLocation flag.
+    // If true, skip the /api/collection-reports/check-variations request entirely
+    // and show the standard "Are you sure?" update confirmation instead.
+    const isNoSmib = await checkLocationNoSMIB(locationId);
+    if (isNoSmib) {
+      setShowUpdateReportConfirmation(true);
+      return;
+    }
+
     setShowVariationPopover(true);
     const machinesForCheck = mobileHook.collectedMachines.map(entry => ({
       machineId: entry.machineId,
-      machineName: entry.machineCustomName || entry.machineName || entry.serialNumber || entry.machineId,
+      machineName:
+        entry.machineCustomName ||
+        entry.machineName ||
+        entry.serialNumber ||
+        entry.machineId,
       metersIn: entry.metersIn || 0,
       metersOut: entry.metersOut || 0,
-      sasStartTime: entry.sasStartTime ? new Date(entry.sasStartTime).toISOString() : undefined,
-      sasEndTime: entry.sasEndTime ? new Date(entry.sasEndTime).toISOString() : undefined,
+      sasStartTime: entry.sasStartTime ?? undefined,
+      sasEndTime: entry.sasEndTime ?? undefined,
       prevMetersIn: entry.prevIn || 0,
       prevMetersOut: entry.prevOut || 0,
     }));
-    variation.checkVariations(mobileHook.lockedLocationId || mobileHook.selectedLocationId || '', machinesForCheck);
+    variation.checkVariations(locationId, machinesForCheck);
   };
 
   // Auto-check variations when collections are loaded
   const initialCheckPerformedRef = useRef(false);
   useEffect(() => {
-    if (show && !mobileHook.modalState.isLoadingCollections && mobileHook.collectedMachines.length > 0 && !initialCheckPerformedRef.current) {
+    if (
+      show &&
+      !mobileHook.modalState.isLoadingCollections &&
+      mobileHook.collectedMachines.length > 0 &&
+      !initialCheckPerformedRef.current
+    ) {
       initialCheckPerformedRef.current = true;
-      const machinesForCheck = mobileHook.collectedMachines.map(entry => ({
-        machineId: entry.machineId,
-        machineName: entry.machineCustomName || entry.machineName || entry.serialNumber || entry.machineId,
-        metersIn: entry.metersIn || 0,
-        metersOut: entry.metersOut || 0,
-        sasStartTime: entry.sasStartTime ? new Date(entry.sasStartTime).toISOString() : undefined,
-        sasEndTime: entry.sasEndTime ? new Date(entry.sasEndTime).toISOString() : undefined,
-        prevMetersIn: entry.prevIn || 0,
-        prevMetersOut: entry.prevOut || 0,
-      }));
-      variation.checkVariations(mobileHook.lockedLocationId || mobileHook.selectedLocationId || '', machinesForCheck);
+
+      const runAutoCheck = async () => {
+        const locationId =
+          mobileHook.lockedLocationId || mobileHook.selectedLocationId || '';
+        // Query gaminglocations to check noSMIBLocation; skip the variation check if true.
+        const isNoSmib = await checkLocationNoSMIB(locationId);
+        if (isNoSmib) return;
+
+        const machinesForCheck = mobileHook.collectedMachines.map(entry => ({
+          machineId: entry.machineId,
+          machineName:
+            entry.machineCustomName ||
+            entry.machineName ||
+            entry.serialNumber ||
+            entry.machineId,
+          metersIn: entry.metersIn || 0,
+          metersOut: entry.metersOut || 0,
+          sasStartTime: entry.sasStartTime ?? undefined,
+          sasEndTime: entry.sasEndTime ?? undefined,
+          prevMetersIn: entry.prevIn || 0,
+          prevMetersOut: entry.prevOut || 0,
+        }));
+        variation.checkVariations(locationId, machinesForCheck);
+      };
+      runAutoCheck();
     }
     if (!show) {
       initialCheckPerformedRef.current = false;
     }
-  }, [show, mobileHook.modalState.isLoadingCollections, mobileHook.collectedMachines.length, mobileHook.lockedLocationId, mobileHook.selectedLocationId]);
+  }, [
+    show,
+    mobileHook.modalState.isLoadingCollections,
+    mobileHook.collectedMachines.length,
+    mobileHook.lockedLocationId,
+    mobileHook.selectedLocationId,
+  ]);
 
   return (
     <>
@@ -304,21 +540,31 @@ function MobileEditWrapper({ show, reportId, locations, onRefresh, onClose, onMa
       {mobileHook.modalState.navigationStack.length === 0 && (
         <div className="sticky top-0 z-[100] border-b bg-white px-5 py-4 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold tracking-tight text-gray-900">Edit Collection Report</h2>
+            <h2 className="text-xl font-bold tracking-tight text-gray-900">
+              Edit Collection Report
+            </h2>
             <DialogClose asChild>
-              <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+              <button
+                onClick={onClose}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </DialogClose>
           </div>
         </div>
       )}
 
-      {mobileHook.modalState.isLoadingMachines || mobileHook.modalState.isLoadingCollections ? (
+      {mobileHook.modalState.isLoadingMachines ||
+      mobileHook.modalState.isLoadingCollections ? (
         <MobileCollectionModalSkeleton />
       ) : (
         <MobileEditLayout
           {...mobileHook}
           handleStartSubmit={handleMobileSubmit}
           variationsData={variation.variationsData}
+          hasChanges={mobileHook.hasUnsavedEdits}
+          machineStatusMap={editMachineStatusMap}
         />
       )}
 
@@ -335,36 +581,80 @@ function MobileEditWrapper({ show, reportId, locations, onRefresh, onClose, onMa
         }}
         onSubmit={() => {
           setShowVariationPopover(false);
-          if (variation.hasVariations && variation.variationsData) {
-            setShowVariationsConfirmation(true);
+          // Filter out machines with "No SMIB" (no relayId)
+          const machinesWithSmib =
+            variation.variationsData?.machines.filter(
+              m => typeof m.variation === 'number'
+            ) || [];
+
+          // If no machines have SMIB or no variations, skip variation confirmation and go straight to update
+          if (machinesWithSmib.length === 0 || !variation.hasVariations) {
+            mobileHook.updateCollectionReportHandler(
+              variation.variationsData || undefined
+            );
           } else {
-            mobileHook.updateCollectionReportHandler(variation.variationsData || undefined);
+            // Show variations confirmation only if there are actual variations with SMIB machines
+            setShowVariationsConfirmation(true);
           }
         }}
-        onRetry={() => {/* retry logic */}}
-        onClose={() => setShowVariationPopover(false)}
+        onRetry={() => {
+          /* retry logic */
+        }}
+        onClose={() => {
+          setShowVariationPopover(false);
+          variation.reset();
+        }}
       />
 
       <VariationsConfirmationDialog
         isOpen={showVariationsConfirmation}
-        machineCount={variation.variationsData?.machines.filter((m: MachineVariationData) => typeof m.variation === 'number').length || 0}
+        machineCount={
+          variation.variationsData?.machines.filter(
+            (m: MachineVariationData) => typeof m.variation === 'number'
+          ).length || 0
+        }
         totalVariation={variation.variationsData?.totalVariation || 0}
         isLoading={mobileHook.modalState.isProcessing}
         onConfirm={() => {
-          mobileHook.updateCollectionReportHandler(variation.variationsData || undefined);
+          mobileHook.updateCollectionReportHandler(
+            variation.variationsData || undefined
+          );
           setShowVariationsConfirmation(false);
         }}
         onCancel={() => setShowVariationsConfirmation(false)}
       />
 
+      {/* Update Report Confirmation Dialog (no-SMIB locations skip variation flow) */}
+      <InfoConfirmationDialog
+        isOpen={showUpdateReportConfirmation}
+        onClose={() => setShowUpdateReportConfirmation(false)}
+        onConfirm={() => {
+          mobileHook.updateCollectionReportHandler(undefined);
+          setShowUpdateReportConfirmation(false);
+        }}
+        title="Confirm Update Report"
+        message={`Are you sure you want to update this collection report for ${mobileHook.collectedMachines.length} machine(s)?`}
+        confirmText="Yes, Update Report"
+        cancelText="Cancel"
+        isLoading={mobileHook.modalState.isProcessing}
+      />
+
       {/* Shared Dialogs (Mobile side) */}
       <InfoConfirmationDialog
         isOpen={mobileHook.modalState.showViewMachineConfirmation}
-        onClose={() => mobileHook.setModalState((prev: MobileModalState) => ({...prev, showViewMachineConfirmation: false}))}
+        onClose={() =>
+          mobileHook.setModalState((prev: MobileModalState) => ({
+            ...prev,
+            showViewMachineConfirmation: false,
+          }))
+        }
         onConfirm={() => {
           const id = mobileHook.modalState.selectedMachineData?._id;
           if (id) window.open(`/cabinets/${id}`, '_blank');
-          mobileHook.setModalState((prev: MobileModalState) => ({...prev, showViewMachineConfirmation: false}));
+          mobileHook.setModalState((prev: MobileModalState) => ({
+            ...prev,
+            showViewMachineConfirmation: false,
+          }));
         }}
         title="View Machine"
         message="Do you want to open this machine's details in a new tab?"
@@ -390,6 +680,8 @@ export default function CollectionReportEditCollectionModal({
   const isMachineEditingRef = useRef(false);
   // True when there are unsaved meter changes
   const hasUnsavedEditsRef = useRef(false);
+  // Force close bypasses unsaved changes check (used after successful save)
+  const forceCloseRef = useRef(false);
   const handleMachineEditingChange = useCallback((editing: boolean) => {
     isMachineEditingRef.current = editing;
   }, []);
@@ -400,12 +692,21 @@ export default function CollectionReportEditCollectionModal({
   }, [hasUnsavedEditsRef.current]);
 
   const handleCloseAttempt = useCallback(() => {
+    // Check if we're forcing close (after successful save)
+    if (forceCloseRef.current) {
+      forceCloseRef.current = false;
+      onClose();
+      return;
+    }
     if (isMachineEditingRef.current) {
       toast.warning('Save or cancel your current machine edit first.');
       return;
     }
+    // Block closing if there are unsaved changes (unless force close was triggered)
     if (hasUnsavedEditsRef.current) {
-      toast.warning('You have unsaved changes. Please submit the report first.');
+      toast.warning(
+        'You have unsaved changes. Please submit the report first.'
+      );
       return;
     }
     onClose();
@@ -414,21 +715,27 @@ export default function CollectionReportEditCollectionModal({
   if (!show) return null;
 
   return (
-    <Dialog open={show} onOpenChange={(isOpen) => { if (!isOpen) handleCloseAttempt(); }}>
+    <Dialog
+      open={show}
+      onOpenChange={isOpen => {
+        if (!isOpen) handleCloseAttempt();
+      }}
+    >
       <DialogContent
-        className={isMobile
-          ? "m-0 flex h-[100dvh] w-full max-w-full flex-col overflow-hidden border-none bg-gray-50 p-0 shadow-2xl"
-          : "flex h-[95vh] w-[98vw] max-w-[98vw] flex-col bg-container p-0 md:h-[90vh] md:w-full md:max-w-6xl lg:max-w-7xl"
+        className={
+          isMobile
+            ? 'm-0 flex h-[100dvh] w-full max-w-full flex-col overflow-hidden border-none bg-gray-50 p-0 shadow-2xl'
+            : 'flex h-[95vh] w-[98vw] max-w-[98vw] flex-col bg-container p-0 md:h-[90vh] md:w-full md:max-w-6xl lg:max-w-7xl'
         }
         showCloseButton={!isMobile}
         isMobileFullScreen={isMobile}
-        onEscapeKeyDown={(e) => {
+        onEscapeKeyDown={e => {
           if (isMachineEditingRef.current) {
             e.preventDefault();
             toast.warning('Save or cancel your current machine edit first.');
           }
         }}
-        onInteractOutside={(e) => {
+        onInteractOutside={e => {
           if (isMachineEditingRef.current) e.preventDefault();
         }}
       >
@@ -443,6 +750,7 @@ export default function CollectionReportEditCollectionModal({
             onClose={handleCloseAttempt}
             onMachineEditingChange={handleMachineEditingChange}
             unsavedEditsRef={hasUnsavedEditsRef}
+            forceCloseRef={forceCloseRef}
           />
         ) : (
           <DesktopEditWrapper
@@ -454,6 +762,7 @@ export default function CollectionReportEditCollectionModal({
             gameDayOffset={gameDayOffset}
             onMachineEditingChange={handleMachineEditingChange}
             unsavedEditsRef={hasUnsavedEditsRef}
+            forceCloseRef={forceCloseRef}
           />
         )}
       </DialogContent>

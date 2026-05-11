@@ -3,6 +3,11 @@
  */
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import type { CashierShiftDocument } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
@@ -17,6 +22,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param {boolean} variance - Only show shifts with discrepancies
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/vault/cashier-shift/history';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {
       const { searchParams } = new URL(request.url);
@@ -26,20 +35,36 @@ export async function GET(request: NextRequest) {
         skip = parseInt(searchParams.get('skip') || '0');
       const varianceOnly = searchParams.get('variance') === 'true';
 
-      if (!cashierId)
+      if (!cashierId) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/vault/cashier-shift/history',
+          'Missing cashierId',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Missing cashierId' },
           { status: 400 }
         );
+      }
 
       const isCashier = userRoles
         .map(r => String(r).toLowerCase())
         .includes('cashier');
-      if (isCashier && cashierId !== payload._id)
+      if (isCashier && cashierId !== payload._id) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/vault/cashier-shift/history',
+          'Access denied: self-only',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Access denied: self-only' },
           { status: 403 }
         );
+      }
 
       const query: Record<string, unknown> = { cashierId };
       if (locationId) query.locationId = locationId;
@@ -71,6 +96,16 @@ export async function GET(request: NextRequest) {
         CashierShiftModel.countDocuments(query),
       ]);
 
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/vault/cashier-shift/history',
+        shifts.length,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         shifts,
@@ -83,8 +118,25 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch (e) {
-      console.error('[Cashier Shift History] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+      const errorMessage =
+        e instanceof Error
+          ? e.message
+          : 'Failed to fetch cashier shift history';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/vault/cashier-shift/history',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[Cashier Shift History] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        { status: 500 }
+      );
     }
   });
 }

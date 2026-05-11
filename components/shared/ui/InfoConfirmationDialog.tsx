@@ -98,7 +98,7 @@ export const InfoConfirmationDialog = ({
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100000] pointer-events-auto">
+    <div className="pointer-events-auto fixed inset-0 z-[100000]">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"
@@ -109,7 +109,7 @@ export const InfoConfirmationDialog = ({
         }}
       />
 
-      <div className="fixed inset-0 flex items-center justify-center p-4 h-screen">
+      <div className="fixed inset-0 flex h-screen items-center justify-center p-4">
         <div
           ref={modalRef}
           className="w-full max-w-md rounded-md bg-container shadow-lg"
@@ -181,4 +181,3 @@ export const InfoConfirmationDialog = ({
     document.body
   );
 };
-

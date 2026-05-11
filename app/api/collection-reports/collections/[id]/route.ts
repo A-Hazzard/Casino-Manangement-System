@@ -19,11 +19,24 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
-import type { CollectionDocument, PreviousCollectionMeters } from '@/lib/types/collection';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import type {
+  CollectionDocument,
+  PreviousCollectionMeters,
+} from '@/lib/types/collection';
 import type { GamingMachine } from '@/shared/types';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { calculateMovement } from '@/lib/utils/movement';
 import { NextRequest, NextResponse } from 'next/server';
+
+function toDate(val: Date | string | undefined): Date {
+  if (!val) return new Date();
+  return typeof val === 'string' ? new Date(val) : val;
+}
 
 /**
  * PATCH /api/collection-reports/collections/[id]
@@ -88,16 +101,17 @@ import { NextRequest, NextResponse } from 'next/server';
  * 2. Validate collection ID
  * 3. Connect to database
  * 4. Remove immutable _id field if present
- * 5. Update collection document
- * 6. Recalculate movement and SAS metrics if meters/timestamp changed
- * 7. Update machine collectionMetersHistory if needed
- * 8. Mark parent CollectionReport as editing if meters changed
+ * 5. Extract and handle SAS time fields (sasEndTime, sasStartTime)
+ * 6. Update collection document with all changes (SINGLE update)
+ * 7. Recalculate movement and SAS metrics if meters/timestamp changed
+ * 8. Update machine collectionMetersHistory if needed
  * 9. Cascade recalculation to related collections if needed
  * 10. Return updated collection
  */
-export async function PATCH(
-  request: NextRequest
-) {
+export async function PATCH(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'PATCH /api/collection-reports/collections/[id]';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const collectionId = pathname.split('/').pop();
 
@@ -107,6 +121,13 @@ export async function PATCH(
     // STEP 2: Validate collection ID
     // ============================================================================
     if (!collectionId) {
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/collection-reports/collections/[id]',
+        'Collection ID is required',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Collection ID is required' },
         { status: 400 }
@@ -121,32 +142,62 @@ export async function PATCH(
     // ============================================================================
     // STEP 3.5: Fetch original collection BEFORE update for activity logging
     // ============================================================================
-    const originalCollectionForLog = await Collections.findOne({ _id: collectionId }).lean<CollectionDocument | null>();
+    const originalCollectionForLog = await Collections.findOne({
+      _id: collectionId,
+    }).lean<CollectionDocument | null>();
 
     // ============================================================================
     // STEP 4: Remove immutable _id field if present
     // ============================================================================
-    // Safety check: Remove _id field if present (it's immutable)
     const { _id, ...safeUpdateData } = updateData as Record<string, unknown>;
     if ('_id' in updateData) {
       console.warn('⚠️ API: Removed _id field from update data');
     }
 
+    // ============================================================================
+    // STEP 5: Extract SAS time fields and handle them properly
+    // ============================================================================
     // CRITICAL: Extract sasEndTime/sasStartTime from top-level payload and map them to
     // sasMeters.sasEndTime / sasMeters.sasStartTime using MongoDB dot notation.
     // The Collections schema does NOT have top-level sasEndTime/sasStartTime fields —
     // they live inside the sasMeters sub-document. Mongoose strict mode silently strips
     // top-level unknown fields, so a plain spread would never reach the nested paths.
-    const payloadSasEndTime = safeUpdateData.sasEndTime as string | Date | undefined;
-    const payloadSasStartTime = safeUpdateData.sasStartTime as string | Date | undefined;
+    const payloadSasEndTime = safeUpdateData.sasEndTime as
+      | string
+      | Date
+      | undefined;
+    const payloadSasStartTime = safeUpdateData.sasStartTime as
+      | string
+      | Date
+      | undefined;
+
+    // [DEBUG] Log extracted payload SAS times
+    console.warn(
+      '[PATCH /api/collection-reports/collections/[id]] Extracted payload SAS times:',
+      {
+        payloadSasEndTime: payloadSasEndTime
+          ? payloadSasEndTime instanceof Date
+            ? payloadSasEndTime.toISOString()
+            : new Date(payloadSasEndTime).toISOString()
+          : 'undefined',
+        payloadSasStartTime: payloadSasStartTime
+          ? payloadSasStartTime instanceof Date
+            ? payloadSasStartTime.toISOString()
+            : new Date(payloadSasStartTime).toISOString()
+          : 'undefined',
+        payloadTypeSasEndTime: typeof payloadSasEndTime,
+        payloadTypeSasStartTime: typeof payloadSasStartTime,
+      }
+    );
+
     // Remove from top-level to prevent Mongoose strict-mode silently dropping them
     delete (safeUpdateData as Record<string, unknown>).sasEndTime;
     delete (safeUpdateData as Record<string, unknown>).sasStartTime;
     delete (safeUpdateData as Record<string, unknown>).collector;
     delete (safeUpdateData as Record<string, unknown>).collectorName;
 
-    // Determine if cascade recalculation is needed
-    const shouldCascade =
+    // Determine if recalculation is needed
+    const shouldRecalculate =
       updateData.metersIn !== undefined ||
       updateData.metersOut !== undefined ||
       updateData.timestamp !== undefined ||
@@ -157,34 +208,60 @@ export async function PATCH(
       updateData.ramClearCoinIn !== undefined ||
       updateData.ramClearCoinOut !== undefined;
 
+    // Determine if SAS time recalculation is needed
+    const hasPayloadSasEndTime = payloadSasEndTime !== undefined;
+    const hasPayloadSasStartTime = payloadSasStartTime !== undefined;
+    const hasTimestampChange = updateData.timestamp !== undefined;
+    const needsSasTimeRecalculation =
+      hasTimestampChange && !hasPayloadSasStartTime && !hasPayloadSasEndTime;
+
+    // [DEBUG] Log conditions
+    console.warn(
+      '[PATCH /api/collection-reports/collections/[id]] SAS time conditions:',
+      {
+        hasPayloadSasEndTime,
+        hasPayloadSasStartTime,
+        hasTimestampChange,
+        needsSasTimeRecalculation,
+        shouldRecalculate,
+      }
+    );
+
     // ============================================================================
-    // STEP 5: Update collection document
+    // STEP 6: Build update payload (SINGLE update operation)
     // ============================================================================
-    // Build the $set payload. Use explicit dot notation for sasMeters nested fields
-    // so MongoDB merges them into the subdocument rather than treating them as unknown
-    // top-level fields that Mongoose would strip due to strict mode.
-    const firstSetOperation: Record<string, unknown> = {
+    const updatePayload: Record<string, unknown> = {
       ...safeUpdateData,
       updatedAt: new Date(),
     };
-    if (payloadSasEndTime) {
-      firstSetOperation['sasMeters.sasEndTime'] =
-        typeof payloadSasEndTime === 'string'
-          ? payloadSasEndTime
-          : (payloadSasEndTime as Date).toISOString();
+
+    // Add SAS times to payload using dot notation if provided
+    if (hasPayloadSasEndTime) {
+      const sasEndTimeDate = new Date(payloadSasEndTime as Date);
+      updatePayload['sasMeters.sasEndTime'] = sasEndTimeDate;
+      console.warn(
+        '[PATCH /api/collection-reports/collections/[id]] Adding sasEndTime to updatePayload:',
+        {
+          sasEndTime: sasEndTimeDate.toISOString(),
+          fromPayload: payloadSasEndTime,
+        }
+      );
     }
-    if (payloadSasStartTime) {
-      firstSetOperation['sasMeters.sasStartTime'] =
-        typeof payloadSasStartTime === 'string'
-          ? payloadSasStartTime
-          : (payloadSasStartTime as Date).toISOString();
+    if (hasPayloadSasStartTime) {
+      const sasStartTimeDate = new Date(payloadSasStartTime as Date);
+      updatePayload['sasMeters.sasStartTime'] = sasStartTimeDate;
+      console.warn(
+        '[PATCH /api/collection-reports/collections/[id]] Adding sasStartTime to updatePayload:',
+        {
+          sasStartTime: sasStartTimeDate.toISOString(),
+        }
+      );
     }
 
-    // Find and update the collection
-    // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+    // First update: Apply basic fields and any explicit SAS times
     const updatedCollection = await Collections.findOneAndUpdate(
       { _id: collectionId },
-      { $set: firstSetOperation },
+      { $set: updatePayload },
       { new: true, runValidators: false }
     );
 
@@ -195,26 +272,27 @@ export async function PATCH(
       );
     }
 
-    // ============================================================================
-    // STEP 6: Recalculate movement and SAS metrics if meters/timestamp changed
-    // ============================================================================
+    // [DEBUG] Log after first update
+    console.warn(
+      '[PATCH /api/collection-reports/collections/[id]] After first update:',
+      {
+        collectionId,
+        sasMetersAfterFirstUpdate: updatedCollection.sasMeters,
+        sasEndTime: updatedCollection.sasMeters?.sasEndTime
+          ? new Date(updatedCollection.sasMeters.sasEndTime).toISOString()
+          : 'undefined',
+        sasStartTime: updatedCollection.sasMeters?.sasStartTime
+          ? new Date(updatedCollection.sasMeters.sasStartTime).toISOString()
+          : 'undefined',
+      }
+    );
 
-    // Recalculate softMeters, movement, and sasMeters if meters or timestamp were updated
-    if (
-      updateData.metersIn !== undefined ||
-      updateData.metersOut !== undefined ||
-      updateData.ramClear !== undefined ||
-      updateData.ramClearMetersIn !== undefined ||
-      updateData.ramClearMetersOut !== undefined ||
-      updateData.timestamp !== undefined ||
-      updateData.collectionTime !== undefined
-    ) {
-      // ============================================================================
-      // STEP 6.1: Recalculate movement and softMeters
-      // ============================================================================
+    // ============================================================================
+    // STEP 7: Recalculate movement and SAS metrics if needed
+    // ============================================================================
+    if (shouldRecalculate || needsSasTimeRecalculation) {
       try {
         // Use prevIn/prevOut from the update data if provided, otherwise use the existing collection's values
-        // This is critical for edit operations - we need to use the ORIGINAL previous meters, not the machine's current meters
         const previousMeters: PreviousCollectionMeters = {
           metersIn:
             updateData.prevIn !== undefined
@@ -225,18 +303,6 @@ export async function PATCH(
               ? updateData.prevOut
               : updatedCollection.prevOut || 0,
         };
-
-        console.warn('🔍 Using previous meters for movement calculation:', {
-          previousMeters,
-          fromUpdateData: {
-            prevIn: updateData.prevIn,
-            prevOut: updateData.prevOut,
-          },
-          fromCollection: {
-            prevIn: updatedCollection.prevIn,
-            prevOut: updatedCollection.prevOut,
-          },
-        });
 
         const movement = calculateMovement(
           updatedCollection.metersIn || 0,
@@ -249,14 +315,12 @@ export async function PATCH(
           updatedCollection.ramClearMetersOut
         );
 
-        // Round movement values to 2 decimal places
         const roundedMovement = {
           metersIn: Number(movement.metersIn.toFixed(2)),
           metersOut: Number(movement.metersOut.toFixed(2)),
           gross: Number(movement.gross.toFixed(2)),
         };
 
-        // Calculate softMeters (current meter values, potentially with RAM clear adjustments)
         const softMetersIn =
           updatedCollection.ramClear && updatedCollection.ramClearMetersIn
             ? updatedCollection.ramClearMetersIn
@@ -267,7 +331,7 @@ export async function PATCH(
             ? updatedCollection.ramClearMetersOut
             : updatedCollection.metersOut || 0;
 
-        // Prepare recalculated data
+        // Build recalculation payload
         const recalculatedData: Record<string, unknown> = {
           movement: roundedMovement,
           softMetersIn,
@@ -275,7 +339,7 @@ export async function PATCH(
           updatedAt: new Date(),
         };
 
-        // Recalculate sasMeters - handle both meter changes and timestamp changes
+        // Handle SAS meters recalculation
         if (updatedCollection.sasMeters) {
           let sasMetersData = {
             ...updatedCollection.sasMeters,
@@ -292,112 +356,343 @@ export async function PATCH(
             gamesPlayed: updatedCollection.sasMeters.gamesPlayed || 0,
           };
 
-          // If timestamp changed, recalculate SAS time range and metrics
-          if (updateData.timestamp !== undefined) {
-            try {
-              console.warn(
-                '🔄 Timestamp changed, recalculating SAS time range for collection:',
-                {
-                  collectionId,
-                  oldTimestamp: updatedCollection.timestamp,
-                  newTimestamp: updateData.timestamp,
-                  machineId: updatedCollection.machineId,
-                }
-              );
-
-              const { getSasTimePeriod, calculateSasMetrics } = await import(
-                '@/app/api/lib/helpers/collectionReport/creation'
-              );
-
-              // Get new SAS time range based on new collection timestamp.
-              // CRITICAL: Only preserve overrides if they are provided in this specific update (updateData).
-              // If the timestamp is changing, we should recalculate the period from scratch unless the user
-              // explicitly provided new SAS overrides in the same request.
-              const { sasStartTime, sasEndTime } = await getSasTimePeriod(
-                updatedCollection.machineId,
-                updateData.sasStartTime ? new Date(updateData.sasStartTime) : undefined, // customStartTime (reset if date moves)
-                updateData.sasEndTime ? new Date(updateData.sasEndTime) : new Date(updateData.timestamp || updatedCollection.timestamp) // customEndTime
-              );
-
-              // Recalculate SAS metrics with new time range
-              const newSasMetrics = await calculateSasMetrics(
-                updatedCollection.machineId,
-                sasStartTime,
-                sasEndTime
-              );
-
-              console.warn(
-                '🔄 SAS metrics recalculated for timestamp change:',
-                {
-                  collectionId,
-                  newSasStartTime: sasStartTime.toISOString(),
-                  newSasEndTime: sasEndTime.toISOString(),
-                  newSasGross: newSasMetrics.gross,
-                  newSasDrop: newSasMetrics.drop,
-                  newSasCancelledCredits: newSasMetrics.totalCancelledCredits,
-                }
-              );
-
-              // Update SAS metrics with recalculated values
-              sasMetersData = {
-                ...sasMetersData,
-                ...newSasMetrics,
-                sasStartTime: sasStartTime.toISOString(),
-                sasEndTime: sasEndTime.toISOString(),
-                machine: sasMetersData.machine, // Keep the machine identifier
-              };
-            } catch (sasError) {
-              console.error(
-                ' Error recalculating SAS metrics for timestamp change:',
-                sasError
-              );
-              // Fallback to original SAS times if recalculation fails
-              sasMetersData.sasStartTime =
-                updatedCollection.sasMeters.sasStartTime ||
-                new Date().toISOString();
-              sasMetersData.sasEndTime =
-                updatedCollection.sasMeters.sasEndTime ||
-                new Date().toISOString();
+          // [DEBUG] Log entry to SAS time handling
+          console.warn(
+            '[PATCH /api/collection-reports/collections/[id]] Entering SAS time handling:',
+            {
+              hasPayloadSasStartTime,
+              hasPayloadSasEndTime,
+              needsSasTimeRecalculation,
+              currentSasStartTime: updatedCollection.sasMeters?.sasStartTime
+                ? new Date(
+                    updatedCollection.sasMeters.sasStartTime
+                  ).toISOString()
+                : 'undefined',
+              currentSasEndTime: updatedCollection.sasMeters?.sasEndTime
+                ? new Date(updatedCollection.sasMeters.sasEndTime).toISOString()
+                : 'undefined',
             }
+          );
+
+          // Handle SAS time range
+          // Priority: 1. Explicit SAS times from payload, 2. Recalculate if timestamp changed, 3. Keep existing
+          let finalSasStartTime =
+            toDate(updatedCollection.sasMeters?.sasStartTime) || new Date();
+          let finalSasEndTime =
+            toDate(updatedCollection.sasMeters?.sasEndTime) || new Date();
+
+          if (hasPayloadSasStartTime && hasPayloadSasEndTime) {
+            // Case 1: User provided both SAS times - preserve them exactly
+            finalSasStartTime = toDate(payloadSasStartTime as string | Date);
+            finalSasEndTime = toDate(payloadSasEndTime as string | Date);
+            console.warn(
+              '[PATCH /api/collection-reports/collections/[id]] Case 1: Using explicitly provided SAS times:',
+              {
+                sasStartTime: finalSasStartTime.toISOString(),
+                sasEndTime: finalSasEndTime.toISOString(),
+              }
+            );
+          } else if (hasPayloadSasEndTime) {
+            // Case 2: User provided only sasEndTime (simple mode) - calculate sasStartTime ONLY
+            const userProvidedEndTime = toDate(
+              payloadSasEndTime as string | Date
+            );
+            const { getSasTimePeriod } =
+              await import('@/app/api/lib/helpers/collectionReport/creation');
+            const { sasStartTime: calculatedStartTime } =
+              await getSasTimePeriod(
+                updatedCollection.machineId,
+                undefined,
+                userProvidedEndTime
+              );
+            finalSasStartTime = toDate(calculatedStartTime);
+            finalSasEndTime = userProvidedEndTime;
+            console.warn(
+              '[PATCH /api/collection-reports/collections/[id]] Case 2: Using simple mode SAS times:',
+              {
+                sasStartTime: finalSasStartTime.toISOString(),
+                sasEndTime: finalSasEndTime.toISOString(),
+                userProvidedEndTime: userProvidedEndTime.toISOString(),
+              }
+            );
+          } else if (needsSasTimeRecalculation) {
+            // Case 3: Timestamp changed, recalculate both SAS times
+            const newTimestamp = toDate(updateData.timestamp as string | Date);
+            const { getSasTimePeriod, calculateSasMetrics } =
+              await import('@/app/api/lib/helpers/collectionReport/creation');
+            const {
+              sasStartTime: calculatedStartTime,
+              sasEndTime: calculatedEndTime,
+            } = await getSasTimePeriod(
+              updatedCollection.machineId,
+              undefined,
+              newTimestamp
+            );
+            finalSasStartTime = toDate(calculatedStartTime);
+            finalSasEndTime = toDate(calculatedEndTime);
+
+            // Recalculate SAS metrics with new time range
+            const newSasMetrics = await calculateSasMetrics(
+              updatedCollection.machineId,
+              finalSasStartTime,
+              finalSasEndTime
+            );
+
+            sasMetersData = {
+              ...sasMetersData,
+              ...newSasMetrics,
+            };
+
+            console.warn(
+              '[PATCH /api/collection-reports/collections/[id]] Case 3: Recalculated SAS times from timestamp change:',
+              {
+                sasStartTime: finalSasStartTime.toISOString(),
+                sasEndTime: finalSasEndTime.toISOString(),
+                newTimestamp: newTimestamp.toISOString(),
+              }
+            );
           } else {
-            // No timestamp change, keep existing SAS times
-            sasMetersData.sasStartTime =
-              updatedCollection.sasMeters.sasStartTime ||
-              new Date().toISOString();
-            sasMetersData.sasEndTime =
-              updatedCollection.sasMeters.sasEndTime ||
-              new Date().toISOString();
+            // Case 4: No changes needed, keep existing
+            console.warn(
+              '[PATCH /api/collection-reports/collections/[id]] Case 4: Keeping existing SAS times:',
+              {
+                sasStartTime: finalSasStartTime.toISOString(),
+                sasEndTime: finalSasEndTime.toISOString(),
+              }
+            );
           }
+
+          // Update SAS metrics with final times
+          sasMetersData.sasStartTime = finalSasStartTime;
+          sasMetersData.sasEndTime = finalSasEndTime;
+
+          // [DEBUG] Log final SAS times before saving
+          console.warn(
+            '[PATCH /api/collection-reports/collections/[id]] About to save SAS times:',
+            {
+              finalSasStartTime: finalSasStartTime.toISOString(),
+              finalSasEndTime: finalSasEndTime.toISOString(),
+            }
+          );
 
           recalculatedData.sasMeters = sasMetersData;
         }
 
-        // Update the collection with all recalculated fields
-        // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
+        // Second update: Apply recalculated fields
         const finalUpdatedCollection = await Collections.findOneAndUpdate(
           { _id: collectionId },
           { $set: recalculatedData },
           { new: true, runValidators: true }
         );
 
-        console.warn('🔄 Recalculated all fields for updated collection:', {
-          collectionId,
-          previousMeters,
-          currentMeters: {
-            metersIn: updatedCollection.metersIn,
-            metersOut: updatedCollection.metersOut,
-          },
-          calculatedMovement: movement,
-          softMeters: { in: softMetersIn, out: softMetersOut },
-          sasMetersUpdated: !!recalculatedData.sasMeters,
-          timestampChanged: updateData.timestamp !== undefined,
-          sasTimeRangeRecalculated: updateData.timestamp !== undefined,
-        });
-
-        // Update regular and RAM clear meters with the fully updated collection document
+        // Update regular and RAM clear meters
         if (finalUpdatedCollection) {
           await updateRegularAndRamClearMeters(finalUpdatedCollection);
         }
+
+        // Update machine collectionMetersHistory if meters were updated
+        if (
+          updatedCollection.machineId &&
+          (updateData.metersIn !== undefined ||
+            updateData.metersOut !== undefined)
+        ) {
+          try {
+            const currentMachine = await Machine.findOne({
+              _id: updatedCollection.machineId,
+            }).lean<GamingMachine | null>();
+
+            if (currentMachine) {
+              const existingHistoryEntry = (
+                currentMachine as GamingMachine & {
+                  collectionMetersHistory?: Array<{
+                    locationReportId: string;
+                    prevMetersIn?: number;
+                    prevMetersOut?: number;
+                    metersIn?: number;
+                    metersOut?: number;
+                    timestamp?: Date;
+                  }>;
+                }
+              ).collectionMetersHistory?.find(
+                (entry: { locationReportId: string }) =>
+                  entry.locationReportId === updatedCollection.locationReportId
+              );
+
+              if (existingHistoryEntry) {
+                // Get the correct prevMetersIn and prevMetersOut from the previous collection
+                const collectionTimeForComparison =
+                  updatedCollection.collectionTime ||
+                  updatedCollection.timestamp;
+                const previousCollection = await Collections.findOne(
+                  {
+                    machineId: updatedCollection.machineId,
+                    $or: [
+                      { collectionTime: { $lt: collectionTimeForComparison } },
+                      { timestamp: { $lt: collectionTimeForComparison } },
+                    ],
+                    deletedAt: { $exists: false },
+                  },
+                  {
+                    sort: {
+                      collectionTime: -1,
+                      timestamp: -1,
+                    },
+                  }
+                );
+
+                const prevMetersIn = previousCollection?.metersIn || 0;
+                const prevMetersOut = previousCollection?.metersOut || 0;
+
+                const updateResult = await Machine.findOneAndUpdate(
+                  { _id: updatedCollection.machineId },
+                  {
+                    $set: {
+                      updatedAt: new Date(),
+                      'collectionMetersHistory.$[elem].metersIn':
+                        updatedCollection.metersIn || 0,
+                      'collectionMetersHistory.$[elem].metersOut':
+                        updatedCollection.metersOut || 0,
+                      'collectionMetersHistory.$[elem].prevMetersIn':
+                        prevMetersIn,
+                      'collectionMetersHistory.$[elem].prevMetersOut':
+                        prevMetersOut,
+                      'collectionMetersHistory.$[elem].timestamp':
+                        updatedCollection.collectionTime ||
+                        updatedCollection.timestamp ||
+                        new Date(),
+                    },
+                  },
+                  {
+                    arrayFilters: [
+                      {
+                        'elem.locationReportId':
+                          updatedCollection.locationReportId || '',
+                      },
+                    ],
+                    new: true,
+                  }
+                );
+
+                if (updateResult) {
+                  console.warn(
+                    'Updated existing collectionMetersHistory entry:',
+                    {
+                      machineId: updatedCollection.machineId,
+                      locationReportId: updatedCollection.locationReportId,
+                    }
+                  );
+                }
+              }
+            }
+          } catch (machineUpdateError) {
+            console.error(
+              'Failed to update machine collection meters:',
+              machineUpdateError
+            );
+          }
+        }
+
+        // Cascade recalculation to related collections
+        if (shouldRecalculate && updatedCollection.machineId) {
+          try {
+            await recalculateMachineCollections(
+              String(updatedCollection.machineId)
+            );
+          } catch (recalcError) {
+            console.error(
+              'Failed to recalculate machine collections:',
+              recalcError
+            );
+          }
+        }
+
+        // Log activity
+        const currentUser = await getUserFromServer();
+        if (currentUser && currentUser.emailAddress) {
+          try {
+            const preUpdateDoc = originalCollectionForLog as Record<
+              string,
+              unknown
+            > | null;
+            const updateChanges: Array<{
+              field: string;
+              oldValue: unknown;
+              newValue: unknown;
+            }> = [];
+
+            if (updateData.metersIn !== undefined && preUpdateDoc) {
+              updateChanges.push({
+                field: 'metersIn',
+                oldValue: preUpdateDoc.metersIn,
+                newValue: updateData.metersIn,
+              });
+            }
+            if (updateData.metersOut !== undefined && preUpdateDoc) {
+              updateChanges.push({
+                field: 'metersOut',
+                oldValue: preUpdateDoc.metersOut,
+                newValue: updateData.metersOut,
+              });
+            }
+            if (updateData.notes !== undefined && preUpdateDoc) {
+              updateChanges.push({
+                field: 'notes',
+                oldValue: preUpdateDoc.notes,
+                newValue: updateData.notes,
+              });
+            }
+            if (updateData.ramClear !== undefined && preUpdateDoc) {
+              updateChanges.push({
+                field: 'ramClear',
+                oldValue: preUpdateDoc.ramClear,
+                newValue: updateData.ramClear,
+              });
+            }
+            if (updateData.timestamp !== undefined && preUpdateDoc) {
+              updateChanges.push({
+                field: 'timestamp',
+                oldValue: preUpdateDoc.timestamp,
+                newValue: updateData.timestamp,
+              });
+            }
+
+            await logActivity({
+              action: 'UPDATE',
+              details: `Updated machine ${updatedCollection.serialNumber || updatedCollection.machineName || updatedCollection.machineId} in collection report${updatedCollection.locationReportId ? ` (report: ${updatedCollection.locationReportId})` : ''} — ${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''}`,
+              ipAddress: getClientIP(request) || undefined,
+              userAgent: request.headers.get('user-agent') || undefined,
+              userId: currentUser._id as string,
+              username: currentUser.emailAddress as string,
+              metadata: {
+                userId: currentUser._id as string,
+                userEmail: currentUser.emailAddress as string,
+                userRole: (currentUser.roles as string[])?.[0] || 'user',
+                resource: 'collection',
+                resourceId: collectionId,
+                resourceName:
+                  updatedCollection.serialNumber ||
+                  String(updatedCollection.machineId),
+                locationReportId: updatedCollection.locationReportId || '',
+                location: updatedCollection.location || '',
+                changes: updateChanges,
+                previousData: preUpdateDoc,
+                newData: finalUpdatedCollection,
+              },
+            });
+          } catch (logError) {
+            console.error('Failed to log activity:', logError);
+          }
+        }
+
+        const duration = Date.now() - startTime;
+        logRouteUpdate(
+          functionName,
+          'PATCH',
+          '/api/collection-reports/collections/[id]',
+          1,
+          user,
+          duration
+        );
 
         return NextResponse.json({
           success: true,
@@ -408,364 +703,45 @@ export async function PATCH(
           'Error recalculating collection fields:',
           recalculationError
         );
-        // Continue with the response even if recalculation fails
+        // Return the first update result even if recalculation fails
+        return NextResponse.json({
+          success: true,
+          data: updatedCollection,
+          warning: 'Recalculation failed, but basic update succeeded',
+        });
       }
     }
 
-    // ============================================================================
-    // STEP 7: Update machine collectionMetersHistory if needed
-    // ============================================================================
-    // Update machine collectionMetersHistory if meters were updated
-    if (
-      updatedCollection.machineId &&
-      (updateData.metersIn !== undefined || updateData.metersOut !== undefined)
-    ) {
-      try {
-        // Get the current machine to access previous meters
-        // CRITICAL: Use findOne with _id instead of findById (repo rule)
-        const currentMachine = await Machine.findOne({
-          _id: updatedCollection.machineId,
-        }).lean<GamingMachine | null>();
-        if (currentMachine) {
-          const currentCollectionMeters = currentMachine.collectionMeters as
-            | { metersIn: number; metersOut: number }
-            | undefined;
-
-          // Check if there's already a history entry with the same locationReportId
-          const existingHistoryEntry = (
-            currentMachine as GamingMachine & {
-              collectionMetersHistory?: Array<{
-                locationReportId: string;
-                prevMetersIn?: number;
-                prevMetersOut?: number;
-                metersIn?: number;
-                metersOut?: number;
-                timestamp?: Date;
-              }>;
-            }
-          ).collectionMetersHistory?.find(
-            (entry: { locationReportId: string }) =>
-              entry.locationReportId === updatedCollection.locationReportId
-          );
-
-          if (existingHistoryEntry) {
-            // Check if this is the most recent collection for this machine
-            // Use collectionTime for more accurate comparison, fallback to timestamp
-            const mostRecentCollection = await Collections.findOne(
-              {
-                machineId: updatedCollection.machineId,
-                deletedAt: { $exists: false },
-              },
-              {
-                sort: {
-                  collectionTime: -1,
-                  timestamp: -1,
-                },
-              }
-            );
-
-            const isMostRecent =
-              mostRecentCollection?._id.toString() === collectionId.toString();
-
-            // Get the correct prevMetersIn and prevMetersOut from the existing history entry
-            // If prevMeters are undefined, we need to calculate them from the previous collection
-            let prevMetersIn = existingHistoryEntry.prevMetersIn;
-            let prevMetersOut = existingHistoryEntry.prevMetersOut;
-
-            if (prevMetersIn === undefined || prevMetersOut === undefined) {
-              // Find the previous collection to get the correct previous meters
-              // Use collectionTime if available, fallback to timestamp
-              const collectionTimeForComparison =
-                updatedCollection.collectionTime || updatedCollection.timestamp;
-              const previousCollection = await Collections.findOne(
-                {
-                  machineId: updatedCollection.machineId,
-                  $or: [
-                    { collectionTime: { $lt: collectionTimeForComparison } },
-                    { timestamp: { $lt: collectionTimeForComparison } },
-                  ],
-                  deletedAt: { $exists: false },
-                },
-                {
-                  sort: {
-                    collectionTime: -1,
-                    timestamp: -1,
-                  },
-                }
-              );
-
-              if (previousCollection) {
-                prevMetersIn = previousCollection.metersIn || 0;
-                prevMetersOut = previousCollection.metersOut || 0;
-                console.warn(
-                  '🔍 Calculated prevMeters from previous collection:',
-                  {
-                    prevMetersIn,
-                    prevMetersOut,
-                    previousCollectionId: previousCollection._id,
-                  }
-                );
-              } else {
-                prevMetersIn = 0;
-                prevMetersOut = 0;
-                console.warn(
-                  '⚠️ No previous collection found, using 0 for prevMeters'
-                );
-              }
-            }
-
-            // Update existing history entry
-            const updateData: Record<string, unknown> = {
-              updatedAt: new Date(),
-              'collectionMetersHistory.$[elem].metersIn':
-                updatedCollection.metersIn || 0,
-              'collectionMetersHistory.$[elem].metersOut':
-                updatedCollection.metersOut || 0,
-              'collectionMetersHistory.$[elem].timestamp': new Date(),
-              'collectionMetersHistory.$[elem].prevMetersIn': prevMetersIn,
-              'collectionMetersHistory.$[elem].prevMetersOut': prevMetersOut,
-            };
-
-            // CRITICAL: NEVER update machine collectionMeters when editing collections
-            // Machine collectionMeters should ONLY be updated when Create Report button is pressed
-            // This ensures proper timing and prevents premature meter updates
-
-            // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-            const historyUpdateResult = await Machine.findOneAndUpdate(
-              { _id: updatedCollection.machineId },
-              { $set: updateData },
-              {
-                arrayFilters: [
-                  {
-                    'elem.locationReportId': updatedCollection.locationReportId,
-                  },
-                ],
-                new: true,
-              }
-            );
-            if (!historyUpdateResult) {
-              console.warn(`[Collections PATCH] Machine ${updatedCollection.machineId} not found for history update`);
-            }
-
-            console.warn('Updated existing collectionMetersHistory entry:', {
-              machineId: updatedCollection.machineId,
-              locationReportId: updatedCollection.locationReportId,
-              newMetersIn: updatedCollection.metersIn,
-              newMetersOut: updatedCollection.metersOut,
-              prevMetersIn,
-              prevMetersOut,
-              isMostRecent,
-            });
-          } else {
-            // Check if this is the most recent collection for this machine
-            // Use collectionTime for more accurate comparison, fallback to timestamp
-            const mostRecentCollection = await Collections.findOne(
-              {
-                machineId: updatedCollection.machineId,
-                deletedAt: { $exists: false },
-              },
-              {
-                sort: {
-                  collectionTime: -1,
-                  timestamp: -1,
-                },
-              }
-            );
-
-            const isMostRecent =
-              mostRecentCollection?._id.toString() === collectionId.toString();
-
-            // Get the correct prevMetersIn and prevMetersOut from the previous collection
-            // For new entries, use the current machine's collection meters as prev
-            const prevMetersIn = currentCollectionMeters?.metersIn || 0;
-            const prevMetersOut = currentCollectionMeters?.metersOut || 0;
-
-            // Update existing history entry instead of creating new ones to prevent duplicates
-            // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-            const updateResult = await Machine.findOneAndUpdate(
-              { _id: updatedCollection.machineId },
-              {
-                $set: {
-                  updatedAt: new Date(),
-                  'collectionMetersHistory.$[elem].metersIn':
-                    updatedCollection.metersIn || 0,
-                  'collectionMetersHistory.$[elem].metersOut':
-                    updatedCollection.metersOut || 0,
-                  'collectionMetersHistory.$[elem].prevMetersIn': prevMetersIn,
-                  'collectionMetersHistory.$[elem].prevMetersOut':
-                    prevMetersOut,
-                  'collectionMetersHistory.$[elem].timestamp':
-                    updatedCollection.collectionTime ||
-                    updatedCollection.timestamp ||
-                    new Date(),
-                },
-              },
-              {
-                arrayFilters: [
-                  {
-                    'elem.locationReportId':
-                      updatedCollection.locationReportId || '',
-                  },
-                ],
-                new: true,
-              }
-            );
-
-            if (updateResult) {
-              console.warn('Updated existing collectionMetersHistory entry:', {
-                machineId: updatedCollection.machineId,
-                locationReportId: updatedCollection.locationReportId,
-                newMetersIn: updatedCollection.metersIn,
-                newMetersOut: updatedCollection.metersOut,
-                prevMetersIn,
-                prevMetersOut,
-                isMostRecent,
-              });
-            } else {
-              console.warn(
-                'No existing history entry found to update for collection:',
-                updatedCollection._id
-              );
-            }
-          }
-        }
-      } catch (machineUpdateError) {
-        console.error(
-          'Failed to update machine collection meters:',
-          machineUpdateError
-        );
-        // Don't fail the collection update if machine update fails
-      }
-    }
-
+    // No recalculation needed - return the updated collection
     console.warn('Collection updated successfully:', {
       collectionId,
       updatedFields: Object.keys(updateData),
-      newMetersIn: updatedCollection.metersIn,
-      newMetersOut: updatedCollection.metersOut,
     });
 
-    // Get the final updated collection (with movement if recalculated)
-    // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    let finalCollection = await Collections.findOne({ _id: collectionId }).lean<CollectionDocument>();
-    if (shouldCascade && updatedCollection.machineId) {
-      try {
-        await recalculateMachineCollections(
-          String(updatedCollection.machineId)
-        );
-        finalCollection = await Collections.findOne({ _id: collectionId }).lean<CollectionDocument>();
-      } catch (recalcError) {
-        console.error(
-          'Failed to recalculate machine collections:',
-          recalcError
-        );
-      }
-    }
-
-    // Update regular and RAM clear meters with the fully updated collection document
-    if (finalCollection) {
-      await updateRegularAndRamClearMeters(finalCollection);
-    }
-
-    // ============================================================================
-    // STEP 10: Log activity with accurate change tracking
-    // ============================================================================
-    const currentUser = await getUserFromServer();
-    if (currentUser && currentUser.emailAddress) {
-      try {
-        // Use the pre-update snapshot captured before any modifications
-        const preUpdateDoc = originalCollectionForLog as Record<string, unknown> | null;
-
-        // Build changes array - ONLY for fields that were actually updated
-        const updateChanges: Array<{
-          field: string;
-          oldValue: unknown;
-          newValue: unknown;
-        }> = [];
-
-        // Check each possible update field against the ORIGINAL values
-        if (updateData.metersIn !== undefined && preUpdateDoc) {
-          updateChanges.push({
-            field: 'metersIn',
-            oldValue: preUpdateDoc.metersIn,
-            newValue: updateData.metersIn,
-          });
-        }
-        if (updateData.metersOut !== undefined && preUpdateDoc) {
-          updateChanges.push({
-            field: 'metersOut',
-            oldValue: preUpdateDoc.metersOut,
-            newValue: updateData.metersOut,
-          });
-        }
-        if (updateData.notes !== undefined && preUpdateDoc) {
-          updateChanges.push({
-            field: 'notes',
-            oldValue: preUpdateDoc.notes,
-            newValue: updateData.notes,
-          });
-        }
-        if (updateData.ramClear !== undefined && preUpdateDoc) {
-          updateChanges.push({
-            field: 'ramClear',
-            oldValue: preUpdateDoc.ramClear,
-            newValue: updateData.ramClear,
-          });
-        }
-        if (updateData.ramClearMetersIn !== undefined && preUpdateDoc) {
-          updateChanges.push({
-            field: 'ramClearMetersIn',
-            oldValue: preUpdateDoc.ramClearMetersIn,
-            newValue: updateData.ramClearMetersIn,
-          });
-        }
-        if (updateData.ramClearMetersOut !== undefined && preUpdateDoc) {
-          updateChanges.push({
-            field: 'ramClearMetersOut',
-            oldValue: preUpdateDoc.ramClearMetersOut,
-            newValue: updateData.ramClearMetersOut,
-          });
-        }
-        if (updateData.timestamp !== undefined && preUpdateDoc) {
-          updateChanges.push({
-            field: 'timestamp',
-            oldValue: preUpdateDoc.timestamp,
-            newValue: updateData.timestamp,
-          });
-        }
-
-        await logActivity({
-          action: 'UPDATE',
-          details: `Updated machine ${updatedCollection.serialNumber || updatedCollection.machineName || updatedCollection.machineId} in collection report${updatedCollection.locationReportId ? ` (report: ${updatedCollection.locationReportId})` : ''} — ${updateChanges.length} change${updateChanges.length !== 1 ? 's' : ''}`,
-          ipAddress: getClientIP(request) || undefined,
-          userAgent: request.headers.get('user-agent') || undefined,
-          userId: currentUser._id as string,
-          username: currentUser.emailAddress as string,
-          metadata: {
-            userId: currentUser._id as string,
-            userEmail: currentUser.emailAddress as string,
-            userRole: (currentUser.roles as string[])?.[0] || 'user',
-            resource: 'collection',
-            resourceId: collectionId,
-            resourceName: updatedCollection.serialNumber || String(updatedCollection.machineId),
-            locationReportId: updatedCollection.locationReportId || '',
-            location: updatedCollection.location || '',
-            changes: updateChanges,
-            previousData: preUpdateDoc,
-            newData: finalCollection,
-          },
-        });
-      } catch (logError) {
-        console.error('Failed to log activity:', logError);
-      }
-    }
+    const duration = Date.now() - startTime;
+    logRouteUpdate(
+      functionName,
+      'PATCH',
+      '/api/collection-reports/collections/[id]',
+      1,
+      user,
+      duration
+    );
 
     return NextResponse.json({
       success: true,
-      message: 'Collection updated successfully',
-      data: finalCollection,
+      data: updatedCollection,
     });
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'PATCH',
+      '/api/collection-reports/collections/[id]',
+      errorMessage,
+      user
+    );
     console.error('Error updating collection:', error);
     return NextResponse.json(
       {

@@ -24,9 +24,9 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
 import { safeFormatDate } from '@/lib/utils/date/formatting';
 import type {
-    Denomination,
-    ExtendedVaultTransaction,
-    VaultTransactionType,
+  Denomination,
+  ExtendedVaultTransaction,
+  VaultTransactionType,
 } from '@/shared/types/vault';
 import { Eye } from 'lucide-react';
 import { useState } from 'react';
@@ -107,12 +107,15 @@ export default function VaultTransactionsMobileCards({
                   <p className="text-xs text-gray-500">Amount</p>
                   <p
                     className={cn(
-                      'font-bold leading-none transition-all truncate',
+                      'truncate font-bold leading-none transition-all',
                       isOutflow ? 'text-red-600' : 'text-green-600',
-                      formatAmount(Math.abs(tx.amount)).length > 12 ? 'text-lg' : 'text-xl'
+                      formatAmount(Math.abs(tx.amount)).length > 12
+                        ? 'text-lg'
+                        : 'text-xl'
                     )}
                   >
-                    {isOutflow && '-'}{formatAmount(Math.abs(tx.amount))}
+                    {isOutflow && '-'}
+                    {formatAmount(Math.abs(tx.amount))}
                   </p>
                 </div>
 
@@ -135,11 +138,11 @@ export default function VaultTransactionsMobileCards({
                 {/* Denominations */}
                 {tx.denominations && tx.denominations.length > 0 && (
                   <div className="mb-3">
-                    <p className="text-xs text-gray-500 mb-1">Denominations</p>
+                    <p className="mb-1 text-xs text-gray-500">Denominations</p>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 text-xs w-full justify-center"
+                      className="h-8 w-full justify-center text-xs"
                       onClick={() =>
                         setSelectedTxDenominations({
                           denominations: tx.denominations,
@@ -165,7 +168,6 @@ export default function VaultTransactionsMobileCards({
           );
         })}
       </div>
-
 
       <ViewDenominationsModal
         open={!!selectedTxDenominations}

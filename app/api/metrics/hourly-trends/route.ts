@@ -1,16 +1,6 @@
 /**
  * Hourly Trends Metrics API Route
- *
- * This route handles fetching hourly revenue trends for locations.
- * It supports:
- * - Single or multiple location IDs
- * - Filtering by time period or custom date range
- * - Optional filtering by licencee
- * - Current period revenue and previous period average
- *
- * @module app/api/metrics/hourly-trends/route
  */
-
 import {
   getHourlyTrends,
   processMultipleLocationsHourlyData,
@@ -18,62 +8,57 @@ import {
 } from '@/app/api/lib/helpers/trends/hourly';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * Main GET handler for fetching hourly trends
- *
- * @param {string} locationId - Single location ID
- * @param {string} locationIds - Comma-separated location IDs
- * @param {string} timePeriod - Time range preset ('Today', '7d', etc.)
- * @param {string} licencee - Filter by licencee name
- * @param {string} startDate - ISO date for custom range start
- * @param {string} endDate - ISO date for custom range end
- *
- * Flow:
- * 1. Parse and validate request parameters
- * 2. Connect to database
- * 3. Fetch hourly trends data
- * 4. Process hourly data for single or multiple locations
- * 5. Return hourly trends
- */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/metrics/hourly-trends';
+  const user = extractUserFromRequest(req);
 
   try {
-    // ============================================================================
-    // STEP 1: Parse and validate request parameters
-    // ============================================================================
     const { searchParams } = new URL(req.url);
     const locationId = searchParams.get('locationId');
     const locationIds = searchParams.get('locationIds');
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = (searchParams.get('licencee'));
+    const licencee = searchParams.get('licencee');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
 
     if (!locationId && !locationIds) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/metrics/hourly-trends',
+        'Location ID or Location IDs are required',
+        user
+      );
       return NextResponse.json(
         { error: 'Location ID or Location IDs are required' },
         { status: 400 }
       );
     }
 
-    // ============================================================================
-    // STEP 2: Connect to database
-    // ============================================================================
     const db = await connectDB();
     if (!db) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/metrics/hourly-trends',
+        'Database connection not established',
+        user
+      );
       return NextResponse.json(
         { error: 'Database connection not established' },
         { status: 500 }
       );
     }
 
-    // ============================================================================
-    // STEP 3: Fetch hourly trends data
-    // ============================================================================
     const {
       currentPeriodRevenue,
       previousPeriodAverage,
@@ -88,19 +73,20 @@ export async function GET(req: NextRequest) {
       licencee
     );
 
-    // ============================================================================
-    // STEP 4: Process hourly data for single or multiple locations
-    // ============================================================================
     if (locationIds) {
       const locationData = processMultipleLocationsHourlyData(
         hourlyData,
         targetLocations
       );
-
       const duration = Date.now() - startTime;
-      if (duration > 1000) {
-        console.warn(`[Metrics Hourly Trends GET API] Completed in ${duration}ms`);
-      }
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/metrics/hourly-trends',
+        targetLocations.length,
+        user,
+        duration
+      );
       return NextResponse.json({
         locationIds: targetLocations,
         timePeriod,
@@ -111,16 +97,22 @@ export async function GET(req: NextRequest) {
     } else {
       const hourlyTrends = processSingleLocationHourlyData(hourlyData);
       const totalRevenue = hourlyTrends.reduce(
-        (sum, item) => sum + item.revenue,
+        (sum: number, item: { revenue: number }) => sum + item.revenue,
         0
       );
-      const peakRevenue = Math.max(...hourlyTrends.map(item => item.revenue));
+      const peakRevenue = Math.max(
+        ...hourlyTrends.map((item: { revenue: number }) => item.revenue)
+      );
       const avgRevenue = Math.round(totalRevenue / 24);
-
       const duration = Date.now() - startTime;
-      if (duration > 1000) {
-        console.warn(`[Metrics Hourly Trends GET API] Completed in ${duration}ms`);
-      }
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/metrics/hourly-trends',
+        1,
+        user,
+        duration
+      );
       return NextResponse.json({
         locationId,
         timePeriod,
@@ -136,6 +128,13 @@ export async function GET(req: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch hourly trends';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/metrics/hourly-trends',
+      errorMessage,
+      user
+    );
     console.error(
       `[Hourly Trends Metrics GET API] Error after ${duration}ms:`,
       errorMessage
@@ -143,4 +142,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-

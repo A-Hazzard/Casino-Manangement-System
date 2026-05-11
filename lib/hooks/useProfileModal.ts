@@ -79,7 +79,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       licencee?: string | string[];
       rel?: {
         licencee?: string | string[];
-      }
+      };
     }>
   >([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
@@ -106,9 +106,13 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
-  const [passwordReuseError, setPasswordReuseError] = useState<string | null>(null);
+  const [passwordReuseError, setPasswordReuseError] = useState<string | null>(
+    null
+  );
   const [emailAddress, setEmailAddress] = useState<string>('');
-  const [isCurrentPasswordVerified, setIsCurrentPasswordVerified] = useState<boolean | null>(null);
+  const [isCurrentPasswordVerified, setIsCurrentPasswordVerified] = useState<
+    boolean | null
+  >(null);
 
   const validateCurrentPassword = async () => {
     if (!passwordData.currentPassword) {
@@ -118,7 +122,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     try {
       const { data } = await axios.post('/api/users/check-password', {
         password: passwordData.currentPassword,
-        type: 'verify'
+        type: 'verify',
       });
       setIsCurrentPasswordVerified(data.isMatch);
     } catch (err) {
@@ -134,7 +138,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
     try {
       const { data } = await axios.post('/api/users/check-password', {
         password: passwordData.newPassword,
-        type: 'reuse'
+        type: 'reuse',
       });
       if (data.isReuse) {
         setPasswordReuseError(data.reason);
@@ -166,7 +170,9 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
 
             // Set initial assignments
             if (data.assignedLicencees) {
-              const assigned = Array.isArray(data.assignedLicencees) ? data.assignedLicencees : [];
+              const assigned = Array.isArray(data.assignedLicencees)
+                ? data.assignedLicencees
+                : [];
               if (assigned.includes('all')) {
                 setAllLicenceesSelected(true);
                 setSelectedLicenceeIds([]);
@@ -176,7 +182,9 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
             }
 
             if (data.assignedLocations) {
-              const assigned = Array.isArray(data.assignedLocations) ? data.assignedLocations : [];
+              const assigned = Array.isArray(data.assignedLocations)
+                ? data.assignedLocations
+                : [];
               if (assigned.includes('all')) {
                 setAllLocationsSelected(true);
                 setSelectedLocationIds([]);
@@ -201,7 +209,7 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       hasReconciledLicenceesRef.current = false;
       return;
     }
-    
+
     // Fetch Countries
     if (countries.length === 0 && !countriesLoading) {
       setCountriesLoading(true);
@@ -267,24 +275,30 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
 
   // Options for multi-select
   const licenceeOptions: MultiSelectOption[] = useMemo(
-    () => licencees.map(licencee => ({ id: String(licencee._id), label: licencee.name })),
+    () =>
+      licencees.map(licencee => ({
+        id: String(licencee._id),
+        label: licencee.name,
+      })),
     [licencees]
   );
 
   const availableLocations = useMemo(() => {
     if (allLicenceesSelected) return locations;
-    return locations.filter(
-      loc => {
-        const licId = loc.rel?.licencee || loc.licenceeId || loc.licencee;
-        return Array.isArray(licId) 
-          ? licId.some(id => selectedLicenceeIds.includes(String(id)))
-          : selectedLicenceeIds.includes(String(licId));
-      }
-    );
+    return locations.filter(loc => {
+      const licId = loc.rel?.licencee || loc.licenceeId || loc.licencee;
+      return Array.isArray(licId)
+        ? licId.some(id => selectedLicenceeIds.includes(String(id)))
+        : selectedLicenceeIds.includes(String(licId));
+    });
   }, [locations, allLicenceesSelected, selectedLicenceeIds]);
 
   const locationOptions: MultiSelectOption[] = useMemo(
-    () => availableLocations.map(location => ({ id: String(location._id), label: location.name })),
+    () =>
+      availableLocations.map(location => ({
+        id: String(location._id),
+        label: location.name,
+      })),
     [availableLocations]
   );
 
@@ -333,9 +347,16 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
       // Explicitly build the payload — never spread userData directly to avoid
       // accidentally sending password/passwordUpdatedAt from the cached user object
       // or browser-autofilled password fields being picked up.
-      const OMIT_KEYS = new Set(['password', 'passwordUpdatedAt', 'previousPassword', 'previousPasswords']);
+      const OMIT_KEYS = new Set([
+        'password',
+        'passwordUpdatedAt',
+        'previousPassword',
+        'previousPasswords',
+      ]);
       const safeUserData = Object.fromEntries(
-        Object.entries(userData as Record<string, unknown>).filter(([key]) => !OMIT_KEYS.has(key))
+        Object.entries(userData as Record<string, unknown>).filter(
+          ([key]) => !OMIT_KEYS.has(key)
+        )
       );
       const updatedUser = {
         ...safeUserData,
@@ -355,8 +376,11 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
         setIsEditMode(false);
       }
     } catch (error) {
-      const errData = (error as { response?: { data?: { error?: string; message?: string } } })?.response?.data;
-      const message = errData?.error || errData?.message || 'Failed to update profile.';
+      const errData = (
+        error as { response?: { data?: { error?: string; message?: string } } }
+      )?.response?.data;
+      const message =
+        errData?.error || errData?.message || 'Failed to update profile.';
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -401,7 +425,9 @@ export function useProfileModal({ open, onClose }: UseProfileModalProps) {
         confirmPassword: '',
       });
     } catch (error) {
-      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to change password.';
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message || 'Failed to change password.';
       toast.error(message);
     } finally {
       setIsLoading(false);

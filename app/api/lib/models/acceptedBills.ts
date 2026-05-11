@@ -23,17 +23,13 @@ const acceptedBillSchema = new Schema(
       dollarTotalUnknown: { type: Number, default: 0 },
     },
     readAt: { type: Date, required: true },
-    createdAt: { type: Date }, // This will be set by timestamps, but explicitly included for clarity
-    updatedAt: { type: Date }, // This will be set by timestamps, but explicitly included for clarity
+    createdAt: { type: Date },
+    updatedAt: { type: Date },
   },
   {
     timestamps: true,
   }
 );
 
-/**
- * Mongoose model for accepted bills, including value, machine, location, member, movement, readAt, createdAt, and updatedAt.
- */
 export const AcceptedBill =
   models['acceptedbills'] ?? model('acceptedbills', acceptedBillSchema);
-

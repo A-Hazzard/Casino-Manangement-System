@@ -4,6 +4,11 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import { calculateExpectedBalance } from '@/lib/helpers/vault/calculations';
@@ -17,6 +22,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @body {string} vaultShiftId - ID of the active vault shift (REQUIRED)
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/cashier-shift/force-close';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {
       const hasVMAccess = userRoles
@@ -24,11 +33,19 @@ export async function POST(request: NextRequest) {
         .some(role =>
           ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
         );
-      if (!hasVMAccess)
+      if (!hasVMAccess) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/cashier-shift/force-close',
+          'Insufficient permissions',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient permissions' },
           { status: 403 }
         );
+      }
 
       const {
         cashierId,
@@ -42,11 +59,19 @@ export async function POST(request: NextRequest) {
         !locationId ||
         physicalCount === undefined ||
         (!cashierId && !shiftId)
-      )
+      ) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/cashier-shift/force-close',
+          'Missing fields',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Missing fields' },
           { status: 400 }
         );
+      }
 
       const activeStatuses = ['active', 'pending_start'];
       const cashierShift = shiftId
@@ -59,11 +84,19 @@ export async function POST(request: NextRequest) {
             locationId,
             status: { $in: activeStatuses },
           });
-      if (!cashierShift)
+      if (!cashierShift) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/cashier-shift/force-close',
+          'No active shift found',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'No active shift found' },
           { status: 404 }
         );
+      }
 
       const expected = calculateExpectedBalance(
         cashierShift.openingBalance,
@@ -95,7 +128,9 @@ export async function POST(request: NextRequest) {
         { canClose: !hasBlocking }
       );
       if (vaultCloseResult.modifiedCount === 0) {
-        console.warn(`[force-close] Vault shift ${cashierShift.vaultShiftId} not found or not modified`);
+        console.warn(
+          `[force-close] Vault shift ${cashierShift.vaultShiftId} not found or not modified`
+        );
       }
 
       await logActivity({
@@ -106,13 +141,38 @@ export async function POST(request: NextRequest) {
         metadata: { resourceId: cashierShift._id, cashierId, notes },
       });
 
+      const duration = Date.now() - startTime;
+      logRouteUpdate(
+        functionName,
+        'POST',
+        '/api/vault/cashier-shift/force-close',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         message: 'Shift force closed',
       });
     } catch (e) {
-      console.error('[Cashier Force Close] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to force close shift';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/cashier-shift/force-close',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[Cashier Force Close] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        { status: 500 }
+      );
     }
   });
 }

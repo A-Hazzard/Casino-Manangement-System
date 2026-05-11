@@ -22,8 +22,14 @@ import { toast } from 'sonner';
 // Components
 import ActivityLogDateFilter from '@/components/shared/ui/ActivityLogDateFilter';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
-import { CabinetsDetailsActivityLogTable, type CabinetsDetailsMachineEvent } from './CabinetsDetailsActivityLogTable';
-import { CabinetsDetailsCollectionHistoryTable, type TimeFilter } from './CabinetsDetailsCollectionHistoryTable';
+import {
+  CabinetsDetailsActivityLogTable,
+  type CabinetsDetailsMachineEvent,
+} from './CabinetsDetailsActivityLogTable';
+import {
+  CabinetsDetailsCollectionHistoryTable,
+  type TimeFilter,
+} from './CabinetsDetailsCollectionHistoryTable';
 import CabinetsDetailsUnifiedBillValidator from './CabinetsDetailsUnifiedBillValidator';
 import { CollectionSettingsContent } from './CollectionSettingsContent';
 import { ConfigurationCard } from './ConfigurationCard';
@@ -37,7 +43,7 @@ import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import {
   ConfigurationsSkeleton,
   LiveMetricsSkeleton,
-  MetricsSkeleton
+  MetricsSkeleton,
 } from '@/components/shared/ui/skeletons/CabinetDetailSkeletons';
 import CabinetsDetailsActivityLogSkeleton from './CabinetsDetailsActivityLogSkeleton';
 import CabinetsDetailsCollectionHistorySkeleton from './CabinetsDetailsCollectionHistorySkeleton';
@@ -45,7 +51,10 @@ import CabinetsDetailsCollectionHistorySkeleton from './CabinetsDetailsCollectio
 // Utils & Types
 import type { AccountingDetailsProps } from '@/lib/types/cabinet/details';
 import { formatCurrency } from '@/lib/utils';
-import { getGrossColorClass, getMoneyInColorClass } from '@/lib/utils/financial';
+import {
+  getGrossColorClass,
+  getMoneyInColorClass,
+} from '@/lib/utils/financial';
 
 /**
  * Cabinets Details Accounting Details Component
@@ -102,11 +111,16 @@ const CabinetsDetailsAccountingDetails = ({
             <button
               key={menuItem}
               className={`whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                activeMetricsTabContent === (menuItem === 'Metrics' ? 'Movement Metrics' : menuItem)
+                activeMetricsTabContent ===
+                (menuItem === 'Metrics' ? 'Movement Metrics' : menuItem)
                   ? 'bg-accent text-buttonActive'
                   : 'bg-muted text-grayHighlight hover:bg-muted/80'
               }`}
-              onClick={() => setActiveMetricsTabContent(menuItem === 'Metrics' ? 'Movement Metrics' : menuItem)}
+              onClick={() =>
+                setActiveMetricsTabContent(
+                  menuItem === 'Metrics' ? 'Movement Metrics' : menuItem
+                )
+              }
             >
               {menuItem}
             </button>
@@ -128,11 +142,16 @@ const CabinetsDetailsAccountingDetails = ({
               variants={itemVariants}
               whileHover={{ x: 5 }}
               className={`block w-full px-4 py-2.5 text-left text-sm ${
-                activeMetricsTabContent === (menuItem === 'Metrics' ? 'Movement Metrics' : menuItem)
+                activeMetricsTabContent ===
+                (menuItem === 'Metrics' ? 'Movement Metrics' : menuItem)
                   ? 'bg-accent font-semibold text-buttonActive'
                   : 'text-grayHighlight hover:bg-muted'
               } ${idx === menuItems.length - 1 ? 'md:rounded-b-md' : 'border-b border-border md:border-b-0'}`}
-              onClick={() => setActiveMetricsTabContent(menuItem === 'Metrics' ? 'Movement Metrics' : menuItem)}
+              onClick={() =>
+                setActiveMetricsTabContent(
+                  menuItem === 'Metrics' ? 'Movement Metrics' : menuItem
+                )
+              }
             >
               {menuItem}
             </motion.button>
@@ -150,7 +169,9 @@ const CabinetsDetailsAccountingDetails = ({
               className="w-full"
             >
               <h3 className="mb-4 hidden text-center font-medium md:block md:text-left">
-                {activeMetricsTabContent === 'Movement Metrics' ? 'Metrics' : activeMetricsTabContent}
+                {activeMetricsTabContent === 'Movement Metrics'
+                  ? 'Metrics'
+                  : activeMetricsTabContent}
               </h3>
 
               <AnimatePresence mode="wait">
@@ -172,14 +193,27 @@ const CabinetsDetailsAccountingDetails = ({
                       <motion.div
                         className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
-                        whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                        }}
                         transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">Money In</h4>
+                        <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">
+                          Money In
+                        </h4>
                         <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getMoneyInColorClass(Number(cabinet?.moneyIn ?? cabinet?.sasMeters?.drop ?? 0))}`}>
-                            {formatAmount(Number(cabinet?.moneyIn ?? cabinet?.sasMeters?.drop ?? 0))}
+                          <p
+                            className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getMoneyInColorClass(Number(cabinet?.moneyIn ?? cabinet?.sasMeters?.drop ?? 0))}`}
+                          >
+                            {formatAmount(
+                              Number(
+                                cabinet?.moneyIn ??
+                                  cabinet?.sasMeters?.drop ??
+                                  0
+                              )
+                            )}
                           </p>
                         </div>
                       </motion.div>
@@ -188,17 +222,28 @@ const CabinetsDetailsAccountingDetails = ({
                       <motion.div
                         className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
-                        whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                        }}
                         transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">Money Out</h4>
+                        <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">
+                          Money Out
+                        </h4>
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <MoneyOutCell
                             moneyOut={Number(cabinet?.moneyOut ?? 0)}
                             moneyIn={Number(cabinet?.moneyIn ?? 0)}
                             jackpot={Number(cabinet?.jackpot ?? 0)}
-                            displayValue={formatAmount(Number(cabinet?.moneyOut ?? cabinet?.sasMeters?.totalCancelledCredits ?? 0))}
+                            displayValue={formatAmount(
+                              Number(
+                                cabinet?.moneyOut ??
+                                  cabinet?.sasMeters?.totalCancelledCredits ??
+                                  0
+                              )
+                            )}
                             includeJackpot={!!cabinet?.includeJackpot}
                             showInfoIcon={true}
                             className="text-base font-bold md:text-xl"
@@ -210,14 +255,27 @@ const CabinetsDetailsAccountingDetails = ({
                       <motion.div
                         className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
-                        whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                        }}
                         transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">Gross</h4>
+                        <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">
+                          Gross
+                        </h4>
                         <div className="mb-4 h-1 w-full bg-pinkHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
-                          <p className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getGrossColorClass(Number(cabinet?.gross ?? Number(cabinet?.moneyIn ?? 0) - Number(cabinet?.moneyOut ?? 0)))}`}>
-                            {formatAmount(Number(cabinet?.gross ?? Number(cabinet?.moneyIn ?? 0) - Number(cabinet?.moneyOut ?? 0)))}
+                          <p
+                            className={`max-w-full truncate break-words text-center text-base font-bold md:text-xl ${getGrossColorClass(Number(cabinet?.gross ?? Number(cabinet?.moneyIn ?? 0) - Number(cabinet?.moneyOut ?? 0)))}`}
+                          >
+                            {formatAmount(
+                              Number(
+                                cabinet?.gross ??
+                                  Number(cabinet?.moneyIn ?? 0) -
+                                    Number(cabinet?.moneyOut ?? 0)
+                              )
+                            )}
                           </p>
                         </div>
                       </motion.div>
@@ -226,14 +284,25 @@ const CabinetsDetailsAccountingDetails = ({
                       <motion.div
                         className="w-full min-w-[220px] max-w-full flex-1 basis-[250px] overflow-x-auto rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
-                        whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                        }}
                         transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">Jackpot</h4>
+                        <h4 className="mb-2 truncate text-center text-xs md:mb-4 md:text-sm">
+                          Jackpot
+                        </h4>
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="max-w-full truncate break-words text-center text-base font-bold md:text-xl">
-                            {formatCurrency(Number(cabinet?.jackpot ?? cabinet?.sasMeters?.jackpot ?? 0))}
+                            {formatCurrency(
+                              Number(
+                                cabinet?.jackpot ??
+                                  cabinet?.sasMeters?.jackpot ??
+                                  0
+                              )
+                            )}
                           </p>
                         </div>
                       </motion.div>
@@ -256,14 +325,26 @@ const CabinetsDetailsAccountingDetails = ({
                       <motion.div
                         className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
-                        whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                        }}
                         transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">Coin In</h4>
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                          Coin In
+                        </h4>
                         <div className="mb-4 h-1 w-full bg-greenHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(Number(cabinet?.coinIn ?? cabinet?.handle ?? cabinet?.sasMeters?.coinIn ?? 0))}
+                            {formatCurrency(
+                              Number(
+                                cabinet?.coinIn ??
+                                  cabinet?.handle ??
+                                  cabinet?.sasMeters?.coinIn ??
+                                  0
+                              )
+                            )}
                           </p>
                         </div>
                       </motion.div>
@@ -272,14 +353,25 @@ const CabinetsDetailsAccountingDetails = ({
                       <motion.div
                         className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
-                        whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                        }}
                         transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">Coin Out</h4>
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                          Coin Out
+                        </h4>
                         <div className="mb-4 h-1 w-full bg-pinkHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(Number(cabinet?.coinOut ?? cabinet?.sasMeters?.coinOut ?? 0))}
+                            {formatCurrency(
+                              Number(
+                                cabinet?.coinOut ??
+                                  cabinet?.sasMeters?.coinOut ??
+                                  0
+                              )
+                            )}
                           </p>
                         </div>
                       </motion.div>
@@ -288,14 +380,27 @@ const CabinetsDetailsAccountingDetails = ({
                       <motion.div
                         className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
-                        whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                        }}
                         transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">Total Hand Paid Cancelled Credits</h4>
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                          Total Hand Paid Cancelled Credits
+                        </h4>
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(Number(cabinet?.sasMeters?.totalHandPaidCancelledCredits ?? cabinet?.meterData?.movement?.totalHandPaidCancelledCredits ?? 0))}
+                            {formatCurrency(
+                              Number(
+                                cabinet?.sasMeters
+                                  ?.totalHandPaidCancelledCredits ??
+                                  cabinet?.meterData?.movement
+                                    ?.totalHandPaidCancelledCredits ??
+                                  0
+                              )
+                            )}
                           </p>
                         </div>
                       </motion.div>
@@ -304,14 +409,26 @@ const CabinetsDetailsAccountingDetails = ({
                       <motion.div
                         className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
-                        whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                        }}
                         transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">Current Credits</h4>
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                          Current Credits
+                        </h4>
                         <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
-                            {formatCurrency(Number(cabinet?.sasMeters?.currentCredits ?? cabinet?.meterData?.movement?.currentCredits ?? 0))}
+                            {formatCurrency(
+                              Number(
+                                cabinet?.sasMeters?.currentCredits ??
+                                  cabinet?.meterData?.movement
+                                    ?.currentCredits ??
+                                  0
+                              )
+                            )}
                           </p>
                         </div>
                       </motion.div>
@@ -320,14 +437,21 @@ const CabinetsDetailsAccountingDetails = ({
                       <motion.div
                         className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
-                        whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                        }}
                         transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">Games Played</h4>
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                          Games Played
+                        </h4>
                         <div className="mb-4 h-1 w-full bg-orangeHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
-                            {cabinet?.gamesPlayed ?? cabinet?.sasMeters?.gamesPlayed ?? 0}
+                            {cabinet?.gamesPlayed ??
+                              cabinet?.sasMeters?.gamesPlayed ??
+                              0}
                           </p>
                         </div>
                       </motion.div>
@@ -336,14 +460,21 @@ const CabinetsDetailsAccountingDetails = ({
                       <motion.div
                         className="rounded-lg bg-container p-4 shadow md:p-6"
                         variants={itemVariants}
-                        whileHover={{ y: -5, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}
+                        whileHover={{
+                          y: -5,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                        }}
                         transition={{ type: 'spring', stiffness: 300 }}
                       >
-                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">Games Won</h4>
+                        <h4 className="mb-2 text-center text-xs md:mb-4 md:text-sm">
+                          Games Won
+                        </h4>
                         <div className="mb-4 h-1 w-full bg-blueHighlight md:mb-6"></div>
                         <div className="flex items-center justify-center">
                           <p className="text-center text-base font-bold md:text-xl">
-                            {cabinet?.gamesWon ?? cabinet?.sasMeters?.gamesWon ?? 0}
+                            {cabinet?.gamesWon ??
+                              cabinet?.sasMeters?.gamesWon ??
+                              0}
                           </p>
                         </div>
                       </motion.div>
@@ -388,14 +519,22 @@ const CabinetsDetailsAccountingDetails = ({
                       <CabinetsDetailsActivityLogSkeleton />
                     ) : activityLogError ? (
                       <div className="flex h-48 w-full flex-col items-center justify-center">
-                        <p className="mb-2 text-center text-red-500">Failed to load activity log</p>
-                        <p className="text-center text-sm text-grayHighlight">{activityLogError}</p>
+                        <p className="mb-2 text-center text-red-500">
+                          Failed to load activity log
+                        </p>
+                        <p className="text-center text-sm text-grayHighlight">
+                          {activityLogError}
+                        </p>
                       </div>
                     ) : activityLog.length > 0 ? (
-                      <CabinetsDetailsActivityLogTable data={activityLog as CabinetsDetailsMachineEvent[]} />
+                      <CabinetsDetailsActivityLogTable
+                        data={activityLog as CabinetsDetailsMachineEvent[]}
+                      />
                     ) : (
                       <div className="flex h-48 w-full items-center justify-center">
-                        <p className="text-center text-grayHighlight">No activity log data found for this machine.</p>
+                        <p className="text-center text-grayHighlight">
+                          No activity log data found for this machine.
+                        </p>
                       </div>
                     )}
                   </motion.div>
@@ -412,8 +551,12 @@ const CabinetsDetailsAccountingDetails = ({
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.4 }}
                     >
-                      <p className="mb-2 text-center text-red-500">Failed to load collection history</p>
-                      <p className="text-center text-sm text-grayHighlight">{collectionHistoryError}</p>
+                      <p className="mb-2 text-center text-red-500">
+                        Failed to load collection history
+                      </p>
+                      <p className="text-center text-sm text-grayHighlight">
+                        {collectionHistoryError}
+                      </p>
                     </motion.div>
                   ) : collectionHistory.length > 0 ? (
                     <motion.div
@@ -438,7 +581,11 @@ const CabinetsDetailsAccountingDetails = ({
                             return 'all';
                           })() as TimeFilter
                         }
-                        customRange={customDateRange as { from: Date; to: Date } | undefined}
+                        customRange={
+                          customDateRange as
+                            | { from: Date; to: Date }
+                            | undefined
+                        }
                         onRefresh={onRefresh}
                       />
                     </motion.div>
@@ -451,7 +598,9 @@ const CabinetsDetailsAccountingDetails = ({
                       exit={{ opacity: 0, y: -20 }}
                       transition={{ duration: 0.4 }}
                     >
-                      <p className="text-center text-grayHighlight">No collection history data found for this machine.</p>
+                      <p className="text-center text-grayHighlight">
+                        No collection history data found for this machine.
+                      </p>
                     </motion.div>
                   )
                 ) : activeMetricsTabContent === 'Collection Settings' ? (
@@ -480,29 +629,51 @@ const CabinetsDetailsAccountingDetails = ({
                       transition={{ duration: 0.4 }}
                     >
                       {/* Accounting Denomination */}
-                      {machine?.gameConfig?.accountingDenomination !== undefined && (
+                      {machine?.gameConfig?.accountingDenomination !==
+                        undefined && (
                         <ConfigurationCard
                           title="Accounting Denomination"
                           bgColor="bg-blue-500"
                           machine={machine}
                           onSave={async value => {
                             try {
-                              const response = await fetch(`/api/cabinets/${cabinet._id}`, {
-                                method: 'PATCH',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ 'gameConfig.accountingDenomination': value }),
-                              });
-                              if (!response.ok) throw new Error('Failed to update');
+                              const response = await fetch(
+                                `/api/cabinets/${cabinet._id}`,
+                                {
+                                  method: 'PATCH',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                  },
+                                  body: JSON.stringify({
+                                    'gameConfig.accountingDenomination': value,
+                                  }),
+                                }
+                              );
+                              if (!response.ok)
+                                throw new Error('Failed to update');
                               toast.success('Accounting Denomination updated');
-                              setMachine(prev => prev ? { ...prev, gameConfig: { ...prev.gameConfig, accountingDenomination: value } } : prev);
+                              setMachine(prev =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      gameConfig: {
+                                        ...prev.gameConfig,
+                                        accountingDenomination: value,
+                                      },
+                                    }
+                                  : prev
+                              );
                             } catch {
-                              toast.error('Failed to update Accounting Denomination');
+                              toast.error(
+                                'Failed to update Accounting Denomination'
+                              );
                             }
                           }}
                         />
                       )}
                       {/* Theoretical RTP */}
-                      {machine?.gameConfig?.accountingDenomination !== undefined &&
+                      {machine?.gameConfig?.accountingDenomination !==
+                        undefined &&
                         machine?.gameConfig?.theoreticalRtp !== undefined && (
                           <ConfigurationCard
                             title="Theoretical RTP"
@@ -512,14 +683,32 @@ const CabinetsDetailsAccountingDetails = ({
                             inputType="percentage"
                             onSave={async value => {
                               try {
-                                const response = await fetch(`/api/cabinets/${cabinet._id}`, {
-                                  method: 'PATCH',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ 'gameConfig.theoreticalRtp': value }),
-                                });
-                                if (!response.ok) throw new Error('Failed to update');
+                                const response = await fetch(
+                                  `/api/cabinets/${cabinet._id}`,
+                                  {
+                                    method: 'PATCH',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                      'gameConfig.theoreticalRtp': value,
+                                    }),
+                                  }
+                                );
+                                if (!response.ok)
+                                  throw new Error('Failed to update');
                                 toast.success('Theoretical RTP updated');
-                                setMachine(prev => prev ? { ...prev, gameConfig: { ...prev.gameConfig, theoreticalRtp: value } } : prev);
+                                setMachine(prev =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        gameConfig: {
+                                          ...prev.gameConfig,
+                                          theoreticalRtp: value,
+                                        },
+                                      }
+                                    : prev
+                                );
                               } catch {
                                 toast.error('Failed to update Theoretical RTP');
                               }
@@ -537,7 +726,9 @@ const CabinetsDetailsAccountingDetails = ({
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.4 }}
                   >
-                    <p className="text-grayHighlight">No content available for {activeMetricsTabContent}</p>
+                    <p className="text-grayHighlight">
+                      No content available for {activeMetricsTabContent}
+                    </p>
                   </motion.div>
                 )}
               </AnimatePresence>

@@ -56,6 +56,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 ## Helper Extraction
 
 **Extract to `app/api/lib/helpers/` when:**
+
 - Function > 20-30 lines
 - Complex business logic
 - Reusable across routes
@@ -63,6 +64,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 - Data transformation
 
 **Keep in route when:**
+
 - < 10 lines
 - Route-specific
 - Single use
@@ -73,7 +75,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 ```typescript
 // ✅ CORRECT — Helper checks critical DB operation
-export async function deleteMeter(meterId: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteMeter(
+  meterId: string
+): Promise<{ success: boolean; error?: string }> {
   const result = await Meters.findOneAndDelete({ _id: meterId });
   if (!result) {
     console.error(`[deleteMeter] Failed to delete meter ${meterId}`);
@@ -129,7 +133,9 @@ export async function getMetricsForLocation(
   timePeriod: TimePeriod
 ): Promise<MetricsResult | null> {
   if (!locationId || !timePeriod) {
-    console.error('[getMetricsForLocation] locationId and timePeriod are required');
+    console.error(
+      '[getMetricsForLocation] locationId and timePeriod are required'
+    );
     return null;
   }
   // implementation
@@ -141,7 +147,9 @@ export function buildReportPipeline(
   endDate: Date
 ): PipelineStage[] {
   if (!Array.isArray(locationIds) || !startDate || !endDate) {
-    console.error('[buildReportPipeline] locationIds (array), startDate, and endDate are required');
+    console.error(
+      '[buildReportPipeline] locationIds (array), startDate, and endDate are required'
+    );
     return [];
   }
   // implementation
@@ -149,6 +157,7 @@ export function buildReportPipeline(
 ```
 
 **Guard return values by function signature:**
+
 - Array return → `return []`
 - Nullable return → `return null`
 - Object/record return → `return {}`

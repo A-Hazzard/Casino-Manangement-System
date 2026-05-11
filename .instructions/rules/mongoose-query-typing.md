@@ -20,7 +20,9 @@ Every Mongoose query must specify its return type through the query's generic pa
 ```typescript
 // ❌ NEVER — forces Record<string, unknown> casts everywhere below
 const machine = await Machine.findOne({ _id: id }).lean();
-const meters = (machine as Record<string, unknown>).collectionMeters as { metersIn: number } | undefined;
+const meters = (machine as Record<string, unknown>).collectionMeters as
+  | { metersIn: number }
+  | undefined;
 
 // ✅ ALWAYS — typed at the query, zero casts needed
 const machine = await Machine.findOne({ _id: id }).lean<GamingMachine>();
@@ -31,7 +33,9 @@ const meters = machine.collectionMeters; // { metersIn: number; metersOut: numbe
 The same applies to `find`:
 
 ```typescript
-const machines = await Machine.find({ gamingLocation: locationId }).lean<GamingMachine[]>();
+const machines = await Machine.find({ gamingLocation: locationId }).lean<
+  GamingMachine[]
+>();
 ```
 
 And to `findOneAndUpdate` when you need the returned document:
@@ -55,12 +59,16 @@ Loading large collections with `find().lean<T[]>()` pulls everything into memory
 const allMachines = await Machine.find({}).lean<GamingMachine[]>();
 
 // ✅ PREFER for large sets — streamed, then collected
-const allMachines = await Machine.find({}).lean<GamingMachine>().cursor().toArray();
+const allMachines = await Machine.find({})
+  .lean<GamingMachine>()
+  .cursor()
+  .toArray();
 ```
 
 `.lean<T>()` applied before `.cursor()` types each document as `T`, so `toArray()` resolves to `T[]`. No additional cast is needed.
 
 **When to use each:**
+
 - `.lean<T>()` — single documents, or small bounded result sets (a handful of records)
 - `.lean<T>().cursor().toArray()` — large or unbounded result sets (hundreds of documents or more)
 
@@ -93,18 +101,20 @@ import type { GamingMachine } from '@shared/types';
 import type { CollectionReport } from '@shared/types';
 
 const machine = await Machine.findOne({ _id: id }).lean<GamingMachine>();
-const report = await CollectionReport.findOne({ _id: reportId }).lean<CollectionReport>();
+const report = await CollectionReport.findOne({
+  _id: reportId,
+}).lean<CollectionReport>();
 ```
 
 ---
 
 ## Summary
 
-| Pattern | Use when |
-| :--- | :--- |
-| `.lean<T>()` | Single document or small bounded query |
-| `.lean<T[]>()` on `find` | Small bounded multi-document query |
+| Pattern                         | Use when                                |
+| :------------------------------ | :-------------------------------------- |
+| `.lean<T>()`                    | Single document or small bounded query  |
+| `.lean<T[]>()` on `find`        | Small bounded multi-document query      |
 | `.lean<T>().cursor().toArray()` | Large or unbounded multi-document query |
-| `.aggregate<T>([]).exec()` | Any aggregation pipeline |
+| `.aggregate<T>([]).exec()`      | Any aggregation pipeline                |
 
 These patterns eliminate all `Record<string, unknown>` and `as` casts on query results.

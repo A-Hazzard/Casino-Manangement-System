@@ -43,7 +43,11 @@ export async function buildCurrencyMaps(
 }> {
   if (!Array.isArray(locationsData)) {
     console.error('[buildCurrencyMaps] locationsData is required');
-    return { licenceeMap: new Map(), countryNameMap: new Map(), locationDetailsMap: new Map() };
+    return {
+      licenceeMap: new Map(),
+      countryNameMap: new Map(),
+      locationDetailsMap: new Map(),
+    };
   }
 
   // Fetch licencee mappings
@@ -104,7 +108,9 @@ function getNativeCurrencyForLocation(
   licenceeMap: Map<string, string>
 ): CurrencyCode {
   if (!locationDetails || !licenceeMap) {
-    console.error('[getNativeCurrencyForLocation] locationDetails and licenceeMap are required');
+    console.error(
+      '[getNativeCurrencyForLocation] locationDetails and licenceeMap are required'
+    );
     return 'USD';
   }
   if (!locationDetails) {
@@ -139,8 +145,10 @@ function convertMeterDataCurrency(
   displayCurrency: CurrencyCode
 ): TransformedMeterData {
   if (!item || !nativeCurrency || !displayCurrency) {
-    console.error('[convertMeterDataCurrency] item, nativeCurrency, and displayCurrency are required');
-    return item || {} as TransformedMeterData;
+    console.error(
+      '[convertMeterDataCurrency] item, nativeCurrency, and displayCurrency are required'
+    );
+    return item || ({} as TransformedMeterData);
   }
   // Only convert if native currency differs from display currency
   if (nativeCurrency === displayCurrency) {
@@ -191,8 +199,15 @@ export function applyCurrencyConversion(
   licenceeMap: Map<string, string>,
   displayCurrency: CurrencyCode
 ): TransformedMeterData[] {
-  if (!Array.isArray(data) || !locationDetailsMap || !licenceeMap || !displayCurrency) {
-    console.error('[applyCurrencyConversion] data, locationDetailsMap, licenceeMap, and displayCurrency are required');
+  if (
+    !Array.isArray(data) ||
+    !locationDetailsMap ||
+    !licenceeMap ||
+    !displayCurrency
+  ) {
+    console.error(
+      '[applyCurrencyConversion] data, locationDetailsMap, licenceeMap, and displayCurrency are required'
+    );
     return data || [];
   }
 

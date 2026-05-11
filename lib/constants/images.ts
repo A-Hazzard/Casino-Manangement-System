@@ -68,5 +68,3 @@ export const IMAGES = {
   slotMachine,
   sortIcon,
 } as const;
-
-

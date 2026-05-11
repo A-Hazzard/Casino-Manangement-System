@@ -33,7 +33,8 @@ export type UserDocument = Document & {
   emailAddress: string;
   assignedLocations?: string[];
   assignedLicencees?: string[];
-  multiplier?: number | null;
+  moneyInMultiplier?: number | null;
+  moneyOutAndJackpotMultiplier?: number | null;
   profile?: {
     firstName?: string;
     lastName?: string;
@@ -76,7 +77,6 @@ export type LeanUserDocument = Omit<UserDocument, keyof Document> & {
   requiresPasswordUpdate?: boolean;
 };
 
-
 export type UserAuthPayload = {
   _id: string;
   emailAddress: string;
@@ -113,7 +113,8 @@ export type UserAuthPayload = {
   requiresProfileUpdate?: boolean;
   invalidProfileFields?: InvalidProfileFields;
   invalidProfileReasons?: ProfileValidationReasons;
-  multiplier?: number | null;
+  moneyInMultiplier?: number | null;
+  moneyOutAndJackpotMultiplier?: number | null;
 };
 
 export type AuthResult = {

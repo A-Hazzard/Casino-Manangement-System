@@ -36,31 +36,39 @@ export default function DenominationInputGrid({
     const denomVal = newDenominations[index].denomination;
     newDenominations[index] = { ...newDenominations[index], quantity };
     onChange(newDenominations);
-    
+
     if (onTouchedChange && touchedDenominations) {
-        const next = new Set(touchedDenominations);
-        next.add(Number(denomVal));
-        onTouchedChange(next);
+      const next = new Set(touchedDenominations);
+      next.add(Number(denomVal));
+      onTouchedChange(next);
     }
   };
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {denominations.map((denom, index) => {
-        const availableCount = stock?.find(s => Number(s.denomination) === Number(denom.denomination))?.quantity;
-        const isOverStock = availableCount !== undefined && Number(denom.quantity) > Number(availableCount);
+        const availableCount = stock?.find(
+          s => Number(s.denomination) === Number(denom.denomination)
+        )?.quantity;
+        const isOverStock =
+          availableCount !== undefined &&
+          Number(denom.quantity) > Number(availableCount);
 
         return (
           <div key={denom.denomination} className="space-y-1">
             <div className="flex items-center justify-between px-0.5">
-              <Label className="text-[10px] font-bold text-gray-400 uppercase">
+              <Label className="text-[10px] font-bold uppercase text-gray-400">
                 ${denom.denomination}
               </Label>
               {availableCount !== undefined && (
-                <span className={cn(
-                    "text-[11px] font-black px-2 py-0.5 rounded-md",
-                    Number(availableCount) > 0 ? "bg-button text-white shadow-sm" : "bg-gray-200 text-gray-500"
-                )}>
+                <span
+                  className={cn(
+                    'rounded-md px-2 py-0.5 text-[11px] font-black',
+                    Number(availableCount) > 0
+                      ? 'bg-button text-white shadow-sm'
+                      : 'bg-gray-200 text-gray-500'
+                  )}
+                >
                   {availableCount}
                 </span>
               )}
@@ -70,14 +78,17 @@ export default function DenominationInputGrid({
               min="0"
               value={denom.quantity === 0 ? '' : denom.quantity}
               onChange={e => {
-                const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                const val =
+                  e.target.value === '' ? 0 : parseInt(e.target.value);
                 updateQuantity(index, isNaN(val) ? 0 : val);
               }}
               placeholder="0"
               className={cn(
-                "h-9 text-center font-semibold transition-all",
-                isOverStock && "border-red-500 bg-red-50 text-red-900",
-                touchedDenominations?.has(Number(denom.denomination)) && !isOverStock && "text-violet-600"
+                'h-9 text-center font-semibold transition-all',
+                isOverStock && 'border-red-500 bg-red-50 text-red-900',
+                touchedDenominations?.has(Number(denom.denomination)) &&
+                  !isOverStock &&
+                  'text-violet-600'
               )}
               disabled={disabled}
             />

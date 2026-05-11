@@ -8,17 +8,18 @@ import { AnimatePresence, motion } from 'framer-motion';
 import ReportsDateFilters from '@/components/CMS/reports/ReportsDateFilters';
 import ReportsNavigation from '@/components/CMS/reports/ReportsNavigation';
 import {
-    ReportsPageAccessDeniedState,
-    ReportsPageAuthLoadingState,
-    ReportsPageLoadingOverlay,
+  ReportsPageAccessDeniedState,
+  ReportsPageAuthLoadingState,
+  ReportsPageLoadingOverlay,
 } from '@/components/CMS/reports/ReportsPageLoadingStates';
 import ReportsLocationsTabWithErrorHandling from '@/components/CMS/reports/tabs/locations/ReportsLocationsTabWithErrorHandling';
 import ReportsMachinesTab from '@/components/CMS/reports/tabs/machines/ReportsMachinesTab';
 import ReportsMetersTab from '@/components/CMS/reports/tabs/meters/ReportsMetersTab';
 import PageLayout from '@/components/shared/layout/PageLayout';
 import {
-    IMAGES, REPORTS_ANIMATIONS,
-    REPORTS_TABS_CONFIG
+  IMAGES,
+  REPORTS_ANIMATIONS,
+  REPORTS_TABS_CONFIG,
 } from '@/lib/constants';
 import { useReportsTabContent } from '@/lib/hooks/data';
 import { useReportsNavigation } from '@/lib/hooks/navigation';
@@ -85,7 +86,9 @@ export default function ReportsPageContent() {
     }
     if (isAdmin || isLocationAdmin || isOwner) {
       return REPORTS_TABS_CONFIG.filter(
-        tab => notUnderMaintenance(tab) && (tab.id === 'meters' || tab.id === 'locations')
+        tab =>
+          notUnderMaintenance(tab) &&
+          (tab.id === 'meters' || tab.id === 'locations')
       );
     }
     // Others only see meters tab
@@ -113,19 +116,25 @@ export default function ReportsPageContent() {
     ),
     'revenue-analysis': (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <h3 className="text-xl font-semibold text-gray-500">Revenue Analysis</h3>
+        <h3 className="text-xl font-semibold text-gray-500">
+          Revenue Analysis
+        </h3>
         <p className="mt-2 text-gray-400">This report view is coming soon.</p>
       </div>
     ),
     Cabinets: (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <h3 className="text-xl font-semibold text-gray-500">Cabinets Overview</h3>
+        <h3 className="text-xl font-semibold text-gray-500">
+          Cabinets Overview
+        </h3>
         <p className="mt-2 text-gray-400">This report view is coming soon.</p>
       </div>
     ),
     overview: (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <h3 className="text-xl font-semibold text-gray-500">Reports Overview</h3>
+        <h3 className="text-xl font-semibold text-gray-500">
+          Reports Overview
+        </h3>
         <p className="mt-2 text-gray-400">This report view is coming soon.</p>
       </div>
     ),
@@ -219,4 +228,3 @@ export default function ReportsPageContent() {
     </PageLayout>
   );
 }
-

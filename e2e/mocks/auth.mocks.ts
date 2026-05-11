@@ -35,7 +35,7 @@ export const MOCK_USER_PAYLOAD: MockUserPayload = {
   assignedLicencees: [
     '9a5db2cb29ffd2d962fd1d91',
     '732b094083226f216b3fc11a',
-    'c03b094083226f216b3fc39c'
+    'c03b094083226f216b3fc39c',
   ],
   profile: {
     firstName: 'Evolution',
@@ -56,7 +56,7 @@ export const MOCK_USER_DEVELOPER: MockUserPayload = {
   profile: { firstName: 'E2E', lastName: 'Developer', gender: 'other' },
 };
 
- export const MOCK_USER_ADMIN: MockUserPayload = { ...MOCK_USER_PAYLOAD }; // admin@gmail.com
+export const MOCK_USER_ADMIN: MockUserPayload = { ...MOCK_USER_PAYLOAD }; // admin@gmail.com
 
 export const MOCK_USER_MANAGER: MockUserPayload = {
   _id: '69b6ff3588664816450beac8', // Real manager from list_users
@@ -126,11 +126,7 @@ export const MOCK_USER_COLLECTOR: MockUserPayload = {
 
 // ─── All role users map ───────────────────────────────────────────────────────
 
-
-
 // ─── Auth API response helpers ────────────────────────────────────────────────
-
-
 
 /**
  * Build a current-user API response that matches the EXACT shape returned by

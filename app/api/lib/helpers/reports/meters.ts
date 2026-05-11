@@ -168,7 +168,9 @@ export function determineLocationList(
   isLocationAdmin: boolean
 ): string[] {
   if (!Array.isArray(requestedLocationList) || !allowedLocationIds) {
-    console.error('[determineLocationList] requestedLocationList and allowedLocationIds are required');
+    console.error(
+      '[determineLocationList] requestedLocationList and allowedLocationIds are required'
+    );
     return [];
   }
   if (isLocationAdmin) {
@@ -257,8 +259,14 @@ export function calculateGamingDayRanges(
   queryEndDate: Date;
 } {
   if (!Array.isArray(locationsData) || !timePeriod) {
-    console.error('[calculateGamingDayRanges] locationsData and timePeriod are required');
-    return { gamingDayRanges: new Map(), queryStartDate: new Date(), queryEndDate: new Date() };
+    console.error(
+      '[calculateGamingDayRanges] locationsData and timePeriod are required'
+    );
+    return {
+      gamingDayRanges: new Map(),
+      queryStartDate: new Date(),
+      queryEndDate: new Date(),
+    };
   }
   const locationsListForGamingDay = locationsData.map(location => ({
     _id: location._id,
@@ -275,7 +283,9 @@ export function calculateGamingDayRanges(
   // Get the earliest start and latest end across all locations
   const rangesArray = Array.from(gamingDayRanges.values());
   const queryStartDate = new Date(
-    Math.min(...rangesArray.map(gamingDayRange => gamingDayRange.rangeStart.getTime()))
+    Math.min(
+      ...rangesArray.map(gamingDayRange => gamingDayRange.rangeStart.getTime())
+    )
   );
   const queryEndDate = new Date(
     Math.max(...rangesArray.map(r => r.rangeEnd.getTime()))
@@ -356,7 +366,9 @@ export async function fetchMachinesData(
     gamingLocation: (machineData.gamingLocation as string) || '',
     sasMeters: machineData.sasMeters,
     lastActivity: (machineData.lastActivity as Date) || undefined,
-    collectorDenomination: machineData.collectorDenomination as number | undefined,
+    collectorDenomination: machineData.collectorDenomination as
+      | number
+      | undefined,
     gameConfig: machineData.gameConfig as
       | { accountingDenomination?: number | string }
       | undefined,
@@ -384,7 +396,9 @@ export async function getLastMeterPerMachine(
   gamingDayRanges: Map<string, { rangeStart: Date; rangeEnd: Date }>
 ): Promise<Map<string, MeterAggregationResult>> {
   if (!Array.isArray(machineIds) || !(gamingDayRanges instanceof Map)) {
-    console.error('[getLastMeterPerMachine] machineIds and gamingDayRanges are required');
+    console.error(
+      '[getLastMeterPerMachine] machineIds and gamingDayRanges are required'
+    );
     return new Map();
   }
   // Use a map to accumulate results
@@ -396,52 +410,54 @@ export async function getLastMeterPerMachine(
 
   // To ensure we firmly hit the `{ machine: 1, readAt: 1 }` index without triggering
   // a massive unindexed full collection scan from `$or`, we will run independent
-  // optimally indexed queries per location range concurrently! 
-  const promises = Array.from(gamingDayRanges.entries()).map(async ([locationId, range]) => {
-    const locResults: Array<Record<string, unknown>> = [];
-    const metersCursor = Meters.aggregate([
-      {
-        $match: {
-          machine: { $in: machineIds },
-          location: locationId,
-          readAt: { $gte: range.rangeStart, $lt: range.rangeEnd },
+  // optimally indexed queries per location range concurrently!
+  const promises = Array.from(gamingDayRanges.entries()).map(
+    async ([locationId, range]) => {
+      const locResults: Array<Record<string, unknown>> = [];
+      const metersCursor = Meters.aggregate([
+        {
+          $match: {
+            machine: { $in: machineIds },
+            location: locationId,
+            readAt: { $gte: range.rangeStart, $lt: range.rangeEnd },
+          },
         },
-      },
-      // Sort by createdAt descending to get the genuinely latest recorded meter first
-      // Since the match phase strictly limits results using compound indexes, sorting
-      // dynamically efficiently scales!
-      {
-        $sort: { createdAt: -1 },
-      },
-      // Group by machine and take the first (latest) document's absolute values
-      // CRITICAL: We use $first (NOT $sum) to get the absolute values from the LAST meter document
-      {
-        $group: {
-          _id: '$machine',
-          drop: { $first: { $ifNull: ['$drop', 0] } },
-          totalCancelledCredits: {
-            $first: { $ifNull: ['$totalCancelledCredits', 0] },
-          },
-          totalHandPaidCancelledCredits: {
-            $first: { $ifNull: ['$totalHandPaidCancelledCredits', 0] },
-          },
-          coinIn: { $first: { $ifNull: ['$coinIn', 0] } },
-          coinOut: { $first: { $ifNull: ['$coinOut', 0] } },
-          totalWonCredits: {
-            $first: { $ifNull: ['$totalWonCredits', 0] },
-          },
-          gamesPlayed: { $first: { $ifNull: ['$gamesPlayed', 0] } },
-          jackpot: { $first: { $ifNull: ['$jackpot', 0] } },
-          lastReadAt: { $first: '$readAt' },
+        // Sort by createdAt descending to get the genuinely latest recorded meter first
+        // Since the match phase strictly limits results using compound indexes, sorting
+        // dynamically efficiently scales!
+        {
+          $sort: { createdAt: -1 },
         },
-      },
-    ]).cursor({ batchSize: 1000 });
+        // Group by machine and take the first (latest) document's absolute values
+        // CRITICAL: We use $first (NOT $sum) to get the absolute values from the LAST meter document
+        {
+          $group: {
+            _id: '$machine',
+            drop: { $first: { $ifNull: ['$drop', 0] } },
+            totalCancelledCredits: {
+              $first: { $ifNull: ['$totalCancelledCredits', 0] },
+            },
+            totalHandPaidCancelledCredits: {
+              $first: { $ifNull: ['$totalHandPaidCancelledCredits', 0] },
+            },
+            coinIn: { $first: { $ifNull: ['$coinIn', 0] } },
+            coinOut: { $first: { $ifNull: ['$coinOut', 0] } },
+            totalWonCredits: {
+              $first: { $ifNull: ['$totalWonCredits', 0] },
+            },
+            gamesPlayed: { $first: { $ifNull: ['$gamesPlayed', 0] } },
+            jackpot: { $first: { $ifNull: ['$jackpot', 0] } },
+            lastReadAt: { $first: '$readAt' },
+          },
+        },
+      ]).cursor({ batchSize: 1000 });
 
-    for await (const doc of metersCursor) {
-      locResults.push(doc);
+      for await (const doc of metersCursor) {
+        locResults.push(doc);
+      }
+      return locResults;
     }
-    return locResults;
-  });
+  );
 
   const resolvedArrays = await Promise.all(promises);
   const metersAggregation = resolvedArrays.flat();
@@ -485,7 +501,9 @@ export async function getHourlyChartData(
   granularity: 'hourly' | 'minute' = 'hourly'
 ): Promise<HourlyChartData[]> {
   if (!Array.isArray(machineIds) || !queryStartDate || !queryEndDate) {
-    console.error('[getHourlyChartData] machineIds, queryStartDate, and queryEndDate are required');
+    console.error(
+      '[getHourlyChartData] machineIds, queryStartDate, and queryEndDate are required'
+    );
     return [];
   }
   // Determine time format based on granularity
@@ -579,7 +597,10 @@ export async function getHourlyChartData(
       };
     })
     .filter(
-      hourlyItem => hourlyItem.gamesPlayed > 0 || hourlyItem.coinIn > 0 || hourlyItem.coinOut > 0
+      hourlyItem =>
+        hourlyItem.gamesPlayed > 0 ||
+        hourlyItem.coinIn > 0 ||
+        hourlyItem.coinOut > 0
     );
 }
 
@@ -644,8 +665,14 @@ export function transformMeterData(
   licenceeSettingsMap: Map<string, boolean>,
   locationLicenceeMap: Map<string, string>
 ): TransformedMeterData[] {
-  if (!Array.isArray(machinesData) || !(metersMap instanceof Map) || !(locationMap instanceof Map)) {
-    console.error('[transformMeterData] machinesData, metersMap, and locationMap are required');
+  if (
+    !Array.isArray(machinesData) ||
+    !(metersMap instanceof Map) ||
+    !(locationMap instanceof Map)
+  ) {
+    console.error(
+      '[transformMeterData] machinesData, metersMap, and locationMap are required'
+    );
     return [];
   }
   return machinesData.map(machine => {
@@ -679,17 +706,23 @@ export function transformMeterData(
     // Voucher Out (Display Name) = Total Cancelled Credits
     const coinIn = validateMeterValue(meterData.coinIn);
     const drop = validateMeterValue(meterData.drop);
-    const totalCancelledCredits = validateMeterValue(meterData.totalCancelledCredits);
-    const handPaidCredits = validateMeterValue(meterData.totalHandPaidCancelledCredits);
+    const totalCancelledCredits = validateMeterValue(
+      meterData.totalCancelledCredits
+    );
+    const handPaidCredits = validateMeterValue(
+      meterData.totalHandPaidCancelledCredits
+    );
     const jackpot = validateMeterValue(meterData.jackpot);
     const gamesPlayed = validateMeterValue(meterData.gamesPlayed);
     const totalWonCredits = validateMeterValue(meterData.totalWonCredits);
 
-    const metersIn = coinIn; 
+    const metersIn = coinIn;
     const metersOut = totalWonCredits;
     const billIn = drop;
     // const voucherOut = totalCancelledCredits + jackpot; DEPRICATED
-    const voucherOut = validateMeterValue(totalCancelledCredits - handPaidCredits);
+    const voucherOut = validateMeterValue(
+      totalCancelledCredits - handPaidCredits
+    );
     // netGross: Bill In - Meters Out (Total Won) - Jackpots
     const netGross = includeJackpot
       ? validateMeterValue(billIn - metersOut - jackpot)
@@ -708,7 +741,11 @@ export function transformMeterData(
       includeJackpot,
       location: locationName,
       locationId: machine.gamingLocation,
-      createdAt: (meterData.lastReadAt || machine.lastActivity || new Date()).toISOString(),
+      createdAt: (
+        meterData.lastReadAt ||
+        machine.lastActivity ||
+        new Date()
+      ).toISOString(),
       machineDocumentId,
       game: machine.game || undefined,
       // Include raw fields for export logic
@@ -738,7 +775,9 @@ export function filterMeterDataBySearch(
   search: string
 ): TransformedMeterData[] {
   if (!Array.isArray(transformedData) || !Array.isArray(machinesData)) {
-    console.error('[filterMeterDataBySearch] transformedData and machinesData are required');
+    console.error(
+      '[filterMeterDataBySearch] transformedData and machinesData are required'
+    );
     return [];
   }
   if (!search) {

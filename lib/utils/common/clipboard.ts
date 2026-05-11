@@ -3,12 +3,15 @@ import { toast } from 'sonner';
 /**
  * Copies text to the clipboard with fallback support for older browsers
  * and non-secure contexts.
- * 
+ *
  * @param text - The string to copy
  * @param label - A descriptive label for the toast notification (e.g., 'ID', 'SMIB')
  * @returns Promise resolving to true if successful, false otherwise
  */
-export const copyToClipboard = async (text: string, label: string): Promise<boolean> => {
+export const copyToClipboard = async (
+  text: string,
+  label: string
+): Promise<boolean> => {
   if (!text || text === 'N/A' || text.trim() === '') {
     toast.error(`No ${label} value to copy`);
     return false;
@@ -60,7 +63,9 @@ export const copyToClipboard = async (text: string, label: string): Promise<bool
     }
   } catch (err) {
     console.error(`Failed to copy ${label}:`, err);
-    toast.error(`Could not copy ${label}. Please try selecting and copying manually.`);
+    toast.error(
+      `Could not copy ${label}. Please try selecting and copying manually.`
+    );
     return false;
   }
 };

@@ -42,7 +42,9 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
 
     try {
       // Don't set isLoading to true for polling to avoid flashing
-      const res = await fetch(`/api/vault/notifications?locationId=${locationId}`);
+      const res = await fetch(
+        `/api/vault/notifications?locationId=${locationId}`
+      );
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
@@ -64,13 +66,18 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
     setIsLoading(true);
     fetchNotifications().finally(() => setIsLoading(false));
 
-    const interval = setInterval(fetchNotifications, NOTIFICATION_POLL_INTERVAL);
+    const interval = setInterval(
+      fetchNotifications,
+      NOTIFICATION_POLL_INTERVAL
+    );
 
     return () => clearInterval(interval);
   }, [locationId, enabled, fetchNotifications]);
 
   const markAsRead = useCallback(async (notificationIds: string | string[]) => {
-    const ids = Array.isArray(notificationIds) ? notificationIds : [notificationIds];
+    const ids = Array.isArray(notificationIds)
+      ? notificationIds
+      : [notificationIds];
     if (ids.length === 0) return;
 
     try {
@@ -79,8 +86,8 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'mark_read',
-          notificationIds: ids
-        })
+          notificationIds: ids,
+        }),
       });
 
       if (res.ok) {
@@ -88,7 +95,11 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
         if (data.success) {
           // Optimistically update local state
           setNotifications(prev =>
-            prev.map(notification => ids.includes(notification._id) ? { ...notification, status: 'read' } : notification)
+            prev.map(notification =>
+              ids.includes(notification._id)
+                ? { ...notification, status: 'read' }
+                : notification
+            )
           );
           setUnreadCount(prev => Math.max(0, prev - ids.length));
         }
@@ -99,39 +110,46 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
     }
   }, []);
 
-  const dismissNotifications = useCallback(async (notificationIds: string | string[]) => {
-    const ids = Array.isArray(notificationIds) ? notificationIds : [notificationIds];
-    if (ids.length === 0) return;
+  const dismissNotifications = useCallback(
+    async (notificationIds: string | string[]) => {
+      const ids = Array.isArray(notificationIds)
+        ? notificationIds
+        : [notificationIds];
+      if (ids.length === 0) return;
 
-    try {
-      const res = await fetch('/api/vault/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'dismiss',
-          notificationIds: ids
-        })
-      });
+      try {
+        const res = await fetch('/api/vault/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'dismiss',
+            notificationIds: ids,
+          }),
+        });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          setNotifications(prev => prev.filter(notification => !ids.includes(notification._id)));
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setNotifications(prev =>
+              prev.filter(notification => !ids.includes(notification._id))
+            );
 
-          // Calculate how many unread were dismissed to update count
-          setUnreadCount(prev => {
-            // We need current notifications to calculate this accurately, 
-            // but using a setter function means we don't have direct access to 'notifications' here without making it a dependency.
-            // However, the component already has 'notifications' in scope.
-            return prev; // We'll just rely on the next fetch for full accuracy if needed, or handle it better.
-          });
+            // Calculate how many unread were dismissed to update count
+            setUnreadCount(prev => {
+              // We need current notifications to calculate this accurately,
+              // but using a setter function means we don't have direct access to 'notifications' here without making it a dependency.
+              // However, the component already has 'notifications' in scope.
+              return prev; // We'll just rely on the next fetch for full accuracy if needed, or handle it better.
+            });
+          }
         }
+      } catch (error) {
+        console.error('Failed to dismiss notifications', error);
+        toast.error('Failed to dismiss notifications');
       }
-    } catch (error) {
-      console.error('Failed to dismiss notifications', error);
-      toast.error('Failed to dismiss notifications');
-    }
-  }, []);
+    },
+    []
+  );
 
   return {
     notifications,
@@ -141,6 +159,6 @@ export function useNotifications(locationId?: string, enabled: boolean = true) {
     isLoading,
     markAsRead,
     dismissNotification: dismissNotifications,
-    refresh: fetchNotifications
+    refresh: fetchNotifications,
   };
 }

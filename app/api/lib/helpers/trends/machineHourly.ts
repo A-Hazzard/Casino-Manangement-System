@@ -19,7 +19,12 @@ import {
   getCountryCurrency,
 } from '@/lib/helpers/rates';
 import { getDatesForTimePeriod } from '@/lib/utils/date';
-import type { CountryDocument, GamingLocationDocument, LicenceeDocument, TimePeriod } from '@/shared/types';
+import type {
+  CountryDocument,
+  GamingLocationDocument,
+  LicenceeDocument,
+  TimePeriod,
+} from '@/shared/types';
 import type { StackedData } from '@/shared/types/analytics';
 import type { CurrencyCode } from '@/shared/types/currency';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
@@ -48,8 +53,15 @@ function buildMachineHourlyPipeline(
   targetMachines: string[],
   licencee: string | null
 ): PipelineStage[] {
-  if (!startDate || !endDate || !Array.isArray(targetLocations) || !Array.isArray(targetMachines)) {
-    console.error('[buildMachineHourlyPipeline] startDate, endDate, targetLocations (array), and targetMachines (array) are required');
+  if (
+    !startDate ||
+    !endDate ||
+    !Array.isArray(targetLocations) ||
+    !Array.isArray(targetMachines)
+  ) {
+    console.error(
+      '[buildMachineHourlyPipeline] startDate, endDate, targetLocations (array), and targetMachines (array) are required'
+    );
     return [];
   }
 
@@ -82,7 +94,8 @@ function buildMachineHourlyPipeline(
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
+          { 'locationDetails.rel.licencee': licencee },
+          { 'locationDetails.rel.licencee': licencee },
         ],
       },
     } as PipelineStage);
@@ -172,7 +185,9 @@ function formatHourlyTrends(
   locationHourlyData: Record<string, HourlyDataItem[]>
 ): StackedData[] {
   if (!Array.isArray(hourlyData) || typeof locationHourlyData !== 'object') {
-    console.error('[formatHourlyTrends] hourlyData (array) and locationHourlyData (object) are required');
+    console.error(
+      '[formatHourlyTrends] hourlyData (array) and locationHourlyData (object) are required'
+    );
     return [];
   }
 
@@ -262,7 +277,9 @@ async function getLocationCurrenciesForMachineHourly(
   }>
 ): Promise<Map<string, string>> {
   if (!Array.isArray(locationsData)) {
-    console.error('[getLocationCurrenciesForMachineHourly] locationsData must be an array');
+    console.error(
+      '[getLocationCurrenciesForMachineHourly] locationsData must be an array'
+    );
     return new Map();
   }
 
@@ -293,7 +310,9 @@ async function getLocationCurrenciesForMachineHourly(
 
   const locationCurrencies = new Map<string, string>();
   locationsData.forEach(loc => {
-    const locationLicenceeId = loc.rel?.licencee || (loc.rel as Record<string, unknown> | undefined)?.licencee;
+    const locationLicenceeId =
+      loc.rel?.licencee ||
+      (loc.rel as Record<string, unknown> | undefined)?.licencee;
     if (locationLicenceeId) {
       const licenceeName =
         licenceeIdToName.get(locationLicenceeId.toString()) || 'Unknown';
@@ -327,8 +346,14 @@ function convertHourlyTrendsCurrency(
   locationCurrencies: Map<string, string>,
   displayCurrency: CurrencyCode
 ): StackedData[] {
-  if (!Array.isArray(hourlyTrends) || !(locationCurrencies instanceof Map) || !displayCurrency) {
-    console.error('[convertHourlyTrendsCurrency] hourlyTrends (array), locationCurrencies (Map), and displayCurrency are required');
+  if (
+    !Array.isArray(hourlyTrends) ||
+    !(locationCurrencies instanceof Map) ||
+    !displayCurrency
+  ) {
+    console.error(
+      '[convertHourlyTrendsCurrency] hourlyTrends (array), locationCurrencies (Map), and displayCurrency are required'
+    );
     return [];
   }
 
@@ -378,8 +403,14 @@ function convertTotalsCurrency(
   string,
   { handle: number; winLoss: number; jackpot: number; plays: number }
 > {
-  if (typeof totals !== 'object' || !(locationCurrencies instanceof Map) || !displayCurrency) {
-    console.error('[convertTotalsCurrency] totals (object), locationCurrencies (Map), and displayCurrency are required');
+  if (
+    typeof totals !== 'object' ||
+    !(locationCurrencies instanceof Map) ||
+    !displayCurrency
+  ) {
+    console.error(
+      '[convertTotalsCurrency] totals (object), locationCurrencies (Map), and displayCurrency are required'
+    );
     return {};
   }
 
@@ -436,8 +467,12 @@ export async function getMachineHourlyData(
   converted: boolean;
 }> {
   if (!timePeriod || !displayCurrency) {
-    console.error('[getMachineHourlyData] timePeriod and displayCurrency are required');
-    throw new Error('[getMachineHourlyData] timePeriod and displayCurrency are required');
+    console.error(
+      '[getMachineHourlyData] timePeriod and displayCurrency are required'
+    );
+    throw new Error(
+      '[getMachineHourlyData] timePeriod and displayCurrency are required'
+    );
   }
 
   // Get date range
@@ -511,9 +546,8 @@ export async function getMachineHourlyData(
   let convertedTotals = totals;
 
   if (shouldApplyCurrencyConversion(licencee)) {
-    const locationCurrencies = await getLocationCurrenciesForMachineHourly(
-      locationsData
-    );
+    const locationCurrencies =
+      await getLocationCurrenciesForMachineHourly(locationsData);
     convertedHourlyTrends = convertHourlyTrendsCurrency(
       hourlyTrends,
       locationCurrencies,
@@ -540,4 +574,3 @@ export async function getMachineHourlyData(
     converted: shouldApplyCurrencyConversion(licencee),
   };
 }
-

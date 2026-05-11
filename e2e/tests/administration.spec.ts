@@ -49,23 +49,24 @@ import { setRoleAuthCookie } from '../fixtures/auth.fixture';
 
 // ─── Shared mock helper ───────────────────────────────────────────────────────
 
-async function mockUsersAPIs(
-  page: Page,
-  listPayload = MOCK_USERS_LIST
-) {
-  await page.route('**/api/auth/current-user**', (route) =>
+async function mockUsersAPIs(page: Page, listPayload = MOCK_USERS_LIST) {
+  await page.route('**/api/auth/current-user**', route =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
   );
-  await page.route('**/api/users**', (route) =>
+  await page.route('**/api/users**', route =>
     route.fulfill({ status: 200, json: listPayload })
   );
-  await page.route('**/api/licencees**', (route) =>
+  await page.route('**/api/licencees**', route =>
     route.fulfill({ status: 200, json: MOCK_LICENCEES_LIST })
   );
-  await page.route('**/api/locations**', (route) =>
+  await page.route('**/api/locations**', route =>
     route.fulfill({
       status: 200,
-      json: { success: true, locations: [], timestamp: new Date().toISOString() },
+      json: {
+        success: true,
+        locations: [],
+        timestamp: new Date().toISOString(),
+      },
     })
   );
 }
@@ -113,9 +114,12 @@ test.describe('Administration — User Management', () => {
     });
 
     await test.step('Intercept POST /api/users and return created user', async () => {
-      await page.route('**/api/users', async (route) => {
+      await page.route('**/api/users', async route => {
         if (route.request().method() === 'POST') {
-          createRequestBody = route.request().postDataJSON() as Record<string, unknown>;
+          createRequestBody = route.request().postDataJSON() as Record<
+            string,
+            unknown
+          >;
           await route.fulfill({ status: 201, json: MOCK_USER_CREATE_SUCCESS });
         } else {
           await route.continue();
@@ -124,7 +128,7 @@ test.describe('Administration — User Management', () => {
     });
 
     await test.step('After creation, return updated user list', async () => {
-      await page.route('**/api/users**', (route) =>
+      await page.route('**/api/users**', route =>
         route.fulfill({ status: 200, json: MOCK_USERS_LIST_AFTER_CREATE })
       );
     });
@@ -174,7 +178,7 @@ test.describe('Administration — User Management', () => {
     });
 
     await test.step('Intercept POST /api/users and return a 409 duplicate-username error', async () => {
-      await page.route('**/api/users', async (route) => {
+      await page.route('**/api/users', async route => {
         if (route.request().method() === 'POST') {
           await route.fulfill({
             status: 409,
@@ -227,9 +231,12 @@ test.describe('Administration — User Management', () => {
     });
 
     await test.step('Intercept POST to capture request body', async () => {
-      await page.route('**/api/users', async (route) => {
+      await page.route('**/api/users', async route => {
         if (route.request().method() === 'POST') {
-          createRequestBody = route.request().postDataJSON() as Record<string, unknown>;
+          createRequestBody = route.request().postDataJSON() as Record<
+            string,
+            unknown
+          >;
           await route.fulfill({ status: 201, json: MOCK_USER_CREATE_SUCCESS });
         } else {
           await route.continue();
@@ -238,7 +245,7 @@ test.describe('Administration — User Management', () => {
     });
 
     await test.step('After creation, list returns updated users', async () => {
-      await page.route('**/api/users**', (route) =>
+      await page.route('**/api/users**', route =>
         route.fulfill({ status: 200, json: MOCK_USERS_LIST_AFTER_CREATE })
       );
     });
@@ -265,9 +272,9 @@ test.describe('Administration — User Management', () => {
     await test.step('Assert the POST body includes the Technician role', async () => {
       const roles = createRequestBody.roles as string[] | undefined;
       expect(roles).toBeDefined();
-      expect(
-        roles?.some((r) => r.toLowerCase().includes('technician'))
-      ).toBe(true);
+      expect(roles?.some(r => r.toLowerCase().includes('technician'))).toBe(
+        true
+      );
     });
   });
 
@@ -280,7 +287,7 @@ test.describe('Administration — User Management', () => {
     });
 
     await test.step('Intercept PUT /api/users and return updated user', async () => {
-      await page.route('**/api/users', async (route) => {
+      await page.route('**/api/users', async route => {
         if (route.request().method() === 'PUT') {
           await route.fulfill({ status: 200, json: MOCK_USER_UPDATE_SUCCESS });
         } else {
@@ -290,7 +297,7 @@ test.describe('Administration — User Management', () => {
     });
 
     await test.step('After edit, list returns updated email', async () => {
-      await page.route('**/api/users**', (route) =>
+      await page.route('**/api/users**', route =>
         route.fulfill({ status: 200, json: MOCK_USERS_LIST_AFTER_EDIT })
       );
     });
@@ -339,7 +346,7 @@ test.describe('Administration — User Management', () => {
     });
 
     await test.step('Intercept PUT to toggle enabled state', async () => {
-      await page.route('**/api/users', async (route) => {
+      await page.route('**/api/users', async route => {
         if (route.request().method() === 'PUT') {
           await route.fulfill({
             status: 200,
@@ -356,7 +363,7 @@ test.describe('Administration — User Management', () => {
     });
 
     await test.step('After disable, list returns the user as inactive', async () => {
-      await page.route('**/api/users**', (route) =>
+      await page.route('**/api/users**', route =>
         route.fulfill({
           status: 200,
           json: {
@@ -404,7 +411,7 @@ test.describe('Administration — User Management', () => {
     });
 
     await test.step('Intercept DELETE /api/users and respond with success', async () => {
-      await page.route('**/api/users/**', async (route) => {
+      await page.route('**/api/users/**', async route => {
         if (route.request().method() === 'DELETE') {
           await route.fulfill({ status: 200, json: MOCK_USER_DELETE_SUCCESS });
         } else {
@@ -423,11 +430,13 @@ test.describe('Administration — User Management', () => {
 
     await test.step('Assert the delete confirmation dialog appears', async () => {
       await administrationPage.expectDeleteDialogVisible();
-      await expect(administrationPage.deleteDialog).toContainText(/rjones_mgr|Robert Jones/i);
+      await expect(administrationPage.deleteDialog).toContainText(
+        /rjones_mgr|Robert Jones/i
+      );
     });
 
     await test.step('Swap the list mock to the post-delete payload then confirm', async () => {
-      await page.route('**/api/users**', (route) =>
+      await page.route('**/api/users**', route =>
         route.fulfill({ status: 200, json: MOCK_USERS_LIST_AFTER_DELETE })
       );
       await administrationPage.confirmDeleteUser();
@@ -457,19 +466,26 @@ async function mockLicenceesAPIs(
   page: Page,
   licenceesPayload = MOCK_LICENCEES_LIST
 ) {
-  await page.route('**/api/auth/current-user**', (route) =>
+  await page.route('**/api/auth/current-user**', route =>
     route.fulfill({ status: 200, json: MOCK_CURRENT_USER })
   );
-  await page.route('**/api/licencees**', (route) =>
+  await page.route('**/api/licencees**', route =>
     route.fulfill({ status: 200, json: licenceesPayload })
   );
-  await page.route('**/api/users**', (route) =>
+  await page.route('**/api/users**', route =>
     route.fulfill({
       status: 200,
-      json: { success: true, data: { users: [], pagination: { page: 1, limit: 10, totalCount: 0, totalPages: 1 } }, timestamp: new Date().toISOString() },
+      json: {
+        success: true,
+        data: {
+          users: [],
+          pagination: { page: 1, limit: 10, totalCount: 0, totalPages: 1 },
+        },
+        timestamp: new Date().toISOString(),
+      },
     })
   );
-  await page.route('**/api/gaming-locations**', (route) =>
+  await page.route('**/api/gaming-locations**', route =>
     route.fulfill({
       status: 200,
       json: { success: true, data: [], timestamp: new Date().toISOString() },
@@ -512,7 +528,10 @@ test.describe('Administration — Licencee Management (includeJackpot)', () => {
     });
 
     await test.step(`Assert "${MOCK_LICENCEE_1.name}" shows includeJackpot "No"`, async () => {
-      await administrationPage.expectIncludeJackpot(MOCK_LICENCEE_1.name, false);
+      await administrationPage.expectIncludeJackpot(
+        MOCK_LICENCEE_1.name,
+        false
+      );
     });
   });
 
@@ -542,8 +561,11 @@ test.describe('Administration — Licencee Management (includeJackpot)', () => {
     });
 
     await test.step('Intercept PUT /api/licencees and respond with success', async () => {
-      await page.route('**/api/licencees/**', async (route) => {
-        if (route.request().method() === 'PUT' || route.request().method() === 'PATCH') {
+      await page.route('**/api/licencees/**', async route => {
+        if (
+          route.request().method() === 'PUT' ||
+          route.request().method() === 'PATCH'
+        ) {
           await route.fulfill({
             status: 200,
             json: {
@@ -564,7 +586,10 @@ test.describe('Administration — Licencee Management (includeJackpot)', () => {
     });
 
     await test.step('Verify initial includeJackpot badge is "No" for lic_001', async () => {
-      await administrationPage.expectIncludeJackpot(MOCK_LICENCEE_1.name, false);
+      await administrationPage.expectIncludeJackpot(
+        MOCK_LICENCEE_1.name,
+        false
+      );
     });
 
     await test.step('Click edit on the first licencee row', async () => {
@@ -578,7 +603,7 @@ test.describe('Administration — Licencee Management (includeJackpot)', () => {
 
     await test.step('Submit the edit form', async () => {
       // Swap the licencees mock to return includeJackpot=true for lic_001
-      await page.route('**/api/licencees**', (route) =>
+      await page.route('**/api/licencees**', route =>
         route.fulfill({ status: 200, json: MOCK_LICENCEES_LIST_AFTER_EDIT })
       );
       await administrationPage.submitEditLicenceeForm();
@@ -601,7 +626,10 @@ test.describe('Administration — Role-based access', () => {
     ['manager', MOCK_USER_MANAGER],
     ['location admin', MOCK_USER_LOCATION_ADMIN],
   ] as const) {
-    test(`${label} can access /administration`, async ({ page, administrationPage }) => {
+    test(`${label} can access /administration`, async ({
+      page,
+      administrationPage,
+    }) => {
       await test.step(`Inject ${label} auth cookie and mock APIs`, async () => {
         await setRoleAuthCookie(page, userPayload);
         await mockUsersAPIs(page);
@@ -632,7 +660,9 @@ test.describe('Administration — Role-based access', () => {
     await expect(page).toHaveURL(/vault\/management/);
   });
 
-  test('technician is redirected from /administration to /unauthorized', async ({ page }) => {
+  test('technician is redirected from /administration to /unauthorized', async ({
+    page,
+  }) => {
     await setRoleAuthCookie(page, MOCK_USER_TECHNICIAN);
     await page.goto('/administration');
     await page.waitForURL(/unauthorized/, { timeout: 10_000 });

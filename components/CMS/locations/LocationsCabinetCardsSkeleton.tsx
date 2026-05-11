@@ -1,4 +1,3 @@
-
 import { FC } from 'react';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 
@@ -35,7 +34,7 @@ const LocationsCabinetCardsSkeleton: FC<LocationsCabinetCardsSkeletonProps> = ({
           <Skeleton className="h-4 w-12" />
           <Skeleton className="h-4 w-24" />
         </div>
-        
+
         {/* Financial Data */}
         <div className="mt-2 border-t border-gray-200 pt-2">
           <div className="mb-1 flex justify-between">
@@ -50,7 +49,9 @@ const LocationsCabinetCardsSkeleton: FC<LocationsCabinetCardsSkeletonProps> = ({
             <Skeleton className="h-3 w-12" />
             <Skeleton className="h-3 w-20" />
           </div>
-          <div className={`${includeJackpot ? 'mb-1' : ''} flex justify-between`}>
+          <div
+            className={`${includeJackpot ? 'mb-1' : ''} flex justify-between`}
+          >
             <Skeleton className="h-3 w-16" />
             <Skeleton className="h-3 w-20" />
           </div>
@@ -74,4 +75,3 @@ const LocationsCabinetCardsSkeleton: FC<LocationsCabinetCardsSkeletonProps> = ({
 );
 
 export default LocationsCabinetCardsSkeleton;
-

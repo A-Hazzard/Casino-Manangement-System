@@ -375,7 +375,8 @@ export type CollectionReportCollectorScheduleFiltersProps = {
   loading?: boolean;
 };
 
-export type CollectorScheduleFiltersProps = CollectionReportCollectorScheduleFiltersProps;
+export type CollectorScheduleFiltersProps =
+  CollectionReportCollectorScheduleFiltersProps;
 
 export type CollectionReportFiltersProps = {
   locations: Array<{ _id: string; name: string }>;
@@ -400,7 +401,8 @@ export type CollectionReportCollectorScheduleTableProps = {
   showActions?: boolean;
 };
 
-export type CollectorScheduleTableProps = CollectionReportCollectorScheduleTableProps;
+export type CollectorScheduleTableProps =
+  CollectionReportCollectorScheduleTableProps;
 
 export type CollectionReportCollectorScheduleCardsProps = {
   data: CollectorSchedule[];
@@ -410,7 +412,8 @@ export type CollectionReportCollectorScheduleCardsProps = {
   showActions?: boolean;
 };
 
-export type CollectorScheduleCardsProps = CollectionReportCollectorScheduleCardsProps;
+export type CollectorScheduleCardsProps =
+  CollectionReportCollectorScheduleCardsProps;
 
 export type MapPreviewProps = {
   gamingLocations?: Record<string, unknown>[];

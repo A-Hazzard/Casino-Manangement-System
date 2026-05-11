@@ -63,4 +63,3 @@ const SyncButton = ({
 };
 
 export default SyncButton;
-

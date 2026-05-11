@@ -24,17 +24,37 @@ import UserModel from '@/app/api/lib/models/user';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
 import type { LeanUserDocument } from 'shared/types/auth';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
-export async function PATCH(
-  request: NextRequest
-): Promise<Response> {
+export async function PATCH(request: NextRequest): Promise<Response> {
+  const startTime = Date.now();
+  const functionName = 'PATCH /api/users/[id]/test-assignments';
+  const user = extractUserFromRequest(request);
+
   // Only allow in development
   if (process.env.NODE_ENV !== 'development') {
+    logRouteError(
+      functionName,
+      'PATCH',
+      '/api/users/[id]/test-assignments',
+      'This endpoint is only available in development mode',
+      user
+    );
     return NextResponse.json(
-      { success: false, message: 'This endpoint is only available in development mode' },
+      {
+        success: false,
+        message: 'This endpoint is only available in development mode',
+      },
       { status: 403 }
     );
   }
+
+  const { pathname } = request.nextUrl;
+  const userId = pathname.split('/').at(-2) ?? '';
 
   try {
     // ============================================================================
@@ -45,13 +65,17 @@ export async function PATCH(
     // ============================================================================
     // STEP 2: Parse request body
     // ============================================================================
-    const { pathname } = request.nextUrl;
-    const parts = pathname.split('/');
-    const userId = parts[parts.length - 2]; // Extract [id] from /api/users/[id]/test-assignments
     const body = await request.json();
     const { assignedLocations, assignedLicencees } = body;
 
     if (!userId) {
+      logRouteError(
+        functionName,
+        'PATCH',
+        `/api/users/${userId}/test-assignments`,
+        'User ID is required',
+        user
+      );
       return NextResponse.json(
         { success: false, message: 'User ID is required' },
         { status: 400 }
@@ -98,6 +122,13 @@ export async function PATCH(
     ).lean<LeanUserDocument>();
 
     if (!userDoc) {
+      logRouteError(
+        functionName,
+        'PATCH',
+        `/api/users/${userId}/test-assignments`,
+        'User not found',
+        user
+      );
       return NextResponse.json(
         { success: false, message: 'User not found' },
         { status: 404 }
@@ -107,6 +138,16 @@ export async function PATCH(
     // ============================================================================
     // STEP 5: Return updated user data
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteUpdate(
+      functionName,
+      'PATCH',
+      `/api/users/${userId}/test-assignments`,
+      1,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: true,
       message: 'User assignments updated successfully',
@@ -120,12 +161,19 @@ export async function PATCH(
       },
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     console.error('[Test Assignments API] Error:', error);
+    logRouteError(
+      functionName,
+      'PATCH',
+      `/api/users/${userId}/test-assignments`,
+      errorMessage,
+      user
+    );
     return NextResponse.json(
       { success: false, message: errorMessage },
       { status: 500 }
     );
   }
 }
-

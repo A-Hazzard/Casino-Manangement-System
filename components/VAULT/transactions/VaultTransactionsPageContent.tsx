@@ -19,25 +19,32 @@ import { Card, CardContent } from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import VaultTransactionsSkeleton from '@/components/ui/skeletons/VaultTransactionsSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import { DEFAULT_POLL_INTERVAL } from '@/lib/constants';
 import {
-    fetchVaultTransactions,
-    getTransactionTypeBadge
+  fetchVaultTransactions,
+  getTransactionTypeBadge,
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type { ExtendedVaultTransaction } from '@/shared/types/vault';
-import { ArrowDown, ArrowUp, FileText, Receipt, RefreshCw, Search } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  FileText,
+  Receipt,
+  RefreshCw,
+  Search,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import VaultTransactionsMobileCards from './cards/VaultTransactionsMobileCards';
@@ -49,8 +56,11 @@ export default function VaultTransactionsPageContent() {
   // Hooks & State
   const { user } = useUserStore();
   const { formatAmount } = useCurrencyFormat();
-  const { licenceeId: selectedLicencee, setLicenceeId: setSelectedLicencee } = useVaultLicencee();
-  const isAdminOrDev = user?.roles?.some(r => ['admin', 'developer'].includes(r.toLowerCase()));
+  const { licenceeId: selectedLicencee, setLicenceeId: setSelectedLicencee } =
+    useVaultLicencee();
+  const isAdminOrDev = user?.roles?.some(r =>
+    ['admin', 'developer'].includes(r.toLowerCase())
+  );
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<ExtendedVaultTransaction[]>(
     []
@@ -65,36 +75,47 @@ export default function VaultTransactionsPageContent() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Fetch transactions
-  const fetchData = useCallback(async (isSilent = false) => {
-    // If Admin/Dev, allow global fetch without specific location
-    if (!isAdminOrDev && !user?.assignedLocations?.[0]) {
-      setLoading(false);
-      return;
-    }
+  const fetchData = useCallback(
+    async (isSilent = false) => {
+      // If Admin/Dev, allow global fetch without specific location
+      if (!isAdminOrDev && !user?.assignedLocations?.[0]) {
+        setLoading(false);
+        return;
+      }
 
-    const locationId = user?.assignedLocations?.[0] || 'all';
+      const locationId = user?.assignedLocations?.[0] || 'all';
 
-    if (!isSilent) setLoading(true);
-    
-    try {
-      const data = await fetchVaultTransactions(
-        locationId,
-        currentPage + 1,
-        20,
-        selectedType,
-        selectedStatus,
-        searchTerm
-      );
-      setTransactions(data.transactions);
-      setTotalPages(data.totalPages);
-      setTotalItems(data.total);
-    } catch (error) {
-      console.error('Failed to fetch transactions', error);
-      toast.error('Failed to load transactions');
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.assignedLocations, user?.roles, currentPage, selectedType, selectedStatus, searchTerm, isAdminOrDev]);
+      if (!isSilent) setLoading(true);
+
+      try {
+        const data = await fetchVaultTransactions(
+          locationId,
+          currentPage + 1,
+          20,
+          selectedType,
+          selectedStatus,
+          searchTerm
+        );
+        setTransactions(data.transactions);
+        setTotalPages(data.totalPages);
+        setTotalItems(data.total);
+      } catch (error) {
+        console.error('Failed to fetch transactions', error);
+        toast.error('Failed to load transactions');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      user?.assignedLocations,
+      user?.roles,
+      currentPage,
+      selectedType,
+      selectedStatus,
+      searchTerm,
+      isAdminOrDev,
+    ]
+  );
 
   // Reset page when filters change
   useEffect(() => {
@@ -110,8 +131,8 @@ export default function VaultTransactionsPageContent() {
     if (transactions.length < 2) return;
 
     const interval = setInterval(() => {
-        fetchData(true);
-    }, DEFAULT_POLL_INTERVAL); 
+      fetchData(true);
+    }, DEFAULT_POLL_INTERVAL);
 
     return () => clearInterval(interval);
   }, [fetchData, transactions.length]);
@@ -129,34 +150,38 @@ export default function VaultTransactionsPageContent() {
   const filteredAndSortedTransactions = useMemo(() => {
     // Only sort the current page data
     return [...transactions].sort((a, b) => {
-        const getField = (obj: ExtendedVaultTransaction, field: string) => {
-            switch(field) {
-                case 'date': return new Date(obj.timestamp).getTime();
-                case 'user': return (obj.performedByName || obj.performedBy || '').toLowerCase();
-                case 'source': return (obj.fromName || '').toLowerCase();
-                case 'destination': return (obj.toName || '').toLowerCase();
-                case 'amount': return Math.abs(obj.amount);
-                case 'type': return (obj.type || '').toLowerCase();
-                case 'status': return (obj.isVoid ? 'voided' : 'completed');
-                default: return (obj as Record<string, unknown>)[field];
-            }
-        };
+      const getField = (obj: ExtendedVaultTransaction, field: string) => {
+        switch (field) {
+          case 'date':
+            return new Date(obj.timestamp).getTime();
+          case 'user':
+            return (obj.performedByName || obj.performedBy || '').toLowerCase();
+          case 'source':
+            return (obj.fromName || '').toLowerCase();
+          case 'destination':
+            return (obj.toName || '').toLowerCase();
+          case 'amount':
+            return Math.abs(obj.amount);
+          case 'type':
+            return (obj.type || '').toLowerCase();
+          case 'status':
+            return obj.isVoid ? 'voided' : 'completed';
+          default:
+            return (obj as Record<string, unknown>)[field];
+        }
+      };
 
-        const aValue = getField(a, sortOption);
-        const bValue = getField(b, sortOption);
+      const aValue = getField(a, sortOption);
+      const bValue = getField(b, sortOption);
 
-        const aStr = typeof aValue === 'number' ? aValue : String(aValue ?? '');
-        const bStr = typeof bValue === 'number' ? bValue : String(bValue ?? '');
+      const aStr = typeof aValue === 'number' ? aValue : String(aValue ?? '');
+      const bStr = typeof bValue === 'number' ? bValue : String(bValue ?? '');
 
-        if (aStr < bStr) return sortOrder === 'asc' ? -1 : 1;
-        if (aStr > bStr) return sortOrder === 'asc' ? 1 : -1;
-        return 0;
+      if (aStr < bStr) return sortOrder === 'asc' ? -1 : 1;
+      if (aStr > bStr) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
     });
-  }, [
-    sortOption,
-    sortOrder,
-    transactions,
-  ]);
+  }, [sortOption, sortOrder, transactions]);
 
   /**
    * Calculate summary metrics from all transactions
@@ -239,82 +264,106 @@ export default function VaultTransactionsPageContent() {
   // ============================================================================
   return (
     <PageLayout
-        onRefresh={() => fetchData(true)}
-        refreshing={loading}
-        headerProps={isAdminOrDev ? {
-            selectedLicencee,
-            setSelectedLicencee,
-            disabled: false
-        } : undefined}
+      onRefresh={() => fetchData(true)}
+      refreshing={loading}
+      headerProps={
+        isAdminOrDev
+          ? {
+              selectedLicencee,
+              setSelectedLicencee,
+              disabled: false,
+            }
+          : undefined
+      }
     >
       <div className="space-y-6">
         {/* Header */}
         <VaultManagerHeader
-            title={isAdminOrDev ? "Global Transactions" : "Transaction History"}
-            description={isAdminOrDev ? "Viewing all vault transactions across locations" : "Monitor all vault transaction history"}
-            onFloatActionComplete={() => fetchData(true)}
+          title={isAdminOrDev ? 'Global Transactions' : 'Transaction History'}
+          description={
+            isAdminOrDev
+              ? 'Viewing all vault transactions across locations'
+              : 'Monitor all vault transaction history'
+          }
+          onFloatActionComplete={() => fetchData(true)}
         >
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fetchData()}
-                disabled={loading}
-                className="h-8 gap-2 border-slate-200"
-            >
-                <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-                Refresh
-            </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchData()}
+            disabled={loading}
+            className="h-8 gap-2 border-slate-200"
+          >
+            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+            Refresh
+          </Button>
         </VaultManagerHeader>
 
         {/* Summary Cards — always visible, above search bar */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Card className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
+          <Card className="group overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-md">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Transactions</p>
-                  <p className="text-lg font-black text-gray-900 sm:text-xl">{summaryMetrics.totalTransactions}</p>
+                  <p className="text-[10px] font-black uppercase leading-none tracking-widest text-gray-400">
+                    Transactions
+                  </p>
+                  <p className="text-lg font-black text-gray-900 sm:text-xl">
+                    {summaryMetrics.totalTransactions}
+                  </p>
                 </div>
-                <div className="h-8 w-8 rounded-lg bg-gray-50 flex items-center justify-center border border-gray-100 group-hover:bg-violet-50 group-hover:border-violet-100 transition-colors">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-100 bg-gray-50 transition-colors group-hover:border-violet-100 group-hover:bg-violet-50">
                   <FileText className="h-4 w-4 text-gray-400 group-hover:text-violet-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
+          <Card className="group overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-md">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest leading-none">Total Inflow</p>
-                  <p className="text-lg font-black text-emerald-600 sm:text-xl">{formatAmount(summaryMetrics.totalInflow)}</p>
+                  <p className="text-[10px] font-black uppercase leading-none tracking-widest text-emerald-500">
+                    Total Inflow
+                  </p>
+                  <p className="text-lg font-black text-emerald-600 sm:text-xl">
+                    {formatAmount(summaryMetrics.totalInflow)}
+                  </p>
                 </div>
-                <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center border border-emerald-100 group-hover:bg-emerald-100 transition-colors">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 transition-colors group-hover:bg-emerald-100">
                   <ArrowUp className="h-4 w-4 text-emerald-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
+          <Card className="group overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-md">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest leading-none">Total Outflow</p>
-                  <p className="text-lg font-black text-orange-600 sm:text-xl">{formatAmount(summaryMetrics.totalOutflow)}</p>
+                  <p className="text-[10px] font-black uppercase leading-none tracking-widest text-orange-500">
+                    Total Outflow
+                  </p>
+                  <p className="text-lg font-black text-orange-600 sm:text-xl">
+                    {formatAmount(summaryMetrics.totalOutflow)}
+                  </p>
                 </div>
-                <div className="h-8 w-8 rounded-lg bg-orange-50 flex items-center justify-center border border-orange-100 group-hover:bg-orange-100 transition-colors">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-orange-100 bg-orange-50 transition-colors group-hover:bg-orange-100">
                   <ArrowDown className="h-4 w-4 text-orange-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-xl bg-white border border-gray-100 shadow-sm overflow-hidden group hover:shadow-md transition-all">
+          <Card className="group overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all hover:shadow-md">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black text-red-500 uppercase tracking-widest leading-none">Total Expenses</p>
-                  <p className="text-lg font-black text-red-600 sm:text-xl">{formatAmount(summaryMetrics.totalExpenses)}</p>
+                  <p className="text-[10px] font-black uppercase leading-none tracking-widest text-red-500">
+                    Total Expenses
+                  </p>
+                  <p className="text-lg font-black text-red-600 sm:text-xl">
+                    {formatAmount(summaryMetrics.totalExpenses)}
+                  </p>
                 </div>
-                <div className="h-8 w-8 rounded-lg bg-red-50 flex items-center justify-center border border-red-100 group-hover:bg-red-100 transition-colors">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-red-50 transition-colors group-hover:bg-red-100">
                   <Receipt className="h-4 w-4 text-red-600" />
                 </div>
               </div>
@@ -343,14 +392,22 @@ export default function VaultTransactionsPageContent() {
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="vault_open">Vault Open</SelectItem>
                 <SelectItem value="vault_close">Vault Close</SelectItem>
-                <SelectItem value="cashier_shift_open">Cashier Shift Open</SelectItem>
-                <SelectItem value="cashier_shift_close">Cashier Shift Close</SelectItem>
-                <SelectItem value="machine_collection">Machine Collection</SelectItem>
+                <SelectItem value="cashier_shift_open">
+                  Cashier Shift Open
+                </SelectItem>
+                <SelectItem value="cashier_shift_close">
+                  Cashier Shift Close
+                </SelectItem>
+                <SelectItem value="machine_collection">
+                  Machine Collection
+                </SelectItem>
                 <SelectItem value="float_increase">Float Increase</SelectItem>
                 <SelectItem value="float_decrease">Float Decrease</SelectItem>
                 <SelectItem value="payout">Payout</SelectItem>
                 <SelectItem value="expense">Expense</SelectItem>
-                <SelectItem value="vault_reconciliation">Reconciliation</SelectItem>
+                <SelectItem value="vault_reconciliation">
+                  Reconciliation
+                </SelectItem>
                 <SelectItem value="soft_count">Soft Count</SelectItem>
               </SelectContent>
             </Select>
@@ -370,7 +427,13 @@ export default function VaultTransactionsPageContent() {
         {/* Transaction Details */}
         <div className="space-y-4">
           {/* Desktop Table */}
-          <div className={loading ? 'pointer-events-none opacity-50 hidden lg:block' : 'hidden lg:block'}>
+          <div
+            className={
+              loading
+                ? 'pointer-events-none hidden opacity-50 lg:block'
+                : 'hidden lg:block'
+            }
+          >
             <VaultTransactionsTable
               transactions={filteredAndSortedTransactions}
               sortOption={sortOption}
@@ -382,7 +445,11 @@ export default function VaultTransactionsPageContent() {
           </div>
 
           {/* Mobile Cards */}
-          <div className={loading ? 'pointer-events-none opacity-50 lg:hidden' : 'lg:hidden'}>
+          <div
+            className={
+              loading ? 'pointer-events-none opacity-50 lg:hidden' : 'lg:hidden'
+            }
+          >
             <VaultTransactionsMobileCards
               transactions={filteredAndSortedTransactions}
               getTransactionTypeBadge={getTransactionBadge}

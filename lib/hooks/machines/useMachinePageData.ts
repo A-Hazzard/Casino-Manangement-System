@@ -18,11 +18,8 @@ export function useMachinePageData() {
   const searchParams = useSearchParams();
   const slug = pathname.split('/').pop() || '';
   const { user } = useUserStore();
-  const {
-    selectedLicencee,
-    activeMetricsFilter,
-    customDateRange,
-  } = useDashBoardStore();
+  const { selectedLicencee, activeMetricsFilter, customDateRange } =
+    useDashBoardStore();
 
   const [dateFilterInitialized, setDateFilterInitialized] = useState(false);
 
@@ -60,28 +57,37 @@ export function useMachinePageData() {
   const canManageMachines = useMemo(() => {
     const roles = user?.roles || [];
     if (roles.includes('collector')) return false;
-    return ['developer', 'admin', 'manager', 'location admin', 'technician'].some(role => roles.includes(role));
+    return [
+      'developer',
+      'admin',
+      'manager',
+      'location admin',
+      'technician',
+    ].some(role => roles.includes(role));
   }, [user]);
 
-  const handleTabChange = useCallback((tab: string) => {
-    setActiveTab(tab);
-    const sectionMap: Record<string, string> = {
-      'Movement Metrics': '',
-      'Live Metrics': 'live-metrics',
-      'Bill Validator': 'bill-validator',
-      'Activity Log': 'activity-log',
-      'Collection History': 'collection-history',
-      'Collection Settings': 'collection-settings',
-      'Configurations': 'configurations',
-    };
+  const handleTabChange = useCallback(
+    (tab: string) => {
+      setActiveTab(tab);
+      const sectionMap: Record<string, string> = {
+        'Movement Metrics': '',
+        'Live Metrics': 'live-metrics',
+        'Bill Validator': 'bill-validator',
+        'Activity Log': 'activity-log',
+        'Collection History': 'collection-history',
+        'Collection Settings': 'collection-settings',
+        Configurations: 'configurations',
+      };
 
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    const sectionValue = sectionMap[tab];
-    if (sectionValue) params.set('section', sectionValue);
-    else params.delete('section');
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      const sectionValue = sectionMap[tab];
+      if (sectionValue) params.set('section', sectionValue);
+      else params.delete('section');
 
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [pathname, router, searchParams]);
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -123,7 +129,3 @@ export function useMachinePageData() {
     onLocationClick: (id: string) => router.push(`/locations/${id}`),
   };
 }
-
-
-
-

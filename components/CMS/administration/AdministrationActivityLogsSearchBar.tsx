@@ -132,4 +132,3 @@ function AdministrationActivityLogsSearchBar({
 }
 
 export default AdministrationActivityLogsSearchBar;
-

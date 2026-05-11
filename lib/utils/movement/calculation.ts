@@ -40,10 +40,19 @@ export function calculateMovement(
   ramClearMetersIn?: number,
   ramClearMetersOut?: number
 ): MovementCalculation {
-  if (currentMetersIn === undefined || currentMetersIn === null) { console.error('[calculateMovement] currentMetersIn is required'); return { metersIn: 0, metersOut: 0, gross: 0 }; }
-  if (currentMetersOut === undefined || currentMetersOut === null) { console.error('[calculateMovement] currentMetersOut is required'); return { metersIn: 0, metersOut: 0, gross: 0 }; }
-  if (!previousMeters) { console.error('[calculateMovement] previousMeters is required'); return { metersIn: 0, metersOut: 0, gross: 0 }; }
-  
+  if (currentMetersIn === undefined || currentMetersIn === null) {
+    console.error('[calculateMovement] currentMetersIn is required');
+    return { metersIn: 0, metersOut: 0, gross: 0 };
+  }
+  if (currentMetersOut === undefined || currentMetersOut === null) {
+    console.error('[calculateMovement] currentMetersOut is required');
+    return { metersIn: 0, metersOut: 0, gross: 0 };
+  }
+  if (!previousMeters) {
+    console.error('[calculateMovement] previousMeters is required');
+    return { metersIn: 0, metersOut: 0, gross: 0 };
+  }
+
   let metersIn: number;
   let metersOut: number;
 
@@ -82,4 +91,3 @@ export function calculateMovement(
     gross,
   };
 }
-

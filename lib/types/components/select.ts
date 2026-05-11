@@ -28,4 +28,3 @@ export type LocationSelectProps = {
   contentClassName?: string;
   emptyMessage?: string;
 };
-

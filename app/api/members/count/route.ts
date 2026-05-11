@@ -7,12 +7,17 @@
  */
 
 import {
-    getUserAccessibleLicenceesFromToken,
-    getUserLocationFilter,
+  getUserAccessibleLicenceesFromToken,
+  getUserLocationFilter,
 } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -31,13 +36,16 @@ import { NextRequest, NextResponse } from 'next/server';
  * 5. Return count
  */
 export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/members/count';
+  const logUser = extractUserFromRequest(req);
+
   try {
     // ============================================================================
     // STEP 1: Parse request parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
-    const licencee =
-      searchParams.get('licencee');
+    const licencee = searchParams.get('licencee');
     const locationId = searchParams.get('locationId');
     const machineTypeFilter = searchParams.get('machineTypeFilter');
 
@@ -67,8 +75,9 @@ export async function GET(req: NextRequest) {
             }
           >
         | undefined
-    )?.['gaming-locations']?.resources?.map((resource: { _id: string }) => resource._id) ||
-      []) as string[];
+    )?.['gaming-locations']?.resources?.map(
+      (resource: { _id: string }) => resource._id
+    ) || []) as string[];
     const userRoles = (user?.roles || []) as string[];
 
     // ============================================================================
@@ -122,6 +131,15 @@ export async function GET(req: NextRequest) {
     } else if (allowedLocationIds !== 'all') {
       // Apply location permissions
       if (allowedLocationIds.length === 0) {
+        const duration = Date.now() - startTime;
+        logRouteFetch(
+          functionName,
+          'GET',
+          '/api/members/count',
+          0,
+          logUser,
+          duration
+        );
         return NextResponse.json({ memberCount: 0 });
       }
       aggregationPipeline.push({
@@ -175,14 +193,29 @@ export async function GET(req: NextRequest) {
     ]).exec();
     const memberCount = countResult[0]?.total || 0;
 
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/members/count',
+      1,
+      logUser,
+      duration
+    );
+
     return NextResponse.json({ memberCount });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Server Error';
-    console.error('[API Error] Members count:', errorMessage);
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/members/count',
+      errorMessage,
+      logUser
+    );
     return NextResponse.json(
       { error: errorMessage, memberCount: 0 },
       { status: 500 }
     );
   }
 }
-

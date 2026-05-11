@@ -14,7 +14,14 @@
  * @param disabled - Whether the picker is disabled
  */
 
-import { Component, FC, ReactNode, useCallback, useMemo, useState } from 'react';
+import {
+  Component,
+  FC,
+  ReactNode,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { ErrorInfo } from 'react';
 import { format } from 'date-fns';
 import {
@@ -187,8 +194,8 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
           {displayValue}
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-auto p-0 max-w-[calc(100vw-2rem)]" 
+      <PopoverContent
+        className="w-auto max-w-[calc(100vw-2rem)] p-0"
         align="start"
         sideOffset={4}
       >
@@ -207,22 +214,20 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
             }
             initialFocus={isOpen}
             showOutsideDays
-            classNames={
-              {
-                months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                month: "space-y-4",
-                // Add any custom Tailwind classes for styling if needed
-                // Example from your previous DayPicker setup:
-                // caption: "text-buttonActive",
-                // day_selected: "bg-button text-white",
-                // day_range_middle: "bg-greenHighlight text-black",
-                // day_today: "border-orangeHighlight",
-              }
-            }
+            classNames={{
+              months:
+                'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',
+              month: 'space-y-4',
+              // Add any custom Tailwind classes for styling if needed
+              // Example from your previous DayPicker setup:
+              // caption: "text-buttonActive",
+              // day_selected: "bg-button text-white",
+              // day_range_middle: "bg-greenHighlight text-black",
+              // day_today: "border-orangeHighlight",
+            }}
           />
         </ErrorBoundary>
       </PopoverContent>
     </Popover>
   );
 };
-

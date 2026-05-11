@@ -6,24 +6,37 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import {
-    Dialog,
-    DialogContent,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { Label } from '@/components/shared/ui/label';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import { Textarea } from '@/components/shared/ui/textarea';
 import { format } from 'date-fns';
-import { Building2, Edit2, RotateCcw, Save, Trash2, User, X } from 'lucide-react';
+import {
+  Building2,
+  Edit2,
+  RotateCcw,
+  Save,
+  Trash2,
+  User,
+  X,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { CATEGORY_LABELS, Feedback, getInitials, STATUS_HEADER } from './FeedbackTypes';
+import {
+  CATEGORY_LABELS,
+  Feedback,
+  getInitials,
+  STATUS_HEADER,
+} from './FeedbackTypes';
 
 type FeedbackDetailModalProps = {
   isOpen: boolean;
@@ -110,12 +123,12 @@ export default function FeedbackDetailModal({
         throw new Error(data.error || 'Failed to update feedback');
       }
 
-      const updatedFeedback = { 
-        ...selectedFeedback, 
+      const updatedFeedback = {
+        ...selectedFeedback,
         ...data.feedback,
         archived: data.feedback.archived ?? false,
       };
-      
+
       onUpdate(updatedFeedback);
       setIsEditing(false);
       toast.success('Feedback updated successfully');
@@ -133,9 +146,19 @@ export default function FeedbackDetailModal({
 
   if (!selectedFeedback) return null;
 
-  const header = STATUS_HEADER[selectedFeedback.archived ? 'archived' : selectedFeedback.status] ?? STATUS_HEADER.pending;
-  const initials = getInitials(selectedFeedback.firstName, selectedFeedback.lastName, selectedFeedback.email);
-  const displayName = [selectedFeedback.firstName, selectedFeedback.lastName].filter(Boolean).join(' ') || null;
+  const header =
+    STATUS_HEADER[
+      selectedFeedback.archived ? 'archived' : selectedFeedback.status
+    ] ?? STATUS_HEADER.pending;
+  const initials = getInitials(
+    selectedFeedback.firstName,
+    selectedFeedback.lastName,
+    selectedFeedback.email
+  );
+  const displayName =
+    [selectedFeedback.firstName, selectedFeedback.lastName]
+      .filter(Boolean)
+      .join(' ') || null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -145,7 +168,7 @@ export default function FeedbackDetailModal({
         className="flex max-h-[90vh] w-[calc(100%-2rem)] max-w-xl flex-col overflow-hidden rounded-2xl p-0 shadow-2xl"
       >
         <DialogTitle className="sr-only">Feedback Details</DialogTitle>
-        
+
         {/* Header */}
         <div className={`relative shrink-0 ${header.bg} px-6 pb-5 pt-5`}>
           <button
@@ -163,7 +186,9 @@ export default function FeedbackDetailModal({
               <p className={`text-base font-semibold ${header.text}`}>
                 {displayName ?? <span className="opacity-70">Anonymous</span>}
               </p>
-              <p className={`mt-0.5 break-all text-sm ${header.text} opacity-80`}>
+              <p
+                className={`mt-0.5 break-all text-sm ${header.text} opacity-80`}
+              >
                 {selectedFeedback.email}
               </p>
               {selectedFeedback.username && (
@@ -187,15 +212,28 @@ export default function FeedbackDetailModal({
                 </SelectContent>
               </Select>
             ) : (
-              <Badge variant="outline" className={`border text-xs font-medium ${header.badge}`}>
-                {selectedFeedback.archived ? 'Archived' : selectedFeedback.status.charAt(0).toUpperCase() + selectedFeedback.status.slice(1)}
+              <Badge
+                variant="outline"
+                className={`border text-xs font-medium ${header.badge}`}
+              >
+                {selectedFeedback.archived
+                  ? 'Archived'
+                  : selectedFeedback.status.charAt(0).toUpperCase() +
+                    selectedFeedback.status.slice(1)}
               </Badge>
             )}
-            <Badge variant="outline" className={`border text-xs ${header.badge}`}>
-              {CATEGORY_LABELS[selectedFeedback.category] || selectedFeedback.category}
+            <Badge
+              variant="outline"
+              className={`border text-xs ${header.badge}`}
+            >
+              {CATEGORY_LABELS[selectedFeedback.category] ||
+                selectedFeedback.category}
             </Badge>
             <span className={`ml-auto text-xs ${header.text} opacity-60`}>
-              {format(new Date(selectedFeedback.submittedAt), 'MMM d, yyyy · HH:mm')}
+              {format(
+                new Date(selectedFeedback.submittedAt),
+                'MMM d, yyyy · HH:mm'
+              )}
             </span>
           </div>
         </div>
@@ -208,7 +246,9 @@ export default function FeedbackDetailModal({
                 <User className="h-3 w-3" /> Username
               </p>
               <p className="text-sm font-medium text-gray-800">
-                {selectedFeedback.username ?? <span className="text-gray-300">—</span>}
+                {selectedFeedback.username ?? (
+                  <span className="text-gray-300">—</span>
+                )}
               </p>
             </div>
             <div>
@@ -216,7 +256,9 @@ export default function FeedbackDetailModal({
                 <Building2 className="h-3 w-3" /> Licencee
               </p>
               <p className="break-words text-sm font-medium leading-snug text-gray-800">
-                {selectedFeedback.licenceeName ?? <span className="text-gray-300">—</span>}
+                {selectedFeedback.licenceeName ?? (
+                  <span className="text-gray-300">—</span>
+                )}
               </p>
             </div>
           </div>
@@ -224,7 +266,9 @@ export default function FeedbackDetailModal({
           <div className="h-px bg-gray-100" />
 
           <div>
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Description</p>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+              Description
+            </p>
             <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
                 {selectedFeedback.description}
@@ -233,7 +277,9 @@ export default function FeedbackDetailModal({
           </div>
 
           <div>
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Admin Notes</p>
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+              Admin Notes
+            </p>
             {isEditing ? (
               <Textarea
                 value={editNotes}
@@ -248,7 +294,9 @@ export default function FeedbackDetailModal({
                 </p>
               </div>
             ) : (
-              <p className="text-sm italic text-gray-300">No notes added yet.</p>
+              <p className="text-sm italic text-gray-300">
+                No notes added yet.
+              </p>
             )}
           </div>
 
@@ -259,7 +307,10 @@ export default function FeedbackDetailModal({
                 checked={editArchived}
                 onCheckedChange={checked => setEditArchived(Boolean(checked))}
               />
-              <Label htmlFor="archived-checkbox" className="cursor-pointer text-sm text-gray-700">
+              <Label
+                htmlFor="archived-checkbox"
+                className="cursor-pointer text-sm text-gray-700"
+              >
                 Mark as archived
               </Label>
             </div>
@@ -267,11 +318,19 @@ export default function FeedbackDetailModal({
 
           {selectedFeedback.reviewedBy && selectedFeedback.reviewedAt && (
             <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">Review Trail</p>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+                Review Trail
+              </p>
               <p className="text-sm text-gray-700">
-                Reviewed by <span className="font-medium text-gray-900">{selectedFeedback.reviewedBy}</span>
+                Reviewed by{' '}
+                <span className="font-medium text-gray-900">
+                  {selectedFeedback.reviewedBy}
+                </span>
                 {' · '}
-                {format(new Date(selectedFeedback.reviewedAt), 'MMM d, yyyy · HH:mm')}
+                {format(
+                  new Date(selectedFeedback.reviewedAt),
+                  'MMM d, yyyy · HH:mm'
+                )}
               </p>
             </div>
           )}
@@ -290,7 +349,11 @@ export default function FeedbackDetailModal({
               >
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleUpdateFeedback} disabled={localIsUpdating}>
+              <Button
+                size="sm"
+                onClick={handleUpdateFeedback}
+                disabled={localIsUpdating}
+              >
                 <Save className="mr-1.5 h-3.5 w-3.5" />
                 {localIsUpdating ? 'Saving…' : 'Save Changes'}
               </Button>

@@ -18,6 +18,10 @@ import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import { Machine } from '@/app/api/lib/models/machines';
 import type { GamingMachine, MachineEventDocument } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * Main GET handler for fetching machine events
@@ -46,10 +50,12 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/cabinets/by-id/events';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
-    // STEP 1: Connect to database
+    // STEP1: Connect to database
     // ============================================================================
     await connectDB();
 
@@ -77,6 +83,13 @@ export async function GET(request: NextRequest) {
     // STEP 3: Validate machine ID parameter
     // ============================================================================
     if (!machineId) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cabinets/by-id/events',
+        'Machine ID is required',
+        user
+      );
       return NextResponse.json(
         { error: 'Machine ID is required' },
         { status: 400 }
@@ -86,21 +99,30 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 3.5: Technician Restriction - Force last hour data
     // ============================================================================
-    const { getUserFromServer } = await import('@/app/api/lib/helpers/users/users');
+    const { getUserFromServer } =
+      await import('@/app/api/lib/helpers/users/users');
     const userPayload = await getUserFromServer();
     const userRoles = (userPayload?.roles as string[]) || [];
 
-    const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer');
+    const isAdmin = userRoles
+      .map(r => r?.toLowerCase?.() ?? r)
+      .some(r => r === 'admin' || r === 'developer');
     const userRolesLower = userRoles.map(r => r.toLowerCase());
-    const isOnlyTechnician = userRolesLower.includes('technician') && !userRolesLower.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
+    const isOnlyTechnician =
+      userRolesLower.includes('technician') &&
+      !userRolesLower.some(r =>
+        ['admin', 'developer', 'manager', 'location admin'].includes(r)
+      );
 
     if (isOnlyTechnician && !isAdmin) {
-      console.warn('[API Events] Applying technician restriction: forcing LastHour timePeriod');
+      console.warn(
+        '[API Events] Applying technician restriction: forcing LastHour timePeriod'
+      );
       timePeriod = 'LastHour';
     }
 
     // ============================================================================
-    // STEP 4: Build base query with filters
+    // STEP4: Build base query with filters
     // ============================================================================
     // Build the base query with machine ID
     const baseQuery: Record<string, unknown> = { machine: machineId };
@@ -113,7 +135,9 @@ export async function GET(request: NextRequest) {
     if (type) {
       // Support both "Warning" matches "WARN" and exact matches
       if (type.toLowerCase() === 'warning') {
-        baseQuery['eventLogLevel'] = { $in: ['Warning', 'WARN', 'warning', 'warn'] } as unknown;
+        baseQuery['eventLogLevel'] = {
+          $in: ['Warning', 'WARN', 'warning', 'warn'],
+        } as unknown;
       } else {
         baseQuery['eventLogLevel'] = { $regex: type, $options: 'i' } as unknown;
       }
@@ -160,11 +184,15 @@ export async function GET(request: NextRequest) {
         case 'Today':
           // AST 00:00:00 = UTC 04:00:00 (AST is UTC-4)
           dateFilterStart = new Date(Date.UTC(year, month, day, 4, 0, 0, 0));
-          dateFilterEnd = new Date(Date.UTC(year, month, day + 1, 3, 59, 59, 999));
+          dateFilterEnd = new Date(
+            Date.UTC(year, month, day + 1, 3, 59, 59, 999)
+          );
           break;
         case 'Yesterday':
           // AST 00:00:00 yesterday
-          dateFilterStart = new Date(Date.UTC(year, month, day - 1, 4, 0, 0, 0));
+          dateFilterStart = new Date(
+            Date.UTC(year, month, day - 1, 4, 0, 0, 0)
+          );
           dateFilterEnd = new Date(Date.UTC(year, month, day, 3, 59, 59, 999));
           break;
         case '7d':
@@ -267,16 +295,16 @@ export async function GET(request: NextRequest) {
         hasPrevPage: page > 1,
       },
     });
-  } catch (error) {
-    const duration = Date.now() - startTime;
+  } catch (error: unknown) {
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(
-      `[Machine Events API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/cabinets/by-id/events',
+      errorMessage,
+      user
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-
-

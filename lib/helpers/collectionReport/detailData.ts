@@ -18,4 +18,3 @@ export async function checkSasTimeIssues(
     throw error;
   }
 }
-

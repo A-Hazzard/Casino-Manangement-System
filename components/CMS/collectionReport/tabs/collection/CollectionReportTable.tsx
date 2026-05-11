@@ -49,7 +49,7 @@ import {
   Edit3,
   Trash2,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import { UserRole } from '@/lib/constants';
 import CollectionReportTableSkeleton from '../../CollectionReportTableSkeleton';
@@ -67,19 +67,20 @@ export default function CollectionReportTable({
   selectedLicencee,
 }: CollectionReportTableProps) {
   const { formatAmount } = useCurrencyFormat();
-  const router = useRouter();
   const user = useUserStore(state => state.user);
 
   // Helper to format financial values with dollar signs
   const formatVal = (v: number | string | null | undefined) => {
-    if (v === 'No Variance' || v === '-' || v === undefined || v === null) return v;
+    if (v === 'No Variance' || v === '-' || v === undefined || v === null)
+      return v;
     const num = typeof v === 'string' ? parseFloat(v) : v;
     return isNaN(num) ? v : formatAmount(num);
   };
 
   // Returns green/red color class for any raw financial value; empty string for non-numeric sentinels
   const colorClass = (v: number | string | null | undefined) => {
-    if (v === 'No Variance' || v === '-' || v === undefined || v === null) return '';
+    if (v === 'No Variance' || v === '-' || v === undefined || v === null)
+      return '';
     const num = typeof v === 'string' ? parseFloat(v) : v;
     return isNaN(num) ? '' : getGrossColorClass(num);
   };
@@ -257,6 +258,15 @@ export default function CollectionReportTable({
                 className={`hover:bg-lighterGreenHighlight ${
                   hasIssues ? 'border-l-4 border-l-yellow-500 bg-yellow-50' : ''
                 }`}
+                onContextMenu={e => {
+                  e.preventDefault();
+                  window.open(
+                    `/collection-report/report/${
+                      row?.locationReportId || row?._id || ''
+                    }`,
+                    '_blank'
+                  );
+                }}
               >
                 <TableCell
                   className="font-medium"
@@ -333,11 +343,31 @@ export default function CollectionReportTable({
                   </span>
                 </TableCell>
                 <TableCell centered={true}>{row?.machines || '0/0'}</TableCell>
-                <TableCell centered={true}><span className={colorClass(row?.collected)}>{formatVal(row?.collected)}</span></TableCell>
-                <TableCell centered={true}><span className={colorClass(row?.uncollected)}>{formatVal(row?.uncollected)}</span></TableCell>
-                <TableCell centered={true}><span className={colorClass(row?.variation)}>{formatVal(row?.variation)}</span></TableCell>
-                <TableCell centered={true}><span className={colorClass(row?.balance)}>{formatVal(row?.balance)}</span></TableCell>
-                <TableCell centered={true}><span className={colorClass(row?.locationRevenue)}>{formatVal(row?.locationRevenue)}</span></TableCell>
+                <TableCell centered={true}>
+                  <span className={colorClass(row?.collected)}>
+                    {formatVal(row?.collected)}
+                  </span>
+                </TableCell>
+                <TableCell centered={true}>
+                  <span className={colorClass(row?.uncollected)}>
+                    {formatVal(row?.uncollected)}
+                  </span>
+                </TableCell>
+                <TableCell centered={true}>
+                  <span className={colorClass(row?.variation)}>
+                    {formatVal(row?.variation)}
+                  </span>
+                </TableCell>
+                <TableCell centered={true}>
+                  <span className={colorClass(row?.balance)}>
+                    {formatVal(row?.balance)}
+                  </span>
+                </TableCell>
+                <TableCell centered={true}>
+                  <span className={colorClass(row?.locationRevenue)}>
+                    {formatVal(row?.locationRevenue)}
+                  </span>
+                </TableCell>
                 <TableCell centered={true}>{row?.time || '-'}</TableCell>
                 <TableCell centered={true}>
                   <div className="flex items-center gap-2">
@@ -346,17 +376,9 @@ export default function CollectionReportTable({
                         {issueCount} issue{issueCount !== 1 ? 's' : ''}
                       </Badge>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="group h-8 w-8 p-0 text-buttonActive hover:bg-buttonActive/10 hover:text-white"
-                      onClick={() =>
-                        router.push(
-                          `/collection-report/report/${
-                            row?.locationReportId || row?._id || ''
-                          }`
-                        )
-                      }
+                    <Link
+                      href={`/collection-report/report/${row?.locationReportId || row?._id || ''}`}
+                      className="group inline-flex h-8 w-8 items-center justify-center rounded-md p-0 text-buttonActive hover:bg-buttonActive/10 hover:text-white"
                       aria-label="View Details"
                     >
                       <Image
@@ -366,7 +388,7 @@ export default function CollectionReportTable({
                         width={16}
                         height={16}
                       />
-                    </Button>
+                    </Link>
                     {canEditDelete &&
                       (!editableReportIds ||
                         editableReportIds.has(row?.locationReportId || '')) && (

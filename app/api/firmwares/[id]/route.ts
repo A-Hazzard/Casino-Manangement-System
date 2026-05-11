@@ -10,13 +10,19 @@
 
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import {
-    downloadFirmwareFromGridFS,
-    findFirmwareById,
+  downloadFirmwareFromGridFS,
+  findFirmwareById,
 } from '@/app/api/lib/helpers/firmware';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Firmware } from '@/app/api/lib/models/firmware';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import {
+  logRouteFetch,
+  logRouteDelete,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -28,19 +34,21 @@ import { NextRequest, NextResponse } from 'next/server';
  * URL params:
  * @param id {string} Required (path). The MongoDB ID of the Firmware document to download.
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/firmwares/[id]';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const id = pathname.split('/').pop();
 
   if (!id) {
-    return NextResponse.json({ error: 'Firmware ID is required' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Firmware ID is required' },
+      { status: 400 }
+    );
   }
 
   try {
-
     const firmware = await findFirmwareById(id);
     if (!firmware) {
       return NextResponse.json(
@@ -52,9 +60,14 @@ export async function GET(
     const buffer = await downloadFirmwareFromGridFS(firmware.fileId);
 
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Firmware Download API] Completed in ${duration}ms`);
-    }
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/firmwares/[id]',
+      1,
+      user,
+      duration
+    );
 
     return new NextResponse(buffer as unknown as BodyInit, {
       status: 200,
@@ -65,12 +78,14 @@ export async function GET(
       },
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to download firmware';
-    console.error(
-      `[Firmware Download API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/firmwares/[id]',
+      errorMessage,
+      user
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
@@ -86,14 +101,14 @@ export async function GET(
  * URL params:
  * @param id {string} Required (path). The MongoDB ID of the Firmware document to delete.
  */
-export async function DELETE(
-  request: NextRequest
-) {
+export async function DELETE(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'DELETE /api/firmwares/[id]';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const id = pathname.split('/').pop();
 
   try {
-
     if (!id) {
       return NextResponse.json(
         { message: 'Firmware ID is required' },
@@ -116,7 +131,7 @@ export async function DELETE(
         { status: 404 }
       );
     }
-    
+
     // Get the full document for logging details
     const firmwareToDelete = await Firmware.findOne({ _id: id });
 
@@ -129,8 +144,21 @@ export async function DELETE(
       { new: true }
     );
     if (!softDeletedFirmware) {
-      return NextResponse.json({ success: false, error: 'Failed to delete firmware' }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: 'Failed to delete firmware' },
+        { status: 500 }
+      );
     }
+
+    const duration = Date.now() - startTime;
+    logRouteDelete(
+      functionName,
+      'DELETE',
+      '/api/firmwares/[id]',
+      1,
+      user,
+      duration
+    );
 
     // Log activity
     const currentUser = await getUserFromServer();
@@ -188,9 +216,15 @@ export async function DELETE(
       message: 'Firmware deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting firmware:', error);
     const errorMessage =
       error instanceof Error ? error.message : 'An unknown error occurred';
+    logRouteError(
+      functionName,
+      'DELETE',
+      '/api/firmwares/[id]',
+      errorMessage,
+      user
+    );
     return NextResponse.json(
       { message: 'Error deleting firmware', error: errorMessage },
       { status: 500 }

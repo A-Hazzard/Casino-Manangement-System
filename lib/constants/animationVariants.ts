@@ -37,4 +37,3 @@ export const itemVariants: Variants = {
     transition: { duration: 0.3 },
   },
 };
-

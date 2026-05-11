@@ -20,11 +20,16 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/shared/ui/tabs';
 import {
-    handleExportLocationOverview,
-    handleExportRevenueAnalysis,
-    handleExportSASEvaluation,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/shared/ui/tabs';
+import {
+  handleExportLocationOverview,
+  handleExportRevenueAnalysis,
+  handleExportSASEvaluation,
 } from '@/lib/helpers/reports/locationsTabHelpers';
 import { useLocationsTabData } from '@/lib/hooks/reports/useLocationsTabData';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -449,7 +454,8 @@ export default function ReportsLocationsTab() {
       handleRefresh();
     };
     window.addEventListener('refreshReports', handleGlobalRefresh);
-    return () => window.removeEventListener('refreshReports', handleGlobalRefresh);
+    return () =>
+      window.removeEventListener('refreshReports', handleGlobalRefresh);
   }, [handleRefresh]);
 
   // ============================================================================
@@ -706,4 +712,3 @@ export default function ReportsLocationsTab() {
     </div>
   );
 }
-

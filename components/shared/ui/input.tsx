@@ -10,7 +10,6 @@
  * - Responsive text sizing
  */
 
-
 import { forwardRef } from 'react';
 import { ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
@@ -33,4 +32,3 @@ const Input = forwardRef<HTMLInputElement, ComponentProps<'input'>>(
 Input.displayName = 'Input';
 
 export { Input };
-

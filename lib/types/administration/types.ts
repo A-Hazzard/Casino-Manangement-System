@@ -34,8 +34,8 @@ export type User = {
   loginCount?: number;
   lastLoginAt?: Date | string;
   sessionVersion?: number;
-  multiplier?: number | null;
+  moneyInMultiplier?: number | null;
+  moneyOutAndJackpotMultiplier?: number | null;
 };
 
 export type SortKey = keyof User | null;
-

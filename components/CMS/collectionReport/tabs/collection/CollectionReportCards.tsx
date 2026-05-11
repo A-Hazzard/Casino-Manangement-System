@@ -53,21 +53,23 @@ export default function CollectionReportCards({
   selectedLicencee,
 }: CollectionReportCardsProps) {
   const router = useRouter();
-    const { formatAmount } = useCurrencyFormat();
-    const user = useUserStore(state => state.user);
+  const { formatAmount } = useCurrencyFormat();
+  const user = useUserStore(state => state.user);
 
-    // Helper to format financial values with dollar signs
-    const formatVal = (v: number | string | null | undefined) => {
-      if (v === 'No Variance' || v === '-' || v === undefined || v === null) return v;
-      const num = typeof v === 'string' ? parseFloat(v) : v;
-      return isNaN(num) ? v : formatAmount(num);
-    };
+  // Helper to format financial values with dollar signs
+  const formatVal = (v: number | string | null | undefined) => {
+    if (v === 'No Variance' || v === '-' || v === undefined || v === null)
+      return v;
+    const num = typeof v === 'string' ? parseFloat(v) : v;
+    return isNaN(num) ? v : formatAmount(num);
+  };
 
-    const colorClass = (v: number | string | null | undefined) => {
-      if (v === 'No Variance' || v === '-' || v === undefined || v === null) return '';
-      const num = typeof v === 'string' ? parseFloat(v) : v;
-      return isNaN(num) ? '' : getGrossColorClass(num);
-    };
+  const colorClass = (v: number | string | null | undefined) => {
+    if (v === 'No Variance' || v === '-' || v === undefined || v === null)
+      return '';
+    const num = typeof v === 'string' ? parseFloat(v) : v;
+    return isNaN(num) ? '' : getGrossColorClass(num);
+  };
 
   // Check if user has admin access to see issue highlights
   const isAdminUser = user?.roles
@@ -232,7 +234,9 @@ export default function CollectionReportCards({
                   <span className="text-sm font-medium text-gray-700">
                     Collected
                   </span>
-                  <span className={`text-sm font-semibold ${colorClass(row?.collected)}`}>
+                  <span
+                    className={`text-sm font-semibold ${colorClass(row?.collected)}`}
+                  >
                     {formatVal(row?.collected)}
                   </span>
                 </div>
@@ -240,7 +244,9 @@ export default function CollectionReportCards({
                   <span className="text-sm font-medium text-gray-700">
                     Uncollected
                   </span>
-                  <span className={`text-sm font-semibold ${colorClass(row?.uncollected)}`}>
+                  <span
+                    className={`text-sm font-semibold ${colorClass(row?.uncollected)}`}
+                  >
                     {formatVal(row?.uncollected)}
                   </span>
                 </div>
@@ -248,7 +254,9 @@ export default function CollectionReportCards({
                   <span className="text-sm font-medium text-gray-700">
                     Variation
                   </span>
-                  <span className={`text-sm font-semibold ${colorClass(row?.variation)}`}>
+                  <span
+                    className={`text-sm font-semibold ${colorClass(row?.variation)}`}
+                  >
                     {formatVal(row?.variation)}
                   </span>
                 </div>
@@ -256,7 +264,9 @@ export default function CollectionReportCards({
                   <span className="text-sm font-medium text-gray-700">
                     Balance
                   </span>
-                  <span className={`text-sm font-semibold ${colorClass(row?.balance)}`}>
+                  <span
+                    className={`text-sm font-semibold ${colorClass(row?.balance)}`}
+                  >
                     {formatVal(row?.balance)}
                   </span>
                 </div>
@@ -264,7 +274,9 @@ export default function CollectionReportCards({
                   <span className="text-sm font-medium text-gray-700">
                     Location Revenue
                   </span>
-                  <span className={`text-sm font-semibold ${colorClass(row?.locationRevenue)}`}>
+                  <span
+                    className={`text-sm font-semibold ${colorClass(row?.locationRevenue)}`}
+                  >
                     {formatVal(row?.locationRevenue)}
                   </span>
                 </div>

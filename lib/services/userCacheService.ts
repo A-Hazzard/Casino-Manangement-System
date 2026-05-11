@@ -53,8 +53,15 @@ class UserCache {
    * Set cached user data.
    */
   set(key: string, data: unknown, ttl: number = this.DEFAULT_TTL): void {
-    if (!key || typeof key !== 'string' || data === undefined || typeof ttl !== 'number') {
-      console.error('[UserCache.set] key (string), data, and ttl (number) are required');
+    if (
+      !key ||
+      typeof key !== 'string' ||
+      data === undefined ||
+      typeof ttl !== 'number'
+    ) {
+      console.error(
+        '[UserCache.set] key (string), data, and ttl (number) are required'
+      );
       return;
     }
 
@@ -149,12 +156,12 @@ export async function fetchUserWithCache<T>(
   // Fetch from API
   console.warn(`Cache miss for ${key}, fetching from API`);
   const fetchPromise = (async () => {
-  try {
-    const data = await fetchFn();
-    userCache.set(key, data, ttl);
-    return data;
-  } catch (error) {
-    console.error(`Failed to fetch ${key}:`, error);
+    try {
+      const data = await fetchFn();
+      userCache.set(key, data, ttl);
+      return data;
+    } catch (error) {
+      console.error(`Failed to fetch ${key}:`, error);
       throw error;
     } finally {
       inFlightRequests.delete(key);
@@ -178,4 +185,3 @@ export function clearUserCache(): void {
     userCache.clear(key);
   });
 }
-

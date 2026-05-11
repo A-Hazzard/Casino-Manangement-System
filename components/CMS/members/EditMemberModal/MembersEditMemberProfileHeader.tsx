@@ -1,8 +1,8 @@
 /**
  * Members Edit Member Profile Header Component
- * 
+ *
  * Displays the member's profile picture and basic information in the edit modal
- * 
+ *
  * @param props - Component props
  */
 
@@ -25,9 +25,7 @@ export default function MembersEditMemberProfileHeader({
   email,
 }: MembersEditMemberProfileHeaderProps) {
   const displayName =
-    firstName && lastName
-      ? `${firstName} ${lastName}`
-      : username || 'Member';
+    firstName && lastName ? `${firstName} ${lastName}` : username || 'Member';
 
   return (
     <div className="flex flex-col items-center lg:items-start">
@@ -41,19 +39,10 @@ export default function MembersEditMemberProfileHeader({
         />
       </div>
       <div className="mt-3 flex flex-col items-center gap-1 lg:items-start">
-        <h3 className="text-lg font-semibold text-gray-900">
-          {displayName}
-        </h3>
-        <p className="text-sm text-gray-600">
-          {email || 'No email'}
-        </p>
-        {username && (
-          <p className="text-xs text-gray-500">
-            @{username}
-          </p>
-        )}
+        <h3 className="text-lg font-semibold text-gray-900">{displayName}</h3>
+        <p className="text-sm text-gray-600">{email || 'No email'}</p>
+        {username && <p className="text-xs text-gray-500">@{username}</p>}
       </div>
     </div>
   );
 }
-

@@ -1,5 +1,10 @@
 import { Skeleton } from '@/components/shared/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 
 /**
  * Specific skeleton component for Members Page Layout
@@ -235,4 +240,3 @@ export const MembersSummaryTabSkeleton = () => (
     </Card>
   </div>
 );
-

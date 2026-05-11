@@ -1,14 +1,14 @@
 /**
  * Members Edit Member Form Fields Component
- * 
+ *
  * Contains all form input fields for editing member information
- * 
+ *
  * Features:
  * - Username and email fields with uniqueness validation
  * - Name fields (first/last)
  * - Contact information fields
  * - Account fields (points, uaccount, location)
- * 
+ *
  * @param props - Component props
  */
 
@@ -69,9 +69,7 @@ export default function MembersEditMemberFormFields({
               onBlur={() => onFieldTouch('username')}
               placeholder="Enter username"
               className={`${
-                errors.username
-                  ? 'border-red-500'
-                  : 'border-gray-300'
+                errors.username ? 'border-red-500' : 'border-gray-300'
               }`}
               disabled={checkingUniqueness.username}
             />
@@ -82,9 +80,7 @@ export default function MembersEditMemberFormFields({
             )}
           </div>
           {errors.username && (
-            <p className="mt-1.5 text-sm text-red-600">
-              {errors.username}
-            </p>
+            <p className="mt-1.5 text-sm text-red-600">{errors.username}</p>
           )}
         </div>
 
@@ -103,9 +99,7 @@ export default function MembersEditMemberFormFields({
               onBlur={() => onFieldTouch('email')}
               placeholder="Enter email address"
               className={`${
-                errors.email
-                  ? 'border-red-500'
-                  : 'border-gray-300'
+                errors.email ? 'border-red-500' : 'border-gray-300'
               }`}
               disabled={checkingUniqueness.email}
             />
@@ -116,9 +110,7 @@ export default function MembersEditMemberFormFields({
             )}
           </div>
           {errors.email && (
-            <p className="mt-1.5 text-sm text-red-600">
-              {errors.email}
-            </p>
+            <p className="mt-1.5 text-sm text-red-600">{errors.email}</p>
           )}
         </div>
 
@@ -135,15 +127,11 @@ export default function MembersEditMemberFormFields({
             onBlur={() => onFieldTouch('firstName')}
             placeholder="Enter first name"
             className={`mt-2 ${
-              errors.firstName
-                ? 'border-red-500'
-                : 'border-gray-300'
+              errors.firstName ? 'border-red-500' : 'border-gray-300'
             }`}
           />
           {errors.firstName && (
-            <p className="mt-1.5 text-sm text-red-600">
-              {errors.firstName}
-            </p>
+            <p className="mt-1.5 text-sm text-red-600">{errors.firstName}</p>
           )}
         </div>
 
@@ -160,15 +148,11 @@ export default function MembersEditMemberFormFields({
             onBlur={() => onFieldTouch('lastName')}
             placeholder="Enter last name"
             className={`mt-2 ${
-              errors.lastName
-                ? 'border-red-500'
-                : 'border-gray-300'
+              errors.lastName ? 'border-red-500' : 'border-gray-300'
             }`}
           />
           {errors.lastName && (
-            <p className="mt-1.5 text-sm text-red-600">
-              {errors.lastName}
-            </p>
+            <p className="mt-1.5 text-sm text-red-600">{errors.lastName}</p>
           )}
         </div>
 
@@ -185,15 +169,11 @@ export default function MembersEditMemberFormFields({
             onBlur={() => onFieldTouch('phoneNumber')}
             placeholder="Enter phone number"
             className={`mt-2 ${
-              errors.phoneNumber
-                ? 'border-red-500'
-                : 'border-gray-300'
+              errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
             }`}
           />
           {errors.phoneNumber && (
-            <p className="mt-1.5 text-sm text-red-600">
-              {errors.phoneNumber}
-            </p>
+            <p className="mt-1.5 text-sm text-red-600">{errors.phoneNumber}</p>
           )}
         </div>
 
@@ -210,15 +190,11 @@ export default function MembersEditMemberFormFields({
             onBlur={() => onFieldTouch('occupation')}
             placeholder="Enter occupation"
             className={`mt-2 ${
-              errors.occupation
-                ? 'border-red-500'
-                : 'border-gray-300'
+              errors.occupation ? 'border-red-500' : 'border-gray-300'
             }`}
           />
           {errors.occupation && (
-            <p className="mt-1.5 text-sm text-red-600">
-              {errors.occupation}
-            </p>
+            <p className="mt-1.5 text-sm text-red-600">{errors.occupation}</p>
           )}
         </div>
       </div>
@@ -236,15 +212,11 @@ export default function MembersEditMemberFormFields({
           onBlur={() => onFieldTouch('address')}
           placeholder="Enter street address"
           className={`mt-2 ${
-            errors.address
-              ? 'border-red-500'
-              : 'border-gray-300'
+            errors.address ? 'border-red-500' : 'border-gray-300'
           }`}
         />
         {errors.address && (
-          <p className="mt-1.5 text-sm text-red-600">
-            {errors.address}
-          </p>
+          <p className="mt-1.5 text-sm text-red-600">{errors.address}</p>
         )}
       </div>
 
@@ -312,4 +284,3 @@ export default function MembersEditMemberFormFields({
     </div>
   );
 }
-

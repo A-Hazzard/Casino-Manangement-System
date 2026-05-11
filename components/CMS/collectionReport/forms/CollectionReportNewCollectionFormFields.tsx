@@ -58,10 +58,10 @@ import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machine
 import { ModernCalendar } from '@/components/shared/ui/ModernCalendar';
 import { Textarea } from '@/components/shared/ui/textarea';
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from '@/components/shared/ui/tooltip';
 import { formatDate } from '@/lib/utils/formatting';
 import { ExternalLink } from 'lucide-react';
@@ -75,8 +75,6 @@ type NewCollectionFormFieldsProps = {
     custom?: { name?: string };
     game?: string;
   } | null;
-  currentCollectionTime: Date;
-  showAdvancedSas: boolean;
   sasStartTime: Date | null;
   sasEndTime: Date | null;
   currentMetersIn: string;
@@ -95,8 +93,6 @@ type NewCollectionFormFieldsProps = {
   isProcessing: boolean;
   editingEntryId: string | null;
   isAddMachineEnabled: boolean;
-  onCollectionTimeChange: (date: Date) => void;
-  onAdvancedSasToggle: () => void;
   onSasStartTimeChange: (date: Date | null) => void;
   onSasEndTimeChange: (date: Date | null) => void;
   onMetersInChange: (value: string) => void;
@@ -116,10 +112,8 @@ type NewCollectionFormFieldsProps = {
 
 export default function CollectionReportNewCollectionFormFields({
   selectedLocationName,
-  currentCollectionTime,
   previousCollectionTime,
   machineForDataEntry,
-  showAdvancedSas,
   sasStartTime,
   sasEndTime,
   currentMetersIn,
@@ -138,8 +132,6 @@ export default function CollectionReportNewCollectionFormFields({
   isProcessing,
   editingEntryId,
   isAddMachineEnabled,
-  onCollectionTimeChange,
-  onAdvancedSasToggle,
   onSasStartTimeChange,
   onSasEndTimeChange,
   onMetersInChange,
@@ -177,7 +169,7 @@ export default function CollectionReportNewCollectionFormFields({
           <button
             type="button"
             className="ml-2 shrink-0 rounded p-0.5 transition-transform hover:scale-110 hover:bg-white/20"
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
               onViewMachine();
             }}
@@ -189,101 +181,69 @@ export default function CollectionReportNewCollectionFormFields({
         )}
       </div>
 
-      {/* Advanced SAS Time Override Toggle */}
-      <div className="mb-4">
-        <button
-          type="button"
-          className="text-xs text-button hover:underline flex items-center gap-1 font-medium"
-          onClick={onAdvancedSasToggle}
-        >
-          {showAdvancedSas ? '← Hide Advanced Options' : 'Advanced: Manual SAS Times'}
-        </button>
-      </div>
-
-      {/* Collection Time Picker (simple) / Manual SAS Period Inputs (advanced) */}
-      {!showAdvancedSas ? (
-        <div className="mb-4">
-          <label className="mb-2 block text-sm font-medium text-grayHighlight">
-            Collection Time:
-          </label>
-          <ModernCalendar
-            date={{
-              from: currentCollectionTime,
-              to: currentCollectionTime,
-            }}
-            onSelect={range => {
-              if (range?.from) {
-                onCollectionTimeChange(range.from);
+      {/* Collection Time */}
+      <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
+        <p className="mb-4 text-[11px] font-bold uppercase tracking-wide text-blue-900">
+          Collection Time
+        </p>
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
+              Start Time:
+            </label>
+            <ModernCalendar
+              date={
+                sasStartTime
+                  ? {
+                      from: sasStartTime,
+                      to: sasStartTime,
+                    }
+                  : undefined
               }
-            }}
-            enableTimeInputs={true}
-            mode="single"
-          />
-          <p className="mt-1 text-xs text-gray-500">
-            This time applies to the current machine being added/edited
-          </p>
-        </div>
-      ) : (
-        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
-          <p className="mb-4 text-[11px] font-bold text-blue-900 uppercase tracking-wide">
-            Manual SAS Period:
-          </p>
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
-                Start Time:
-              </label>
-              <ModernCalendar
-                date={
-                  sasStartTime
-                    ? {
-                        from: sasStartTime,
-                        to: sasStartTime,
-                      }
-                    : undefined
-                }
-                onSelect={range => {
-                  onSasStartTimeChange(range?.from || null);
-                }}
-                enableTimeInputs={true}
-                mode="single"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
-                End Time:
-              </label>
-              <ModernCalendar
-                date={
-                  sasEndTime
-                    ? {
-                        from: sasEndTime,
-                        to: sasEndTime,
-                      }
-                    : undefined
-                }
-                onSelect={range => {
-                  onSasEndTimeChange(range?.from || null);
-                }}
-                enableTimeInputs={true}
-                mode="single"
-              />
-            </div>
+              onSelect={range => {
+                onSasStartTimeChange(range?.from || null);
+              }}
+              enableTimeInputs={true}
+              mode="single"
+              maxDate={sasEndTime || new Date()}
+            />
           </div>
-          <p className="mt-3 text-xs text-blue-600 leading-relaxed italic">
-            Note: Manually setting these times will override the automatic SAS period calculation based on collection time.
-          </p>
+          <div>
+            <label className="mb-2 block text-[13px] font-bold text-grayHighlight">
+              End Time:
+            </label>
+            <ModernCalendar
+              date={
+                sasEndTime
+                  ? {
+                      from: sasEndTime,
+                      to: sasEndTime,
+                    }
+                  : undefined
+              }
+              onSelect={range => {
+                onSasEndTimeChange(range?.from || null);
+              }}
+              enableTimeInputs={true}
+              mode="single"
+              maxDate={new Date()}
+              minDate={sasStartTime || undefined}
+            />
+          </div>
         </div>
-      )}
+        <p className="mt-3 text-xs italic leading-relaxed text-blue-600">
+          Start time is automatically set from the previous collection time.
+        </p>
+      </div>
 
       {/* Meters In / Out Inputs with Previous Meter Reference */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 flex items-center text-sm font-medium text-grayHighlight">
             Meters In:
-            <CalculationHelp 
-              title="Meters In" 
-              formula="Current In - Previous In" 
+            <CalculationHelp
+              title="Meters In"
+              formula="Current In - Previous In"
               description="Calculates the total credits or cash inserted into the machine since the last collection."
             />
           </label>
@@ -301,7 +261,7 @@ export default function CollectionReportNewCollectionFormFields({
               disabled={!inputsEnabled || isProcessing}
             />
           </div>
-          <p className="mt-1 text-xs text-grayHighlight font-medium">
+          <p className="mt-1 text-xs font-medium text-grayHighlight">
             Prev In:
           </p>
           <div onClick={onDisabledFieldClick}>
@@ -320,14 +280,15 @@ export default function CollectionReportNewCollectionFormFields({
             />
           </div>
 
-          {/* Meters In regression warning — shown after debounce */}
-          {debouncedCurrentMetersIn &&
+          {/* Meters In regression warning — suppressed when RAM clear is active */}
+          {!currentRamClear &&
+            debouncedCurrentMetersIn &&
             prevIn &&
             Number(debouncedCurrentMetersIn) < Number(prevIn) && (
               <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                 <p className="text-xs text-red-600">
-                  Warning: Meters In ({debouncedCurrentMetersIn}) should be higher
-                  than or equal to Previous Meters In ({prevIn})
+                  Warning: Meters In ({debouncedCurrentMetersIn}) should be
+                  higher than or equal to Previous Meters In ({prevIn})
                 </p>
               </div>
             )}
@@ -335,9 +296,9 @@ export default function CollectionReportNewCollectionFormFields({
         <div>
           <label className="mb-1 flex items-center text-sm font-medium text-grayHighlight">
             Meters Out:
-            <CalculationHelp 
-              title="Meters Out" 
-              formula="Current Out - Previous Out" 
+            <CalculationHelp
+              title="Meters Out"
+              formula="Current Out - Previous Out"
               description="Calculates the total payouts or credits won by players since the last collection."
             />
           </label>
@@ -355,7 +316,7 @@ export default function CollectionReportNewCollectionFormFields({
               disabled={!inputsEnabled || isProcessing}
             />
           </div>
-          <p className="mt-1 text-xs text-grayHighlight font-medium">
+          <p className="mt-1 text-xs font-medium text-grayHighlight">
             Prev Out:
           </p>
           <div onClick={onDisabledFieldClick}>
@@ -374,14 +335,15 @@ export default function CollectionReportNewCollectionFormFields({
             />
           </div>
 
-          {/* Meters Out regression warning — shown after debounce */}
-          {debouncedCurrentMetersOut &&
+          {/* Meters Out regression warning — suppressed when RAM clear is active */}
+          {!currentRamClear &&
+            debouncedCurrentMetersOut &&
             prevOut &&
             Number(debouncedCurrentMetersOut) < Number(prevOut) && (
               <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                 <p className="text-xs text-red-600">
-                  Warning: Meters Out ({debouncedCurrentMetersOut}) should be higher
-                  than or equal to Previous Meters Out ({prevOut})
+                  Warning: Meters Out ({debouncedCurrentMetersOut}) should be
+                  higher than or equal to Previous Meters Out ({prevOut})
                 </p>
               </div>
             )}
@@ -416,19 +378,19 @@ export default function CollectionReportNewCollectionFormFields({
                 className={`border-blue-300 focus:border-blue-500 ${
                   debouncedCurrentRamClearMetersIn &&
                   prevIn &&
-                  Number(debouncedCurrentRamClearMetersIn) > Number(prevIn)
+                  Number(debouncedCurrentRamClearMetersIn) < Number(prevIn)
                     ? 'border-red-500 focus:border-red-500'
                     : ''
                 }`}
               />
-              {/* RAM Clear Meters In upper-bound warning — shown after debounce */}
-              {debouncedCurrentRamClearMetersIn &&
+              {/* RAM Clear Meters In must be >= previous meters In */}
+              {currentRamClearMetersIn &&
                 prevIn &&
-                Number(debouncedCurrentRamClearMetersIn) > Number(prevIn) && (
+                Number(currentRamClearMetersIn) < Number(prevIn) && (
                   <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                     <p className="text-xs text-red-600">
-                      Warning: RAM Clear Meters In ({debouncedCurrentRamClearMetersIn})
-                      should be lower than or equal to Previous Meters In ({prevIn})
+                      ⚠️ RAM Clear Meters In ({currentRamClearMetersIn}) must be
+                      ≥ Previous Meters In ({prevIn})
                     </p>
                   </div>
                 )}
@@ -451,19 +413,19 @@ export default function CollectionReportNewCollectionFormFields({
                 className={`border-blue-300 focus:border-blue-500 ${
                   debouncedCurrentRamClearMetersOut &&
                   prevOut &&
-                  Number(debouncedCurrentRamClearMetersOut) > Number(prevOut)
+                  Number(debouncedCurrentRamClearMetersOut) < Number(prevOut)
                     ? 'border-red-500 focus:border-red-500'
                     : ''
                 }`}
               />
-              {/* RAM Clear Meters Out upper-bound warning — shown after debounce */}
-              {debouncedCurrentRamClearMetersOut &&
+              {/* RAM Clear Meters Out must be >= previous meters Out */}
+              {currentRamClearMetersOut &&
                 prevOut &&
-                Number(debouncedCurrentRamClearMetersOut) > Number(prevOut) && (
+                Number(currentRamClearMetersOut) < Number(prevOut) && (
                   <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-2">
                     <p className="text-xs text-red-600">
-                      Warning: RAM Clear Meters Out ({debouncedCurrentRamClearMetersOut})
-                      should be lower than or equal to Previous Meters Out ({prevOut})
+                      ⚠️ RAM Clear Meters Out ({currentRamClearMetersOut}) must
+                      be ≥ Previous Meters Out ({prevOut})
                     </p>
                   </div>
                 )}
@@ -487,12 +449,12 @@ export default function CollectionReportNewCollectionFormFields({
         />
         <label
           htmlFor="ramClearCheckbox"
-          className="text-sm font-medium text-gray-700 flex items-center"
+          className="flex items-center text-sm font-medium text-gray-700"
         >
           RAM Clear
-          <CalculationHelp 
-            title="RAM Clear" 
-            formula="(RAM_Clear_Meters - Previous_Meters) + Current_Meters" 
+          <CalculationHelp
+            title="RAM Clear"
+            formula="(RAM_Clear_Meters - Previous_Meters) + Current_Meters"
             description="Used when machine meters are reset to zero. This formula ensures no data is lost during the reset."
           />
         </label>
@@ -545,7 +507,9 @@ export default function CollectionReportNewCollectionFormFields({
                       ? 'bg-blue-600 hover:bg-blue-700'
                       : 'cursor-not-allowed bg-gray-400'
                   }`}
-                  disabled={!inputsEnabled || isProcessing || !isAddMachineEnabled}
+                  disabled={
+                    !inputsEnabled || isProcessing || !isAddMachineEnabled
+                  }
                 >
                   {isProcessing ? 'Processing...' : 'Add Machine to List'}
                 </Button>
@@ -558,7 +522,8 @@ export default function CollectionReportNewCollectionFormFields({
                       : !currentMetersIn || !currentMetersOut
                         ? 'Please enter meters in and out'
                         : currentRamClear &&
-                            (!currentRamClearMetersIn || !currentRamClearMetersOut)
+                            (!currentRamClearMetersIn ||
+                              !currentRamClearMetersOut)
                           ? 'Please enter RAM Clear meters when RAM Clear is checked'
                           : 'Please fill required fields'}
                   </p>

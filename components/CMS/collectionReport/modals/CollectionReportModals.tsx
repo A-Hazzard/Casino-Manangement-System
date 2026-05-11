@@ -61,7 +61,7 @@ export default function CollectionReportModals({
   showNewCollectionDesktop,
   showEditMobile,
   showEditDesktop,
-editingReportId,
+  editingReportId,
   showDeleteConfirm,
   isDeleting,
   locationsWithMachines,
@@ -73,25 +73,35 @@ editingReportId,
   onRefresh,
   onRefreshLocations,
 }: CollectionReportModalsProps) {
+  // Only render one modal at a time to prevent shared store state conflicts
+  // Edit modal takes priority over new collection modal
+  const showNewCollection =
+    !editingReportId && (showNewCollectionMobile || showNewCollectionDesktop);
+  const showEdit = !!editingReportId;
+
   return (
     <>
-      <CollectionReportMobileNewCollectionModal
-        show={showNewCollectionMobile}
-        onClose={onCloseNewMobile}
-        locations={locationsWithMachines}
-        onRefresh={onRefresh}
-        onRefreshLocations={onRefreshLocations}
-      />
+      {showNewCollection && showNewCollectionMobile && (
+        <CollectionReportMobileNewCollectionModal
+          show={showNewCollectionMobile}
+          onClose={onCloseNewMobile}
+          locations={locationsWithMachines}
+          onRefresh={onRefresh}
+          onRefreshLocations={onRefreshLocations}
+        />
+      )}
 
-      <CollectionReportNewCollectionModal
-        show={showNewCollectionDesktop}
-        onClose={onCloseNewDesktop}
-        locations={locationsWithMachines}
-        onRefresh={onRefresh}
-        onRefreshLocations={onRefreshLocations}
-      />
+      {showNewCollection && showNewCollectionDesktop && (
+        <CollectionReportNewCollectionModal
+          show={showNewCollectionDesktop}
+          onClose={onCloseNewDesktop}
+          locations={locationsWithMachines}
+          onRefresh={onRefresh}
+          onRefreshLocations={onRefreshLocations}
+        />
+      )}
 
-      {editingReportId && (
+      {showEdit && (
         <ErrorBoundary>
           <CollectionReportEditCollectionModal
             show={showEditMobile || showEditDesktop}
@@ -116,4 +126,3 @@ editingReportId,
     </>
   );
 }
-

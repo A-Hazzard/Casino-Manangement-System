@@ -1,6 +1,6 @@
 /**
  * Game Multi-Select Component
- * 
+ *
  * Dropdown component for selecting multiple games with search functionality
  */
 
@@ -134,7 +134,7 @@ export function ReportsGameMultiSelect({
               />
               <Label
                 htmlFor="select-all-games-revenue"
-                className="text-sm font-medium cursor-pointer"
+                className="cursor-pointer text-sm font-medium"
               >
                 Select All
               </Label>
@@ -187,5 +187,3 @@ export function ReportsGameMultiSelect({
     </div>
   );
 }
-
-

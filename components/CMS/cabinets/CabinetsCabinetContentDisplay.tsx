@@ -31,6 +31,8 @@ import CabinetsCabinetCard from './CabinetsCabinetCard';
 import CabinetsCabinetCardSkeleton from './CabinetsCabinetCardSkeleton';
 import CabinetsCabinetTable from './CabinetsCabinetTable';
 import CabinetsCabinetTableSkeleton from './CabinetsCabinetTableSkeleton';
+import CabinetsRestoreModal from './modals/CabinetsRestoreModal';
+import CabinetsPermanentDeleteModal from './modals/CabinetsPermanentDeleteModal';
 
 type CabinetsCabinetContentDisplayProps = {
   paginatedCabinets: Machine[];
@@ -94,7 +96,12 @@ export const CabinetsCabinetContentDisplay = ({
 }: CabinetsCabinetContentDisplayProps) => {
   const tableRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
-  const { openEditModal, openDeleteModal, openRestoreModal } = useCabinetsActionsStore();
+  const {
+    openEditModal,
+    openDeleteModal,
+    openRestoreModal,
+    openPermanentDeleteModal,
+  } = useCabinetsActionsStore();
   const user = useUserStore(state => state.user);
   const licenceeName =
     selectedLicencee && selectedLicencee !== 'all'
@@ -153,7 +160,9 @@ export const CabinetsCabinetContentDisplay = ({
   const canPermanentlyDeleteMachines = useMemo(() => {
     if (!user || !user.roles) return false;
     const userRoles = user.roles || [];
-    return ['developer'].some(role => userRoles.includes(role));
+    return ['developer', 'owner', 'admin'].some(role =>
+      userRoles.includes(role)
+    );
   }, [user]);
 
   const shouldHideFinancials = useMemo(() => {
@@ -237,6 +246,13 @@ export const CabinetsCabinetContentDisplay = ({
     const machine = paginatedCabinets.find(c => c._id === machineProps._id);
     if (machine) {
       openRestoreModal(machine);
+    }
+  };
+
+  const handlePermanentDelete = (machineProps: Machine) => {
+    const machine = paginatedCabinets.find(c => c._id === machineProps._id);
+    if (machine) {
+      openPermanentDeleteModal(machine);
     }
   };
 
@@ -352,9 +368,9 @@ export const CabinetsCabinetContentDisplay = ({
           onEdit={handleEdit}
           onDelete={handleDelete}
           onRestore={handleRestore}
+          onPermanentDelete={handlePermanentDelete}
           canEditMachines={canEditMachines}
           canDeleteMachines={canDeleteMachines}
-          canViewArchived={canDeleteMachines}
           canPermanentlyDeleteMachines={canPermanentlyDeleteMachines}
           enableHeaderSorting={enableHeaderSorting}
           showSortIcons={showSortIcons}
@@ -363,6 +379,12 @@ export const CabinetsCabinetContentDisplay = ({
           showArchived={showArchived}
         />
       </div>
+
+      {/* Restore Modal */}
+      <CabinetsRestoreModal onCabinetRestored={onRetry} />
+
+      {/* Permanent Delete Modal */}
+      <CabinetsPermanentDeleteModal onCabinetDeleted={onRetry} />
 
       {/* Mobile/Tablet: Card View */}
       <div className="mt-4 block lg:hidden" ref={cardsRef}>
@@ -402,11 +424,13 @@ export const CabinetsCabinetContentDisplay = ({
                 onEdit={() => handleEdit(machine)}
                 onDelete={() => handleDelete(machine)}
                 onRestore={() => handleRestore(machine)}
+                onPermanentDelete={() => handlePermanentDelete(machine)}
                 canEditMachines={canEditMachines}
                 canDeleteMachines={canDeleteMachines}
                 canPermanentlyDeleteMachines={canPermanentlyDeleteMachines}
                 hideFinancials={shouldHideFinancials}
                 includeJackpot={machine.includeJackpot ?? includeJackpot}
+                showArchived={showArchived}
               />
             ))}
           </ClientOnly>

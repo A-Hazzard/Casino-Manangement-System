@@ -74,7 +74,9 @@ type UseNewCollectionModalProps = {
  * Sorts machines alphabetically with numeric awareness
  * Groups machines like "Machine 1, Machine 2, Machine 10" correctly
  */
-function sortMachinesAlphabetically(machines: CollectionReportMachineSummary[]): CollectionReportMachineSummary[] {
+function sortMachinesAlphabetically(
+  machines: CollectionReportMachineSummary[]
+): CollectionReportMachineSummary[] {
   return [...machines].sort((a, b) => {
     const nameA = (a.name || a.serialNumber || '').toString();
     const nameB = (b.name || b.serialNumber || '').toString();
@@ -134,10 +136,13 @@ export function useNewCollectionModal({
     CollectionReportMachineSummary[]
   >([]);
   const [machineSearchTerm, setMachineSearchTerm] = useState('');
-  const [internalLocations, setInternalLocations] = useState<CollectionReportLocationWithMachines[]>([]);
-  
+  const [internalLocations, setInternalLocations] = useState<
+    CollectionReportLocationWithMachines[]
+  >([]);
+
   // Use internal locations if available, fallback to prop
-  const locations = internalLocations.length > 0 ? internalLocations : propLocations;
+  const locations =
+    internalLocations.length > 0 ? internalLocations : propLocations;
   const [selectedMachineId, setSelectedMachineId] = useState<
     string | undefined
   >(undefined);
@@ -185,17 +190,34 @@ export function useNewCollectionModal({
   } = storeFormData;
 
   // Setter functions for form data
-  const setCurrentCollectionTime = (val: Date) => setStoreFormData({ collectionTime: val });
-  const setCurrentMetersIn = (val: string) => setStoreFormData({ metersIn: val });
-  const setCurrentMetersOut = (val: string) => setStoreFormData({ metersOut: val });
-  const setCurrentRamClearMetersIn = (val: string) => setStoreFormData({ ramClearMetersIn: val });
-  const setCurrentRamClearMetersOut = (val: string) => setStoreFormData({ ramClearMetersOut: val });
-  const setCurrentMachineNotes = (val: string) => setStoreFormData({ notes: val });
-  const setCurrentRamClear = (val: boolean) => setStoreFormData({ ramClear: val });
-  const setSasStartTime = (val: Date | null) => setStoreFormData({ sasStartTime: val });
-  const setSasEndTime = (val: Date | null) => setStoreFormData({ sasEndTime: val });
-  const setPrevIn = (val: string | number | null) => setStoreFormData({ prevIn: val?.toString() || '' });
-  const setPrevOut = (val: string | number | null) => setStoreFormData({ prevOut: val?.toString() || '' });
+  const setCurrentCollectionTime = (val: Date) =>
+    setStoreFormData({ collectionTime: val });
+  const setCurrentMetersIn = (val: string) =>
+    setStoreFormData({ metersIn: val });
+  const setCurrentMetersOut = (val: string) =>
+    setStoreFormData({ metersOut: val });
+  const setCurrentRamClearMetersIn = (val: string) =>
+    setStoreFormData({ ramClearMetersIn: val });
+  const setCurrentRamClearMetersOut = (val: string) =>
+    setStoreFormData({ ramClearMetersOut: val });
+  const setCurrentMachineNotes = (val: string) =>
+    setStoreFormData({ notes: val });
+  const setCurrentRamClear = (val: boolean) =>
+    setStoreFormData({ ramClear: val });
+  const setSasStartTime = (val: Date | string | null) =>
+    setStoreFormData({
+      sasStartTime:
+        val === null ? null : typeof val === 'string' ? new Date(val) : val,
+    });
+  const setSasEndTime = (val: Date | string | null) =>
+    setStoreFormData({
+      sasEndTime:
+        val === null ? null : typeof val === 'string' ? new Date(val) : val,
+    });
+  const setPrevIn = (val: string | number | null) =>
+    setStoreFormData({ prevIn: val?.toString() || '' });
+  const setPrevOut = (val: string | number | null) =>
+    setStoreFormData({ prevOut: val?.toString() || '' });
 
   // Derived prev values
   const prevIn = storePrevIn !== '' ? Number(storePrevIn) : null;
@@ -339,6 +361,27 @@ export function useNewCollectionModal({
       (!currentRamClearMetersIn || !currentRamClearMetersOut)
     )
       return false;
+
+    // RAM Clear validation: RAM clear meters must be >= previous meters (prevIn/prevOut)
+    if (currentRamClear) {
+      if (
+        Number(currentRamClearMetersIn) < Number(storePrevIn || 0) ||
+        Number(currentRamClearMetersOut) < Number(storePrevOut || 0)
+      ) {
+        return false;
+      }
+    }
+
+    // SAS Time validation: if advanced SAS is enabled, check time logic
+    if (
+      showAdvancedSas &&
+      sasStartTime &&
+      sasEndTime &&
+      sasStartTime > sasEndTime
+    ) {
+      return false;
+    }
+
     return true;
   }, [
     machineForDataEntry,
@@ -347,6 +390,11 @@ export function useNewCollectionModal({
     currentRamClear,
     currentRamClearMetersIn,
     currentRamClearMetersOut,
+    storePrevIn,
+    storePrevOut,
+    showAdvancedSas,
+    sasStartTime,
+    sasEndTime,
   ]);
 
   // ==========================================================================
@@ -402,7 +450,6 @@ export function useNewCollectionModal({
     }
   }, [show, userId]);
 
-
   /**
    * Fetch machines when location changes
    */
@@ -442,7 +489,9 @@ export function useNewCollectionModal({
   useEffect(() => {
     const locationIdToUse = lockedLocationId || selectedLocationId;
     if (locationIdToUse) {
-      const location = locations.find(location => String(location._id) === locationIdToUse);
+      const location = locations.find(
+        location => String(location._id) === locationIdToUse
+      );
       if (location?.gameDayOffset !== undefined) {
         const defaultTime = calculateDefaultCollectionTime(
           location.gameDayOffset
@@ -451,6 +500,39 @@ export function useNewCollectionModal({
       }
     }
   }, [selectedLocationId, lockedLocationId, locations]);
+
+  /**
+   * Warn the user when RAM clear meters are less than the previous values
+   */
+  useEffect(() => {
+    if (!currentRamClear) return;
+    const ramIn = debouncedCurrentRamClearMetersIn
+      ? Number(debouncedCurrentRamClearMetersIn)
+      : null;
+    const ramOut = debouncedCurrentRamClearMetersOut
+      ? Number(debouncedCurrentRamClearMetersOut)
+      : null;
+    const pIn = prevIn !== null ? prevIn : 0;
+    const pOut = prevOut !== null ? prevOut : 0;
+    if (ramIn !== null && ramIn < pIn) {
+      toast.warning(
+        `RAM clear Meters In (${ramIn}) is less than the previous value (${pIn}). It must be ≥ previous.`,
+        { position: 'top-left', duration: 5000 }
+      );
+    }
+    if (ramOut !== null && ramOut < pOut) {
+      toast.warning(
+        `RAM clear Meters Out (${ramOut}) is less than the previous value (${pOut}). It must be ≥ previous.`,
+        { position: 'top-left', duration: 5000 }
+      );
+    }
+  }, [
+    debouncedCurrentRamClearMetersIn,
+    debouncedCurrentRamClearMetersOut,
+    currentRamClear,
+    prevIn,
+    prevOut,
+  ]);
 
   /**
    * Calculate amount to collect based on collected machines
@@ -694,17 +776,17 @@ export function useNewCollectionModal({
         );
         setPrevIn(existingEntry.prevIn || 0);
         setPrevOut(existingEntry.prevOut || 0);
+        setShowAdvancedSas(false);
         setSasStartTime(
           existingEntry.sasMeters?.sasStartTime
-            ? new Date(existingEntry.sasMeters.sasStartTime)
+            ? (existingEntry.sasMeters?.sasStartTime ?? undefined)
             : null
         );
         setSasEndTime(
           existingEntry.sasMeters?.sasEndTime
-            ? new Date(existingEntry.sasMeters.sasEndTime)
+            ? existingEntry.sasMeters?.sasEndTime
             : null
         );
-        setShowAdvancedSas(false);
       } else {
         // New entry - fetch previous collection data
         setPrevIn(
@@ -733,15 +815,21 @@ export function useNewCollectionModal({
             if (lastTime) {
               setSasStartTime(new Date(lastTime));
             } else {
-              const loc = locations.find(l => String(l._id) === (lockedLocationId || selectedLocationId));
+              const loc = locations.find(
+                l => String(l._id) === (lockedLocationId || selectedLocationId)
+              );
               const gameDayOffset = loc?.gameDayOffset ?? 8;
               const now = new Date();
               const currentGamingDayStart = new Date(now);
               if (now.getHours() < gameDayOffset) {
-                currentGamingDayStart.setDate(currentGamingDayStart.getDate() - 1);
+                currentGamingDayStart.setDate(
+                  currentGamingDayStart.getDate() - 1
+                );
               }
               currentGamingDayStart.setHours(gameDayOffset, 0, 0, 0);
-              setSasStartTime(new Date(currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000));
+              setSasStartTime(
+                new Date(currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000)
+              );
             }
             if (data?.hasPreviousCollection) {
               setPrevIn(data.metersIn !== null ? data.metersIn : 0);
@@ -755,15 +843,21 @@ export function useNewCollectionModal({
             if (machineFromLocation?.collectionTime) {
               setSasStartTime(new Date(machineFromLocation.collectionTime));
             } else {
-              const loc = locations.find(l => String(l._id) === (lockedLocationId || selectedLocationId));
+              const loc = locations.find(
+                l => String(l._id) === (lockedLocationId || selectedLocationId)
+              );
               const gameDayOffset = loc?.gameDayOffset ?? 8;
               const now = new Date();
               const currentGamingDayStart = new Date(now);
               if (now.getHours() < gameDayOffset) {
-                currentGamingDayStart.setDate(currentGamingDayStart.getDate() - 1);
+                currentGamingDayStart.setDate(
+                  currentGamingDayStart.getDate() - 1
+                );
               }
               currentGamingDayStart.setHours(gameDayOffset, 0, 0, 0);
-              setSasStartTime(new Date(currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000));
+              setSasStartTime(
+                new Date(currentGamingDayStart.getTime() - 24 * 60 * 60 * 1000)
+              );
             }
           });
       }
@@ -805,7 +899,9 @@ export function useNewCollectionModal({
 
     if (newVal) {
       const locationIdToUse = lockedLocationId || selectedLocationId;
-      const location = locations.find(location => String(location._id) === locationIdToUse);
+      const location = locations.find(
+        location => String(location._id) === locationIdToUse
+      );
       const machine = machinesOfSelectedLocation.find(
         m => String(m._id) === selectedMachineId
       );
@@ -846,7 +942,9 @@ export function useNewCollectionModal({
    */
   const handleLocationChange = useCallback(
     (value: string) => {
-      const location = locations.find(location => String(location._id) === value);
+      const location = locations.find(
+        location => String(location._id) === value
+      );
       setSelectedLocation(value, location?.name || '');
       if (location) {
         setFinancials({
@@ -887,37 +985,87 @@ export function useNewCollectionModal({
       setIsProcessing(true);
       if (!machineForDataEntry || !selectedLocationId) return;
 
+      console.log('[executeAddEntry] Starting to add machine entry');
+      console.log('[executeAddEntry] sasEndTime:', sasEndTime);
+      console.log('[executeAddEntry] sasStartTime:', sasStartTime);
+      console.log(
+        '[executeAddEntry] currentCollectionTime:',
+        currentCollectionTime
+      );
+      console.log('[executeAddEntry] showAdvancedSas:', showAdvancedSas);
+
+      // Calculate prevIn/prevOut using helper (same as edit)
+      // Priority: 1. Previous collection, 2. Machine collectionMeters
+      const prevIn = (() => {
+        const sasDrop = machineForDataEntry.sasMeters?.drop ?? null;
+        const collectionIn = machineForDataEntry.collectionMeters?.metersIn;
+        return collectionIn !== null &&
+          collectionIn !== undefined &&
+          collectionIn > 0
+          ? collectionIn.toString()
+          : sasDrop !== null && sasDrop > 0
+            ? sasDrop.toString()
+            : '0';
+      })();
+      const prevOut = (() => {
+        const sasCancelled =
+          machineForDataEntry.sasMeters?.totalCancelledCredits ?? null;
+        const collectionOut = machineForDataEntry.collectionMeters?.metersOut;
+        return collectionOut !== null &&
+          collectionOut !== undefined &&
+          collectionOut > 0
+          ? collectionOut.toString()
+          : sasCancelled !== null && sasCancelled > 0
+            ? sasCancelled.toString()
+            : '0';
+      })();
+
+      // Determine the time to use for timestamp, collectionTime, and sasEndTime
+      // In simple mode: use sasEndTime if available, otherwise currentCollectionTime
+      // In advanced mode: use sasEndTime if available, otherwise currentCollectionTime
+      const timeForNew = sasEndTime || currentCollectionTime;
+      console.log(
+        '[executeAddEntry] timeForNew (sasEndTime || currentCollectionTime):',
+        timeForNew
+      );
+
       const entryData: Partial<CollectionDocument> = {
-        machineId: machineForDataEntry._id,
+        machineId: selectedMachineId,
         location: selectedLocationName,
+        collector: userId,
         metersIn: Number(currentMetersIn),
         metersOut: Number(currentMetersOut),
-        prevIn: prevIn || 0,
-        prevOut: prevOut || 0,
-        timestamp: currentCollectionTime,
-        collectionTime: currentCollectionTime,
-        collector: userId,
+        prevIn: Number(prevIn) || 0,
+        prevOut: Number(prevOut) || 0,
+        timestamp: timeForNew,
+        collectionTime: timeForNew,
         notes: currentMachineNotes,
-        sasEndTime:
-          showAdvancedSas && sasEndTime ? sasEndTime : currentCollectionTime,
-        ...(showAdvancedSas && sasStartTime ? { sasStartTime } : {}),
-        ...(showAdvancedSas && sasEndTime
-          ? { timestamp: sasEndTime, collectionTime: sasEndTime }
-          : {}),
+        sasEndTime: sasEndTime || timeForNew,
+        ...(sasStartTime ? { sasStartTime } : {}),
         ramClear: currentRamClear,
         ...(currentRamClear
           ? {
               ramClearMetersIn: Number(currentRamClearMetersIn),
               ramClearMetersOut: Number(currentRamClearMetersOut),
             }
-          : {
-              ramClearMetersIn: undefined,
-              ramClearMetersOut: undefined,
-            }),
+          : {}),
       };
 
+      console.log(
+        '[executeAddEntry] entryData being sent:',
+        JSON.stringify(entryData, null, 2)
+      );
+
       const createdCollection = await addMachineCollection(entryData);
-      setCollectedMachineEntries([...collectedMachineEntries, createdCollection]);
+      console.log(
+        '[executeAddEntry] createdCollection response:',
+        JSON.stringify(createdCollection, null, 2)
+      );
+
+      setCollectedMachineEntries([
+        ...collectedMachineEntries,
+        createdCollection,
+      ]);
       setLockedLocation(selectedLocationId);
       setHasChanges(true);
       resetEntryForm();
@@ -931,8 +1079,8 @@ export function useNewCollectionModal({
         const detailParts = [
           `MIn: ${Number(currentMetersIn)}`,
           `MOut: ${Number(currentMetersOut)}`,
-          `PrevIn: ${prevIn ?? 0}`,
-          `PrevOut: ${prevOut ?? 0}`,
+          `PrevIn: ${prevIn || 0}`,
+          `PrevOut: ${prevOut || 0}`,
           `RAM Clear: ${currentRamClear ? 'Yes' : 'No'}`,
         ];
         if (currentRamClear) {
@@ -979,8 +1127,6 @@ export function useNewCollectionModal({
     selectedLocationName,
     currentMetersIn,
     currentMetersOut,
-    prevIn,
-    prevOut,
     currentCollectionTime,
     currentRamClear,
     currentMachineNotes,
@@ -991,7 +1137,6 @@ export function useNewCollectionModal({
     currentRamClearMetersOut,
     logActivityCallback,
     selectedMachineId,
-    showAdvancedSas,
   ]);
 
   /**
@@ -1046,33 +1191,55 @@ export function useNewCollectionModal({
       );
       if (!entryToUpdate) return;
 
+      console.log('[executeUpdateEntry] Starting to update machine entry');
+      console.log('[executeUpdateEntry] sasEndTime:', sasEndTime);
+      console.log('[executeUpdateEntry] sasStartTime:', sasStartTime);
+      console.log(
+        '[executeUpdateEntry] currentCollectionTime:',
+        currentCollectionTime
+      );
+      console.log('[executeUpdateEntry] showAdvancedSas:', showAdvancedSas);
+
+      // Determine the time to use for timestamp, collectionTime, and sasEndTime
+      const timeForUpdate = sasEndTime || currentCollectionTime;
+      console.log(
+        '[executeUpdateEntry] timeForUpdate (sasEndTime || currentCollectionTime):',
+        timeForUpdate
+      );
+
       const updatedData: Partial<CollectionDocument> = {
         metersIn: Number(currentMetersIn),
         metersOut: Number(currentMetersOut),
-        timestamp: currentCollectionTime,
-        collectionTime: currentCollectionTime,
         ramClear: currentRamClear,
         notes: currentMachineNotes,
-        prevIn: prevIn || 0,
-        prevOut: prevOut || 0,
+        prevIn: Number(prevIn) || 0,
+        prevOut: Number(prevOut) || 0,
         ...(currentRamClear
           ? {
               ramClearMetersIn: Number(currentRamClearMetersIn),
               ramClearMetersOut: Number(currentRamClearMetersOut),
             }
-          : { ramClearMetersIn: undefined, ramClearMetersOut: undefined }),
-        sasEndTime:
-          showAdvancedSas && sasEndTime ? sasEndTime : currentCollectionTime,
-        ...(showAdvancedSas && sasStartTime ? { sasStartTime } : {}),
-        ...(showAdvancedSas && sasEndTime
-          ? { timestamp: sasEndTime, collectionTime: sasEndTime }
           : {}),
+        sasEndTime: timeForUpdate,
+        ...(sasStartTime ? { sasStartTime } : {}),
+        timestamp: timeForUpdate,
+        collectionTime: timeForUpdate,
       };
+
+      console.log(
+        '[executeUpdateEntry] updatedData being sent:',
+        JSON.stringify(updatedData, null, 2)
+      );
 
       const updatedCollection = await updateCollection(
         editingEntryId,
         updatedData
       );
+      console.log(
+        '[executeUpdateEntry] updatedCollection response:',
+        JSON.stringify(updatedCollection, null, 2)
+      );
+
       const updatedList = collectedMachineEntries.map(entry =>
         String(entry._id) === editingEntryId ? updatedCollection : entry
       );
@@ -1187,7 +1354,9 @@ export function useNewCollectionModal({
    */
   const handleEditCollectedEntry = useCallback(
     (id: string) => {
-      const entry = collectedMachineEntries.find(entry => String(entry._id) === id);
+      const entry = collectedMachineEntries.find(
+        entry => String(entry._id) === id
+      );
       if (entry) {
         setEditingEntryId(id);
         setSelectedMachineId(entry.machineId);
@@ -1400,7 +1569,19 @@ export function useNewCollectionModal({
               sum + (Number(machineData.sasGross) || 0),
             0
           ) || 0,
-        timestamp: currentCollectionTime,
+        // Use earliest timestamp from all machines for the report
+        timestamp:
+          collectedEntries.length > 0
+            ? new Date(
+                Math.min(
+                  ...collectedEntries.map(entry =>
+                    entry.timestamp
+                      ? new Date(entry.timestamp).getTime()
+                      : currentCollectionTime.getTime()
+                  )
+                )
+              )
+            : currentCollectionTime,
         varianceReason: financials.varianceReason,
         previousCollectionTime: previousCollectionTime
           ? typeof previousCollectionTime === 'string'
@@ -1412,7 +1593,7 @@ export function useNewCollectionModal({
         balanceCorrection: Number(financials.balanceCorrection) || 0,
         balanceCorrectionReas: financials.balanceCorrectionReason,
         includeJackpot: selectedLocation?.includeJackpot || false,
-        machines: collectedEntries.map((entry) => {
+        machines: collectedEntries.map(entry => {
           const varData = variationsData?.machines.find(
             variationMachine => variationMachine.machineId === entry.machineId
           );
@@ -1511,7 +1692,9 @@ export function useNewCollectionModal({
           );
         })
       );
-      const failed = results.filter(result => result.status === 'rejected').length;
+      const failed = results.filter(
+        result => result.status === 'rejected'
+      ).length;
       if (failed > 0) {
         toast.error(
           `${failed} machine${failed > 1 ? 's' : ''} failed to update`
@@ -1519,15 +1702,33 @@ export function useNewCollectionModal({
         return;
       }
 
-      const updatedEntries = collectedMachineEntries.map(entry => ({
-        ...entry,
-        sasMeters: {
-          ...entry.sasMeters,
-          ...(startTimeISO ? { sasStartTime: startTimeISO } : {}),
-          ...(endTimeISO ? { sasEndTime: endTimeISO } : {}),
-        },
-      }));
-      setCollectedMachineEntries(updatedEntries);
+      const updatedEntries = collectedMachineEntries.map(entry => {
+        const sasMeters = { ...entry.sasMeters };
+        // Ensure sasStartTime is Date | undefined (never string)
+        const getSasStartTime = (): Date | undefined => {
+          if (startTimeISO) return new Date(startTimeISO as string);
+          const existing = entry.sasMeters?.sasStartTime;
+          if (!existing) return undefined;
+          return existing instanceof Date
+            ? existing
+            : new Date(existing as string);
+        };
+        sasMeters.sasStartTime = getSasStartTime();
+        // Ensure sasEndTime is Date | undefined (never string)
+        const getSasEndTime = (): Date | undefined => {
+          if (endTimeISO) return new Date(endTimeISO as string);
+          const existing = entry.sasMeters?.sasEndTime;
+          if (!existing) return undefined;
+          return existing instanceof Date
+            ? existing
+            : new Date(existing as string);
+        };
+        sasMeters.sasEndTime = getSasEndTime();
+        return { ...entry, sasMeters };
+      });
+      setCollectedMachineEntries(
+        updatedEntries as typeof collectedMachineEntries
+      );
 
       toast.success('All SAS times updated successfully!');
       setUpdateAllSasStartDate(undefined);

@@ -186,6 +186,7 @@ export type CollectionReportLocationWithMachines = {
   collectionBalance?: number;
   gameDayOffset?: number;
   includeJackpot?: boolean;
+  noSMIBLocation?: boolean;
 };
 
 export type MachineMetric = {
@@ -198,8 +199,8 @@ export type MachineMetric = {
   netGross?: number;
   sasGross?: number | string;
   variation?: number | string;
-  sasStartTime?: string;
-  sasEndTime?: string;
+  sasStartTime?: Date | string | null;
+  sasEndTime?: Date | string | null;
   hasIssue?: boolean;
   ramClear?: boolean;
   notes?: string;
@@ -252,8 +253,8 @@ export type MachineVariationData = {
   variation: number | string;
   sasGross: number | string;
   meterGross: number;
-  sasStartTime?: string | null;
-  sasEndTime?: string | null;
+  sasStartTime?: Date | string | null;
+  sasEndTime?: Date | string | null;
 };
 
 export type VariationsCheckResponse = {

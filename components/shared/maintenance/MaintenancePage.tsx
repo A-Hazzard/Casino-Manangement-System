@@ -22,8 +22,8 @@ export default function MaintenancePage() {
 
       {/* Sub-text */}
       <p className="mb-8 max-w-sm text-sm leading-relaxed text-gray-500">
-        We&apos;re working to resolve this as quickly as possible. Please try again in a few
-        moments or contact support if the issue persists.
+        We&apos;re working to resolve this as quickly as possible. Please try
+        again in a few moments or contact support if the issue persists.
       </p>
 
       {/* Try again */}

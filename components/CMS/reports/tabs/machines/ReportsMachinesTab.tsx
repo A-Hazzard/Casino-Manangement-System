@@ -16,7 +16,12 @@ import { toast } from 'sonner';
 
 import CabinetsDeleteCabinetModal from '@/components/CMS/cabinets/modals/CabinetsDeleteCabinetModal';
 import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsEditCabinetModal';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/shared/ui/tabs';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/shared/ui/tabs';
 
 import { useLocationMachineStats, useMachinesTabData } from '@/lib/hooks/data';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
@@ -25,9 +30,9 @@ import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { useDebounce } from '@/lib/utils/hooks';
 
 import {
-    calculateOfflineDurationHours,
-    calculateParetoStatement,
-    getPerformanceRating
+  calculateOfflineDurationHours,
+  calculateParetoStatement,
+  getPerformanceRating,
 } from '@/lib/helpers/cabinets';
 import { handleExportMeters as handleExportMetersHelper } from '@/lib/helpers/reports';
 
@@ -35,7 +40,11 @@ import { ReportsMachinesEvaluation } from './ReportsMachinesEvaluation';
 import { ReportsMachinesOffline } from './ReportsMachinesOffline';
 import { ReportsMachinesOverview } from './ReportsMachinesOverview';
 
-import type { MachineEvaluationData, TopMachinesCriteria, MachineSortKey } from '@/shared/types/reports';
+import type {
+  MachineEvaluationData,
+  TopMachinesCriteria,
+  MachineSortKey,
+} from '@/shared/types/reports';
 import type { MachineData } from '@/shared/types/machines';
 
 /**
@@ -130,21 +139,27 @@ export default function ReportsMachinesTab() {
     setEvaluationLoading,
     setOfflineLoading,
     setAllOfflineMachines,
-  } = useMachinesTabData(activeTab, displayCurrency, ITEMS_PER_BATCH, ITEMS_PER_BATCH);
+  } = useMachinesTabData(
+    activeTab,
+    displayCurrency,
+    ITEMS_PER_BATCH,
+    ITEMS_PER_BATCH
+  );
 
   // Pagination State - Local (for UI)
   const [overviewCurrentPage, setOverviewCurrentPage] = useState(0);
-  const [overviewLoadedBatches, setOverviewLoadedBatches] = useState<Set<number>>(new Set([1]));
+  const [overviewLoadedBatches, setOverviewLoadedBatches] = useState<
+    Set<number>
+  >(new Set([1]));
 
   const [offlineCurrentPage, setOfflineCurrentPage] = useState(0);
-  const [offlineLoadedBatches, setOfflineLoadedBatches] = useState<Set<number>>(new Set([1]));
-
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / PAGES_PER_BATCH) + 1;
-    },
-    []
+  const [offlineLoadedBatches, setOfflineLoadedBatches] = useState<Set<number>>(
+    new Set([1])
   );
+
+  const calculateBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / PAGES_PER_BATCH) + 1;
+  }, []);
 
   // Get machine stats for offline tab - pass locationId(s) when specific locations are selected
   const effectiveLocationIdForStats =
@@ -159,8 +174,12 @@ export default function ReportsMachinesTab() {
   } = useLocationMachineStats(effectiveLocationIdForStats);
 
   // Derive the effective location filter for overview/evaluation stats cards
-  const overviewLocationForStats = overviewSelectedLocation !== 'all' ? overviewSelectedLocation : 'all';
-  const evaluationLocationForStats = evaluationSelectedLocations.length > 0 ? evaluationSelectedLocations.join(',') : 'all';
+  const overviewLocationForStats =
+    overviewSelectedLocation !== 'all' ? overviewSelectedLocation : 'all';
+  const evaluationLocationForStats =
+    evaluationSelectedLocations.length > 0
+      ? evaluationSelectedLocations.join(',')
+      : 'all';
 
   // ============================================================================
   // Computed Values: Evaluation
@@ -540,8 +559,8 @@ export default function ReportsMachinesTab() {
         activeTab === 'overview'
           ? overviewLocationForStats
           : activeTab === 'evaluation'
-          ? evaluationLocationForStats
-          : 'all';
+            ? evaluationLocationForStats
+            : 'all';
 
       await Promise.all([
         fetchMachineStats(statsLocationId),
@@ -596,15 +615,15 @@ export default function ReportsMachinesTab() {
       handleRefresh();
     };
     window.addEventListener('refreshReports', handleGlobalRefresh);
-    return () => window.removeEventListener('refreshReports', handleGlobalRefresh);
+    return () =>
+      window.removeEventListener('refreshReports', handleGlobalRefresh);
   }, [handleRefresh]);
 
   const handleExport = useCallback(
     async (format: 'pdf' | 'excel') => {
       if (activeTab === 'evaluation') {
-        const { handleExportMachinesEvaluation } = await import(
-          '@/lib/helpers/reports'
-        );
+        const { handleExportMachinesEvaluation } =
+          await import('@/lib/helpers/reports');
         await handleExportMachinesEvaluation(
           manufacturerData,
           gamesData,
@@ -666,20 +685,20 @@ export default function ReportsMachinesTab() {
   useEffect(() => {
     if (locations.length === 1) {
       const onlyId = locations[0].id;
-      setOverviewSelectedLocation(prev => prev === 'all' ? onlyId : prev);
-      setEvaluationSelectedLocations(prev => prev.length === 0 ? [onlyId] : prev);
-      setOfflineSelectedLocations(prev => prev.length === 0 ? [onlyId] : prev);
+      setOverviewSelectedLocation(prev => (prev === 'all' ? onlyId : prev));
+      setEvaluationSelectedLocations(prev =>
+        prev.length === 0 ? [onlyId] : prev
+      );
+      setOfflineSelectedLocations(prev =>
+        prev.length === 0 ? [onlyId] : prev
+      );
     }
   }, [locations]);
 
   // Fetch stats and locations when global filters change
   useEffect(() => {
     fetchLocationsData();
-  }, [
-    fetchLocationsData,
-    selectedLicencee,
-    customDateRange,
-  ]);
+  }, [fetchLocationsData, selectedLicencee, customDateRange]);
 
   // Fetch stats for overview tab: filtered by selected overview location
   useEffect(() => {
@@ -777,9 +796,17 @@ export default function ReportsMachinesTab() {
     const isLastPageOfBatch = (overviewCurrentPage + 1) % PAGES_PER_BATCH === 0;
     const nextBatch = currentBatch + 1;
 
-    if ((isLastPageOfBatch && !overviewLoadedBatches.has(nextBatch)) || !overviewLoadedBatches.has(currentBatch)) {
+    if (
+      (isLastPageOfBatch && !overviewLoadedBatches.has(nextBatch)) ||
+      !overviewLoadedBatches.has(currentBatch)
+    ) {
       const batchToLoad = isLastPageOfBatch ? nextBatch : currentBatch;
-      fetchOverviewMachines(batchToLoad, searchTerm, overviewSelectedLocation, onlineStatusFilter);
+      fetchOverviewMachines(
+        batchToLoad,
+        searchTerm,
+        overviewSelectedLocation,
+        onlineStatusFilter
+      );
       setOverviewLoadedBatches(prev => new Set([...prev, batchToLoad]));
     }
   }, [
@@ -796,18 +823,25 @@ export default function ReportsMachinesTab() {
 
   // Batch loading effect for Offline
   useEffect(() => {
-    if (offlineLoading || !activeMetricsFilter || offlineSearchTerm.trim()) return;
+    if (offlineLoading || !activeMetricsFilter || offlineSearchTerm.trim())
+      return;
 
     const currentBatch = calculateBatchNumber(offlineCurrentPage);
     const isLastPageOfBatch = (offlineCurrentPage + 1) % PAGES_PER_BATCH === 0;
     const nextBatch = currentBatch + 1;
 
-    if ((isLastPageOfBatch && !offlineLoadedBatches.has(nextBatch)) || !offlineLoadedBatches.has(currentBatch)) {
+    if (
+      (isLastPageOfBatch && !offlineLoadedBatches.has(nextBatch)) ||
+      !offlineLoadedBatches.has(currentBatch)
+    ) {
       const batchToLoad = isLastPageOfBatch ? nextBatch : currentBatch;
       fetchOfflineMachines(
-        batchToLoad, 
-        offlineSearchTerm, 
-        offlineSelectedLocations.length > 0 && !offlineSelectedLocations.includes('all') ? offlineSelectedLocations.join(',') : 'all', 
+        batchToLoad,
+        offlineSearchTerm,
+        offlineSelectedLocations.length > 0 &&
+          !offlineSelectedLocations.includes('all')
+          ? offlineSelectedLocations.join(',')
+          : 'all',
         selectedOfflineDuration
       );
       setOfflineLoadedBatches(prev => new Set([...prev, batchToLoad]));
@@ -1023,5 +1057,3 @@ export default function ReportsMachinesTab() {
     </div>
   );
 }
-
-

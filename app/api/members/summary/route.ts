@@ -16,6 +16,11 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { Member } from '@/app/api/lib/models/members';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -43,6 +48,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/members/summary';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -182,7 +189,9 @@ export async function GET(request: NextRequest) {
     // Include location filter if specified (for location-specific pages)
     if (locationFilter && locationFilter !== 'all') {
       if (locationFilter.includes(',')) {
-        totalMembersConditions.gamingLocation = { $in: locationFilter.split(',') };
+        totalMembersConditions.gamingLocation = {
+          $in: locationFilter.split(','),
+        };
       } else {
         totalMembersConditions.gamingLocation = locationFilter;
       }
@@ -408,7 +417,9 @@ export async function GET(request: NextRequest) {
       console.warn('Failed to fetch total locations count:', error);
       // Fallback to counting unique locations from member data
       totalLocationsCount = new Set(
-        memberSummary.map((memberItem: Record<string, unknown>) => memberItem.gamingLocation)
+        memberSummary.map(
+          (memberItem: Record<string, unknown>) => memberItem.gamingLocation
+        )
       ).size;
     }
 
@@ -416,11 +427,13 @@ export async function GET(request: NextRequest) {
       totalMembers: totalMembersCount, // Total members excluding date filter
       totalLocations: totalLocationsCount,
       activeMembers: activeMembersCount, // Members who logged in within last 30 days
-      recentMembers: memberSummary.filter((memberItem: Record<string, unknown>) => {
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        return new Date(memberItem.createdAt as string) >= weekAgo;
-      }).length,
+      recentMembers: memberSummary.filter(
+        (memberItem: Record<string, unknown>) => {
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return new Date(memberItem.createdAt as string) >= weekAgo;
+        }
+      ).length,
     };
 
     // ============================================================================
@@ -431,6 +444,15 @@ export async function GET(request: NextRequest) {
     const hasPrevPage = page > 1;
 
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/members/summary',
+      memberSummary.length,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
       console.warn(`[Members Summary API] Completed in ${duration}ms`);
     }
@@ -453,6 +475,13 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/members/summary',
+      errorMessage,
+      user
+    );
     console.error(
       `[Members Summary API] Error after ${duration}ms:`,
       errorMessage
@@ -460,4 +489,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-

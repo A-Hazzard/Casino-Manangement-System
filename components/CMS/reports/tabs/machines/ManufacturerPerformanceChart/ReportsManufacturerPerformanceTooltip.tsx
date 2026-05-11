@@ -10,7 +10,7 @@ import { RefObject } from 'react';
 import { CSSProperties } from 'react';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
-import {  useLayoutEffect, useState  } from 'react';
+import { useLayoutEffect, useState } from 'react';
 
 import { createPortal } from 'react-dom';
 
@@ -38,7 +38,10 @@ type ReportsManufacturerPerformanceTooltipProps = {
 /**
  * Helper to get raw value for a metric
  */
-function getRawValue(dataKey: string, rawTotals?: PerformanceMetrics): number | null {
+function getRawValue(
+  dataKey: string,
+  rawTotals?: PerformanceMetrics
+): number | null {
   if (!rawTotals) return null;
 
   const keyMap: Record<string, keyof PerformanceMetrics> = {
@@ -89,17 +92,19 @@ export function ReportsManufacturerPerformanceTooltip({
   chartContainerRef,
 }: ReportsManufacturerPerformanceTooltipProps) {
   const { displayCurrency } = useCurrencyFormat();
-  const formatCurrency = (value: number | null | undefined) => formatCurrencyWithCodeString(value, displayCurrency);
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(
-    null
-  );
+  const formatCurrency = (value: number | null | undefined) =>
+    formatCurrencyWithCodeString(value, displayCurrency);
+  const [position, setPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   useLayoutEffect(() => {
     if (active && coordinate && chartContainerRef?.current) {
       const rect = chartContainerRef.current.getBoundingClientRect();
       // Scroll handling: getBoundingClientRect + window.scrollY/X gives absolute document position
       // But for fixed position portal, we just need ClientRect (viewport relative)
-      
+
       const left = rect.left + (coordinate.x || 0);
       const top = rect.top + (coordinate.y || 0);
 
@@ -224,4 +229,3 @@ export function ReportsManufacturerPerformanceTooltip({
 
   return createPortal(content, document.body);
 }
-

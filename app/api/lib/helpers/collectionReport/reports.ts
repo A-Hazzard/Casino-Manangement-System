@@ -120,12 +120,17 @@ export async function buildCollectionReportsLocationFilter(
   userPermissions: UserPermissions
 ): Promise<string[] | null> {
   if (!userPermissions) {
-    console.error('[buildCollectionReportsLocationFilter] userPermissions is required');
+    console.error(
+      '[buildCollectionReportsLocationFilter] userPermissions is required'
+    );
     return null;
   }
   const { roles, licencees, locationPermissions } = userPermissions;
 
-    const isAdmin = roles.includes('admin') || roles.includes('developer') || roles.includes('owner');
+  const isAdmin =
+    roles.includes('admin') ||
+    roles.includes('developer') ||
+    roles.includes('owner');
   const isManager = roles.includes('manager');
 
   // Admin with no location restrictions - no filter
@@ -160,7 +165,7 @@ export async function buildCollectionReportsLocationFilter(
             $or: [
               { deletedAt: null },
               { deletedAt: { $lt: new Date('2025-01-01') } },
-            ]
+            ],
           },
         ],
       },
@@ -276,4 +281,3 @@ export function extractUserPermissions(userPayload: {
     locationPermissions,
   };
 }
-

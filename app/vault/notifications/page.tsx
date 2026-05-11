@@ -9,15 +9,16 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 
 export const metadata = {
   title: 'Vault Notifications | Evolution One',
-  description: 'Review and manage vault system alerts and operational notifications.',
+  description:
+    'Review and manage vault system alerts and operational notifications.',
 };
 
 export default function VaultNotificationsPage() {
   return (
     <PageLayout>
-      <div className="container mx-auto py-8 px-4 max-w-5xl space-y-6">
-        <VaultManagerHeader 
-          title="Vault Notifications" 
+      <div className="container mx-auto max-w-5xl space-y-6 px-4 py-8">
+        <VaultManagerHeader
+          title="Vault Notifications"
           description="Review and manage system alerts and operational messages for the vault."
         />
         <VaultNotificationsPanel />

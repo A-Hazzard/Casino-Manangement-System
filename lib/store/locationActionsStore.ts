@@ -72,4 +72,3 @@ const getClientStore = () => {
 // Use this store only on client side
 export const useLocationsActionsStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);
-

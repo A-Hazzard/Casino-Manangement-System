@@ -68,5 +68,3 @@ export type MetersReportResponse = {
   };
   hourlyChartData?: MetersHourlyChartData[];
 };
-
-

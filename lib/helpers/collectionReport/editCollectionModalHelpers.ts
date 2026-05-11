@@ -29,10 +29,14 @@ export async function fetchCollectionsByReportId(
 export async function deleteMachineCollection(
   id: string
 ): Promise<{ success: boolean }> {
-  const collection = await axios.get(`/api/collection-reports/collections?id=${id}`);
+  const collection = await axios.get(
+    `/api/collection-reports/collections?id=${id}`
+  );
   const collectionData = collection.data;
 
-  const res = await axios.delete(`/api/collection-reports/collections?id=${id}`);
+  const res = await axios.delete(
+    `/api/collection-reports/collections?id=${id}`
+  );
 
   if (collectionData && collectionData.machineId) {
     await updateMachineCollectionHistory(
@@ -80,4 +84,3 @@ export function sortMachinesAlphabetically<
     return numAInt - numBInt;
   });
 }
-

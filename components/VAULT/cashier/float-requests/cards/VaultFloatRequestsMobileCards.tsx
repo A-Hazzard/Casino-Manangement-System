@@ -79,7 +79,10 @@ export default function VaultFloatRequestsMobileCards({
           const isCompleted = request.status === 'completed';
 
           return (
-            <Card key={request.id} className="overflow-hidden rounded-lg bg-container shadow-md">
+            <Card
+              key={request.id}
+              className="overflow-hidden rounded-lg bg-container shadow-md"
+            >
               <CardContent className="p-4">
                 {/* Header: Cashier and Status */}
                 <div className="mb-3 flex items-start justify-between border-b pb-3">
@@ -88,7 +91,9 @@ export default function VaultFloatRequestsMobileCards({
                       {request.cashier} / {request.station}
                     </p>
                     {request.requested && (
-                      <p className="text-xs text-gray-500">Requested: {request.requested}</p>
+                      <p className="text-xs text-gray-500">
+                        Requested: {request.requested}
+                      </p>
                     )}
                   </div>
                   {request.status && (
@@ -151,22 +156,23 @@ export default function VaultFloatRequestsMobileCards({
                 </div>
 
                 {/* Current and New Float */}
-                {request.currentFloat !== undefined && request.newFloat !== undefined && (
-                  <div className="mb-3 grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <p className="text-xs text-gray-500">Current Float</p>
-                      <p className="font-medium text-gray-900">
-                        {formatAmount(request.currentFloat)}
-                      </p>
+                {request.currentFloat !== undefined &&
+                  request.newFloat !== undefined && (
+                    <div className="mb-3 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-gray-500">Current Float</p>
+                        <p className="font-medium text-gray-900">
+                          {formatAmount(request.currentFloat)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">New Float</p>
+                        <p className="font-semibold text-orangeHighlight">
+                          {formatAmount(request.newFloat)}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-500">New Float</p>
-                      <p className="font-semibold text-orangeHighlight">
-                        {formatAmount(request.newFloat)}
-                      </p>
-                    </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Reason */}
                 {request.reason && (
@@ -182,7 +188,9 @@ export default function VaultFloatRequestsMobileCards({
                     <p className="text-xs text-gray-500">Processed</p>
                     <p className="text-sm text-gray-700">{request.processed}</p>
                     {request.processedBy && (
-                      <p className="text-xs text-gray-500">By: {request.processedBy}</p>
+                      <p className="text-xs text-gray-500">
+                        By: {request.processedBy}
+                      </p>
                     )}
                   </div>
                 )}

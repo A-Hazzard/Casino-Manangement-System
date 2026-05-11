@@ -21,7 +21,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/shared/ui/table';
-import type { CollectorSchedule, CollectorScheduleTableProps } from '@/lib/types/components';
+import type {
+  CollectorSchedule,
+  CollectorScheduleTableProps,
+} from '@/lib/types/components';
 import { formatDateString } from '@/lib/utils/date';
 import { Pencil, Trash2 } from 'lucide-react';
 
@@ -58,14 +61,20 @@ export default function CollectionReportCollectorScheduleTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
-            <TableHead className="font-semibold text-white">COLLECTOR</TableHead>
+            <TableHead className="font-semibold text-white">
+              COLLECTOR
+            </TableHead>
             <TableHead className="font-semibold text-white">LOCATION</TableHead>
-            <TableHead className="font-semibold text-white">START TIME</TableHead>
+            <TableHead className="font-semibold text-white">
+              START TIME
+            </TableHead>
             <TableHead className="font-semibold text-white">END TIME</TableHead>
             <TableHead className="font-semibold text-white">DURATION</TableHead>
             <TableHead className="font-semibold text-white">STATUS</TableHead>
             {showActions && (
-              <TableHead className="font-semibold text-white">ACTIONS</TableHead>
+              <TableHead className="font-semibold text-white">
+                ACTIONS
+              </TableHead>
             )}
           </TableRow>
         </TableHeader>
@@ -74,22 +83,29 @@ export default function CollectionReportCollectorScheduleTable({
             const startTime = new Date(schedule.startTime);
             const endTime = new Date(schedule.endTime);
             const duration = (
-              (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)
+              (endTime.getTime() - startTime.getTime()) /
+              (1000 * 60 * 60)
             ).toFixed(1);
 
             return (
-              <TableRow key={schedule._id || index} className="hover:bg-gray-50">
+              <TableRow
+                key={schedule._id || index}
+                className="hover:bg-gray-50"
+              >
                 <TableCell className="font-medium">
                   {schedule.collectorName || schedule.collector || 'Unknown'}
                 </TableCell>
-                <TableCell>{schedule.locationName || schedule.location}</TableCell>
+                <TableCell>
+                  {schedule.locationName || schedule.location}
+                </TableCell>
                 <TableCell>{formatDateString(schedule.startTime)}</TableCell>
                 <TableCell>{formatDateString(schedule.endTime)}</TableCell>
                 <TableCell>{duration} hours</TableCell>
                 <TableCell>
                   <Badge
                     className={
-                      schedule.status === 'scheduled' || schedule.status === 'in-progress'
+                      schedule.status === 'scheduled' ||
+                      schedule.status === 'in-progress'
                         ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                         : schedule.status === 'completed'
                           ? 'bg-green-100 text-green-800 hover:bg-green-200'

@@ -19,6 +19,11 @@ import { Machine } from '@/app/api/lib/models/machines';
 import type { TimePeriod } from '@/shared/types/common';
 import type { AcceptedBillDocument } from '@/shared/types/models';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 type BillDocument = AcceptedBillDocument & {
@@ -60,6 +65,8 @@ type BillDocument = AcceptedBillDocument & {
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/bill-validator/[machineId]';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -67,7 +74,13 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const db = await connectDB();
     if (!db) {
-      console.error('Database connection failed');
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/bill-validator/[machineId]',
+        'Database connection failed',
+        user
+      );
       return NextResponse.json(
         { error: 'Database connection failed' },
         { status: 500 }
@@ -85,6 +98,13 @@ export async function GET(req: NextRequest) {
     // STEP 3: Validate machine ID
     // ============================================================================
     if (!machineId) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/bill-validator/[machineId]',
+        'Machine ID is required',
+        user
+      );
       return NextResponse.json(
         { error: 'Machine ID is required' },
         { status: 400 }
@@ -105,21 +125,11 @@ export async function GET(req: NextRequest) {
     let gamingLocation = null;
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const machine = await Machine.findOne({ _id: machineId });
-    console.warn(`[BILL VALIDATOR] Machine lookup:`, {
-      machineId,
-      machineFound: !!machine,
-      locationId: machine?.gamingLocation,
-    });
 
     if (machine?.gamingLocation) {
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
       gamingLocation = await GamingLocations.findOne({
         _id: machine.gamingLocation,
-      });
-      console.warn(`[BILL VALIDATOR] Location lookup:`, {
-        locationId: machine.gamingLocation,
-        locationFound: !!gamingLocation,
-        gameDayOffset: gamingLocation?.gameDayOffset,
       });
     }
 
@@ -127,16 +137,24 @@ export async function GET(req: NextRequest) {
     // STEP 5.5: Technician Restriction - Force last hour meter data
     // ============================================================================
     // User check for restriction
-    const { getUserFromServer: getUser } = await import('@/app/api/lib/helpers/users/users');
+    const { getUserFromServer: getUser } =
+      await import('@/app/api/lib/helpers/users/users');
     const userPayload = await getUser();
     const userRoles = (userPayload?.roles as string[]) || [];
 
-    const isAdmin = userRoles.map(r => r?.toLowerCase?.() ?? r).some(r => r === 'admin' || r === 'developer');
-    const userRolesLower = userRoles.map(r => r?.toLowerCase?.() ?? String(r).toLowerCase());
-    const isOnlyTechnician = userRolesLower.includes('technician') && !userRolesLower.some(r => ['admin', 'developer', 'manager', 'location admin'].includes(r));
+    const isAdmin = userRoles
+      .map(r => r?.toLowerCase?.() ?? r)
+      .some(r => r === 'admin' || r === 'developer');
+    const userRolesLower = userRoles.map(
+      r => r?.toLowerCase?.() ?? String(r).toLowerCase()
+    );
+    const isOnlyTechnician =
+      userRolesLower.includes('technician') &&
+      !userRolesLower.some(r =>
+        ['admin', 'developer', 'manager', 'location admin'].includes(r)
+      );
 
     if (isOnlyTechnician && !isAdmin) {
-      console.warn('[API Bill Validator] Applying technician restriction: forcing LastHour timePeriod');
       timePeriod = 'LastHour' as TimePeriod;
     }
 
@@ -158,13 +176,6 @@ export async function GET(req: NextRequest) {
       dateFilter = {
         createdAt: { $gte: customStart, $lte: customEnd },
       };
-
-      console.warn(`[BILL VALIDATOR] Custom date range (V1):`, {
-        startDate,
-        endDate,
-        customStart: customStart.toISOString(),
-        customEnd: customEnd.toISOString(),
-      });
     } else if (timePeriod && timePeriod !== 'All Time') {
       // Predefined time period - use gaming day range utilities
       const gamingDayRange = getGamingDayRangeForPeriod(
@@ -207,13 +218,6 @@ export async function GET(req: NextRequest) {
           v2DateFilter = {
             readAt: { $gte: customStart, $lte: customEnd },
           };
-
-          console.warn(`[BILL VALIDATOR] Custom date range (V2):`, {
-            startDate,
-            endDate,
-            customStart: customStart.toISOString(),
-            customEnd: customEnd.toISOString(),
-          });
         } else if (timePeriod && timePeriod !== 'All Time') {
           // Predefined time period - use gaming day range utilities
           const gamingDayRange = getGamingDayRangeForPeriod(
@@ -226,86 +230,21 @@ export async function GET(req: NextRequest) {
               $lte: gamingDayRange.rangeEnd,
             },
           };
-
-          console.warn(`[BILL VALIDATOR] V2 gaming day range:`, {
-            timePeriod,
-            gameDayOffset,
-            rangeStart: gamingDayRange.rangeStart.toISOString(),
-            rangeEnd: gamingDayRange.rangeEnd.toISOString(),
-          });
         }
 
         bills = await AcceptedBill.find({
           machine: machineId,
           ...v2DateFilter,
         }).sort({ readAt: -1 });
-
-        console.warn(`[BILL VALIDATOR] Using V2 filtering (readAt field)`);
-        console.warn(
-          `[BILL VALIDATOR] V2 Date filter:`,
-          JSON.stringify(v2DateFilter, null, 2)
-        );
       } else {
         // V1: Use createdAt field for filtering
         bills = await AcceptedBill.find({
           machine: machineId,
           ...dateFilter,
         }).sort({ createdAt: -1 });
-
-        console.warn(`[BILL VALIDATOR] Using V1 filtering (createdAt field)`);
       }
     } else {
       bills = [];
-    }
-
-    console.warn(
-      `[BILL VALIDATOR] Found ${bills.length} bills for machine ${machineId}`
-    );
-
-    // Log the date filter that was actually used
-    if (bills.length > 0) {
-      const sampleBill = bills[0];
-      const sampleBillObj = sampleBill.toObject
-        ? sampleBill.toObject()
-        : sampleBill;
-      const isV2 =
-        sampleBillObj.movement &&
-        typeof sampleBillObj.movement === 'object' &&
-        sampleBillObj.value === undefined;
-
-      if (isV2) {
-        console.warn(
-          `[BILL VALIDATOR] V2 Date filter used:`,
-          JSON.stringify(v2DateFilter, null, 2)
-        );
-      } else {
-        console.warn(
-          `[BILL VALIDATOR] V1 Date filter used:`,
-          JSON.stringify(dateFilter, null, 2)
-        );
-      }
-    } else {
-      console.warn(
-        `[BILL VALIDATOR] No bills found, date filter:`,
-        JSON.stringify(dateFilter, null, 2)
-      );
-    }
-
-    console.warn(`[BILL VALIDATOR] Time period:`, timePeriod);
-    console.warn(`[BILL VALIDATOR] Game day offset:`, gameDayOffset);
-
-    // Log first few bills to understand the data structure
-    if (bills.length > 0) {
-      const firstBill = bills[0];
-      const billObj = firstBill.toObject ? firstBill.toObject() : firstBill;
-      console.warn(`[BILL VALIDATOR] First bill structure:`, {
-        hasValue: billObj.value !== undefined,
-        hasMovement: billObj.movement !== undefined,
-        value: billObj.value,
-        createdAt: billObj.createdAt,
-        readAt: billObj.readAt,
-        movementKeys: billObj.movement ? Object.keys(billObj.movement) : 'none',
-      });
     }
 
     // Get current balance from machine
@@ -358,9 +297,14 @@ export async function GET(req: NextRequest) {
     // STEP 10: Return processed bill validator data
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 2000) {
-      console.warn(`[Bill Validator API] Completed in ${duration}ms`);
-    }
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/bill-validator/[machineId]',
+      bills.length,
+      user,
+      duration
+    );
 
     return NextResponse.json({
       success: true,
@@ -370,12 +314,14 @@ export async function GET(req: NextRequest) {
       dataVersion: processedData.version,
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(
-      `[Bill Validator API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/bill-validator/[machineId]',
+      errorMessage,
+      user
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
@@ -438,13 +384,10 @@ function processBillsData(
     firstBillObj.value === undefined;
 
   if (isV1) {
-    console.warn('[BILL VALIDATOR] Using V1 data structure (value field)');
     return processV1Data(bills, currentBalance, billValidatorOptions);
   } else if (isV2) {
-    console.warn('[BILL VALIDATOR] Using V2 data structure (movement object)');
     return processV2Data(bills, currentBalance, billValidatorOptions);
   } else {
-    console.warn('[BILL VALIDATOR] Unknown data structure, defaulting to V1');
     return processV1Data(bills, currentBalance, billValidatorOptions);
   }
 }

@@ -6,16 +6,16 @@ Evolution One CMS is a full-stack casino management platform built on **Next.js 
 
 ## 1. Technology Stack
 
-| Layer | Technology |
-| :--- | :--- |
-| Framework | Next.js 16 (App Router, Route Handlers) |
-| Runtime / Package Manager | Bun |
-| Database | MongoDB via Mongoose v8+ |
-| Auth | JWT (jose) stored in HTTP-only cookies |
-| Real-time | MQTT (slot machine telemetry) |
-| Email | Gmail (SMTP) + SendGrid |
-| SMS | Infobip |
-| Maps | Google Maps API |
+| Layer                     | Technology                              |
+| :------------------------ | :-------------------------------------- |
+| Framework                 | Next.js 16 (App Router, Route Handlers) |
+| Runtime / Package Manager | Bun                                     |
+| Database                  | MongoDB via Mongoose v8+                |
+| Auth                      | JWT (jose) stored in HTTP-only cookies  |
+| Real-time                 | MQTT (slot machine telemetry)           |
+| Email                     | Gmail (SMTP) + SendGrid                 |
+| SMS                       | Infobip                                 |
+| Maps                      | Google Maps API                         |
 
 ---
 
@@ -152,6 +152,7 @@ ARG JWT_SECRET
 ```
 
 **Build:**
+
 ```bash
 docker build \
   --build-arg NODE_ENV=production \
@@ -161,6 +162,7 @@ docker build \
 ```
 
 **Run:**
+
 ```bash
 docker run -p 3000:3000 evolution-one-cms
 ```
@@ -174,6 +176,7 @@ docker run -p 3000:3000 evolution-one-cms
 ### `withApiAuth` Wrapper
 
 Every standard route is wrapped in `withApiAuth`. This HOC handles:
+
 - **Authentication** — verifies the JWT from the HTTP-only cookie.
 - **Database** — ensures the MongoDB connection is established.
 - **User context** — injects `user`, `userRoles`, and `isAdminOrDev` into the handler.
@@ -190,14 +193,17 @@ export async function GET(request: NextRequest) {
 ### ID Pattern
 
 All document IDs are **strings**, never `ObjectId`. Always query with:
+
 ```typescript
-Model.findOne({ _id: id })  // NEVER Model.findById(id)
+Model.findOne({ _id: id }); // NEVER Model.findById(id)
 ```
 
 ### Soft Deletes
 
 ```typescript
-{ $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }] }
+{
+  $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }];
+}
 ```
 
 ---
@@ -206,18 +212,18 @@ Model.findOne({ _id: id })  // NEVER Model.findById(id)
 
 ### Role Hierarchy
 
-| Priority | Role | Access Level |
-| :--- | :--- | :--- |
-| 1 | `developer` | Full platform |
-| 2 | `owner` | Full administrative |
-| 3 | `admin` | Administrative |
-| 4 | `manager` | Operational oversight, all licencee locations |
-| 5 | `location admin` | Assigned locations only (falls back to licencee) |
-| 6 | `vault-manager` | Vault / cage operations |
-| 7 | `cashier` | Cashier operations |
-| 8 | `technician` | Technical operations |
-| 9 | `collector` | Collection operations (strictly assigned locations) |
-| 10 | `reviewer` | Read-only |
+| Priority | Role             | Access Level                                        |
+| :------- | :--------------- | :-------------------------------------------------- |
+| 1        | `developer`      | Full platform                                       |
+| 2        | `owner`          | Full administrative                                 |
+| 3        | `admin`          | Administrative                                      |
+| 4        | `manager`        | Operational oversight, all licencee locations       |
+| 5        | `location admin` | Assigned locations only (falls back to licencee)    |
+| 6        | `vault-manager`  | Vault / cage operations                             |
+| 7        | `cashier`        | Cashier operations                                  |
+| 8        | `technician`     | Technical operations                                |
+| 9        | `collector`      | Collection operations (strictly assigned locations) |
+| 10       | `reviewer`       | Read-only                                           |
 
 ### Multi-Tenant Isolation (Critical)
 
@@ -244,6 +250,7 @@ const scale = getReviewerScale(userPayload);
 ### Cookie Security
 
 Never hardcode `secure: true`. Always use:
+
 ```typescript
 import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 ```
@@ -265,6 +272,7 @@ import { gamingDayRange } from '@/lib/utils/gamingDayRange';
 ### `isEditing` — Transactional State
 
 `CollectionReport.isEditing` controls data integrity:
+
 - `true` (Checked Out) — collections are being modified; machine histories are NOT synced. Unsafe for financial reporting.
 - `false` (Finalized) — machine histories are synchronized; record is auditable.
 
@@ -276,17 +284,17 @@ import { gamingDayRange } from '@/lib/utils/gamingDayRange';
 
 ## 9. Documentation Links
 
-| Topic | Document |
-| :--- | :--- |
-| All API modules | [Project Guide](../PROJECT_GUIDE.md) |
-| Database Models | [database-models.md](./database-models.md) |
-| Page & Tab Access | [api-flows/page-auth-restrictions.md](./api-flows/page-auth-restrictions.md) |
-| Vault Flows | [api-flows/vault-management.md](./api-flows/vault-management.md) |
-| Shift Architecture | [api-flows/shift-management.md](./api-flows/shift-management.md) |
-| Payout / Transactions | [api-flows/payout-flow.md](./api-flows/payout-flow.md) |
-| Collection Reports (Backend) | [collection-report.md](./collection-report.md) |
-| RBAC & Authorization | [.instructions/authorization.md](../../.instructions/authorization.md) |
+| Topic                        | Document                                                                     |
+| :--------------------------- | :--------------------------------------------------------------------------- |
+| All API modules              | [Project Guide](../PROJECT_GUIDE.md)                                         |
+| Database Models              | [database-models.md](./database-models.md)                                   |
+| Page & Tab Access            | [api-flows/page-auth-restrictions.md](./api-flows/page-auth-restrictions.md) |
+| Vault Flows                  | [api-flows/vault-management.md](./api-flows/vault-management.md)             |
+| Shift Architecture           | [api-flows/shift-management.md](./api-flows/shift-management.md)             |
+| Payout / Transactions        | [api-flows/payout-flow.md](./api-flows/payout-flow.md)                       |
+| Collection Reports (Backend) | [collection-report.md](./collection-report.md)                               |
+| RBAC & Authorization         | [.instructions/authorization.md](../../.instructions/authorization.md)       |
 
 ---
 
-*Maintained by the Evolution One Development Team — Lead Engineer: Aaron Hazzard*
+_Maintained by the Evolution One Development Team — Lead Engineer: Aaron Hazzard_

@@ -563,4 +563,3 @@ function fillMissingIntervals(
 
   return filledData;
 }
-

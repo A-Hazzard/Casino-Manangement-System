@@ -1,6 +1,5 @@
 'use client';
 
-
 type MachineNotesInputProps = {
   notes: string;
   onNotesChange: (notes: string) => void;
@@ -27,13 +26,11 @@ export default function CollectionReportFormMachineNotes({
       </label>
       <textarea
         value={notes}
-        onChange={(e) => onNotesChange(e.target.value)}
+        onChange={e => onNotesChange(e.target.value)}
         disabled={disabled}
         className="h-20 w-full rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100"
         placeholder={placeholder}
       />
     </div>
   );
-};
-
-
+}

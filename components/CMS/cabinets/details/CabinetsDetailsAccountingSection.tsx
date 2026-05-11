@@ -36,16 +36,18 @@ export default function CabinetsDetailsAccountingSection({
   onRefresh,
 }: CabinetsDetailsAccountingSectionProps) {
   const { user } = useUserStore();
-  const isTechnicianOnly = user?.roles?.[0] == "technician"
+  const isTechnicianOnly = user?.roles?.[0] == 'technician';
 
   return (
     <div className="mt-8 w-full max-w-full space-y-6 overflow-x-hidden">
       {/* Date Filters */}
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between min-w-0">
-        <div className="min-w-0 flex-1 w-full">
+      <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="w-full min-w-0 flex-1">
           {isTechnicianOnly ? (
             <div className="flex h-10 items-center rounded-lg bg-blue-50 px-4 text-sm font-medium text-blue-700">
-               <span className="mr-2 italic">Showing data within the last hour</span>
+              <span className="mr-2 italic">
+                Showing data within the last hour
+              </span>
             </div>
           ) : (
             <DateFilters
@@ -70,4 +72,3 @@ export default function CabinetsDetailsAccountingSection({
     </div>
   );
 }
-

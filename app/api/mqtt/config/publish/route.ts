@@ -11,6 +11,12 @@
 
 import { validateMQTTConfigPublish } from '@/app/api/lib/helpers/mqtt';
 import { mqttService } from '@/app/api/lib/services/mqttService';
+import {
+  logRouteCreate,
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -27,6 +33,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/mqtt/config/publish';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -43,6 +51,13 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     const validationError = validateMQTTConfigPublish(body);
     if (validationError) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/mqtt/config/publish',
+        validationError,
+        user
+      );
       return NextResponse.json(
         { success: false, error: validationError },
         { status: 400 }
@@ -58,6 +73,14 @@ export async function POST(request: NextRequest) {
     // STEP 4: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/mqtt/config/publish',
+      1,
+      user,
+      duration
+    );
     if (duration > 1000) {
       console.warn(`[MQTT Config Publish API] Completed in ${duration}ms`);
     }
@@ -72,6 +95,13 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/mqtt/config/publish',
+      errorMessage,
+      user
+    );
     console.error(
       `[MQTT Config Publish API] Error after ${duration}ms:`,
       errorMessage
@@ -92,6 +122,19 @@ export async function POST(request: NextRequest) {
  * Get information about the publish endpoint
  */
 export async function GET() {
+  const startTime = Date.now();
+  const functionName = 'GET /api/mqtt/config/publish';
+  const user = extractUserFromRequest({} as NextRequest);
+
+  const duration = Date.now() - startTime;
+  logRouteFetch(
+    functionName,
+    'GET',
+    '/api/mqtt/config/publish',
+    1,
+    user,
+    duration
+  );
   return NextResponse.json({
     success: true,
     message: 'MQTT Config Publish API',
@@ -142,4 +185,3 @@ export async function GET() {
     },
   });
 }
-

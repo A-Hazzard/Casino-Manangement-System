@@ -35,5 +35,3 @@ export function hasMissingCoordinates(location: AggregatedLocation): boolean {
   // Location has missing coords if neither longitude nor longtitude is present, or latitude is missing
   return !hasLatitude || (!hasLongitude && !hasLongtitude);
 }
-
-

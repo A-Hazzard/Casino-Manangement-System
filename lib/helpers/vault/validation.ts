@@ -106,7 +106,8 @@ export function calculateDenominationTotal(
   denominations: Denomination[]
 ): number {
   return denominations.reduce(
-    (sum, denominationItem) => sum + denominationItem.denomination * denominationItem.quantity,
+    (sum, denominationItem) =>
+      sum + denominationItem.denomination * denominationItem.quantity,
     0
   );
 }
@@ -117,9 +118,7 @@ export function calculateDenominationTotal(
  * @param denominations - Array of denomination objects to validate
  * @returns Validation result with errors if invalid
  */
-export function validateDenominationStructure(
-  denominations: Denomination[]
-): {
+export function validateDenominationStructure(denominations: Denomination[]): {
   valid: boolean;
   errors: string[];
   total: number;
@@ -219,7 +218,10 @@ export function formatDenominations(denominations: Denomination[]): string {
   return denominations
     .filter(denominationItem => denominationItem.quantity > 0)
     .sort((first, second) => second.denomination - first.denomination)
-    .map(denominationItem => `$${denominationItem.denomination} × ${denominationItem.quantity}`)
+    .map(
+      denominationItem =>
+        `$${denominationItem.denomination} × ${denominationItem.quantity}`
+    )
     .join(', ');
 }
 

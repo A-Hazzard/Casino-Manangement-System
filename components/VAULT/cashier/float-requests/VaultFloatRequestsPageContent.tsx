@@ -42,9 +42,13 @@ export default function VaultFloatRequestsPageContent() {
   const { user, isVaultReconciled } = useUserStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [pendingRequests, setPendingRequests] = useState<MappedFloatRequest[]>([]);
-  const [requestHistory, setRequestHistory] = useState<MappedFloatRequest[]>([]);
-  
+  const [pendingRequests, setPendingRequests] = useState<MappedFloatRequest[]>(
+    []
+  );
+  const [requestHistory, setRequestHistory] = useState<MappedFloatRequest[]>(
+    []
+  );
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -52,82 +56,104 @@ export default function VaultFloatRequestsPageContent() {
   const ITEMS_PER_PAGE = 20;
 
   // Sort states
-  const [pendingSortOption, setPendingSortOption] = useState<FloatRequestSortOption>('requested');
-  const [pendingSortOrder, setPendingSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [historySortOption, setHistorySortOption] = useState<FloatRequestSortOption>('processed');
-  const [historySortOrder, setHistorySortOrder] = useState<'asc' | 'desc'>('desc');
+  const [pendingSortOption, setPendingSortOption] =
+    useState<FloatRequestSortOption>('requested');
+  const [pendingSortOrder, setPendingSortOrder] = useState<'asc' | 'desc'>(
+    'desc'
+  );
+  const [historySortOption, setHistorySortOption] =
+    useState<FloatRequestSortOption>('processed');
+  const [historySortOrder, setHistorySortOrder] = useState<'asc' | 'desc'>(
+    'desc'
+  );
 
   const fetchRequests = async (isManual = false) => {
     const locationId = user?.assignedLocations?.[0];
-    
-    // For Admins/Devs, we could handle global fetch here if API matures, 
+
+    // For Admins/Devs, we could handle global fetch here if API matures,
     // but at minimum ensure we don't spin forever
     if (!locationId) {
-        setLoading(false);
-        setRefreshing(false);
-        return;
+      setLoading(false);
+      setRefreshing(false);
+      return;
     }
 
     if (isManual) setRefreshing(true);
     else setLoading(true);
 
     try {
-        const [pendingRes, historyRes] = await Promise.all([
-            fetch(`/api/vault/float-request?locationId=${locationId}&status=pending`),
-            fetch(`/api/vault/float-request?locationId=${locationId}&status=all&limit=${ITEMS_PER_PAGE}&page=${currentPage + 1}`)
-        ]);
+      const [pendingRes, historyRes] = await Promise.all([
+        fetch(
+          `/api/vault/float-request?locationId=${locationId}&status=pending`
+        ),
+        fetch(
+          `/api/vault/float-request?locationId=${locationId}&status=all&limit=${ITEMS_PER_PAGE}&page=${currentPage + 1}`
+        ),
+      ]);
 
-        if (pendingRes.ok) {
-            const data = await pendingRes.json();
-            if (data.success) {
-                setPendingRequests(mapRequests(data.data || []));
-            }
+      if (pendingRes.ok) {
+        const data = await pendingRes.json();
+        if (data.success) {
+          setPendingRequests(mapRequests(data.data || []));
         }
+      }
 
-        if (historyRes.ok) {
-            const data = await historyRes.json();
-            if (data.success) {
-                // Filter out pending from history to avoid duplication if API returns them in 'all'
-                const historyRaw: Record<string, unknown>[] = data.data || [];
-                const historyFiltered = historyRaw.filter((r) => r.status !== 'pending');
-                setRequestHistory(mapRequests(historyFiltered));
-                
-                // Handle pagination info from API if available, otherwise estimate
-                if (data.pagination) {
-                    setTotalPages(data.pagination.totalPages || 1);
-                    setTotalItems(data.pagination.totalItems || historyFiltered.length);
-                } else if (data.total) { // Alternate structure
-                    setTotalItems(data.total);
-                    setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
-                }
-            }
+      if (historyRes.ok) {
+        const data = await historyRes.json();
+        if (data.success) {
+          // Filter out pending from history to avoid duplication if API returns them in 'all'
+          const historyRaw: Record<string, unknown>[] = data.data || [];
+          const historyFiltered = historyRaw.filter(
+            r => r.status !== 'pending'
+          );
+          setRequestHistory(mapRequests(historyFiltered));
+
+          // Handle pagination info from API if available, otherwise estimate
+          if (data.pagination) {
+            setTotalPages(data.pagination.totalPages || 1);
+            setTotalItems(data.pagination.totalItems || historyFiltered.length);
+          } else if (data.total) {
+            // Alternate structure
+            setTotalItems(data.total);
+            setTotalPages(Math.ceil(data.total / ITEMS_PER_PAGE));
+          }
         }
-
+      }
     } catch (error) {
-        console.error('Failed to fetch requests', error);
-        toast.error('Failed to load float requests');
+      console.error('Failed to fetch requests', error);
+      toast.error('Failed to load float requests');
     } finally {
-        setLoading(false);
-        setRefreshing(false);
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const mapRequests = (data: Record<string, unknown>[]): MappedFloatRequest[] => {
-      return data.map(r => ({
-          id: String(r._id || ''),
-          cashier: String(r.cashierName || r.cashierId || 'Unknown'),
-          cashierId: String(r.cashierId || ''),
-          station: 'Cash Desk',
-          type: String(r.type || '').toLowerCase() === 'decrease' ? 'Decrease' : 'Increase',
-          amount: Number(r.requestedAmount || 0),
-          reason: String(r.requestNotes || ''),
-          status: r.status === 'denied' ? 'rejected' : 
-                  r.status === 'approved' || r.status === 'approved_vm' ? 'approved' : 
-                  'pending',
-          requested: String(r.requestedAt || r.createdAt || ''),
-          processed: String(r.processedAt || r.updatedAt || ''),
-          processedBy: String(r.processedByName || r.processedBy || 'Vault Manager')
-      }));
+  const mapRequests = (
+    data: Record<string, unknown>[]
+  ): MappedFloatRequest[] => {
+    return data.map(r => ({
+      id: String(r._id || ''),
+      cashier: String(r.cashierName || r.cashierId || 'Unknown'),
+      cashierId: String(r.cashierId || ''),
+      station: 'Cash Desk',
+      type:
+        String(r.type || '').toLowerCase() === 'decrease'
+          ? 'Decrease'
+          : 'Increase',
+      amount: Number(r.requestedAmount || 0),
+      reason: String(r.requestNotes || ''),
+      status:
+        r.status === 'denied'
+          ? 'rejected'
+          : r.status === 'approved' || r.status === 'approved_vm'
+            ? 'approved'
+            : 'pending',
+      requested: String(r.requestedAt || r.createdAt || ''),
+      processed: String(r.processedAt || r.updatedAt || ''),
+      processedBy: String(
+        r.processedByName || r.processedBy || 'Vault Manager'
+      ),
+    }));
   };
 
   useEffect(() => {
@@ -140,108 +166,155 @@ export default function VaultFloatRequestsPageContent() {
     if (totalItemsCount < 2) return;
 
     const interval = setInterval(() => {
-        fetchRequests(true); // Silent refresh
-    }, DEFAULT_POLL_INTERVAL); 
+      fetchRequests(true); // Silent refresh
+    }, DEFAULT_POLL_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [user?.assignedLocations, currentPage, pendingRequests.length, requestHistory.length]);
+  }, [
+    user?.assignedLocations,
+    currentPage,
+    pendingRequests.length,
+    requestHistory.length,
+  ]);
 
   // Actions
   const handleApprove = async (requestId: string) => {
     if (!isVaultReconciled) {
       toast.error('Reconciliation Required', {
-        description: 'Please perform the mandatory opening reconciliation before approving requests.'
+        description:
+          'Please perform the mandatory opening reconciliation before approving requests.',
       });
       return;
     }
     try {
-        const res = await fetch(`/api/vault/float-requests/${requestId}/approve`, {
-            method: 'POST', // or PUT
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ approved: true }) // Body might be needed
-        });
-        const data = await res.json();
-        if (data.success) {
-            toast.success(`Request approved`);
-            fetchRequests();
-        } else {
-            toast.error(data.error || 'Failed to approve');
+      const res = await fetch(
+        `/api/vault/float-requests/${requestId}/approve`,
+        {
+          method: 'POST', // or PUT
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ approved: true }), // Body might be needed
         }
+      );
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Request approved`);
+        fetchRequests();
+      } else {
+        toast.error(data.error || 'Failed to approve');
+      }
     } catch (error) {
-        toast.error('Connection error');
-        console.error('Failed to approve request', error);
+      toast.error('Connection error');
+      console.error('Failed to approve request', error);
     }
   };
 
   const handleReject = async (requestId: string) => {
     if (!isVaultReconciled) {
       toast.error('Reconciliation Required', {
-        description: 'Please perform the mandatory opening reconciliation before rejecting requests.'
+        description:
+          'Please perform the mandatory opening reconciliation before rejecting requests.',
       });
       return;
     }
     try {
-        const res = await fetch(`/api/vault/float-requests/${requestId}/reject`, {
-             method: 'POST',
-             headers: { 'Content-Type': 'application/json' },
-             body: JSON.stringify({ approved: false }) // Just in case
-        });
-        const data = await res.json();
-        if (data.success) {
-            toast.success(`Request rejected`);
-            fetchRequests();
-        } else {
-            toast.error(data.error || 'Failed to reject');
-        }
+      const res = await fetch(`/api/vault/float-requests/${requestId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approved: false }), // Just in case
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Request rejected`);
+        fetchRequests();
+      } else {
+        toast.error(data.error || 'Failed to reject');
+      }
     } catch (error) {
-        toast.error('Connection error');
-        console.error('Failed to reject request', error);
+      toast.error('Connection error');
+      console.error('Failed to reject request', error);
     }
   };
 
   // Sorting Logic (Client Side)
-  const sortData = (data: MappedFloatRequest[], option: FloatRequestSortOption, order: 'asc' | 'desc') => {
-      return [...data].sort((a, b) => {
-          let aValue: string | number;
-          let bValue: string | number;
-          
-          switch(option) {
-              case 'amount': aValue = Math.abs(a.amount); bValue = Math.abs(b.amount); break;
-              case 'requested': aValue = new Date(a.requested).getTime(); bValue = new Date(b.requested).getTime(); break;
-              case 'processed': aValue = new Date(a.processed).getTime(); bValue = new Date(b.processed).getTime(); break;
-              case 'cashier': aValue = (a.cashier || '').toLowerCase(); bValue = (b.cashier || '').toLowerCase(); break;
-              case 'type': aValue = (a.type || '').toLowerCase(); bValue = (b.type || '').toLowerCase(); break;
-              case 'status': aValue = (a.status || '').toLowerCase(); bValue = (b.status || '').toLowerCase(); break;
-              default: return 0;
-          }
+  const sortData = (
+    data: MappedFloatRequest[],
+    option: FloatRequestSortOption,
+    order: 'asc' | 'desc'
+  ) => {
+    return [...data].sort((a, b) => {
+      let aValue: string | number;
+      let bValue: string | number;
 
-          if (aValue < bValue) return order === 'asc' ? -1 : 1;
-          if (aValue > bValue) return order === 'asc' ? 1 : -1;
+      switch (option) {
+        case 'amount':
+          aValue = Math.abs(a.amount);
+          bValue = Math.abs(b.amount);
+          break;
+        case 'requested':
+          aValue = new Date(a.requested).getTime();
+          bValue = new Date(b.requested).getTime();
+          break;
+        case 'processed':
+          aValue = new Date(a.processed).getTime();
+          bValue = new Date(b.processed).getTime();
+          break;
+        case 'cashier':
+          aValue = (a.cashier || '').toLowerCase();
+          bValue = (b.cashier || '').toLowerCase();
+          break;
+        case 'type':
+          aValue = (a.type || '').toLowerCase();
+          bValue = (b.type || '').toLowerCase();
+          break;
+        case 'status':
+          aValue = (a.status || '').toLowerCase();
+          bValue = (b.status || '').toLowerCase();
+          break;
+        default:
           return 0;
-      });
+      }
+
+      if (aValue < bValue) return order === 'asc' ? -1 : 1;
+      if (aValue > bValue) return order === 'asc' ? 1 : -1;
+      return 0;
+    });
   };
 
-  const sortedPendingRequests = useMemo(() => sortData(pendingRequests, pendingSortOption, pendingSortOrder), [pendingRequests, pendingSortOption, pendingSortOrder]);
-  const sortedRequestHistory = useMemo(() => sortData(requestHistory, historySortOption, historySortOrder), [requestHistory, historySortOption, historySortOrder]);
+  const sortedPendingRequests = useMemo(
+    () => sortData(pendingRequests, pendingSortOption, pendingSortOrder),
+    [pendingRequests, pendingSortOption, pendingSortOrder]
+  );
+  const sortedRequestHistory = useMemo(
+    () => sortData(requestHistory, historySortOption, historySortOrder),
+    [requestHistory, historySortOption, historySortOrder]
+  );
 
   const handlePendingSort = (column: FloatRequestSortOption) => {
-     if (pendingSortOption === column) setPendingSortOrder(pendingSortOrder === 'asc' ? 'desc' : 'asc');
-     else { setPendingSortOption(column); setPendingSortOrder('asc'); }
+    if (pendingSortOption === column)
+      setPendingSortOrder(pendingSortOrder === 'asc' ? 'desc' : 'asc');
+    else {
+      setPendingSortOption(column);
+      setPendingSortOrder('asc');
+    }
   };
 
   const handleHistorySort = (column: FloatRequestSortOption) => {
-     if (historySortOption === column) setHistorySortOrder(historySortOrder === 'asc' ? 'desc' : 'asc');
-     else { setHistorySortOption(column); setHistorySortOrder('asc'); }
+    if (historySortOption === column)
+      setHistorySortOrder(historySortOrder === 'asc' ? 'desc' : 'asc');
+    else {
+      setHistorySortOption(column);
+      setHistorySortOrder('asc');
+    }
   };
 
   if (loading && pendingRequests.length === 0 && requestHistory.length === 0) {
-      return (
-        <PageLayout>
-             <div className="flex h-[50vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-            </div>
-        </PageLayout>
-      );
+    return (
+      <PageLayout>
+        <div className="flex h-[50vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      </PageLayout>
+    );
   }
 
   return (
@@ -261,51 +334,53 @@ export default function VaultFloatRequestsPageContent() {
             size="sm"
             className="h-9 px-3 text-gray-400 hover:text-blue-600"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+            />
             Refresh
           </Button>
         </VaultManagerHeader>
 
-      {/* Pending Requests Section */}
-      {sortedPendingRequests.length > 0 && (
+        {/* Pending Requests Section */}
+        {sortedPendingRequests.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-orangeHighlight" />
+              <h2 className="text-lg font-semibold text-gray-900">
+                Pending Requests ({sortedPendingRequests.length})
+              </h2>
+            </div>
+
+            <VaultFloatRequestsTable
+              requests={sortedPendingRequests}
+              sortOption={pendingSortOption}
+              sortOrder={pendingSortOrder}
+              onSort={handlePendingSort}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              showActions={true}
+              showHistory={false}
+              disabled={!isVaultReconciled}
+            />
+          </div>
+        )}
+
+        {/* Request History Section */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-orangeHighlight" />
+            <CheckCircle2 className="h-5 w-5 text-button" />
             <h2 className="text-lg font-semibold text-gray-900">
-              Pending Requests ({sortedPendingRequests.length})
+              Request History
             </h2>
           </div>
 
           <VaultFloatRequestsTable
-            requests={sortedPendingRequests}
-            sortOption={pendingSortOption}
-            sortOrder={pendingSortOrder}
-            onSort={handlePendingSort}
-            onApprove={handleApprove}
-            onReject={handleReject}
-            showActions={true}
-            showHistory={false}
-            disabled={!isVaultReconciled}
+            requests={sortedRequestHistory}
+            sortOption={historySortOption}
+            sortOrder={historySortOrder}
+            onSort={handleHistorySort}
+            showHistory={true}
           />
-
-
-        </div>
-      )}
-
-      {/* Request History Section */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5 text-button" />
-          <h2 className="text-lg font-semibold text-gray-900">Request History</h2>
-        </div>
-
-        <VaultFloatRequestsTable
-          requests={sortedRequestHistory}
-          sortOption={historySortOption}
-          sortOrder={historySortOrder}
-          onSort={handleHistorySort}
-          showHistory={true}
-        />
 
           {totalPages > 0 && (
             <PaginationControls
@@ -316,7 +391,7 @@ export default function VaultFloatRequestsPageContent() {
               showTotalCount
             />
           )}
-      </div>
+        </div>
       </div>
     </PageLayout>
   );

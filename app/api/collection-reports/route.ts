@@ -27,7 +27,16 @@ import {
 import { getAllCollectionReportsWithMachineCounts } from '@/app/api/lib/helpers/collectionReport/service';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import type { TimePeriod } from '@/app/api/lib/types';
-import { getReviewerScale } from '@/app/api/lib/utils/reviewerScale';
+import {
+  logRouteFetch,
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import {
+  getMoneyInScale,
+  getMoneyOutAndJackpotScale,
+} from '@/app/api/lib/utils/reviewerScale';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import { resolveLicenceeId } from '@/lib/utils/licencee';
@@ -64,6 +73,8 @@ import { getUserFromServer } from '../lib/helpers/users';
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/collection-reports';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -88,8 +99,15 @@ export async function GET(req: NextRequest) {
           rawLicenceeParam,
           includeMachines
         );
-        if (!result || (result.locations && Array.isArray(result.locations) && result.locations.length === 0)) {
-          console.warn('[Collection Reports GET] No locations found or fetch failed');
+        if (
+          !result ||
+          (result.locations &&
+            Array.isArray(result.locations) &&
+            result.locations.length === 0)
+        ) {
+          console.warn(
+            '[Collection Reports GET] No locations found or fetch failed'
+          );
         }
         return NextResponse.json(result);
       } catch (error: unknown) {
@@ -97,8 +115,22 @@ export async function GET(req: NextRequest) {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
         if (errorMessage === 'Unauthorized') {
+          logRouteError(
+            functionName,
+            'GET',
+            '/api/collection-reports',
+            'Unauthorized',
+            user
+          );
           return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/collection-reports',
+          errorMessage,
+          user
+        );
         console.error(
           `[Collection Reports GET API] Error fetching locations with machines after ${duration}ms:`,
           errorMessage
@@ -148,8 +180,19 @@ export async function GET(req: NextRequest) {
         console.warn('[Collection Reports GET] Failed to fetch summary');
       }
       if (details.length === 0) {
-        console.warn('[Collection Reports GET] No details found for location report');
+        console.warn(
+          '[Collection Reports GET] No details found for location report'
+        );
       }
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/collection-reports',
+        details.length,
+        user,
+        duration
+      );
       return NextResponse.json({ summary, details });
     }
 
@@ -168,14 +211,29 @@ export async function GET(req: NextRequest) {
     const userPayload = await getUserFromServer();
     if (!userPayload) {
       const duration = Date.now() - startTime;
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/collection-reports',
+        'Unauthorized',
+        user
+      );
       console.error(
         `[Collection Reports GET API] Unauthorized access after ${duration}ms.`
       );
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Reviewer scale — non-reviewers always get 1 (no transformation).
-    const reviewerScale = getReviewerScale(userPayload as { multiplier?: number | null; roles?: string[] });
+    // Reviewer scales — non-reviewers always get 1 (no transformation).
+    const moneyInScale = getMoneyInScale(
+      userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+    );
+    const moneyOutScale = getMoneyOutAndJackpotScale(
+      userPayload as {
+        moneyOutAndJackpotMultiplier?: number | null;
+        roles?: string[];
+      }
+    );
 
     const userRoles = (userPayload?.roles as string[]) || [];
     // Use only new field
@@ -225,13 +283,17 @@ export async function GET(req: NextRequest) {
       endDate,
       page,
       limit,
-      reviewerScale,
+      moneyInScale,
+      moneyOutScale,
       locationIds || (locationId ? [locationId] : undefined)
     );
 
     if (!reports || !Array.isArray(reports)) {
       console.error('[Collection Reports GET] Failed to fetch reports');
-      return NextResponse.json({ error: 'Failed to fetch reports' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to fetch reports' },
+        { status: 500 }
+      );
     }
 
     // Filter reports by allowed locations if needed
@@ -241,8 +303,13 @@ export async function GET(req: NextRequest) {
       const allowedLocationNames =
         await getLocationNamesFromIds(allowedLocationIds);
       if (!Array.isArray(allowedLocationNames)) {
-        console.error('[Collection Reports GET] Failed to fetch location names');
-        return NextResponse.json({ error: 'Failed to fetch location names' }, { status: 500 });
+        console.error(
+          '[Collection Reports GET] Failed to fetch location names'
+        );
+        return NextResponse.json(
+          { error: 'Failed to fetch location names' },
+          { status: 500 }
+        );
       }
       paginatedReports = reports.filter(report => {
         const reportLocationName = String(report.location);
@@ -255,6 +322,16 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     // STEP 9: Return paginated results
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/collection-reports',
+      paginatedReports.length,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       data: paginatedReports,
       pagination: {
@@ -268,6 +345,13 @@ export async function GET(req: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/collection-reports',
+      errorMessage,
+      user
+    );
     console.error(
       `[Collection Reports GET API] Error after ${duration}ms:`,
       errorMessage
@@ -304,6 +388,8 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/collection-reports';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -394,14 +480,20 @@ export async function POST(req: NextRequest) {
 
         // Add granular machine data to changes for better traceability
         if (body.machines && Array.isArray(body.machines)) {
-          body.machines.forEach((machineItem: Record<string, unknown>, index: number) => {
-            const machineName = machineItem.machineCustomName || machineItem.machineName || machineItem.serialNumber || `Machine ${index + 1}`;
-            createChanges.push({
-              field: `machine_${index}_details`,
-              oldValue: null,
-              newValue: `${machineName}: In: ${machineItem.metersIn}, Out: ${machineItem.metersOut}${machineItem.prevIn !== undefined ? ` (Prev: ${machineItem.prevIn} In, ${machineItem.prevOut} Out)` : ''}${machineItem.ramClear ? ', RAM Cleared' : ''}${machineItem.notes ? `, Notes: ${machineItem.notes}` : ''}`,
-            });
-          });
+          body.machines.forEach(
+            (machineItem: Record<string, unknown>, index: number) => {
+              const machineName =
+                machineItem.machineCustomName ||
+                machineItem.machineName ||
+                machineItem.serialNumber ||
+                `Machine ${index + 1}`;
+              createChanges.push({
+                field: `machine_${index}_details`,
+                oldValue: null,
+                newValue: `${machineName}: In: ${machineItem.metersIn}, Out: ${machineItem.metersOut}${machineItem.prevIn !== undefined ? ` (Prev: ${machineItem.prevIn} In, ${machineItem.prevOut} Out)` : ''}${machineItem.ramClear ? ', RAM Cleared' : ''}${machineItem.notes ? `, Notes: ${machineItem.notes}` : ''}`,
+              });
+            }
+          );
         }
 
         const userId = (currentUser._id ||
@@ -444,11 +536,28 @@ export async function POST(req: NextRequest) {
     // ============================================================================
     // STEP 6: Return success response
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/collection-reports',
+      1,
+      user,
+      duration
+    );
+
     return NextResponse.json({ success: true, report: result.report });
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/collection-reports',
+      errorMessage,
+      user
+    );
     console.error(
       `[Collection Reports POST API] Error after ${duration}ms:`,
       errorMessage

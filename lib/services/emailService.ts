@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 
 /**
  * Email Service
- * 
+ *
  * Provides utility for sending emails using Gmail SMTP.
  * Used for 2FA recovery and other system communications.
  */
@@ -26,8 +26,17 @@ export async function sendEmail({
   text: string;
   html?: string;
 }) {
-  if (!to || typeof to !== 'string' || !subject || typeof subject !== 'string' || !text || typeof text !== 'string') {
-    console.error('[sendEmail] to, subject, and text are required and must be strings');
+  if (
+    !to ||
+    typeof to !== 'string' ||
+    !subject ||
+    typeof subject !== 'string' ||
+    !text ||
+    typeof text !== 'string'
+  ) {
+    console.error(
+      '[sendEmail] to, subject, and text are required and must be strings'
+    );
     return { success: false, error: 'Missing required parameters' };
   }
 
@@ -47,14 +56,24 @@ export async function sendEmail({
   }
 }
 
-export async function send2FARecoveryEmail(email: string, recoveryToken: string) {
-  if (!email || typeof email !== 'string' || !recoveryToken || typeof recoveryToken !== 'string') {
-    console.error('[send2FARecoveryEmail] email and recoveryToken are required and must be strings');
+export async function send2FARecoveryEmail(
+  email: string,
+  recoveryToken: string
+) {
+  if (
+    !email ||
+    typeof email !== 'string' ||
+    !recoveryToken ||
+    typeof recoveryToken !== 'string'
+  ) {
+    console.error(
+      '[send2FARecoveryEmail] email and recoveryToken are required and must be strings'
+    );
     return { success: false, error: 'Missing required parameters' };
   }
 
   const recoveryUrl = `${process.env.API_BASE_URL}/auth/recovery/2fa?token=${recoveryToken}`;
-  
+
   const subject = '2FA Recovery - Evolution One CMS';
   const text = `You requested a 2FA reset. Please use the following link to reset your authenticator: ${recoveryUrl}`;
   const html = `

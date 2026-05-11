@@ -220,7 +220,12 @@ export const fetchDashboardTotals = async (
     const totals = locationData.data.reduce(
       (
         acc: DashboardTotals,
-        loc: { moneyIn?: number; moneyOut?: number; gross?: number; jackpot?: number }
+        loc: {
+          moneyIn?: number;
+          moneyOut?: number;
+          gross?: number;
+          jackpot?: number;
+        }
       ) => ({
         moneyIn: acc.moneyIn + (loc.moneyIn || 0),
         moneyOut: acc.moneyOut + (loc.moneyOut || 0),
@@ -351,39 +356,39 @@ export const fetchMetricsData = async (
     ),
     selectedLicencee
       ? switchFilter(
-        activeMetricsFilter,
-        () => { }, // Don't set totals here, we already did it above
-        setChartData,
-        activeMetricsFilter === 'Custom'
-          ? customDateRange.startDate
-          : undefined,
-        activeMetricsFilter === 'Custom'
-          ? customDateRange.endDate
-          : undefined,
-        selectedLicencee,
-        setActiveFilters,
-        setShowDatePicker,
-        displayCurrency,
-        signal,
-        granularity
-      )
+          activeMetricsFilter,
+          () => {}, // Don't set totals here, we already did it above
+          setChartData,
+          activeMetricsFilter === 'Custom'
+            ? customDateRange.startDate
+            : undefined,
+          activeMetricsFilter === 'Custom'
+            ? customDateRange.endDate
+            : undefined,
+          selectedLicencee,
+          setActiveFilters,
+          setShowDatePicker,
+          displayCurrency,
+          signal,
+          granularity
+        )
       : switchFilter(
-        activeMetricsFilter,
-        () => { }, // Don't set totals here, we already did it above
-        setChartData,
-        activeMetricsFilter === 'Custom'
-          ? customDateRange.startDate
-          : undefined,
-        activeMetricsFilter === 'Custom'
-          ? customDateRange.endDate
-          : undefined,
-        undefined,
-        setActiveFilters,
-        setShowDatePicker,
-        displayCurrency,
-        signal,
-        granularity
-      ),
+          activeMetricsFilter,
+          () => {}, // Don't set totals here, we already did it above
+          setChartData,
+          activeMetricsFilter === 'Custom'
+            ? customDateRange.startDate
+            : undefined,
+          activeMetricsFilter === 'Custom'
+            ? customDateRange.endDate
+            : undefined,
+          undefined,
+          setActiveFilters,
+          setShowDatePicker,
+          displayCurrency,
+          signal,
+          granularity
+        ),
   ]);
 };
 
@@ -525,4 +530,3 @@ export const handleDashboardRefresh = async (
     setLoadingTopPerforming(false);
   }
 };
-

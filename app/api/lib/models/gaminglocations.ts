@@ -43,7 +43,7 @@ const GamingLocationsSchema = new Schema(
       longitude: Number,
       longtitude: Number,
     },
-    // Membership configuration
+
     membershipEnabled: {
       type: Boolean,
       default: false,
@@ -74,6 +74,8 @@ const GamingLocationsSchema = new Schema(
     status: String,
     statusHistory: [Schema.Types.Mixed],
     noSMIBLocation: Boolean,
+    fullSMIBs: Boolean,
+    semiSMIBs: Boolean,
   },
   {
     timestamps: true,
@@ -81,8 +83,6 @@ const GamingLocationsSchema = new Schema(
   }
 );
 
-// Unique index for name only for active locations
-// This allows soft-deleted locations to have the same name as new active ones
 GamingLocationsSchema.index(
   { name: 1 },
   {
@@ -92,18 +92,13 @@ GamingLocationsSchema.index(
   }
 );
 
-// Critical indexes for aggregation performance
-GamingLocationsSchema.index({ 'rel.licencee': 1, deletedAt: 1 }); // Primary UK spelling
-GamingLocationsSchema.index({ deletedAt: 1 }); // For active locations
-GamingLocationsSchema.index({ _id: 1, deletedAt: 1 }); // For location lookups
+GamingLocationsSchema.index({ 'rel.licencee': 1, deletedAt: 1 });
+GamingLocationsSchema.index({ deletedAt: 1 });
+GamingLocationsSchema.index({ _id: 1, deletedAt: 1 });
 GamingLocationsSchema.index({
   membershipEnabled: 1,
   deletedAt: 1,
-}); // For membership-enabled location queries
+});
 
-/**
- * Mongoose model for gaming locations, including schema for address, geo-coordinates, and status.
- */
 export const GamingLocations =
   models.GamingLocations || model('GamingLocations', GamingLocationsSchema);
-

@@ -1,8 +1,8 @@
 # Sessions & Operations Page Implementation (`/sessions`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -15,6 +15,7 @@ Real-time floor monitoring and session forensic replay.
 ## 2. Data & API Architecture (By Section)
 
 ### 📋 Session History Table
+
 The central grid for searching and auditing player journeys.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -27,6 +28,7 @@ The central grid for searching and auditing player journeys.
 - **Implementation**: `SessionsPageContent` using the `useSessions` hook for server-side pagination.
 
 ### 🕵️ Session Details Panel
+
 The side-drawer or modal providing a deep-dive into a specific record.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -38,6 +40,7 @@ The side-drawer or modal providing a deep-dive into a specific record.
 - **Implementation**: `SessionDetailsDrawer` component triggered by row selection.
 
 ### ⚙️ Member Loyalty Settings
+
 Displays the jurisdictional and loyalty parameters active during the play session.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -48,6 +51,7 @@ Displays the jurisdictional and loyalty parameters active during the play sessio
 - **Implementation**: `renderLocationSettings` helper within the details view.
 
 ### 💓 Real-time Operations Ticker
+
 Live feed of floor activity for instant situational awareness.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -62,7 +66,7 @@ Live feed of floor activity for instant situational awareness.
 ## 3. Interaction & Filtering
 
 - **Dynamic Search**: The `Search` input supports partial matching for Session IDs and Machine Asset Names. The API returns results sorted by a custom **Relevance Score**.
-- **Role Detection**: 
+- **Role Detection**:
   - **Managers**: Can see PII (First/Last Names) of members.
   - **Security/Auditors**: Can view raw hexadecimal trace logs for technical troubleshooting.
   - **Standard Staff**: See masked member IDs to comply with data privacy regulations.
@@ -84,4 +88,5 @@ Live feed of floor activity for instant situational awareness.
 - **Responsive Design**: The table collapses into a "Mobile-Card" view on smaller screens, prioritizing `MachineAsset` and `Status`.
 
 ---
+
 **Internal Document** - Engineering Team

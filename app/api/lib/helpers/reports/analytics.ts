@@ -36,7 +36,9 @@ function buildMachineAnalyticsPipeline(
   limit?: number
 ): PipelineStage[] {
   if (allowedLocationIds !== 'all' && !Array.isArray(allowedLocationIds)) {
-    console.error('[buildMachineAnalyticsPipeline] allowedLocationIds must be array or "all"');
+    console.error(
+      '[buildMachineAnalyticsPipeline] allowedLocationIds must be array or "all"'
+    );
     return [];
   }
   const pipeline: PipelineStage[] = [];
@@ -84,9 +86,7 @@ function buildMachineAnalyticsPipeline(
   if (selectedLicencee) {
     pipeline.push({
       $match: {
-        $or: [
-        { 'locationDetails.rel.licencee': selectedLicencee }
-        ],
+        $or: [{ 'locationDetails.rel.licencee': selectedLicencee }],
       },
     } as PipelineStage);
   }
@@ -183,7 +183,9 @@ function buildMachineStatsMatchStage(
   allowedLocationIds: string[] | 'all'
 ): Record<string, unknown> {
   if (allowedLocationIds !== 'all' && !Array.isArray(allowedLocationIds)) {
-    console.error('[buildMachineStatsMatchStage] allowedLocationIds must be array or "all"');
+    console.error(
+      '[buildMachineStatsMatchStage] allowedLocationIds must be array or "all"'
+    );
     return {};
   }
   const matchStage: Record<string, unknown> = {
@@ -207,8 +209,12 @@ export async function getMachineStatsForAnalytics(
   allowedLocationIds: string[] | 'all'
 ): Promise<MachineStatsResult> {
   if (allowedLocationIds === undefined || allowedLocationIds === null) {
-    console.error('[getMachineStatsForAnalytics] allowedLocationIds is required');
-    throw new Error('[getMachineStatsForAnalytics] allowedLocationIds is required');
+    console.error(
+      '[getMachineStatsForAnalytics] allowedLocationIds is required'
+    );
+    throw new Error(
+      '[getMachineStatsForAnalytics] allowedLocationIds is required'
+    );
   }
 
   const db = await connectDB();
@@ -231,7 +237,14 @@ export async function getMachineStatsForAnalytics(
           as: 'locationDetails',
         },
       },
-      { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
+      {
+        $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
+      },
+      {
+        $match: {
+          $and: [{ relayId: { $ne: null } }, { relayId: { $ne: '' } }],
+        },
+      },
       {
         $group: {
           _id: null,
@@ -243,23 +256,40 @@ export async function getMachineStatsForAnalytics(
             $sum: {
               $cond: [
                 {
-                  $or: [
-                    { $eq: ['$locationDetails.aceEnabled', true] },
+                  $and: [
+                    { $ne: ['$relayId', null] },
+                    { $ne: ['$relayId', ''] },
                     {
-                      $and: [
-                        { $gt: ['$lastActivity', null] },
-                        { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, onlineThreshold] }
-                      ]
-                    }
-                  ]
+                      $or: [
+                        { $eq: ['$locationDetails.aceEnabled', true] },
+                        {
+                          $and: [
+                            { $gt: ['$lastActivity', null] },
+                            {
+                              $gte: [
+                                {
+                                  $convert: {
+                                    input: '$lastActivity',
+                                    to: 'date',
+                                    onError: new Date(0),
+                                  },
+                                },
+                                onlineThreshold,
+                              ],
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
                 },
                 1,
-                0
-              ]
-            }
-          }
-        }
-      }
+                0,
+              ],
+            },
+          },
+        },
+      },
     ]).exec(),
     Machine.aggregate([
       { $match: machineMatchStage },
@@ -271,7 +301,9 @@ export async function getMachineStatsForAnalytics(
           as: 'locationDetails',
         },
       },
-      { $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true } },
+      {
+        $unwind: { path: '$locationDetails', preserveNullAndEmptyArrays: true },
+      },
       {
         $lookup: {
           from: 'licencees',
@@ -286,7 +318,10 @@ export async function getMachineStatsForAnalytics(
           rawMoneyOut: { $ifNull: ['$sasMeters.totalCancelledCredits', 0] },
           jackpot: { $ifNull: ['$sasMeters.jackpot', 0] },
           includeJackpot: {
-            $ifNull: [{ $arrayElemAt: ['$licenceeDetails.includeJackpot', 0] }, false],
+            $ifNull: [
+              { $arrayElemAt: ['$licenceeDetails.includeJackpot', 0] },
+              false,
+            ],
           },
         },
       },
@@ -369,7 +404,10 @@ export type DashboardAnalyticsResult = {
  * @param licencee - Licencee ID to filter by
  * @returns Aggregation pipeline stages
  */
-function buildDashboardAnalyticsPipeline(licencee: string, includeJackpot: boolean = false): PipelineStage[] {
+function buildDashboardAnalyticsPipeline(
+  licencee: string,
+  includeJackpot: boolean = false
+): PipelineStage[] {
   if (!licencee) {
     console.error('[buildDashboardAnalyticsPipeline] licencee is required');
     return [];
@@ -389,9 +427,7 @@ function buildDashboardAnalyticsPipeline(licencee: string, includeJackpot: boole
     },
     {
       $match: {
-        $or: [
-          { 'locationDetails.rel.licencee': licencee }
-        ],
+        $or: [{ 'locationDetails.rel.licencee': licencee }],
       },
     },
     {
@@ -412,14 +448,25 @@ function buildDashboardAnalyticsPipeline(licencee: string, includeJackpot: boole
                   {
                     $and: [
                       { $gt: ['$lastActivity', null] },
-                      { $gte: [{ $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } }, onlineThreshold] }
-                    ]
-                  }
-                ]
+                      {
+                        $gte: [
+                          {
+                            $convert: {
+                              input: '$lastActivity',
+                              to: 'date',
+                              onError: new Date(0),
+                            },
+                          },
+                          onlineThreshold,
+                        ],
+                      },
+                    ],
+                  },
+                ],
               },
               1,
-              0
-            ]
+              0,
+            ],
           },
         },
         sasMachines: {
@@ -466,10 +513,20 @@ export async function getDashboardAnalytics(
 ): Promise<DashboardAnalyticsResult> {
   if (!licencee) {
     console.error('[getDashboardAnalytics] licencee is required');
-    return { totalDrop: 0, totalCancelledCredits: 0, totalGross: 0, totalMachines: 0, onlineMachines: 0, sasMachines: 0 };
+    return {
+      totalDrop: 0,
+      totalCancelledCredits: 0,
+      totalGross: 0,
+      totalMachines: 0,
+      onlineMachines: 0,
+      sasMachines: 0,
+    };
   }
 
-  const licenceeDoc = await Licencee.findOne({ _id: licencee }).lean<Record<string, unknown> | null>();
+  const licenceeDoc = await Licencee.findOne({ _id: licencee }).lean<Record<
+    string,
+    unknown
+  > | null>();
   const includeJackpot = !!licenceeDoc?.includeJackpot;
 
   const pipeline = buildDashboardAnalyticsPipeline(licencee, includeJackpot);
@@ -610,7 +667,9 @@ function applyChartsCurrencyConversion(
     return series || [];
   }
   if (!displayCurrency) {
-    console.error('[applyChartsCurrencyConversion] displayCurrency is required');
+    console.error(
+      '[applyChartsCurrencyConversion] displayCurrency is required'
+    );
     return series || [];
   }
   if (!shouldApplyCurrencyConversion(licencee)) {
@@ -671,10 +730,18 @@ export async function getChartsData(
     period === 'last7days' ? subDays(endDate, 7) : subDays(endDate, 30);
   const licenceeId = licencee;
 
-  const licenceeDoc2 = await Licencee.findOne({ _id: licencee }).lean<Record<string, unknown> | null>();
+  const licenceeDoc2 = await Licencee.findOne({ _id: licencee }).lean<Record<
+    string,
+    unknown
+  > | null>();
   const includeJackpot = !!licenceeDoc2?.includeJackpot;
 
-  const chartsPipeline = buildChartsPipeline(licenceeId, startDate, endDate, includeJackpot);
+  const chartsPipeline = buildChartsPipeline(
+    licenceeId,
+    startDate,
+    endDate,
+    includeJackpot
+  );
   // Use cursor for Meters aggregation
   const series: Array<Record<string, unknown>> = [];
   const seriesCursor = Meters.aggregate(chartsPipeline).cursor({
@@ -728,11 +795,19 @@ export async function getTopLocationsAnalytics(
 }> {
   if (!licencee) {
     console.error('[getTopLocationsAnalytics] licencee is required');
-    return { topLocations: [], currency: displayCurrency || 'USD', converted: false };
+    return {
+      topLocations: [],
+      currency: displayCurrency || 'USD',
+      converted: false,
+    };
   }
   if (!displayCurrency) {
     console.error('[getTopLocationsAnalytics] displayCurrency is required');
-    return { topLocations: [], currency: displayCurrency || 'USD', converted: false };
+    return {
+      topLocations: [],
+      currency: displayCurrency || 'USD',
+      converted: false,
+    };
   }
 
   const locationsPipeline: PipelineStage[] = [
@@ -749,9 +824,7 @@ export async function getTopLocationsAnalytics(
     },
     {
       $match: {
-        $or: [
-          { 'locationDetails.rel.licencee': licencee }
-        ],
+        $or: [{ 'locationDetails.rel.licencee': licencee }],
       },
     },
     {
@@ -858,7 +931,15 @@ export async function getTopLocationsAnalytics(
   const topLocationLicenceeIds = [
     ...new Set(
       topLocations
-        .map(loc => String((loc as Record<string, unknown> & { locationInfo?: { rel?: { licencee?: string } } }).locationInfo?.rel?.licencee))
+        .map(loc =>
+          String(
+            (
+              loc as Record<string, unknown> & {
+                locationInfo?: { rel?: { licencee?: string } };
+              }
+            ).locationInfo?.rel?.licencee
+          )
+        )
         .filter(id => id && id !== 'undefined')
     ),
   ];
@@ -867,7 +948,10 @@ export async function getTopLocationsAnalytics(
     { _id: 1, includeJackpot: 1 }
   ).lean<LicenceeDocument[]>();
   const licenceeSettingsMap = new Map(
-    licenceesForTopLocationsSettings.map(l => [String(l._id), !!(l as { includeJackpot?: boolean }).includeJackpot])
+    licenceesForTopLocationsSettings.map(l => [
+      String(l._id),
+      !!(l as { includeJackpot?: boolean }).includeJackpot,
+    ])
   );
 
   // Combine location data with financial metrics
@@ -883,7 +967,9 @@ export async function getTopLocationsAnalytics(
     const includeJackpot = licenceeSettingsMap.get(licenceeId) || false;
 
     // financialMetrics.totalCancelledCredits is usually the NET payout (Excl. Jackpot)
-    const moneyOut = financialMetrics.totalCancelledCredits + (includeJackpot ? (financialMetrics.totalJackpot || 0) : 0);
+    const moneyOut =
+      financialMetrics.totalCancelledCredits +
+      (includeJackpot ? financialMetrics.totalJackpot || 0 : 0);
 
     const gross = financialMetrics.totalDrop - moneyOut;
 
@@ -900,11 +986,11 @@ export async function getTopLocationsAnalytics(
       country: location.locationInfo?.country,
       coordinates:
         location.locationInfo?.geoCoords?.latitude &&
-          location.locationInfo?.geoCoords?.longitude
+        location.locationInfo?.geoCoords?.longitude
           ? ([
-            location.locationInfo.geoCoords.longitude,
-            location.locationInfo.geoCoords.latitude,
-          ] as [number, number])
+              location.locationInfo.geoCoords.longitude,
+              location.locationInfo.geoCoords.latitude,
+            ] as [number, number])
           : null,
       trend: gross >= 10000 ? 'up' : 'down',
       trendPercentage: Math.abs(Math.random() * 10),
@@ -912,9 +998,8 @@ export async function getTopLocationsAnalytics(
   });
 
   if (shouldApplyCurrencyConversion(licencee)) {
-    const { convertToUSD, getCountryCurrency } = await import(
-      '@/lib/helpers/rates'
-    );
+    const { convertToUSD, getCountryCurrency } =
+      await import('@/lib/helpers/rates');
 
     const licenceesData = await Licencee.find(
       {
@@ -942,7 +1027,9 @@ export async function getTopLocationsAnalytics(
     });
 
     topLocationsWithMetrics = topLocationsWithMetrics.map(location => {
-      const licenceeId = location.rel?.licencee || (location.rel as Record<string, unknown> | undefined)?.licencee;
+      const licenceeId =
+        location.rel?.licencee ||
+        (location.rel as Record<string, unknown> | undefined)?.licencee;
       let nativeCurrency: string = 'USD';
 
       if (licenceeId) {
@@ -975,4 +1062,3 @@ export async function getTopLocationsAnalytics(
     converted: shouldApplyCurrencyConversion(licencee),
   };
 }
-

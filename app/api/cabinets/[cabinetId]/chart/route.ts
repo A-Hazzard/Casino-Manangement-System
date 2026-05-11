@@ -27,6 +27,11 @@ import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { LocationDocument } from '@/lib/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { GamingMachine, LicenceeDocument } from '@shared/types';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { PipelineStage } from 'mongoose';
 import { NextRequest, NextResponse } from 'next/server';
 /**
@@ -68,12 +73,12 @@ import { NextRequest, NextResponse } from 'next/server';
  * 9. Apply currency conversion if needed
  * 10. Transform and return chart data
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const { pathname } = request.nextUrl;
   const machineId = pathname.split('/')[3];
+  const functionName = 'GET /api/cabinets/[cabinetId]/chart';
+  const user = extractUserFromRequest(request);
 
   try {
     const { searchParams } = new URL(request.url);
@@ -90,12 +95,17 @@ export async function GET(
       | 'monthly'
       | null;
 
-    console.log(`[Cabinet Chart] Request — cabinet: ${machineId}, timePeriod: ${timePeriod}, startDate: ${startDateParam}, endDate: ${endDateParam}, granularity: ${granularity ?? 'auto'}, currency: ${displayCurrency}`);
-
     // ============================================================================
     // STEP 2: Validate timePeriod or date range parameters
     // ============================================================================
     if (!timePeriod && !startDateParam && !endDateParam) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cabinets/[cabinetId]/chart',
+        'timePeriod or startDate/endDate parameters are required',
+        user
+      );
       return NextResponse.json(
         { error: 'timePeriod or startDate/endDate parameters are required' },
         { status: 400 }
@@ -115,7 +125,13 @@ export async function GET(
     }).lean<GamingMachine | null>();
 
     if (!machine) {
-      console.warn(`[Cabinet Chart] Machine not found — id: ${machineId}`);
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cabinets/[cabinetId]/chart',
+        `Not found: ${machineId}`,
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Machine not found' },
         { status: 404 }
@@ -130,7 +146,9 @@ export async function GET(
         String(machine.gamingLocation)
       );
       if (!hasAccess) {
-        console.warn(`[Cabinet Chart] Access denied — machine: ${machineId}, location: ${machine.gamingLocation}`);
+        console.warn(
+          `[Cabinet Chart] Access denied — machine: ${machineId}, location: ${machine.gamingLocation}`
+        );
         return NextResponse.json(
           {
             success: false,
@@ -155,10 +173,15 @@ export async function GET(
 
         if (location) {
           gameDayOffset = location.gameDayOffset ?? 8;
-          console.log(`[Cabinet Chart] Location gameDayOffset: ${gameDayOffset} — location: ${machine.gamingLocation}`);
+          console.log(
+            `[Cabinet Chart] Location gameDayOffset: ${gameDayOffset} — location: ${machine.gamingLocation}`
+          );
         }
       } catch (error) {
-        console.warn('[Cabinet Chart] Failed to fetch location for gameDayOffset:', error);
+        console.warn(
+          '[Cabinet Chart] Failed to fetch location for gameDayOffset:',
+          error
+        );
       }
     }
 
@@ -195,7 +218,9 @@ export async function GET(
       );
       startDate = gamingDayRange.rangeStart;
       endDate = gamingDayRange.rangeEnd;
-      console.log(`[Cabinet Chart] Custom range resolved — raw: ${startDateParam} → ${endDateParam}, expanded: ${startDate?.toISOString()} → ${endDate?.toISOString()}`);
+      console.log(
+        `[Cabinet Chart] Custom range resolved — raw: ${startDateParam} → ${endDateParam}, expanded: ${startDate?.toISOString()} → ${endDate?.toISOString()}`
+      );
     } else if (timePeriod === 'All Time') {
       startDate = undefined;
       endDate = undefined;
@@ -207,7 +232,9 @@ export async function GET(
       );
       startDate = gamingDayRange.rangeStart;
       endDate = gamingDayRange.rangeEnd;
-      console.log(`[Cabinet Chart] Period "${timePeriodForGamingDay}" range — ${startDate?.toISOString()} → ${endDate?.toISOString()}`);
+      console.log(
+        `[Cabinet Chart] Period "${timePeriodForGamingDay}" range — ${startDate?.toISOString()} → ${endDate?.toISOString()}`
+      );
     }
 
     // ============================================================================
@@ -324,8 +351,20 @@ export async function GET(
       }
     }
 
-    const resolvedGranularity = useMinute ? 'minute' : useHourly ? 'hourly' : useDaily ? 'daily' : useWeekly ? 'weekly' : useMonthly ? 'monthly' : 'yearly';
-    console.log(`[Cabinet Chart] Granularity resolved — ${granularity ? `manual: ${granularity}` : `auto: ${resolvedGranularity}`}, query window: ${startDate?.toISOString() ?? 'all'} → ${endDate?.toISOString() ?? 'all'}`);
+    const resolvedGranularity = useMinute
+      ? 'minute'
+      : useHourly
+        ? 'hourly'
+        : useDaily
+          ? 'daily'
+          : useWeekly
+            ? 'weekly'
+            : useMonthly
+              ? 'monthly'
+              : 'yearly';
+    console.log(
+      `[Cabinet Chart] Granularity resolved — ${granularity ? `manual: ${granularity}` : `auto: ${resolvedGranularity}`}, query window: ${startDate?.toISOString() ?? 'all'} → ${endDate?.toISOString() ?? 'all'}`
+    );
 
     // Build aggregation pipeline
     const pipeline: PipelineStage[] = [];
@@ -410,19 +449,19 @@ export async function GET(
           },
           time: useMinute
             ? {
-              $dateToString: {
-                date: '$readAt',
-                format: '%H:%M',
-                timezone: 'UTC',
-              },
-            }
+                $dateToString: {
+                  date: '$readAt',
+                  format: '%H:%M',
+                  timezone: 'UTC',
+                },
+              }
             : {
-              $dateToString: {
-                date: '$readAt',
-                format: '%H:00',
-                timezone: 'UTC',
+                $dateToString: {
+                  date: '$readAt',
+                  format: '%H:00',
+                  timezone: 'UTC',
+                },
               },
-            },
         },
       });
     } else {
@@ -522,7 +561,9 @@ export async function GET(
     pipeline.push({ $sort: { day: 1, time: 1 } });
 
     const chartData = await Meters.aggregate(pipeline);
-    console.log(`[Cabinet Chart] Meters aggregation returned ${chartData.length} bucket(s)`);
+    console.log(
+      `[Cabinet Chart] Meters aggregation returned ${chartData.length} bucket(s)`
+    );
 
     // ============================================================================
     // STEP 9: Apply currency conversion if needed
@@ -556,7 +597,9 @@ export async function GET(
 
       // Determine native currency from licencee or country
       let nativeCurrency: CurrencyCode = 'USD';
-      const licenceeId = locationData?.rel?.licencee || (locationData?.rel as Record<string, unknown>)?.licencee;
+      const licenceeId =
+        locationData?.rel?.licencee ||
+        (locationData?.rel as Record<string, unknown>)?.licencee;
       if (licenceeId) {
         try {
           const licenceeDoc = await Licencee.findOne({
@@ -615,7 +658,14 @@ export async function GET(
     }));
 
     const duration = Date.now() - startTime;
-    console.log(`[Cabinet Chart] Response — ${transformedData.length} data point(s), currency: ${displayCurrency}, ${duration}ms`);
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/cabinets/[cabinetId]/chart',
+      transformedData.length,
+      user,
+      duration
+    );
 
     return NextResponse.json({
       success: true,
@@ -623,9 +673,9 @@ export async function GET(
       dataSpan:
         actualDataSpan && actualDataSpan.minDate && actualDataSpan.maxDate
           ? {
-            minDate: actualDataSpan.minDate.toISOString(),
-            maxDate: actualDataSpan.maxDate.toISOString(),
-          }
+              minDate: actualDataSpan.minDate.toISOString(),
+              maxDate: actualDataSpan.maxDate.toISOString(),
+            }
           : undefined,
     });
   } catch (error) {
@@ -634,6 +684,13 @@ export async function GET(
       error instanceof Error
         ? error.message
         : 'Failed to fetch machine chart data';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/cabinets/[cabinetId]/chart',
+      errorMessage,
+      user
+    );
     console.error(`[Cabinet Chart] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json(
       { success: false, error: errorMessage },

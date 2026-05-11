@@ -14,6 +14,11 @@ import type { ReportConfig } from '@/shared/types/reports';
 import { generateReportData } from '@/app/api/lib/helpers/reports/general';
 import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * Zod schema for report configuration validation
@@ -88,6 +93,8 @@ function buildReportConfig(
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/analytics/reports';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -100,6 +107,13 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     const validationResult = reportConfigSchema.safeParse(body);
     if (!validationResult.success) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/analytics/reports',
+        'Invalid report configuration',
+        user
+      );
       return NextResponse.json(
         {
           error: 'Invalid report configuration',
@@ -120,6 +134,13 @@ export async function POST(request: NextRequest) {
     const reportData = generateReportData(config);
 
     if (!reportData) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/analytics/reports',
+        'Failed to generate report data',
+        user
+      );
       return NextResponse.json(
         { error: 'Failed to generate report data' },
         { status: 500 }
@@ -130,6 +151,15 @@ export async function POST(request: NextRequest) {
     // STEP 5: Return report data
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/analytics/reports',
+      1,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
       console.warn(`[Analytics Reports POST API] Completed in ${duration}ms`);
     }
@@ -140,6 +170,13 @@ export async function POST(request: NextRequest) {
       error instanceof Error
         ? error.message
         : 'An internal error occurred while generating the report';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/analytics/reports',
+      errorMessage,
+      user
+    );
     console.error(
       `[Analytics Reports POST API] Error after ${duration}ms:`,
       errorMessage
@@ -147,4 +184,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-

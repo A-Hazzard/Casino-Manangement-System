@@ -46,9 +46,9 @@ Roles are defined in `lib/constants/roles.ts`:
 
 ### Reviewer Scale Utility
 
-| File                                    | Purpose                                                          |
-| --------------------------------------- | ---------------------------------------------------------------- |
-| `app/api/lib/utils/reviewerScale.ts`    | **Single source of truth** for all reviewer scale logic          |
+| File                                 | Purpose                                                 |
+| ------------------------------------ | ------------------------------------------------------- |
+| `app/api/lib/utils/reviewerScale.ts` | **Single source of truth** for all reviewer scale logic |
 
 ### User State Management
 
@@ -97,11 +97,20 @@ Page permissions are defined in **two places that must stay in sync**:
 ```typescript
 const pagePermissions: Record<PageName, UserRole[]> = {
   'collection-report': [
-    'developer', 'owner', 'admin', 'manager',
-    'location admin', 'collector', 'reviewer',
+    'developer',
+    'owner',
+    'admin',
+    'manager',
+    'location admin',
+    'collector',
+    'reviewer',
   ],
   reports: [
-    'developer', 'owner', 'admin', 'manager', 'location admin',
+    'developer',
+    'owner',
+    'admin',
+    'manager',
+    'location admin',
     // reviewer intentionally excluded — reviewers cannot access /reports
   ],
   // ... other pages
@@ -114,12 +123,15 @@ const pagePermissions: Record<PageName, UserRole[]> = {
 // Must mirror client.ts exactly
 const pagePermissions: Record<PageName, UserRole[]> = {
   'collection-report': [
-    'developer', 'owner', 'admin', 'manager',
-    'location admin', 'collector', 'reviewer',
+    'developer',
+    'owner',
+    'admin',
+    'manager',
+    'location admin',
+    'collector',
+    'reviewer',
   ],
-  reports: [
-    'developer', 'owner', 'admin', 'manager', 'location admin',
-  ],
+  reports: ['developer', 'owner', 'admin', 'manager', 'location admin'],
   // ...
 };
 ```
@@ -202,6 +214,7 @@ Non-reviewers always receive `scale = 1` (no transformation). A reviewer with no
 multiplier set (`0` or `null`) also receives `scale = 1`.
 
 **Two conditions must both be true for scaling to apply:**
+
 1. The user's `roles` array includes `'reviewer'`
 2. The user's `multiplier` is a non-zero truthy number
 
@@ -223,7 +236,9 @@ Call this once per request, right after authenticating the user.
 
 ```typescript
 // Works with any object that has multiplier and roles
-const scale = getReviewerScale(userPayload as { multiplier?: number | null; roles?: string[] });
+const scale = getReviewerScale(
+  userPayload as { multiplier?: number | null; roles?: string[] }
+);
 // Returns 0.70 for a reviewer with multiplier 0.30
 // Returns 1    for admin, manager, any non-reviewer role
 // Returns 1    for a reviewer with multiplier 0 or null
@@ -239,14 +254,14 @@ import { scaleMachineValues } from '@/app/api/lib/utils/reviewerScale';
 
 const scaled = scaleMachineValues(
   {
-    drop,           // metersIn - prevIn
-    cancelled,      // metersOut - prevOut
-    meterGross,     // movement.gross
-    jackpot,        // from meter data
-    netGross,       // meterGross - jackpot
-    sasGross,       // raw SAS gross (pre-jackpot-adjustment), for display only
-    variation,      // already computed meterGross − adjustedSasGross
-    hasNoSasData,   // true when no SAS time window exists
+    drop, // metersIn - prevIn
+    cancelled, // metersOut - prevOut
+    meterGross, // movement.gross
+    jackpot, // from meter data
+    netGross, // meterGross - jackpot
+    sasGross, // raw SAS gross (pre-jackpot-adjustment), for display only
+    variation, // already computed meterGross − adjustedSasGross
+    hasNoSasData, // true when no SAS time window exists
   },
   scale
 );
@@ -264,11 +279,15 @@ It is a no-op when `scale === 1` (fast path for non-reviewers).
 ```typescript
 import { scaleReportFinancials } from '@/app/api/lib/utils/reviewerScale';
 
-const scaledReports = reviewerScale === 1
-  ? rawReports
-  : rawReports.map(r =>
-      scaleReportFinancials(r.toObject() as Parameters<typeof scaleReportFinancials>[0], reviewerScale)
-    );
+const scaledReports =
+  reviewerScale === 1
+    ? rawReports
+    : rawReports.map(r =>
+        scaleReportFinancials(
+          r.toObject() as Parameters<typeof scaleReportFinancials>[0],
+          reviewerScale
+        )
+      );
 ```
 
 Fields scaled: `amountCollected`, `amountToCollect`, `amountUncollected`,
@@ -302,13 +321,13 @@ export async function GET(request: NextRequest) {
 
 ### APIs Where Reviewer Scale Is Applied
 
-| API Route | Helper/File | How scale is applied |
-| --------- | ----------- | -------------------- |
-| `GET /api/collection-report/[reportId]` | `accountingDetails.ts` → `getCollectionReportById` | `getReviewerScale` → all `locationMetrics`, `sasMetrics`, and per-machine `scaleMachineValues` |
-| `GET /api/collectionReport` (list) | `collectionReport/service.ts` → `getAllCollectionReportsWithMachineCounts` | `scale` param → multiplied before `formatSmartDecimal` on gross, collected, uncollected, variation, balance, locationRevenue |
-| `GET /api/collection-reports` (admin list) | `collection-reports/route.ts` | `scaleReportFinancials` on each raw Mongoose doc |
-| `GET /api/locations/[locationId]` (cabinet list) | `locations/[locationId]/route.ts` | `getReviewerScale` → moneyIn, moneyOut, jackpot, gross, cancelledCredits, netGross per cabinet |
-| `GET /api/locations/[locationId]/cabinets/[cabinetId]` | `cabinets/[cabinetId]/route.ts` | `getReviewerScale` → moneyIn, moneyOut, jackpot, gross, netGross on the single cabinet |
+| API Route                                              | Helper/File                                                                | How scale is applied                                                                                                         |
+| ------------------------------------------------------ | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/collection-report/[reportId]`                | `accountingDetails.ts` → `getCollectionReportById`                         | `getReviewerScale` → all `locationMetrics`, `sasMetrics`, and per-machine `scaleMachineValues`                               |
+| `GET /api/collectionReport` (list)                     | `collectionReport/service.ts` → `getAllCollectionReportsWithMachineCounts` | `scale` param → multiplied before `formatSmartDecimal` on gross, collected, uncollected, variation, balance, locationRevenue |
+| `GET /api/collection-reports` (admin list)             | `collection-reports/route.ts`                                              | `scaleReportFinancials` on each raw Mongoose doc                                                                             |
+| `GET /api/locations/[locationId]` (cabinet list)       | `locations/[locationId]/route.ts`                                          | `getReviewerScale` → moneyIn, moneyOut, jackpot, gross, cancelledCredits, netGross per cabinet                               |
+| `GET /api/locations/[locationId]/cabinets/[cabinetId]` | `cabinets/[cabinetId]/route.ts`                                            | `getReviewerScale` → moneyIn, moneyOut, jackpot, gross, netGross on the single cabinet                                       |
 
 ### ❌ Common Mistakes to Avoid
 
@@ -339,10 +358,12 @@ type UserAuthPayload = {
   username: string;
   isEnabled: boolean;
   roles?: string[];
-  assignedLocations?: string[];  // Location IDs user can access
-  assignedLicencees?: string[];  // Licencee IDs user can access
-  multiplier?: number | null;    // Reviewer scale input (e.g. 0.30 → scale 0.70)
-  profile?: { /* profile fields */ };
+  assignedLocations?: string[]; // Location IDs user can access
+  assignedLicencees?: string[]; // Licencee IDs user can access
+  multiplier?: number | null; // Reviewer scale input (e.g. 0.30 → scale 0.70)
+  profile?: {
+    /* profile fields */
+  };
 };
 ```
 
@@ -356,9 +377,16 @@ type UserAuthPayload = {
 
 ```typescript
 export type UserRole =
-  | 'developer' | 'owner' | 'admin' | 'manager'
-  | 'location admin' | 'vault-manager' | 'cashier'
-  | 'technician' | 'collector' | 'reviewer'
+  | 'developer'
+  | 'owner'
+  | 'admin'
+  | 'manager'
+  | 'location admin'
+  | 'vault-manager'
+  | 'cashier'
+  | 'technician'
+  | 'collector'
+  | 'reviewer'
   | 'auditor'; // NEW ROLE
 ```
 
@@ -369,8 +397,13 @@ export type UserRole =
 ```typescript
 const pagePermissions: Record<PageName, UserRole[]> = {
   'collection-report': [
-    'developer', 'owner', 'admin', 'manager',
-    'location admin', 'collector', 'reviewer',
+    'developer',
+    'owner',
+    'admin',
+    'manager',
+    'location admin',
+    'collector',
+    'reviewer',
     'auditor', // ADD HERE
   ],
   // add to any other page the new role should access
@@ -417,20 +450,20 @@ export function getReviewerScale(user: UserForScale): number {
 
 ## Quick Reference: Role Capabilities
 
-| Capability         | developer | owner | admin | manager | location admin | collector | reviewer |
-| ------------------ | --------- | ----- | ----- | ------- | -------------- | --------- | -------- |
-| All pages          | ✅        | ✅    | ✅    | ❌      | ❌             | ❌        | ❌       |
-| Dashboard          | ✅        | ✅    | ✅    | ✅      | ✅             | ❌        | ❌       |
-| Machines           | ✅        | ✅    | ✅    | ✅      | ✅             | ✅        | ✅       |
-| Locations          | ✅        | ✅    | ✅    | ✅      | ✅             | ❌        | ✅       |
-| Collection Reports | ✅        | ✅    | ✅    | ✅      | ✅             | ✅        | ✅       |
-| Reports            | ✅        | ✅    | ✅    | ✅      | ✅             | ❌        | ❌       |
-| Administration     | ✅        | ✅    | ✅    | ✅      | ✅             | ❌        | ❌       |
-| Vault              | ✅        | ✅    | ✅    | ✅      | ✅             | ❌        | ❌       |
-| **Financial data scaled** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Capability                | developer | owner | admin | manager | location admin | collector | reviewer |
+| ------------------------- | --------- | ----- | ----- | ------- | -------------- | --------- | -------- |
+| All pages                 | ✅        | ✅    | ✅    | ❌      | ❌             | ❌        | ❌       |
+| Dashboard                 | ✅        | ✅    | ✅    | ✅      | ✅             | ❌        | ❌       |
+| Machines                  | ✅        | ✅    | ✅    | ✅      | ✅             | ✅        | ✅       |
+| Locations                 | ✅        | ✅    | ✅    | ✅      | ✅             | ❌        | ✅       |
+| Collection Reports        | ✅        | ✅    | ✅    | ✅      | ✅             | ✅        | ✅       |
+| Reports                   | ✅        | ✅    | ✅    | ✅      | ✅             | ❌        | ❌       |
+| Administration            | ✅        | ✅    | ✅    | ✅      | ✅             | ❌        | ❌       |
+| Vault                     | ✅        | ✅    | ✅    | ✅      | ✅             | ❌        | ❌       |
+| **Financial data scaled** | ❌        | ❌    | ❌    | ❌      | ❌             | ❌        | ✅       |
 
-| Location Access | developer | owner | admin | manager | location admin | collector | reviewer |
-| --------------- | --------- | ----- | ----- | ------- | -------------- | --------- | -------- |
-| All locations   | ✅        | ✅    | ✅    | ❌      | ❌             | ❌        | ❌       |
-| Licencee's locations | ❌   | ❌    | ❌    | ✅      | ✅ (fallback)  | ❌        | ✅ (fallback) |
-| Assigned only   | ❌        | ❌    | ❌    | ❌      | ✅ (if set)    | ✅        | ✅ (if set) |
+| Location Access      | developer | owner | admin | manager | location admin | collector | reviewer      |
+| -------------------- | --------- | ----- | ----- | ------- | -------------- | --------- | ------------- |
+| All locations        | ✅        | ✅    | ✅    | ❌      | ❌             | ❌        | ❌            |
+| Licencee's locations | ❌        | ❌    | ❌    | ✅      | ✅ (fallback)  | ❌        | ✅ (fallback) |
+| Assigned only        | ❌        | ❌    | ❌    | ❌      | ✅ (if set)    | ✅        | ✅ (if set)   |

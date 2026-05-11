@@ -32,16 +32,16 @@ import CollectionReportMonthlySummaryTable from '@/components/CMS/collectionRepo
 import { Button } from '@/components/shared/ui/button';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import type { MonthlyDesktopUIProps } from '@/lib/types/components';
 import {
-    exportMonthlyReportExcel,
-    exportMonthlyReportPDF,
+  exportMonthlyReportExcel,
+  exportMonthlyReportPDF,
 } from '@/lib/utils/export';
 import { ChevronDown, Download, FileSpreadsheet, FileText } from 'lucide-react';
 
@@ -54,8 +54,8 @@ export default function CollectionReportMonthlyDesktop({
   monthlyLocation,
   onMonthlyLocationChange,
   pendingRange,
-      onPendingRangeChange,
-      onSetLastMonth,
+  onPendingRangeChange,
+  onSetLastMonth,
   monthlySummary,
   monthlyDetails,
   monthlyCurrentItems,
@@ -72,9 +72,19 @@ export default function CollectionReportMonthlyDesktop({
     const totalLocations = locations.length;
     const currentLocationsCount = monthlyDetails.length;
     if (format === 'pdf') {
-      await exportMonthlyReportPDF(monthlySummary, monthlyDetails, totalLocations, currentLocationsCount);
+      await exportMonthlyReportPDF(
+        monthlySummary,
+        monthlyDetails,
+        totalLocations,
+        currentLocationsCount
+      );
     } else {
-      exportMonthlyReportExcel(monthlySummary, monthlyDetails, totalLocations, currentLocationsCount);
+      exportMonthlyReportExcel(
+        monthlySummary,
+        monthlyDetails,
+        totalLocations,
+        currentLocationsCount
+      );
     }
   };
 
@@ -84,7 +94,13 @@ export default function CollectionReportMonthlyDesktop({
       <div className="flex items-center gap-3 rounded-t-lg bg-buttonActive p-4">
         <LocationMultiSelect
           locations={locations}
-          selectedLocations={Array.isArray(monthlyLocation) ? monthlyLocation : (monthlyLocation === 'all' ? [] : [monthlyLocation])}
+          selectedLocations={
+            Array.isArray(monthlyLocation)
+              ? monthlyLocation
+              : monthlyLocation === 'all'
+                ? []
+                : [monthlyLocation]
+          }
           onSelectionChange={onMonthlyLocationChange}
           placeholder="Select locations..."
           className="w-auto min-w-[200px] max-w-xs"
@@ -101,11 +117,17 @@ export default function CollectionReportMonthlyDesktop({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleExport('pdf')} className="cursor-pointer">
+            <DropdownMenuItem
+              onClick={() => handleExport('pdf')}
+              className="cursor-pointer"
+            >
               <FileText className="mr-2 h-4 w-4" />
               Export as PDF
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleExport('excel')} className="cursor-pointer">
+            <DropdownMenuItem
+              onClick={() => handleExport('excel')}
+              className="cursor-pointer"
+            >
               <FileSpreadsheet className="mr-2 h-4 w-4" />
               Export as Excel
             </DropdownMenuItem>
@@ -134,7 +156,10 @@ export default function CollectionReportMonthlyDesktop({
         {monthlyLoading ? (
           <div className="h-24 w-full animate-pulse rounded bg-gray-200" />
         ) : (
-            <CollectionReportMonthlySummaryTable summary={monthlySummary} loading={monthlyLoading} />
+          <CollectionReportMonthlySummaryTable
+            summary={monthlySummary}
+            loading={monthlyLoading}
+          />
         )}
 
         {monthlyLoading ? (
@@ -162,4 +187,3 @@ export default function CollectionReportMonthlyDesktop({
     </div>
   );
 }
-

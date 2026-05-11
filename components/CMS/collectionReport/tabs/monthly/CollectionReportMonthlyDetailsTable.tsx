@@ -24,7 +24,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/shared/ui/table';
-import type { CollectionReportMonthlyDetailsTableProps, MonthlyReportDetailsRow } from '@/lib/types/components';
+import type {
+  CollectionReportMonthlyDetailsTableProps,
+  MonthlyReportDetailsRow,
+} from '@/lib/types/components';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 
 import { getGrossColorClass } from '@/lib/utils/financial';
@@ -35,7 +38,9 @@ export default function CollectionReportMonthlyDetailsTable({
   sortField,
   sortDirection,
   onSort,
-}: CollectionReportMonthlyDetailsTableProps & { locations?: Array<{ id: string; name: string }> }) {
+}: CollectionReportMonthlyDetailsTableProps & {
+  locations?: Array<{ id: string; name: string }>;
+}) {
   const router = useRouter();
   const { formatAmount } = useCurrencyFormat();
 
@@ -82,7 +87,7 @@ export default function CollectionReportMonthlyDetailsTable({
         <TableHeader>
           <TableRow className="bg-button hover:bg-button">
             <TableHead
-              className="relative font-semibold text-white cursor-pointer select-none"
+              className="relative cursor-pointer select-none font-semibold text-white"
               onClick={() => onSort?.('location')}
               isFirstColumn={true}
             >
@@ -94,7 +99,7 @@ export default function CollectionReportMonthlyDetailsTable({
               )}
             </TableHead>
             <TableHead
-              className="relative font-semibold text-white cursor-pointer select-none"
+              className="relative cursor-pointer select-none font-semibold text-white"
               onClick={() => onSort?.('drop')}
             >
               <span>DROP</span>
@@ -105,7 +110,7 @@ export default function CollectionReportMonthlyDetailsTable({
               )}
             </TableHead>
             <TableHead
-              className="relative font-semibold text-white cursor-pointer select-none"
+              className="relative cursor-pointer select-none font-semibold text-white"
               onClick={() => onSort?.('win')}
             >
               <span>WIN</span>
@@ -116,7 +121,7 @@ export default function CollectionReportMonthlyDetailsTable({
               )}
             </TableHead>
             <TableHead
-              className="relative font-semibold text-white cursor-pointer select-none"
+              className="relative cursor-pointer select-none font-semibold text-white"
               onClick={() => onSort?.('gross')}
             >
               <span>GROSS</span>
@@ -127,7 +132,7 @@ export default function CollectionReportMonthlyDetailsTable({
               )}
             </TableHead>
             <TableHead
-              className="relative font-semibold text-white cursor-pointer select-none"
+              className="relative cursor-pointer select-none font-semibold text-white"
               onClick={() => onSort?.('sasGross')}
             >
               <span>SAS GROSS</span>
@@ -153,21 +158,21 @@ export default function CollectionReportMonthlyDetailsTable({
                             e.stopPropagation();
                             router.push(`/locations/${locationId}`);
                           }}
-                          className="text-left hover:text-blue-600 hover:underline cursor-pointer"
+                          className="cursor-pointer text-left hover:text-blue-600 hover:underline"
                           title="Click to view location details"
                         >
                           {row.location}
                         </button>
-                          <button
-                            onClick={e => {
-                              e.stopPropagation();
-                              router.push(`/locations/${locationId}`);
-                            }}
-                            className="flex-shrink-0"
-                            title="View location details"
-                            aria-label="View location details"
-                          >
-                          <ExternalLink className="h-3.5 w-3.5 text-gray-500 hover:text-blue-600 cursor-pointer transition-transform hover:scale-110" />
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            router.push(`/locations/${locationId}`);
+                          }}
+                          className="flex-shrink-0"
+                          title="View location details"
+                          aria-label="View location details"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5 cursor-pointer text-gray-500 transition-transform hover:scale-110 hover:text-blue-600" />
                         </button>
                       </>
                     ) : (
@@ -178,37 +183,45 @@ export default function CollectionReportMonthlyDetailsTable({
                 <TableCell>
                   <button
                     onClick={() => copyToClipboard(row.drop, 'Drop')}
-                    className="hover:text-blue-600 hover:underline cursor-pointer"
+                    className="cursor-pointer hover:text-blue-600 hover:underline"
                     title="Click to copy"
                   >
-                    <span className={colorClass(row.drop)}>{formatVal(row.drop)}</span>
+                    <span className={colorClass(row.drop)}>
+                      {formatVal(row.drop)}
+                    </span>
                   </button>
                 </TableCell>
                 <TableCell>
                   <button
                     onClick={() => copyToClipboard(row.win, 'Win')}
-                    className="hover:text-blue-600 hover:underline cursor-pointer"
+                    className="cursor-pointer hover:text-blue-600 hover:underline"
                     title="Click to copy"
                   >
-                    <span className={colorClass(row.win)}>{formatVal(row.win)}</span>
+                    <span className={colorClass(row.win)}>
+                      {formatVal(row.win)}
+                    </span>
                   </button>
                 </TableCell>
                 <TableCell>
                   <button
                     onClick={() => copyToClipboard(row.gross, 'Gross')}
-                    className="hover:text-blue-600 hover:underline cursor-pointer"
+                    className="cursor-pointer hover:text-blue-600 hover:underline"
                     title="Click to copy"
                   >
-                    <span className={colorClass(row.gross)}>{formatVal(row.gross)}</span>
+                    <span className={colorClass(row.gross)}>
+                      {formatVal(row.gross)}
+                    </span>
                   </button>
                 </TableCell>
                 <TableCell>
                   <button
                     onClick={() => copyToClipboard(row.sasGross, 'SAS Gross')}
-                    className="hover:text-blue-600 hover:underline cursor-pointer"
+                    className="cursor-pointer hover:text-blue-600 hover:underline"
                     title="Click to copy"
                   >
-                    <span className={colorClass(row.sasGross)}>{formatVal(row.sasGross)}</span>
+                    <span className={colorClass(row.sasGross)}>
+                      {formatVal(row.sasGross)}
+                    </span>
                   </button>
                 </TableCell>
               </TableRow>
@@ -219,4 +232,3 @@ export default function CollectionReportMonthlyDetailsTable({
     </div>
   );
 }
-

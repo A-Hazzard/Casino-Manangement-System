@@ -18,6 +18,11 @@ import { GridFSBucket } from 'mongodb';
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import type { FirmwareDocument } from '@shared/types';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/firmwares/[id]/serve
@@ -30,10 +35,10 @@ import type { FirmwareDocument } from '@shared/types';
  * URL params:
  * @param {string} id - Required (path). The MongoDB ID of the Firmware document to serve.
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/firmwares/[id]/serve';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const id = pathname.split('/').at(-2); // Extract [id] from /api/firmwares/[id]/serve
 
@@ -52,7 +57,9 @@ export async function GET(
     // ============================================================================
     // STEP 3: Find firmware document
     // ============================================================================
-    const firmwareDoc = await Firmware.findOne({ _id: id }).lean<FirmwareDocument>();
+    const firmwareDoc = await Firmware.findOne({
+      _id: id,
+    }).lean<FirmwareDocument>();
     if (!firmwareDoc) {
       return NextResponse.json(
         { error: 'Firmware not found' },
@@ -61,7 +68,9 @@ export async function GET(
     }
 
     const firmware = {
-      fileId: firmwareDoc.fileId as Parameters<GridFSBucket['openDownloadStream']>[0],
+      fileId: firmwareDoc.fileId as Parameters<
+        GridFSBucket['openDownloadStream']
+      >[0],
       fileName: firmwareDoc.fileName ?? '',
     };
 
@@ -105,9 +114,14 @@ export async function GET(
     // STEP 8: Return static URL
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Firmware Serve API] Completed in ${duration}ms`);
-    }
+    logRouteFetch(
+      functionName,
+      'GET',
+      `/api/firmwares/${id}/serve`,
+      1,
+      user,
+      duration
+    );
     const staticUrl = `/firmwares/${firmware.fileName}`;
 
     return NextResponse.json({
@@ -117,12 +131,14 @@ export async function GET(
       size: buffer.length,
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to serve firmware';
-    console.error(
-      `[Firmware Serve API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'GET',
+      `/api/firmwares/${id}/serve`,
+      errorMessage,
+      user
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }

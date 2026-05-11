@@ -60,7 +60,6 @@ const roleValidator = {
   message: `{PATH} must be one of: ${ALLOWED_ROLES.join(', ')}.`,
 };
 
-// Add missing fields based on provided JSON
 const UserSchema = new Schema(
   {
     _id: { type: String, required: true },
@@ -81,11 +80,10 @@ const UserSchema = new Schema(
       minlength: [3, 'Username must be at least 3 characters'],
       validate: {
         validator: function (value: string) {
-          // Username cannot look like an email
           if (EMAIL_REGEX.test(value)) return false;
-          // Username cannot look like a phone number (10+ digits)
+
           if (/^\d{10,}$/.test(value)) return false;
-          // Username can contain letters, numbers, spaces, hyphens, and apostrophes
+
           return /^[A-Za-z0-9\s'-]+$/.test(value);
         },
         message:
@@ -105,9 +103,10 @@ const UserSchema = new Schema(
         message: 'Email address must be a valid email format.',
       },
     },
-    assignedLocations: [{ type: String }], // Array of location IDs user has access to
-    assignedLicencees: [{ type: String }], // Array of licencee IDs user has access to (UK spelling primary)
-    multiplier: { type: Number, default: null }, // Reviewer multiplier (stored as decimal, e.g. 0.5 = 50%)
+    assignedLocations: [{ type: String }],
+    assignedLicencees: [{ type: String }],
+    moneyInMultiplier: { type: Number, default: null },
+    moneyOutAndJackpotMultiplier: { type: Number, default: null },
     profile: {
       firstName: {
         type: String,
@@ -134,7 +133,7 @@ const UserSchema = new Schema(
           validate: {
             validator: function (value: string | null | undefined) {
               if (isBlank(value)) return true;
-              // Street can have letters, numbers, spaces, commas, and full stops
+
               return /^[A-Za-z0-9\s,\.]+$/.test(value!.trim());
             },
             message:
@@ -149,7 +148,7 @@ const UserSchema = new Schema(
               if (isBlank(value)) return true;
               const trimmed = value!.trim();
               if (trimmed.length < 3) return false;
-              // Town can have letters, numbers, spaces, commas, and full stops
+
               return /^[A-Za-z0-9\s,\.]+$/.test(trimmed);
             },
             message:
@@ -164,7 +163,7 @@ const UserSchema = new Schema(
               if (isBlank(value)) return true;
               const trimmed = value!.trim();
               if (trimmed.length < 3) return false;
-              // Region can have letters, numbers, spaces, commas, and full stops
+
               return /^[A-Za-z0-9\s,\.]+$/.test(trimmed);
             },
             message:
@@ -179,7 +178,7 @@ const UserSchema = new Schema(
               if (isBlank(value)) return true;
               const trimmed = value!.trim();
               if (trimmed.length < 3) return false;
-              // Country can have letters, spaces, and ampersands (e.g. Trinidad & Tobago)
+
               return /^[A-Za-z\s&]+$/.test(trimmed);
             },
             message:
@@ -232,26 +231,26 @@ const UserSchema = new Schema(
       phoneNumber: { type: String, trim: true },
       notes: { type: String, trim: true },
     },
-    profilePicture: { type: String, default: null }, // default null for missing entries
+    profilePicture: { type: String, default: null },
     password: { type: String, required: true },
-    previousPassword: { type: String, default: null }, // Store the immediate previous password (hashed)
-    previousPasswords: [{ type: String }], // Array of previous passwords (hashed) to prevent re-use
-    tempPassword: { type: String, default: null }, // Plain text temporary password for new cashiers
+    previousPassword: { type: String, default: null },
+    previousPasswords: [{ type: String }],
+    tempPassword: { type: String, default: null },
     passwordUpdatedAt: { type: Date, default: null },
     sessionVersion: { type: Number, default: 1 },
     loginCount: { type: Number, default: 0 },
     lastLoginAt: { type: Date, default: null },
     tempPasswordChanged: { type: Boolean, default: false },
     requiresPasswordUpdate: { type: Boolean, default: false },
-    deletedAt: { type: Schema.Types.Mixed, default: null }, // allow for { $date: { $numberLong: "-1" } }
+    deletedAt: { type: Schema.Types.Mixed, default: null },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date },
-    totpSecret: { type: String, default: null }, // Secret for Google Authenticator (TOTP)
-    totpEnabled: { type: Boolean, default: false }, // Flag to track if TOTP setup is confirmed
-    totpRecoveryToken: { type: String, default: null }, // Token for 2FA email recovery
-    totpRecoveryExpires: { type: Date, default: null }, // Expiration for recovery token
-    totpTempSecret: { type: String, default: null }, // Temporary secret during recovery setup
-    __v: { type: Number, select: false, default: 0 }, // add missing __v field, default to 0, hide by default
+    totpSecret: { type: String, default: null },
+    totpEnabled: { type: Boolean, default: false },
+    totpRecoveryToken: { type: String, default: null },
+    totpRecoveryExpires: { type: Date, default: null },
+    totpTempSecret: { type: String, default: null },
+    __v: { type: Number, select: false, default: 0 },
   },
   { timestamps: true }
 );
@@ -268,9 +267,5 @@ UserSchema.path('profile.phoneNumber').set(normalizeString);
 UserSchema.path('profile.notes').set(normalizeString);
 
 const UserModel = mongoose.models?.users || model('users', UserSchema);
-
-/**
- * Mongoose model for users, including authentication, profile, and roles.
- */
 
 export default UserModel;

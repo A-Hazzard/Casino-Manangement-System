@@ -4,6 +4,11 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import type { VaultShiftDocument } from '@shared/types';
@@ -20,6 +25,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @body {Array} denominations - Manual override for opening denominations
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/initialize';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const hasVaultAccess = userRoles
@@ -27,20 +36,36 @@ export async function POST(request: NextRequest) {
         .some(role =>
           ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
         );
-      if (!hasVaultAccess)
+      if (!hasVaultAccess) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/initialize',
+          'Insufficient permissions',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient permissions' },
           { status: 403 }
         );
+      }
 
       const body = await request.json();
       const { locationId, notes } = body;
       let { openingBalance, denominations } = body;
-      if (!locationId)
+      if (!locationId) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/initialize',
+          'locationId required',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'locationId required' },
           { status: 400 }
         );
+      }
 
       if (openingBalance === undefined || !denominations?.length) {
         const lastClosed = await VaultShiftModel.findOne({
@@ -55,7 +80,14 @@ export async function POST(request: NextRequest) {
 
       if (denominations.length > 0) {
         const validation = validateDenominations(denominations);
-        if (!validation.valid)
+        if (!validation.valid) {
+          logRouteError(
+            functionName,
+            'POST',
+            '/api/vault/initialize',
+            'Invalid denominations',
+            user
+          );
           return NextResponse.json(
             {
               success: false,
@@ -64,7 +96,15 @@ export async function POST(request: NextRequest) {
             },
             { status: 400 }
           );
-        if (validation.total !== openingBalance)
+        }
+        if (validation.total !== openingBalance) {
+          logRouteError(
+            functionName,
+            'POST',
+            '/api/vault/initialize',
+            `Balance mismatch: $${validation.total} vs $${openingBalance}`,
+            user
+          );
           return NextResponse.json(
             {
               success: false,
@@ -72,9 +112,17 @@ export async function POST(request: NextRequest) {
             },
             { status: 400 }
           );
+        }
       }
 
       if (await VaultShiftModel.findOne({ locationId, status: 'active' })) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/initialize',
+          'Active vault shift already exists',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Active vault shift already exists' },
           { status: 409 }
@@ -130,6 +178,16 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      const duration = Date.now() - startTime;
+      logRouteCreate(
+        functionName,
+        'POST',
+        '/api/vault/initialize',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json(
         {
           success: true,
@@ -140,6 +198,15 @@ export async function POST(request: NextRequest) {
         { status: 201 }
       );
     } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to initialize vault';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/initialize',
+        errorMessage,
+        user
+      );
       console.error('[Vault Initialize] Error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       return NextResponse.json(

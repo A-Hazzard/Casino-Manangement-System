@@ -261,8 +261,8 @@ export async function fetchGlobalVaultOverviewData(
           cashierId: String(shift.cashierId || ''),
           cashierName: String(
             shift.cashierName ||
-            shift.cashierUsername ||
-            `Cashier ${String(shift.cashierId || '').substring(0, 4)}`
+              shift.cashierUsername ||
+              `Cashier ${String(shift.cashierId || '').substring(0, 4)}`
           ),
           expectedBalance: Number(shift.expectedClosingBalance || 0),
           enteredBalance: Number(shift.cashierEnteredBalance || 0),
@@ -557,7 +557,7 @@ export async function fetchAuditTrail(
             const isReconcile = tx.type === 'vault_reconciliation';
             const adj = isReconcile
               ? Number(tx.vaultBalanceAfter || 0) -
-              Number(tx.vaultBalanceBefore || 0)
+                Number(tx.vaultBalanceBefore || 0)
               : Number(tx.amount || 0);
 
             const from = tx.from as Record<string, unknown> | undefined;
@@ -686,7 +686,12 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
         let runningCashOut = 0;
 
         const balanceTrend = hourlyStats
-          .filter(hourStats => hourStats.transactions > 0 || hourStats.amount > 0 || hourStats.cashOut > 0)
+          .filter(
+            hourStats =>
+              hourStats.transactions > 0 ||
+              hourStats.amount > 0 ||
+              hourStats.cashOut > 0
+          )
           .map(hourStats => {
             runningBalance += hourStats.amount;
             runningCashOut += hourStats.cashOut;
@@ -702,25 +707,25 @@ export async function fetchAdvancedDashboardMetrics(locationId: string) {
           balanceTrend.length > 0
             ? balanceTrend
             : [
-              {
-                time: '00:00',
-                balance: 0, // Start for graph should typically be flat if no data
-                cashOut: 0,
-                transactions: 0,
-              },
-              {
-                time: '12:00',
-                balance: 0,
-                cashOut: 0,
-                transactions: 0,
-              },
-              {
-                time: '23:59',
-                balance: 0,
-                cashOut: 0,
-                transactions: 0,
-              },
-            ];
+                {
+                  time: '00:00',
+                  balance: 0, // Start for graph should typically be flat if no data
+                  cashOut: 0,
+                  transactions: 0,
+                },
+                {
+                  time: '12:00',
+                  balance: 0,
+                  cashOut: 0,
+                  transactions: 0,
+                },
+                {
+                  time: '23:59',
+                  balance: 0,
+                  cashOut: 0,
+                  transactions: 0,
+                },
+              ];
 
         return {
           metrics,
@@ -810,23 +815,23 @@ export async function fetchVaultTransactions(
             ),
             fromName: String(
               tx.fromName ||
-              ((tx.from as Record<string, unknown>)?.type === 'vault'
-                ? 'Vault'
-                : (tx.from as Record<string, unknown>)?.type === 'cashier'
-                  ? 'Cashier'
-                  : (tx.from as Record<string, unknown>)?.type === 'machine'
-                    ? 'Machine'
-                    : (tx.from as Record<string, unknown>)?.id || 'External')
+                ((tx.from as Record<string, unknown>)?.type === 'vault'
+                  ? 'Vault'
+                  : (tx.from as Record<string, unknown>)?.type === 'cashier'
+                    ? 'Cashier'
+                    : (tx.from as Record<string, unknown>)?.type === 'machine'
+                      ? 'Machine'
+                      : (tx.from as Record<string, unknown>)?.id || 'External')
             ),
             toName: String(
               tx.toName ||
-              ((tx.to as Record<string, unknown>)?.type === 'vault'
-                ? 'Vault'
-                : (tx.to as Record<string, unknown>)?.type === 'cashier'
-                  ? 'Cashier'
-                  : (tx.to as Record<string, unknown>)?.type === 'machine'
-                    ? 'Machine'
-                    : (tx.to as Record<string, unknown>)?.id || 'External')
+                ((tx.to as Record<string, unknown>)?.type === 'vault'
+                  ? 'Vault'
+                  : (tx.to as Record<string, unknown>)?.type === 'cashier'
+                    ? 'Cashier'
+                    : (tx.to as Record<string, unknown>)?.type === 'machine'
+                      ? 'Machine'
+                      : (tx.to as Record<string, unknown>)?.id || 'External')
             ),
           })) as ExtendedVaultTransaction[],
           total: data.total || data.pagination?.total || txs.length,
@@ -991,13 +996,13 @@ export async function fetchFloatTransactionsData(
           ...shift,
           cashierName: String(
             shift.cashierName ||
-            shift.cashierUsername ||
-            `Cashier ${String(shift.cashierId || '').substring(0, 4)}`
+              shift.cashierUsername ||
+              `Cashier ${String(shift.cashierId || '').substring(0, 4)}`
           ),
           balance: Number(
             (shift.currentBalance as number) ??
-            (shift.openingBalance as number) ??
-            0
+              (shift.openingBalance as number) ??
+              0
           ),
           status: String(shift.status || 'active'),
         })
@@ -1049,9 +1054,9 @@ export async function fetchFloatTransactionsData(
             timestamp: new Date(tx.timestamp as string), // Ensure date object
             performedByName: String(
               tx.performedByName ||
-              userMap.get(String(tx.performedBy || '')) ||
-              tx.performedBy ||
-              'System'
+                userMap.get(String(tx.performedBy || '')) ||
+                tx.performedBy ||
+                'System'
             ),
           };
         });

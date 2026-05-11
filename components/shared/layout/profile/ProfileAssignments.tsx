@@ -7,15 +7,15 @@
 'use client';
 
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import MultiSelectDropdown, {
-    type MultiSelectOption,
+  type MultiSelectOption,
 } from '@/components/shared/ui/common/MultiSelectDropdown';
 import { Label } from '@/components/shared/ui/label';
 import { Skeleton } from '@/components/shared/ui/skeleton';
@@ -35,14 +35,14 @@ type ProfileAssignmentsProps = {
   selectedLicenceeIds: string[];
   onLicenceeChange: (ids: string[]) => void;
   licenceeOptions: MultiSelectOption[];
-  locations: Array<{ 
-    _id: string; 
-    name: string; 
-    licenceeId?: string | string[]; 
+  locations: Array<{
+    _id: string;
+    name: string;
+    licenceeId?: string | string[];
     licencee?: string | string[];
     rel?: {
       licencee?: string | string[];
-    }
+    };
   }>;
   locationsLoading: boolean;
   allLocationsSelected: boolean;
@@ -50,7 +50,11 @@ type ProfileAssignmentsProps = {
   selectedLocationIds: string[];
   onLocationChange: (ids: string[]) => void;
   locationOptions: MultiSelectOption[];
-  availableLocations: Array<{ _id: string; name: string; licenceeId?: string | string[] }>;
+  availableLocations: Array<{
+    _id: string;
+    name: string;
+    licenceeId?: string | string[];
+  }>;
   missingLocationNames: Record<string, string>;
 };
 
@@ -88,45 +92,66 @@ export default function ProfileAssignments({
 
   const displayRows = useMemo(() => {
     // If "All Locations" (the master global flag) is checked or if 'all' is in selectedLocationIds
-    const isActuallyAllSelected = allLocationsSelected || selectedLocationIds.includes('all');
-    
+    const isActuallyAllSelected =
+      allLocationsSelected || selectedLocationIds.includes('all');
+
     if (isActuallyAllSelected) {
-      return locations.map(loc => {
-        const locAny = loc as Record<string, unknown>;
-        const lid = locAny.licenceeId || (locAny.rel as Record<string, unknown>)?.licencee || (locAny.rel as Record<string, unknown>)?.licensee || locAny.licencee || locAny.licensee;
-        const lic = licencees.find(l => String(l._id) === (Array.isArray(lid) ? String(lid[0]) : String(lid)));
-        return {
-          locationName: loc.name,
-          licenceeName: lic?.name || 'Unknown',
-          id: String(loc._id),
-        };
-      }).sort((a, b) => a.locationName.localeCompare(b.locationName));
+      return locations
+        .map(loc => {
+          const locAny = loc as Record<string, unknown>;
+          const lid =
+            locAny.licenceeId ||
+            (locAny.rel as Record<string, unknown>)?.licencee ||
+            (locAny.rel as Record<string, unknown>)?.licensee ||
+            locAny.licencee ||
+            locAny.licensee;
+          const lic = licencees.find(
+            l =>
+              String(l._id) ===
+              (Array.isArray(lid) ? String(lid[0]) : String(lid))
+          );
+          return {
+            locationName: loc.name,
+            licenceeName: lic?.name || 'Unknown',
+            id: String(loc._id),
+          };
+        })
+        .sort((a, b) => a.locationName.localeCompare(b.locationName));
     }
 
-    const rows: Array<{ locationName: string; licenceeName: string; id: string }> = [];
+    const rows: Array<{
+      locationName: string;
+      licenceeName: string;
+      id: string;
+    }> = [];
     const processedLocationIds = new Set<string>();
 
     selectedLocationIds.forEach(id => {
       if (!id || id === 'all') return;
-      
+
       const licencee = licencees.find(l => String(l._id) === id);
       if (licencee) {
         // It's a licencee ID - find all locations for it
         const licenceeLocations = locations.filter(loc => {
           const locAny = loc as Record<string, unknown>;
-          const lid = locAny.licenceeId || (locAny.rel as Record<string, unknown>)?.licencee || (locAny.rel as Record<string, unknown>)?.licensee || locAny.licencee || locAny.licensee;
+          const lid =
+            locAny.licenceeId ||
+            (locAny.rel as Record<string, unknown>)?.licencee ||
+            (locAny.rel as Record<string, unknown>)?.licensee ||
+            locAny.licencee ||
+            locAny.licensee;
           if (Array.isArray(lid)) {
-             return lid.some(l => String(l) === String(licencee._id));
+            return lid.some(l => String(l) === String(licencee._id));
           }
           return String(lid) === String(licencee._id);
         });
-        
+
         licenceeLocations.forEach(loc => {
           if (!processedLocationIds.has(String(loc._id))) {
             rows.push({
               locationName: loc.name,
               licenceeName: licencee.name,
-              id: String(loc._id)
+              id: String(loc._id),
             });
             processedLocationIds.add(String(loc._id));
           }
@@ -137,13 +162,20 @@ export default function ProfileAssignments({
         if (loc) {
           if (!processedLocationIds.has(String(loc._id))) {
             const locAny = loc as Record<string, unknown>;
-            const lid = locAny.licenceeId || (locAny.rel as Record<string, unknown>)?.licencee || (locAny.rel as Record<string, unknown>)?.licensee || locAny.licencee || locAny.licensee;
+            const lid =
+              locAny.licenceeId ||
+              (locAny.rel as Record<string, unknown>)?.licencee ||
+              (locAny.rel as Record<string, unknown>)?.licensee ||
+              locAny.licencee ||
+              locAny.licensee;
             const singleLid = Array.isArray(lid) ? lid[0] : lid;
-            const lic = licencees.find(l => String(l._id) === String(singleLid));
+            const lic = licencees.find(
+              l => String(l._id) === String(singleLid)
+            );
             rows.push({
               locationName: loc.name,
               licenceeName: lic?.name || 'Unknown',
-              id: String(loc._id)
+              id: String(loc._id),
             });
             processedLocationIds.add(String(loc._id));
           }
@@ -151,14 +183,20 @@ export default function ProfileAssignments({
           rows.push({
             locationName: missingLocationNames[id] || id,
             licenceeName: 'Unknown',
-            id
+            id,
           });
         }
       }
     });
 
     return rows.sort((a, b) => a.locationName.localeCompare(b.locationName));
-  }, [allLocationsSelected, selectedLocationIds, locations, licencees, missingLocationNames]);
+  }, [
+    allLocationsSelected,
+    selectedLocationIds,
+    locations,
+    licencees,
+    missingLocationNames,
+  ]);
 
   // Only admins and developers can edit assigned locations and licencees
   const canEditAssignments = userData.roles?.some(role =>
@@ -181,7 +219,10 @@ export default function ProfileAssignments({
             <p className="mb-4 text-sm text-gray-500">
               Your assigned roles and permissions
             </p>
-            {isEditMode && userData.roles?.some(r => ['admin', 'developer'].includes(r?.toLowerCase())) ? (
+            {isEditMode &&
+            userData.roles?.some(r =>
+              ['admin', 'developer'].includes(r?.toLowerCase())
+            ) ? (
               <div className="space-y-2">
                 {roles.map(role => (
                   <div
@@ -282,7 +323,9 @@ export default function ProfileAssignments({
                   : selectedLicenceeIds.length
                     ? selectedLicenceeIds
                         .map(
-                          id => licencees.find(l => String(l._id) === id)?.name || id
+                          id =>
+                            licencees.find(l => String(l._id) === id)?.name ||
+                            id
                         )
                         .filter(Boolean)
                         .join(', ')

@@ -25,4 +25,3 @@ export type UseCabinetFiltersReturn = {
   clearFilters: () => void;
   hasActiveFilters: boolean;
 };
-

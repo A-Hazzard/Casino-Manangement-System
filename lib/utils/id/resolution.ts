@@ -86,5 +86,3 @@ export async function resolveIdToName(
 export function isIdValue(value: unknown): boolean {
   return isObjectId(value);
 }
-
-

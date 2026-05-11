@@ -18,6 +18,11 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Machine } from '@/app/api/lib/models/machines';
 import { mqttService } from '@/app/api/lib/services/mqttService';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import axios from 'axios';
 import { NextRequest, NextResponse } from 'next/server';
@@ -25,10 +30,10 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * @param {string} relayId - REQUIRED. The unique identifier of the SMIB board (via body)
  * @param {string} firmwareId - REQUIRED. The MongoDB ID of the firmware to install (via body)
- * 
+ *
  * @body {string} relayId - REQUIRED. SMIB identifier
  * @body {string} firmwareId - REQUIRED. Firmware record ID
- * 
+ *
  * Flow:
  * 1. Parse request body
  * 2. Validate relayId and firmwareId
@@ -43,6 +48,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/smib/ota-update';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -135,7 +142,9 @@ export async function POST(request: NextRequest) {
         }
       );
       if (updateResult.modifiedCount === 0) {
-        console.warn(`[SMIB OTA Update] No machine found with relayId: ${relayId}`);
+        console.warn(
+          `[SMIB OTA Update] No machine found with relayId: ${relayId}`
+        );
       }
     } catch {
       return NextResponse.json(
@@ -191,9 +200,18 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================================================
-    // STEP 10: Return success response
+    // STEP10: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/smib/ota-update',
+      1,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
       console.warn(`[SMIB OTA Update API] Completed in ${duration}ms`);
     }
@@ -210,6 +228,13 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/smib/ota-update',
+      errorMessage,
+      user
+    );
     console.error(
       `[SMIB OTA Update API] Error after ${duration}ms:`,
       errorMessage
@@ -220,4 +245,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

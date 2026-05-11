@@ -8,4 +8,3 @@ export type UseLocationMachineStatsReturn = {
   refreshMachineStats: () => Promise<void>;
   error: string | null;
 };
-

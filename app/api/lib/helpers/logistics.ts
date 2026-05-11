@@ -88,7 +88,9 @@ function transformToLogisticsEntries(
   }>
 ): LogisticsEntry[] {
   if (!Array.isArray(logisticsData)) {
-    console.error('[transformToLogisticsEntries] logisticsData must be an array');
+    console.error(
+      '[transformToLogisticsEntries] logisticsData must be an array'
+    );
     return [];
   }
   return logisticsData.map(item => ({
@@ -97,9 +99,10 @@ function transformToLogisticsEntries(
     machineName: item.cabinetIn || 'Unknown Machine',
     fromLocationName: item.locationFrom || '',
     toLocationName: item.locationTo || '',
-    moveDate:
-      item.createdAt?.toISOString() || new Date().toISOString(),
-    status: mapMovementStatusToLogisticsStatus(item.status as MovementRequestStatus),
+    moveDate: item.createdAt?.toISOString() || new Date().toISOString(),
+    status: mapMovementStatusToLogisticsStatus(
+      item.status as MovementRequestStatus
+    ),
     movedBy: item.createdBy || 'Unknown',
     reason: item.reason || 'Movement request',
   }));
@@ -127,8 +130,7 @@ export async function getLogisticsData(
     .limit(100)
     .lean<MovementRequestDocument[]>();
 
-  return transformToLogisticsEntries(logisticsData as Parameters<typeof transformToLogisticsEntries>[0]);
+  return transformToLogisticsEntries(
+    logisticsData as Parameters<typeof transformToLogisticsEntries>[0]
+  );
 }
-
-
-

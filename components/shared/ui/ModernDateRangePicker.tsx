@@ -24,18 +24,11 @@
 import { FC, memo } from 'react';
 import { CustomSelect } from '@/components/shared/ui/custom-select';
 import {
-    DateRangePicker,
-    type DateRange,
+  DateRangePicker,
+  type DateRange,
 } from '@/components/shared/ui/dateRangePicker';
 import { Label } from '@/components/shared/ui/label';
-import { 
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
- } from 'react';
-
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // ============================================================================
 // Types & Helper Components
@@ -237,7 +230,7 @@ export const ModernDateRangePicker: FC<ModernDateRangePickerProps> = ({
         // Handle partial selection (only from date selected)
         const startH = enableTimeInputs ? parseInt(startTime.split(':')[0]) : 0;
         const startM = enableTimeInputs ? parseInt(startTime.split(':')[1]) : 0;
-        
+
         const newFromDate = new Date(range.from);
         newFromDate.setHours(startH, startM, 0, 0);
 

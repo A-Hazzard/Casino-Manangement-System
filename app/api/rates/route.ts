@@ -22,9 +22,16 @@ import {
 } from '@/lib/helpers/rates';
 import type { CurrencyCode } from '@/shared/types/currency';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/rates';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -67,11 +74,14 @@ export async function GET(request: NextRequest) {
       console.warn(`[Rates API] Completed in ${duration}ms`);
     }
 
+    logRouteFetch(functionName, 'GET', '/api/rates', 1, user, duration);
     return NextResponse.json(response);
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     console.error(`[Rates API] Error after ${duration}ms:`, errorMessage);
+    logRouteError(functionName, 'GET', '/api/rates', errorMessage, user);
     return NextResponse.json(
       {
         success: false,
@@ -82,4 +92,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

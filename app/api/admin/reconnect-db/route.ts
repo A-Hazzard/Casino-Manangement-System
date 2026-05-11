@@ -13,6 +13,11 @@
 
 import { connectDB, disconnectDB } from '@/app/api/lib/middleware/db';
 import { NextResponse } from 'next/server';
+import {
+  logRouteCreate,
+  logRouteError,
+  logRouteFetch,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/admin/reconnect-db
@@ -24,28 +29,31 @@ import { NextResponse } from 'next/server';
  */
 export async function POST() {
   const startTime = Date.now();
+  const functionName = 'POST /api/admin/reconnect-db';
 
   try {
     // ============================================================================
     // STEP 1: Disconnect existing database connection
     // ============================================================================
-    console.log('🔄 [ADMIN] Force database reconnection requested');
     await disconnectDB();
-    console.log('✅ [ADMIN] Old connection closed');
 
     // ============================================================================
     // STEP 2: Reconnect with new connection string
     // ============================================================================
     await connectDB();
-    console.log('✅ [ADMIN] New connection established');
 
     // ============================================================================
     // STEP 3: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Admin Reconnect DB API] Completed in ${duration}ms`);
-    }
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/admin/reconnect-db',
+      1,
+      null,
+      duration
+    );
 
     return NextResponse.json({
       success: true,
@@ -53,12 +61,14 @@ export async function POST() {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
-    console.error(
-      `[Admin Reconnect DB API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/admin/reconnect-db',
+      errorMessage,
+      null
     );
     return NextResponse.json(
       {
@@ -78,9 +88,10 @@ export async function POST() {
  * MONGODB_URI is currently set. No side effects.
  */
 export async function GET() {
+  const functionName = 'GET /api/admin/reconnect-db';
+  logRouteFetch(functionName, 'GET', '/api/admin/reconnect-db', 0, null);
   return NextResponse.json({
     message: 'Use POST to reconnect database',
     currentUri: process.env.MONGODB_URI ? 'Set' : 'Not set',
   });
 }
-

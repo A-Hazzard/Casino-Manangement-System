@@ -15,13 +15,21 @@
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
 import type { LeanUserDocument } from '@/shared/types/auth';
-import { NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * GET /api/install/status
  * Returns whether the system has at least one user (i.e. has been initialized).
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/install/status';
+  const user = extractUserFromRequest(request);
   try {
     // ============================================================================
     // STEP 1: Connect to database
@@ -31,15 +39,33 @@ export async function GET() {
     // ============================================================================
     // STEP 2: Check for any existing user (lean + limit 1 for performance)
     // ============================================================================
-    const existingUser = await UserModel.findOne({}).select('_id').lean<LeanUserDocument | null>();
+    const existingUser = await UserModel.findOne({})
+      .select('_id')
+      .lean<LeanUserDocument | null>();
 
     // ============================================================================
     // STEP 3: Return initialization status
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/install/status',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json({ initialized: !!existingUser }, { status: 200 });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[Install Status API] Error:', errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/install/status',
+      errorMessage,
+      user
+    );
 
     return NextResponse.json(
       { initialized: false, error: 'Failed to check system status.' },

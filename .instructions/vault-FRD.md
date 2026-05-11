@@ -5,11 +5,12 @@
 The **Vault** interface is the cash desk operations section of Evolution One CMS, covering float management and vault balancing. It is accessible to users with the `vault-manager` or `cashier` role.
 
 **Core Business Logic:**
+
 - The system tracks the flow of cash between:
-    - **External Sources (Bank/Owner) → Vault**
-    - **Vault ↔ Cash Desks (Floats)**
-    - **Machines/Tables → Vault (Collections/Drops)**
-    - **Vault → Expenses (Operations)**
+  - **External Sources (Bank/Owner) → Vault**
+  - **Vault ↔ Cash Desks (Floats)**
+  - **Machines/Tables → Vault (Collections/Drops)**
+  - **Vault → Expenses (Operations)**
 
 ---
 
@@ -38,6 +39,7 @@ components/
 ### 2.3 Shared Sidebar Strategy
 
 The Sidebar must be refactored to be **Config-Driven**:
+
 - **CMS Mode:** Displays links for Meters, Collections, Machines, etc.
 - **VAULT Mode:** Displays links for Vault Overview, Transactions, Float Management, and Transfers.
 - **Shared Profile:** User name, role, and logout remain constant.
@@ -49,6 +51,7 @@ The Sidebar must be refactored to be **Config-Driven**:
 ### 3.1 Role Authorization
 
 Only the following roles are authorized to access the VAULT application:
+
 - Developer
 - Admin
 - Location Admin
@@ -57,8 +60,9 @@ Only the following roles are authorized to access the VAULT application:
 ### 3.2 Unauthorized Access
 
 If an unauthorized user (e.g., Cashier without specific permissions or a standard User) attempts to log in to the Vault environment:
+
 - **Display:** the Unauthorized Component
-- **Message:**  
+- **Message:**
   ```
   Access Denied. Your role [RoleName] does not have permission to access Vault Management. Please contact your manager.
   ```
@@ -74,6 +78,7 @@ If an unauthorized user (e.g., Cashier without specific permissions or a standar
 - **Bypass:** If `process.env.APPLICATION` is set and the user is **not** one of these high-level roles, bypass this screen and load the specific application directly.
 
 **UI Design: Role Selection Screen**
+
 ```
 +---------------------------------------------------------------+
 |  [Logo: Dynamic1 CMS]                                         |
@@ -102,6 +107,7 @@ If an unauthorized user (e.g., Cashier without specific permissions or a standar
 **Requirement:** The central hub for the Vault Manager. It must show the current "Health" of the vault immediately.
 
 **UI Design: Vault Dashboard**
+
 ```
 +-----------------------------------------------------------------------+
 | Header: [Breadcrumb: Home > Vault] | Date: Jan 15, 2025 | Loc: Vegas  |
@@ -144,6 +150,7 @@ If an unauthorized user (e.g., Cashier without specific permissions or a standar
 **Requirement:** Simple, secure forms for moving money.
 
 **UI Design: Add Cash Modal**
+
 ```
 +-------------------------------------------------------+
 |  Add Cash to Vault                                [X] |
@@ -162,6 +169,7 @@ If an unauthorized user (e.g., Cashier without specific permissions or a standar
 ```
 
 **UI Design: Remove Cash Modal**
+
 ```
 +-------------------------------------------------------+
 |  Remove Cash from Vault                           [X] |
@@ -186,6 +194,7 @@ If an unauthorized user (e.g., Cashier without specific permissions or a standar
 **Requirement:** A specific form of "Remove Cash" tagged as an operational expense.
 
 **UI Design: Record Expense Modal**
+
 ```
 +-------------------------------------------------------+
 |  Record Operational Expense                       [X] |
@@ -229,9 +238,9 @@ If an unauthorized user (e.g., Cashier without specific permissions or a standar
 
 - **Constraint:** NO live API connections for the initial Vault build.
 - **Implementation:** Use static arrays (mock data) inside the components to simulate:
-    - `mockTransactions[]`
-    - `mockCashDesks[]`
-    - `mockVaultBalance = 50000`
+  - `mockTransactions[]`
+  - `mockCashDesks[]`
+  - `mockVaultBalance = 50000`
 - **Future-Proofing:** All components must use prop-driven data so they can be easily switched to `useQuery` later.
 
 ---

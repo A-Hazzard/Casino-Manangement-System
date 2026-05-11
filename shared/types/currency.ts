@@ -25,4 +25,3 @@ export type CurrencyContextType = {
   isAllLicencee: boolean;
   shouldApplyConversion: boolean;
 };
-

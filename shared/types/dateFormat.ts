@@ -12,4 +12,3 @@ export type DateFormatOptions = {
 };
 
 export type DateInput = Date | string | number;
-

@@ -25,15 +25,15 @@ export function useTextOverflow(
     }
 
     const element = containerRef.current;
-    
+
     // Use requestAnimationFrame to ensure DOM has updated
     const checkOverflow = () => {
       // Check if scrollWidth is greater than clientWidth (horizontal overflow)
       // or scrollHeight is greater than clientHeight (vertical overflow)
-      const hasOverflow = 
+      const hasOverflow =
         element.scrollWidth > element.clientWidth ||
         element.scrollHeight > element.clientHeight;
-      
+
       setIsOverflowing(hasOverflow);
     };
 
@@ -54,8 +54,3 @@ export function useTextOverflow(
 
   return isOverflowing;
 }
-
-
-
-
-

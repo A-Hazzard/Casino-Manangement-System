@@ -50,9 +50,15 @@ export class CabinetDetailPage {
     this.filterCustom = page.getByRole('button', { name: /custom/i });
 
     // Custom range inputs
-    this.startDateInput = page.locator('input[aria-label*="start date" i], input[name="startDate"]').first();
-    this.endDateInput = page.locator('input[aria-label*="end date" i], input[name="endDate"]').first();
-    this.applyRangeButton = page.getByRole('button', { name: /apply|go|search/i });
+    this.startDateInput = page
+      .locator('input[aria-label*="start date" i], input[name="startDate"]')
+      .first();
+    this.endDateInput = page
+      .locator('input[aria-label*="end date" i], input[name="endDate"]')
+      .first();
+    this.applyRangeButton = page.getByRole('button', {
+      name: /apply|go|search/i,
+    });
 
     // Metric cards
     this.moneyInCard = page.locator('text=Money In').locator('..').first();
@@ -61,12 +67,23 @@ export class CabinetDetailPage {
     this.grossCard = page.locator('text=Gross').locator('..').first();
 
     // Sections
-    this.meterDataSection = page.locator('[data-testid="meter-data"], text=SAS Meters, text=Meter Data').first().locator('..');
-    this.meterHistorySection = page.locator('[data-testid="meter-history"], text=Meter History').first().locator('..');
-    this.billValidatorSection = page.locator('[data-testid="bill-validator"], text=Bill Validator').first().locator('..');
+    this.meterDataSection = page
+      .locator('[data-testid="meter-data"], text=SAS Meters, text=Meter Data')
+      .first()
+      .locator('..');
+    this.meterHistorySection = page
+      .locator('[data-testid="meter-history"], text=Meter History')
+      .first()
+      .locator('..');
+    this.billValidatorSection = page
+      .locator('[data-testid="bill-validator"], text=Bill Validator')
+      .first()
+      .locator('..');
 
     // Back link
-    this.backToCabinetsLink = page.getByRole('link', { name: /back|cabinets/i });
+    this.backToCabinetsLink = page.getByRole('link', {
+      name: /back|cabinets/i,
+    });
   }
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
@@ -78,7 +95,9 @@ export class CabinetDetailPage {
 
   // ─── Actions ────────────────────────────────────────────────────────────────
 
-  async selectTimePeriod(period: 'All Time' | 'Today' | 'Week' | 'Month' | 'Custom') {
+  async selectTimePeriod(
+    period: 'All Time' | 'Today' | 'Week' | 'Month' | 'Custom'
+  ) {
     const map: Record<string, Locator> = {
       'All Time': this.filterAllTime,
       Today: this.filterToday,
@@ -118,7 +137,10 @@ export class CabinetDetailPage {
     await expect(this.billValidatorSection).toBeVisible();
   }
 
-  async expectMetricValue(metric: 'moneyIn' | 'moneyOut' | 'jackpot' | 'gross', value: string) {
+  async expectMetricValue(
+    metric: 'moneyIn' | 'moneyOut' | 'jackpot' | 'gross',
+    value: string
+  ) {
     const cardMap = {
       moneyIn: this.moneyInCard,
       moneyOut: this.moneyOutCard,

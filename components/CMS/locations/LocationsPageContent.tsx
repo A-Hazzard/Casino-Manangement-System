@@ -116,7 +116,10 @@ export default function LocationsPageContent() {
     if (!locationId) return;
 
     try {
-      await axios.patch('/api/locations', { id: locationId, action: 'restore' });
+      await axios.patch('/api/locations', {
+        id: locationId,
+        action: 'restore',
+      });
       toast.success(`${locationName || 'Location'} restored successfully`);
       handleRefresh();
     } catch {
@@ -170,9 +173,9 @@ export default function LocationsPageContent() {
         <div className="mt-6">
           <FinancialMetricsCards
             totals={
-              (isDataComplete && !metricsTotalsLoading)
+              isDataComplete && !metricsTotalsLoading
                 ? financialTotals
-                : (metricsTotals || financialTotals)
+                : metricsTotals || financialTotals
             }
             loading={loading || metricsTotalsLoading}
             title="Total for all Locations"
@@ -182,7 +185,7 @@ export default function LocationsPageContent() {
         {/* Filters and Status Section */}
         <div className="flex flex-col gap-4">
           {/* Date range picker and machine status indicator */}
-          <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center mt-4">
+          <div className="mt-4 flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
             <div className="order-1 w-auto flex-shrink-0">
               <DateFilters hideAllTime />
             </div>
@@ -221,7 +224,7 @@ export default function LocationsPageContent() {
         {/* ============================================================================
            Locations Listing: Responsive card/table view
            ============================================================================ */}
-        <div className="mt-4 lg:mt-0 flex-1">
+        <div className="mt-4 flex-1 lg:mt-0">
           {/* Show loading skeletons while data is being fetched */}
           {loading ? (
             <div>
@@ -256,7 +259,9 @@ export default function LocationsPageContent() {
                     onEdit={location => openEditModal(location)}
                     onDelete={location => openDeleteModal(location)}
                     onRestore={location => handleRestore(location)}
-                    showArchived={locationsPageData.selectedStatus === 'Archived'}
+                    showArchived={
+                      locationsPageData.selectedStatus === 'Archived'
+                    }
                     canManageLocations={canManageLocations}
                     isDeveloper={isDeveloper}
                   />
@@ -279,7 +284,9 @@ export default function LocationsPageContent() {
                   onSort={locationsPageData.handleSort}
                   sortOption={locationsPageData.sortOption}
                   sortOrder={locationsPageData.sortOrder}
-                  formatCurrency={amount => formatCurrencyWithCodeString(amount, displayCurrency)}
+                  formatCurrency={amount =>
+                    formatCurrencyWithCodeString(amount, displayCurrency)
+                  }
                 />
               </div>
 
@@ -298,4 +305,3 @@ export default function LocationsPageContent() {
     </>
   );
 }
-

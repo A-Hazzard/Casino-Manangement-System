@@ -12,48 +12,52 @@ import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsE
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import LocationMultiSelect from '@/components/shared/ui/common/LocationMultiSelect';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
 import { Input } from '@/components/shared/ui/input';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import { MachinesOfflineSkeleton } from '@/components/shared/ui/skeletons/ReportsSkeletons';
-import type { MachineData, ReportsMachinesOfflineProps, MachineSortKey } from '@/shared/types/reports';
+import type {
+  MachineData,
+  ReportsMachinesOfflineProps,
+  MachineSortKey,
+} from '@/shared/types/reports';
 import { getFinancialColorClass } from '@/lib/utils/financial';
 import deleteIcon from '@/public/deleteIcon.svg';
 import editIcon from '@/public/editIcon.svg';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
-    ChevronDown,
-    ChevronUp,
-    Download,
-    ExternalLink,
-    FileSpreadsheet,
-    FileText,
-    Monitor,
-    RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  ExternalLink,
+  FileSpreadsheet,
+  FileText,
+  Monitor,
+  RefreshCw,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import {  useMemo  } from 'react';
+import { useMemo } from 'react';
 
 // ============================================================================
 // Internal Components
@@ -148,8 +152,10 @@ export const ReportsMachinesOffline = ({
       totalOffline,
       criticalOffline,
       recentOffline,
-      criticalPercentage: totalOffline > 0 ? (criticalOffline / totalOffline) * 100 : 0,
-      recentPercentage: totalOffline > 0 ? (recentOffline / totalOffline) * 100 : 0,
+      criticalPercentage:
+        totalOffline > 0 ? (criticalOffline / totalOffline) * 100 : 0,
+      recentPercentage:
+        totalOffline > 0 ? (recentOffline / totalOffline) * 100 : 0,
     };
   }, [machineStats, machineStatsLoading]);
 
@@ -163,7 +169,7 @@ export const ReportsMachinesOffline = ({
       <div className="space-y-4">
         {/* Filters */}
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center">
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <Input
               placeholder="Search offline machines..."
               value={searchTerm}
@@ -281,7 +287,7 @@ export const ReportsMachinesOffline = ({
 
       {/* Filters */}
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center">
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <Input
             placeholder="Search offline machines..."
             value={searchTerm}
@@ -329,41 +335,41 @@ export const ReportsMachinesOffline = ({
               </CardDescription>
             </div>
             <div className="flex flex-wrap gap-2 sm:flex-nowrap">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRefresh}
-            disabled={offlineLoading}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" />
-                Export
-                <ChevronDown className="ml-2 h-4 w-4" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRefresh}
+                disabled={offlineLoading}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" /> Refresh
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => onExport('pdf')}
-                className="cursor-pointer"
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Export as PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onExport('excel')}
-                className="cursor-pointer"
-              >
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Export as Excel
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Download className="mr-2 h-4 w-4" />
+                    Export
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => onExport('pdf')}
+                    className="cursor-pointer"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onExport('excel')}
+                    className="cursor-pointer"
+                  >
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Export as Excel
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {offlineLoading ? (
@@ -376,132 +382,153 @@ export const ReportsMachinesOffline = ({
             <>
               {/* Desktop Table View */}
               <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b">
-                    <SortableHeader
-                      sortKey="machineId"
-                      currentSort={sortConfig}
-                      onSort={onSort}
-                    >
-                      Machine ID
-                    </SortableHeader>
-                    <SortableHeader
-                      sortKey="gameTitle"
-                      currentSort={sortConfig}
-                      onSort={onSort}
-                    >
-                      Game
-                    </SortableHeader>
-                    <SortableHeader
-                      sortKey="locationName"
-                      currentSort={sortConfig}
-                      onSort={onSort}
-                    >
-                      Location
-                    </SortableHeader>
-                    <SortableHeader
-                      sortKey="lastActivity"
-                      currentSort={sortConfig}
-                      onSort={onSort}
-                    >
-                      Last Online
-                    </SortableHeader>
-                    <SortableHeader
-                      sortKey="offlineDurationHours"
-                      currentSort={sortConfig}
-                      onSort={onSort}
-                    >
-                      Offline Duration
-                    </SortableHeader>
-                    <SortableHeader
-                      sortKey="coinIn"
-                      currentSort={sortConfig}
-                      onSort={onSort}
-                    >
-                      Handle
-                    </SortableHeader>
-                    <SortableHeader
-                      sortKey="netWin"
-                      currentSort={sortConfig}
-                      onSort={onSort}
-                    >
-                      Net Win
-                    </SortableHeader>
-                    <th className="p-3 text-center font-medium text-gray-700">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {offlineMachines.map((machine: MachineData) => {
-                    const lastOnlineDate = machine.lastActivity ? new Date(machine.lastActivity) : null;
-
-                    return (
-                      <tr
-                        key={machine.machineId}
-                        className="border-b hover:bg-gray-50"
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <SortableHeader
+                        sortKey="machineId"
+                        currentSort={sortConfig}
+                        onSort={onSort}
                       >
-                        <td className="p-3 text-left">
-                          <button
-                            onClick={() => {
-                              router.push(`/cabinets/${machine.machineId}`);
-                            }}
-                            className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
-                          >
-                            <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
-                              {formatMachineDisplayNameWithBold({
-                                serialNumber:
-                                  machine.serialNumber || machine.machineId,
-                                custom: { name: machine.machineName },
-                                game: machine.gameTitle,
-                              })}
-                            </span>
-                            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
-                          </button>
-                        </td>
-                        <td className="p-3 text-left">
-                          {machine.gameTitle || <span className="text-red-600">(game name not provided)</span>}
-                        </td>
-                        <td className="p-3 text-left">
-                          <button
-                            onClick={() => {
-                              router.push(`/locations/${machine.locationId}`);
-                            }}
-                            className="group flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
-                          >
-                            <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
-                              {machine.locationName || 'N/A'}
-                            </span>
-                            <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
-                          </button>
-                        </td>
-                        <td className="p-3 text-left">
-                          {lastOnlineDate ? format(lastOnlineDate, 'MMM d, yyyy h:mm a') : 'Never'}
-                        </td>
-                        <td className="p-3 text-left">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-900">
-                              {machine.offlineTimeLabel || (machine.lastActivity ? formatDistanceToNow(new Date(machine.lastActivity), { addSuffix: true }) : 'Never')}
-                            </span>
-                            {machine.actualOfflineTime && machine.actualOfflineTime !== machine.offlineTimeLabel && (
-                              <span className="ml-2 text-[10px] italic text-gray-500 opacity-80">
-                                Actual Offline Time: {machine.actualOfflineTime}
+                        Machine ID
+                      </SortableHeader>
+                      <SortableHeader
+                        sortKey="gameTitle"
+                        currentSort={sortConfig}
+                        onSort={onSort}
+                      >
+                        Game
+                      </SortableHeader>
+                      <SortableHeader
+                        sortKey="locationName"
+                        currentSort={sortConfig}
+                        onSort={onSort}
+                      >
+                        Location
+                      </SortableHeader>
+                      <SortableHeader
+                        sortKey="lastActivity"
+                        currentSort={sortConfig}
+                        onSort={onSort}
+                      >
+                        Last Online
+                      </SortableHeader>
+                      <SortableHeader
+                        sortKey="offlineDurationHours"
+                        currentSort={sortConfig}
+                        onSort={onSort}
+                      >
+                        Offline Duration
+                      </SortableHeader>
+                      <SortableHeader
+                        sortKey="coinIn"
+                        currentSort={sortConfig}
+                        onSort={onSort}
+                      >
+                        Handle
+                      </SortableHeader>
+                      <SortableHeader
+                        sortKey="netWin"
+                        currentSort={sortConfig}
+                        onSort={onSort}
+                      >
+                        Net Win
+                      </SortableHeader>
+                      <th className="p-3 text-center font-medium text-gray-700">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {offlineMachines.map((machine: MachineData) => {
+                      const lastOnlineDate = machine.lastActivity
+                        ? new Date(machine.lastActivity)
+                        : null;
+
+                      return (
+                        <tr
+                          key={machine.machineId}
+                          className="border-b hover:bg-gray-50"
+                        >
+                          <td className="p-3 text-left">
+                            <button
+                              onClick={() => {
+                                router.push(`/cabinets/${machine.machineId}`);
+                              }}
+                              className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                            >
+                              <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                {formatMachineDisplayNameWithBold({
+                                  serialNumber:
+                                    machine.serialNumber || machine.machineId,
+                                  custom: { name: machine.machineName },
+                                  game: machine.gameTitle,
+                                })}
+                              </span>
+                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                            </button>
+                          </td>
+                          <td className="p-3 text-left">
+                            {machine.gameTitle || (
+                              <span className="text-red-600">
+                                (game name not provided)
                               </span>
                             )}
-                          </div>
-                        </td>
-                        <td className="p-3 text-left">
-                          <span className={getFinancialColorClass(machine.coinIn)}>
-                            ${machine.coinIn.toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="p-3 text-left">
-                          <span className={getFinancialColorClass(machine.netWin)}>
-                            ${machine.netWin.toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="p-3 text-center">
+                          </td>
+                          <td className="p-3 text-left">
+                            <button
+                              onClick={() => {
+                                router.push(`/locations/${machine.locationId}`);
+                              }}
+                              className="group flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
+                            >
+                              <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                {machine.locationName || 'N/A'}
+                              </span>
+                              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                            </button>
+                          </td>
+                          <td className="p-3 text-left">
+                            {lastOnlineDate
+                              ? format(lastOnlineDate, 'MMM d, yyyy h:mm a')
+                              : 'Never'}
+                          </td>
+                          <td className="p-3 text-left">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-gray-900">
+                                {machine.offlineTimeLabel ||
+                                  (machine.lastActivity
+                                    ? formatDistanceToNow(
+                                        new Date(machine.lastActivity),
+                                        { addSuffix: true }
+                                      )
+                                    : 'Never')}
+                              </span>
+                              {machine.actualOfflineTime &&
+                                machine.actualOfflineTime !==
+                                  machine.offlineTimeLabel && (
+                                  <span className="ml-2 text-[10px] italic text-gray-500 opacity-80">
+                                    Actual Offline Time:{' '}
+                                    {machine.actualOfflineTime}
+                                  </span>
+                                )}
+                            </div>
+                          </td>
+                          <td className="p-3 text-left">
+                            <span
+                              className={getFinancialColorClass(machine.coinIn)}
+                            >
+                              ${machine.coinIn.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="p-3 text-left">
+                            <span
+                              className={getFinancialColorClass(machine.netWin)}
+                            >
+                              ${machine.netWin.toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
                             <div className="flex justify-center gap-2">
                               <Button
                                 variant="ghost"
@@ -534,7 +561,7 @@ export const ReportsMachinesOffline = ({
                                 />
                               </Button>
                             </div>
-                        </td>
+                          </td>
                         </tr>
                       );
                     })}
@@ -545,7 +572,9 @@ export const ReportsMachinesOffline = ({
               {/* Mobile Card View */}
               <div className="grid grid-cols-1 gap-4 lg:hidden">
                 {offlineMachines.map((machine: MachineData) => {
-                  const lastOnlineDate = machine.lastActivity ? new Date(machine.lastActivity) : null;
+                  const lastOnlineDate = machine.lastActivity
+                    ? new Date(machine.lastActivity)
+                    : null;
 
                   return (
                     <Card
@@ -555,12 +584,20 @@ export const ReportsMachinesOffline = ({
                       {/* Header */}
                       <div className="mb-4 flex flex-col border-b border-gray-100 pb-3">
                         <div className="mb-2 flex flex-col">
-                            <div className="flex items-center">
-                              <span className="text-sm font-semibold text-gray-900">
-                                {machine.offlineTimeLabel || (machine.lastActivity ? formatDistanceToNow(new Date(machine.lastActivity), { addSuffix: true }) : 'Never')}
-                              </span>
-                            </div>
-                            {machine.actualOfflineTime && machine.actualOfflineTime !== machine.offlineTimeLabel && (
+                          <div className="flex items-center">
+                            <span className="text-sm font-semibold text-gray-900">
+                              {machine.offlineTimeLabel ||
+                                (machine.lastActivity
+                                  ? formatDistanceToNow(
+                                      new Date(machine.lastActivity),
+                                      { addSuffix: true }
+                                    )
+                                  : 'Never')}
+                            </span>
+                          </div>
+                          {machine.actualOfflineTime &&
+                            machine.actualOfflineTime !==
+                              machine.offlineTimeLabel && (
                               <span className="ml-[18px] text-[10px] italic text-gray-500 opacity-80">
                                 Actual Offline Time: {machine.actualOfflineTime}
                               </span>
@@ -586,7 +623,9 @@ export const ReportsMachinesOffline = ({
                             </button>
                             <p className="mt-1 truncate text-sm text-gray-600">
                               {machine.gameTitle || (
-                                <span className="text-red-600">(game name not provided)</span>
+                                <span className="text-red-600">
+                                  (game name not provided)
+                                </span>
                               )}
                             </p>
                             <button
@@ -607,25 +646,39 @@ export const ReportsMachinesOffline = ({
                       {/* Metrics Grid */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <p className="text-xs font-medium text-gray-500">Last Online</p>
+                          <p className="text-xs font-medium text-gray-500">
+                            Last Online
+                          </p>
                           <p className="mt-1 text-sm font-semibold text-gray-900">
-                            {lastOnlineDate ? format(lastOnlineDate, 'MMM d, yyyy h:mm a') : 'Never'}
+                            {lastOnlineDate
+                              ? format(lastOnlineDate, 'MMM d, yyyy h:mm a')
+                              : 'Never'}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs font-medium text-gray-500">Handle</p>
-                          <p className={`mt-1 text-sm font-semibold ${getFinancialColorClass(machine.coinIn)}`}>
+                          <p className="text-xs font-medium text-gray-500">
+                            Handle
+                          </p>
+                          <p
+                            className={`mt-1 text-sm font-semibold ${getFinancialColorClass(machine.coinIn)}`}
+                          >
                             ${machine.coinIn.toLocaleString()}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs font-medium text-gray-500">Net Win</p>
-                          <p className={`mt-1 text-sm font-semibold ${getFinancialColorClass(machine.netWin)}`}>
+                          <p className="text-xs font-medium text-gray-500">
+                            Net Win
+                          </p>
+                          <p
+                            className={`mt-1 text-sm font-semibold ${getFinancialColorClass(machine.netWin)}`}
+                          >
                             ${machine.netWin.toLocaleString()}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs font-medium text-gray-500">Actions</p>
+                          <p className="text-xs font-medium text-gray-500">
+                            Actions
+                          </p>
                           <div className="mt-1 flex gap-2">
                             <Button
                               variant="ghost"
@@ -661,9 +714,9 @@ export const ReportsMachinesOffline = ({
                         </div>
                       </div>
                     </Card>
-                    );
-                  })}
-            </div>
+                  );
+                })}
+              </div>
             </>
           )}
 
@@ -684,4 +737,3 @@ export const ReportsMachinesOffline = ({
     </div>
   );
 };
-

@@ -28,7 +28,9 @@ type EditCabinetCollectionSettingsProps = {
   };
   collectionTime: Date;
   collectionMultiplierError: string;
-  onFormDataChange: (updates: Partial<EditCabinetCollectionSettingsProps['formData']>) => void;
+  onFormDataChange: (
+    updates: Partial<EditCabinetCollectionSettingsProps['formData']>
+  ) => void;
   onCollectionTimeChange: (date: Date) => void;
   onCollectionMultiplierErrorChange: (error: string) => void;
 };
@@ -43,7 +45,9 @@ export default function EditCabinetCollectionSettings({
 }: EditCabinetCollectionSettingsProps) {
   return (
     <div className="mt-4 space-y-4 border-t border-border pt-4">
-      <h3 className="text-sm font-medium text-buttonActive">Collection Settings</h3>
+      <h3 className="text-sm font-medium text-buttonActive">
+        Collection Settings
+      </h3>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
           <label className="mb-2 block text-sm font-medium text-grayHighlight">
@@ -133,4 +137,3 @@ export default function EditCabinetCollectionSettings({
     </div>
   );
 }
-

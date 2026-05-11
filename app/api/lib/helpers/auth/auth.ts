@@ -42,7 +42,6 @@ type LeanUserObject = LeanUserDocument & {
   tempPassword?: string | null;
 };
 
-
 /**
  * Validates user credentials and generates JWT tokens on success.
  * Enhanced with rate limiting, session management, and security features.
@@ -249,7 +248,11 @@ export async function authenticateUser(
 
     // Cashiers with a temp password must NOT get passwordUpdatedAt stamped here.
     // Only stamp if it's a non-cashier user whose strong password has never been recorded.
-    if (!leanUser.passwordUpdatedAt && passwordConfirmedStrong && !isCashierWithTempPassword) {
+    if (
+      !leanUser.passwordUpdatedAt &&
+      passwordConfirmedStrong &&
+      !isCashierWithTempPassword
+    ) {
       await UserModel.updateOne(
         { _id: typedUser._id },
         { $set: { passwordUpdatedAt: new Date() } }
@@ -289,7 +292,9 @@ export async function authenticateUser(
         profile: userObject.profile || undefined,
         assignedLocations: userObject.assignedLocations || undefined,
         assignedLicencees: userObject.assignedLicencees || undefined,
-        multiplier: userObject.multiplier ?? null,
+        moneyInMultiplier: userObject.moneyInMultiplier ?? null,
+        moneyOutAndJackpotMultiplier:
+          userObject.moneyOutAndJackpotMultiplier ?? null,
         sessionVersion: Number(userObject.sessionVersion) || 1,
         lastLoginAt: new Date(),
         loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -312,7 +317,8 @@ export async function authenticateUser(
       });
 
       const expiresAt = new Date(
-        Date.now() + (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
+        Date.now() +
+          (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
       ).toISOString();
 
       return {
@@ -374,7 +380,9 @@ export async function authenticateUser(
         profile: userObject.profile || undefined,
         assignedLocations: userObject.assignedLocations || undefined,
         assignedLicencees: userObject.assignedLicencees || undefined,
-        multiplier: userObject.multiplier ?? null,
+        moneyInMultiplier: userObject.moneyInMultiplier ?? null,
+        moneyOutAndJackpotMultiplier:
+          userObject.moneyOutAndJackpotMultiplier ?? null,
         sessionVersion: Number(userObject.sessionVersion) || 1,
         lastLoginAt: new Date(),
         loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -398,7 +406,7 @@ export async function authenticateUser(
 
       const expiresAt = new Date(
         Date.now() +
-        (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
+          (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
       ).toISOString();
 
       return {
@@ -446,7 +454,9 @@ export async function authenticateUser(
       userObject._id.toString() // Using user ID as session ID for simplicity
     );
 
-    const finalValidation = getInvalidProfileFields(typedUser, { rawPassword: password });
+    const finalValidation = getInvalidProfileFields(typedUser, {
+      rawPassword: password,
+    });
     const requiresPasswordUpdate = !!finalValidation.invalidFields.password;
 
     // If a weak password is detected, persist this requirement in the database
@@ -458,7 +468,6 @@ export async function authenticateUser(
       );
     }
 
-
     const userPayload = {
       _id: userObject._id.toString(),
       emailAddress: userObject.emailAddress,
@@ -468,7 +477,9 @@ export async function authenticateUser(
       profile: userObject.profile || undefined,
       assignedLocations: userObject.assignedLocations || undefined,
       assignedLicencees: userObject.assignedLicencees || undefined,
-      multiplier: userObject.multiplier ?? null,
+      moneyInMultiplier: userObject.moneyInMultiplier ?? null,
+      moneyOutAndJackpotMultiplier:
+        userObject.moneyOutAndJackpotMultiplier ?? null,
       sessionVersion: Number(userObject.sessionVersion) || 1,
       lastLoginAt: new Date(),
       loginCount: (Number(userObject.loginCount) || 0) + 1,
@@ -493,7 +504,7 @@ export async function authenticateUser(
 
     const expiresAt = new Date(
       Date.now() +
-      (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
+        (rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000)
     ).toISOString();
 
     return {
@@ -531,8 +542,9 @@ export async function authenticateUser(
 
     await logActivity({
       action: 'login_error',
-      details: `Authentication error for ${identifier}: ${error instanceof Error ? error.message : 'Unknown error'
-        }`,
+      details: `Authentication error for ${identifier}: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`,
       ipAddress,
       userAgent,
       userId: userIdForLog,
@@ -631,7 +643,9 @@ export async function sendPasswordResetEmail(
     }
 
     // Email service has been removed from the application
-    console.log(`[AUTH] Password reset requested for ${email}, but email services are disabled.`);
+    console.log(
+      `[AUTH] Password reset requested for ${email}, but email services are disabled.`
+    );
 
     return {
       success: true,
@@ -642,7 +656,9 @@ export async function sendPasswordResetEmail(
       '[sendPasswordResetEmail] Error:',
       error instanceof Error ? error.message : 'Unknown error'
     );
-    return { success: false, message: 'Failed to process password reset request.' };
+    return {
+      success: false,
+      message: 'Failed to process password reset request.',
+    };
   }
 }
-

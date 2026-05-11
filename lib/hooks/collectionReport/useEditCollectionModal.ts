@@ -58,6 +58,41 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+function getSasEndTime(
+  showAdvanced: boolean,
+  capturedEndTime: Date | null,
+  defaultTime: Date
+): Date {
+  console.warn('[useEditCollectionModal] getSasEndTime called:', {
+    showAdvanced,
+    capturedEndTime: capturedEndTime
+      ? capturedEndTime instanceof Date
+        ? capturedEndTime.toISOString()
+        : new Date(String(capturedEndTime)).toISOString()
+      : 'null',
+    defaultTime:
+      defaultTime instanceof Date
+        ? defaultTime.toISOString()
+        : new Date(defaultTime).toISOString(),
+  });
+
+  // In BOTH simple and advanced mode, if we have a capturedEndTime, use it
+  // Simple mode: capturedEndTime is the user-selected collectionTime
+  // Advanced mode: capturedEndTime is the custom sasEndTime set by user
+  if (capturedEndTime) {
+    return capturedEndTime instanceof Date
+      ? capturedEndTime
+      : new Date(String(capturedEndTime));
+  }
+
+  // Fallback to defaultTime only if no capturedEndTime
+  return defaultTime;
+}
+
+// ============================================================================
 // Type Definitions
 // ============================================================================
 
@@ -98,12 +133,16 @@ export function useEditCollectionModal({
     setFormData: setStoreFormData,
     calculateCarryover: storeCalculateCarryover,
     setSelectedLocation: setStoreSelectedLocation,
+    resetState: resetStoreState,
   } = useCollectionModalStore();
 
-  const [internalLocations, setInternalLocations] = useState<CollectionReportLocationWithMachines[]>([]);
-  
+  const [internalLocations, setInternalLocations] = useState<
+    CollectionReportLocationWithMachines[]
+  >([]);
+
   // Use internal locations if available, fallback to prop
-  const locations = internalLocations.length > 0 ? internalLocations : propLocations;
+  const locations =
+    internalLocations.length > 0 ? internalLocations : propLocations;
 
   const {
     selectedLocationId: storeLocationId,
@@ -154,8 +193,7 @@ export function useEditCollectionModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [hasUnsavedEdits, setHasUnsavedEdits] = useState(false);
-  const [, setShowUnsavedChangesWarning] =
-    useState(false);
+  const [, setShowUnsavedChangesWarning] = useState(false);
   const [isFirstCollection, setIsFirstCollection] = useState(false);
 
   // ==========================================================================
@@ -236,7 +274,10 @@ export function useEditCollectionModal({
     [setStoreFormData]
   );
   const setCurrentCollectionTime = useCallback(
-    (val: Date) => setStoreFormData({ collectionTime: val }),
+    (val: Date | string) =>
+      setStoreFormData({
+        collectionTime: typeof val === 'string' ? new Date(val) : val,
+      }),
     [setStoreFormData]
   );
   const setSelectedMachineId = (id: string) =>
@@ -302,11 +343,19 @@ export function useEditCollectionModal({
   );
 
   const setSasStartTime = useCallback(
-    (val: Date | null) => setStoreFormData({ sasStartTime: val }),
+    (val: Date | string | null) =>
+      setStoreFormData({
+        sasStartTime:
+          val === null ? null : typeof val === 'string' ? new Date(val) : val,
+      }),
     [setStoreFormData]
   );
   const setSasEndTime = useCallback(
-    (val: Date | null) => setStoreFormData({ sasEndTime: val }),
+    (val: Date | string | null) =>
+      setStoreFormData({
+        sasEndTime:
+          val === null ? null : typeof val === 'string' ? new Date(val) : val,
+      }),
     [setStoreFormData]
   );
 
@@ -338,21 +387,22 @@ export function useEditCollectionModal({
   useEffect(() => {
     if (show && userId) {
       setIsLoadingLocations(true);
-      import('@/lib/helpers/collectionReport/fetching').then(({ getLocationsWithMachines }) => {
-        getLocationsWithMachines(undefined, false)
-          .then(locs => {
-            setInternalLocations(locs);
-          })
-          .catch(err => {
-            console.error('Error fetching collection metadata:', err);
-          })
-          .finally(() => setIsLoadingLocations(false));
-      });
+      import('@/lib/helpers/collectionReport/fetching').then(
+        ({ getLocationsWithMachines }) => {
+          getLocationsWithMachines(undefined, false)
+            .then(locs => {
+              setInternalLocations(locs);
+            })
+            .catch(err => {
+              console.error('Error fetching collection metadata:', err);
+            })
+            .finally(() => setIsLoadingLocations(false));
+        }
+      );
     } else {
       setIsLoadingLocations(false);
     }
   }, [show, userId]);
-
 
   // ==========================================================================
   // Computed Values
@@ -362,7 +412,8 @@ export function useEditCollectionModal({
    * Selected location object from locations array
    */
   const selectedLocation = useMemo(
-    () => locations.find(location => String(location._id) === selectedLocationId),
+    () =>
+      locations.find(location => String(location._id) === selectedLocationId),
     [locations, selectedLocationId]
   );
 
@@ -521,6 +572,36 @@ export function useEditCollectionModal({
     3000
   );
 
+  // Warn the user when RAM clear meters are less than the current meters
+  useEffect(() => {
+    if (!currentRamClear) return;
+    const ramIn = debouncedCurrentRamClearMetersIn
+      ? Number(debouncedCurrentRamClearMetersIn)
+      : null;
+    const ramOut = debouncedCurrentRamClearMetersOut
+      ? Number(debouncedCurrentRamClearMetersOut)
+      : null;
+    const currentIn = machineForDataEntry?.collectionMeters?.metersIn ?? 0;
+    const currentOut = machineForDataEntry?.collectionMeters?.metersOut ?? 0;
+    if (ramIn !== null && ramIn < currentIn) {
+      toast.warning(
+        `RAM clear Meters In (${ramIn}) is less than the current meters (${currentIn}). It must be ≥ current meters.`,
+        { position: 'top-left', duration: 5000 }
+      );
+    }
+    if (ramOut !== null && ramOut < currentOut) {
+      toast.warning(
+        `RAM clear Meters Out (${ramOut}) is less than the current meters (${currentOut}). It must be ≥ current meters.`,
+        { position: 'top-left', duration: 5000 }
+      );
+    }
+  }, [
+    debouncedCurrentRamClearMetersIn,
+    debouncedCurrentRamClearMetersOut,
+    currentRamClear,
+    machineForDataEntry,
+  ]);
+
   // ==========================================================================
   // Form Data Setters - Additional
   // ==========================================================================
@@ -601,12 +682,16 @@ export function useEditCollectionModal({
     if (hasChanges && onRefresh) {
       onRefresh();
     }
+    // Clear shared collection-modal store so the create modal does not inherit
+    // this edit session's machines/location/financials state on next open.
+    resetStoreState();
     onClose();
     return true;
   }, [
     hasChanges,
     onRefresh,
     onClose,
+    resetStoreState,
     hasUnsavedEdits,
     editingEntryId,
     selectedMachineId,
@@ -644,7 +729,9 @@ export function useEditCollectionModal({
     async (entryId: string) => {
       if (isProcessing) return;
 
-      const entryToEdit = collectedMachineEntries.find(entry => entry._id === entryId);
+      const entryToEdit = collectedMachineEntries.find(
+        entry => entry._id === entryId
+      );
       if (entryToEdit) {
         // Set editing state
         setEditingEntryId(entryId);
@@ -671,14 +758,16 @@ export function useEditCollectionModal({
 
         // Set the collection time — store auto-sync will set sasEndTime = this value
         if (entryToEdit.sasMeters?.sasEndTime) {
-          setCurrentCollectionTime(new Date(entryToEdit.sasMeters.sasEndTime));
-          setSasEndTime(new Date(entryToEdit.sasMeters.sasEndTime));
+          setCurrentCollectionTime(
+            entryToEdit.sasMeters?.sasEndTime ?? new Date()
+          );
+          setSasEndTime(entryToEdit.sasMeters?.sasEndTime ?? null);
         } else if (entryToEdit.timestamp) {
           setCurrentCollectionTime(new Date(entryToEdit.timestamp));
         }
 
         if (entryToEdit.sasMeters?.sasStartTime) {
-          setSasStartTime(new Date(entryToEdit.sasMeters.sasStartTime));
+          setSasStartTime(entryToEdit.sasMeters?.sasStartTime ?? null);
         } else {
           setSasStartTime(null);
         }
@@ -845,7 +934,6 @@ export function useEditCollectionModal({
     const capturedRamClearMetersOut = currentRamClearMetersOut
       ? Number(currentRamClearMetersOut)
       : undefined;
-    const capturedCollectionTime = currentCollectionTime;
     const capturedSasStartTime = sasStartTime;
     const capturedSasEndTime = sasEndTime;
     const capturedShowAdvancedSas = showAdvancedSas;
@@ -861,7 +949,63 @@ export function useEditCollectionModal({
           entry => entry._id === capturedEditingEntryId
         );
 
+        // Ensure we have a proper Date object for collection time
+        // CRITICAL: In simple mode, use capturedSasEndTime (user's selected time)
+        // In advanced mode, use capturedSasEndTime if available, otherwise use currentCollectionTime
+        let collectionTimeForUpdate: Date;
+
+        if (capturedSasEndTime) {
+          // User provided a time (either simple or advanced mode)
+          collectionTimeForUpdate =
+            capturedSasEndTime instanceof Date
+              ? capturedSasEndTime
+              : new Date(String(capturedSasEndTime));
+        } else {
+          // Fallback to currentCollectionTime
+          collectionTimeForUpdate =
+            currentCollectionTime instanceof Date
+              ? currentCollectionTime
+              : new Date(String(currentCollectionTime));
+        }
+
         // Update existing collection
+        console.warn(
+          '[useEditCollectionModal] executeAddOrUpdateEntry - Updating collection:',
+          {
+            editingEntryId: capturedEditingEntryId,
+            metersIn: capturedMetersIn,
+            metersOut: capturedMetersOut,
+            collectionTime:
+              collectionTimeForUpdate instanceof Date
+                ? collectionTimeForUpdate.toISOString()
+                : new Date(collectionTimeForUpdate).toISOString(),
+            sasEndTime:
+              getSasEndTime(
+                capturedShowAdvancedSas,
+                capturedSasEndTime,
+                collectionTimeForUpdate
+              ) instanceof Date
+                ? getSasEndTime(
+                    capturedShowAdvancedSas,
+                    capturedSasEndTime,
+                    collectionTimeForUpdate
+                  ).toISOString()
+                : new Date(
+                    getSasEndTime(
+                      capturedShowAdvancedSas,
+                      capturedSasEndTime,
+                      collectionTimeForUpdate
+                    )
+                  ).toISOString(),
+            sasStartTime:
+              capturedShowAdvancedSas && capturedSasStartTime
+                ? capturedSasStartTime instanceof Date
+                  ? capturedSasStartTime.toISOString()
+                  : new Date(capturedSasStartTime).toISOString()
+                : 'not in advanced mode',
+          }
+        );
+
         const result = await updateCollection(capturedEditingEntryId, {
           metersIn: capturedMetersIn,
           metersOut: capturedMetersOut,
@@ -869,27 +1013,66 @@ export function useEditCollectionModal({
           ramClear: capturedRamClear,
           ramClearMetersIn: capturedRamClearMetersIn,
           ramClearMetersOut: capturedRamClearMetersOut,
-          timestamp: capturedCollectionTime,
-          collectionTime: capturedCollectionTime,
+          timestamp: collectionTimeForUpdate,
+          collectionTime: collectionTimeForUpdate,
           prevIn: capturedPrevIn,
           prevOut: capturedPrevOut,
           // CRITICAL: Preserve the existing locationReportId for history update
           locationReportId: existingEntry?.locationReportId || reportId,
           // sasEndTime always saved: advanced uses user-set value, simple uses collectionTime
-          sasEndTime:
-            capturedShowAdvancedSas && capturedSasEndTime
-              ? capturedSasEndTime
-              : capturedCollectionTime,
+          sasEndTime: getSasEndTime(
+            capturedShowAdvancedSas,
+            capturedSasEndTime,
+            collectionTimeForUpdate
+          ),
+          // Always send sasStartTime to preserve user's time selection
           ...(capturedShowAdvancedSas && capturedSasStartTime
-            ? { sasStartTime: capturedSasStartTime }
-            : {}),
+            ? {
+                sasStartTime:
+                  capturedSasStartTime instanceof Date
+                    ? capturedSasStartTime
+                    : new Date(capturedSasStartTime),
+              }
+            : capturedSasStartTime
+              ? {
+                  sasStartTime:
+                    capturedSasStartTime instanceof Date
+                      ? capturedSasStartTime
+                      : new Date(capturedSasStartTime),
+                }
+              : {}),
           ...(capturedShowAdvancedSas && capturedSasEndTime
             ? {
-                timestamp: capturedSasEndTime,
-                collectionTime: capturedSasEndTime,
+                timestamp:
+                  capturedSasEndTime instanceof Date
+                    ? capturedSasEndTime
+                    : new Date(capturedSasEndTime),
+                collectionTime:
+                  capturedSasEndTime instanceof Date
+                    ? capturedSasEndTime
+                    : new Date(capturedSasEndTime),
               }
             : {}),
         });
+
+        // [DEBUG] Log the API response
+        console.warn(
+          '[useEditCollectionModal] executeAddOrUpdateEntry - API Response:',
+          {
+            success: !!result,
+            sasMeters: result?.sasMeters,
+            sasEndTime: result?.sasMeters?.sasEndTime
+              ? result.sasMeters.sasEndTime instanceof Date
+                ? result.sasMeters.sasEndTime.toISOString()
+                : new Date(result.sasMeters.sasEndTime).toISOString()
+              : 'undefined',
+            sasStartTime: result?.sasMeters?.sasStartTime
+              ? result.sasMeters.sasStartTime instanceof Date
+                ? result.sasMeters.sasStartTime.toISOString()
+                : new Date(result.sasMeters.sasStartTime).toISOString()
+              : 'undefined',
+          }
+        );
 
         // CRITICAL: Build the updated entries array from the pre-await snapshot (capturedEntries)
         // rather than the closure variable, so we never overwrite concurrent state changes.
@@ -911,8 +1094,16 @@ export function useEditCollectionModal({
                 result.ramClearMetersIn ?? capturedRamClearMetersIn,
               ramClearMetersOut:
                 result.ramClearMetersOut ?? capturedRamClearMetersOut,
-              timestamp: result.timestamp ?? capturedCollectionTime,
-              collectionTime: result.collectionTime ?? capturedCollectionTime,
+              timestamp:
+                result.timestamp ??
+                (currentCollectionTime instanceof Date
+                  ? currentCollectionTime
+                  : new Date(String(currentCollectionTime))),
+              collectionTime:
+                result.collectionTime ??
+                (currentCollectionTime instanceof Date
+                  ? currentCollectionTime
+                  : new Date(String(currentCollectionTime))),
               movement: result.movement ?? entry.movement,
               sasMeters: result.sasMeters ?? entry.sasMeters,
               softMetersIn: result.softMetersIn ?? entry.softMetersIn,
@@ -1063,8 +1254,8 @@ export function useEditCollectionModal({
             gross: 0,
             gamesPlayed: 0,
             jackpot: 0,
-            sasStartTime: '',
-            sasEndTime: '',
+            sasStartTime: new Date(),
+            sasEndTime: new Date(),
           },
           movement: roundedMovement,
           createdAt: new Date(),
@@ -1519,7 +1710,9 @@ export function useEditCollectionModal({
         }> = [];
 
         for (const current of collectedMachineEntries) {
-          const original = originalCollections.find(originalCollection => originalCollection._id === current._id);
+          const original = originalCollections.find(
+            originalCollection => originalCollection._id === current._id
+          );
           if (original) {
             // Check if meters or collection time changed
             const metersInChanged = current.metersIn !== original.metersIn;
@@ -1640,6 +1833,21 @@ export function useEditCollectionModal({
         );
 
         // PHASE 2: Update collection report financials and totals
+        // Recalculate the report timestamp to the earliest collection start time
+        const earliestTimestamp =
+          collectedMachineEntries.length > 0
+            ? new Date(
+                Math.min(
+                  ...collectedMachineEntries.map(entry => {
+                    const entryTime = entry.timestamp ?? entry.collectionTime;
+                    return entryTime
+                      ? new Date(entryTime).getTime()
+                      : Date.now();
+                  })
+                )
+              )
+            : new Date();
+
         const updateData: Record<string, unknown> = {
           ...reportData,
           variance: Number(financials.variance) || 0,
@@ -1657,12 +1865,15 @@ export function useEditCollectionModal({
           totalDrop: totals.drop,
           totalCancelled: totals.cancelledCredits,
           totalGross: totals.gross,
-          totalSasGross: reconciliationData?.machines.reduce(
-            (sum: number, machineData) => sum + (Number(machineData.sasGross) || 0),
-            0
-          ) ?? totals.sasGross,
+          totalSasGross:
+            reconciliationData?.machines.reduce(
+              (sum: number, machineData) =>
+                sum + (Number(machineData.sasGross) || 0),
+              0
+            ) ?? totals.sasGross,
           machinesCollected: collectedMachineEntries.length.toString(),
           includeJackpot: reportData?.includeJackpot ?? false,
+          timestamp: earliestTimestamp,
         };
 
         await updateCollectionReport(reportId, updateData);
@@ -1735,7 +1946,9 @@ export function useEditCollectionModal({
           );
         })
       );
-      const failed = results.filter(result => result.status === 'rejected').length;
+      const failed = results.filter(
+        result => result.status === 'rejected'
+      ).length;
       if (failed > 0) {
         toast.error(
           `${failed} machine${failed > 1 ? 's' : ''} failed to update`
@@ -1744,14 +1957,22 @@ export function useEditCollectionModal({
       }
 
       // Update local state so UI reflects changes immediately without needing refresh/close
-      const updatedEntries = collectedMachineEntries.map(entry => ({
-        ...entry,
-        sasMeters: {
-          ...entry.sasMeters,
-          ...(startTimeISO ? { sasStartTime: startTimeISO } : {}),
-          ...(endTimeISO ? { sasEndTime: endTimeISO } : {}),
-        },
-      }));
+      const updatedEntries = collectedMachineEntries.map(entry => {
+        const sasMeters = { ...entry.sasMeters };
+        // Ensure sasStartTime is Date | undefined (never string)
+        sasMeters.sasStartTime = (() => {
+          const val = entry.sasMeters?.sasStartTime;
+          if (!val) return undefined;
+          return typeof val === 'string' ? new Date(val) : val;
+        })();
+        // Ensure sasEndTime is Date | undefined (never string)
+        sasMeters.sasEndTime = (() => {
+          const val = entry.sasMeters?.sasEndTime;
+          if (!val) return undefined;
+          return typeof val === 'string' ? new Date(val) : val;
+        })();
+        return { ...entry, sasMeters };
+      });
       setCollectedMachineEntries(updatedEntries);
 
       toast.success('All SAS times updated successfully!');
@@ -2080,7 +2301,7 @@ export function useEditCollectionModal({
             const firstMachine = collections[0];
             if (firstMachine.location) {
               const matchingLocation = locationsRef.current.find(
-                loc => loc.name === firstMachine.location
+                loc => String(loc._id) === String(firstMachine.location)
               );
               if (matchingLocation) {
                 const newLocationId = String(matchingLocation._id);
@@ -2128,7 +2349,9 @@ export function useEditCollectionModal({
 
     let hasChanges = false;
     for (const current of collectedMachineEntries) {
-      const original = originalCollections.find(originalCollection => originalCollection._id === current._id);
+      const original = originalCollections.find(
+        originalCollection => originalCollection._id === current._id
+      );
       if (original) {
         if (
           current.metersIn !== original.metersIn ||
@@ -2469,4 +2692,3 @@ export function useEditCollectionModal({
     userId,
   };
 }
-

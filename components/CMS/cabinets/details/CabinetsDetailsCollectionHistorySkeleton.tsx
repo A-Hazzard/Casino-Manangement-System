@@ -22,7 +22,10 @@ export default function CabinetsDetailsCollectionHistorySkeleton() {
         </div>
         <div className="space-y-0.5">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex flex-col border-b border-border bg-container px-4 py-4">
+            <div
+              key={i}
+              className="flex flex-col border-b border-border bg-container px-4 py-4"
+            >
               <div className="grid grid-cols-5 gap-4">
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-4 w-24" />
@@ -37,4 +40,3 @@ export default function CabinetsDetailsCollectionHistorySkeleton() {
     </div>
   );
 }
-

@@ -8,7 +8,7 @@
  * - Time granularity selector (Hourly/Minute/Daily/Weekly/Monthly)
  * - Loading state handling
  * - Zero totals placeholder
- * 
+ *
  * @param props - Component props
  */
 
@@ -104,7 +104,8 @@ export default function LocationsDetailsChartSection({
                 </>
               )}
               {/* Show daily/weekly options for Last 30 Days */}
-              {(activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days') && (
+              {(activeMetricsFilter === '30d' ||
+                activeMetricsFilter === 'last30days') && (
                 <>
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
@@ -113,16 +114,17 @@ export default function LocationsDetailsChartSection({
               {/* Show monthly/weekly options for longer time periods with sufficient data */}
               {availableGranularityOptions &&
                 availableGranularityOptions.includes('monthly') && (
-                <>
-                  <option value="monthly">Monthly</option>
-                  <option value="weekly">Weekly</option>
-                </>
-              )}
+                  <>
+                    <option value="monthly">Monthly</option>
+                    <option value="weekly">Weekly</option>
+                  </>
+                )}
               {/* Show daily/weekly options for medium time periods */}
               {availableGranularityOptions &&
                 availableGranularityOptions.includes('daily') &&
                 !availableGranularityOptions.includes('monthly') &&
-                activeMetricsFilter !== '30d' && activeMetricsFilter !== 'last30days' && (
+                activeMetricsFilter !== '30d' &&
+                activeMetricsFilter !== 'last30days' && (
                   <>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
@@ -147,4 +149,3 @@ export default function LocationsDetailsChartSection({
     </motion.div>
   );
 }
-

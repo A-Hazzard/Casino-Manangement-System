@@ -10,8 +10,10 @@
 export function normalizeStatusValue(
   value?: string
 ): 'functional' | 'non_functional' {
+  console.log(`[normalizeStatusValue] Input value:`, value);
   if (!value) return 'functional';
   const normalized = value.toLowerCase().replace(/\s+/g, '_');
+  console.log(`[normalizeStatusValue] Normalized value:`, normalized);
   return normalized === 'non_functional' ? 'non_functional' : 'functional';
 }
 
@@ -31,5 +33,3 @@ export function normalizeGameTypeValue(value?: string): string {
   };
   return knownTypes[normalized] || normalized;
 }
-
-

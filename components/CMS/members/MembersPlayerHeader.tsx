@@ -17,7 +17,9 @@ type MembersPlayerHeaderProps = {
   member: Member;
 };
 
-export default function MembersPlayerHeader({ member }: MembersPlayerHeaderProps) {
+export default function MembersPlayerHeader({
+  member,
+}: MembersPlayerHeaderProps) {
   const fullName =
     member.profile?.firstName && member.profile?.lastName
       ? `${member.profile.firstName} ${member.profile.lastName}`
@@ -37,4 +39,3 @@ export default function MembersPlayerHeader({ member }: MembersPlayerHeaderProps
     </div>
   );
 }
-

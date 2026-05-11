@@ -141,7 +141,7 @@ export function useLocationData({
       displayCurrency,
       selectedStatus,
       sortBy,
-      sortOrder
+      sortOrder,
       // Note: selectedFiltersKey is intentionally excluded - we use ref to avoid recreation
     ]
   );
@@ -186,7 +186,7 @@ export function useLocationData({
         fetchId: currentFetchId,
         fetchKey,
         filter: activeMetricsFilter,
-        hasCustomDate: !!dateRangeForFetch
+        hasCustomDate: !!dateRangeForFetch,
       });
 
       const result = await makeRequest(async signal => {
@@ -266,10 +266,13 @@ export function useLocationData({
         setLoading(false);
         setSearchLoading(false);
       } else {
-        console.log('[useLocationData] Ignoring stale response from older fetch', {
-          currentFetchId,
-          latestFetchId: lastFetchRef.current
-        });
+        console.log(
+          '[useLocationData] Ignoring stale response from older fetch',
+          {
+            currentFetchId,
+            latestFetchId: lastFetchRef.current,
+          }
+        );
       }
     },
     [
@@ -317,4 +320,3 @@ export function useLocationData({
     fetchBatch,
   };
 }
-

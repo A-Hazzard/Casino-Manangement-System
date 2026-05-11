@@ -13,6 +13,11 @@
 import { Machine } from '@/app/api/lib/models/machines';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/cabinets/[cabinetId]/metrics
@@ -28,10 +33,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param startDate  {string} Optional. ISO start date forwarded to the location endpoint.
  * @param endDate    {string} Optional. ISO end date forwarded to the location endpoint.
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/cabinets/[cabinetId]/metrics';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const cabinetId = pathname.split('/')[3];
 
@@ -51,6 +56,13 @@ export async function GET(
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const cabinet = await Machine.findOne({ _id: cabinetId });
     if (!cabinet) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cabinets/[cabinetId]/metrics',
+        `Not found: ${cabinetId}`,
+        user
+      );
       return NextResponse.json(
         { success: false, message: 'Cabinet not found' },
         { status: 404 }
@@ -62,6 +74,13 @@ export async function GET(
     // ============================================================================
     const locationId = cabinet.gamingLocation;
     if (!locationId) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cabinets/[cabinetId]/metrics',
+        'Cabinet has no associated location',
+        user
+      );
       return NextResponse.json(
         { success: false, message: 'Cabinet has no associated location' },
         { status: 400 }
@@ -84,14 +103,26 @@ export async function GET(
     // STEP 6: Redirect to location-specific endpoint
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Cabinet Metrics GET API] Redirected after ${duration}ms`);
-    }
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/cabinets/[cabinetId]/metrics',
+      1,
+      user,
+      duration
+    );
     return NextResponse.redirect(newUrl);
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/cabinets/[cabinetId]/metrics',
+      errorMessage,
+      user
+    );
     console.error(
       `[Cabinet Metrics API] Error after ${duration}ms:`,
       errorMessage
@@ -102,4 +133,3 @@ export async function GET(
     );
   }
 }
-

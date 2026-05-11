@@ -16,28 +16,32 @@
 
 'use client';
 
-import { Badge } from '@/components/shared/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import { Input } from '@/components/shared/ui/input';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 
 import {
-    getGrossColorClass,
-    getMoneyInColorClass,
+  getGrossColorClass,
+  getMoneyInColorClass,
 } from '@/lib/utils/financial';
 import { AggregatedLocation } from '@/shared/types/entities';
 import {
-    ChevronDown,
-    ChevronUp,
-    ExternalLink,
-    HelpCircle,
-    Home,
-    MonitorOff,
-    Search,
-    Server,
- } from 'lucide-react';
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  HelpCircle,
+  Home,
+  MonitorOff,
+  Search,
+  Server,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 type ReportsLocationsTableProps = {
@@ -121,10 +125,7 @@ export default function ReportsLocationsTable({
         aValue = a.locationName || '';
         bValue = b.locationName || '';
         break;
-      case 'sasStatus':
-        aValue = a.hasSasMachines ? 1 : 0;
-        bValue = b.hasSasMachines ? 1 : 0;
-        break;
+
       case 'totalMachines':
         aValue = a.totalMachines || 0;
         bValue = b.totalMachines || 0;
@@ -203,7 +204,9 @@ export default function ReportsLocationsTable({
   // Mobile Card Component
   const LocationCard = ({ location }: { location: AggregatedLocation }) => {
     const holdPercentage =
-      (location.moneyIn || 0) > 0 ? (location.gross / location.moneyIn) * 100 : 0;
+      (location.moneyIn || 0) > 0
+        ? (location.gross / location.moneyIn) * 100
+        : 0;
     const avgWagerPerGame =
       location.gamesPlayed && location.gamesPlayed > 0
         ? location.moneyIn / location.gamesPlayed
@@ -238,17 +241,20 @@ export default function ReportsLocationsTable({
               {/* SMIB Icon - Show if location has SMIB machines */}
               {Boolean(
                 (location as { hasSmib?: boolean }).hasSmib ||
-                  !(location as { noSMIBLocation?: boolean }).noSMIBLocation
-              ) && !(location as { noSMIBLocation?: boolean }).noSMIBLocation && (
-                <div className="group relative inline-flex flex-shrink-0">
-                  <Server className="h-4 w-4 text-blue-600" />
-                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                    SMIB Location
+                !(location as { noSMIBLocation?: boolean }).noSMIBLocation
+              ) &&
+                !(location as { noSMIBLocation?: boolean }).noSMIBLocation && (
+                  <div className="group relative inline-flex flex-shrink-0">
+                    <Server className="h-4 w-4 text-blue-600" />
+                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      SMIB Location
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
               {/* No SMIB Icon - Show if location is marked as no SMIB */}
-              {Boolean((location as { noSMIBLocation?: boolean }).noSMIBLocation) && (
+              {Boolean(
+                (location as { noSMIBLocation?: boolean }).noSMIBLocation
+              ) && (
                 <div className="group relative inline-flex flex-shrink-0">
                   <MonitorOff className="h-4 w-4 text-gray-500" />
                   <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
@@ -271,7 +277,7 @@ export default function ReportsLocationsTable({
               {(() => {
                 const hasSmib = Boolean(
                   (location as { hasSmib?: boolean }).hasSmib ||
-                    !(location as { noSMIBLocation?: boolean }).noSMIBLocation
+                  !(location as { noSMIBLocation?: boolean }).noSMIBLocation
                 );
                 const isLocalServer = Boolean(
                   (location as { isLocalServer?: boolean }).isLocalServer
@@ -282,11 +288,11 @@ export default function ReportsLocationsTable({
                       membershipEnabled?: boolean;
                     }
                   ).membershipEnabled ||
-                    (
-                      location as {
-                        enableMembership?: boolean;
-                      }
-                    ).enableMembership
+                  (
+                    location as {
+                      enableMembership?: boolean;
+                    }
+                  ).enableMembership
                 );
 
                 // Show unknown icon if location doesn't match any known type
@@ -303,12 +309,6 @@ export default function ReportsLocationsTable({
                 ) : null;
               })()}
             </div>
-            <Badge
-              variant={location.hasSasMachines ? 'default' : 'secondary'}
-              className="ml-2 flex-shrink-0"
-            >
-              {location.hasSasMachines ? 'SAS' : 'Non-SAS'}
-            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -328,7 +328,9 @@ export default function ReportsLocationsTable({
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-500">Drop (Money In):</span>
-              <span className={`font-medium ${getMoneyInColorClass(location.moneyIn)}`}>
+              <span
+                className={`font-medium ${getMoneyInColorClass(location.moneyIn)}`}
+              >
                 {formatCurrency(location.moneyIn)}
               </span>
             </div>
@@ -437,15 +439,6 @@ export default function ReportsLocationsTable({
                       <div className="flex items-center gap-1">
                         Location Name
                         {getSortIcon('locationName')}
-                      </div>
-                    </th>
-                    <th
-                      className="cursor-pointer px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 hover:bg-gray-100"
-                      onClick={() => handleSort('sasStatus')}
-                    >
-                      <div className="flex items-center gap-1">
-                        SAS Status
-                        {getSortIcon('sasStatus')}
                       </div>
                     </th>
                     <th
@@ -575,8 +568,8 @@ export default function ReportsLocationsTable({
                               {/* SMIB Icon - Show if location has SMIB machines */}
                               {Boolean(
                                 (location as { hasSmib?: boolean }).hasSmib ||
-                                  !(location as { noSMIBLocation?: boolean })
-                                    .noSMIBLocation
+                                !(location as { noSMIBLocation?: boolean })
+                                  .noSMIBLocation
                               ) && (
                                 <div className="group relative inline-flex flex-shrink-0">
                                   <Server className="h-4 w-4 text-blue-600" />
@@ -601,8 +594,8 @@ export default function ReportsLocationsTable({
                               {(() => {
                                 const hasSmib = Boolean(
                                   (location as { hasSmib?: boolean }).hasSmib ||
-                                    !(location as { noSMIBLocation?: boolean })
-                                      .noSMIBLocation
+                                  !(location as { noSMIBLocation?: boolean })
+                                    .noSMIBLocation
                                 );
                                 const isLocalServer = Boolean(
                                   (location as { isLocalServer?: boolean })
@@ -614,11 +607,11 @@ export default function ReportsLocationsTable({
                                       membershipEnabled?: boolean;
                                     }
                                   ).membershipEnabled ||
-                                    (
-                                      location as {
-                                        enableMembership?: boolean;
-                                      }
-                                    ).enableMembership
+                                  (
+                                    location as {
+                                      enableMembership?: boolean;
+                                    }
+                                  ).enableMembership
                                 );
 
                                 // Show unknown icon if location doesn't match any known type
@@ -635,91 +628,95 @@ export default function ReportsLocationsTable({
                                 ) : null;
                               })()}
                             </button>
-                           ) : (
-                             <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
-                               <span>{location.locationName}</span>
-                               {/* SMIB Icon - Show if location has SMIB machines */}
-                               {Boolean(
-                                 (location as { hasSmib?: boolean }).hasSmib ||
-                                   !(location as { noSMIBLocation?: boolean })
-                                     .noSMIBLocation
-                               ) && !(location as { noSMIBLocation?: boolean }).noSMIBLocation && (
-                                 <div className="group relative inline-flex flex-shrink-0">
-                                   <Server className="h-4 w-4 text-blue-600" />
-                                   <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                                     SMIB Location
-                                   </div>
-                                 </div>
-                               )}
-                               {/* No SMIB Icon */}
-                               {Boolean((location as { noSMIBLocation?: boolean }).noSMIBLocation) && (
-                                 <div className="group relative inline-flex flex-shrink-0">
-                                   <MonitorOff className="h-4 w-4 text-gray-500" />
-                                   <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                                     No SMIB Location
-                                   </div>
-                                 </div>
-                               )}
-                               {/* Local Server Icon */}
-                               {Boolean(
-                                 (location as { isLocalServer?: boolean })
-                                   .isLocalServer
-                               ) && (
-                                 <div className="group relative inline-flex flex-shrink-0">
-                                   <Home className="h-4 w-4 text-purple-600" />
-                                   <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                                     Local Server
-                                   </div>
-                                 </div>
-                               )}
-                               {/* Unknown Type Icon - Show if location doesn't match any known type */}
-                               {(() => {
-                                 const hasSmib = Boolean(
-                                   (location as { hasSmib?: boolean }).hasSmib ||
-                                     !(location as { noSMIBLocation?: boolean })
-                                       .noSMIBLocation
-                                 ) && !(location as { noSMIBLocation?: boolean }).noSMIBLocation;
-                                 const isLocalServer = Boolean(
-                                   (location as { isLocalServer?: boolean })
-                                     .isLocalServer
-                                 );
-                                 const hasMembership = Boolean(
-                                   (
-                                     location as {
-                                       membershipEnabled?: boolean;
-                                     }
-                                   ).membershipEnabled ||
-                                     (
-                                       location as {
-                                         enableMembership?: boolean;
-                                       }
-                                     ).enableMembership
-                                 );
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                              <span>{location.locationName}</span>
+                              {/* SMIB Icon - Show if location has SMIB machines */}
+                              {Boolean(
+                                (location as { hasSmib?: boolean }).hasSmib ||
+                                !(location as { noSMIBLocation?: boolean })
+                                  .noSMIBLocation
+                              ) &&
+                                !(location as { noSMIBLocation?: boolean })
+                                  .noSMIBLocation && (
+                                  <div className="group relative inline-flex flex-shrink-0">
+                                    <Server className="h-4 w-4 text-blue-600" />
+                                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                      SMIB Location
+                                    </div>
+                                  </div>
+                                )}
+                              {/* No SMIB Icon */}
+                              {Boolean(
+                                (location as { noSMIBLocation?: boolean })
+                                  .noSMIBLocation
+                              ) && (
+                                <div className="group relative inline-flex flex-shrink-0">
+                                  <MonitorOff className="h-4 w-4 text-gray-500" />
+                                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                    No SMIB Location
+                                  </div>
+                                </div>
+                              )}
+                              {/* Local Server Icon */}
+                              {Boolean(
+                                (location as { isLocalServer?: boolean })
+                                  .isLocalServer
+                              ) && (
+                                <div className="group relative inline-flex flex-shrink-0">
+                                  <Home className="h-4 w-4 text-purple-600" />
+                                  <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                    Local Server
+                                  </div>
+                                </div>
+                              )}
+                              {/* Unknown Type Icon - Show if location doesn't match any known type */}
+                              {(() => {
+                                const hasSmib =
+                                  Boolean(
+                                    (location as { hasSmib?: boolean })
+                                      .hasSmib ||
+                                    !(location as { noSMIBLocation?: boolean })
+                                      .noSMIBLocation
+                                  ) &&
+                                  !(location as { noSMIBLocation?: boolean })
+                                    .noSMIBLocation;
+                                const isLocalServer = Boolean(
+                                  (location as { isLocalServer?: boolean })
+                                    .isLocalServer
+                                );
+                                const hasMembership = Boolean(
+                                  (
+                                    location as {
+                                      membershipEnabled?: boolean;
+                                    }
+                                  ).membershipEnabled ||
+                                  (
+                                    location as {
+                                      enableMembership?: boolean;
+                                    }
+                                  ).enableMembership
+                                );
 
-                                 // Show unknown icon if location doesn't match any known type
-                                 const isUnknownType =
-                                   !hasSmib && !isLocalServer && !hasMembership && !(location as { noSMIBLocation?: boolean }).noSMIBLocation;
+                                // Show unknown icon if location doesn't match any known type
+                                const isUnknownType =
+                                  !hasSmib &&
+                                  !isLocalServer &&
+                                  !hasMembership &&
+                                  !(location as { noSMIBLocation?: boolean })
+                                    .noSMIBLocation;
 
-                                 return isUnknownType ? (
-                                   <div className="group relative inline-flex flex-shrink-0">
-                                     <HelpCircle className="h-4 w-4 text-gray-500" />
-                                     <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                                       Unknown location type
-                                     </div>
-                                   </div>
-                                 ) : null;
-                               })()}
-                             </div>
-                           )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-left">
-                          <Badge
-                            variant={
-                              location.hasSasMachines ? 'default' : 'secondary'
-                            }
-                          >
-                            {location.hasSasMachines ? 'SAS' : 'Non-SAS'}
-                          </Badge>
+                                return isUnknownType ? (
+                                  <div className="group relative inline-flex flex-shrink-0">
+                                    <HelpCircle className="h-4 w-4 text-gray-500" />
+                                    <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                      Unknown location type
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
+                            </div>
+                          )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-left text-sm font-medium text-gray-900">
                           {location.totalMachines}
@@ -790,4 +787,3 @@ export default function ReportsLocationsTable({
     </div>
   );
 }
-

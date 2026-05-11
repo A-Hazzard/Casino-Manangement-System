@@ -31,7 +31,13 @@ import type { LocationsCabinetGridProps } from '@/lib/types/components';
 import { CabinetSortOption } from '@/lib/hooks/data';
 import { GamingMachine as Cabinet } from '@/shared/types/entities';
 import { ExtendedCabinetDetail } from '@/lib/types/pages';
-import { canDeleteMachines, canEditMachines, canViewArchivedMachines, canPermanentlyDeleteMachines, UserRole } from '@/lib/utils/permissions';
+import {
+  canDeleteMachines,
+  canEditMachines,
+  canViewArchivedMachines,
+  canPermanentlyDeleteMachines,
+  UserRole,
+} from '@/lib/utils/permissions';
 import { copyToClipboard } from '@/lib/utils/common/clipboard';
 import Image from 'next/image';
 import { useState } from 'react';

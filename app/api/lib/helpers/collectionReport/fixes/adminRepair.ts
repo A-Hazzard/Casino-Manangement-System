@@ -20,10 +20,10 @@ type RepairMode = 'dry-run' | 'commit';
 type RepairResult = {
   _id: string;
   machineId: string;
-  oldStart?: string;
-  oldEnd?: string;
-  newStart: string;
-  newEnd: string;
+  oldStart?: string | Date;
+  oldEnd?: string | Date;
+  newStart: string | Date;
+  newEnd: string | Date;
   changed: boolean;
 };
 
@@ -203,6 +203,3 @@ async function repairSingleCollectionSasTimes(
 
   return result;
 }
-
-
-

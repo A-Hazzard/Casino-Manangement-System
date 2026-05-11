@@ -43,14 +43,12 @@ export default function MembersSummaryTab({
 
   const itemsPerPage = 50;
 
-  const {
-    isLoading,
-    summaryData,
-    refreshData,
-  } = useMembersSummaryData({
+  const { isLoading, summaryData, refreshData } = useMembersSummaryData({
     selectedLicencee,
     search: debouncedSearchTerm,
-    locationFilter: forcedLocationId || (locationFilter.length > 0 ? locationFilter.join(',') : 'all'),
+    locationFilter:
+      forcedLocationId ||
+      (locationFilter.length > 0 ? locationFilter.join(',') : 'all'),
     page: currentPage + 1,
     limit: itemsPerPage,
   });
@@ -98,8 +96,7 @@ export default function MembersSummaryTab({
     setCurrentPage(0);
   }, [debouncedSearchTerm, locationFilter]);
 
-  const totalPages =
-    summaryData?.pagination?.totalPages || 0;
+  const totalPages = summaryData?.pagination?.totalPages || 0;
 
   return (
     <div>
@@ -112,7 +109,9 @@ export default function MembersSummaryTab({
             variant="outline"
             className="gap-2"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+            />
             Refresh
           </Button>
           <Button onClick={() => {}} variant="outline" className="gap-2">
@@ -173,15 +172,15 @@ export default function MembersSummaryTab({
         )}
       </div>
 
-        <MembersTable
-          members={summaryData?.members || []}
-          loading={isLoading}
-          sortBy="fullName"
-          sortOrder="asc"
-          onSort={() => {}}
-          onViewMember={handleViewMember}
-          forcedLocationId={forcedLocationId}
-        />
+      <MembersTable
+        members={summaryData?.members || []}
+        loading={isLoading}
+        sortBy="fullName"
+        sortOrder="asc"
+        onSort={() => {}}
+        onViewMember={handleViewMember}
+        forcedLocationId={forcedLocationId}
+      />
 
       {/* Pagination Controls */}
       <PaginationControls
@@ -194,5 +193,3 @@ export default function MembersSummaryTab({
     </div>
   );
 }
-
-

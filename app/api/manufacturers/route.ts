@@ -13,11 +13,19 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { Machine } from '@/app/api/lib/models/machines';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/manufacturers';
+  const user = extractUserFromRequest(req);
+
   return withApiAuth(req, async () => {
-    const startTime = Date.now();
     try {
       const manufacturers = await Machine.aggregate([
         { $project: { manufacturer: 1, manuf: 1 } },
@@ -44,11 +52,24 @@ export async function GET(req: NextRequest) {
       const sortedManufacturers = filteredManufacturers.sort();
 
       const duration = Date.now() - startTime;
-      if (duration > 1000)
-        console.warn(`[Manufacturers API] Completed in ${duration}ms`);
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/manufacturers',
+        sortedManufacturers.length,
+        user,
+        duration
+      );
       return NextResponse.json(sortedManufacturers);
     } catch (error) {
-      console.error(`[Manufacturers API] Error:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/manufacturers',
+        errorMessage,
+        user
+      );
       return NextResponse.json({ error: 'Failed' }, { status: 500 });
     }
   });

@@ -19,7 +19,10 @@
  * For user-specific currency formatting, use the formatCurrency method from the settings store
  */
 export function formatCurrency(value: number | null | undefined): string {
-  if (value === undefined) { console.error('[formatCurrency] value is required'); return '$0'; }
+  if (value === undefined) {
+    console.error('[formatCurrency] value is required');
+    return '$0';
+  }
   const amount = value ?? 0;
 
   // Check if the amount has meaningful decimal places
@@ -45,8 +48,14 @@ export function formatCurrencyWithCode(
   value: number | null | undefined,
   currencyCode: string = 'USD'
 ): string {
-  if (value === undefined) { console.error('[formatCurrencyWithCode] value is required'); return '$0'; }
-  if (!currencyCode) { console.error('[formatCurrencyWithCode] currencyCode is required'); return '$0'; }
+  if (value === undefined) {
+    console.error('[formatCurrencyWithCode] value is required');
+    return '$0';
+  }
+  if (!currencyCode) {
+    console.error('[formatCurrencyWithCode] currencyCode is required');
+    return '$0';
+  }
   const amount = value ?? 0;
 
   // Check if the amount has meaningful decimal places
@@ -70,8 +79,14 @@ export function formatCurrencyWithCodeString(
   value: number | null | undefined,
   currencyCode: string = 'USD'
 ): string {
-  if (value === undefined) { console.error('[formatCurrencyWithCodeString] value is required'); return '--'; }
-  if (!currencyCode) { console.error('[formatCurrencyWithCodeString] currencyCode is required'); return '--'; }
+  if (value === undefined) {
+    console.error('[formatCurrencyWithCodeString] value is required');
+    return '--';
+  }
+  if (!currencyCode) {
+    console.error('[formatCurrencyWithCodeString] currencyCode is required');
+    return '--';
+  }
   if (value === null || value === undefined || Number.isNaN(value)) {
     return '--';
   }
@@ -89,8 +104,6 @@ export function formatCurrencyWithCodeString(
   return `${sign}${currencyCode} ${formattedValue}`;
 }
 
-
 // ============================================================================
 // Plain Number Formatting
 // ============================================================================
-

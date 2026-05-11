@@ -23,6 +23,7 @@ export type CabinetCardProps = {
   onEdit?: (cabinet: CabinetCardProps) => void;
   onDelete?: (cabinet: CabinetCardProps) => void;
   onRestore?: (cabinet: CabinetCardProps) => void;
+  onPermanentDelete?: (cabinet: CabinetCardProps) => void;
   canEditMachines?: boolean; // If false, hide edit button
   canDeleteMachines?: boolean; // If false, hide delete button
   canPermanentlyDeleteMachines?: boolean; // If true, show permanent delete button
@@ -32,6 +33,5 @@ export type CabinetCardProps = {
   hideFinancials?: boolean;
   includeJackpot?: boolean;
   deletedAt?: string | Date;
+  showArchived?: boolean;
 };
-
-

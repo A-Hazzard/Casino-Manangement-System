@@ -13,6 +13,11 @@ import {
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -29,13 +34,16 @@ import { NextRequest, NextResponse } from 'next/server';
  * 5. Return count
  */
 export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/locations/membership-count';
+  const logUser = extractUserFromRequest(req);
+
   try {
     // ============================================================================
-    // STEP 1: Parse request parameters
+    // STEP1: Parse request parameters
     // ============================================================================
     const { searchParams } = new URL(req.url);
-    const licencee =
-      searchParams.get('licencee');
+    const licencee = searchParams.get('licencee');
     const locationId = searchParams.get('locationId');
 
     // ============================================================================
@@ -64,8 +72,9 @@ export async function GET(req: NextRequest) {
             }
           >
         | undefined
-    )?.['gaming-locations']?.resources?.map((resource: { _id: string }) => resource._id) ||
-      []) as string[];
+    )?.['gaming-locations']?.resources?.map(
+      (resource: { _id: string }) => resource._id
+    ) || []) as string[];
     const userRoles = (user?.roles || []) as string[];
 
     // ============================================================================
@@ -119,9 +128,26 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const membershipCount = await GamingLocations.countDocuments(query);
 
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/locations/membership-count',
+      1,
+      logUser,
+      duration
+    );
+
     return NextResponse.json({ membershipCount });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Server Error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/locations/membership-count',
+      errorMessage,
+      logUser
+    );
     console.error('[API Error] Membership count:', errorMessage);
     return NextResponse.json(
       { error: errorMessage, membershipCount: 0 },
@@ -129,4 +155,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

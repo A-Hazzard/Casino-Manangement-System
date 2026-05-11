@@ -4,6 +4,11 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import PayoutModel from '@/app/api/lib/models/payout';
@@ -24,6 +29,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @body {string} reason - For hand pays
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/payout';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: payload, userRoles }) => {
     try {
       const hasCashierAccess = userRoles
@@ -31,11 +40,19 @@ export async function POST(request: NextRequest) {
         .some(role =>
           ['developer', 'admin', 'manager', 'cashier'].includes(role)
         );
-      if (!hasCashierAccess)
+      if (!hasCashierAccess) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/payout',
+          'Insufficient permissions',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient permissions' },
           { status: 403 }
         );
+      }
 
       const body = await request.json();
       const {
@@ -48,31 +65,63 @@ export async function POST(request: NextRequest) {
         machineId,
         reason,
       } = body;
-      if (!cashierShiftId || !type || amount === undefined)
+      if (!cashierShiftId || !type || amount === undefined) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/payout',
+          'Missing fields',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Missing fields' },
           { status: 400 }
         );
-      if (amount <= 0)
+      }
+      if (amount <= 0) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/payout',
+          'Amount must be positive',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Amount must be positive' },
           { status: 400 }
         );
+      }
 
       const cashierShift = await CashierShiftModel.findOne({
         _id: cashierShiftId,
         status: 'active',
       });
-      if (!cashierShift)
+      if (!cashierShift) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/payout',
+          'No active cashier shift',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'No active cashier shift' },
           { status: 404 }
         );
-      if (cashierShift.cashierId !== payload._id)
+      }
+      if (cashierShift.cashierId !== payload._id) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/payout',
+          'Shift ownership mismatch',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Shift ownership mismatch' },
           { status: 403 }
         );
+      }
 
       const allowedLocIds = await getUserLocationFilter(
         payload.assignedLicencees || [],
@@ -83,18 +132,34 @@ export async function POST(request: NextRequest) {
       if (
         allowedLocIds !== 'all' &&
         !allowedLocIds.includes(cashierShift.locationId)
-      )
+      ) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/payout',
+          'Access denied for this location',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Access denied for this location' },
           { status: 403 }
         );
+      }
 
       const currentBal = cashierShift.currentBalance || 0;
-      if (currentBal < amount)
+      if (currentBal < amount) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/payout',
+          'Insufficient float',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient float' },
           { status: 400 }
         );
+      }
 
       const now = new Date(),
         pId = await generateMongoId(),
@@ -160,6 +225,16 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      const duration = Date.now() - startTime;
+      logRouteCreate(
+        functionName,
+        'POST',
+        '/api/vault/payout',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json(
         {
           success: true,
@@ -169,7 +244,19 @@ export async function POST(request: NextRequest) {
         { status: 201 }
       );
     } catch (e) {
-      console.error('[Payout Create] Error:', e instanceof Error ? e.message : 'Unknown error');
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to create payout';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/payout',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[Payout Create] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
       return NextResponse.json(
         { success: false, error: 'Internal server error' },
         { status: 500 }

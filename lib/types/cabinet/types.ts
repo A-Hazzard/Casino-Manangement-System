@@ -4,4 +4,3 @@ export type UseCabinetNavigationReturn = {
   activeSection: CabinetSection;
   handleSectionChange: (section: CabinetSection) => void;
 };
-

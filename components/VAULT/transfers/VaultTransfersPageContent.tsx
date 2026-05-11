@@ -17,31 +17,31 @@ import PageLayout from '@/components/shared/layout/PageLayout';
 import { Button } from '@/components/shared/ui/button';
 import { Card, CardContent } from '@/components/shared/ui/card';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import VaultTransfersSkeleton from '@/components/ui/skeletons/VaultTransfersSkeleton';
 import VaultManagerHeader from '@/components/VAULT/layout/VaultManagerHeader';
 import { DEFAULT_VAULT_BALANCE } from '@/components/VAULT/overview/data/defaults';
 import {
-    fetchVaultBalance,
-    fetchVaultTransfers,
-    handleApproveTransfer,
-    handleRejectTransfer,
-    handleTransferSubmit,
-    sortTransfers,
+  fetchVaultBalance,
+  fetchVaultTransfers,
+  handleApproveTransfer,
+  handleRejectTransfer,
+  handleTransferSubmit,
+  sortTransfers,
 } from '@/lib/helpers/vaultHelpers';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useUserStore } from '@/lib/store/userStore';
 import { cn } from '@/lib/utils';
 import type {
-    Denomination,
-    VaultBalance,
-    VaultTransfer,
+  Denomination,
+  VaultBalance,
+  VaultTransfer,
 } from '@/shared/types/vault';
 import { Clock, Plus } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -159,7 +159,8 @@ export default function VaultTransfersPageContent() {
   const handleNewTransfer = () => {
     if (!hasActiveVaultShift) {
       toast.error('Operation Blocked', {
-        description: 'You must start a vault shift before initiating a transfer.'
+        description:
+          'You must start a vault shift before initiating a transfer.',
       });
       return;
     }
@@ -256,9 +257,9 @@ export default function VaultTransfersPageContent() {
   return (
     <PageLayout onRefresh={fetchData} refreshing={loading}>
       <div className="space-y-6">
-        <VaultManagerHeader 
-          title="Transfers" 
-          description="Transfer funds between vaults, cash desks, and banks" 
+        <VaultManagerHeader
+          title="Transfers"
+          description="Transfer funds between vaults, cash desks, and banks"
         />
 
         {/* Summary Cards */}
@@ -329,8 +330,8 @@ export default function VaultTransfersPageContent() {
           <Button
             onClick={handleNewTransfer}
             className={cn(
-              "bg-orangeHighlight text-white hover:bg-orangeHighlight/90",
-              !hasActiveVaultShift && "opacity-40 cursor-not-allowed"
+              'bg-orangeHighlight text-white hover:bg-orangeHighlight/90',
+              !hasActiveVaultShift && 'cursor-not-allowed opacity-40'
             )}
             size="lg"
           >

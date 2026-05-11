@@ -19,9 +19,7 @@ export {
 } from './CommonSkeletons';
 
 // Re-export dashboard skeletons
-export {
-  LocationMapSkeleton,
-} from './DashboardSkeletons';
+export { LocationMapSkeleton } from './DashboardSkeletons';
 
 // Re-export machines skeletons
 export {
@@ -39,8 +37,7 @@ export {
 } from './LocationsSkeletons';
 
 // Re-export meters skeletons
-export {
-} from './MetersSkeletons';
+export {} from './MetersSkeletons';
 
 /**
  * Skeleton component for main reports page
@@ -87,4 +84,3 @@ export const ReportsPageSkeleton = () => (
     </div>
   </div>
 );
-

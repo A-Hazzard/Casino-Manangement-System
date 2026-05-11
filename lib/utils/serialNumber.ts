@@ -51,4 +51,3 @@ export function getSerialNumberIdentifier(cabinet: {
   // Final fallback: "N/A"
   return 'N/A';
 }
-

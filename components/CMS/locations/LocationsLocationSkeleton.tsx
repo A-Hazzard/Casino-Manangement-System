@@ -42,7 +42,7 @@ export default function LocationsLocationSkeleton() {
                       <div className="flex items-center gap-1.5">
                         <Skeleton className="h-4 w-32" />
                         {/* Icon placeholders */}
-                        <Skeleton className="h-4 w-4 rounded-full flex-shrink-0" />
+                        <Skeleton className="h-4 w-4 flex-shrink-0 rounded-full" />
                       </div>
                       {/* Row 2: Status badges */}
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -83,7 +83,7 @@ export default function LocationsLocationSkeleton() {
           <div className="inline-flex items-start gap-1.5">
             <Skeleton className="h-5 w-3/4" />
             {/* Icon placeholders */}
-            <Skeleton className="h-4 w-4 rounded-full flex-shrink-0 mt-0.5" />
+            <Skeleton className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-full" />
           </div>
 
           {/* Status Badges Below Name */}
@@ -120,4 +120,3 @@ export default function LocationsLocationSkeleton() {
     </>
   );
 }
-

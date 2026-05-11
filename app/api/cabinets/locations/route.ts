@@ -19,6 +19,11 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * Main GET handler for fetching locations for machines
@@ -37,10 +42,12 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/cabinets/locations';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
-    // STEP 1: Connect to database
+    // STEP1: Connect to database
     // ============================================================================
     await connectDB();
 
@@ -49,7 +56,7 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const { searchParams } = new URL(request.url);
     // Support both 'licencee' and 'licencee' spelling for backwards compatibility
-    const licencee = (searchParams.get('licencee'));
+    const licencee = searchParams.get('licencee');
     const membershipOnly =
       searchParams.get('membershipOnly') === 'true' ||
       searchParams.get('membershipOnly') === '1';
@@ -167,20 +174,25 @@ export async function GET(request: NextRequest) {
     // STEP 7: Return locations with country names
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Machines Locations API] Completed in ${duration}ms`);
-    }
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/cabinets/locations',
+      locations.length,
+      user,
+      duration
+    );
     return NextResponse.json({ locations }, { status: 200 });
   } catch (error: unknown) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch locations';
-    console.error(
-      `[Machines Locations API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/cabinets/locations',
+      errorMessage,
+      user
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-
-

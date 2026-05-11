@@ -27,12 +27,27 @@ function LoginPageContent() {
   const hook = useLoginPageData();
 
   const {
-    identifier, password, showPassword, rememberMe, errors, message, messageType,
-    loading, redirecting, authLoading, showPasswordUpdateModal, isCashierTempChange, isForced,
-    setIdentifier, setPassword, setShowPassword, setRememberMe, handleLogin,
+    identifier,
+    password,
+    showPassword,
+    rememberMe,
+    errors,
+    message,
+    messageType,
+    loading,
+    redirecting,
+    authLoading,
+    showPasswordUpdateModal,
+    isCashierTempChange,
+    isForced,
+    setIdentifier,
+    setPassword,
+    setShowPassword,
+    setRememberMe,
+    handleLogin,
     setShowPasswordUpdateModal,
     handlePasswordUpdate,
-    handleLogout
+    handleLogout,
   } = hook;
 
   // Show loading skeleton while checking authentication status
@@ -47,22 +62,45 @@ function LoginPageContent() {
             <div className="w-full p-12 md:w-1/2">
               <div className="mx-auto w-full max-w-sm">
                 <div className="text-center">
-                  <Image src={EOSLogo} alt="Logo" width={150} height={75} className="mb-6 inline-block" priority />
+                  <Image
+                    src={EOSLogo}
+                    alt="Logo"
+                    width={150}
+                    height={75}
+                    className="mb-6 inline-block"
+                    priority
+                  />
                 </div>
                 <LoginForm
-                  identifier={identifier} setIdentifier={setIdentifier}
-                  password={password} setPassword={setPassword}
-                  showPassword={showPassword} setShowPassword={setShowPassword}
-                  rememberMe={rememberMe} setRememberMe={setRememberMe}
-                  errors={errors} message={message} messageType={messageType}
-                  loading={loading} redirecting={redirecting} handleLogin={handleLogin}
+                  identifier={identifier}
+                  setIdentifier={setIdentifier}
+                  password={password}
+                  setPassword={setPassword}
+                  showPassword={showPassword}
+                  setShowPassword={setShowPassword}
+                  rememberMe={rememberMe}
+                  setRememberMe={setRememberMe}
+                  errors={errors}
+                  message={message}
+                  messageType={messageType}
+                  loading={loading}
+                  redirecting={redirecting}
+                  handleLogin={handleLogin}
                 />
               </div>
             </div>
             <div className="relative min-h-[250px] w-full md:min-h-0 md:w-1/2">
-              <Image src={SlotMachineImage} alt="Casino" fill priority className="object-cover" />
+              <Image
+                src={SlotMachineImage}
+                alt="Casino"
+                fill
+                priority
+                className="object-cover"
+              />
               <div className="absolute bottom-10 left-10 pr-4">
-                <h2 className="text-2xl font-bold text-white">Casino Management System</h2>
+                <h2 className="text-2xl font-bold text-white">
+                  Casino Management System
+                </h2>
               </div>
             </div>
           </div>
@@ -79,11 +117,8 @@ function LoginPageContent() {
         onLogout={handleLogout}
         initialPhone={hook.initialPhone}
       />
-
-
     </>
   );
-
 }
 
 export default function LoginPage() {
@@ -93,4 +128,3 @@ export default function LoginPage() {
     </Suspense>
   );
 }
-

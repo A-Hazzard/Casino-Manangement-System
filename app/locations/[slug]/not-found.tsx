@@ -17,7 +17,6 @@ export default function LocationDetailNotFound() {
           <Header
             selectedLicencee={selectedLicencee}
             setSelectedLicencee={setSelectedLicencee}
-            
             hideOptions={true}
             hideLicenceeFilter={false}
           />

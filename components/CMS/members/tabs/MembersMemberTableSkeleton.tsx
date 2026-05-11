@@ -22,13 +22,21 @@ export default function MembersMemberTableSkeleton({
       <table className="w-full table-fixed">
         <thead>
           <tr className="bg-button">
-            <th className="p-4 text-left font-semibold text-white">FULL NAME</th>
+            <th className="p-4 text-left font-semibold text-white">
+              FULL NAME
+            </th>
             {!hideLocationColumn && (
-              <th className="p-4 text-left font-semibold text-white">LOCATION</th>
+              <th className="p-4 text-left font-semibold text-white">
+                LOCATION
+              </th>
             )}
-            <th className="p-4 text-center font-semibold text-white">WIN/LOSS</th>
+            <th className="p-4 text-center font-semibold text-white">
+              WIN/LOSS
+            </th>
             <th className="p-4 text-center font-semibold text-white">JOINED</th>
-            <th className="p-4 text-center font-semibold text-white">ACTIONS</th>
+            <th className="p-4 text-center font-semibold text-white">
+              ACTIONS
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -54,10 +62,10 @@ export default function MembersMemberTableSkeleton({
                   <Skeleton className="h-3 w-32" />
                 </div>
               </td>
-              <td className="p-4 text-center text-center">
+              <td className="p-4 text-center">
                 <Skeleton className="mx-auto h-4 w-24" />
               </td>
-              <td className="p-4 text-center text-center">
+              <td className="p-4 text-center">
                 <div className="flex items-center justify-center gap-2">
                   <Skeleton className="h-8 w-8 rounded-md" />
                   <Skeleton className="h-8 w-8 rounded-md" />
@@ -71,4 +79,3 @@ export default function MembersMemberTableSkeleton({
     </div>
   );
 }
-

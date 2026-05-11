@@ -13,8 +13,13 @@
 
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type { CasinoMember } from '@shared/types';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main GET handler for fetching member debug information
@@ -27,8 +32,10 @@ import { NextResponse } from 'next/server';
  * 3. Fetch sample members for inspection
  * 4. Return debug information
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/members/debug';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -59,6 +66,15 @@ export async function GET() {
     // STEP 4: Return debug information
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/members/debug',
+      sampleMembers.length,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
       console.warn(`[Members Debug GET API] Completed in ${duration}ms`);
     }
@@ -76,12 +92,14 @@ export async function GET() {
       },
     });
   } catch (error: unknown) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(
-      `[Members Debug GET API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/members/debug',
+      errorMessage,
+      user
     );
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -89,4 +107,3 @@ export async function GET() {
     );
   }
 }
-

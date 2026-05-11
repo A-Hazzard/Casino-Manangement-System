@@ -66,4 +66,3 @@ export async function fetchUserId(): Promise<string | null> {
     return null;
   }
 }
-

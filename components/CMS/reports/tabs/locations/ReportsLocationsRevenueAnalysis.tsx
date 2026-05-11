@@ -95,7 +95,9 @@ type ReportsLocationsRevenueAnalysisProps = {
   onClearSelection: () => void;
   // Chart settings
   chartGranularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly';
-  onGranularityChange: (granularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly') => void;
+  onGranularityChange: (
+    granularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly'
+  ) => void;
   showGranularitySelector: boolean;
 };
 
@@ -130,7 +132,8 @@ export default function ReportsLocationsRevenueAnalysis({
 }: ReportsLocationsRevenueAnalysisProps) {
   const router = useRouter();
   const { displayCurrency } = useCurrencyFormat();
-  const formatCurrency = (val: number | null | undefined) => formatCurrencyWithCodeString(val, displayCurrency);
+  const formatCurrency = (val: number | null | undefined) =>
+    formatCurrencyWithCodeString(val, displayCurrency);
   const { activeMetricsFilter } = useDashBoardStore();
 
   // Calculate display totals from selected locations
@@ -305,15 +308,25 @@ export default function ReportsLocationsRevenueAnalysis({
       </Card>
 
       {/* Show skeleton loaders when data is loading */}
-      {metricsLoading || paginationLoading || locationsLoading || metricsTotalsLoading ? (
+      {metricsLoading ||
+      paginationLoading ||
+      locationsLoading ||
+      metricsTotalsLoading ? (
         <LocationsRevenueAnalysisSkeleton />
       ) : selectedRevenueLocations.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-gray-500">Please select locations to view data</p>
+            <p className="text-gray-500">
+              Please select locations to view data
+            </p>
           </CardContent>
         </Card>
-      ) : selectedRevenueLocations.length > 0 && paginatedLocations.length === 0 && !metricsLoading && !paginationLoading && !locationsLoading && !metricsTotalsLoading ? (
+      ) : selectedRevenueLocations.length > 0 &&
+        paginatedLocations.length === 0 &&
+        !metricsLoading &&
+        !paginationLoading &&
+        !locationsLoading &&
+        !metricsTotalsLoading ? (
         // Show skeleton when locations are selected but data hasn't loaded yet
         // This handles the brief moment when loading states are false but data hasn't arrived
         <LocationsRevenueAnalysisSkeleton />
@@ -364,7 +377,9 @@ export default function ReportsLocationsRevenueAnalysis({
                 </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Money In</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Money In
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div
@@ -383,7 +398,9 @@ export default function ReportsLocationsRevenueAnalysis({
                 </Card>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Money Out</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Money Out
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
@@ -394,7 +411,9 @@ export default function ReportsLocationsRevenueAnalysis({
                           moneyOut={displayTotals?.moneyOut || 0}
                           moneyIn={displayTotals?.moneyIn || 0}
                           jackpot={displayTotals?.jackpot || 0}
-                          displayValue={formatCurrency(displayTotals?.moneyOut || 0)}
+                          displayValue={formatCurrency(
+                            displayTotals?.moneyOut || 0
+                          )}
                           includeJackpot={anyIncludeJackpot}
                           showInfoIcon={true}
                         />
@@ -513,10 +532,18 @@ export default function ReportsLocationsRevenueAnalysis({
                         dataKey="drop"
                         locations={locationTrendData.locations}
                         locationNames={locationTrendData.locationNames}
-                        colors={['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6']}
+                        colors={[
+                          '#3b82f6',
+                          '#ef4444',
+                          '#10b981',
+                          '#f59e0b',
+                          '#8b5cf6',
+                        ]}
                         formatter={value => `$${value.toLocaleString()}`}
                         isHourly={locationTrendData.isHourly}
-                        timePeriod={(activeMetricsFilter || 'Today') as TimePeriod}
+                        timePeriod={
+                          (activeMetricsFilter || 'Today') as TimePeriod
+                        }
                         granularity={chartGranularity}
                       />
 
@@ -527,10 +554,18 @@ export default function ReportsLocationsRevenueAnalysis({
                         dataKey="gross"
                         locations={locationTrendData.locations}
                         locationNames={locationTrendData.locationNames}
-                        colors={['#10b981', '#ef4444', '#3b82f6', '#f59e0b', '#8b5cf6']}
+                        colors={[
+                          '#10b981',
+                          '#ef4444',
+                          '#3b82f6',
+                          '#f59e0b',
+                          '#8b5cf6',
+                        ]}
                         formatter={value => `$${value.toLocaleString()}`}
                         isHourly={locationTrendData.isHourly}
-                        timePeriod={(activeMetricsFilter || 'Today') as TimePeriod}
+                        timePeriod={
+                          (activeMetricsFilter || 'Today') as TimePeriod
+                        }
                         granularity={chartGranularity}
                       />
 
@@ -541,10 +576,18 @@ export default function ReportsLocationsRevenueAnalysis({
                         dataKey="jackpot"
                         locations={locationTrendData.locations}
                         locationNames={locationTrendData.locationNames}
-                        colors={['#f59e0b', '#ef4444', '#10b981', '#3b82f6', '#8b5cf6']}
+                        colors={[
+                          '#f59e0b',
+                          '#ef4444',
+                          '#10b981',
+                          '#3b82f6',
+                          '#8b5cf6',
+                        ]}
                         formatter={value => `$${value.toLocaleString()}`}
                         isHourly={locationTrendData.isHourly}
-                        timePeriod={(activeMetricsFilter || 'Today') as TimePeriod}
+                        timePeriod={
+                          (activeMetricsFilter || 'Today') as TimePeriod
+                        }
                         granularity={chartGranularity}
                       />
                     </div>
@@ -578,7 +621,8 @@ export default function ReportsLocationsRevenueAnalysis({
             </CardHeader>
             <CardContent>
               {(() => {
-                const hasSelectedLocations = selectedRevenueLocations.length > 0;
+                const hasSelectedLocations =
+                  selectedRevenueLocations.length > 0;
                 const isInitialLoading = metricsLoading || paginationLoading;
 
                 // Show skeleton if:
@@ -668,107 +712,109 @@ export default function ReportsLocationsRevenueAnalysis({
                                   ? (1 / totalMachines) * 100
                                   : 0;
                               return (
-                              <tr
-                                key={`${machine.machineId}-${index}`}
-                                className="border-b hover:bg-gray-50"
-                              >
-                                <td className="p-3 text-left">
-                                  {machine.locationId ? (
-                                    <button
-                                      onClick={() => {
-                                        router.push(
-                                          `/locations/${machine.locationId}`
-                                        );
-                                      }}
-                                      className="group flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
-                                    >
-                                      <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
-                                        {machine.locationName}
-                                      </span>
-                                      <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
-                                    </button>
-                                  ) : (
-                                    <div className="text-sm font-medium text-gray-900">
-                                      {machine.locationName}
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="p-3 text-left">
-                                  {machine.machineId ? (
-                                    <button
-                                      onClick={() => {
-                                        router.push(
-                                          `/cabinets/${machine.machineId}`
-                                        );
-                                      }}
-                                      className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
-                                    >
-                                      <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
-                                        {machine.serialNumber ||
-                                          machine.customName ||
-                                          machine.machineId}
-                                      </span>
-                                      <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
-                                    </button>
-                                  ) : (
-                                    <div className="font-mono text-sm text-gray-900">
-                                      {machine.serialNumber ||
-                                        machine.machineId}
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="p-3 text-sm">
-                                  {machine.gameTitle ? (
-                                    machine.gameTitle
-                                  ) : (
-                                    <span className="text-red-600">
-                                      (game name not provided)
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="p-3 text-sm">
-                                  {machine.manufacturer}
-                                </td>
-                                <td className="p-3 text-sm font-medium">
-                                  {formatCurrency(machine.drop || 0)}
-                                </td>
-                                <td
-                                  className={`p-3 text-sm font-medium ${
-                                    (machine.netWin || 0) >= 0
-                                      ? 'text-green-600'
-                                      : 'text-red-600'
-                                  }`}
+                                <tr
+                                  key={`${machine.machineId}-${index}`}
+                                  className="border-b hover:bg-gray-50"
                                 >
-                                  {formatCurrency(machine.netWin || 0)}
-                                </td>
-                                <td className="p-3 text-sm">
-                                  {formatCurrency(machine.jackpot || 0)}
-                                </td>
-                                <td className="p-3 text-sm">
-                                  {formatCurrency(machine.avgBet || 0)}
-                                </td>
-                                <td className="p-3 text-sm font-medium text-gray-600">
-                                  {machine.actualHold != null &&
-                                  !isNaN(machine.actualHold)
-                                    ? machine.actualHold.toFixed(2) + '%'
-                                    : 'N/A'}
-                                </td>
-                                <td className="p-3 text-sm text-gray-600">
-                                  {machine.theoreticalHold != null &&
-                                  !isNaN(machine.theoreticalHold)
-                                    ? machine.theoreticalHold.toFixed(2) + '%'
-                                    : 'N/A'}
-                                </td>
-                                <td className="p-3 text-sm">
-                                  {(machine.gamesPlayed || 0).toLocaleString()}
-                                </td>
-                                <td className="p-3 text-sm">
-                                  {floorPosition.toFixed(2)}%
-                                </td>
-                                <td className="p-3 text-sm font-medium">
-                                  {formatCurrency(machine.coinIn || 0)}
-                                </td>
-                              </tr>
+                                  <td className="p-3 text-left">
+                                    {machine.locationId ? (
+                                      <button
+                                        onClick={() => {
+                                          router.push(
+                                            `/locations/${machine.locationId}`
+                                          );
+                                        }}
+                                        className="group flex items-center gap-1.5 text-sm font-medium text-gray-900 transition-opacity hover:opacity-80"
+                                      >
+                                        <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                          {machine.locationName}
+                                        </span>
+                                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                      </button>
+                                    ) : (
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {machine.locationName}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="p-3 text-left">
+                                    {machine.machineId ? (
+                                      <button
+                                        onClick={() => {
+                                          router.push(
+                                            `/cabinets/${machine.machineId}`
+                                          );
+                                        }}
+                                        className="group flex items-center gap-1.5 font-mono text-sm text-gray-900 transition-opacity hover:opacity-80"
+                                      >
+                                        <span className="underline decoration-blue-600 decoration-2 underline-offset-2">
+                                          {machine.serialNumber ||
+                                            machine.customName ||
+                                            machine.machineId}
+                                        </span>
+                                        <ExternalLink className="h-3.5 w-3.5 flex-shrink-0 text-blue-600 group-hover:text-blue-700" />
+                                      </button>
+                                    ) : (
+                                      <div className="font-mono text-sm text-gray-900">
+                                        {machine.serialNumber ||
+                                          machine.machineId}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="p-3 text-sm">
+                                    {machine.gameTitle ? (
+                                      machine.gameTitle
+                                    ) : (
+                                      <span className="text-red-600">
+                                        (game name not provided)
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 text-sm">
+                                    {machine.manufacturer}
+                                  </td>
+                                  <td className="p-3 text-sm font-medium">
+                                    {formatCurrency(machine.drop || 0)}
+                                  </td>
+                                  <td
+                                    className={`p-3 text-sm font-medium ${
+                                      (machine.netWin || 0) >= 0
+                                        ? 'text-green-600'
+                                        : 'text-red-600'
+                                    }`}
+                                  >
+                                    {formatCurrency(machine.netWin || 0)}
+                                  </td>
+                                  <td className="p-3 text-sm">
+                                    {formatCurrency(machine.jackpot || 0)}
+                                  </td>
+                                  <td className="p-3 text-sm">
+                                    {formatCurrency(machine.avgBet || 0)}
+                                  </td>
+                                  <td className="p-3 text-sm font-medium text-gray-600">
+                                    {machine.actualHold != null &&
+                                    !isNaN(machine.actualHold)
+                                      ? machine.actualHold.toFixed(2) + '%'
+                                      : 'N/A'}
+                                  </td>
+                                  <td className="p-3 text-sm text-gray-600">
+                                    {machine.theoreticalHold != null &&
+                                    !isNaN(machine.theoreticalHold)
+                                      ? machine.theoreticalHold.toFixed(2) + '%'
+                                      : 'N/A'}
+                                  </td>
+                                  <td className="p-3 text-sm">
+                                    {(
+                                      machine.gamesPlayed || 0
+                                    ).toLocaleString()}
+                                  </td>
+                                  <td className="p-3 text-sm">
+                                    {floorPosition.toFixed(2)}%
+                                  </td>
+                                  <td className="p-3 text-sm font-medium">
+                                    {formatCurrency(machine.coinIn || 0)}
+                                  </td>
+                                </tr>
                               );
                             })}
                           </tbody>
@@ -895,7 +941,7 @@ export default function ReportsLocationsRevenueAnalysis({
                     No machine data available for evaluation
                   </div>
                 );
-            })()}
+              })()}
             </CardContent>
           </Card>
         </>
@@ -914,5 +960,3 @@ export default function ReportsLocationsRevenueAnalysis({
     </div>
   );
 }
-
-

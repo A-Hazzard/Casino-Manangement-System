@@ -16,6 +16,11 @@ import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { mqttService } from '@/app/api/lib/services/mqttService';
 import { getClientIP } from '@/lib/utils/ipAddress';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -30,10 +35,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * Body fields:
  * @param relayIds {string[]} Required. SMIB relay IDs (from MQTT discovery) to restart.
  */
-export async function POST(
-  request: NextRequest
-) {
+export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/locations/[locationId]/smib-restart';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const locationId = pathname.split('/').at(-2);
 
@@ -45,6 +50,13 @@ export async function POST(
     // STEP 2: Validate relayIds
     // ============================================================================
     if (!relayIds || relayIds.length === 0) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/locations/[locationId]/smib-restart',
+        'No SMIB relay IDs provided',
+        user
+      );
       return NextResponse.json(
         {
           success: false,
@@ -77,7 +89,11 @@ export async function POST(
 
     // Process in batches of 10 for parallel execution
     const BATCH_SIZE = 10;
-    for (let relayIndex = 0; relayIndex < uniqueRelayIds.length; relayIndex += BATCH_SIZE) {
+    for (
+      let relayIndex = 0;
+      relayIndex < uniqueRelayIds.length;
+      relayIndex += BATCH_SIZE
+    ) {
       const batch = uniqueRelayIds.slice(relayIndex, relayIndex + BATCH_SIZE);
 
       await Promise.allSettled(
@@ -136,6 +152,16 @@ export async function POST(
     // ============================================================================
     // STEP 7: Return results
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/locations/[locationId]/smib-restart',
+      results.total,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       success: results.failed === 0,
       message: `Restart commands sent to ${results.successful} SMIBs${results.failed > 0 ? ` (${results.failed} failed)` : ''}`,
@@ -145,6 +171,13 @@ export async function POST(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/locations/[locationId]/smib-restart',
+      errorMessage,
+      user
+    );
     console.error(
       `[Location SMIB Restart API] Error after ${duration}ms:`,
       errorMessage

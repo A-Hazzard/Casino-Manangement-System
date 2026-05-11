@@ -103,7 +103,9 @@ export default function MembersTableSkeleton({
                   <span>LOCATION</span>
                 </TableHead>
               )}
-              <TableHead className="font-semibold text-white">ACTIONS</TableHead>
+              <TableHead className="font-semibold text-white">
+                ACTIONS
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -143,5 +145,3 @@ export default function MembersTableSkeleton({
     </div>
   );
 }
-
-

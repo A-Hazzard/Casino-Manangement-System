@@ -1,15 +1,20 @@
 /**
  * CabinetsDetailsSMIBNetworkConfig Component
- * 
+ *
  * Handles network and WiFi configuration for SMIB devices.
- * 
+ *
  * @param props - Component props
  */
 
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import editIcon from '@/public/editIcon.svg';
@@ -110,17 +115,17 @@ export function CabinetsDetailsSMIBNetworkConfig({
               ></div>
               <span
                 className={`text-sm font-medium ${
-                isConnectedToMqtt ? 'text-green-600' : 'text-red-600'
-              }`}
-            >
-              {isConnectedToMqtt ? 'SMIB Online' : 'SMIB Offline'}
-            </span>
+                  isConnectedToMqtt ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {isConnectedToMqtt ? 'SMIB Online' : 'SMIB Offline'}
+              </span>
+            </div>
+          </div>
+          <div className="text-xs text-gray-500">
+            Last configured: {formatLastConfigured()}
           </div>
         </div>
-        <div className="text-xs text-gray-500">
-          Last configured: {formatLastConfigured()}
-        </div>
-      </div>
         {!isEditMode && !disabled && (
           <button
             onClick={onToggleEdit}
@@ -195,7 +200,10 @@ export function CabinetsDetailsSMIBNetworkConfig({
 
             {/* Password */}
             <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-2">
-              <Label htmlFor="networkPassword" className="text-sm text-gray-600">
+              <Label
+                htmlFor="networkPassword"
+                className="text-sm text-gray-600"
+              >
                 Password
               </Label>
               {isEditMode ? (
@@ -270,4 +278,3 @@ export function CabinetsDetailsSMIBNetworkConfig({
     </Card>
   );
 }
-

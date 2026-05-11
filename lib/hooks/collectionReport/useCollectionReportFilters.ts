@@ -47,7 +47,9 @@ export function useCollectionReportFilters({
   // ==========================================================================
   // Local State - Filters
   // ==========================================================================
-  const [selectedLocation, setSelectedLocation] = useState<string | string[]>('all');
+  const [selectedLocation, setSelectedLocation] = useState<string | string[]>(
+    'all'
+  );
   const [showUncollectedOnly, setShowUncollectedOnly] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 
@@ -173,7 +175,10 @@ export function useCollectionReportFilters({
    */
   const handleFilterChange = (filter: string, checked: boolean) => {
     if (checked) setSelectedFilters(prev => [...prev, filter]);
-    else setSelectedFilters(prev => prev.filter(activeFilter => activeFilter !== filter));
+    else
+      setSelectedFilters(prev =>
+        prev.filter(activeFilter => activeFilter !== filter)
+      );
   };
 
   /**

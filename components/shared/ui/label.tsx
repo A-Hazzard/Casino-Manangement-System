@@ -9,7 +9,6 @@
  */
 'use client';
 
-
 import { forwardRef } from 'react';
 import { ComponentPropsWithoutRef, ElementRef } from 'react';
 import * as LabelPrimitive from '@radix-ui/react-label';
@@ -39,4 +38,3 @@ const Label = forwardRef<
 Label.displayName = LabelPrimitive.Root.displayName;
 
 export { Label };
-

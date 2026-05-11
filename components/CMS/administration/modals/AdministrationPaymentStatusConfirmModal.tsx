@@ -76,13 +76,13 @@ function AdministrationPaymentStatusConfirmModal({
         >
           <div className="border-b border-border p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-buttonActive text-center flex-1">
+              <h2 className="flex-1 text-center text-xl font-bold text-buttonActive">
                 Confirm Payment Status Change
               </h2>
               <Button
                 variant="ghost"
                 onClick={onClose}
-                className="text-grayHighlight hover:bg-buttonInactive/10 h-8 w-8 p-0 shrink-0"
+                className="h-8 w-8 shrink-0 p-0 text-grayHighlight hover:bg-buttonInactive/10"
               >
                 <X className="h-5 w-5" />
               </Button>
@@ -92,7 +92,7 @@ function AdministrationPaymentStatusConfirmModal({
           <div className="p-6">
             <div className="text-center">
               <div className="mb-4 flex justify-center">
-                <div className="h-16 w-16 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/30">
                   <span className="text-2xl">⚠️</span>
                 </div>
               </div>
@@ -123,8 +123,8 @@ function AdministrationPaymentStatusConfirmModal({
                 </p>
 
                 {!currentStatus && newStatus && (
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 p-4 text-left">
-                    <p className="mb-2 text-sm text-blue-800 dark:text-blue-300 font-medium">
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-left dark:border-blue-800 dark:bg-blue-900/20">
+                    <p className="mb-2 text-sm font-medium text-blue-800 dark:text-blue-300">
                       Note: This licence will expire 30 days from today.
                     </p>
                     <div className="grid grid-cols-1 gap-2 text-xs text-grayHighlight">
@@ -153,7 +153,11 @@ function AdministrationPaymentStatusConfirmModal({
             <div className="flex justify-center space-x-4">
               <Button
                 onClick={onConfirm}
-                className={newStatus ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}
+                className={
+                  newStatus
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-red-600 text-white hover:bg-red-700'
+                }
               >
                 Confirm Change
               </Button>
@@ -171,6 +175,4 @@ function AdministrationPaymentStatusConfirmModal({
   );
 }
 
-
 export default AdministrationPaymentStatusConfirmModal;
-

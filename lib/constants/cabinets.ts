@@ -36,4 +36,3 @@ export const CABINET_TABS_CONFIG: CabinetTab[] = [
     available: isTabAvailable('cabinets', 'firmware'),
   },
 ];
-

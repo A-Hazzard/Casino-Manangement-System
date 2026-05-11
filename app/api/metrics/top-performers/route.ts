@@ -17,6 +17,11 @@ import type { TimePeriod } from '@/app/api/lib/types';
 import { getDatesForTimePeriod } from '@/app/api/lib/utils/dates';
 // Note: Db type from mongodb not imported to avoid mongoose/mongodb version mismatch
 import type { PipelineStage } from 'mongoose';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 /**
  * Builds aggregation pipeline for top performer
@@ -68,7 +73,8 @@ function buildTopPerformerPipeline(
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  }
+          { 'locationDetails.rel.licencee': licencee },
+          { 'locationDetails.rel.licencee': licencee },
         ],
       },
     } as PipelineStage);
@@ -203,6 +209,8 @@ async function getTopPerformer(
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/metrics/top-performers';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -212,11 +220,18 @@ export async function GET(req: NextRequest) {
     const locationId = searchParams.get('locationId');
     const timePeriod =
       (searchParams.get('timePeriod') as TimePeriod) || 'Today';
-    const licencee = (searchParams.get('licencee'));
+    const licencee = searchParams.get('licencee');
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
 
     if (!locationId) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/metrics/top-performers',
+        'Location ID is required',
+        user
+      );
       return NextResponse.json(
         { error: 'Location ID is required' },
         { status: 400 }
@@ -228,6 +243,13 @@ export async function GET(req: NextRequest) {
     // ============================================================================
     const db = await connectDB();
     if (!db) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/metrics/top-performers',
+        'Database connection not established',
+        user
+      );
       return NextResponse.json(
         { error: 'Database connection not established' },
         { status: 500 }
@@ -249,6 +271,14 @@ export async function GET(req: NextRequest) {
     // STEP 4: Return top performer
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/metrics/top-performers',
+      topPerformer ? 1 : 0,
+      user,
+      duration
+    );
     if (duration > 1000) {
       console.warn(`[Top Performers API] Completed in ${duration}ms`);
     }
@@ -261,6 +291,13 @@ export async function GET(req: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch top performers';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/metrics/top-performers',
+      errorMessage,
+      user
+    );
     console.error(
       `[Top Performers Metrics GET API] Error after ${duration}ms:`,
       errorMessage

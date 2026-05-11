@@ -36,6 +36,7 @@ The list page was reading `includeJackpot` from the CollectionReport document (a
 ### Bug 2 — Jackpot coming from the wrong place
 
 **What happened:** Jackpot values can be stored in two places:
+
 1. `Meters.movement.jackpot` — the live meter reading field (often 0 or missing for many machines)
 2. `Collections.sasMeters.jackpot` — a snapshot stored at the time the collection was recorded (reliable)
 
@@ -55,15 +56,15 @@ The list page was only looking at `movement.jackpot` (often 0), so it subtracted
 
 ## Summary Table
 
-| Bug | Root Cause | Effect | Fix |
-|-----|-----------|--------|-----|
-| Wrong `includeJackpot` | Old reports stored `false` by default | Jackpot not subtracted → variation too negative | Fetch flag live from Licencee via `$lookup` |
-| Jackpot from wrong field | `movement.jackpot` is 0 for many machines | Same as above | Per-machine query with fallback to stored snapshot |
-| API timeout | Meters queries ran for all reports, not just current page | List page failed to load | Apply `$skip`/`$limit` before Meters queries |
+| Bug                      | Root Cause                                                | Effect                                          | Fix                                                |
+| ------------------------ | --------------------------------------------------------- | ----------------------------------------------- | -------------------------------------------------- |
+| Wrong `includeJackpot`   | Old reports stored `false` by default                     | Jackpot not subtracted → variation too negative | Fetch flag live from Licencee via `$lookup`        |
+| Jackpot from wrong field | `movement.jackpot` is 0 for many machines                 | Same as above                                   | Per-machine query with fallback to stored snapshot |
+| API timeout              | Meters queries ran for all reports, not just current page | List page failed to load                        | Apply `$skip`/`$limit` before Meters queries       |
 
 ---
 
 ## Files Changed
 
 - `app/api/lib/helpers/collectionReport/service.ts` — list page backend (all three fixes)
-- `app/api/collectionReport/route.ts` — route handler (pass page/limit into service)
+- `app/api/collection-reports/route.ts` — route handler (pass page/limit into service)

@@ -16,13 +16,18 @@ export async function fetchLicencees(
   limit: number = 50
 ): Promise<{
   licencees: Licencee[];
-  pagination: { page: number; limit: number; total: number; totalPages: number };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }> {
   try {
     const params = new URLSearchParams();
     params.append('page', String(page));
     params.append('limit', String(limit));
-    
+
     const response = await fetch(`/api/licencees?${params.toString()}`, {
       method: 'GET',
       credentials: 'include', // Include cookies for authentication
@@ -38,19 +43,18 @@ export async function fetchLicencees(
     }
 
     const data = await response.json();
-    
+
     // Ensure licencees is always an array
     const licencees = Array.isArray(data.licencees) ? data.licencees : [];
-    
+
     return {
       licencees,
-      pagination:
-        data.pagination || {
-          page: 1,
-          limit,
-          total: licencees.length,
-          totalPages: 1,
-        },
+      pagination: data.pagination || {
+        page: 1,
+        limit,
+        total: licencees.length,
+        totalPages: 1,
+      },
     };
   } catch (error) {
     console.error('[fetchLicencees] Failed to fetch licencees:', error);
@@ -103,4 +107,3 @@ export async function fetchLicenceeById(
     return null;
   }
 }
-

@@ -5,11 +5,11 @@
 import { Button } from '@/components/shared/ui/button';
 import { Input } from '@/components/shared/ui/input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import { RefreshCw, Search } from 'lucide-react';
 import { CATEGORY_LABELS } from './FeedbackTypes';
@@ -68,7 +68,10 @@ export default function FeedbackFilters({
                 setCurrentPage(0);
               }}
             >
-              <SelectTrigger id="category-filter" className="h-11 w-full min-w-[130px] rounded-md bg-white shadow-sm md:min-w-[150px]">
+              <SelectTrigger
+                id="category-filter"
+                className="h-11 w-full min-w-[130px] rounded-md bg-white shadow-sm md:min-w-[150px]"
+              >
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
@@ -90,7 +93,10 @@ export default function FeedbackFilters({
                 setCurrentPage(0);
               }}
             >
-              <SelectTrigger id="status-filter" className="h-11 w-full min-w-[130px] rounded-md bg-white shadow-sm md:min-w-[150px]">
+              <SelectTrigger
+                id="status-filter"
+                className="h-11 w-full min-w-[130px] rounded-md bg-white shadow-sm md:min-w-[150px]"
+              >
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>

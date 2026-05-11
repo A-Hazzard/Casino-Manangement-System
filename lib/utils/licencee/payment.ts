@@ -61,4 +61,3 @@ export function getNext30Days(): Date {
 export function formatLicenceeDate(date: Date | string | undefined): string {
   return formatFullDate(date);
 }
-

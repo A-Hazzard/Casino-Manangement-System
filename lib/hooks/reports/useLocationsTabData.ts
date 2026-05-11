@@ -90,7 +90,8 @@ export function useLocationsTabData({
     []
   );
   const [bottomMachinesLoading, setBottomMachinesLoading] = useState(false);
-  const [locationTrendData, setLocationTrendData] = useState<LocationTrendsResponse | null>(null);
+  const [locationTrendData, setLocationTrendData] =
+    useState<LocationTrendsResponse | null>(null);
   const [locationTrendLoading, setLocationTrendLoading] = useState(false);
   const [accumulatedLocations, setAccumulatedLocations] = useState<
     AggregatedLocation[]
@@ -229,8 +230,8 @@ export function useLocationsTabData({
         if (isAbortError(error)) {
           return;
         }
-          console.error('Error loading gaming locations:', error);
-          setGamingLocations([]);
+        console.error('Error loading gaming locations:', error);
+        setGamingLocations([]);
       } finally {
         setGamingLocationsLoading(false);
       }
@@ -335,8 +336,8 @@ export function useLocationsTabData({
         if (isAbortError(error)) {
           return;
         }
-          console.error('Error fetching location aggregation:', error);
-          setLocationAggregates([]);
+        console.error('Error fetching location aggregation:', error);
+        setLocationAggregates([]);
       } finally {
         setLocationAggregatesLoading(false);
       }
@@ -837,16 +838,16 @@ export function useLocationsTabData({
         if (isAbortError(error)) {
           return;
         }
-          const errorMessage = axios.isAxiosError(error)
-            ? error.response?.data?.error || error.message
-            : error instanceof Error
-              ? error.message
-              : 'Failed to fetch top machines data';
-          console.error('Error fetching top machines:', errorMessage, error);
-          toast.error(`Failed to fetch top machines: ${errorMessage}`, {
-            duration: 3000,
-          });
-          setTopMachinesData([]);
+        const errorMessage = axios.isAxiosError(error)
+          ? error.response?.data?.error || error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to fetch top machines data';
+        console.error('Error fetching top machines:', errorMessage, error);
+        toast.error(`Failed to fetch top machines: ${errorMessage}`, {
+          duration: 3000,
+        });
+        setTopMachinesData([]);
       } finally {
         setTopMachinesLoading(false);
         // Don't set global loading - use specific topMachinesLoading state
@@ -924,19 +925,19 @@ export function useLocationsTabData({
         if (isAbortError(error)) {
           return;
         }
-          const errorMessage = axios.isAxiosError(error)
-            ? error.response?.data?.error || error.message
-            : error instanceof Error
-              ? error.message
-              : 'Failed to fetch bottom machines data';
-          console.error('Error fetching bottom machines:', errorMessage, error);
-          toast.error(
-            `Failed to fetch least performing machines: ${errorMessage}`,
-            {
-              duration: 3000,
-            }
-          );
-          setBottomMachinesData([]);
+        const errorMessage = axios.isAxiosError(error)
+          ? error.response?.data?.error || error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to fetch bottom machines data';
+        console.error('Error fetching bottom machines:', errorMessage, error);
+        toast.error(
+          `Failed to fetch least performing machines: ${errorMessage}`,
+          {
+            duration: 3000,
+          }
+        );
+        setBottomMachinesData([]);
       } finally {
         setBottomMachinesLoading(false);
         // Don't set global loading - use specific bottomMachinesLoading state
@@ -1006,13 +1007,13 @@ export function useLocationsTabData({
           if (isAbortError(error)) {
             return;
           }
-            console.error('Error fetching location trend data:', error);
-            if (axios.isAxiosError(error) && error.response?.status !== 500) {
-              toast.error('Failed to fetch location trend data', {
-                duration: 3000,
-              });
-            }
-            setLocationTrendData(null);
+          console.error('Error fetching location trend data:', error);
+          if (axios.isAxiosError(error) && error.response?.status !== 500) {
+            toast.error('Failed to fetch location trend data', {
+              duration: 3000,
+            });
+          }
+          setLocationTrendData(null);
         } finally {
           setLocationTrendLoading(false);
         }
@@ -1127,4 +1128,3 @@ export function useLocationsTabData({
     calculateBatchNumber,
   };
 }
-

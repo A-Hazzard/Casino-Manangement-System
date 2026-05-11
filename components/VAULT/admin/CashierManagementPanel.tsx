@@ -1196,7 +1196,7 @@ export default function CashierManagementPanel({
             currentPage={currentPage - 1}
             totalPages={totalPages}
             totalCount={totalCount}
-            setCurrentPage={(page) => setCurrentPage(page + 1)}
+            setCurrentPage={page => setCurrentPage(page + 1)}
             showTotalCount
           />
         </CardContent>

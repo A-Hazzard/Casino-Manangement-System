@@ -7,7 +7,13 @@
 'use client';
 
 import { Dispatch, SetStateAction } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { DateTimePicker } from '@/components/shared/ui/date-time-picker';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -19,11 +25,13 @@ type ProfileAddressIdentityProps = {
   isEditMode: boolean;
   countries: Country[];
   countriesLoading: boolean;
-  onInputChange: (field: string, value: string, section?: 'address' | 'identification') => void;
+  onInputChange: (
+    field: string,
+    value: string,
+    section?: 'address' | 'identification'
+  ) => void;
   validationErrors: Record<string, string>;
-  setValidationErrors: Dispatch<
-    SetStateAction<Record<string, string>>
-  >;
+  setValidationErrors: Dispatch<SetStateAction<Record<string, string>>>;
 };
 
 export default function ProfileAddressIdentity({
@@ -39,7 +47,7 @@ export default function ProfileAddressIdentity({
     value: string,
     section?: 'address' | 'identification'
   ) => {
-    onInputChange(field, value , section);
+    onInputChange(field, value, section);
     // Clear error when user starts typing
     const errorKey = section ? `${section}.${field}` : field;
     if (validationErrors[errorKey] || validationErrors[field]) {
@@ -63,9 +71,17 @@ export default function ProfileAddressIdentity({
             <div>
               <Label>Street</Label>
               {isEditMode ? (
-                <Input value={formData?.address?.street || ''} onChange={e => onInputChange('street', e.target.value, 'address')} className="mt-2" />
+                <Input
+                  value={formData?.address?.street || ''}
+                  onChange={e =>
+                    onInputChange('street', e.target.value, 'address')
+                  }
+                  className="mt-2"
+                />
               ) : (
-                <p className="mt-2 text-sm text-gray-900">{formData?.address?.street || '-'}</p>
+                <p className="mt-2 text-sm text-gray-900">
+                  {formData?.address?.street || '-'}
+                </p>
               )}
             </div>
             <div>
@@ -75,7 +91,11 @@ export default function ProfileAddressIdentity({
                   <Input
                     value={formData?.address?.town || ''}
                     onChange={e =>
-                      handleInputChangeWithValidation('town', e.target.value, 'address')
+                      handleInputChangeWithValidation(
+                        'town',
+                        e.target.value,
+                        'address'
+                      )
                     }
                     className={`mt-2 ${validationErrors.town ? 'border-red-500' : ''}`}
                   />
@@ -98,7 +118,11 @@ export default function ProfileAddressIdentity({
                   <Input
                     value={formData?.address?.region || ''}
                     onChange={e =>
-                      handleInputChangeWithValidation('region', e.target.value, 'address')
+                      handleInputChangeWithValidation(
+                        'region',
+                        e.target.value,
+                        'address'
+                      )
                     }
                     className={`mt-2 ${validationErrors.region ? 'border-red-500' : ''}`}
                   />
@@ -124,7 +148,11 @@ export default function ProfileAddressIdentity({
                     }`}
                     value={formData?.address?.country || ''}
                     onChange={e =>
-                      handleInputChangeWithValidation('country', e.target.value, 'address')
+                      handleInputChangeWithValidation(
+                        'country',
+                        e.target.value,
+                        'address'
+                      )
                     }
                   >
                     <option value="">Select country</option>
@@ -142,7 +170,8 @@ export default function ProfileAddressIdentity({
                 </>
               ) : (
                 <p className="mt-2 text-sm text-gray-900">
-                  {countries.find(c => c._id === formData?.address?.country)?.name ||
+                  {countries.find(c => c._id === formData?.address?.country)
+                    ?.name ||
                     formData?.address?.country ||
                     '-'}
                 </p>
@@ -159,13 +188,17 @@ export default function ProfileAddressIdentity({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className='flex flex-col gap-2'>
+            <div className="flex flex-col gap-2">
               <Label>Date of Birth</Label>
               {isEditMode ? (
                 <>
                   <DateTimePicker
                     dateOnly
-                    date={formData?.identification?.dateOfBirth ? new Date(formData.identification.dateOfBirth) : undefined}
+                    date={
+                      formData?.identification?.dateOfBirth
+                        ? new Date(formData.identification.dateOfBirth)
+                        : undefined
+                    }
                     setDate={(date: Date | undefined) =>
                       handleInputChangeWithValidation(
                         'dateOfBirth',
@@ -183,7 +216,9 @@ export default function ProfileAddressIdentity({
               ) : (
                 <p className="mt-2 text-sm text-gray-900">
                   {formData?.identification?.dateOfBirth
-                    ? new Date(formData.identification.dateOfBirth).toLocaleDateString()
+                    ? new Date(
+                        formData.identification.dateOfBirth
+                      ).toLocaleDateString()
                     : '-'}
                 </p>
               )}
@@ -213,7 +248,7 @@ export default function ProfileAddressIdentity({
                   )}
                 </>
               ) : (
-                <p className="mt-2 text-sm text-gray-900 capitalize">
+                <p className="mt-2 text-sm capitalize text-gray-900">
                   {formData?.identification?.idType || '-'}
                 </p>
               )}
@@ -254,5 +289,3 @@ export default function ProfileAddressIdentity({
     </>
   );
 }
-
-

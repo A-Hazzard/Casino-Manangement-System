@@ -19,14 +19,27 @@ import { getLicenceeCurrency } from '@/lib/helpers/rates';
 import { getGamingDayRangesForLocations } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { AggregatedLocation } from '@/shared/types/entities';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import {
+  getMoneyInScale,
+  getMoneyOutAndJackpotScale,
+} from '@/app/api/lib/utils/reviewerScale';
+import {
+  fetchLocationsWithMachinesForSmib,
+  syncAllLocationSmibStatuses,
+} from '@/app/api/lib/helpers/smibClassification';
 import { NextRequest, NextResponse } from 'next/server';
 /**
  * Fetches the aggregated reporting data for gaming locations.
- * 
- * Supports various filters including licencee, time period, machine type, 
- * and search terms. Can return full aggregated metrics or a simplified 
+ *
+ * Supports various filters including licencee, time period, machine type,
+ * and search terms. Can return full aggregated metrics or a simplified
  * summary for dropdowns/quick lists.
- * 
+ *
  * @param {NextRequest} req - The standard Next.js request object
  * @query {TimePeriod} [timePeriod='7d'] - Preset time range
  * @query {string} [licencee='all'] - ID of the licencee to filter by
@@ -44,14 +57,16 @@ import { NextRequest, NextResponse } from 'next/server';
  * @query {string} [sortOrder='desc'] - Direction to sort ('asc' or 'desc')
  * @query {string} [startDate] - ISO start date for Custom timePeriod
  * @query {string} [endDate] - ISO end date for Custom timePeriod
- * 
+ *
  * @returns {NextResponse} JSON with data array, pagination metadata, and performance metrics
  */
 export async function GET(req: NextRequest) {
   return withApiAuth(
     req,
     async ({ user: userPayload, userRoles, isAdminOrDev }) => {
-      const perfStart = Date.now();
+      const startTime = Date.now();
+      const functionName = 'GET /api/reports/locations';
+      const user = extractUserFromRequest(req);
 
       try {
         // ============================================================================
@@ -82,6 +97,7 @@ export async function GET(req: NextRequest) {
         const sortBy = searchParams.get('sortBy') || 'gross';
         const sortOrder =
           searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
+        const syncAll = searchParams.get('syncAll') === 'true';
 
         let customStartDate: Date | undefined, customEndDate: Date | undefined;
         if (timePeriod === 'Custom') {
@@ -199,7 +215,9 @@ export async function GET(req: NextRequest) {
 
         // Machine type filters (SMIB, No SMIB, Local Server, Membership, Coordinates)
         if (machineTypeFilter) {
-          const filters = machineTypeFilter.split(',').filter(type => type.trim() !== '');
+          const filters = machineTypeFilter
+            .split(',')
+            .filter(type => type.trim() !== '');
 
           const connectionFilters: Record<string, unknown>[] = [];
           const featureFilters: Record<string, unknown>[] = [];
@@ -217,9 +235,18 @@ export async function GET(req: NextRequest) {
               case 'NoSMIBLocation':
                 connectionFilters.push({ noSMIBLocation: true });
                 break;
+              case 'FullSMIBs':
+                connectionFilters.push({ fullSMIBs: true });
+                break;
+              case 'SemiSMIBs':
+                connectionFilters.push({ semiSMIBs: true });
+                break;
               case 'MembershipOnly':
                 featureFilters.push({
-                  $or: [{ membershipEnabled: true }, { enableMembership: true }],
+                  $or: [
+                    { membershipEnabled: true },
+                    { enableMembership: true },
+                  ],
                 });
                 break;
               case 'MissingCoordinates':
@@ -232,8 +259,12 @@ export async function GET(req: NextRequest) {
                     { 'geoCoords.latitude': 0 },
                     {
                       $or: [
-                        { 'geoCoords.longitude': { $exists: false, $eq: null } },
-                        { 'geoCoords.longtitude': { $exists: false, $eq: null } },
+                        {
+                          'geoCoords.longitude': { $exists: false, $eq: null },
+                        },
+                        {
+                          'geoCoords.longtitude': { $exists: false, $eq: null },
+                        },
                       ],
                     },
                   ],
@@ -242,11 +273,23 @@ export async function GET(req: NextRequest) {
               case 'HasCoordinates':
                 qualityFilters.push({
                   $and: [
-                    { 'geoCoords.latitude': { $exists: true, $nin: [null, 0] } },
+                    {
+                      'geoCoords.latitude': { $exists: true, $nin: [null, 0] },
+                    },
                     {
                       $or: [
-                        { 'geoCoords.longitude': { $exists: true, $nin: [null, 0] } },
-                        { 'geoCoords.longtitude': { $exists: true, $nin: [null, 0] } },
+                        {
+                          'geoCoords.longitude': {
+                            $exists: true,
+                            $nin: [null, 0],
+                          },
+                        },
+                        {
+                          'geoCoords.longtitude': {
+                            $exists: true,
+                            $nin: [null, 0],
+                          },
+                        },
                       ],
                     },
                   ],
@@ -256,35 +299,36 @@ export async function GET(req: NextRequest) {
           });
 
           if (!locationMatchStage.$and) locationMatchStage.$and = [];
-          const andArray = locationMatchStage.$and as Array<Record<string, unknown>>;
+          const andArray = locationMatchStage.$and as Array<
+            Record<string, unknown>
+          >;
 
           if (connectionFilters.length > 0)
             andArray.push({ $or: connectionFilters });
-          if (featureFilters.length > 0)
-            andArray.push({ $or: featureFilters });
-          if (qualityFilters.length > 0)
-            andArray.push({ $or: qualityFilters });
+          if (featureFilters.length > 0) andArray.push({ $or: featureFilters });
+          if (qualityFilters.length > 0) andArray.push({ $or: qualityFilters });
         }
 
         // ============================================================================
         // STEP 4: Fetch locations and calculate metrics
         // ============================================================================
-        const locations = await GamingLocations.find(
-          locationMatchStage
-        ).lean<LocationDocument[]>();
+        const locations =
+          await GamingLocations.find(locationMatchStage).lean<
+            LocationDocument[]
+          >();
 
         if (searchParams.get('summary') === 'true') {
-          return await handleSummaryMode(locations, displayCurrency, perfStart);
+          return await handleSummaryMode(locations, displayCurrency, startTime);
         }
 
         const allLocationIds = locations.map(loc => String(loc._id));
-        
+
         // Machine query logic - apply same rule as machine list to ensure totals match
         const machineMatch: Record<string, unknown> = {
-          gamingLocation: { $in: allLocationIds }
+          gamingLocation: { $in: allLocationIds },
         };
 
-        // Note: For locations report, we typically only show totals for Active machines 
+        // Note: For locations report, we typically only show totals for Active machines
         // unless viewing archived locations.
         if (!showArchived) {
           // Standard Active: null OR < 2025
@@ -297,7 +341,8 @@ export async function GET(req: NextRequest) {
           machineMatch.deletedAt = { $gte: new Date('2025-01-01') };
         }
 
-        const allMachinesData = await Machine.find(machineMatch).lean<GamingMachine[]>();
+        const allMachinesData =
+          await Machine.find(machineMatch).lean<GamingMachine[]>();
         const allMachineIds = allMachinesData.map(m => String(m._id));
 
         const locationToMachines = new Map<string, Record<string, unknown>[]>();
@@ -306,6 +351,63 @@ export async function GET(req: NextRequest) {
           if (!locationToMachines.has(locId)) locationToMachines.set(locId, []);
           locationToMachines.get(locId)!.push(m as Record<string, unknown>);
         });
+
+        // ============================================================================
+        // SMIB AUTO-TAG — classify each location based on machine relayId presence
+        // Uses cached DB values unless syncAll=true is specified
+        // ============================================================================
+        if (syncAll && allLocationIds.length > 0) {
+          console.log(
+            `[SMIB Auto-tag] syncAll=true - running full classification for ${allLocationIds.length} locations`
+          );
+          const locationsWithMachines =
+            await fetchLocationsWithMachinesForSmib(allLocationIds);
+          for (const item of locationsWithMachines) {
+            const machines = item.machines ?? [];
+            const withRelay = machines.filter(
+              m => m.relayId && String(m.relayId).trim()
+            ).length;
+            const computedFull =
+              machines.length > 0 && withRelay === machines.length;
+            const computedSemi =
+              machines.length > 0 &&
+              withRelay > 0 &&
+              withRelay < machines.length;
+            const computedNone = !computedFull && !computedSemi;
+            (item.location as Record<string, unknown>).fullSMIBs = computedFull;
+            (item.location as Record<string, unknown>).semiSMIBs = computedSemi;
+            (item.location as Record<string, unknown>).noSMIBLocation =
+              computedNone;
+          }
+          await syncAllLocationSmibStatuses(locationsWithMachines);
+          for (const loc of locations) {
+            const matching = locationsWithMachines.find(
+              l => String(l.location._id) === String(loc._id)
+            );
+            if (matching) {
+              loc.fullSMIBs = matching.location.fullSMIBs;
+              loc.semiSMIBs = matching.location.semiSMIBs;
+              loc.noSMIBLocation = matching.location.noSMIBLocation;
+            }
+          }
+        } else {
+          for (const location of locations) {
+            const machines = locationToMachines.get(String(location._id)) ?? [];
+            const withRelay = machines.filter(
+              m => m.relayId && String(m.relayId).trim()
+            ).length;
+            const computedFull =
+              machines.length > 0 && withRelay === machines.length;
+            const computedSemi =
+              machines.length > 0 &&
+              withRelay > 0 &&
+              withRelay < machines.length;
+            const computedNone = !computedFull && !computedSemi;
+            (location as Record<string, unknown>).fullSMIBs = computedFull;
+            (location as Record<string, unknown>).semiSMIBs = computedSemi;
+            (location as Record<string, unknown>).noSMIBLocation = computedNone;
+          }
+        }
 
         const locationRanges = getGamingDayRangesForLocations(
           locations.map(loc => ({
@@ -392,7 +494,15 @@ export async function GET(req: NextRequest) {
           licencees.map(l => [String(l._id), !!l.includeJackpot])
         );
 
-        const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
+        const moneyInScale = getMoneyInScale(
+          userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+        );
+        const moneyOutScale = getMoneyOutAndJackpotScale(
+          userPayload as {
+            moneyOutAndJackpotMultiplier?: number | null;
+            roles?: string[];
+          }
+        );
 
         const locationResults: AggregatedLocation[] = locations.map(loc => {
           const locId = String(loc._id);
@@ -402,15 +512,10 @@ export async function GET(req: NextRequest) {
             totalCancelledCredits: 0,
             totalJackpot: 0,
           };
-          let scaledDrop = metrics.totalDrop || 0;
-          let scaledCancelled = metrics.totalCancelledCredits || 0;
-          let scaledJackpot = metrics.totalJackpot || 0;
-          if (reviewerMult !== null) {
-            const mult = 1 - reviewerMult;
-            scaledDrop *= mult;
-            scaledCancelled *= mult;
-            scaledJackpot *= mult;
-          }
+          const scaledDrop = (metrics.totalDrop || 0) * moneyInScale;
+          const scaledCancelled =
+            (metrics.totalCancelledCredits || 0) * moneyOutScale;
+          const scaledJackpot = (metrics.totalJackpot || 0) * moneyOutScale;
           const includeJackpot =
             licenceeIncludeJackpotMap.get(String(loc.rel?.licencee)) || false;
 
@@ -426,7 +531,8 @@ export async function GET(req: NextRequest) {
               ) / 100,
             gross:
               Math.round(
-                (scaledDrop - (scaledCancelled + (includeJackpot ? scaledJackpot : 0))) *
+                (scaledDrop -
+                  (scaledCancelled + (includeJackpot ? scaledJackpot : 0))) *
                   100
               ) / 100,
             jackpot: Math.round(scaledJackpot * 100) / 100,
@@ -444,17 +550,10 @@ export async function GET(req: NextRequest) {
             nonSasMachines: machines.filter(m => !m.isSasMachine).length,
             hasSasMachines: machines.some(m => m.isSasMachine),
             hasNonSasMachines: machines.some(m => !m.isSasMachine),
-            noSMIBLocation:
-              loc.noSMIBLocation ||
-              !machines.some(
-                m =>
-                  (m.relayId as string)?.trim() ||
-                  (m.smibBoard as string)?.trim()
-              ),
-            hasSmib: machines.some(
-              m =>
-                (m.relayId as string)?.trim() || (m.smibBoard as string)?.trim()
-            ),
+            noSMIBLocation: Boolean(loc.noSMIBLocation),
+            fullSMIBs: Boolean(loc.fullSMIBs),
+            semiSMIBs: Boolean(loc.semiSMIBs),
+            hasSmib: Boolean(loc.fullSMIBs) || Boolean(loc.semiSMIBs),
             rel: loc.rel,
             isLocalServer: Boolean(loc.isLocalServer),
             country: loc.country,
@@ -511,6 +610,16 @@ export async function GET(req: NextRequest) {
           isAdminOrDev
         );
 
+        const duration = Date.now() - startTime;
+        logRouteFetch(
+          functionName,
+          'GET',
+          '/api/reports/locations',
+          filteredResults.length,
+          user,
+          duration
+        );
+
         return NextResponse.json({
           data: converted,
           pagination: {
@@ -523,9 +632,18 @@ export async function GET(req: NextRequest) {
           },
           currency: displayCurrency,
           converted: isAdminOrDev && (licencee === 'all' || !licencee),
-          performance: { totalTime: Date.now() - perfStart },
+          performance: { totalTime: duration },
         });
       } catch (err: unknown) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Internal server error';
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/reports/locations',
+          errorMessage,
+          user
+        );
         console.error('Reports Locations API Error:', err);
         return NextResponse.json(
           { error: 'Internal server error' },

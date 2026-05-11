@@ -76,7 +76,9 @@ export default function MembersNavigation({
                 onValueChange={onTabChange}
                 className="w-full"
               >
-                <TabsList className={`grid ${availableTabs.length === 3 ? 'grid-cols-3 w-full sm:w-[500px] gap-1' : 'grid-cols-2 w-full sm:w-[320px]'} bg-gray-100 p-1`}>
+                <TabsList
+                  className={`grid ${availableTabs.length === 3 ? 'w-full grid-cols-3 gap-1 sm:w-[500px]' : 'w-full grid-cols-2 sm:w-[320px]'} bg-gray-100 p-1`}
+                >
                   {availableTabs.map(tab => (
                     <TabsTrigger
                       key={tab.id}
@@ -140,4 +142,3 @@ export default function MembersNavigation({
     </div>
   );
 }
-

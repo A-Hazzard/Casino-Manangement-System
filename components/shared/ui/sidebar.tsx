@@ -14,13 +14,7 @@
 
 import { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { 
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
- } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 // ============================================================================
 // Types & Context
@@ -309,4 +303,3 @@ export function SidebarContainer({ children }: { children: ReactNode }) {
     </aside>
   );
 }
-

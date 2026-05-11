@@ -16,10 +16,10 @@
 import DebugSection from '@/components/shared/debug/DebugSection';
 import { Button } from '@/components/shared/ui/button';
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { cn } from '@/lib/utils';
@@ -46,7 +46,13 @@ export default function VaultBalanceCard({
   const { formatAmount } = useCurrencyFormat();
 
   // Helper to determine font size based on amount string length
-  const getDynamicFontSize = (text: string, baseSize: string, mediumSize: string, smallSize: string, tinySize: string) => {
+  const getDynamicFontSize = (
+    text: string,
+    baseSize: string,
+    mediumSize: string,
+    smallSize: string,
+    tinySize: string
+  ) => {
     if (text.length > 18) return tinySize;
     if (text.length > 15) return smallSize;
     if (text.length > 12) return mediumSize;
@@ -54,7 +60,9 @@ export default function VaultBalanceCard({
   };
 
   const balanceStr = formatAmount(balance.balance);
-  const premisesStr = formatAmount(balance.totalCashOnPremises || balance.balance);
+  const premisesStr = formatAmount(
+    balance.totalCashOnPremises || balance.balance
+  );
 
   // ============================================================================
   // Render
@@ -75,44 +83,74 @@ export default function VaultBalanceCard({
             onClick={onReconcile}
             disabled={!balance.activeShiftId || isStaleShift}
             className={cn(
-               "h-8 w-full sm:w-auto gap-2 border-orangeHighlight text-orangeHighlight hover:bg-orangeHighlight/10 transition-all",
-               (!balance.activeShiftId || isStaleShift) && "opacity-40 cursor-not-allowed",
-               balance.activeShiftId && !balance.isReconciled && !isStaleShift && "animate-pulse ring-2 ring-orangeHighlight/50 bg-orange-50"
+              'h-8 w-full gap-2 border-orangeHighlight text-orangeHighlight transition-all hover:bg-orangeHighlight/10 sm:w-auto',
+              (!balance.activeShiftId || isStaleShift) &&
+                'cursor-not-allowed opacity-40',
+              balance.activeShiftId &&
+                !balance.isReconciled &&
+                !isStaleShift &&
+                'animate-pulse bg-orange-50 ring-2 ring-orangeHighlight/50'
             )}
           >
-            <RefreshCw className={cn("h-4 w-4", balance.activeShiftId && !balance.isReconciled && !isStaleShift && "animate-spin")} />
-            {balance.isReconciled ? 'Reconcile' : 'Reconciliation of Vault Required'}
+            <RefreshCw
+              className={cn(
+                'h-4 w-4',
+                balance.activeShiftId &&
+                  !balance.isReconciled &&
+                  !isStaleShift &&
+                  'animate-spin'
+              )}
+            />
+            {balance.isReconciled
+              ? 'Reconcile'
+              : 'Reconciliation of Vault Required'}
           </Button>
         )}
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-4 md:flex-row md:gap-6">
           {/* Vault Balance */}
-          <div 
+          <div
             className={cn(
-                "flex-1 min-w-0 transition-all duration-200 rounded-lg p-2 -m-2",
-                onViewDenominations && "hover:bg-gray-50 cursor-pointer active:bg-gray-100"
+              '-m-2 min-w-0 flex-1 rounded-lg p-2 transition-all duration-200',
+              onViewDenominations &&
+                'cursor-pointer hover:bg-gray-50 active:bg-gray-100'
             )}
             onClick={onViewDenominations}
-            title={onViewDenominations ? "Click to view denomination breakdown" : undefined}
+            title={
+              onViewDenominations
+                ? 'Click to view denomination breakdown'
+                : undefined
+            }
           >
-            <p className="text-sm font-medium text-gray-600 flex items-center gap-1.5">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-gray-600">
               Current Vault Balance
               {onViewDenominations && (
-                <span className="text-[10px] text-blue-500 font-bold uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-[10px] font-bold uppercase tracking-tighter text-blue-500 opacity-0 transition-opacity group-hover:opacity-100">
                   View Setup
                 </span>
               )}
             </p>
-            <p className={cn(
-                "mt-1 font-bold text-gray-900 leading-tight transition-all duration-300 break-words",
-                getDynamicFontSize(balanceStr, "text-2xl sm:text-2xl md:text-3xl", "text-xl sm:text-xl md:text-2xl", "text-lg sm:text-lg md:text-xl", "text-base sm:text-base md:text-lg")
-            )}>
+            <p
+              className={cn(
+                'mt-1 break-words font-bold leading-tight text-gray-900 transition-all duration-300',
+                getDynamicFontSize(
+                  balanceStr,
+                  'text-2xl sm:text-2xl md:text-3xl',
+                  'text-xl sm:text-xl md:text-2xl',
+                  'text-lg sm:text-lg md:text-xl',
+                  'text-base sm:text-base md:text-lg'
+                )
+              )}
+            >
               {balanceStr}
             </p>
             {balance.openingBalance !== undefined && (
-              <p className="mt-1 text-xs text-gray-500 font-medium truncate">
-                Started with: <span className="text-gray-900">{formatAmount(balance.openingBalance)}</span>
+              <p className="mt-1 truncate text-xs font-medium text-gray-500">
+                Started with:{' '}
+                <span className="text-gray-900">
+                  {formatAmount(balance.openingBalance)}
+                </span>
               </p>
             )}
           </div>
@@ -123,10 +161,12 @@ export default function VaultBalanceCard({
           <div className="border-t border-gray-200 pt-4 md:hidden"></div>
 
           {/* Last Reconcile */}
-          <div className="flex-1 md:pt-0 min-w-0">
+          <div className="min-w-0 flex-1 md:pt-0">
             <p className="text-sm font-medium text-gray-600">Last Reconcile</p>
-            <p className="mt-1 text-lg text-gray-900 truncate">
-              {balance.lastAudit && balance.lastAudit !== 'Never' ? safeFormatDate(balance.lastAudit) : 'Never'}
+            <p className="mt-1 truncate text-lg text-gray-900">
+              {balance.lastAudit && balance.lastAudit !== 'Never'
+                ? safeFormatDate(balance.lastAudit)
+                : 'Never'}
             </p>
           </div>
 
@@ -136,9 +176,9 @@ export default function VaultBalanceCard({
           <div className="border-t border-gray-200 pt-4 md:hidden"></div>
 
           {/* Manager on Duty */}
-          <div className="flex-1 md:pt-0 min-w-0">
+          <div className="min-w-0 flex-1 md:pt-0">
             <p className="text-sm font-medium text-gray-600">Manager on Duty</p>
-            <p className="mt-1 text-lg font-semibold text-gray-900 truncate">
+            <p className="mt-1 truncate text-lg font-semibold text-gray-900">
               {balance.managerOnDuty}
             </p>
           </div>
@@ -149,17 +189,32 @@ export default function VaultBalanceCard({
           <div className="border-t border-gray-200 pt-4 md:hidden"></div>
 
           {/* Premises Metrics */}
-          <div className="flex-1 md:pt-0 min-w-0">
-            <p className="text-sm font-medium text-orangeHighlight">Cash on Premises</p>
-            <p className={cn(
-                "mt-1 font-bold text-gray-900 leading-tight transition-all duration-300 break-words",
-                getDynamicFontSize(premisesStr, "text-2xl", "text-xl", "text-lg", "text-base")
-            )}>
+          <div className="min-w-0 flex-1 md:pt-0">
+            <p className="text-sm font-medium text-orangeHighlight">
+              Cash on Premises
+            </p>
+            <p
+              className={cn(
+                'mt-1 break-words font-bold leading-tight text-gray-900 transition-all duration-300',
+                getDynamicFontSize(
+                  premisesStr,
+                  'text-2xl',
+                  'text-xl',
+                  'text-lg',
+                  'text-base'
+                )
+              )}
+            >
               {premisesStr}
             </p>
-            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] uppercase tracking-wider text-gray-500 font-mono overflow-hidden">
-              <span className="truncate" title="Machine Money In">Machines' Soft Count: {formatAmount(balance.machineMoneyIn || 0)}</span>
-              <span className="truncate" title="Total Active Cashier Floats">Cashiers' Float: {formatAmount(balance.cashierFloats || 0)}</span>
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 overflow-hidden font-mono text-[10px] uppercase tracking-wider text-gray-500">
+              <span className="truncate" title="Machine Money In">
+                Machines' Soft Count:{' '}
+                {formatAmount(balance.machineMoneyIn || 0)}
+              </span>
+              <span className="truncate" title="Total Active Cashier Floats">
+                Cashiers' Float: {formatAmount(balance.cashierFloats || 0)}
+              </span>
             </div>
           </div>
         </div>

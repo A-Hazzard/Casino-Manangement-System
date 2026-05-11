@@ -1,8 +1,8 @@
 /**
  * CabinetsDetailsSMIBRestart Component
- * 
+ *
  * Handles restart commands for SMIB devices.
- * 
+ *
  * @param props - Component props
  */
 
@@ -19,7 +19,12 @@ import {
   AlertDialogTitle,
 } from '@/components/shared/ui/alert-dialog';
 import { Button } from '@/components/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { useSmibRestart } from '@/lib/hooks/data/useSmibRestart';
 import { AlertTriangle, RotateCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -76,14 +81,14 @@ export function CabinetsDetailsSMIBRestart({
 
   return (
     <>
-      <Card className="relative w-full max-w-full min-w-0 overflow-x-hidden">
+      <Card className="relative w-full min-w-0 max-w-full overflow-x-hidden">
         <CardHeader className="min-w-0">
           <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-700">
             <RotateCw className="h-5 w-5" />
             SMIB Restart
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 min-w-0 overflow-x-hidden">
+        <CardContent className="min-w-0 space-y-4 overflow-x-hidden">
           <p className="text-sm text-gray-600">
             Restart the SMIB device to reboot and reinitialize the system. This
             action will temporarily disconnect the device.
@@ -177,4 +182,3 @@ export function CabinetsDetailsSMIBRestart({
     </>
   );
 }
-

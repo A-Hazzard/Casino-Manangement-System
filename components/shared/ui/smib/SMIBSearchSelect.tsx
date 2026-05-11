@@ -4,8 +4,7 @@ import { KeyboardEvent } from 'react';
 import { cn } from '@/lib/utils';
 import type { SmibDevice } from '@/shared/types/entities';
 import { Check, ChevronDown, Search } from 'lucide-react';
-import {  useEffect, useMemo, useRef, useState  } from 'react';
-
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type SmibStatus = 'online' | 'offline';
 
@@ -20,7 +19,7 @@ const getSmibStatus = (smib: SmibDevice): SmibStatus => {
   if (typeof smib.online === 'boolean') {
     return smib.online ? 'online' : 'offline';
   }
-  
+
   // If online status not provided by API, default to offline
   return 'offline';
 };
@@ -189,7 +188,9 @@ export function SMIBSearchSelect({
             aria-hidden="true"
             className={cn(
               'h-2.5 w-2.5 shrink-0 rounded-full transition-colors duration-150',
-              selectedStatus ? getStatusDotClass(selectedStatus) : 'bg-muted-foreground/40'
+              selectedStatus
+                ? getStatusDotClass(selectedStatus)
+                : 'bg-muted-foreground/40'
             )}
           />
           <span className="truncate text-left">{displayText}</span>
@@ -275,9 +276,7 @@ export function SMIBSearchSelect({
                         <span className="text-xs font-medium text-muted-foreground">
                           {statusLabel}
                         </span>
-                        {isSelected && (
-                          <Check className="h-4 w-4 shrink-0" />
-                        )}
+                        {isSelected && <Check className="h-4 w-4 shrink-0" />}
                       </div>
                     </div>
                   </button>
@@ -290,4 +289,3 @@ export function SMIBSearchSelect({
     </div>
   );
 }
-

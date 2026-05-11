@@ -16,6 +16,11 @@ import {
 } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * Main GET handler for fetching user counts by role
@@ -32,6 +37,10 @@ import { NextRequest } from 'next/server';
  * 7. Return counts
  */
 export async function GET(request: NextRequest): Promise<Response> {
+  const startTime = Date.now();
+  const functionName = 'GET /api/users/counts';
+  const user = extractUserFromRequest(request);
+
   try {
     // ============================================================================
     // STEP 1: Connect to database
@@ -43,6 +52,13 @@ export async function GET(request: NextRequest): Promise<Response> {
     // ============================================================================
     const currentUser = await getUserFromServer();
     if (!currentUser) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/users/counts',
+        'Unauthorized',
+        user
+      );
       return new Response(
         JSON.stringify({ success: false, message: 'Unauthorized' }),
         { status: 401 }
@@ -72,7 +88,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     // STEP 3: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licencee = (searchParams.get('licencee'));
+    const licencee = searchParams.get('licencee');
 
     // ============================================================================
     // STEP 4: Fetch all users (excludes deletedAt >= 2025-01-01)
@@ -162,7 +178,11 @@ export async function GET(request: NextRequest): Promise<Response> {
       if (userRoles.includes('collector')) {
         counts.collectors++;
       }
-      if (userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner')) {
+      if (
+        userRoles.includes('admin') ||
+        userRoles.includes('developer') ||
+        userRoles.includes('owner')
+      ) {
         counts.admins++;
       }
       if (userRoles.includes('location admin')) {
@@ -176,6 +196,9 @@ export async function GET(request: NextRequest): Promise<Response> {
     // ============================================================================
     // STEP 8: Return counts
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteFetch(functionName, 'GET', '/api/users/counts', 1, user, duration);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -187,14 +210,14 @@ export async function GET(request: NextRequest): Promise<Response> {
       }
     );
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch user counts';
     console.error('[USERS COUNTS API] Error:', error);
+    logRouteError(functionName, 'GET', '/api/users/counts', errorMessage, user);
     return new Response(
       JSON.stringify({
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to fetch user counts',
+        message: errorMessage,
       }),
       { status: 500 }
     );

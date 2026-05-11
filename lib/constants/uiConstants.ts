@@ -23,4 +23,3 @@ export const colorPalette = [
   '#53B3E7', // Light Blue
   '#F4C542', // Gold
 ];
-

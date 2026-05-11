@@ -13,6 +13,11 @@
 
 import { MachineEvent } from '@/app/api/lib/models/machineEvents';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type { MachineEventDocument } from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -36,10 +41,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param {number} [page] - Optional. 1-based page number (default: 1).
  * @param {number} [limit] - Optional. Number of events per page (default: 10).
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/members/[id]/sessions/[machineId]/events';
+  const user = extractUserFromRequest(request);
 
   try {
     const { pathname, searchParams } = request.nextUrl;
@@ -137,6 +142,15 @@ export async function GET(
     // STEP 7: Return paginated events with filter options
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/members/[id]/sessions/[machineId]/events',
+      events.length,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
       console.warn(`[Member Sessions Events API] Completed in ${duration}ms`);
     }
@@ -162,6 +176,13 @@ export async function GET(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch machine events';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/members/[id]/sessions/[machineId]/events',
+      errorMessage,
+      user
+    );
     console.error(
       `[Member Machine Events API] Error after ${duration}ms:`,
       errorMessage

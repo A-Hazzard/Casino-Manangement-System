@@ -122,9 +122,11 @@ export default function ComponentName(props: ComponentProps) {
   <div className="actions">
     <Button>Create</Button>
   </div>
-</div>
+</div>;
 
-{/* Spacing between major sections */}
+{
+  /* Spacing between major sections */
+}
 
 {
   /* ============================================================================
@@ -137,12 +139,20 @@ export default function ComponentName(props: ComponentProps) {
 
   {/* Date Range Picker */}
   <DateRangePicker />
-</div>
+</div>;
 
-{/* Data Display Section */}
-{loading && <PageSkeleton />}
-{error && <ErrorMessage />}
-{!loading && !error && <DataTable />}
+{
+  /* Data Display Section */
+}
+{
+  loading && <PageSkeleton />;
+}
+{
+  error && <ErrorMessage />;
+}
+{
+  !loading && !error && <DataTable />;
+}
 ```
 
 ## Logic Extraction Rules
@@ -235,16 +245,16 @@ function LocationsContent() {
 }
 <div className="hidden md:block">
   <DataTable data={data} />
-</div>
+</div>;
 
 {
   /* Mobile view: Card layout */
 }
-<div className="md:hidden space-y-4">
-  {data.map((item) => (
+<div className="space-y-4 md:hidden">
+  {data.map(item => (
     <DataCard key={item.id} data={item} />
   ))}
-</div>
+</div>;
 ```
 
 ## Conditional Rendering with Error Boundary
@@ -253,21 +263,23 @@ function LocationsContent() {
 {
   /* Loading State: Show skeleton while fetching */
 }
-{loading && <PageSkeleton />}
+{
+  loading && <PageSkeleton />;
+}
 
 {
   /* Error State: Show error message */
 }
-{error && <ErrorMessage error={error} />}
+{
+  error && <ErrorMessage error={error} />;
+}
 
 {
   /* Success State: Show data */
 }
-{!loading && !error && (
-  <>
-    {/* Content here */}
-  </>
-)}
+{
+  !loading && !error && <>{/* Content here */}</>;
+}
 ```
 
 ## React Import Rule

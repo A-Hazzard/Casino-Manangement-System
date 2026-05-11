@@ -1,6 +1,11 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import { Users, UserCog, Building2, Shield, Briefcase } from 'lucide-react';
 
@@ -72,7 +77,9 @@ export function AdministrationUserSummaryCards({
             <div className="flex gap-4">
               <div className="min-w-0 flex-1">
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="truncate text-sm font-medium text-gray-600">Total Users</span>
+                  <span className="truncate text-sm font-medium text-gray-600">
+                    Total Users
+                  </span>
                   <Users className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
                 </div>
                 <div className="text-2xl font-bold">{counts?.total ?? 0}</div>
@@ -80,10 +87,14 @@ export function AdministrationUserSummaryCards({
               </div>
               <div className="min-w-0 flex-1 border-l pl-4">
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="truncate text-sm font-medium text-gray-600">Collectors</span>
+                  <span className="truncate text-sm font-medium text-gray-600">
+                    Collectors
+                  </span>
                   <UserCog className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
                 </div>
-                <div className="text-2xl font-bold">{counts?.collectors ?? 0}</div>
+                <div className="text-2xl font-bold">
+                  {counts?.collectors ?? 0}
+                </div>
                 <p className="text-xs text-muted-foreground">Collector role</p>
               </div>
             </div>
@@ -96,19 +107,29 @@ export function AdministrationUserSummaryCards({
             <div className="flex gap-4">
               <div className="min-w-0 flex-1">
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="truncate text-sm font-medium text-gray-600">Total Admins</span>
+                  <span className="truncate text-sm font-medium text-gray-600">
+                    Total Admins
+                  </span>
                   <Shield className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
                 </div>
                 <div className="text-2xl font-bold">{counts?.admins ?? 0}</div>
-                <p className="text-xs text-muted-foreground">Admin &amp; Developer</p>
+                <p className="text-xs text-muted-foreground">
+                  Admin &amp; Developer
+                </p>
               </div>
               <div className="min-w-0 flex-1 border-l pl-4">
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="truncate text-sm font-medium text-gray-600">Location Admins</span>
+                  <span className="truncate text-sm font-medium text-gray-600">
+                    Location Admins
+                  </span>
                   <Building2 className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
                 </div>
-                <div className="text-2xl font-bold">{counts?.locationAdmins ?? 0}</div>
-                <p className="text-xs text-muted-foreground">Location admin role</p>
+                <div className="text-2xl font-bold">
+                  {counts?.locationAdmins ?? 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Location admin role
+                </p>
               </div>
             </div>
           </CardContent>
@@ -117,7 +138,9 @@ export function AdministrationUserSummaryCards({
         {/* Managers standalone */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Managers</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Managers
+            </CardTitle>
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -142,7 +165,9 @@ export function AdministrationUserSummaryCards({
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Collectors</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Collectors
+            </CardTitle>
             <UserCog className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -158,24 +183,32 @@ export function AdministrationUserSummaryCards({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{counts?.admins ?? 0}</div>
-            <p className="text-xs text-muted-foreground">Admin &amp; Developer</p>
+            <p className="text-xs text-muted-foreground">
+              Admin &amp; Developer
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Location Admins</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Location Admins
+            </CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{counts?.locationAdmins ?? 0}</div>
+            <div className="text-2xl font-bold">
+              {counts?.locationAdmins ?? 0}
+            </div>
             <p className="text-xs text-muted-foreground">Location admin role</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Managers</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Managers
+            </CardTitle>
             <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>

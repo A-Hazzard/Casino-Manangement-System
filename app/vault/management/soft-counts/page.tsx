@@ -36,7 +36,7 @@ export default function SoftCountsPage() {
         body: JSON.stringify({
           amount,
           denominations,
-          notes: notes || `Soft count recording`, 
+          notes: notes || `Soft count recording`,
         }),
       });
 
@@ -61,9 +61,9 @@ export default function SoftCountsPage() {
         <PageLayout>
           <div className="space-y-6">
             <VaultManagerHeader
-                title="Soft Count"
-                description="Record mid-shift cash removal to replenish vault"
-                backHref="/vault/management"
+              title="Soft Count"
+              description="Record mid-shift cash removal to replenish vault"
+              backHref="/vault/management"
             />
 
             <div className="mx-auto max-w-2xl">

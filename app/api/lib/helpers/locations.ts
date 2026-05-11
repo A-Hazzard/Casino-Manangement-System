@@ -16,13 +16,18 @@ export type LocationQueryFilterParams = {
 
 /**
  * Builds the deletion filter for location queries.
- * When showArchived is true, returns only recently archived locations.
+ * When showArchived is true, returns only archived locations (deletedAt on or after 2025-01-01).
  * Otherwise returns only active (non-archived) locations.
  */
 function buildDeletionFilter(showArchived: boolean): Record<string, unknown> {
   return showArchived
     ? { deletedAt: { $gte: new Date('2025-01-01') } }
-    : { $or: [{ deletedAt: null }, { deletedAt: { $lt: new Date('2025-01-01') } }] };
+    : {
+        $or: [
+          { deletedAt: null },
+          { deletedAt: { $lt: new Date('2025-01-01') } },
+        ],
+      };
 }
 
 /**

@@ -1,17 +1,4 @@
-/**
- * Shift Model
- *
- * Unified Mongoose model for cashier and vault manager shifts.
- * Tracks shift start/end times and denomination breakdowns.
- *
- * @module app/api/lib/models/shifts
- */
-
 import { model, models, Schema } from 'mongoose';
-
-// ============================================================================
-// Schema Definition
-// ============================================================================
 
 const SHIFT_ROLES = ['cashier', 'vault-manager'] as const;
 const SHIFT_STATUSES = ['Open', 'Close'] as const;
@@ -57,21 +44,12 @@ const shiftSchema = new Schema(
   { timestamps: true, collection: 'shifts' }
 );
 
-// ============================================================================
-// Indexes
-// ============================================================================
-
 shiftSchema.index({ locationId: 1, role: 1, status: 1 });
 shiftSchema.index({ userId: 1, status: 1 });
-// Note: locationId single index is already created by index: true in schema (line 41)
+
 shiftSchema.index({ startedShiftAt: -1 });
 
-// ============================================================================
-// Validation
-// ============================================================================
-
 shiftSchema.pre('save', function (next) {
-  // Validate closedShiftAt is after startedShiftAt if provided
   if (
     this.closedShiftAt &&
     this.startedShiftAt &&
@@ -82,7 +60,6 @@ shiftSchema.pre('save', function (next) {
     );
   }
 
-  // Validate status matches closedShiftAt
   if (this.status === 'Close' && !this.closedShiftAt) {
     return next(
       new Error('Closed shift time is required when status is Close')
@@ -97,10 +74,6 @@ shiftSchema.pre('save', function (next) {
 
   next();
 });
-
-// ============================================================================
-// Model Export
-// ============================================================================
 
 export const Shift = models.shifts || model('shifts', shiftSchema);
 

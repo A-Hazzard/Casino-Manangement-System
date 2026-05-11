@@ -164,11 +164,7 @@ const SessionCard = ({ session }: { session: MemberSession }) => {
               session.machineId
             }/events`}
           >
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
-            >
+            <Button variant="outline" size="sm" className="h-8">
               <ActivityIcon className="mr-1 h-3 w-3" />
               Events
             </Button>
@@ -189,7 +185,9 @@ const SessionCard = ({ session }: { session: MemberSession }) => {
           </div>
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">Money Out</span>
-            <span className={`font-semibold ${getMoneyOutColorClass(session.moneyOut, session.moneyIn)}`}>
+            <span
+              className={`font-semibold ${getMoneyOutColorClass(session.moneyOut, session.moneyIn)}`}
+            >
               {shouldShowCurrency()
                 ? formatAmount(session.moneyOut || 0)
                 : formatCurrency(session.moneyOut || 0)}
@@ -225,7 +223,9 @@ const SessionCard = ({ session }: { session: MemberSession }) => {
           </div>
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground">Coin In</span>
-            <span className="font-semibold">{formatCurrency(session.coinIn || 0)}</span>
+            <span className="font-semibold">
+              {formatCurrency(session.coinIn || 0)}
+            </span>
           </div>
         </div>
       </div>
@@ -360,7 +360,9 @@ export default function MembersPlayerSessionTable({
         );
       case 'Money Out':
         return (
-          <span className={getMoneyOutColorClass(session.moneyOut, session.moneyIn)}>
+          <span
+            className={getMoneyOutColorClass(session.moneyOut, session.moneyIn)}
+          >
             {shouldShowCurrency()
               ? formatAmount(session.moneyOut || 0)
               : formatCurrency(session.moneyOut || 0)}
@@ -518,7 +520,9 @@ export default function MembersPlayerSessionTable({
               className="h-8 w-12 rounded-md border border-input bg-background px-2 text-center text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Page number"
             />
-            <span className="text-xs text-muted-foreground">of {totalPages}</span>
+            <span className="text-xs text-muted-foreground">
+              of {totalPages}
+            </span>
           </div>
           <Button
             variant="outline"
@@ -580,7 +584,9 @@ export default function MembersPlayerSessionTable({
               className="h-9 w-16 rounded-md border border-input bg-background px-2 text-center text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Page number"
             />
-            <span className="text-sm text-muted-foreground">of {totalPages}</span>
+            <span className="text-sm text-muted-foreground">
+              of {totalPages}
+            </span>
           </div>
           <Button
             variant="outline"
@@ -603,4 +609,3 @@ export default function MembersPlayerSessionTable({
     </div>
   );
 }
-

@@ -14,7 +14,11 @@ import {
   getCountryCurrency,
   getLicenceeCurrency,
 } from '@/lib/helpers/rates';
-import type { AggregatedLocation, CountryDocument, LicenceeDocument } from '@/shared/types';
+import type {
+  AggregatedLocation,
+  CountryDocument,
+  LicenceeDocument,
+} from '@/shared/types';
 import type { CurrencyCode } from '@/shared/types/currency';
 
 /**
@@ -30,8 +34,14 @@ export async function convertLocationCurrency(
   displayCurrency: CurrencyCode,
   licencee: string | undefined
 ): Promise<AggregatedLocation[]> {
-  if (!Array.isArray(rows) || !displayCurrency || typeof displayCurrency !== 'string') {
-    console.error('[convertLocationCurrency] rows must be an array and displayCurrency must be a string');
+  if (
+    !Array.isArray(rows) ||
+    !displayCurrency ||
+    typeof displayCurrency !== 'string'
+  ) {
+    console.error(
+      '[convertLocationCurrency] rows must be an array and displayCurrency must be a string'
+    );
     return rows || [];
   }
 
@@ -111,5 +121,3 @@ export async function convertLocationCurrency(
     };
   });
 }
-
-

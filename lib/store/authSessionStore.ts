@@ -47,4 +47,3 @@ const getClientStore = () => {
 // Use this store only on client side
 export const useAuthSessionStore =
   typeof window !== 'undefined' ? getClientStore() : create(() => dummyState);
-

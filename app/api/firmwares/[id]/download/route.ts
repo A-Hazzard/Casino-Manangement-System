@@ -14,6 +14,11 @@ import {
   downloadFirmwareFromGridFS,
   findFirmwareById,
 } from '@/app/api/lib/helpers/firmware';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -26,19 +31,21 @@ import { NextRequest, NextResponse } from 'next/server';
  * URL params:
  * @param id {string} Required (path). The MongoDB ID of the Firmware document to download.
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/firmwares/[id]/download';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const id = pathname.split('/').at(-2); // Extract [id] from /api/firmwares/[id]/download
 
   if (!id) {
-    return NextResponse.json({ error: 'Firmware ID is required' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Firmware ID is required' },
+      { status: 400 }
+    );
   }
 
   try {
-
     // ============================================================================
     // STEP 2: Find firmware document by ID
     // ============================================================================
@@ -59,9 +66,14 @@ export async function GET(
     // STEP 4: Return file with appropriate headers
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Firmware Download by ID API] Completed in ${duration}ms`);
-    }
+    logRouteFetch(
+      functionName,
+      'GET',
+      `/api/firmwares/${id}/download`,
+      1,
+      user,
+      duration
+    );
     return new NextResponse(buffer as unknown as BodyInit, {
       status: 200,
       headers: {
@@ -71,12 +83,14 @@ export async function GET(
       },
     });
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to download firmware';
-    console.error(
-      `[Firmware Download by ID API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'GET',
+      `/api/firmwares/${id}/download`,
+      errorMessage,
+      user
     );
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }

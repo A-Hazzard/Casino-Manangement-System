@@ -116,10 +116,14 @@ export default function VaultTransfersMobileCards({
                 {/* Amount */}
                 <div className="mb-3 min-w-0">
                   <p className="text-xs text-gray-500">Amount</p>
-                  <p className={cn(
-                      "font-bold text-orangeHighlight leading-none transition-all truncate",
-                      formatAmount(transfer.amount).length > 12 ? 'text-lg' : 'text-xl'
-                  )}>
+                  <p
+                    className={cn(
+                      'truncate font-bold leading-none text-orangeHighlight transition-all',
+                      formatAmount(transfer.amount).length > 12
+                        ? 'text-lg'
+                        : 'text-xl'
+                    )}
+                  >
                     {formatAmount(transfer.amount)}
                   </p>
                 </div>

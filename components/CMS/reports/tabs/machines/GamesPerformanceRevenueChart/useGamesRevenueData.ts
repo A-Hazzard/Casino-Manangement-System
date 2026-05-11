@@ -1,6 +1,6 @@
 /**
  * Custom hook for Games Performance Revenue data processing
- * 
+ *
  * Handles data aggregation, filtering, and transformation for the revenue chart
  */
 
@@ -235,5 +235,3 @@ export function useGamesRevenueData({
     minWidth,
   };
 }
-
-

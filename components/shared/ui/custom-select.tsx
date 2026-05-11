@@ -30,7 +30,7 @@ import { KeyboardEvent } from 'react';
 import type { CustomSelectProps, SelectOption } from '@/lib/types/components';
 import { cn } from '@/lib/utils';
 import { Check, ChevronDown } from 'lucide-react';
-import {  useCallback, useEffect, useRef, useState  } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { createPortal } from 'react-dom';
 
@@ -63,9 +63,14 @@ export function CustomSelect({
 
   // Filter options based on search term
   const filteredOptions = searchable
-    ? options.filter(option =>
-        (option.label || '').toLowerCase().includes((searchTerm || '').toLowerCase()) || 
-        (option.value || '').toLowerCase().includes((searchTerm || '').toLowerCase())
+    ? options.filter(
+        option =>
+          (option.label || '')
+            .toLowerCase()
+            .includes((searchTerm || '').toLowerCase()) ||
+          (option.value || '')
+            .toLowerCase()
+            .includes((searchTerm || '').toLowerCase())
       )
     : options;
 
@@ -87,7 +92,7 @@ export function CustomSelect({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      
+
       // If the target is no longer in the document, it was likely an element
       // unmounted during a re-render (e.g. selection)
       if (!document.body.contains(target)) return;
@@ -387,4 +392,3 @@ export function LocationSelect({
     />
   );
 }
-

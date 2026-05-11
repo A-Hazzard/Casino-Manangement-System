@@ -27,4 +27,3 @@ export function useCollectionNavigation(tabs: CollectionTab[]) {
 
   return { readFromUrl, pushToUrl, ensureValidView };
 }
-

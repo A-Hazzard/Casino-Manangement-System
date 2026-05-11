@@ -20,13 +20,9 @@ type CollectionReportDetailsSortableHeaderProps = {
   onClick: (field: keyof MachineMetric) => void;
 };
 
-export const CollectionReportDetailsSortableHeader: FC<CollectionReportDetailsSortableHeaderProps> = ({ 
-  label, 
-  field, 
-  currentField, 
-  direction, 
-  onClick 
-}) => {
+export const CollectionReportDetailsSortableHeader: FC<
+  CollectionReportDetailsSortableHeaderProps
+> = ({ label, field, currentField, direction, onClick }) => {
   return (
     <TableHead
       onClick={() => onClick(field)}
@@ -34,9 +30,12 @@ export const CollectionReportDetailsSortableHeader: FC<CollectionReportDetailsSo
     >
       <div className="flex items-center gap-1.5">
         {label}
-        {currentField === field && (
-          direction === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
-        )}
+        {currentField === field &&
+          (direction === 'asc' ? (
+            <ChevronUp className="h-4 w-4" />
+          ) : (
+            <ChevronDown className="h-4 w-4" />
+          ))}
       </div>
     </TableHead>
   );

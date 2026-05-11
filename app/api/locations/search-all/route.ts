@@ -28,11 +28,28 @@ import { Meters } from '@/app/api/lib/models/meters';
 import { shouldApplyCurrencyConversion } from '@/lib/helpers/currencyConversion';
 import { convertFromUSD, convertToUSD } from '@/lib/helpers/rates';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import type { TimePeriod } from '@/shared/types/common';
-import type { CurrencyCode } from '@/shared/types/currency';
-import type { CountryDocument, GamingMachine, LicenceeDocument } from '@shared/types';
-import type { AggregatedLocation } from '@/shared/types/entities';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import {
+  getMoneyInScale,
+  getMoneyOutAndJackpotScale,
+} from '@/app/api/lib/utils/reviewerScale';
+import {
+  fetchLocationsWithMachinesForSmib,
+  syncAllLocationSmibStatuses,
+} from '@/app/api/lib/helpers/smibClassification';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  AggregatedLocation,
+  CountryDocument,
+  GamingMachine,
+  LicenceeDocument,
+  TimePeriod,
+} from '../../../../shared/types';
+import { CurrencyCode } from '../../../../shared/types/currency';
 
 /**
  * Main GET handler for searching all locations
@@ -58,13 +75,15 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/locations/search-all';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
     // STEP 1: Parse query parameters
     // ============================================================================
     const { searchParams } = new URL(request.url);
-    const licencee = (searchParams.get('licencee')) || '';
+    const licencee = searchParams.get('licencee') || '';
     const search = searchParams.get('search')?.trim() || '';
     const displayCurrency =
       (searchParams.get('currency') as CurrencyCode) || 'USD';
@@ -77,8 +96,12 @@ export async function GET(request: NextRequest) {
       : undefined;
 
     const machineTypeFilter = searchParams.get('machineTypeFilter');
-    const onlineStatus = searchParams.get('onlineStatus')?.toLowerCase() || 'all';
-    const showArchived = searchParams.get('archived') === 'true' || searchParams.get('includeDeleted') === 'true';
+    const onlineStatus =
+      searchParams.get('onlineStatus')?.toLowerCase() || 'all';
+    const showArchived =
+      searchParams.get('archived') === 'true' ||
+      searchParams.get('includeDeleted') === 'true';
+    const syncAll = searchParams.get('syncAll') === 'true';
 
     // ============================================================================
     // STEP 2: Connect to database
@@ -160,9 +183,7 @@ export async function GET(request: NextRequest) {
     }
     if (licencee) {
       locationMatch.$and.push({
-        $or: [
-          { 'rel.licencee': licencee }, { 'rel.licencee': licencee }
-        ]
+        $or: [{ 'rel.licencee': licencee }, { 'rel.licencee': licencee }],
       });
     }
 
@@ -196,6 +217,12 @@ export async function GET(request: NextRequest) {
             break;
           case 'NoSMIBLocation':
             connectionFilters.push({ noSMIBLocation: true });
+            break;
+          case 'FullSMIBs':
+            connectionFilters.push({ fullSMIBs: true });
+            break;
+          case 'SemiSMIBs':
+            connectionFilters.push({ semiSMIBs: true });
             break;
 
           // --- Feature Category ---
@@ -303,12 +330,43 @@ export async function GET(request: NextRequest) {
               $group: {
                 _id: null,
                 totalMachines: { $sum: 1 },
+                withRelayCount: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $ifNull: ['$relayId', false] },
+                          {
+                            $ne: [
+                              {
+                                $trim: {
+                                  input: {
+                                    $toString: { $ifNull: ['$relayId', ''] },
+                                  },
+                                },
+                              },
+                              '',
+                            ],
+                          },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
                 onlineMachines: {
                   $sum: {
                     $cond: [
                       {
                         $gte: [
-                          { $convert: { input: '$lastActivity', to: 'date', onError: new Date(0) } },
+                          {
+                            $convert: {
+                              input: '$lastActivity',
+                              to: 'date',
+                              onError: new Date(0),
+                            },
+                          },
                           new Date(Date.now() - 3 * 60 * 1000), // 3 minutes threshold
                         ],
                       },
@@ -319,14 +377,10 @@ export async function GET(request: NextRequest) {
                 },
                 hasActivityCount: {
                   $sum: {
-                    $cond: [
-                      { $ifNull: ['$lastActivity', false] },
-                      1,
-                      0
-                    ]
-                  }
+                    $cond: [{ $ifNull: ['$lastActivity', false] }, 1, 0],
+                  },
                 },
-                latestActivity: { $max: '$lastActivity' }
+                latestActivity: { $max: '$lastActivity' },
               },
             },
           ],
@@ -485,15 +539,36 @@ export async function GET(request: NextRequest) {
     const memberCountMap = await getMemberCountsPerLocation(allLocationIds);
 
     // Fetch licencee settings for all locations
-    const licenceeIds = Array.from(new Set(matchingLocations.map(loc => loc.rel?.licencee).filter(Boolean)));
-    const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean<LicenceeDocument[]>();
-    const licenceeIncludeJackpotMap = new Map(licencees.map(l => [String(l._id), !!l.includeJackpot]));
+    const licenceeIds = Array.from(
+      new Set(matchingLocations.map(loc => loc.rel?.licencee).filter(Boolean))
+    );
+    const licencees = await Licencee.find({ _id: { $in: licenceeIds } }).lean<
+      LicenceeDocument[]
+    >();
+    const licenceeIncludeJackpotMap = new Map(
+      licencees.map(l => [String(l._id), !!l.includeJackpot])
+    );
 
     // Step 8: Combine results and create the initial AggregatedLocation objects
-    const reviewerMult = (userPayload as { multiplier?: number | null })?.multiplier ?? null;
-    const reviewerScale = reviewerMult !== null ? 1 - reviewerMult : 1;
+    const moneyInScale = getMoneyInScale(
+      userPayload as { moneyInMultiplier?: number | null; roles?: string[] }
+    );
+    const moneyOutScale = getMoneyOutAndJackpotScale(
+      userPayload as {
+        moneyOutAndJackpotMultiplier?: number | null;
+        roles?: string[];
+      }
+    );
 
-    console.log(`[locations/search-all] User ${userPayload?._id} (${userPayload?.username}) multiplier: ${reviewerMult}, scale: ${reviewerScale}`);
+    // If syncAll requested, sync SMIB status first
+    if (syncAll && allLocationIds.length > 0) {
+      console.log(
+        `[Locations Search-All] syncAll=true - syncing SMIB for ${allLocationIds.length} locations`
+      );
+      const locationsWithMachines =
+        await fetchLocationsWithMachinesForSmib(allLocationIds);
+      await syncAllLocationSmibStatuses(locationsWithMachines);
+    }
 
     const locations: AggregatedLocation[] = matchingLocations.map(location => {
       const locationId = String(location._id);
@@ -508,14 +583,33 @@ export async function GET(request: NextRequest) {
         (location as { enableMembership?: boolean }).enableMembership
       );
 
-      const includeJackpot = licenceeIncludeJackpotMap.get(String(location.rel?.licencee)) || false;
-      const rawMoneyIn = (financialData.totalMoneyIn || 0) * reviewerScale;
-      const rawMoneyOut = (financialData.totalMoneyOut || 0) * reviewerScale;
-      const jackpot = (financialData.totalJackpot || 0) * reviewerScale;
+      const includeJackpot =
+        licenceeIncludeJackpotMap.get(String(location.rel?.licencee)) || false;
+      const rawMoneyIn = (financialData.totalMoneyIn || 0) * moneyInScale;
+      const rawMoneyOut = (financialData.totalMoneyOut || 0) * moneyOutScale;
+      const jackpot = (financialData.totalJackpot || 0) * moneyOutScale;
 
       // Logic: TRUE = Low Gross (Include jackpot in deduction), FALSE = High Gross (Exclude jackpot from deduction)
       // rawMoneyOut is totalCancelledCredits which is typically NET handpays.
       const moneyOutValue = rawMoneyOut + (includeJackpot ? jackpot : 0);
+
+      const machineCount = location.machineStats?.[0]?.totalMachines || 0;
+      const withRelay =
+        (location.machineStats?.[0] as { withRelayCount?: number })
+          ?.withRelayCount || 0;
+      // Use cached DB values if syncAll was run, otherwise compute from aggregation
+      const useCached =
+        syncAll &&
+        (location.fullSMIBs !== undefined || location.semiSMIBs !== undefined);
+      const cachedFull = useCached
+        ? Boolean(location.fullSMIBs)
+        : machineCount > 0 && withRelay === machineCount;
+      const cachedSemi = useCached
+        ? Boolean(location.semiSMIBs)
+        : machineCount > 0 && withRelay > 0 && withRelay < machineCount;
+      const computedFull = cachedFull;
+      const computedSemiVal = cachedSemi;
+      const computedNone = !computedFull && !computedSemiVal;
 
       return {
         _id: locationId,
@@ -527,8 +621,10 @@ export async function GET(request: NextRequest) {
         rel: location.rel,
         profitShare: location.profitShare,
         geoCoords: location.geoCoords,
-        totalMachines: location.machineStats?.[0]?.totalMachines || 0,
-        onlineMachines: location.aceEnabled ? (location.machineStats?.[0]?.totalMachines || 0) : (location.machineStats?.[0]?.onlineMachines || 0),
+        totalMachines: machineCount,
+        onlineMachines: location.aceEnabled
+          ? machineCount
+          : location.machineStats?.[0]?.onlineMachines || 0,
         aceEnabled: location.aceEnabled || false,
         moneyIn: rawMoneyIn,
         moneyOut: moneyOutValue,
@@ -536,12 +632,18 @@ export async function GET(request: NextRequest) {
         includeJackpot: includeJackpot,
         gross: rawMoneyIn - moneyOutValue,
         isLocalServer: location.isLocalServer || false,
-        hasSmib: location.hasSmib || false,
-        noSMIBLocation: !(location.hasSmib || false),
+        hasSmib: computedFull || computedSemiVal,
+        noSMIBLocation: computedNone,
+        fullSMIBs: computedFull,
+        semiSMIBs: computedSemiVal,
         membershipEnabled,
         memberCount: memberCountMap.get(locationId) || 0,
-        isNeverOnline: (location.machineStats?.[0]?.totalMachines || 0) > 0 && (location.machineStats?.[0]?.hasActivityCount || 0) === 0,
-        latestActivity: location.machineStats?.[0]?.latestActivity ? new Date(location.machineStats[0].latestActivity).getTime() : 0,
+        isNeverOnline:
+          machineCount > 0 &&
+          (location.machineStats?.[0]?.hasActivityCount || 0) === 0,
+        latestActivity: location.machineStats?.[0]?.latestActivity
+          ? new Date(location.machineStats[0].latestActivity).getTime()
+          : 0,
       };
     });
 
@@ -568,7 +670,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Handle Offline sorting if specified
-    if (onlineStatus === 'offlinelongest' || onlineStatus === 'offlineshortest') {
+    if (
+      onlineStatus === 'offlinelongest' ||
+      onlineStatus === 'offlineshortest'
+    ) {
       finalFilteredLocations.sort((a, b) => {
         const activityA = a.latestActivity || 0;
         const activityB = b.latestActivity || 0;
@@ -675,7 +780,8 @@ export async function GET(request: NextRequest) {
     // STEP 8: Return formatted location data
     // ============================================================================
     // Step 9: Return final results with unified property mapping
-    const finalResponse = convertedLocations.map((loc) => ({
+    const finalResponse = convertedLocations.map(loc => ({
+      _id: loc._id,
       location: loc._id,
       locationName: loc.name || 'Unknown Location',
       country: loc.country,
@@ -688,13 +794,18 @@ export async function GET(request: NextRequest) {
       moneyIn: loc.moneyIn,
       moneyOut: loc.moneyOut,
       jackpot: loc.jackpot,
-      includeJackpot: (loc).includeJackpot,
+      includeJackpot: loc.includeJackpot,
       gross: loc.gross,
       isLocalServer: loc.isLocalServer,
       hasSmib: loc.hasSmib,
       noSMIBLocation: loc.noSMIBLocation,
+      fullSMIBs: loc.fullSMIBs,
+      semiSMIBs: loc.semiSMIBs,
       membershipEnabled: loc.membershipEnabled,
       memberCount: loc.memberCount,
+      aceEnabled: loc.aceEnabled,
+      isNeverOnline: loc.isNeverOnline,
+      latestActivity: loc.latestActivity,
     }));
 
     // Apply relevance sorting if searching
@@ -715,6 +826,15 @@ export async function GET(request: NextRequest) {
     }
 
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/locations/search-all',
+      finalResponse.length,
+      user,
+      duration
+    );
+
     if (duration > 2000) {
       console.warn(`[Locations Search All API] Completed in ${duration}ms`);
     }
@@ -724,6 +844,13 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/locations/search-all',
+      errorMessage,
+      user
+    );
     console.error(
       `[Locations Search All API] Error after ${duration}ms:`,
       errorMessage

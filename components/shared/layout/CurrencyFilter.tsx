@@ -40,8 +40,7 @@ function CurrencyFilter({
   };
 
   const canShowSelector =
-    !userRoles.includes('vault-manager') &&
-    !userRoles.includes('cashier');
+    !userRoles.includes('vault-manager') && !userRoles.includes('cashier');
 
   if (!canShowSelector) {
     return null;
@@ -74,4 +73,3 @@ function CurrencyFilter({
 }
 
 export default CurrencyFilter;
-

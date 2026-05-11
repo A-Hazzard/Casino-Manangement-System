@@ -11,14 +11,7 @@ import { ChangeEvent, FC } from 'react';
 import { LocationPickerMapProps, PlaceSuggestion } from '@/lib/types/location';
 import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
 import { Globe, MapPin, Search, X } from 'lucide-react';
-import { 
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
- } from 'react';
-
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const libraries: 'places'[] = ['places'];
 
@@ -493,4 +486,3 @@ const LocationsLocationPickerMap: FC<LocationPickerMapProps> = ({
 };
 
 export default LocationsLocationPickerMap;
-

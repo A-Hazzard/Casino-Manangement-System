@@ -3,7 +3,7 @@
  *
  * This route provides a centralized endpoint for all cabinet-specific operations,
  * merging functionality from legacy machine and location-scoped routes.
- * 
+ *
  * It supports:
  * - GET: Fetch cabinet details with financial metrics and currency conversion
  * - PUT: Full update of cabinet configuration and related collections
@@ -15,7 +15,10 @@
 
 import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
-import { getReviewerScale } from '@/app/api/lib/utils/reviewerScale';
+import {
+  getMoneyInScale,
+  getMoneyOutAndJackpotScale,
+} from '@/app/api/lib/utils/reviewerScale';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
@@ -23,10 +26,7 @@ import { Licencee } from '@/app/api/lib/models/licencee';
 import { Machine } from '@/app/api/lib/models/machines';
 import { Meters } from '@/app/api/lib/models/meters';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
-import type {
-  LocationDocument,
-  MachineDocument,
-} from '@/lib/types/common';
+import type { LocationDocument, MachineDocument } from '@/lib/types/common';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { TimePeriod } from '@/shared/types/common';
@@ -38,7 +38,13 @@ import {
   getLicenceeCurrency,
 } from '@/lib/helpers/rates';
 import { NextRequest, NextResponse } from 'next/server';
-
+import {
+  logRouteFetch,
+  logRouteUpdate,
+  logRouteDelete,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 type MachineUpdateFields = {
   serialNumber?: string;
@@ -46,6 +52,7 @@ type MachineUpdateFields = {
   manufacturer?: string;
   manuf?: string;
   assetStatus?: string;
+  machineStatus?: string;
   cabinetType?: string;
   gameConfig?: { accountingDenomination?: number };
   collectionMultiplier?: string;
@@ -67,7 +74,7 @@ type MachineUpdateFields = {
  * GET /api/cabinets/[cabinetId]
  *
  * Returns a single cabinet document augmented with aggregated financial metrics.
- * 
+ *
  * URL params:
  * @param {string} cabinetId - Required (path). The ID of the machine to retrieve.
  *
@@ -78,6 +85,9 @@ type MachineUpdateFields = {
  * @param {CurrencyCode} [currency] - Optional. Target display currency.
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/cabinets/[cabinetId]';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const cabinetId = pathname.split('/').pop() || '';
 
@@ -88,64 +98,136 @@ export async function GET(request: NextRequest) {
       const startDateParam = searchParams.get('startDate');
       const endDateParam = searchParams.get('endDate');
       const timePeriod = searchParams.get('timePeriod') as TimePeriod;
-      const displayCurrency = (searchParams.get('currency') as CurrencyCode) || 'USD';
+      const displayCurrency =
+        (searchParams.get('currency') as CurrencyCode) || 'USD';
 
       // ============================================================================
-      // STEP 1: Fetch and Validate Machine
+      // STEP1: Fetch and Validate Machine
       // ============================================================================
-      const machine = await Machine.findOne({ _id: cabinetId }).lean<MachineDocument>();
+      const machine = await Machine.findOne({
+        _id: cabinetId,
+      }).lean<MachineDocument>();
       if (!machine) {
-        return NextResponse.json({ success: false, error: 'Cabinet not found' }, { status: 404 });
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/cabinets/[cabinetId]',
+          `Not found: ${cabinetId}`,
+          user
+        );
+        return NextResponse.json(
+          { success: false, error: 'Cabinet not found' },
+          { status: 404 }
+        );
       }
 
       const locationId = String(machine.gamingLocation);
       if (!locationId) {
-        return NextResponse.json({ success: false, error: 'Cabinet has no associated location' }, { status: 400 });
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/cabinets/[cabinetId]',
+          'Cabinet has no associated location',
+          user
+        );
+        return NextResponse.json(
+          { success: false, error: 'Cabinet has no associated location' },
+          { status: 400 }
+        );
       }
 
       // Check access
       const hasAccess = await checkUserLocationAccess(locationId);
       if (!hasAccess) {
-        return NextResponse.json({ success: false, error: 'Unauthorized: Access denied' }, { status: 403 });
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/cabinets/[cabinetId]',
+          'Unauthorized: Access denied',
+          user
+        );
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized: Access denied' },
+          { status: 403 }
+        );
       }
 
       // ============================================================================
       // STEP 2: Fetch Location and Licensee Settings
       // ============================================================================
-      const location = await GamingLocations.findOne({ _id: locationId }).select('name gameDayOffset rel aceEnabled country').lean<LocationDocument>();
+      const location = await GamingLocations.findOne({ _id: locationId })
+        .select('name gameDayOffset rel aceEnabled country')
+        .lean<LocationDocument>();
       const gameDayOffset = location?.gameDayOffset ?? 8;
       const aceEnabled = location?.aceEnabled === true;
 
       let includeJackpot = false;
-      const licenceeId = Array.isArray(location?.rel?.licencee) ? location.rel.licencee[0] : location?.rel?.licencee;
+      const licenceeId = Array.isArray(location?.rel?.licencee)
+        ? location.rel.licencee[0]
+        : location?.rel?.licencee;
       if (licenceeId) {
-        const licDoc = await Licencee.findOne({ _id: licenceeId }, { includeJackpot: 1 }).lean<LicenceeDocument>();
+        const licDoc = await Licencee.findOne(
+          { _id: licenceeId },
+          { includeJackpot: 1 }
+        ).lean<LicenceeDocument>();
         includeJackpot = Boolean(licDoc?.includeJackpot);
       }
 
       // ============================================================================
       // STEP 3: Aggregate Financial Metrics
       // ============================================================================
-      const metrics = { moneyIn: 0, moneyOut: 0, jackpot: 0, gross: 0, netGross: 0, coinIn: 0, coinOut: 0, gamesPlayed: 0, gamesWon: 0, handPaidCancelledCredits: 0 };
+      const metrics = {
+        moneyIn: 0,
+        moneyOut: 0,
+        jackpot: 0,
+        gross: 0,
+        netGross: 0,
+        coinIn: 0,
+        coinOut: 0,
+        gamesPlayed: 0,
+        gamesWon: 0,
+        handPaidCancelledCredits: 0,
+      };
 
       if (timePeriod || (startDateParam && endDateParam)) {
         let startDate: Date | undefined;
         let endDate: Date | undefined;
 
         if (timePeriod === 'Custom' && startDateParam && endDateParam) {
-          const customStart = new Date(startDateParam.includes('T') ? startDateParam : startDateParam + 'T00:00:00.000Z');
-          const customEnd = new Date(endDateParam.includes('T') ? endDateParam : endDateParam + 'T00:00:00.000Z');
-          const range = getGamingDayRangeForPeriod('Custom', gameDayOffset, customStart, customEnd);
+          const customStart = new Date(
+            startDateParam.includes('T')
+              ? startDateParam
+              : startDateParam + 'T00:00:00.000Z'
+          );
+          const customEnd = new Date(
+            endDateParam.includes('T')
+              ? endDateParam
+              : endDateParam + 'T00:00:00.000Z'
+          );
+          const range = getGamingDayRangeForPeriod(
+            'Custom',
+            gameDayOffset,
+            customStart,
+            customEnd
+          );
           startDate = range.rangeStart;
           endDate = range.rangeEnd;
         } else if (timePeriod !== 'All Time') {
-          const range = getGamingDayRangeForPeriod((timePeriod || 'Today') as TimePeriod, gameDayOffset);
+          const range = getGamingDayRangeForPeriod(
+            (timePeriod || 'Today') as TimePeriod,
+            gameDayOffset
+          );
           startDate = range.rangeStart;
           endDate = range.rangeEnd;
         }
 
         const aggregation = await Meters.aggregate([
-          { $match: { machine: cabinetId, readAt: { $gte: startDate, $lte: endDate } } },
+          {
+            $match: {
+              machine: cabinetId,
+              readAt: { $gte: startDate, $lte: endDate },
+            },
+          },
           {
             $group: {
               _id: null,
@@ -156,19 +238,33 @@ export async function GET(request: NextRequest) {
               coinOut: { $sum: { $ifNull: ['$movement.coinOut', 0] } },
               gamesPlayed: { $sum: { $ifNull: ['$movement.gamesPlayed', 0] } },
               gamesWon: { $sum: { $ifNull: ['$movement.gamesWon', 0] } },
-              handPaidCancelledCredits: { $sum: { $ifNull: ['$movement.handPaidCancelledCredits', 0] } }
-            }
-          }
+              handPaidCancelledCredits: {
+                $sum: { $ifNull: ['$movement.handPaidCancelledCredits', 0] },
+              },
+            },
+          },
         ]);
 
         if (aggregation[0]) {
           const raw = aggregation[0];
-          const mult = getReviewerScale(userPayload as { multiplier?: number | null; roles?: string[] });
-          
-          metrics.moneyIn = raw.moneyIn * mult;
-          metrics.jackpot = raw.jackpot * mult;
-          const rawCancelled = raw.moneyOut * mult;
-          metrics.moneyOut = rawCancelled + (includeJackpot ? metrics.jackpot : 0);
+          const moneyInScale = getMoneyInScale(
+            userPayload as {
+              moneyInMultiplier?: number | null;
+              roles?: string[];
+            }
+          );
+          const moneyOutScale = getMoneyOutAndJackpotScale(
+            userPayload as {
+              moneyOutAndJackpotMultiplier?: number | null;
+              roles?: string[];
+            }
+          );
+
+          metrics.moneyIn = raw.moneyIn * moneyInScale;
+          metrics.jackpot = raw.jackpot * moneyOutScale;
+          const rawCancelled = raw.moneyOut * moneyOutScale;
+          metrics.moneyOut =
+            rawCancelled + (includeJackpot ? metrics.jackpot : 0);
           metrics.gross = metrics.moneyIn - metrics.moneyOut;
           metrics.netGross = metrics.gross - metrics.jackpot;
           metrics.coinIn = raw.coinIn;
@@ -182,22 +278,46 @@ export async function GET(request: NextRequest) {
       // ============================================================================
       // STEP 4: Apply Currency Conversion
       // ============================================================================
-      const isStaff = userRoles.some(r => ['cashier', 'vault-manager'].includes(r.toLowerCase()));
-      if (displayCurrency && !isStaff && (metrics.moneyIn !== 0 || metrics.moneyOut !== 0)) {
+      const isStaff = userRoles.some(r =>
+        ['cashier', 'vault-manager'].includes(r.toLowerCase())
+      );
+      if (
+        displayCurrency &&
+        !isStaff &&
+        (metrics.moneyIn !== 0 || metrics.moneyOut !== 0)
+      ) {
         let nativeCurrency: CurrencyCode = 'USD';
         if (licenceeId) {
-          const lic = await Licencee.findOne({ _id: licenceeId }, { name: 1 }).lean<LicenceeDocument>();
+          const lic = await Licencee.findOne(
+            { _id: licenceeId },
+            { name: 1 }
+          ).lean<LicenceeDocument>();
           if (lic?.name) nativeCurrency = getLicenceeCurrency(lic.name);
         } else if (location?.country) {
           nativeCurrency = getCountryCurrency(location.country);
         }
 
         if (nativeCurrency !== displayCurrency) {
-          metrics.moneyIn = convertFromUSD(convertToUSD(metrics.moneyIn, nativeCurrency), displayCurrency);
-          metrics.moneyOut = convertFromUSD(convertToUSD(metrics.moneyOut, nativeCurrency), displayCurrency);
-          metrics.jackpot = convertFromUSD(convertToUSD(metrics.jackpot, nativeCurrency), displayCurrency);
-          metrics.coinIn = convertFromUSD(convertToUSD(metrics.coinIn, nativeCurrency), displayCurrency);
-          metrics.coinOut = convertFromUSD(convertToUSD(metrics.coinOut, nativeCurrency), displayCurrency);
+          metrics.moneyIn = convertFromUSD(
+            convertToUSD(metrics.moneyIn, nativeCurrency),
+            displayCurrency
+          );
+          metrics.moneyOut = convertFromUSD(
+            convertToUSD(metrics.moneyOut, nativeCurrency),
+            displayCurrency
+          );
+          metrics.jackpot = convertFromUSD(
+            convertToUSD(metrics.jackpot, nativeCurrency),
+            displayCurrency
+          );
+          metrics.coinIn = convertFromUSD(
+            convertToUSD(metrics.coinIn, nativeCurrency),
+            displayCurrency
+          );
+          metrics.coinOut = convertFromUSD(
+            convertToUSD(metrics.coinOut, nativeCurrency),
+            displayCurrency
+          );
           metrics.gross = metrics.moneyIn - metrics.moneyOut;
           metrics.netGross = metrics.gross - metrics.jackpot;
         }
@@ -212,15 +332,47 @@ export async function GET(request: NextRequest) {
         aceEnabled,
         includeJackpot,
         ...metrics,
-        // UI expects serialNumber/assetNumber consistency
+        // Normalize field names to match what the edit modal expects
         assetNumber: machine.serialNumber,
-        status: machine.assetStatus
+        locationId: String(machine.gamingLocation),
+        installedGame: machine.game,
+        isCronosMachine: !machine.isSasMachine,
+        accountingDenomination:
+          machine.gameConfig?.accountingDenomination ??
+          machine.accountingDenomination ??
+          '1',
+        collectionMultiplier: String(
+          machine.collectorDenomination || machine.collectionMultiplier || '1'
+        ),
+        smbId: machine.relayId || machine.smibBoard || machine.smbId || '',
+        status: machine.assetStatus,
+        assetStatus: machine.assetStatus,
       };
 
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/cabinets/[cabinetId]',
+        1,
+        user,
+        duration
+      );
       return NextResponse.json({ success: true, data: transformed });
     } catch (e) {
-      console.error('[GET /cabinets/[cabinetId]] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/cabinets/[cabinetId]',
+        errorMessage,
+        user
+      );
+      console.error('[GET /cabinets/[cabinetId]] Error:', errorMessage);
+      return NextResponse.json(
+        { success: false, error: 'Internal Server Error' },
+        { status: 500 }
+      );
     }
   });
 }
@@ -229,6 +381,9 @@ export async function GET(request: NextRequest) {
  * PUT /api/cabinets/[cabinetId]
  */
 export async function PUT(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'PUT /api/cabinets/[cabinetId]';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const cabinetId = pathname.split('/').pop() || '';
 
@@ -237,54 +392,147 @@ export async function PUT(request: NextRequest) {
       await connectDB();
       const data = await request.json();
       const originalCabinet = await Machine.findOne({ _id: cabinetId });
-      if (!originalCabinet) return NextResponse.json({ success: false, error: 'Cabinet not found' }, { status: 404 });
+      if (!originalCabinet) {
+        logRouteError(
+          functionName,
+          'PUT',
+          '/api/cabinets/[cabinetId]',
+          `Not found: ${cabinetId}`,
+          user
+        );
+        return NextResponse.json(
+          { success: false, error: 'Cabinet not found' },
+          { status: 404 }
+        );
+      }
+
+      console.log(
+        `[PUT /api/cabinets/${cabinetId}] Incoming data:`,
+        JSON.stringify(data, null, 2)
+      );
 
       // Build update fields (standardized mapping)
-      const updateFields: Partial<MachineUpdateFields> = { updatedAt: new Date() };
+      const updateFields: Partial<MachineUpdateFields> = {
+        updatedAt: new Date(),
+      };
       if (data.assetNumber) updateFields.serialNumber = data.assetNumber;
       if (data.installedGame) updateFields.game = data.installedGame;
       if (data.gameType) updateFields.gameType = data.gameType;
-      if (data.manufacturer) { updateFields.manufacturer = data.manufacturer; updateFields.manuf = data.manufacturer; }
+      if (data.manufacturer) {
+        updateFields.manufacturer = data.manufacturer;
+        updateFields.manuf = data.manufacturer;
+      }
       if (data.status) updateFields.assetStatus = data.status;
+      if (data.machineStatus) updateFields.machineStatus = data.machineStatus;
       if (data.cabinetType) updateFields.cabinetType = data.cabinetType;
-      if (data.accountingDenomination) updateFields['gameConfig.accountingDenomination'] = Number(data.accountingDenomination);
-      
-      const mult = data.collectionMultiplier ?? data.collectorDenomination;
-      if (mult !== undefined) { updateFields.collectionMultiplier = String(mult); updateFields.collectorDenomination = Number(mult); }
-      
-      if (data.isCronosMachine !== undefined) updateFields.isSasMachine = !data.isCronosMachine;
-      
-      const smib = data.smbId ?? data.smibBoard ?? data.relayId;
-      if (smib !== undefined) { updateFields.relayId = smib; updateFields.smibBoard = smib; updateFields.smbId = smib; }
+      if (data.accountingDenomination)
+        updateFields['gameConfig.accountingDenomination'] = Number(
+          data.accountingDenomination
+        );
 
-      const updatedMachine = await Machine.findOneAndUpdate({ _id: cabinetId }, { $set: updateFields }, { new: true });
+      const mult = data.collectionMultiplier ?? data.collectorDenomination;
+      if (mult !== undefined) {
+        updateFields.collectionMultiplier = String(mult);
+        updateFields.collectorDenomination = Number(mult);
+      }
+
+      if (data.isCronosMachine !== undefined)
+        updateFields.isSasMachine = !data.isCronosMachine;
+
+      const smib = data.smbId ?? data.smibBoard ?? data.relayId;
+      if (smib !== undefined) {
+        updateFields.relayId = smib;
+        updateFields.smibBoard = smib;
+        updateFields.smbId = smib;
+      }
+      console.log(
+        `[PUT /api/cabinets/${cabinetId}] updateFields being sent to MongoDB:`,
+        JSON.stringify(updateFields, null, 2)
+      );
+
+      console.log(
+        `[PUT /api/cabinets/${cabinetId}] Original cabinet status fields:`,
+        {
+          assetStatus: originalCabinet.assetStatus,
+          machineStatus: originalCabinet.machineStatus,
+        }
+      );
+
+      const updatedMachine = await Machine.findOneAndUpdate(
+        { _id: cabinetId },
+        { $set: updateFields },
+        { new: true }
+      );
+      console.log(
+        `[PUT /api/cabinets/${cabinetId}] Updated machine status fields:`,
+        {
+          assetStatus: updatedMachine?.assetStatus,
+          machineStatus: updatedMachine?.machineStatus,
+        }
+      );
 
       // Cascade updates to Collections
-      if (data.assetNumber && data.assetNumber !== originalCabinet.serialNumber) {
-        const serialUpdateResult = await Collections.updateMany({ machineId: cabinetId }, { $set: { serialNumber: data.assetNumber } });
+      if (
+        data.assetNumber &&
+        data.assetNumber !== originalCabinet.serialNumber
+      ) {
+        const serialUpdateResult = await Collections.updateMany(
+          { machineId: cabinetId },
+          { $set: { serialNumber: data.assetNumber } }
+        );
         if (serialUpdateResult.modifiedCount === 0) {
-          console.warn(`[PUT /cabinets/${cabinetId}] No collections updated for serialNumber cascade`);
+          console.warn(
+            `[PUT /cabinets/${cabinetId}] No collections updated for serialNumber cascade`
+          );
         }
       }
       if (data.installedGame && data.installedGame !== originalCabinet.game) {
-        const gameUpdateResult = await Collections.updateMany({ machineId: cabinetId }, { $set: { machineName: data.installedGame } });
+        const gameUpdateResult = await Collections.updateMany(
+          { machineId: cabinetId },
+          { $set: { machineName: data.installedGame } }
+        );
         if (gameUpdateResult.modifiedCount === 0) {
-          console.warn(`[PUT /cabinets/${cabinetId}] No collections updated for machineName cascade`);
+          console.warn(
+            `[PUT /cabinets/${cabinetId}] No collections updated for machineName cascade`
+          );
         }
       }
 
+      const duration = Date.now() - startTime;
+      logRouteUpdate(
+        functionName,
+        'PUT',
+        '/api/cabinets/[cabinetId]',
+        1,
+        user,
+        duration
+      );
       return NextResponse.json({ success: true, data: updatedMachine });
     } catch (e) {
-      console.error('[PUT /cabinets/[cabinetId]] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Failed to update' }, { status: 500 });
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      logRouteError(
+        functionName,
+        'PUT',
+        '/api/cabinets/[cabinetId]',
+        errorMessage,
+        user
+      );
+      console.error('[PUT /cabinets/[cabinetId]] Error:', errorMessage);
+      return NextResponse.json(
+        { success: false, error: 'Failed to update' },
+        { status: 500 }
+      );
     }
   });
 }
 
- /**
-  * PATCH /api/cabinets/[cabinetId]
-  */
+/**
+ * PATCH /api/cabinets/[cabinetId]
+ */
 export async function PATCH(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'PATCH /api/cabinets/[cabinetId]';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const cabinetId = pathname.split('/').pop() || '';
 
@@ -294,7 +542,11 @@ export async function PATCH(request: NextRequest) {
       const data = await request.json();
 
       if (data.action === 'restore') {
-        const restored = await Machine.findOneAndUpdate({ _id: cabinetId }, { $unset: { deletedAt: 1 }, $set: { updatedAt: new Date() } }, { new: true });
+        const restored = await Machine.findOneAndUpdate(
+          { _id: cabinetId },
+          { $unset: { deletedAt: 1 }, $set: { updatedAt: new Date() } },
+          { new: true }
+        );
 
         if (currentUser && currentUser.emailAddress) {
           await logActivity({
@@ -307,56 +559,146 @@ export async function PATCH(request: NextRequest) {
             metadata: {
               resource: 'machine',
               resourceId: cabinetId,
-              resourceName: restored?.assetNumber || restored?.serialNumber || 'Unknown Machine',
+              resourceName:
+                restored?.assetNumber ||
+                restored?.serialNumber ||
+                'Unknown Machine',
             },
           });
         }
 
+        const duration = Date.now() - startTime;
+        logRouteUpdate(
+          functionName,
+          'PATCH',
+          '/api/cabinets/[cabinetId]',
+          1,
+          user,
+          duration
+        );
         return NextResponse.json({ success: true, data: restored });
       }
 
-      const updateFields: Partial<MachineUpdateFields> = { updatedAt: new Date() };
-      if (data.collectionMeters) updateFields.collectionMeters = data.collectionMeters;
-      if (data.collectionTime) updateFields.collectionTime = data.collectionTime;
+      const updateFields: Partial<MachineUpdateFields> = {
+        updatedAt: new Date(),
+      };
+      if (data.collectionMeters)
+        updateFields.collectionMeters = data.collectionMeters;
+      if (data.collectionTime)
+        updateFields.collectionTime = data.collectionTime;
       if (data.smibConfig) updateFields.smibConfig = data.smibConfig;
       if (data.smibVersion) updateFields.smibVersion = data.smibVersion;
       if (data.custom?.name) updateFields['custom.name'] = data.custom.name;
 
-      const patched = await Machine.findOneAndUpdate({ _id: cabinetId }, { $set: updateFields }, { new: true });
+      const patched = await Machine.findOneAndUpdate(
+        { _id: cabinetId },
+        { $set: updateFields },
+        { new: true }
+      );
+      const duration = Date.now() - startTime;
+      logRouteUpdate(
+        functionName,
+        'PATCH',
+        '/api/cabinets/[cabinetId]',
+        1,
+        user,
+        duration
+      );
       return NextResponse.json({ success: true, data: patched });
     } catch (e) {
-      console.error('[PATCH /cabinets/[cabinetId]] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Patch failed' }, { status: 500 });
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/cabinets/[cabinetId]',
+        errorMessage,
+        user
+      );
+      console.error('[PATCH /cabinets/[cabinetId]] Error:', errorMessage);
+      return NextResponse.json(
+        { success: false, error: 'Patch failed' },
+        { status: 500 }
+      );
     }
   });
 }
 
- /**
-  * DELETE /api/cabinets/[cabinetId]
-  */
+/**
+ * DELETE /api/cabinets/[cabinetId]
+ */
 export async function DELETE(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'DELETE /api/cabinets/[cabinetId]';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const cabinetId = pathname.split('/').pop() || '';
   const hardDelete = request.nextUrl.searchParams.get('hardDelete') === 'true';
 
-  return withApiAuth(request, async ({ isAdminOrDev }) => {
+  return withApiAuth(request, async ({ userRoles }) => {
     try {
       await connectDB();
-      if (hardDelete && isAdminOrDev) {
+      const canHardDelete = userRoles.some(r =>
+        ['developer', 'owner', 'admin'].includes(r.toLowerCase())
+      );
+
+      if (hardDelete && canHardDelete) {
         const deleteResult = await Machine.deleteOne({ _id: cabinetId });
         if (deleteResult.deletedCount === 0) {
-          return NextResponse.json({ success: false, error: 'Cabinet not found or already deleted' }, { status: 404 });
+          logRouteError(
+            functionName,
+            'DELETE',
+            '/api/cabinets/[cabinetId]',
+            `Not found: ${cabinetId}`,
+            user
+          );
+          return NextResponse.json(
+            { success: false, error: 'Cabinet not found or already deleted' },
+            { status: 404 }
+          );
         }
       } else {
-        const softDeleted = await Machine.findOneAndUpdate({ _id: cabinetId }, { $set: { deletedAt: new Date(), updatedAt: new Date() } });
+        const softDeleted = await Machine.findOneAndUpdate(
+          { _id: cabinetId },
+          { $set: { deletedAt: new Date(), updatedAt: new Date() } }
+        );
         if (!softDeleted) {
-          return NextResponse.json({ success: false, error: 'Cabinet not found' }, { status: 404 });
+          logRouteError(
+            functionName,
+            'DELETE',
+            '/api/cabinets/[cabinetId]',
+            `Not found: ${cabinetId}`,
+            user
+          );
+          return NextResponse.json(
+            { success: false, error: 'Cabinet not found' },
+            { status: 404 }
+          );
         }
       }
+      const duration = Date.now() - startTime;
+      logRouteDelete(
+        functionName,
+        'DELETE',
+        '/api/cabinets/[cabinetId]',
+        1,
+        user,
+        duration
+      );
       return NextResponse.json({ success: true, message: 'Deleted' });
     } catch (e) {
-      console.error('[DELETE /cabinets/[cabinetId]] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Delete failed' }, { status: 500 });
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/cabinets/[cabinetId]',
+        errorMessage,
+        user
+      );
+      console.error('[DELETE /cabinets/[cabinetId]] Error:', errorMessage);
+      return NextResponse.json(
+        { success: false, error: 'Delete failed' },
+        { status: 500 }
+      );
     }
   });
 }

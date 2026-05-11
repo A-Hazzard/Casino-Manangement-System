@@ -7,7 +7,11 @@
 
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
-import { Dialog, DialogContent, DialogTitle } from '@/components/shared/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from '@/components/shared/ui/dialog';
 import { Label } from '@/components/shared/ui/label';
 import {
   Select,
@@ -66,13 +70,13 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const STATUS_PILL: Record<string, string> = {
-  pending:  'bg-amber-100 text-amber-800 border-amber-200',
+  pending: 'bg-amber-100 text-amber-800 border-amber-200',
   reviewed: 'bg-blue-100 text-blue-800 border-blue-200',
   resolved: 'bg-emerald-100 text-emerald-800 border-emerald-200',
 };
 
 const STATUS_LEFT_BORDER: Record<string, string> = {
-  pending:  'border-l-amber-400',
+  pending: 'border-l-amber-400',
   reviewed: 'border-l-blue-400',
   resolved: 'border-l-emerald-400',
 };
@@ -139,7 +143,8 @@ export default function AdminFeedbackPanel({
       const updateData: Record<string, unknown> = { _id: selected._id };
       if (editStatus !== selected.status) updateData.status = editStatus;
       const currentNotes = selected.notes || '';
-      if (editNotes.trim() !== currentNotes.trim()) updateData.notes = editNotes.trim() || null;
+      if (editNotes.trim() !== currentNotes.trim())
+        updateData.notes = editNotes.trim() || null;
 
       if (Object.keys(updateData).length === 1) {
         toast.info('No changes to save');
@@ -153,11 +158,14 @@ export default function AdminFeedbackPanel({
         body: JSON.stringify(updateData),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || 'Update failed');
+      if (!res.ok || !data.success)
+        throw new Error(data.error || 'Update failed');
 
       const updated: Feedback = { ...selected, ...data.feedback };
       setSelected(updated);
-      setFeedbackList(prev => prev.map(f => f._id === updated._id ? updated : f));
+      setFeedbackList(prev =>
+        prev.map(f => (f._id === updated._id ? updated : f))
+      );
       toast.success('Feedback updated');
       onCountChange?.();
     } catch (error) {
@@ -188,7 +196,11 @@ export default function AdminFeedbackPanel({
               onClick={view === 'detail' ? () => setView('list') : onClose}
               className="absolute right-4 top-4 rounded-full p-1 text-white/60 transition-colors hover:bg-white/20 hover:text-white"
             >
-              {view === 'detail' ? <ArrowLeft className="h-4 w-4" /> : <X className="h-4 w-4" />}
+              {view === 'detail' ? (
+                <ArrowLeft className="h-4 w-4" />
+              ) : (
+                <X className="h-4 w-4" />
+              )}
             </button>
 
             <div className="flex items-center gap-3">
@@ -203,8 +215,8 @@ export default function AdminFeedbackPanel({
                   {view === 'list' && pendingCount > 0
                     ? `${pendingCount} pending review`
                     : view === 'list'
-                    ? 'All submissions'
-                    : 'Review & update'}
+                      ? 'All submissions'
+                      : 'Review & update'}
                 </p>
               </div>
             </div>
@@ -217,11 +229,16 @@ export default function AdminFeedbackPanel({
                   disabled={loading}
                   className="flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs text-white transition hover:bg-white/30 disabled:opacity-60"
                 >
-                  <RefreshCw className={cn('h-3 w-3', loading && 'animate-spin')} />
+                  <RefreshCw
+                    className={cn('h-3 w-3', loading && 'animate-spin')}
+                  />
                   Refresh
                 </button>
                 <button
-                  onClick={() => { onClose(); setIsFeedbackFormOpen(true); }}
+                  onClick={() => {
+                    onClose();
+                    setIsFeedbackFormOpen(true);
+                  }}
                   className="flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs text-white transition hover:bg-white/30"
                 >
                   <PenLine className="h-3 w-3" />
@@ -233,18 +250,21 @@ export default function AdminFeedbackPanel({
 
           {/* ── Body ── */}
           <div className="flex-1 overflow-y-auto">
-
             {/* LIST VIEW */}
-            {view === 'list' && (
-              loading ? (
+            {view === 'list' &&
+              (loading ? (
                 <div className="flex items-center justify-center py-14">
                   <RefreshCw className="h-6 w-6 animate-spin text-gray-300" />
                 </div>
               ) : feedbackList.length === 0 ? (
                 <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
                   <CheckCircle2 className="h-10 w-10 text-emerald-400" />
-                  <p className="mt-3 text-sm font-medium text-gray-600">All caught up!</p>
-                  <p className="mt-1 text-xs text-gray-400">No feedback submissions yet.</p>
+                  <p className="mt-3 text-sm font-medium text-gray-600">
+                    All caught up!
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    No feedback submissions yet.
+                  </p>
                 </div>
               ) : (
                 <div className="divide-y">
@@ -260,10 +280,14 @@ export default function AdminFeedbackPanel({
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold text-gray-900">
-                            {[item.firstName, item.lastName].filter(Boolean).join(' ') || item.email}
+                            {[item.firstName, item.lastName]
+                              .filter(Boolean)
+                              .join(' ') || item.email}
                           </p>
                           {(item.firstName || item.lastName) && (
-                            <p className="truncate text-xs text-gray-400">{item.email}</p>
+                            <p className="truncate text-xs text-gray-400">
+                              {item.email}
+                            </p>
                           )}
                           <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-gray-600">
                             {item.description}
@@ -272,9 +296,13 @@ export default function AdminFeedbackPanel({
                         <div className="flex shrink-0 flex-col items-end gap-1.5">
                           <Badge
                             variant="outline"
-                            className={cn('text-[10px]', STATUS_PILL[item.status])}
+                            className={cn(
+                              'text-[10px]',
+                              STATUS_PILL[item.status]
+                            )}
                           >
-                            {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                            {item.status.charAt(0).toUpperCase() +
+                              item.status.slice(1)}
                           </Badge>
                           <span className="text-[10px] text-gray-400">
                             {CATEGORY_LABELS[item.category] || item.category}
@@ -282,29 +310,36 @@ export default function AdminFeedbackPanel({
                         </div>
                       </div>
                       <p className="mt-1.5 text-[10px] text-gray-400">
-                        {format(new Date(item.submittedAt), 'MMM d, yyyy · HH:mm')}
+                        {format(
+                          new Date(item.submittedAt),
+                          'MMM d, yyyy · HH:mm'
+                        )}
                       </p>
                     </button>
                   ))}
                 </div>
-              )
-            )}
+              ))}
 
             {/* DETAIL VIEW */}
             {view === 'detail' && selected && (
               <div className="space-y-4 px-5 py-4">
-
                 {/* Submitter card */}
                 <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                   <div className="flex items-start gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-600">
-                      {(selected.firstName?.[0] || selected.email[0]).toUpperCase()}
+                      {(
+                        selected.firstName?.[0] || selected.email[0]
+                      ).toUpperCase()}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-900">
-                        {displayName ?? <span className="text-gray-400">Anonymous</span>}
+                        {displayName ?? (
+                          <span className="text-gray-400">Anonymous</span>
+                        )}
                       </p>
-                      <p className="truncate text-xs text-gray-500">{selected.email}</p>
+                      <p className="truncate text-xs text-gray-500">
+                        {selected.email}
+                      </p>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-400">
                         {selected.username && (
                           <span className="flex items-center gap-1">
@@ -313,7 +348,8 @@ export default function AdminFeedbackPanel({
                         )}
                         {selected.licenceeName && (
                           <span className="flex items-center gap-1">
-                            <Building2 className="h-3 w-3" />{selected.licenceeName}
+                            <Building2 className="h-3 w-3" />
+                            {selected.licenceeName}
                           </span>
                         )}
                       </div>
@@ -323,14 +359,21 @@ export default function AdminFeedbackPanel({
 
                 {/* Meta row */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className={cn('text-xs', STATUS_PILL[selected.status])}>
-                    {selected.status.charAt(0).toUpperCase() + selected.status.slice(1)}
+                  <Badge
+                    variant="outline"
+                    className={cn('text-xs', STATUS_PILL[selected.status])}
+                  >
+                    {selected.status.charAt(0).toUpperCase() +
+                      selected.status.slice(1)}
                   </Badge>
                   <Badge variant="outline" className="text-xs">
                     {CATEGORY_LABELS[selected.category] || selected.category}
                   </Badge>
                   <span className="ml-auto text-[10px] text-gray-400">
-                    {format(new Date(selected.submittedAt), 'MMM d, yyyy · HH:mm')}
+                    {format(
+                      new Date(selected.submittedAt),
+                      'MMM d, yyyy · HH:mm'
+                    )}
                   </span>
                 </div>
 
@@ -372,7 +415,9 @@ export default function AdminFeedbackPanel({
                   </Label>
                   {selected.notes && editNotes === selected.notes ? (
                     <div
-                      onClick={() => {/* allow editing */}}
+                      onClick={() => {
+                        /* allow editing */
+                      }}
                       className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3"
                     >
                       <p className="whitespace-pre-wrap text-sm leading-relaxed text-blue-900">
@@ -395,9 +440,14 @@ export default function AdminFeedbackPanel({
                 {selected.reviewedBy && selected.reviewedAt && (
                   <p className="text-[11px] text-gray-400">
                     Reviewed by{' '}
-                    <span className="font-medium text-gray-600">{selected.reviewedBy}</span>
+                    <span className="font-medium text-gray-600">
+                      {selected.reviewedBy}
+                    </span>
                     {' · '}
-                    {format(new Date(selected.reviewedAt), 'MMM d, yyyy · HH:mm')}
+                    {format(
+                      new Date(selected.reviewedAt),
+                      'MMM d, yyyy · HH:mm'
+                    )}
                   </p>
                 )}
               </div>

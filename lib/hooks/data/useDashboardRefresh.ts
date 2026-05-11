@@ -17,8 +17,8 @@ import { handleDashboardRefresh } from '@/lib/helpers/dashboard';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
 import { TopPerformingData } from '@/lib/types';
 import type {
-    UseDashboardRefreshProps,
-    UseDashboardRefreshReturn,
+  UseDashboardRefreshProps,
+  UseDashboardRefreshReturn,
 } from '@/lib/types/dashboard';
 import { TimePeriod } from '@/shared/types/common';
 import { useCallback } from 'react';
@@ -64,8 +64,7 @@ export function useDashboardRefresh({
       setChartData,
       setActiveFilters,
       setShowDatePicker,
-      (data: TopPerformingData) =>
-        setTopPerformingData(data),
+      (data: TopPerformingData) => setTopPerformingData(data),
       displayCurrency
     );
   }, [
@@ -92,4 +91,3 @@ export function useDashboardRefresh({
     canRefresh,
   };
 }
-

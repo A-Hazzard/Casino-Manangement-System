@@ -12,6 +12,11 @@
 
 import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/auth/clear-token
@@ -22,6 +27,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/auth/clear-token';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -35,24 +42,35 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 2: Clear token cookie
     // ============================================================================
-    response.cookies.set('token', '', getAuthCookieOptions(request, { maxAge: 0 }));
+    response.cookies.set(
+      'token',
+      '',
+      getAuthCookieOptions(request, { maxAge: 0 })
+    );
 
     // ============================================================================
     // STEP 3: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 100) {
-      console.warn(`[Clear Token POST API] Completed in ${duration}ms`);
-    }
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/auth/clear-token',
+      1,
+      user,
+      duration
+    );
 
     return response;
   } catch (error: unknown) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(
-      `[Clear Token POST API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/auth/clear-token',
+      errorMessage,
+      user
     );
     return NextResponse.json(
       { success: false, error: 'Failed to clear token' },
@@ -60,4 +78,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

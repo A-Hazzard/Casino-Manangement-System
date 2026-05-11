@@ -1,6 +1,4 @@
-import type {
-    CollectionReportRow,
-} from '@/lib/types/components';
+import type { CollectionReportRow } from '@/lib/types/components';
 import type { LocationSelectItem } from '@/lib/types/location';
 import { parse } from 'date-fns';
 import type { DateRange as RDPDateRange } from 'react-day-picker';
@@ -23,9 +21,7 @@ export function filterCollectionReports(
   dateRange?: RDPDateRange
 ): CollectionReportRow[] {
   console.warn('[filterCollectionReports] Starting filter process');
-  console.warn(
-    `[filterCollectionReports] selectedLocation:`, selectedLocation
-  );
+  console.warn(`[filterCollectionReports] selectedLocation:`, selectedLocation);
   console.warn(`[filterCollectionReports] search: "${search}"`);
   console.warn(
     `[filterCollectionReports] showUncollectedOnly: ${showUncollectedOnly}`
@@ -56,7 +52,9 @@ export function filterCollectionReports(
         locationNameForLog = selectedNames.join(', ');
       }
     } else {
-      const foundLocation = locations.find(location => location._id === selectedLocation);
+      const foundLocation = locations.find(
+        location => location._id === selectedLocation
+      );
       const locationName = foundLocation?.name;
       matchesLocation = report.location === locationName;
       locationNameForLog = locationName || '';
@@ -99,7 +97,7 @@ export function filterCollectionReports(
       }
     }
 
-  const finalMatch =
+    const finalMatch =
       matchesLocation && matchesSearch && matchesUncollected && matchesDate;
 
     if (index < 3) {
@@ -116,4 +114,3 @@ export function filterCollectionReports(
   );
   return filtered;
 }
-

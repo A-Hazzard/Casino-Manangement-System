@@ -57,7 +57,7 @@ export default function ConfirmationModal({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100000] pointer-events-auto">
+    <div className="pointer-events-auto fixed inset-0 z-[100000]">
       <div
         ref={backdropRef}
         className="absolute inset-0 bg-black/50"
@@ -66,14 +66,12 @@ export default function ConfirmationModal({
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <div
           ref={modalRef}
-          className="w-full max-w-md rounded-md bg-container shadow-lg overflow-hidden"
+          className="w-full max-w-md overflow-hidden rounded-md bg-container shadow-lg"
           style={{ opacity: 0 }}
         >
           <div className="border-b border-border p-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-buttonActive">
-                {title}
-              </h2>
+              <h2 className="text-xl font-bold text-buttonActive">{title}</h2>
               <Button
                 variant="ghost"
                 onClick={handleClose}
@@ -112,12 +110,16 @@ export default function ConfirmationModal({
           <div className="border-t border-border p-4">
             <div className="flex justify-center space-x-4">
               <Button
-                onClick={(e) => {
+                onClick={e => {
                   e.preventDefault();
                   onConfirm();
                 }}
                 disabled={loading}
-                className={variant === 'destructive' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : 'bg-button text-white hover:bg-buttonActive'}
+                className={
+                  variant === 'destructive'
+                    ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                    : 'bg-button text-white hover:bg-buttonActive'
+                }
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {loading ? 'Processing...' : confirmLabel}

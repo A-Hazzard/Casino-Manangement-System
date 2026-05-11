@@ -45,5 +45,3 @@ const movementRequestSchema = new Schema<MovementRequestType>(
 export const MovementRequest =
   (mongoose.models?.MovementRequest as mongoose.Model<MovementRequestType>) ||
   mongoose.model<MovementRequestType>('MovementRequest', movementRequestSchema);
-
-

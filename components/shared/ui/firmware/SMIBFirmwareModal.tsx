@@ -1,6 +1,6 @@
 'use client';
 
-import {  useState, useRef  } from 'react';
+import { useState, useRef } from 'react';
 
 import { ChangeEvent } from 'react';
 import { DragEvent } from 'react';
@@ -281,4 +281,3 @@ export default function SMIBFirmwareModal({
     </Dialog>
   );
 }
-

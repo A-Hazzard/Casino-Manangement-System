@@ -11,6 +11,11 @@
 
 import { Collections } from '@/app/api/lib/models/collections';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -29,6 +34,9 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName =
+    'GET /api/collection-reports/collections/check-first-collection';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -46,6 +54,13 @@ export async function GET(request: NextRequest) {
     // STEP 3: Validate machineId
     // ============================================================================
     if (!machineId) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/collection-reports/collections/check-first-collection',
+        'machineId is required',
+        user
+      );
       return NextResponse.json(
         { error: 'machineId is required' },
         { status: 400 }
@@ -69,6 +84,15 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     // STEP 6: Return result
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/collection-reports/collections/check-first-collection',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json({
       isFirstCollection,
       machineId,
@@ -79,6 +103,13 @@ export async function GET(request: NextRequest) {
       error instanceof Error
         ? error.message
         : 'Failed to check collection status';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/collection-reports/collections/check-first-collection',
+      errorMessage,
+      user
+    );
     console.error(
       `[Check First Collection API] Error after ${duration}ms:`,
       errorMessage
@@ -92,5 +123,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-

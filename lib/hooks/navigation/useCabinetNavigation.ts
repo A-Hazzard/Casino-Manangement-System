@@ -5,8 +5,8 @@
 
 import type { CabinetSection } from '@/lib/constants';
 import {
-    getActiveSectionFromURL,
-    handleSectionChange as handleSectionChangeHelper,
+  getActiveSectionFromURL,
+  handleSectionChange as handleSectionChangeHelper,
 } from '@/lib/helpers/cabinets';
 import type { UseCabinetNavigationReturn } from '@/lib/types/cabinet';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -61,4 +61,3 @@ export const useCabinetNavigation = (): UseCabinetNavigationReturn => {
     handleSectionChange,
   };
 };
-

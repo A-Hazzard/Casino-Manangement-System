@@ -9,9 +9,7 @@
  * - Check if currency conversion should be applied based on licencee
  */
 
-import {
-  shouldApplyConversion,
-} from './rates';
+import { shouldApplyConversion } from './rates';
 
 /**
  * Check if currency conversion should be applied based on licencee
@@ -21,4 +19,3 @@ export function shouldApplyCurrencyConversion(
 ): boolean {
   return shouldApplyConversion(licencee);
 }
-

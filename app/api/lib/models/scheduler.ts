@@ -1,7 +1,6 @@
 import type { Scheduler } from '@/lib/types/api';
 import mongoose, { Schema } from 'mongoose';
 
-// Define the Mongoose schema
 const SchedulerSchema: Schema = new Schema(
   {
     _id: {
@@ -27,7 +26,5 @@ const SchedulerSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-// Create and export the Mongoose model
-// Check if the model already exists to prevent overwriting
 export default mongoose.models.Scheduler ||
   mongoose.model<Scheduler>('Scheduler', SchedulerSchema, 'schedulers');

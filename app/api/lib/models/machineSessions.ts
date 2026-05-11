@@ -203,14 +203,9 @@ const machineSessionSchema = new Schema(
   { timestamps: true }
 );
 
-// Indexes for better query performance
-machineSessionSchema.index({ memberId: 1, startTime: -1 }); // For member-based queries
-machineSessionSchema.index({ machineId: 1, startTime: -1 }); // For machine-based queries
-machineSessionSchema.index({ startTime: -1 }); // For date-based queries
+machineSessionSchema.index({ memberId: 1, startTime: -1 });
+machineSessionSchema.index({ machineId: 1, startTime: -1 });
+machineSessionSchema.index({ startTime: -1 });
 
-/**
- * Mongoose model for machine sessions, including all session data and meter readings.
- */
 export const MachineSession =
   models.machinesessions || model('machinesessions', machineSessionSchema);
-

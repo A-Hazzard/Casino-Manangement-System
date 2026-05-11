@@ -46,7 +46,9 @@ function getPreviousPeriod(
   days: number
 ): { prevStart: Date; prevEnd: Date } {
   if (!startDate || !endDate || typeof days !== 'number') {
-    console.error('[getPreviousPeriod] startDate, endDate, and days are required');
+    console.error(
+      '[getPreviousPeriod] startDate, endDate, and days are required'
+    );
     return { prevStart: new Date(), prevEnd: new Date() };
   }
 
@@ -111,7 +113,9 @@ function buildCurrentPeriodRevenuePipeline(
   endDate: Date
 ): PipelineStage[] {
   if (!Array.isArray(targetLocations) || !startDate || !endDate) {
-    console.error('[buildCurrentPeriodRevenuePipeline] targetLocations (array), startDate, and endDate are required');
+    console.error(
+      '[buildCurrentPeriodRevenuePipeline] targetLocations (array), startDate, and endDate are required'
+    );
     return [];
   }
 
@@ -152,7 +156,9 @@ function buildPreviousPeriodPipeline(
   prevEnd: Date
 ): PipelineStage[] {
   if (!Array.isArray(targetLocations) || !prevStart || !prevEnd) {
-    console.error('[buildPreviousPeriodPipeline] targetLocations (array), prevStart, and prevEnd are required');
+    console.error(
+      '[buildPreviousPeriodPipeline] targetLocations (array), prevStart, and prevEnd are required'
+    );
     return [];
   }
 
@@ -197,7 +203,9 @@ function buildHourlyTrendsPipeline(
   licencee?: string | null
 ): PipelineStage[] {
   if (!Array.isArray(targetLocations) || !startDate || !endDate) {
-    console.error('[buildHourlyTrendsPipeline] targetLocations (array), startDate, and endDate are required');
+    console.error(
+      '[buildHourlyTrendsPipeline] targetLocations (array), startDate, and endDate are required'
+    );
     return [];
   }
 
@@ -232,7 +240,8 @@ function buildHourlyTrendsPipeline(
     pipeline.push({
       $match: {
         $or: [
-          { 'locationDetails.rel.licencee': licencee  }, { 'locationDetails.rel.licencee': licencee  },
+          { 'locationDetails.rel.licencee': licencee },
+          { 'locationDetails.rel.licencee': licencee },
         ],
       },
     } as PipelineStage);
@@ -319,7 +328,9 @@ export function processMultipleLocationsHourlyData(
   }
 > {
   if (!Array.isArray(hourlyData) || !Array.isArray(targetLocations)) {
-    console.error('[processMultipleLocationsHourlyData] hourlyData and targetLocations are required');
+    console.error(
+      '[processMultipleLocationsHourlyData] hourlyData and targetLocations are required'
+    );
     return {};
   }
 
@@ -350,7 +361,9 @@ export function processMultipleLocationsHourlyData(
       (sum, hourlyItem) => sum + hourlyItem.revenue,
       0
     );
-    const peakRevenue = Math.max(...hourlyTrends.map(hourlyItem => hourlyItem.revenue));
+    const peakRevenue = Math.max(
+      ...hourlyTrends.map(hourlyItem => hourlyItem.revenue)
+    );
     const avgRevenue = Math.round(totalRevenue / 24);
 
     locationData[locationId] = {
@@ -390,7 +403,12 @@ export async function getHourlyTrends(
 }> {
   if (!timePeriod) {
     console.error('[getHourlyTrends] timePeriod is required');
-    return { currentPeriodRevenue: 0, previousPeriodAverage: 0, hourlyData: [], targetLocations: [] };
+    return {
+      currentPeriodRevenue: 0,
+      previousPeriodAverage: 0,
+      hourlyData: [],
+      targetLocations: [],
+    };
   }
 
   const { startDate, endDate } = calculateHourlyTrendsDateRange(
@@ -433,7 +451,8 @@ export async function getHourlyTrends(
   }
   const prevDays = prevResult.length;
   const prevTotal = prevResult.reduce(
-    (sum: number, dayRevenue: DailyRevenueItem) => sum + (dayRevenue.dailyRevenue || 0),
+    (sum: number, dayRevenue: DailyRevenueItem) =>
+      sum + (dayRevenue.dailyRevenue || 0),
     0
   );
   const previousPeriodAverage = prevDays > 0 ? prevTotal / prevDays : 0;
@@ -460,4 +479,3 @@ export async function getHourlyTrends(
     targetLocations,
   };
 }
-

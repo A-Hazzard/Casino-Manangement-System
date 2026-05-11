@@ -1,8 +1,8 @@
 # Administration & Core IAM API (`/api/administration`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -15,9 +15,11 @@ The Administration API handles the platform's multi-tenant hierarchy. It manages
 ## 2. Core Endpoints
 
 ### 👥 `GET /api/users`
+
 Returns the personnel directory with RBAC-filtered scoping.
 
 **Steps:**
+
 1. **Authenticate user** — Calls `getUserFromServer()` to read the current user from the JWT cookie.
 2. **Resolve roles & permissions** — Extracts `roles`, `assignedLicencees`, and `assignedLocations` from the user payload. Computes boolean flags: `isAdmin`, `isManager`, `isLocationAdmin`, `isVaultManager`.
 3. **Parse query params** — Reads `status` (`all`/`active`/`disabled`/`deleted`), `role`, `search`, `page`, `limit`.
@@ -34,9 +36,11 @@ Returns the personnel directory with RBAC-filtered scoping.
 ---
 
 ### 🆕 `POST /api/users`
+
 Creates a new system user with mandatory validation.
 
 **Steps:**
+
 1. **Connect to database** — Establishes the Mongoose connection.
 2. **Parse request body** — Reads `username`, `emailAddress`, `password`, `roles`, `profile`, `assignedLocations`, `assignedLicencees`, `isEnabled`, `tempPassword`.
 3. **Validate username** — Returns `400` if `username` is missing or not a string.
@@ -49,9 +53,11 @@ Creates a new system user with mandatory validation.
 ---
 
 ### ✏️ `PUT /api/users`
+
 Updates an existing user record.
 
 **Steps:**
+
 1. **Connect to database** — Establishes the Mongoose connection.
 2. **Parse request body** — Reads `_id` and `...updateFields`.
 3. **Validate user ID** — Returns `400` if `_id` is missing.
@@ -62,9 +68,11 @@ Updates an existing user record.
 ---
 
 ### 🗑️ `DELETE /api/users`
+
 Soft-deletes a user account.
 
 **Steps:**
+
 1. **Connect to database** — Establishes the Mongoose connection.
 2. **Parse request body** — Reads `_id`.
 3. **Validate user ID** — Returns `400` if `_id` is missing.
@@ -74,9 +82,11 @@ Soft-deletes a user account.
 ---
 
 ### 🏢 `GET /api/licencees`
+
 Returns corporate entity profiles.
 
 **Steps:**
+
 1. **Connect to database** — Establishes the Mongoose connection.
 2. **Authenticate user** — Verifies the request is from an authorized user.
 3. **Fetch licencees** — Queries the `Licencee` collection with an aggregation that counts linked `GamingLocations` and active `Machines`.
@@ -84,10 +94,12 @@ Returns corporate entity profiles.
 
 ---
 
-### 📜 `GET /api/activitylogs`
+### 📜 `GET /api/activity-logs`
+
 Returns the system-wide mutation audit stream.
 
 **Steps:**
+
 1. **Connect to database** — Establishes the Mongoose connection.
 2. **Parse params** — Reads `userId`, `action`, `startDate`, `endDate`, `page`, `limit`.
 3. **Build query** — Constructs a `$match` with optional filters for `userId`, `action`, and `timestamp` range.
@@ -105,7 +117,9 @@ The system enforces a strict vertical hierarchy:
 - Attempts return `403 Forbidden`.
 
 ### 🛡️ Session Integrity
+
 The `sessionVersion` field in the JWT must match the value in the User document. If a user is suspended or their password is changed, the version is incremented — immediately invalidating all their active sessions across all devices.
 
 ---
+
 **Technical Reference** - Engineering & Compliance Team

@@ -1,15 +1,20 @@
 /**
  * CabinetsDetailsSMIBComsConfig Component
- * 
+ *
  * Handles COMS configuration for SMIB devices.
- * 
+ *
  * @param props - Component props
  */
 
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
 import editIcon from '@/public/editIcon.svg';
@@ -292,4 +297,3 @@ export function CabinetsDetailsSMIBComsConfig({
     </Card>
   );
 }
-

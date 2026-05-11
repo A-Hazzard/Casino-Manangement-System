@@ -30,6 +30,7 @@ import { Skeleton } from '@/components/shared/ui/skeleton';
 import type { CollectionReportMachineSummary } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 
 type MobileEditMachineListProps = {
   locationName: string;
@@ -38,11 +39,14 @@ type MobileEditMachineListProps = {
   searchTerm: string;
   selectedMachine: string | null;
   isLoadingMachines: boolean;
+  machineStatusMap?: Record<string, boolean>;
   onSearchChange: (value: string) => void;
   onMachineSelect: (machine: CollectionReportMachineSummary) => void;
   onMachineUnselect: () => void;
   onBack: () => void;
-  sortMachines: <T extends { name?: string; machineName?: string; serialNumber?: string }>(
+  sortMachines: <
+    T extends { name?: string; machineName?: string; serialNumber?: string },
+  >(
     machines: T[]
   ) => T[];
 };
@@ -54,6 +58,7 @@ export default function CollectionReportMobileEditMachineList({
   searchTerm,
   selectedMachine,
   isLoadingMachines,
+  machineStatusMap = {},
   onSearchChange,
   onMachineSelect,
   onMachineUnselect,
@@ -79,10 +84,7 @@ export default function CollectionReportMobileEditMachineList({
     <div className="mt-6 flex min-h-0 flex-1 flex-col">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold">Machines for {locationName}</h3>
-        <button
-          onClick={onBack}
-          className="text-gray-500 hover:text-gray-700"
-        >
+        <button onClick={onBack} className="text-gray-500 hover:text-gray-700">
           <ArrowLeft className="h-5 w-5" />
         </button>
       </div>
@@ -90,24 +92,34 @@ export default function CollectionReportMobileEditMachineList({
       {/* Live Reconciliation Summary - Added for parity with New modal */}
       {collectedMachines.length > 0 && (
         <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50/30 p-3 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2 flex items-center justify-between">
             <h5 className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700">
               <Info className="h-3 w-3" />
               Live Reconciliation
             </h5>
-            <span className="text-[9px] font-medium text-blue-500 italic">
+            <span className="text-[9px] font-medium italic text-blue-500">
               (Syncs as you add machines)
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3 border-t border-blue-100/50 pt-2">
             <div>
-              <p className="text-[8px] font-bold text-gray-400 uppercase">Target</p>
+              <p className="text-[8px] font-bold uppercase text-gray-400">
+                Target
+              </p>
               <p className="text-xs font-black text-gray-900">
-                ${(Number(collectedMachines.reduce((sum, m) => sum + (m.movement?.gross || 0), 0))).toFixed(2)}
+                $
+                {Number(
+                  collectedMachines.reduce(
+                    (sum, m) => sum + (m.movement?.gross || 0),
+                    0
+                  )
+                ).toFixed(2)}
               </p>
             </div>
             <div>
-              <p className="text-[8px] font-bold text-gray-400 uppercase">Carryover</p>
+              <p className="text-[8px] font-bold uppercase text-gray-400">
+                Carryover
+              </p>
               <p className="text-xs font-black text-blue-600">$0.00</p>
             </div>
           </div>
@@ -171,6 +183,11 @@ export default function CollectionReportMobileEditMachineList({
                     <p className="break-words text-sm font-semibold text-primary">
                       {formatMachineDisplayNameWithBold(machine)}
                     </p>
+                    {machine.relayId && (
+                      <MachineOnlineStatusDot
+                        isOnline={machineStatusMap[String(machine._id)]}
+                      />
+                    )}
                     <div className="mt-1 space-y-1 text-xs text-gray-600">
                       <p className="flex flex-col sm:flex-row sm:gap-2">
                         <span>
@@ -235,5 +252,3 @@ export default function CollectionReportMobileEditMachineList({
     </div>
   );
 }
-
-

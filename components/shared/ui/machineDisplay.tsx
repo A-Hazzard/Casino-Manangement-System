@@ -44,7 +44,7 @@ type MachineLike = {
 export function formatMachineDisplayName(machine: MachineLike): string {
   // Get raw values
   const serialNumberRaw = machine.serialNumber?.trim() || '';
-  const customName = machine.custom?.name?.trim() || '';
+  const customName = String(machine.custom?.name ?? '').trim();
   const game = machine.game || machine.installedGame;
 
   // Main identifier: serialNumber if exists and not blank, otherwise custom.name
@@ -81,7 +81,7 @@ export function formatMachineDisplayNameWithBold(
 ): JSX.Element {
   // Get raw values
   const serialNumberRaw = machine.serialNumber?.trim() || '';
-  const customName = machine.custom?.name?.trim() || '';
+  const customName = String(machine.custom?.name ?? '').trim();
   const game = machine.game || machine.installedGame;
 
   // Main identifier: serialNumber if exists and not blank, otherwise custom.name
@@ -127,4 +127,3 @@ export function formatMachineDisplayNameWithBold(
     </span>
   );
 }
-

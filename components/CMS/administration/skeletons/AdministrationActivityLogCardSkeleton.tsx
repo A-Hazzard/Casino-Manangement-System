@@ -59,4 +59,3 @@ function AdministrationActivityLogCardSkeleton() {
 }
 
 export default AdministrationActivityLogCardSkeleton;
-

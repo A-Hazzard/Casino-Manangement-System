@@ -14,12 +14,8 @@
 
 import { forwardRef } from 'react';
 import { ComponentPropsWithoutRef, ElementRef } from 'react';
-import {
-    CheckIcon,
-    ChevronDownIcon,
-} from '@radix-ui/react-icons';
+import { CheckIcon, ChevronDownIcon } from '@radix-ui/react-icons';
 import * as SelectPrimitive from '@radix-ui/react-select';
-
 
 import { cn } from '@/lib/utils';
 
@@ -105,8 +101,4 @@ const SelectItem = forwardRef<
 ));
 SelectItem.displayName = SelectPrimitive.Item.displayName;
 
-export {
-    Select, SelectContent,
-    SelectItem, SelectTrigger, SelectValue
-};
-
+export { Select, SelectContent, SelectItem, SelectTrigger, SelectValue };

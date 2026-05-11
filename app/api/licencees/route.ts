@@ -43,10 +43,19 @@ import {
   updateLicencee as updateLicenceeHelper,
 } from '@/app/api/lib/helpers/licencees';
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import {
+  logRouteFetch,
+  logRouteCreate,
+  logRouteUpdate,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   return withApiAuth(request, async () => {
+    const startTime = Date.now();
+    const functionName = 'GET /api/licencees';
+    const user = extractUserFromRequest(request);
     const { searchParams } = new URL(request.url);
     const licenceeFilter = searchParams.get('licencee');
 
@@ -84,6 +93,16 @@ export async function GET(request: NextRequest) {
     const totalCount = formattedLicencees.length;
     const paginatedLicencees = formattedLicencees.slice(skip, skip + limit);
 
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/licencees',
+      paginatedLicencees.length,
+      user,
+      duration
+    );
+
     return NextResponse.json({
       licencees: paginatedLicencees,
       pagination: {
@@ -98,6 +117,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   return withApiAuth(request, async () => {
+    const startTime = Date.now();
+    const functionName = 'POST /api/licencees';
+    const user = extractUserFromRequest(request);
     const body = await request.json();
     const { name, country } = body;
 
@@ -109,12 +131,17 @@ export async function POST(request: NextRequest) {
     }
 
     const licencee = await createLicenceeHelper(body, request);
+    const duration = Date.now() - startTime;
+    logRouteCreate(functionName, 'POST', '/api/licencees', 1, user, duration);
     return NextResponse.json({ success: true, licencee }, { status: 201 });
   });
 }
 
 export async function PUT(request: NextRequest) {
   return withApiAuth(request, async () => {
+    const startTime = Date.now();
+    const functionName = 'PUT /api/licencees';
+    const user = extractUserFromRequest(request);
     const body = await request.json();
     const { _id } = body;
 
@@ -126,6 +153,8 @@ export async function PUT(request: NextRequest) {
     }
 
     const updatedLicencee = await updateLicenceeHelper(body, request);
+    const duration = Date.now() - startTime;
+    logRouteUpdate(functionName, 'PUT', '/api/licencees', 1, user, duration);
     return NextResponse.json({ success: true, licencee: updatedLicencee });
   });
 }

@@ -27,6 +27,8 @@ export type Location = {
   onlineMachines?: number;
   hasSmib?: boolean;
   noSMIBLocation?: boolean;
+  fullSMIBs?: boolean;
+  semiSMIBs?: boolean;
   membershipEnabled?: boolean;
   locationMembershipSettings?: LocationMembershipSettings;
 };
@@ -73,6 +75,8 @@ export type AggregatedLocation = {
   hasNonSasMachines?: boolean;
   isLocalServer: boolean;
   noSMIBLocation: boolean;
+  fullSMIBs: boolean;
+  semiSMIBs: boolean;
   hasSmib: boolean;
   gamesPlayed?: number;
   rel?: { licencee?: string | null; [key: string]: unknown };
@@ -116,7 +120,6 @@ export type UpdateLocationData = {
   gameDayOffset?: number;
   geoCoords?: Partial<GeoCoordinates>;
   isLocalServer?: boolean;
-  noSMIBLocation?: boolean;
   billValidatorOptions?: Record<string, boolean>;
   membershipEnabled?: boolean;
   aceEnabled?: boolean;
@@ -460,10 +463,6 @@ export type MetersData = {
   machine?: string;
   location?: string;
   locationSession?: string;
-  viewingAccountDenomination?: {
-    drop?: number;
-    totalCancelledCredits?: number;
-  };
   movement?: {
     coinIn?: number;
     coinOut?: number;
@@ -486,12 +485,11 @@ export type MetersData = {
   currentCredits?: number;
   totalWonCredits?: number;
   drop?: number;
-  isSasCreated?: boolean;
+  meterSource?: 'COLLECTION_REPORT' | 'SAS_READ' | 'OTHER';
   isRamClear?: boolean;
   readAt?: Date | string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  deletedAt?: Date | string | null;
 };
 
 export type BillMetersData = {
@@ -602,14 +600,14 @@ export type CollectionIssue = {
   collectionId: string;
   machineName: string;
   issueType:
-  | 'inverted_times'
-  | 'prev_meters_mismatch'
-  | 'sas_time_wrong'
-  | 'wrong_sas_start_time'
-  | 'wrong_sas_end_time'
-  | 'missing_sas_times'
-  | 'history_mismatch'
-  | 'machine_time_mismatch';
+    | 'inverted_times'
+    | 'prev_meters_mismatch'
+    | 'sas_time_wrong'
+    | 'wrong_sas_start_time'
+    | 'wrong_sas_end_time'
+    | 'missing_sas_times'
+    | 'history_mismatch'
+    | 'machine_time_mismatch';
   details: {
     current: Record<string, unknown> | null;
     expected: Record<string, unknown> | null;
@@ -662,4 +660,3 @@ export type TransformedCabinet = {
   online?: boolean;
   includeJackpot?: boolean;
 };
-

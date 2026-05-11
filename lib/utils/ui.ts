@@ -23,7 +23,10 @@ type CabinetSortOption =
 export const animateTableRows = (
   tableRef: RefObject<HTMLDivElement | null>
 ): void => {
-  if (!tableRef) { console.error('[animateTableRows] tableRef is required'); return; }
+  if (!tableRef) {
+    console.error('[animateTableRows] tableRef is required');
+    return;
+  }
   if (tableRef.current) {
     const tableRows = tableRef.current.querySelectorAll('tbody tr');
     gsap.fromTo(
@@ -70,10 +73,22 @@ export const filterAndSortCabinets = (
   sortOption: CabinetSortOption,
   sortOrder: 'asc' | 'desc'
 ): Cabinet[] => {
-  if (!Array.isArray(allCabinets)) { console.error('[filterAndSortCabinets] allCabinets is required'); return []; }
-  if (!searchTerm) { console.error('[filterAndSortCabinets] searchTerm is required'); return []; }
-  if (!sortOption) { console.error('[filterAndSortCabinets] sortOption is required'); return []; }
-  if (!sortOrder) { console.error('[filterAndSortCabinets] sortOrder is required'); return []; }
+  if (!Array.isArray(allCabinets)) {
+    console.error('[filterAndSortCabinets] allCabinets is required');
+    return [];
+  }
+  if (searchTerm === undefined || searchTerm === null) {
+    console.error('[filterAndSortCabinets] searchTerm is required');
+    return [];
+  }
+  if (!sortOption) {
+    console.error('[filterAndSortCabinets] sortOption is required');
+    return [];
+  }
+  if (!sortOrder) {
+    console.error('[filterAndSortCabinets] sortOrder is required');
+    return [];
+  }
   if (allCabinets.length === 0) {
     return [];
   }
@@ -90,7 +105,13 @@ export const filterAndSortCabinets = (
         (cab.smbId || '').toLowerCase().includes(searchLower) ||
         (cab.serialNumber || '').toLowerCase().includes(searchLower) ||
         (cab.game || '').toLowerCase().includes(searchLower) ||
-        (cab.custom?.name || (cab as { Custom?: { name?: string } })?.Custom?.name || '').toLowerCase().includes(searchLower) ||
+        (
+          cab.custom?.name ||
+          (cab as { Custom?: { name?: string } })?.Custom?.name ||
+          ''
+        )
+          .toLowerCase()
+          .includes(searchLower) ||
         cabinetId.includes(searchLower)
       );
     });
@@ -173,4 +194,3 @@ export const filterAndSortCabinets = (
 
   return filtered;
 };
-

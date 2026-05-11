@@ -18,8 +18,8 @@ export interface CheckVariationsMachine {
   machineName?: string;
   metersIn: number;
   metersOut: number;
-  sasStartTime?: string;
-  sasEndTime?: string;
+  sasStartTime?: string | Date;
+  sasEndTime?: string | Date;
   prevMetersIn?: number;
   prevMetersOut?: number;
   /** Pre-calculated movement gross from a saved collection document (e.g. collection.movement.gross).
@@ -34,8 +34,8 @@ export interface MachineVariationData {
   variation: number | string;
   sasGross: number | string;
   meterGross: number;
-  sasStartTime?: string | null;
-  sasEndTime?: string | null;
+  sasStartTime?: string | Date | null;
+  sasEndTime?: string | Date | null;
 }
 
 export interface VariationsCheckResponse {
@@ -67,7 +67,9 @@ interface UseVariationCheckOptions {
   debounceMs?: number; // Debounce delay for auto-check
 }
 
-export function useCollectionReportVariationCheck(options: UseVariationCheckOptions = {}) {
+export function useCollectionReportVariationCheck(
+  options: UseVariationCheckOptions = {}
+) {
   const { debounceMs = 500 } = options;
 
   const [state, setState] = useState<VariationCheckState>(DEFAULT_STATE);
@@ -78,7 +80,11 @@ export function useCollectionReportVariationCheck(options: UseVariationCheckOpti
    * Check variations for the given machines in a location
    */
   const checkVariations = useCallback(
-    async (locationId: string, machines: CheckVariationsMachine[], includeJackpot?: boolean) => {
+    async (
+      locationId: string,
+      machines: CheckVariationsMachine[],
+      includeJackpot?: boolean
+    ) => {
       if (!locationId || machines.length === 0) {
         setState(prev => ({ ...prev, error: 'Invalid location or machines' }));
         return;
@@ -94,15 +100,18 @@ export function useCollectionReportVariationCheck(options: UseVariationCheckOpti
       });
 
       try {
-        const response = await fetch('/api/collection-reports/check-variations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            locationId,
-            machines,
-            includeJackpot,
-          }),
-        });
+        const response = await fetch(
+          '/api/collection-reports/check-variations',
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              locationId,
+              machines,
+              includeJackpot,
+            }),
+          }
+        );
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -120,7 +129,8 @@ export function useCollectionReportVariationCheck(options: UseVariationCheckOpti
           error: null,
         }));
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+        const errorMessage =
+          err instanceof Error ? err.message : 'Unknown error occurred';
         setState(prev => ({
           ...prev,
           isChecking: false,
@@ -138,7 +148,11 @@ export function useCollectionReportVariationCheck(options: UseVariationCheckOpti
    * Auto re-check when machines change (with debounce)
    */
   const triggerAutoCheck = useCallback(
-    (locationId: string, machines: CheckVariationsMachine[], includeJackpot?: boolean) => {
+    (
+      locationId: string,
+      machines: CheckVariationsMachine[],
+      includeJackpot?: boolean
+    ) => {
       // Debounce re-checks
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);

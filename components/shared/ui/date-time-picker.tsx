@@ -131,7 +131,9 @@ export function DateTimePicker({
             selected={date}
             onSelect={handleDateSelect}
             initialFocus
-            disabled={dateOnly ? { after: new Date() } : (disabled ? true : undefined)}
+            disabled={
+              dateOnly ? { after: new Date() } : disabled ? true : undefined
+            }
             showOutsideDays
             captionLayout="dropdown"
             fromYear={1950}
@@ -211,4 +213,3 @@ export function DateTimePicker({
     </Popover>
   );
 }
-

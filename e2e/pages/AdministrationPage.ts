@@ -79,18 +79,20 @@ export class AdministrationPage {
     this.page = page;
 
     // Section tabs (href or button)
-    this.usersSection = page.getByRole('link', { name: /users/i }).or(
-      page.getByRole('button', { name: /users/i })
-    );
-    this.licenceesSection = page.getByRole('link', { name: /licencees/i }).or(
-      page.getByRole('button', { name: /licencees/i })
-    );
-    this.activityLogsSection = page.getByRole('link', { name: /activity log/i }).or(
-      page.getByRole('button', { name: /activity log/i })
-    );
+    this.usersSection = page
+      .getByRole('link', { name: /users/i })
+      .or(page.getByRole('button', { name: /users/i }));
+    this.licenceesSection = page
+      .getByRole('link', { name: /licencees/i })
+      .or(page.getByRole('button', { name: /licencees/i }));
+    this.activityLogsSection = page
+      .getByRole('link', { name: /activity log/i })
+      .or(page.getByRole('button', { name: /activity log/i }));
 
     // Table
-    this.addUserButton = page.getByRole('button', { name: /add user|invite user|new user|create user/i });
+    this.addUserButton = page.getByRole('button', {
+      name: /add user|invite user|new user|create user/i,
+    });
     this.tableBody = page.locator('table tbody');
     this.tableRows = page.locator('table tbody tr');
 
@@ -100,48 +102,98 @@ export class AdministrationPage {
     });
 
     // Account fields — modals separate "Account" and "Profile" sections
-    this.usernameInput = this.addUserModal.locator('input[name="username"], #username');
-    this.emailInput = this.addUserModal.locator('input[name="email"], input[name="emailAddress"], #email');
-    this.passwordInput = this.addUserModal.locator('input[name="password"], #password').first();
+    this.usernameInput = this.addUserModal.locator(
+      'input[name="username"], #username'
+    );
+    this.emailInput = this.addUserModal.locator(
+      'input[name="email"], input[name="emailAddress"], #email'
+    );
+    this.passwordInput = this.addUserModal
+      .locator('input[name="password"], #password')
+      .first();
     this.confirmPasswordInput = this.addUserModal.locator(
       'input[name="confirmPassword"], #confirmPassword'
     );
 
     // Profile fields
-    this.firstNameInput = this.addUserModal.locator('input[name="firstName"], #firstName');
-    this.lastNameInput = this.addUserModal.locator('input[name="lastName"], #lastName');
-    this.genderSelect = this.addUserModal.locator('select[name="gender"], #gender');
-    this.phoneInput = this.addUserModal.locator('input[name="phoneNumber"], #phoneNumber');
+    this.firstNameInput = this.addUserModal.locator(
+      'input[name="firstName"], #firstName'
+    );
+    this.lastNameInput = this.addUserModal.locator(
+      'input[name="lastName"], #lastName'
+    );
+    this.genderSelect = this.addUserModal.locator(
+      'select[name="gender"], #gender'
+    );
+    this.phoneInput = this.addUserModal.locator(
+      'input[name="phoneNumber"], #phoneNumber'
+    );
 
     // Roles — a MultiSelectDropdown component; clicking it opens a list of checkboxes
-    this.rolesDropdown = this.addUserModal.locator('[data-testid="roles-dropdown"], button:has-text("Role"), .multiselect__input').first();
-    this.licenceesDropdown = this.addUserModal.locator('[data-testid="licencees-dropdown"], button:has-text("Licencee")').first();
+    this.rolesDropdown = this.addUserModal
+      .locator(
+        '[data-testid="roles-dropdown"], button:has-text("Role"), .multiselect__input'
+      )
+      .first();
+    this.licenceesDropdown = this.addUserModal
+      .locator(
+        '[data-testid="licencees-dropdown"], button:has-text("Licencee")'
+      )
+      .first();
 
     this.submitCreateButton = this.addUserModal.getByRole('button', {
       name: /create user|add user|save|submit/i,
     });
-    this.cancelCreateButton = this.addUserModal.getByRole('button', { name: /cancel/i });
+    this.cancelCreateButton = this.addUserModal.getByRole('button', {
+      name: /cancel/i,
+    });
 
     // ── Edit modal ──────────────────────────────────────────────────────────────
     // The edit modal reuses AdministrationUserModal — distinguish by its open state
-    this.editModal = page.locator('[role="dialog"]').filter({ hasText: /edit.*user|update.*user/i });
-    this.editEmailInput = this.editModal.locator('input[name="email"], input[name="emailAddress"]');
-    this.editFirstNameInput = this.editModal.locator('input[name="firstName"], #firstName');
-    this.submitEditButton = this.editModal.getByRole('button', { name: /save|update/i });
-    this.cancelEditButton = this.editModal.getByRole('button', { name: /cancel/i });
+    this.editModal = page
+      .locator('[role="dialog"]')
+      .filter({ hasText: /edit.*user|update.*user/i });
+    this.editEmailInput = this.editModal.locator(
+      'input[name="email"], input[name="emailAddress"]'
+    );
+    this.editFirstNameInput = this.editModal.locator(
+      'input[name="firstName"], #firstName'
+    );
+    this.submitEditButton = this.editModal.getByRole('button', {
+      name: /save|update/i,
+    });
+    this.cancelEditButton = this.editModal.getByRole('button', {
+      name: /cancel/i,
+    });
 
     // Enabled toggle — may appear inside edit modal or in the table row
-    this.enabledToggle = page.locator('[role="switch"][aria-label*="enabled" i], input[name="isEnabled"]').first();
+    this.enabledToggle = page
+      .locator(
+        '[role="switch"][aria-label*="enabled" i], input[name="isEnabled"]'
+      )
+      .first();
 
     // ── Delete dialog ───────────────────────────────────────────────────────────
-    this.deleteDialog = page.locator('[role="dialog"]').filter({ hasText: /are you absolutely sure/i });
-    this.confirmDeleteButton = this.deleteDialog.getByRole('button', { name: /delete/i });
-    this.cancelDeleteButton = this.deleteDialog.getByRole('button', { name: /cancel/i });
+    this.deleteDialog = page
+      .locator('[role="dialog"]')
+      .filter({ hasText: /are you absolutely sure/i });
+    this.confirmDeleteButton = this.deleteDialog.getByRole('button', {
+      name: /delete/i,
+    });
+    this.cancelDeleteButton = this.deleteDialog.getByRole('button', {
+      name: /cancel/i,
+    });
 
     // ── Validation error elements ───────────────────────────────────────────────
-    this.usernameError = this.addUserModal.locator('#username-error, [id*="username"][id*="error"]');
-    this.emailError = this.addUserModal.locator('#email-error, [id*="email"][id*="error"]');
-    this.passwordError = this.addUserModal.locator('#password-error, [id*="password"][id*="error"]').first();
+    this.usernameError = this.addUserModal.locator(
+      '#username-error, [id*="username"][id*="error"]'
+    );
+    this.emailError = this.addUserModal.locator(
+      '#email-error, [id*="email"][id*="error"]'
+    );
+    this.passwordError = this.addUserModal
+      .locator('#password-error, [id*="password"][id*="error"]')
+      .first();
 
     // ── Licencee table / cards ──────────────────────────────────────────────────
     // The licencee section may render a <table> or card grid depending on viewport
@@ -191,12 +243,16 @@ export class AdministrationPage {
 
   async clickEditUser(rowIndex: number) {
     const row = this.tableRows.nth(rowIndex);
-    await row.locator('button[aria-label*="edit" i], img[alt*="edit" i]').click();
+    await row
+      .locator('button[aria-label*="edit" i], img[alt*="edit" i]')
+      .click();
   }
 
   async clickDeleteUser(rowIndex: number) {
     const row = this.tableRows.nth(rowIndex);
-    await row.locator('button[aria-label*="delete" i], img[alt*="delete" i]').click();
+    await row
+      .locator('button[aria-label*="delete" i], img[alt*="delete" i]')
+      .click();
   }
 
   // ─── Add User modal actions ──────────────────────────────────────────────────
@@ -220,7 +276,8 @@ export class AdministrationPage {
     await this.usernameInput.fill(data.username);
     await this.emailInput.fill(data.email);
     await this.passwordInput.fill(data.password);
-    if (data.confirmPassword) await this.confirmPasswordInput.fill(data.confirmPassword);
+    if (data.confirmPassword)
+      await this.confirmPasswordInput.fill(data.confirmPassword);
     if (data.firstName) await this.firstNameInput.fill(data.firstName);
     if (data.lastName) await this.lastNameInput.fill(data.lastName);
     if (data.gender) await this.genderSelect.selectOption(data.gender);
@@ -230,7 +287,8 @@ export class AdministrationPage {
       await this.rolesDropdown.click();
       for (const role of data.roles) {
         // Each role is a labelled checkbox inside the dropdown list
-        await this.page.getByRole('option', { name: new RegExp(role, 'i') })
+        await this.page
+          .getByRole('option', { name: new RegExp(role, 'i') })
           .or(this.page.locator(`label:has-text("${role}")`))
           .click();
       }

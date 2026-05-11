@@ -4,6 +4,11 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import {
   updateVaultShiftInventory,
@@ -25,6 +30,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @body {Array} machineIds - IDs if source is machine(s)
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/add-cash';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
@@ -140,6 +149,15 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      const duration = Date.now() - startTime;
+      logRouteCreate(
+        functionName,
+        'POST',
+        '/api/vault/add-cash',
+        1,
+        user,
+        duration
+      );
       return NextResponse.json({
         success: true,
         transaction: vaultTransaction,
@@ -147,6 +165,7 @@ export async function POST(request: NextRequest) {
     } catch (error: unknown) {
       console.error('[Add Cash API] Error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
+      logRouteError(functionName, 'POST', '/api/vault/add-cash', message, user);
       return NextResponse.json(
         { success: false, error: message },
         { status: 500 }

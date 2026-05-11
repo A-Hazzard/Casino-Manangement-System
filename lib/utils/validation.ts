@@ -33,7 +33,9 @@ export function validateEmail(
   emailAddress: UserDocument['emailAddress']
 ): boolean {
   if (!emailAddress || typeof emailAddress !== 'string') {
-    console.error('[validateEmail] emailAddress is required and must be a string');
+    console.error(
+      '[validateEmail] emailAddress is required and must be a string'
+    );
     return false;
   }
   return EMAIL_REGEX.test(emailAddress);
@@ -108,14 +110,24 @@ export type PasswordStrengthResult = {
   };
 };
 
-export function validatePasswordStrength(password: string): PasswordStrengthResult {
+export function validatePasswordStrength(
+  password: string
+): PasswordStrengthResult {
   if (!password || typeof password !== 'string') {
-    console.error('[validatePasswordStrength] password is required and must be a string');
+    console.error(
+      '[validatePasswordStrength] password is required and must be a string'
+    );
     return {
       isValid: false,
       score: 0,
       feedback: ['Password is required'],
-      requirements: { length: false, uppercase: false, lowercase: false, number: false, special: false }
+      requirements: {
+        length: false,
+        uppercase: false,
+        lowercase: false,
+        number: false,
+        special: false,
+      },
     };
   }
 
@@ -364,7 +376,6 @@ export function validatePhoneNumber(value: string | undefined | null): boolean {
   return digitCount >= 7 && digitCount <= 15;
 }
 
-
 /**
  * Normalizes phone numbers by stripping everything except digits.
  */
@@ -501,4 +512,3 @@ export function validateCollectionReportData(data: unknown): boolean {
     typeof report.locationMetrics === 'object'
   );
 }
-

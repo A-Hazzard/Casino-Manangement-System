@@ -88,6 +88,11 @@
   gap: 16px; /* Adjust the gap size as per your design */
 }
 
+.edit-location-modal {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -371,4 +376,10 @@ input[type='checkbox'] {
 .leaflet-top.leaflet-left {
   top: auto !important;
   bottom: 10px !important;
+}
+
+/* Modal animation initial state */
+.modal-initial {
+  opacity: 0;
+  transform: translateY(-20px);
 }

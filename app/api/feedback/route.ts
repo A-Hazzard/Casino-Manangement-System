@@ -63,9 +63,21 @@ import { ActivityLog } from '@/app/api/lib/models/activityLog';
 import { FeedbackModel } from '@/app/api/lib/models/feedback';
 import { GamingLocations as GamingLocationsModel } from '@/app/api/lib/models/gaminglocations';
 import { Licencee as LicenceeModel } from '@/app/api/lib/models/licencee';
+import {
+  logRouteFetch,
+  logRouteCreate,
+  logRouteUpdate,
+  logRouteDelete,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { generateMongoId } from '@/lib/utils/id';
 import { formatIPForDisplay, getIPInfo } from '@/lib/utils/ipAddress';
-import type { FeedbackDocument, GamingLocationDocument, LicenceeDocument } from '@shared/types';
+import type {
+  FeedbackDocument,
+  GamingLocationDocument,
+  LicenceeDocument,
+} from '@shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -94,6 +106,8 @@ const feedbackSchema = z.object({
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/feedback';
+  const logUser = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -108,6 +122,13 @@ export async function POST(request: NextRequest) {
     const validationResult = feedbackSchema.safeParse(body);
 
     if (!validationResult.success) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/feedback',
+        'Validation failed',
+        logUser
+      );
       return NextResponse.json(
         {
           success: false,
@@ -118,13 +139,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, username, userId, firstName, lastName, locationId, licenceeId, category, description } =
-      validationResult.data;
+    const {
+      email,
+      username,
+      userId,
+      firstName,
+      lastName,
+      locationId,
+      licenceeId,
+      category,
+      description,
+    } = validationResult.data;
 
     // ============================================================================
     // STEP 3: Validate email or username requirement
     // ============================================================================
     if (!email && !username) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/feedback',
+        'Either email or username must be provided',
+        logUser
+      );
       return NextResponse.json(
         {
           success: false,
@@ -172,16 +209,24 @@ export async function POST(request: NextRequest) {
 
     if (locationId) {
       try {
-        const loc = await GamingLocationsModel.findOne({ _id: locationId }).select('name').lean<GamingLocationDocument>();
+        const loc = await GamingLocationsModel.findOne({ _id: locationId })
+          .select('name')
+          .lean<GamingLocationDocument>();
         resolvedLocationName = loc?.name || null;
-      } catch { /* ignore lookup errors */ }
+      } catch {
+        /* ignore lookup errors */
+      }
     }
 
     if (licenceeId) {
       try {
-        const lic = await LicenceeModel.findOne({ _id: licenceeId }).select('name').lean<LicenceeDocument>();
+        const lic = await LicenceeModel.findOne({ _id: licenceeId })
+          .select('name')
+          .lean<LicenceeDocument>();
         resolvedLicenceeName = lic?.name || null;
-      } catch { /* ignore lookup errors */ }
+      } catch {
+        /* ignore lookup errors */
+      }
     }
 
     // ============================================================================
@@ -252,7 +297,15 @@ export async function POST(request: NextRequest) {
 
       await activityLog.save();
     } catch (logError) {
-      console.error('Error logging feedback creation activity:', logError);
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/feedback',
+        logError instanceof Error
+          ? logError
+          : 'Error logging feedback creation activity',
+        logUser
+      );
       // Don't fail the request if logging fails
     }
 
@@ -260,9 +313,7 @@ export async function POST(request: NextRequest) {
     // STEP 9: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Feedback API] POST completed in ${duration}ms`);
-    }
+    logRouteCreate(functionName, 'POST', '/api/feedback', 1, logUser, duration);
 
     return NextResponse.json(
       {
@@ -273,9 +324,11 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    const duration = Date.now() - startTime;
-    const errorMessage = error instanceof Error ? error.message : 'Failed to submit feedback. Please try again later.';
-    console.error(`[Feedback API] POST error after ${duration}ms:`, errorMessage);
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to submit feedback. Please try again later.';
+    logRouteError(functionName, 'POST', '/api/feedback', errorMessage, logUser);
     return NextResponse.json(
       {
         success: false,
@@ -288,6 +341,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/feedback';
+  const logUser = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -300,6 +355,13 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const currentUser = await getUserFromServer();
     if (!currentUser) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/feedback',
+        'Unauthorized',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -311,9 +373,18 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
+      userRoles.includes('admin') ||
+      userRoles.includes('developer') ||
+      userRoles.includes('owner');
 
     if (!isAdmin) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/feedback',
+        'Forbidden: Admin access required',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -386,6 +457,14 @@ export async function GET(request: NextRequest) {
       console.warn(`[Feedback API] GET completed in ${duration}ms`);
     }
 
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/feedback',
+      feedback.length,
+      logUser,
+      duration
+    );
     return NextResponse.json(
       {
         success: true,
@@ -400,7 +479,10 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to fetch feedback';
     console.error('Error fetching feedback:', error);
+    logRouteError(functionName, 'GET', '/api/feedback', errorMessage, logUser);
     return NextResponse.json(
       {
         success: false,
@@ -422,12 +504,23 @@ const updateFeedbackSchema = z.object({
 
 // PATCH endpoint for specific field updates (like archiving) to avoid schema/middleware issues
 export async function PATCH(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'PATCH /api/feedback';
+  const logUser = extractUserFromRequest(request);
+
   try {
     await connectDB();
 
     // Check if user is admin or developer
     const currentUser = await getUserFromServer();
     if (!currentUser) {
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/feedback',
+        'Unauthorized',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -436,9 +529,18 @@ export async function PATCH(request: NextRequest) {
 
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
+      userRoles.includes('admin') ||
+      userRoles.includes('developer') ||
+      userRoles.includes('owner');
 
     if (!isAdmin) {
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/feedback',
+        'Forbidden: Admin access required',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -477,6 +579,13 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (Object.keys(updateData).length === 0) {
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/feedback',
+        'No fields to update',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'No fields to update' },
         { status: 400 }
@@ -484,8 +593,17 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Pre-fetch for before-state
-    const existingFeedbackDoc = await FeedbackModel.findOne({ _id }).lean<FeedbackDocument>();
+    const existingFeedbackDoc = await FeedbackModel.findOne({
+      _id,
+    }).lean<FeedbackDocument>();
     if (!existingFeedbackDoc) {
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/feedback',
+        'Feedback not found',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'Feedback not found' },
         { status: 404 }
@@ -504,9 +622,6 @@ export async function PATCH(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    // Fetch the updated document to return
-    const updatedFeedback = await FeedbackModel.findOne({ _id }).lean<FeedbackDocument>();
 
     // Log activity
     try {
@@ -554,22 +669,29 @@ export async function PATCH(request: NextRequest) {
       await activityLog.save();
     } catch (logError) {
       console.error('Error logging feedback update activity:', logError);
+      // Don't fail the request if logging fails
     }
+
+    const duration = Date.now() - startTime;
+    logRouteUpdate(functionName, 'PUT', '/api/feedback', 1, logUser, duration);
 
     return NextResponse.json(
       {
         success: true,
         message: 'Feedback updated successfully',
-        feedback: updatedFeedback,
+        feedback: { ...existingFeedbackDoc, ...updateData },
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error updating feedback (PATCH):', error);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to update feedback';
+    console.error('Error updating feedback:', error);
+    logRouteError(functionName, 'PUT', '/api/feedback', errorMessage, logUser);
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to update feedback',
+        error: 'Failed to update feedback. Please try again later.',
       },
       { status: 500 }
     );
@@ -577,12 +699,22 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const functionName = 'PUT /api/feedback';
+  const logUser = extractUserFromRequest(request);
+
   try {
     await connectDB();
 
     // Check if user is admin or developer
     const currentUser = await getUserFromServer();
     if (!currentUser) {
+      logRouteError(
+        functionName,
+        'PUT',
+        '/api/feedback',
+        'Unauthorized',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -591,9 +723,18 @@ export async function PUT(request: NextRequest) {
 
     const userRoles = (currentUser.roles as string[]) || [];
     const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
+      userRoles.includes('admin') ||
+      userRoles.includes('developer') ||
+      userRoles.includes('owner');
 
     if (!isAdmin) {
+      logRouteError(
+        functionName,
+        'PUT',
+        '/api/feedback',
+        'Forbidden: Admin access required',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -618,8 +759,17 @@ export async function PUT(request: NextRequest) {
       validationResult.data;
 
     // Get existing feedback
-    const existingFeedback = await FeedbackModel.findOne({ _id }).lean<FeedbackDocument>();
+    const existingFeedback = await FeedbackModel.findOne({
+      _id,
+    }).lean<FeedbackDocument>();
     if (!existingFeedback) {
+      logRouteError(
+        functionName,
+        'PUT',
+        '/api/feedback',
+        'Feedback not found',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'Feedback not found' },
         { status: 404 }
@@ -668,6 +818,13 @@ export async function PUT(request: NextRequest) {
       console.error(
         '❌ Failed to update feedback - findOneAndUpdate returned null'
       );
+      logRouteError(
+        functionName,
+        'PUT',
+        '/api/feedback',
+        'Failed to update feedback - document not found or update failed',
+        logUser
+      );
       return NextResponse.json(
         {
           success: false,
@@ -680,7 +837,9 @@ export async function PUT(request: NextRequest) {
 
     // Force re-read to verify persistence
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const verifiedDoc = await FeedbackModel.findOne({ _id }).lean<FeedbackDocument>();
+    const verifiedDoc = await FeedbackModel.findOne({
+      _id,
+    }).lean<FeedbackDocument>();
     const verifiedData = verifiedDoc as { archived?: boolean };
 
     const responseFeedback = {
@@ -769,12 +928,23 @@ const deleteFeedbackSchema = z.object({
 });
 
 export async function DELETE(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'DELETE /api/feedback';
+  const logUser = extractUserFromRequest(request);
+
   try {
     await connectDB();
 
     // Check if user is admin or developer
     const currentUser = await getUserFromServer();
     if (!currentUser) {
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/feedback',
+        'Unauthorized',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -786,6 +956,13 @@ export async function DELETE(request: NextRequest) {
       userRoles.includes('admin') || userRoles.includes('developer');
 
     if (!isAdmin) {
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/feedback',
+        'Forbidden: Admin access required',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'Forbidden: Admin access required' },
         { status: 403 }
@@ -809,8 +986,17 @@ export async function DELETE(request: NextRequest) {
     const { _id } = validationResult.data;
 
     // Get existing feedback before deletion
-    const existingFeedback = await FeedbackModel.findOne({ _id }).lean<FeedbackDocument>();
+    const existingFeedback = await FeedbackModel.findOne({
+      _id,
+    }).lean<FeedbackDocument>();
     if (!existingFeedback) {
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/feedback',
+        'Feedback not found',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'Feedback not found' },
         { status: 404 }
@@ -820,7 +1006,17 @@ export async function DELETE(request: NextRequest) {
     // Delete feedback
     const deletedFeedback = await FeedbackModel.findOneAndDelete({ _id });
     if (!deletedFeedback) {
-      return NextResponse.json({ success: false, error: 'Failed to delete feedback' }, { status: 500 });
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/feedback',
+        'Failed to delete feedback',
+        logUser
+      );
+      return NextResponse.json(
+        { success: false, error: 'Failed to delete feedback' },
+        { status: 500 }
+      );
     }
 
     // Log activity - admin deleted feedback
@@ -880,6 +1076,16 @@ export async function DELETE(request: NextRequest) {
       // Don't fail the request if logging fails
     }
 
+    const duration = Date.now() - startTime;
+    logRouteDelete(
+      functionName,
+      'DELETE',
+      '/api/feedback',
+      1,
+      logUser,
+      duration
+    );
+
     return NextResponse.json(
       {
         success: true,
@@ -888,7 +1094,16 @@ export async function DELETE(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Failed to delete feedback';
     console.error('Error deleting feedback:', error);
+    logRouteError(
+      functionName,
+      'DELETE',
+      '/api/feedback',
+      errorMessage,
+      logUser
+    );
     return NextResponse.json(
       {
         success: false,
@@ -898,5 +1113,3 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
-
-

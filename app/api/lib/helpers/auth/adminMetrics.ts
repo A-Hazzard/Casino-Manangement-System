@@ -110,5 +110,3 @@ export async function getAuthMetrics(timeRange: TimeRange = '24h'): Promise<{
     suspiciousActivities,
   };
 }
-
-

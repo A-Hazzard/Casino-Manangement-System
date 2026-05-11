@@ -1,6 +1,7 @@
 # Manual Meters Flow - Collection Report to Database
 
 ## Overview
+
 This document explains the flow for manual meter creation and editing in the CMS system, from the frontend collection report modal through backend API to the `Meters` collection in MongoDB.
 
 ---
@@ -71,6 +72,7 @@ This document explains the flow for manual meter creation and editing in the CMS
 ## 2. Meter Creation Flow (Report Creation)
 
 ### 2.1 Frontend → API Payload
+
 When creating a report, the `machines` array includes:
 
 ```typescript
@@ -82,7 +84,7 @@ interface MachinePayload {
   prevMetersIn: number;
   prevMetersOut: number;
   ramClear: boolean;
-  ramClearMetersIn?: number;  // Post-RAM-clear meter in
+  ramClearMetersIn?: number; // Post-RAM-clear meter in
   ramClearMetersOut?: number; // Post-RAM-clear meter out
   collectionId: string;
   timestamp: Date;
@@ -107,11 +109,11 @@ for (const machine of machines) {
   const ramClearMetersOut = machine.ramClearMetersOut || 0;
 
   // 2. Calculate deltas based on ramClear flag
-  const movementIn = machine.ramClear 
-    ? ramClearMetersIn - previousMetersIn  // RAM clear: use post-clear - prev
-    : currentMetersIn;                     // Normal: use current
-  
-  const movementOut = machine.ramClear 
+  const movementIn = machine.ramClear
+    ? ramClearMetersIn - previousMetersIn // RAM clear: use post-clear - prev
+    : currentMetersIn; // Normal: use current
+
+  const movementOut = machine.ramClear
     ? ramClearMetersOut - previousMetersOut
     : currentMetersOut;
 
@@ -119,7 +121,7 @@ for (const machine of machines) {
   //    a. RAM clear meter (isRamClear: true)
   //    b. Current meter
   //    Otherwise create ONE meter document
-  
+
   if (machine.ramClear) {
     const ramClearMeter = {
       _id: ramClearMeterId,
@@ -129,7 +131,7 @@ for (const machine of machines) {
       drop: ramClearMetersIn,
       totalCancelledCredits: ramClearMetersOut,
       isSasCreated: false,
-      isRamClear: true,  // ← KEY FLAG
+      isRamClear: true, // ← KEY FLAG
       readAt: baseReadAt,
       createdAt: baseCreatedAt,
     };
@@ -199,16 +201,18 @@ async function appendMeterIdsToCollections(collectionId, meters) {
   if (meters.length == 2) {
     await Collections.updateOne(
       { _id: collectionId },
-      { $set: { 
-        ramClearMeterId: meters[0]._id,  // RAM clear meter
-        meterId: meters[1]._id          // Current meter
-      }}
+      {
+        $set: {
+          ramClearMeterId: meters[0]._id, // RAM clear meter
+          meterId: meters[1]._id, // Current meter
+        },
+      }
     );
   } else {
     // Normal (1 meter), store only meterId
     await Collections.updateOne(
       { _id: collectionId },
-      { $set: { meterId: meters[0]._id }}
+      { $set: { meterId: meters[0]._id } }
     );
   }
 }
@@ -278,10 +282,11 @@ export async function updateRegularAndRamClearMeters(collectionDocument) {
   // 1. Get meter IDs from collection
   const ramClearMeterId = collectionDocument.ramClearMeterId;
   const meterId = collectionDocument.meterId;
-  
+
   // 2. Log for debugging
   console.log('[updateRegularAndRamClearMeters] Processing collection', {
-    ramClearMeterId, meterId,
+    ramClearMeterId,
+    meterId,
     metersIn: collectionDocument.metersIn,
     metersOut: collectionDocument.metersOut,
     ramClearMetersIn: collectionDocument.ramClearMetersIn,
@@ -301,12 +306,13 @@ export async function updateRegularAndRamClearMeters(collectionDocument) {
   if (collectionDocument.ramClearMetersIn !== undefined) {
     const prevInVal = collectionDocument.prevIn || 0;
     const prevOutVal = collectionDocument.prevOut || 0;
-    
+
     ramClearMovementData = {
       'movement.drop': collectionDocument.ramClearMetersIn - prevInVal,
-      'movement.totalCancelledCredits': collectionDocument.ramClearMetersOut - prevOutVal,
-      'drop': collectionDocument.ramClearMetersIn,
-      'totalCancelledCredits': collectionDocument.ramClearMetersOut
+      'movement.totalCancelledCredits':
+        collectionDocument.ramClearMetersOut - prevOutVal,
+      drop: collectionDocument.ramClearMetersIn,
+      totalCancelledCredits: collectionDocument.ramClearMetersOut,
     };
   }
 
@@ -314,19 +320,19 @@ export async function updateRegularAndRamClearMeters(collectionDocument) {
   const movementData = {
     'movement.drop': collectionDocument.metersIn,
     'movement.totalCancelledCredits': collectionDocument.metersOut,
-    'drop': collectionDocument.metersIn,
-    'totalCancelledCredits': collectionDocument.metersOut
+    drop: collectionDocument.metersIn,
+    totalCancelledCredits: collectionDocument.metersOut,
   };
 
   // 6. Build bulk operations
   const operations = [];
-  
+
   if (ramClearMeterId) {
     operations.push({
       updateOne: {
         filter: { _id: ramClearMeterId },
-        update: { $set: ramClearMovementData }
-      }
+        update: { $set: ramClearMovementData },
+      },
     });
   }
 
@@ -334,8 +340,8 @@ export async function updateRegularAndRamClearMeters(collectionDocument) {
     operations.push({
       updateOne: {
         filter: { _id: meterId },
-        update: { $set: movementData }
-      }
+        update: { $set: movementData },
+      },
     });
   }
 
@@ -362,7 +368,9 @@ const MetersSchema = new Schema({
 });
 
 // Query must use String _id
-filter: { _id: collectionDocument.ramClearMeterId }
+filter: {
+  _id: collectionDocument.ramClearMeterId;
+}
 ```
 
 ---
@@ -373,7 +381,7 @@ If updates show `matchedCount: 0`:
 
 1. **Check meter IDs exist** - Is the collection showing `meterId` and `ramClearMeterId`?
 2. **Check Meters collection** - Do documents with these IDs exist?
-3. **_id type mismatch** - Ensure using String `_id`, not ObjectId
+3. **\_id type mismatch** - Ensure using String `_id`, not ObjectId
 
 ### Debug Logs to Check
 
@@ -388,30 +396,32 @@ If updates show `matchedCount: 0`:
 
 ## 5. Key Files Reference
 
-| File | Purpose |
-| :--- | :--- |
-| `components/CMS/collectionReport/modals/CollectionReportEditCollectionModal.tsx` | Main edit modal, Desktop/Mobile wrappers |
-| `lib/hooks/collectionReport/useEditCollectionModal.ts` | Desktop edit hook, handleUpdateReport |
-| `lib/hooks/collectionReport/useMobileEditCollectionModal.ts` | Mobile edit hook |
-| `app/api/lib/helpers/collectionReport/reportCreation.ts` | createManualMetersForEachMachine, updateRegularAndRamClearMeters |
-| `app/api/collection-reports/collections/[id]/route.ts` | Collection update API |
-| `app/api/lib/models/meters.ts` | Meters model |
-| `app/api/lib/models/collections.ts` | Collections model (meterId, ramClearMeterId fields) |
+| File                                                                             | Purpose                                                          |
+| :------------------------------------------------------------------------------- | :--------------------------------------------------------------- |
+| `components/CMS/collectionReport/modals/CollectionReportEditCollectionModal.tsx` | Main edit modal, Desktop/Mobile wrappers                         |
+| `lib/hooks/collectionReport/useEditCollectionModal.ts`                           | Desktop edit hook, handleUpdateReport                            |
+| `lib/hooks/collectionReport/useMobileEditCollectionModal.ts`                     | Mobile edit hook                                                 |
+| `app/api/lib/helpers/collectionReport/reportCreation.ts`                         | createManualMetersForEachMachine, updateRegularAndRamClearMeters |
+| `app/api/collection-reports/collections/[id]/route.ts`                           | Collection update API                                            |
+| `app/api/lib/models/meters.ts`                                                   | Meters model                                                     |
+| `app/api/lib/models/collections.ts`                                              | Collections model (meterId, ramClearMeterId fields)              |
 
 ---
 
 ## 6. Known Issues & Fixes
 
 ### Issue: Array Cleared Prematurely
+
 **Problem:** `metersToCreate.length = 0` was inside loop, clearing array before insert.
 **Fix:** Remove clear inside loop; accumulate meters then insert at end.
 
 ### Issue: Collection Meter IDs Not Matching
+
 **Problem:** Meter IDs stored on collection don't match any Meters documents.
 **Possible Cause:** Meters weren't created properly during report creation.
 **Debug:** Check server logs for `createManualMetersForEachMachine` and `Meter lookup`.
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: April 2026*
+_Document Version: 1.0_
+\*Last Updated: May 4, 2026

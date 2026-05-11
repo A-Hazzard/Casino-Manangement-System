@@ -3,6 +3,11 @@ import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
 import { comparePassword } from '@/app/api/lib/utils/validation';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/auth/profile/update-email
@@ -16,55 +21,140 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param {string} password - Required. The user's current password, verified before the update is applied.
  */
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/auth/profile/update-email';
+  const user = extractUserFromRequest(req);
+
   try {
     const session = await getUserFromServer();
     if (!session || !session._id) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/profile/update-email',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { newEmail, password } = await req.json();
 
     if (!newEmail || !password) {
-      return NextResponse.json({ error: 'New email and password are required' }, { status: 400 });
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/profile/update-email',
+        'New email and password are required',
+        user
+      );
+      return NextResponse.json(
+        { error: 'New email and password are required' },
+        { status: 400 }
+      );
     }
 
     // Basic email validation
     const emailRegex = /\S+@\S+\.\S+/;
     if (!emailRegex.test(newEmail)) {
-      return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/profile/update-email',
+        'Invalid email format',
+        user
+      );
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      );
     }
 
     await connectDB();
 
     // Fetch user with password
-    const user = await UserModel.findOne({ _id: session._id }).select('+password');
-    if (!user) {
+    const dbUser = await UserModel.findOne({ _id: session._id }).select(
+      '+password'
+    );
+    if (!dbUser) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/profile/update-email',
+        'User not found',
+        user
+      );
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Verify password
-    const isPasswordCorrect = await comparePassword(password, user.password);
+    const isPasswordCorrect = await comparePassword(password, dbUser.password);
     if (!isPasswordCorrect) {
-      return NextResponse.json({ error: 'Incorrect password' }, { status: 401 });
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/profile/update-email',
+        'Incorrect password',
+        user
+      );
+      return NextResponse.json(
+        { error: 'Incorrect password' },
+        { status: 401 }
+      );
     }
 
     // Check if email is already in use
-    const existingUser = await UserModel.findOne({ emailAddress: newEmail, _id: { $ne: session._id } });
+    const existingUser = await UserModel.findOne({
+      emailAddress: newEmail,
+      _id: { $ne: session._id },
+    });
     if (existingUser) {
-      return NextResponse.json({ error: 'Email already in use' }, { status: 400 });
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/profile/update-email',
+        'Email already in use',
+        user
+      );
+      return NextResponse.json(
+        { error: 'Email already in use' },
+        { status: 400 }
+      );
     }
 
     // Update email
-    user.emailAddress = newEmail;
-    await user.save();
+    dbUser.emailAddress = newEmail;
+    await dbUser.save();
+
+    const duration = Date.now() - startTime;
+    logRouteUpdate(
+      functionName,
+      'POST',
+      '/api/auth/profile/update-email',
+      1,
+      user,
+      duration
+    );
 
     return NextResponse.json({
       success: true,
       message: 'Email address updated successfully',
-      email: newEmail
+      email: newEmail,
     });
   } catch (e) {
-    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    const errorMessage =
+      e instanceof Error ? e.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/auth/profile/update-email',
+      errorMessage,
+      user
+    );
+    console.error('[POST] Error:', errorMessage);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

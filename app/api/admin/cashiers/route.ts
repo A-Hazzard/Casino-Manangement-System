@@ -14,6 +14,11 @@ import UserModel from '@/app/api/lib/models/user';
 import { generateMongoId } from '@/lib/utils/id';
 import { nanoid } from 'nanoid';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 interface CreateCashierRequest {
   name: string;
@@ -34,12 +39,23 @@ interface CreateCashierRequest {
  * @body {string} locationId - OPTIONAL. ID of the gaming location to associate with the cashier.
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/admin/cashiers';
+  const user = extractUserFromRequest(request);
+
   try {
     // ============================================================================
     // STEP 1: Authentication & Authorization
     // ============================================================================
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/admin/cashiers',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -50,6 +66,13 @@ export async function POST(request: NextRequest) {
       ['developer', 'admin', 'manager'].includes(role.toLowerCase())
     );
     if (!hasAdminAccess) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/admin/cashiers',
+        'Insufficient permissions',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Insufficient permissions' },
         { status: 403 }
@@ -63,6 +86,13 @@ export async function POST(request: NextRequest) {
     const { name, email, locationId } = body;
 
     if (!name || !email) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/admin/cashiers',
+        'Name and email are required',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Name and email are required' },
         { status: 400 }
@@ -81,6 +111,13 @@ export async function POST(request: NextRequest) {
       email: email.toLowerCase(),
     });
     if (existingUser) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/admin/cashiers',
+        'User with this email already exists',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'User with this email already exists' },
         { status: 400 }
@@ -109,6 +146,15 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     // STEP 6: Return success response (don't send password in response)
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/admin/cashiers',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json({
       success: true,
       cashier: {
@@ -123,7 +169,15 @@ export async function POST(request: NextRequest) {
         'Cashier account created successfully. Temporary password has been set.',
     });
   } catch (error) {
-    console.error('Error creating cashier:', error);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/admin/cashiers',
+      errorMessage,
+      user
+    );
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }

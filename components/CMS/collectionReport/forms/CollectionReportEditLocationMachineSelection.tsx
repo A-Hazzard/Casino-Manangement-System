@@ -36,6 +36,7 @@ import type {
 } from '@/lib/types/api';
 import type { CollectionDocument } from '@/lib/types/collection';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
+import MachineOnlineStatusDot from '@/components/ui/MachineOnlineStatusDot';
 import { toast } from 'sonner';
 
 type EditCollectionLocationMachineSelectionProps = {
@@ -53,6 +54,7 @@ type EditCollectionLocationMachineSelectionProps = {
   setSelectedMachineId: (id: string) => void;
   collectedMachineEntries: CollectionDocument[];
   editingEntryId: string | null;
+  machineStatusMap?: Record<string, boolean>;
 };
 
 export default function CollectionReportEditLocationMachineSelection({
@@ -70,9 +72,10 @@ export default function CollectionReportEditLocationMachineSelection({
   setSelectedMachineId,
   collectedMachineEntries,
   editingEntryId,
+  machineStatusMap = {},
 }: EditCollectionLocationMachineSelectionProps) {
   return (
-    <div className="flex flex-1 flex-col h-full min-h-0 w-full space-y-3 p-3 md:p-4 transition-all">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-3 p-3 transition-all md:p-4">
       <div className="pointer-events-none opacity-50">
         {isLoadingLocations ? (
           <Skeleton className="h-10 w-full rounded-md" />
@@ -115,7 +118,7 @@ export default function CollectionReportEditLocationMachineSelection({
       )}
 
       {/* Machine list */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+      <div className="custom-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
         {selectedLocationId ? (
           isLoadingMachines ? (
             <div className="space-y-2">
@@ -160,7 +163,7 @@ export default function CollectionReportEditLocationMachineSelection({
                       return;
                     }
                   }
-                  
+
                   if (selectedMachineId === String(machine._id)) {
                     setSelectedMachineId('');
                     return;
@@ -170,20 +173,26 @@ export default function CollectionReportEditLocationMachineSelection({
                 disabled={
                   isProcessing ||
                   (editingEntryId !== null &&
-                    collectedMachineEntries.find(
-                      e => e._id === editingEntryId
-                    )?.machineId !== String(machine._id))
+                    collectedMachineEntries.find(e => e._id === editingEntryId)
+                      ?.machineId !== String(machine._id))
                 }
               >
-                {formatMachineDisplayNameWithBold(machine)}
-                {collectedMachineEntries.find(
-                  e => e.machineId === String(machine._id)
-                ) &&
-                  !editingEntryId && (
-                    <span className="ml-auto text-xs text-green-500">
-                      (Added)
-                    </span>
-                  )}
+                <span className="flex min-w-0 flex-col gap-1">
+                  {formatMachineDisplayNameWithBold(machine)}
+                  <span className="flex items-center gap-1.5">
+                    {machine.relayId && (
+                      <MachineOnlineStatusDot
+                        isOnline={machineStatusMap[String(machine._id)]}
+                      />
+                    )}
+                    {collectedMachineEntries.find(
+                      e => e.machineId === String(machine._id)
+                    ) &&
+                      !editingEntryId && (
+                        <span className="text-xs text-green-500">(Added)</span>
+                      )}
+                  </span>
+                </span>
               </Button>
             ))
           ) : (
@@ -192,12 +201,9 @@ export default function CollectionReportEditLocationMachineSelection({
             </p>
           )
         ) : (
-          <p className="pt-2 text-xs text-grayHighlight">
-            Select a location.
-          </p>
+          <p className="pt-2 text-xs text-grayHighlight">Select a location.</p>
         )}
       </div>
     </div>
   );
 }
-

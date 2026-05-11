@@ -149,12 +149,16 @@ export function generateReportData(config: ReportConfig): ReportData {
       { label: 'Total Machines Analyzed', value: filteredMachines.length },
       {
         label: 'Total Handle',
-        value: filteredMachines.reduce((sum, machine) => sum + (machine.coinIn || 0), 0),
+        value: filteredMachines.reduce(
+          (sum, machine) => sum + (machine.coinIn || 0),
+          0
+        ),
       },
       {
         label: 'Total Win',
         value: filteredMachines.reduce(
-          (sum, machine) => sum + ((machine.coinIn || 0) - (machine.coinOut || 0)),
+          (sum, machine) =>
+            sum + ((machine.coinIn || 0) - (machine.coinOut || 0)),
           0
         ),
       },

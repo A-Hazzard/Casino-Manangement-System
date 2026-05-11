@@ -159,7 +159,7 @@ export default function LocationsDeleteLocationModal({
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <div
           ref={modalRef}
-          className="w-full max-w-md rounded-md bg-container shadow-lg overflow-hidden"
+          className="w-full max-w-md overflow-hidden rounded-md bg-container shadow-lg"
           style={{ opacity: 0 }}
         >
           {/* Header */}
@@ -238,9 +238,9 @@ export default function LocationsDeleteLocationModal({
                   ?
                 </p>
                 <p className="text-sm text-grayHighlight">
-                  The location will be hidden from active views but can be
-                  found under the &quot;Archived&quot; status filter.
-</p>
+                  The location will be hidden from active views but can be found
+                  under the &quot;Archived&quot; status filter.
+                </p>
               </div>
             )}
           </div>

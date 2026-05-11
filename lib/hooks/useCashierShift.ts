@@ -1,9 +1,9 @@
 /**
  * Cashier Shift Hook
- * 
+ *
  * Manages the state and actions for the current cashier shift.
  * Wraps API calls for opening, closing, and fetching shift status.
- * 
+ *
  * @module lib/hooks/useCashierShift
  */
 
@@ -40,13 +40,18 @@ export function useCashierShift() {
   const { user } = useAuth();
   const [shift, setShift] = useState<CashierShift | null>(null);
   const [currentBalance, setCurrentBalance] = useState<number>(0);
-  const [hasActiveVaultShift, setHasActiveVaultShift] = useState<boolean>(false);
+  const [hasActiveVaultShift, setHasActiveVaultShift] =
+    useState<boolean>(false);
   const [isVaultReconciled, setIsVaultReconciled] = useState<boolean>(false);
-  const [status, setStatus] = useState<CashierShift['status'] | 'idle' | 'loading'>('loading');
+  const [status, setStatus] = useState<
+    CashierShift['status'] | 'idle' | 'loading'
+  >('loading');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [pendingVmApproval, setPendingVmApproval] = useState<PendingVmApproval | null>(null);
-  const [pendingRequest, setPendingRequest] = useState<PendingFloatRequest | null>(null);
+  const [pendingVmApproval, setPendingVmApproval] =
+    useState<PendingVmApproval | null>(null);
+  const [pendingRequest, setPendingRequest] =
+    useState<PendingFloatRequest | null>(null);
 
   const [isStaleFromApi, setIsStaleFromApi] = useState<boolean>(false);
 
@@ -71,8 +76,12 @@ export function useCashierShift() {
             setShift(null);
             setStatus('idle');
           }
-          setPendingVmApproval((data.pendingVmApproval as PendingVmApproval) || null);
-          setPendingRequest((data.pendingRequest as PendingFloatRequest) || null);
+          setPendingVmApproval(
+            (data.pendingVmApproval as PendingVmApproval) || null
+          );
+          setPendingRequest(
+            (data.pendingRequest as PendingFloatRequest) || null
+          );
           setHasActiveVaultShift(data.hasActiveVaultShift || false);
           setIsVaultReconciled(data.isVaultReconciled || false);
           setIsStaleFromApi(data.isStale || false);
@@ -96,9 +105,10 @@ export function useCashierShift() {
 
   // Polling for status updates (Shift approvals, Float request approvals)
   useEffect(() => {
-    // Poll every 30s. 
+    // Poll every 30s.
     // We poll if shift is active, OR if we are idle and waiting for vault reconciliation.
-    const shouldPoll = status !== 'loading' && (status !== 'idle' || !isVaultReconciled);
+    const shouldPoll =
+      status !== 'loading' && (status !== 'idle' || !isVaultReconciled);
 
     if (!user || !shouldPoll) {
       return;
@@ -111,7 +121,10 @@ export function useCashierShift() {
     return () => clearInterval(interval);
   }, [user, status, isVaultReconciled, fetchCurrentShift]);
 
-  const openShift = async (denominations: Denomination[], requestedFloat: number) => {
+  const openShift = async (
+    denominations: Denomination[],
+    requestedFloat: number
+  ) => {
     const locationId = user?.assignedLocations?.[0];
     if (!locationId) {
       toast.error('No location assigned');
@@ -122,13 +135,13 @@ export function useCashierShift() {
       const payload: OpenCashierShiftRequest = {
         locationId,
         requestedFloat,
-        denominations
+        denominations,
       };
 
       const res = await fetch('/api/cashier/shift/open', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -147,20 +160,23 @@ export function useCashierShift() {
     }
   };
 
-  const closeShift = async (physicalCount: number, denominations: Denomination[]) => {
+  const closeShift = async (
+    physicalCount: number,
+    denominations: Denomination[]
+  ) => {
     if (!shift?._id) return false;
 
     try {
       const payload: CloseCashierShiftRequest = {
         shiftId: shift._id,
         physicalCount,
-        denominations
+        denominations,
       };
 
       const res = await fetch('/api/cashier/shift/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       const data: CloseCashierShiftResponse = await res.json();
@@ -189,7 +205,7 @@ export function useCashierShift() {
       const res = await fetch('/api/vault/float-request/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId })
+        body: JSON.stringify({ requestId }),
       });
       const data = await res.json();
       if (data.success) {
@@ -212,7 +228,7 @@ export function useCashierShift() {
       const res = await fetch('/api/vault/float-request', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId })
+        body: JSON.stringify({ requestId }),
       });
       const data = await res.json();
       if (data.success) {
@@ -245,6 +261,6 @@ export function useCashierShift() {
     openShift,
     confirmApproval,
     closeShift,
-    cancelFloatRequest
+    cancelFloatRequest,
   };
 }

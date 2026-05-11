@@ -1,8 +1,16 @@
-import { generateOTPAuthURI, generateTOTPSecret } from '@/app/api/lib/helpers/auth/totp';
+import {
+  generateOTPAuthURI,
+  generateTOTPSecret,
+} from '@/app/api/lib/helpers/auth/totp';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import UserModel from '@/app/api/lib/models/user';
 import { NextRequest, NextResponse } from 'next/server';
 import QRCode from 'qrcode';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/auth/totp/recover/verify
@@ -17,23 +25,36 @@ import QRCode from 'qrcode';
  *                       against `totpRecoveryToken` with expiry enforced via `totpRecoveryExpires`.
  */
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/auth/totp/recover/verify';
+  const user = extractUserFromRequest(req);
+
   try {
     const { token } = await req.json();
     if (!token) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/verify',
+        'Token is required',
+        user
+      );
       return NextResponse.json({ error: 'Token is required' }, { status: 400 });
     }
 
     console.log('[TOTP Verify] Checking token:', token);
     await connectDB();
-    const user = await UserModel.findOne({
+    const foundUser = await UserModel.findOne({
       totpRecoveryToken: token,
       totpRecoveryExpires: { $gt: new Date() },
     });
 
-    if (!user) {
+    if (!foundUser) {
       console.log('[TOTP Verify] No user found for token or token expired');
       // Let's check if the token exists at all without the expiry filter for debugging
-      const userWithToken = await UserModel.findOne({ totpRecoveryToken: token });
+      const userWithToken = await UserModel.findOne({
+        totpRecoveryToken: token,
+      });
       if (userWithToken) {
         console.log(
           '[TOTP Verify] Found user but token EXPIRED. Expiry:',
@@ -44,47 +65,92 @@ export async function POST(req: NextRequest) {
       } else {
         console.log('[TOTP Verify] Token not found in database at all');
       }
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/verify',
+        'Invalid or expired recovery token',
+        user
+      );
       return NextResponse.json(
         { error: 'Invalid or expired recovery token' },
         { status: 400 }
       );
     }
 
-    console.log('[TOTP Verify] User found:', user.username);
+    console.log('[TOTP Verify] User found:', foundUser.username);
 
     // Generate NEW secret
     const secret = generateTOTPSecret();
     const appName = 'Evolution One CMS';
-    const uri = generateOTPAuthURI(user.username || user.emailAddress, appName, secret);
+    const uri = generateOTPAuthURI(
+      foundUser.username || foundUser.emailAddress,
+      appName,
+      secret
+    );
     const qrCodeUrl = await QRCode.toDataURL(uri);
 
     // Use totpTempSecret instead of overwriting totpSecret/totpEnabled immediately
     // This allows the user to maintain their current 2FA protection until the new one is verified
     const updateResult = await UserModel.findOneAndUpdate(
-      { _id: user._id },
+      { _id: foundUser._id },
       {
         $set: {
           totpTempSecret: secret,
           // totpRecoveryToken: null, // Keep the token for the confirm step if needed, or clear it if preferred
           // totpRecoveryExpires: null
-        }
+        },
       },
       { strict: false }
     );
     if (!updateResult) {
-      return NextResponse.json({ error: 'Failed to save new TOTP secret' }, { status: 500 });
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/auth/totp/recover/verify',
+        'Failed to save new TOTP secret',
+        user
+      );
+      return NextResponse.json(
+        { error: 'Failed to save new TOTP secret' },
+        { status: 500 }
+      );
     }
 
-    console.log('[TOTP Verify] Tokens cleared and new secret saved for:', user.username);
+    console.log(
+      '[TOTP Verify] Tokens cleared and new secret saved for:',
+      foundUser.username
+    );
+
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'POST',
+      '/api/auth/totp/recover/verify',
+      1,
+      user,
+      duration
+    );
 
     return NextResponse.json({
       success: true,
       qrCodeUrl,
       secret,
-      username: user.username
+      username: foundUser.username,
     });
   } catch (e) {
-    console.error('[POST] Error:', e instanceof Error ? e.message : 'Unknown error');
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    const errorMessage =
+      e instanceof Error ? e.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/auth/totp/recover/verify',
+      errorMessage,
+      user
+    );
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }

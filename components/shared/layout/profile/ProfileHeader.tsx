@@ -32,7 +32,7 @@ export default function ProfileHeader({
               My Profile
             </h2>
             {userId && (
-              <span className="rounded-md bg-gray-100 px-2 py-1 text-[10px] font-mono font-medium text-gray-500 ring-1 ring-inset ring-gray-500/10">
+              <span className="rounded-md bg-gray-100 px-2 py-1 font-mono text-[10px] font-medium text-gray-500 ring-1 ring-inset ring-gray-500/10">
                 ID: {userId}
               </span>
             )}
@@ -69,4 +69,3 @@ export default function ProfileHeader({
     </div>
   );
 }
-

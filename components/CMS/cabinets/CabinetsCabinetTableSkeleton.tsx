@@ -52,7 +52,10 @@ export default function CabinetsCabinetTableSkeleton() {
         </thead>
         <tbody>
           {Array.from({ length: 10 }).map((_, rowIndex) => (
-            <tr key={rowIndex} className="border-b border-gray-200 hover:bg-grayHighlight/10">
+            <tr
+              key={rowIndex}
+              className="border-b border-gray-200 hover:bg-grayHighlight/10"
+            >
               {/* Asset/Status Column - matches CabinetsCabinetTable structure */}
               <td className="w-[240px] p-3">
                 <div className="space-y-2">
@@ -110,4 +113,3 @@ export default function CabinetsCabinetTableSkeleton() {
     </div>
   );
 }
-

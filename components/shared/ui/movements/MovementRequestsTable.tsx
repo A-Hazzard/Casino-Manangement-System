@@ -1,23 +1,23 @@
 import { Button } from '@/components/shared/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import { useUserStore } from '@/lib/store/userStore';
 import { MovementRequest } from '@/shared/types/movement';
 import {
-    formatMovementRequestDate,
-    getStatusColor,
+  formatMovementRequestDate,
+  getStatusColor,
 } from '@/lib/utils/movement';
 import deleteIcon from '@/public/deleteIcon.svg';
 import editIcon from '@/public/editIcon.svg';
@@ -40,12 +40,15 @@ export default function MovementRequestsTable({
   const tableRef = useRef<HTMLTableElement>(null);
   const { user: currentUser } = useUserStore();
   const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
-  const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role));
+  const isAdminOrDev = userRoles.some(role =>
+    ['admin', 'developer'].includes(role)
+  );
   const userEmail = currentUser?.emailAddress;
-  const [viewMachinesReq, setViewMachinesReq] = useState<MovementRequest | null>(null);
+  const [viewMachinesReq, setViewMachinesReq] =
+    useState<MovementRequest | null>(null);
 
   return (
-    <div className="w-full max-w-full overflow-x-auto bg-white shadow rounded-lg">
+    <div className="w-full max-w-full overflow-x-auto rounded-lg bg-white shadow">
       <Table ref={tableRef} className="w-full">
         <TableHeader>
           <TableRow className="bg-[#00b517] hover:bg-[#00b517]">
@@ -61,16 +64,16 @@ export default function MovementRequestsTable({
             <TableHead className="w-[12%] font-semibold text-white">
               REQUESTED TO
             </TableHead>
-            <TableHead className="w-[10%] font-semibold text-white text-center">
+            <TableHead className="w-[10%] text-center font-semibold text-white">
               MACHINES
             </TableHead>
             <TableHead className="w-[18%] font-semibold text-white">
               DATE
             </TableHead>
-            <TableHead className="w-[10%] font-semibold text-white text-center">
+            <TableHead className="w-[10%] text-center font-semibold text-white">
               STATUS
             </TableHead>
-            <TableHead className="w-[10%] font-semibold text-white text-center">
+            <TableHead className="w-[10%] text-center font-semibold text-white">
               ACTIONS
             </TableHead>
           </TableRow>
@@ -79,46 +82,67 @@ export default function MovementRequestsTable({
           {requests.map(req => (
             <TableRow key={req._id} className="hover:bg-grayHighlight/10">
               <TableCell className="font-medium">
-                <div className="truncate" title={req.creatorName || req.createdBy}>
+                <div
+                  className="truncate"
+                  title={req.creatorName || req.createdBy}
+                >
                   {req.creatorName || req.createdBy}
                 </div>
               </TableCell>
               <TableCell>
                 <div
                   className="truncate font-semibold text-gray-700"
-                  title={locationsMap[req.locationFromId || req.locationFrom] || req.locationFrom}
+                  title={
+                    locationsMap[req.locationFromId || req.locationFrom] ||
+                    req.locationFrom
+                  }
                 >
-                  {locationsMap[req.locationFromId || req.locationFrom] || req.locationFrom}
+                  {locationsMap[req.locationFromId || req.locationFrom] ||
+                    req.locationFrom}
                 </div>
               </TableCell>
               <TableCell>
                 <div
                   className="truncate font-semibold text-gray-700"
-                  title={locationsMap[req.locationToId || req.locationTo] || req.locationTo}
+                  title={
+                    locationsMap[req.locationToId || req.locationTo] ||
+                    req.locationTo
+                  }
                 >
-                  {locationsMap[req.locationToId || req.locationTo] || req.locationTo}
+                  {locationsMap[req.locationToId || req.locationTo] ||
+                    req.locationTo}
                 </div>
               </TableCell>
               <TableCell>
-                <div className="truncate text-gray-600" title={req.recipientName || req.requestTo}>
+                <div
+                  className="truncate text-gray-600"
+                  title={req.recipientName || req.requestTo}
+                >
                   {req.recipientName || req.requestTo}
                 </div>
               </TableCell>
               <TableCell className="text-center">
                 <div className="flex flex-col items-center gap-1">
-                  <div className="truncate bg-gray-100 rounded px-1 py-0.5 text-xs inline-block max-w-[120px]" 
-                    title={req.machineDetails && req.machineDetails.length > 0 
-                      ? req.machineDetails.map(m => m.displayName).join(', ')
-                      : req.cabinetIn}
+                  <div
+                    className="inline-block max-w-[120px] truncate rounded bg-gray-100 px-1 py-0.5 text-xs"
+                    title={
+                      req.machineDetails && req.machineDetails.length > 0
+                        ? req.machineDetails.map(m => m.displayName).join(', ')
+                        : req.cabinetIn
+                    }
                   >
-                    {req.machineDetails && req.machineDetails.length > 0 
-                      ? req.machineDetails.slice(0, 2).map(m => m.displayName).join(', ') + (req.machineDetails.length > 2 ? '...' : '')
+                    {req.machineDetails && req.machineDetails.length > 0
+                      ? req.machineDetails
+                          .slice(0, 2)
+                          .map(m => m.displayName)
+                          .join(', ') +
+                        (req.machineDetails.length > 2 ? '...' : '')
                       : req.cabinetIn}
                   </div>
                   {req.machineDetails && req.machineDetails.length > 2 && (
-                    <Button 
-                      variant="link" 
-                      className="h-auto p-0 text-[10px] text-buttonActive font-bold uppercase hover:no-underline"
+                    <Button
+                      variant="link"
+                      className="h-auto p-0 text-[10px] font-bold uppercase text-buttonActive hover:no-underline"
                       onClick={() => setViewMachinesReq(req)}
                     >
                       View All ({req.machineDetails.length})
@@ -127,13 +151,16 @@ export default function MovementRequestsTable({
                 </div>
               </TableCell>
               <TableCell>
-                <div className="text-xs text-gray-600" title={formatMovementRequestDate(req.timestamp)}>
+                <div
+                  className="text-xs text-gray-600"
+                  title={formatMovementRequestDate(req.timestamp)}
+                >
                   {formatMovementRequestDate(req.timestamp)}
                 </div>
               </TableCell>
               <TableCell className="text-center">
                 <span
-                  className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-bold leading-5 shadow-sm border ${getStatusColor(
+                  className={`inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-bold leading-5 shadow-sm ${getStatusColor(
                     req.status
                   )}`}
                   title={req.status}
@@ -145,42 +172,64 @@ export default function MovementRequestsTable({
               <TableCell className="text-center">
                 <div className="flex items-center justify-center gap-1">
                   {(() => {
-                    const isCreator = req.createdBy === userEmail || req.createdBy === currentUser?._id;
-                    const isRecipient = req.requestTo === userEmail || req.requestTo === currentUser?._id;
-                    
-                    // Destination location check
-                    const destinationLocationId = Object.keys(locationsMap).find(id => locationsMap[id] === req.locationTo) || req.locationTo;
-                    const isAuthorizedDestinationUser = userRoles.some(role => 
-                      ['location admin', 'technician', 'manager'].includes(role)
-                    ) && currentUser?.assignedLocations?.includes(destinationLocationId);
+                    const isCreator =
+                      req.createdBy === userEmail ||
+                      req.createdBy === currentUser?._id;
+                    const isRecipient =
+                      req.requestTo === userEmail ||
+                      req.requestTo === currentUser?._id;
 
-                    const canEdit = isAdminOrDev || isCreator || isRecipient || isAuthorizedDestinationUser;
+                    // Destination location check
+                    const destinationLocationId =
+                      Object.keys(locationsMap).find(
+                        id => locationsMap[id] === req.locationTo
+                      ) || req.locationTo;
+                    const isAuthorizedDestinationUser =
+                      userRoles.some(role =>
+                        ['location admin', 'technician', 'manager'].includes(
+                          role
+                        )
+                      ) &&
+                      currentUser?.assignedLocations?.includes(
+                        destinationLocationId
+                      );
+
+                    const canEdit =
+                      isAdminOrDev ||
+                      isCreator ||
+                      isRecipient ||
+                      isAuthorizedDestinationUser;
                     // Admins, developers, and the creator can delete
                     const canDelete = isAdminOrDev || isCreator;
-                    
+
                     return (
                       <>
                         {canEdit && (
                           <Button
                             variant="ghost"
-                            onClick={(e) => {
+                            onClick={e => {
                               e.stopPropagation();
                               onEdit(req);
                             }}
                             className="h-8 w-8 p-1 hover:bg-accent"
                             title="Edit"
                           >
-                            <Image src={editIcon} alt="Edit" width={18} height={18} />
+                            <Image
+                              src={editIcon}
+                              alt="Edit"
+                              width={18}
+                              height={18}
+                            />
                           </Button>
                         )}
                         {canDelete && (
                           <Button
                             variant="ghost"
-                            onClick={(e) => {
+                            onClick={e => {
                               e.stopPropagation();
                               onDelete(req);
                             }}
-                            className="h-8 w-8 p-1 hover:bg-accent text-destructive"
+                            className="h-8 w-8 p-1 text-destructive hover:bg-accent"
                             title="Delete"
                           >
                             <Image
@@ -207,22 +256,30 @@ export default function MovementRequestsTable({
           )}
         </TableBody>
       </Table>
-      
+
       {/* View All Machines Modal */}
-      <Dialog open={!!viewMachinesReq} onOpenChange={(open) => !open && setViewMachinesReq(null)}>
-        <DialogContent className="sm:max-w-md bg-white">
+      <Dialog
+        open={!!viewMachinesReq}
+        onOpenChange={open => !open && setViewMachinesReq(null)}
+      >
+        <DialogContent className="bg-white sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
               Machines in Request
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+          <div className="max-h-[60vh] space-y-4 overflow-y-auto py-4">
             <div className="grid gap-2">
-              {viewMachinesReq?.machineDetails?.map((m) => (
-                <div key={m._id} className="flex flex-col p-3 border rounded-lg bg-gray-50">
-                  <span className="font-semibold text-sm">{m.displayName}</span>
+              {viewMachinesReq?.machineDetails?.map(m => (
+                <div
+                  key={m._id}
+                  className="flex flex-col rounded-lg border bg-gray-50 p-3"
+                >
+                  <span className="text-sm font-semibold">{m.displayName}</span>
                   {m.serialNumber && m.serialNumber !== m.displayName && (
-                    <span className="text-xs text-muted-foreground">SN: {m.serialNumber}</span>
+                    <span className="text-xs text-muted-foreground">
+                      SN: {m.serialNumber}
+                    </span>
                   )}
                 </div>
               ))}
@@ -238,4 +295,3 @@ export default function MovementRequestsTable({
     </div>
   );
 }
-

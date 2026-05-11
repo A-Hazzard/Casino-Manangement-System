@@ -108,7 +108,12 @@ export async function fixAllSasTimesData(): Promise<{
             );
           }
         } catch (collectionError) {
-          console.error('[fixAllSasTimesData] Error:', collectionError instanceof Error ? collectionError.message : 'Unknown error');
+          console.error(
+            '[fixAllSasTimesData] Error:',
+            collectionError instanceof Error
+              ? collectionError.message
+              : 'Unknown error'
+          );
           totalErrors++;
           errors.push(
             `Collection ${collection._id}: ${
@@ -137,7 +142,10 @@ export async function fixAllSasTimesData(): Promise<{
 
       totalReportsProcessed++;
     } catch (reportError) {
-      console.error('[fixAllSasTimesData] Error:', reportError instanceof Error ? reportError.message : 'Unknown error');
+      console.error(
+        '[fixAllSasTimesData] Error:',
+        reportError instanceof Error ? reportError.message : 'Unknown error'
+      );
       totalErrors++;
       errors.push(
         `Report ${report.locationReportId}: ${
@@ -193,15 +201,30 @@ async function checkCollectionIssues(
 }> {
   if (!collection) {
     console.error('[checkCollectionIssues] collection is required');
-    return { hasIssues: false, hasInvertedSasTimes: false, hasPrevMismatch: false, hasMovementMismatch: false };
+    return {
+      hasIssues: false,
+      hasInvertedSasTimes: false,
+      hasPrevMismatch: false,
+      hasMovementMismatch: false,
+    };
   }
   if (!machineId) {
     console.error('[checkCollectionIssues] machineId is required');
-    return { hasIssues: false, hasInvertedSasTimes: false, hasPrevMismatch: false, hasMovementMismatch: false };
+    return {
+      hasIssues: false,
+      hasInvertedSasTimes: false,
+      hasPrevMismatch: false,
+      hasMovementMismatch: false,
+    };
   }
   if (!report) {
     console.error('[checkCollectionIssues] report is required');
-    return { hasIssues: false, hasInvertedSasTimes: false, hasPrevMismatch: false, hasMovementMismatch: false };
+    return {
+      hasIssues: false,
+      hasInvertedSasTimes: false,
+      hasPrevMismatch: false,
+      hasMovementMismatch: false,
+    };
   }
   let hasIssues = false;
   let hasInvertedSasTimes = false;
@@ -209,12 +232,9 @@ async function checkCollectionIssues(
   let hasMovementMismatch = false;
 
   // Check 1: Inverted SAS times
-  if (
-    collection.sasMeters?.sasStartTime &&
-    collection.sasMeters?.sasEndTime
-  ) {
-    const sasStartTime = new Date(collection.sasMeters.sasStartTime);
-    const sasEndTime = new Date(collection.sasMeters.sasEndTime);
+  if (collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime) {
+    const sasStartTime = collection.sasMeters.sasStartTime;
+    const sasEndTime = collection.sasMeters.sasEndTime;
 
     if (sasStartTime >= sasEndTime) {
       hasIssues = true;
@@ -226,10 +246,7 @@ async function checkCollectionIssues(
   }
 
   // Check 2: prevIn/prevOut mismatch
-  if (
-    collection.prevIn !== undefined &&
-    collection.prevOut !== undefined
-  ) {
+  if (collection.prevIn !== undefined && collection.prevOut !== undefined) {
     const previousCollections = (await Collections.find({
       machineId: machineId,
       timestamp: { $lt: new Date(report.timestamp) },
@@ -333,10 +350,7 @@ async function fixCollection(
   );
 
   // Step 3: Fix SAS time range
-  const { sasStartTime, sasEndTime } = await fixSasTimes(
-    collection,
-    machineId
-  );
+  const { sasStartTime, sasEndTime } = await fixSasTimes(collection, machineId);
 
   const newSasMetrics = {
     ...collection.sasMeters,
@@ -358,13 +372,16 @@ async function fixCollection(
   });
 
   // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-  await Collections.findOneAndUpdate({ _id: collection._id }, {
-    prevIn: correctPrevIn,
-    prevOut: correctPrevOut,
-    movement: updatedMovement,
-    sasMeters: newSasMetrics,
-    updatedAt: new Date(),
-  });
+  await Collections.findOneAndUpdate(
+    { _id: collection._id },
+    {
+      prevIn: correctPrevIn,
+      prevOut: correctPrevOut,
+      movement: updatedMovement,
+      sasMeters: newSasMetrics,
+      updatedAt: new Date(),
+    }
+  );
 }
 
 /**
@@ -463,7 +480,10 @@ async function recalculateMovement(
 
     return updatedMovement;
   } catch (calcError) {
-    console.error('[recalculateMovement] Error:', calcError instanceof Error ? calcError.message : 'Unknown error');
+    console.error(
+      '[recalculateMovement] Error:',
+      calcError instanceof Error ? calcError.message : 'Unknown error'
+    );
     // Return original movement if calculation fails
     return collection.movement;
   }
@@ -564,38 +584,45 @@ async function rebuildAllMachineHistories(
 
         // Update machine with rebuilt history
         // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-        await Machine.findOneAndUpdate({ _id: machineId }, {
-          collectionMetersHistory: newHistory,
-          collectionTime:
-            machineCollections.length > 0
-              ? new Date(
-                  machineCollections[machineCollections.length - 1].timestamp
-                )
-              : undefined,
-          previousCollectionTime:
-            machineCollections.length > 1
-              ? new Date(
-                  machineCollections[machineCollections.length - 2].timestamp
-                )
-              : undefined,
-          // Sync collectionMeters with most recent collection
-          'collectionMeters.metersIn':
-            machineCollections.length > 0
-              ? machineCollections[machineCollections.length - 1].metersIn || 0
-              : 0,
-          'collectionMeters.metersOut':
-            machineCollections.length > 0
-              ? machineCollections[machineCollections.length - 1].metersOut ||
-                0
-              : 0,
-        });
+        await Machine.findOneAndUpdate(
+          { _id: machineId },
+          {
+            collectionMetersHistory: newHistory,
+            collectionTime:
+              machineCollections.length > 0
+                ? new Date(
+                    machineCollections[machineCollections.length - 1].timestamp
+                  )
+                : undefined,
+            previousCollectionTime:
+              machineCollections.length > 1
+                ? new Date(
+                    machineCollections[machineCollections.length - 2].timestamp
+                  )
+                : undefined,
+            // Sync collectionMeters with most recent collection
+            'collectionMeters.metersIn':
+              machineCollections.length > 0
+                ? machineCollections[machineCollections.length - 1].metersIn ||
+                  0
+                : 0,
+            'collectionMeters.metersOut':
+              machineCollections.length > 0
+                ? machineCollections[machineCollections.length - 1].metersOut ||
+                  0
+                : 0,
+          }
+        );
 
         totalHistoryRebuilt += newHistory.length;
         console.warn(
           `    ✅ Rebuilt history for machine ${machineId}: ${newHistory.length} entries`
         );
       } catch (machineError) {
-        console.error('[rebuildAllMachineHistories] Error:', machineError instanceof Error ? machineError.message : 'Unknown error');
+        console.error(
+          '[rebuildAllMachineHistories] Error:',
+          machineError instanceof Error ? machineError.message : 'Unknown error'
+        );
       }
     }
 
@@ -603,12 +630,11 @@ async function rebuildAllMachineHistories(
       `    🎉 Total collectionMetersHistory entries rebuilt: ${totalHistoryRebuilt}`
     );
   } catch (historyError) {
-    console.error('[rebuildAllMachineHistories] Error:', historyError instanceof Error ? historyError.message : 'Unknown error');
+    console.error(
+      '[rebuildAllMachineHistories] Error:',
+      historyError instanceof Error ? historyError.message : 'Unknown error'
+    );
   }
 
   return totalHistoryRebuilt;
 }
-
-
-
-

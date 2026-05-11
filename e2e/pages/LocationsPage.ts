@@ -43,7 +43,9 @@ export class LocationsPage {
     this.page = page;
 
     // Page header button — label varies ("Add Location" / "+ Location")
-    this.addLocationButton = page.getByRole('button', { name: /add.*location|new.*location|\+ location/i });
+    this.addLocationButton = page.getByRole('button', {
+      name: /add.*location|new.*location|\+ location/i,
+    });
 
     // Table
     this.tableBody = page.locator('table tbody');
@@ -51,29 +53,57 @@ export class LocationsPage {
 
     // ── Create modal ──────────────────────────────────────────────────────────
     // The modal is identified by the dialog role; its title is "Add New Location"
-    this.createModal = page.locator('[role="dialog"]').filter({ hasText: /add new location/i });
+    this.createModal = page
+      .locator('[role="dialog"]')
+      .filter({ hasText: /add new location/i });
 
     this.nameInput = this.createModal.locator('input[name="name"], #name');
-    this.streetInput = this.createModal.locator('input[name="street"], #street');
+    this.streetInput = this.createModal.locator(
+      'input[name="street"], #street'
+    );
     this.cityInput = this.createModal.locator('input[name="city"], #city');
-    this.countrySelect = this.createModal.locator('select[name="country"], #country');
-    this.profitShareInput = this.createModal.locator('input[name="profitShare"], #profitShare');
-    this.licenceeSelect = this.createModal.locator('select[name="licencee"], #licencee');
-    this.membershipCheckbox = this.createModal.locator('input[name="membershipEnabled"], #membershipEnabled');
+    this.countrySelect = this.createModal.locator(
+      'select[name="country"], #country'
+    );
+    this.profitShareInput = this.createModal.locator(
+      'input[name="profitShare"], #profitShare'
+    );
+    this.licenceeSelect = this.createModal.locator(
+      'select[name="licencee"], #licencee'
+    );
+    this.membershipCheckbox = this.createModal.locator(
+      'input[name="membershipEnabled"], #membershipEnabled'
+    );
 
-    this.submitCreateButton = this.createModal.getByRole('button', { name: /add location|create|save/i });
-    this.cancelCreateButton = this.createModal.getByRole('button', { name: /cancel/i });
+    this.submitCreateButton = this.createModal.getByRole('button', {
+      name: /add location|create|save/i,
+    });
+    this.cancelCreateButton = this.createModal.getByRole('button', {
+      name: /cancel/i,
+    });
 
     // ── Edit modal ─────────────────────────────────────────────────────────────
-    this.editModal = page.locator('[role="dialog"]').filter({ hasText: /edit.*location|update.*location/i });
+    this.editModal = page
+      .locator('[role="dialog"]')
+      .filter({ hasText: /edit.*location|update.*location/i });
     this.editNameInput = this.editModal.locator('input[name="name"], #name');
-    this.submitEditButton = this.editModal.getByRole('button', { name: /save|update/i });
-    this.cancelEditButton = this.editModal.getByRole('button', { name: /cancel/i });
+    this.submitEditButton = this.editModal.getByRole('button', {
+      name: /save|update/i,
+    });
+    this.cancelEditButton = this.editModal.getByRole('button', {
+      name: /cancel/i,
+    });
 
     // ── Delete dialog ──────────────────────────────────────────────────────────
-    this.deleteDialog = page.locator('[role="dialog"]').filter({ hasText: /are you absolutely sure/i });
-    this.confirmDeleteButton = this.deleteDialog.getByRole('button', { name: /delete/i });
-    this.cancelDeleteButton = this.deleteDialog.getByRole('button', { name: /cancel/i });
+    this.deleteDialog = page
+      .locator('[role="dialog"]')
+      .filter({ hasText: /are you absolutely sure/i });
+    this.confirmDeleteButton = this.deleteDialog.getByRole('button', {
+      name: /delete/i,
+    });
+    this.cancelDeleteButton = this.deleteDialog.getByRole('button', {
+      name: /cancel/i,
+    });
   }
 
   // ─── Navigation ────────────────────────────────────────────────────────────
@@ -98,7 +128,11 @@ export class LocationsPage {
   async clickEdit(rowIndex: number) {
     const row = this.tableRows.nth(rowIndex);
     // Edit button identified by aria-label or title attribute
-    await row.locator('button[aria-label*="edit" i], img[alt*="edit" i], [title*="edit" i]').click();
+    await row
+      .locator(
+        'button[aria-label*="edit" i], img[alt*="edit" i], [title*="edit" i]'
+      )
+      .click();
   }
 
   /**
@@ -106,7 +140,11 @@ export class LocationsPage {
    */
   async clickDelete(rowIndex: number) {
     const row = this.tableRows.nth(rowIndex);
-    await row.locator('button[aria-label*="delete" i], img[alt*="delete" i], [title*="delete" i]').click();
+    await row
+      .locator(
+        'button[aria-label*="delete" i], img[alt*="delete" i], [title*="delete" i]'
+      )
+      .click();
   }
 
   /**
@@ -114,7 +152,9 @@ export class LocationsPage {
    */
   async clickView(rowIndex: number) {
     const row = this.tableRows.nth(rowIndex);
-    await row.locator('button[aria-label*="view" i], [aria-label*="eye" i]').click();
+    await row
+      .locator('button[aria-label*="view" i], [aria-label*="eye" i]')
+      .click();
   }
 
   // ─── Create modal actions ──────────────────────────────────────────────────
@@ -136,9 +176,11 @@ export class LocationsPage {
     await this.nameInput.fill(data.name);
     if (data.street) await this.streetInput.fill(data.street);
     if (data.city) await this.cityInput.fill(data.city);
-    if (data.country) await this.countrySelect.selectOption({ label: data.country });
+    if (data.country)
+      await this.countrySelect.selectOption({ label: data.country });
     if (data.profitShare) await this.profitShareInput.fill(data.profitShare);
-    if (data.licencee) await this.licenceeSelect.selectOption({ label: data.licencee });
+    if (data.licencee)
+      await this.licenceeSelect.selectOption({ label: data.licencee });
     if (data.membershipEnabled !== undefined) {
       if (data.membershipEnabled) await this.membershipCheckbox.check();
       else await this.membershipCheckbox.uncheck();
@@ -207,7 +249,11 @@ export class LocationsPage {
     await expect(this.deleteDialog).toBeVisible();
   }
 
-  async expectMetricInRow(locationName: string, column: 'moneyIn' | 'moneyOut' | 'gross', value: string) {
+  async expectMetricInRow(
+    locationName: string,
+    column: 'moneyIn' | 'moneyOut' | 'gross',
+    value: string
+  ) {
     const row = this.rowByName(locationName);
     const cells = row.locator('td');
     // column indices: 0=name, 1=moneyIn, 2=moneyOut, 3=gross

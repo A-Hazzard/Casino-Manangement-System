@@ -17,39 +17,44 @@ import { FC } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import { LocationTableProps } from '@/lib/types/location';
 import {
-    getGrossColorClass,
-    getMoneyInColorClass,
+  getGrossColorClass,
+  getMoneyInColorClass,
 } from '@/lib/utils/financial';
 import { hasMissingCoordinates } from '@/lib/utils/location';
 import {
-    BadgeCheck,
-    Eye,
-    FileWarning,
-    HelpCircle,
-    Home,
-    MapPinOff,
-    MonitorOff,
-    RotateCcw,
-    Server,
- } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/shared/ui/tooltip';
+  BadgeCheck,
+  Eye,
+  FileWarning,
+  HelpCircle,
+  Home,
+  MapPinOff,
+  MonitorOff,
+  RotateCcw,
+  Server,
+} from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/shared/ui/tooltip';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 
 import deleteIcon from '@/public/deleteIcon.svg';
 import editIcon from '@/public/editIcon.svg';
 import { format, formatDistanceToNow } from 'date-fns';
-
 
 const LocationsLocationTable: FC<LocationTableProps> = ({
   locations,
@@ -167,65 +172,104 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                       {/* Status icons row */}
                       <div className="flex flex-wrap items-center gap-1.5">
                         <TooltipProvider delayDuration={200}>
-                          {/* SMIB Icon */}
+                          {/* Full SMIB Icon */}
                           {Boolean(
-                            (location as { hasSmib?: boolean }).hasSmib ||
-                              !(location as { noSMIBLocation?: boolean }).noSMIBLocation
-                          ) && !(location as { noSMIBLocation?: boolean }).noSMIBLocation && (
+                            (location as { fullSMIBs?: boolean }).fullSMIBs
+                          ) && (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="inline-flex flex-shrink-0">
                                   <Server className="h-4 w-4 text-blue-600" />
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent side="top">SMIB Location</TooltipContent>
+                              <TooltipContent side="top">
+                                Full SMIB Location
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {/* Semi SMIB Icon */}
+                          {Boolean(
+                            (location as { semiSMIBs?: boolean }).semiSMIBs
+                          ) && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex flex-shrink-0">
+                                  <Server className="h-4 w-4 text-amber-500" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">
+                                Semi SMIB Location
+                              </TooltipContent>
                             </Tooltip>
                           )}
                           {/* No SMIB Icon */}
-                          {Boolean((location as { noSMIBLocation?: boolean }).noSMIBLocation) && (
+                          {Boolean(
+                            (location as { noSMIBLocation?: boolean })
+                              .noSMIBLocation
+                          ) && (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="inline-flex flex-shrink-0">
                                   <MonitorOff className="h-4 w-4 text-gray-500" />
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent side="top">No SMIB Location</TooltipContent>
+                              <TooltipContent side="top">
+                                No SMIB Location
+                              </TooltipContent>
                             </Tooltip>
                           )}
                           {/* Local Server Icon */}
-                          {Boolean((location as { isLocalServer?: boolean }).isLocalServer) && (
+                          {Boolean(
+                            (location as { isLocalServer?: boolean })
+                              .isLocalServer
+                          ) && (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="inline-flex flex-shrink-0">
                                   <Home className="h-4 w-4 text-purple-600" />
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent side="top">Local Server</TooltipContent>
+                              <TooltipContent side="top">
+                                Local Server
+                              </TooltipContent>
                             </Tooltip>
                           )}
                           {/* Membership Icon */}
-                          {Boolean((location as { membershipEnabled?: boolean }).membershipEnabled) && (
+                          {Boolean(
+                            (location as { membershipEnabled?: boolean })
+                              .membershipEnabled
+                          ) && (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="inline-flex flex-shrink-0">
                                   <BadgeCheck className="h-4 w-4 text-green-600" />
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent side="top">Membership enabled</TooltipContent>
+                              <TooltipContent side="top">
+                                Membership enabled
+                              </TooltipContent>
                             </Tooltip>
                           )}
                           {/* Warning Icon - No recent collection report */}
                           {selectedFilters.some(f => f === 'NoSMIBLocation') &&
-                            Boolean((location as { hasNoRecentCollectionReport?: boolean }).hasNoRecentCollectionReport) && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="inline-flex flex-shrink-0">
-                                  <FileWarning className="h-4 w-4 text-red-600" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top">No collection report in past 3 months</TooltipContent>
-                            </Tooltip>
-                          )}
+                            Boolean(
+                              (
+                                location as {
+                                  hasNoRecentCollectionReport?: boolean;
+                                }
+                              ).hasNoRecentCollectionReport
+                            ) && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex flex-shrink-0">
+                                    <FileWarning className="h-4 w-4 text-red-600" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top">
+                                  No collection report in past 3 months
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
                           {/* Missing Coordinates Icon */}
                           {hasMissingCoordinates(loc) && (
                             <Tooltip>
@@ -234,24 +278,34 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                                   <MapPinOff className="h-4 w-4 text-red-600" />
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent side="top">This location&apos;s coordinates have not been set</TooltipContent>
+                              <TooltipContent side="top">
+                                This location&apos;s coordinates have not been
+                                set
+                              </TooltipContent>
                             </Tooltip>
                           )}
                           {/* Unknown Type Icon */}
                           {(() => {
-                            const hasSmib = Boolean(
-                              (location as { hasSmib?: boolean }).hasSmib ||
-                                !(location as { noSMIBLocation?: boolean }).noSMIBLocation
-                            ) && !(location as { noSMIBLocation?: boolean }).noSMIBLocation;
-                            const isLocalServer = Boolean((location as { isLocalServer?: boolean }).isLocalServer);
-                            const hasMembership = Boolean((location as { membershipEnabled?: boolean }).membershipEnabled);
+                            const hasSmibTag = Boolean(
+                              (location as { fullSMIBs?: boolean }).fullSMIBs ||
+                              (location as { semiSMIBs?: boolean }).semiSMIBs ||
+                              (location as { noSMIBLocation?: boolean })
+                                .noSMIBLocation
+                            );
+                            const isLocalServer = Boolean(
+                              (location as { isLocalServer?: boolean })
+                                .isLocalServer
+                            );
+                            const hasMembership = Boolean(
+                              (location as { membershipEnabled?: boolean })
+                                .membershipEnabled
+                            );
                             const hasMissingCoords = hasMissingCoordinates(loc);
                             const isUnknownType =
-                              !hasSmib &&
+                              !hasSmibTag &&
                               !isLocalServer &&
                               !hasMembership &&
-                              !hasMissingCoords &&
-                              !(location as { noSMIBLocation?: boolean }).noSMIBLocation;
+                              !hasMissingCoords;
 
                             return isUnknownType ? (
                               <Tooltip>
@@ -260,7 +314,9 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                                     <HelpCircle className="h-4 w-4 text-gray-500" />
                                   </span>
                                 </TooltipTrigger>
-                                <TooltipContent side="top">Unknown location type</TooltipContent>
+                                <TooltipContent side="top">
+                                  Unknown location type
+                                </TooltipContent>
                               </Tooltip>
                             ) : null;
                           })()}
@@ -321,7 +377,9 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                               e.stopPropagation();
                               const locationId = location.location as string;
                               if (locationId) {
-                                router.push(`/locations/${locationId}?tab=members`);
+                                router.push(
+                                  `/locations/${locationId}?tab=members`
+                                );
                               }
                             }}
                             className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20 hover:bg-blue-100"
@@ -336,7 +394,9 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className={`font-semibold ${getMoneyInColorClass(loc.moneyIn)}`}>
+                    <span
+                      className={`font-semibold ${getMoneyInColorClass(loc.moneyIn)}`}
+                    >
                       {formatCurrency(loc.moneyIn || 0)}
                     </span>
                   </TableCell>
@@ -346,7 +406,7 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                       moneyIn={loc.moneyIn || 0}
                       jackpot={loc.jackpot || 0}
                       displayValue={formatCurrency(loc.moneyOut || 0)}
-                      includeJackpot={!!(loc).includeJackpot}
+                      includeJackpot={!!loc.includeJackpot}
                     />
                   </TableCell>
                   <TableCell centered>
@@ -366,15 +426,28 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                       <TableCell className="text-gray-600">
                         {loc.deletedAt ? (
                           <>
-                            {format(new Date(loc.deletedAt), 'MMM d, yyyy • h:mm a')}
+                            {format(
+                              new Date(loc.deletedAt),
+                              'MMM d, yyyy • h:mm a'
+                            )}
                             <span className="ml-1 text-xs opacity-70">
-                              ({formatDistanceToNow(new Date(loc.deletedAt), { addSuffix: true })})
+                              (
+                              {formatDistanceToNow(new Date(loc.deletedAt), {
+                                addSuffix: true,
+                              })}
+                              )
                             </span>
                           </>
-                        ) : '-'}
+                        ) : (
+                          '-'
+                        )}
                       </TableCell>
                       <TableCell className="text-gray-600">
-                        {loc.deletedAt ? formatDistanceToNow(new Date(loc.deletedAt), { addSuffix: true }) : '-'}
+                        {loc.deletedAt
+                          ? formatDistanceToNow(new Date(loc.deletedAt), {
+                              addSuffix: true,
+                            })
+                          : '-'}
                       </TableCell>
                     </>
                   )}
@@ -421,18 +494,14 @@ const LocationsLocationTable: FC<LocationTableProps> = ({
                       ) : (
                         /* Active view: show View, Edit, Delete */
                         <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={e => {
-                              e.stopPropagation();
-                              onLocationClick(location.location as string);
-                            }}
-                            className="h-8 w-8 p-1 hover:bg-accent"
+                          <Link
+                            href={`/locations/${location.location as string}`}
+                            onClick={e => e.stopPropagation()}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md p-1 hover:bg-accent"
                             title="View details"
                           >
                             <Eye className="h-4 w-4" />
-                          </Button>
+                          </Link>
                           {canManageLocations && (
                             <>
                               <Button

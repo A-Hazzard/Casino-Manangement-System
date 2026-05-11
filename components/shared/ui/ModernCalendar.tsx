@@ -32,10 +32,11 @@ type ModernCalendarProps = {
   date?: { from?: Date; to?: Date };
   onSelect?: (date?: { from?: Date; to?: Date }) => void;
   className?: string; //CSS classes for the container
-  enableTimeInputs?: boolean;   /** Enable hour/minute time inputs alongside date picker */
+  enableTimeInputs?: boolean; /** Enable hour/minute time inputs alongside date picker */
   mode?: 'single' | 'range';
   disabled?: boolean;
   maxDate?: Date;
+  minDate?: Date;
   gameDayOffset?: number;
 };
 
@@ -44,9 +45,12 @@ type ModernCalendarProps = {
  * 12-hour format with AM/PM selector, internally uses 24-hour format.
  */
 type TimeInputProps = {
-  hours: number;   /** Current hours in 24-hour format */
+  hours: number; /** Current hours in 24-hour format */
   minutes: number; /** Current minutes */
-  onChange: (hours: number, minutes: number) => void; /** Callback fired when time changes, returns values in 24-hour format */
+  onChange: (
+    hours: number,
+    minutes: number
+  ) => void; /** Callback fired when time changes, returns values in 24-hour format */
 };
 
 /**
@@ -58,9 +62,9 @@ type TimeInputProps = {
  * @returns Formatted string like "3:45 PM"
  */
 const formatTimeDisplay = (hours: number, minutes: number): string => {
-  const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours; 
+  const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
   const meridiem = hours < 12 ? 'AM' : 'PM';
-  const displayMinute = minutes.toString().padStart(2, '0'); 
+  const displayMinute = minutes.toString().padStart(2, '0');
   return `${displayHour}:${displayMinute} ${meridiem}`;
 };
 
@@ -69,7 +73,7 @@ const formatTimeDisplay = (hours: number, minutes: number): string => {
  * Manages local state for hour/minute inputs with focus tracking
  * to prevent prop syncing from overriding user typing.
  */
-const TimeInput = ({ hours, minutes, onChange }:TimeInputProps) => {
+const TimeInput = ({ hours, minutes, onChange }: TimeInputProps) => {
   // Convert 24-hour to 12-hour format for display
   const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
   const isPM = hours >= 12;
@@ -227,11 +231,10 @@ export function ModernCalendar({
   mode = 'range',
   disabled = false,
   maxDate,
+  minDate,
   gameDayOffset = 8,
 }: ModernCalendarProps) {
-  const [startDate, setStartDate] = useState<Date | null>(
-    date?.from || null
-  );
+  const [startDate, setStartDate] = useState<Date | null>(date?.from || null);
   const [endDate, setEndDate] = useState<Date | null>(date?.to || null);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -241,10 +244,14 @@ export function ModernCalendar({
     minutes: number;
   } | null>(() => {
     if (date?.from && enableTimeInputs) {
-      return {
-        hours: date.from.getHours(),
-        minutes: date.from.getMinutes(),
-      };
+      const fromDate =
+        typeof date.from === 'string' ? new Date(date.from) : date.from;
+      if (fromDate instanceof Date && !isNaN(fromDate.getTime())) {
+        return {
+          hours: fromDate.getHours(),
+          minutes: fromDate.getMinutes(),
+        };
+      }
     }
     // Default to gameDayOffset:00
     if (enableTimeInputs) {
@@ -261,10 +268,13 @@ export function ModernCalendar({
     minutes: number;
   } | null>(() => {
     if (date?.to && enableTimeInputs && mode === 'range') {
-      return {
-        hours: date.to.getHours(),
-        minutes: date.to.getMinutes(),
-      };
+      const toDate = typeof date.to === 'string' ? new Date(date.to) : date.to;
+      if (toDate instanceof Date && !isNaN(toDate.getTime())) {
+        return {
+          hours: toDate.getHours(),
+          minutes: toDate.getMinutes(),
+        };
+      }
     }
     // For range mode, default end time to the same as start time (gameDayOffset:00)
     if (enableTimeInputs && mode === 'range') {
@@ -282,17 +292,23 @@ export function ModernCalendar({
       setEndDate(date?.to || null);
 
       if (date?.from && enableTimeInputs) {
-        const startHours = date.from.getHours();
-        const startMinutes = date.from.getMinutes();
-        setSelectedStartTime({ hours: startHours, minutes: startMinutes });
+        const fromDate =
+          typeof date.from === 'string' ? new Date(date.from) : date.from;
+        if (fromDate instanceof Date && !isNaN(fromDate.getTime())) {
+          const startHours = fromDate.getHours();
+          const startMinutes = fromDate.getMinutes();
+          setSelectedStartTime({ hours: startHours, minutes: startMinutes });
 
-        if (mode === 'range') {
-          if (date?.to) {
-            const endHours = date.to.getHours();
-            const endMinutes = date.to.getMinutes();
-            setSelectedEndTime({ hours: endHours, minutes: endMinutes });
-          } else {
-            setSelectedEndTime({ hours: startHours, minutes: startMinutes });
+          if (mode === 'range' && date?.to) {
+            const toDate =
+              typeof date.to === 'string' ? new Date(date.to) : date.to;
+            if (toDate instanceof Date && !isNaN(toDate.getTime())) {
+              const endHours = toDate.getHours();
+              const endMinutes = toDate.getMinutes();
+              setSelectedEndTime({ hours: endHours, minutes: endMinutes });
+            } else {
+              setSelectedEndTime({ hours: startHours, minutes: startMinutes });
+            }
           }
         }
       }
@@ -590,6 +606,7 @@ export function ModernCalendar({
                   }
                   startDate={startDate || undefined}
                   endDate={endDate || undefined}
+                  minDate={minDate}
                   maxDate={maxDate}
                   selectsRange
                   inline
@@ -601,6 +618,7 @@ export function ModernCalendar({
                 <DatePicker
                   selected={startDate}
                   onChange={onChange as (date: Date | null) => void}
+                  minDate={minDate}
                   maxDate={maxDate}
                   inline
                   dateFormat="MMMM d, yyyy"
@@ -716,6 +734,14 @@ export function ModernCalendar({
         .react-datepicker__day--in-selecting-range {
           background-color: #dbeafe !important;
           color: #1e40af !important;
+        }
+        .react-datepicker__day--disabled {
+          color: #cbd5e1 !important;
+          cursor: not-allowed !important;
+          pointer-events: none;
+        }
+        .react-datepicker__day--disabled:hover {
+          background-color: transparent !important;
         }
       `}</style>
     </div>

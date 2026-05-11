@@ -39,7 +39,3 @@ export function sortMachinesAlphabetically<
     return numAInt - numBInt;
   });
 }
-
-
-
-

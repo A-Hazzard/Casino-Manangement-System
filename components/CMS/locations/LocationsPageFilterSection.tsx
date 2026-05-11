@@ -2,7 +2,7 @@
  * LocationsPageFilterSection Component
  *
  * Handles search input and status filters for the locations dashboard.
- * 
+ *
  * @param props - Component props
  */
 
@@ -27,7 +27,8 @@ type LocationsPageFilterSectionProps = {
 };
 
 const STATUS_OPTIONS = [
-  { id: 'SMIBLocationsOnly', name: 'SMIB' },
+  { id: 'FullSMIBs', name: 'Full SMIB' },
+  { id: 'SemiSMIBs', name: 'Semi SMIB' },
   { id: 'NoSMIBLocation', name: 'No SMIB' },
   { id: 'LocalServersOnly', name: 'Local Server' },
   { id: 'MembershipOnly', name: 'Membership' },
@@ -91,16 +92,17 @@ export default function LocationsPageFilterSection({
               }
               placeholder="Location Type"
               showSearch={false}
+              showSasBadge={false}
               className="w-full"
             />
           </div>
         </div>
 
         {/* XL+ Toolbar Checkboxes */}
-        <div className="hidden flex-1 items-center justify-end gap-x-6 2xl:flex border-l border-white/20 pl-6 ml-2">
+        <div className="ml-2 hidden flex-1 items-center justify-end gap-x-6 border-l border-white/20 pl-6 2xl:flex">
           {/* Connection Group */}
           <div className="flex items-center gap-4">
-            {STATUS_OPTIONS.slice(0, 3).map(opt => (
+            {STATUS_OPTIONS.slice(0, 4).map(opt => (
               <div key={opt.id} className="flex items-center space-x-2.5">
                 <Checkbox
                   id={opt.id}
@@ -108,11 +110,11 @@ export default function LocationsPageFilterSection({
                   onCheckedChange={checked =>
                     onFilterChange(opt.id as LocationFilter, checked === true)
                   }
-                  className="h-4 w-4 border-white/40 data-[state=checked]:bg-white data-[state=checked]:text-purple-700 data-[state=checked]:border-white"
+                  className="h-4 w-4 border-white/40 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-purple-700"
                 />
                 <Label
                   htmlFor={opt.id}
-                  className="cursor-pointer whitespace-nowrap text-[13px] font-semibold text-white/90 hover:text-white transition-colors"
+                  className="cursor-pointer whitespace-nowrap text-[13px] font-semibold text-white/90 transition-colors hover:text-white"
                 >
                   {opt.name}
                 </Label>
@@ -124,7 +126,7 @@ export default function LocationsPageFilterSection({
 
           {/* Features Group */}
           <div className="flex items-center gap-4">
-            {STATUS_OPTIONS.slice(3, 4).map(opt => (
+            {STATUS_OPTIONS.slice(4, 5).map(opt => (
               <div key={opt.id} className="flex items-center space-x-2.5">
                 <Checkbox
                   id={opt.id}
@@ -132,11 +134,11 @@ export default function LocationsPageFilterSection({
                   onCheckedChange={checked =>
                     onFilterChange(opt.id as LocationFilter, checked === true)
                   }
-                  className="h-4 w-4 border-white/40 data-[state=checked]:bg-white data-[state=checked]:text-purple-700 data-[state=checked]:border-white"
+                  className="h-4 w-4 border-white/40 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-purple-700"
                 />
                 <Label
                   htmlFor={opt.id}
-                  className="cursor-pointer whitespace-nowrap text-[13px] font-semibold text-white/90 hover:text-white transition-colors"
+                  className="cursor-pointer whitespace-nowrap text-[13px] font-semibold text-white/90 transition-colors hover:text-white"
                 >
                   {opt.name}
                 </Label>
@@ -148,7 +150,7 @@ export default function LocationsPageFilterSection({
 
           {/* Quality Group */}
           <div className="flex items-center gap-4">
-            {STATUS_OPTIONS.slice(4).map(opt => (
+            {STATUS_OPTIONS.slice(5).map(opt => (
               <div key={opt.id} className="flex items-center space-x-2.5">
                 <Checkbox
                   id={opt.id}
@@ -156,11 +158,11 @@ export default function LocationsPageFilterSection({
                   onCheckedChange={checked =>
                     onFilterChange(opt.id as LocationFilter, checked === true)
                   }
-                  className="h-4 w-4 border-white/40 data-[state=checked]:bg-white data-[state=checked]:text-purple-700 data-[state=checked]:border-white"
+                  className="h-4 w-4 border-white/40 data-[state=checked]:border-white data-[state=checked]:bg-white data-[state=checked]:text-purple-700"
                 />
                 <Label
                   htmlFor={opt.id}
-                  className="cursor-pointer whitespace-nowrap text-[13px] font-semibold text-white/90 hover:text-white transition-colors"
+                  className="cursor-pointer whitespace-nowrap text-[13px] font-semibold text-white/90 transition-colors hover:text-white"
                 >
                   {opt.name}
                 </Label>
@@ -169,8 +171,6 @@ export default function LocationsPageFilterSection({
           </div>
         </div>
       </div>
-
     </div>
   );
 }
-

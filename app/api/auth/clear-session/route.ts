@@ -14,6 +14,11 @@
 
 import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/auth/clear-session
@@ -25,6 +30,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/auth/clear-session';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -40,7 +47,9 @@ export async function POST(request: NextRequest) {
     // ============================================================================
     const cookiesToClear = ['token', 'refreshToken', 'user'];
 
-    const clearOptions = getAuthCookieOptions(request, { expires: new Date(0) });
+    const clearOptions = getAuthCookieOptions(request, {
+      expires: new Date(0),
+    });
     cookiesToClear.forEach(cookieName => {
       response.cookies.set(cookieName, '', clearOptions);
     });
@@ -49,18 +58,25 @@ export async function POST(request: NextRequest) {
     // STEP 3: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 100) {
-      console.warn(`[Clear Session POST API] Completed in ${duration}ms`);
-    }
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/auth/clear-session',
+      1,
+      user,
+      duration
+    );
 
     return response;
   } catch (error: unknown) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(
-      `[Clear Session POST API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/auth/clear-session',
+      errorMessage,
+      user
     );
     return NextResponse.json(
       { success: false, error: 'Failed to clear session' },
@@ -68,4 +84,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

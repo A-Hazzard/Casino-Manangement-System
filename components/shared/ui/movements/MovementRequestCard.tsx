@@ -2,8 +2,8 @@ import { Button } from '@/components/shared/ui/button';
 import { useUserStore } from '@/lib/store/userStore';
 import { MovementRequest } from '@/shared/types/movement';
 import {
-    formatMovementRequestDate,
-    getStatusColor,
+  formatMovementRequestDate,
+  getStatusColor,
 } from '@/lib/utils/movement';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
@@ -23,22 +23,31 @@ export default function MovementRequestCard({
 }: MovementRequestCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const prevPropsRef = useRef<MovementRequest | null>(null);
-  
+
   const { user: currentUser } = useUserStore();
   const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
-  const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role));
+  const isAdminOrDev = userRoles.some(role =>
+    ['admin', 'developer'].includes(role)
+  );
   const userEmail = currentUser?.emailAddress;
 
   // Resolve the destination ID for location check
-  const destinationLocationId = Object.keys(locationsMap).find(id => locationsMap[id] === request.locationTo) || request.locationTo;
-  const isAuthorizedDestinationUser = userRoles.some(role => 
-    ['location admin', 'technician', 'manager'].includes(role)
-  ) && currentUser?.assignedLocations?.includes(destinationLocationId);
+  const destinationLocationId =
+    Object.keys(locationsMap).find(
+      id => locationsMap[id] === request.locationTo
+    ) || request.locationTo;
+  const isAuthorizedDestinationUser =
+    userRoles.some(role =>
+      ['location admin', 'technician', 'manager'].includes(role)
+    ) && currentUser?.assignedLocations?.includes(destinationLocationId);
 
-  const isCreator = request.createdBy === userEmail || request.createdBy === currentUser?._id;
-  const isRecipient = request.requestTo === userEmail || request.requestTo === currentUser?._id;
-  
-  const canEdit = isAdminOrDev || isCreator || isRecipient || isAuthorizedDestinationUser;
+  const isCreator =
+    request.createdBy === userEmail || request.createdBy === currentUser?._id;
+  const isRecipient =
+    request.requestTo === userEmail || request.requestTo === currentUser?._id;
+
+  const canEdit =
+    isAdminOrDev || isCreator || isRecipient || isAuthorizedDestinationUser;
   const canDelete = isAdminOrDev || isCreator;
 
   useEffect(() => {
@@ -70,18 +79,21 @@ export default function MovementRequestCard({
         <p
           className="truncate text-xs text-gray-600"
           title={`Location From: ${
-            locationsMap[request.locationFromId || request.locationFrom] || request.locationFrom
+            locationsMap[request.locationFromId || request.locationFrom] ||
+            request.locationFrom
           }`}
         >
           <span className="font-medium">Location From:</span>{' '}
-          {locationsMap[request.locationFromId || request.locationFrom] || request.locationFrom}
+          {locationsMap[request.locationFromId || request.locationFrom] ||
+            request.locationFrom}
         </p>
         <p
           className="truncate text-xs text-gray-600"
           title={`Location To: ${locationsMap[request.locationToId || request.locationTo] || request.locationTo}`}
         >
           <span className="font-medium">Location To:</span>{' '}
-          {locationsMap[request.locationToId || request.locationTo] || request.locationTo}
+          {locationsMap[request.locationToId || request.locationTo] ||
+            request.locationTo}
         </p>
         <p
           className="truncate text-xs text-gray-600"
@@ -123,7 +135,7 @@ export default function MovementRequestCard({
               onClick={() => onEdit(request)}
               variant="outline"
               size="sm"
-              className="flex-1 flex items-center justify-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              className="flex flex-1 items-center justify-center gap-1.5 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
             >
               <Pencil className="h-3.5 w-3.5" />
               <span>Edit</span>
@@ -134,7 +146,7 @@ export default function MovementRequestCard({
               onClick={() => onDelete(request)}
               variant="outline"
               size="sm"
-              className="flex-1 flex items-center justify-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="flex flex-1 items-center justify-center gap-1.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span>Delete</span>
@@ -145,5 +157,3 @@ export default function MovementRequestCard({
     </div>
   );
 }
-
-

@@ -5,7 +5,11 @@
  * Replaces usage of mock data for initialization.
  */
 
-import type { CashierFloat, VaultBalance, VaultMetrics } from '@/shared/types/vault';
+import type {
+  CashierFloat,
+  VaultBalance,
+  VaultMetrics,
+} from '@/shared/types/vault';
 
 export const DEFAULT_VAULT_BALANCE: VaultBalance = {
   balance: 0,

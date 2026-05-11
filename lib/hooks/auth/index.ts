@@ -4,4 +4,3 @@
  */
 
 export { useAuth } from './useAuth';
-

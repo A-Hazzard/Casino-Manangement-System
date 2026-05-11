@@ -14,17 +14,29 @@
  * @module app/api/collection-reports/collections/route
  */
 
-import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  calculateChanges,
+  logActivity,
+} from '@/app/api/lib/helpers/activityLogger';
 import {
   calculateSasMetrics,
   createCollectionWithCalculations,
   getSasTimePeriod,
+  updateRegularAndRamClearMeters,
 } from '@/app/api/lib/helpers/collectionReport/creation';
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
 import { getUserFromServer } from '@/app/api/lib/helpers/users/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Collections } from '@/app/api/lib/models/collections';
 import { Machine } from '@/app/api/lib/models/machines';
+import {
+  logRouteFetch,
+  logRouteCreate,
+  logRouteUpdate,
+  logRouteDelete,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type {
   CollectionDocument,
   CreateCollectionPayload,
@@ -66,6 +78,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/collection-reports/collections';
+  const logUser = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -95,6 +109,13 @@ export async function GET(req: NextRequest) {
     // SECURITY: Get user's accessible locations to prevent data leakage
     const user = await getUserFromServer();
     if (!user) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/collection-reports/collections',
+        'Unauthorized',
+        logUser
+      );
       console.error('[Collections API GET] 401 — no user session');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -121,11 +142,12 @@ export async function GET(req: NextRequest) {
         .assignedLocations;
     }
     const isAdmin =
-      userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
+      userRoles.includes('admin') ||
+      userRoles.includes('developer') ||
+      userRoles.includes('owner');
 
     // Support both licencee spellings
-    const licencee =
-      searchParams.get('licencee');
+    const licencee = searchParams.get('licencee');
 
     // ============================================================================
     // STEP 4: Determine allowed location IDs
@@ -151,8 +173,9 @@ export async function GET(req: NextRequest) {
       }
 
       // Get location names from location IDs
-      const GamingLocations = (await import('@/app/api/lib/models/gaminglocations'))
-        .GamingLocations;
+      const GamingLocations = (
+        await import('@/app/api/lib/models/gaminglocations')
+      ).GamingLocations;
       const locations = await GamingLocations.find({
         _id: { $in: allowedLocationIds },
       })
@@ -160,7 +183,7 @@ export async function GET(req: NextRequest) {
         .lean<LocationDocument[]>();
 
       allowedLocationNames = locations.map(loc => loc.name);
-      
+
       // If we found no matching locations for the IDs, user effectively has no access
       if (allowedLocationNames.length === 0) {
         return NextResponse.json([]);
@@ -207,8 +230,9 @@ export async function GET(req: NextRequest) {
       // We need to get the names of user's accessible locations
       if (allowedLocationIds !== 'all') {
         // Get location names from location IDs
-        const GamingLocations = (await import('@/app/api/lib/models/gaminglocations'))
-          .GamingLocations;
+        const GamingLocations = (
+          await import('@/app/api/lib/models/gaminglocations')
+        ).GamingLocations;
         const locations = await GamingLocations.find({
           _id: { $in: allowedLocationIds },
         })
@@ -258,6 +282,14 @@ export async function GET(req: NextRequest) {
     // STEP 8: Return collections
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/collection-reports/collections',
+      collections.length,
+      logUser,
+      duration
+    );
     if (duration > 1000) {
       console.warn(`[Collections GET API] Completed in ${duration}ms`);
     }
@@ -266,6 +298,13 @@ export async function GET(req: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to fetch collections';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/collection-reports/collections',
+      errorMessage,
+      logUser
+    );
     console.error(
       `[Collections API GET] Error after ${duration}ms:`,
       errorMessage
@@ -307,6 +346,8 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/collection-reports/collections';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -319,6 +360,13 @@ export async function POST(req: NextRequest) {
     // ============================================================================
     const apiUser = await getUserFromServer();
     if (!apiUser) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/collection-reports/collections',
+        'Unauthorized',
+        user
+      );
       console.error('[Collections API POST] Unauthorized — no user session');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -342,10 +390,21 @@ export async function POST(req: NextRequest) {
     ].filter(Boolean) as string[];
 
     if (missingFields.length > 0) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/collection-reports/collections',
+        `Missing required fields: ${missingFields.join(', ')}`,
+        user
+      );
       console.error(
         '[Collections API POST] 400 — missing required fields:',
         missingFields,
-        { machineId: payload.machineId, location: payload.location, collector: payload.collector }
+        {
+          machineId: payload.machineId,
+          location: payload.location,
+          collector: payload.collector,
+        }
       );
       return NextResponse.json(
         { error: `Missing required fields: ${missingFields.join(', ')}` },
@@ -366,6 +425,13 @@ export async function POST(req: NextRequest) {
       typeof payload.metersIn !== 'number' ||
       typeof payload.metersOut !== 'number'
     ) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/collection-reports/collections',
+        'metersIn and metersOut must be valid numbers',
+        user
+      );
       console.error(
         '[Collections API POST] 400 — metersIn/metersOut not numbers:',
         { metersIn: payload.metersIn, metersOut: payload.metersOut }
@@ -381,9 +447,14 @@ export async function POST(req: NextRequest) {
     // ============================================================================
     // Get machine details for additional fields
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
-    const machine = await Machine.findOne({ _id: payload.machineId }).lean<GamingMachine>();
+    const machine = await Machine.findOne({
+      _id: payload.machineId,
+    }).lean<GamingMachine>();
     if (!machine) {
-      console.error('[Collections API POST] 404 — machine not found:', payload.machineId);
+      console.error(
+        '[Collections API POST] 404 — machine not found:',
+        payload.machineId
+      );
       return NextResponse.json({ error: 'Machine not found' }, { status: 404 });
     }
 
@@ -395,26 +466,49 @@ export async function POST(req: NextRequest) {
     // ============================================================================
     // Extract SAS times from payload for backend calculation
     const payloadWithSasMeters = payload as CreateCollectionPayload & {
-      sasMeters?: { sasStartTime?: string; sasEndTime?: string };
+      sasMeters?: { sasStartTime?: string | Date; sasEndTime?: string | Date };
     };
 
-    // Ensure all date-like fields are converted to actual Date objects
-    const sasStartTimeRaw = payloadWithSasMeters.sasMeters?.sasStartTime || payload.sasStartTime;
-    const sasEndTimeRaw = payloadWithSasMeters.sasMeters?.sasEndTime || payload.sasEndTime;
-    
-    const sasStartTime = sasStartTimeRaw ? new Date(sasStartTimeRaw) : undefined;
-    const sasEndTime = sasEndTimeRaw 
-      ? new Date(sasEndTimeRaw) 
-      : (payload.timestamp ? new Date(payload.timestamp) : undefined);
+    // Ensure all date-like fields are actual Date objects
+    const rawSasStartTime =
+      payloadWithSasMeters.sasMeters?.sasStartTime ??
+      payload.sasStartTime ??
+      undefined;
+    const rawSasEndTime =
+      payloadWithSasMeters.sasMeters?.sasEndTime ??
+      payload.sasEndTime ??
+      (payload.timestamp ? new Date(payload.timestamp) : undefined);
+
+    // Convert to Date objects if they are strings
+    const sasStartTime = rawSasStartTime
+      ? typeof rawSasStartTime === 'string'
+        ? new Date(rawSasStartTime)
+        : rawSasStartTime
+      : undefined;
+    const sasEndTime = rawSasEndTime
+      ? typeof rawSasEndTime === 'string'
+        ? new Date(rawSasEndTime)
+        : rawSasEndTime
+      : undefined;
 
     const calculationPayload: Record<string, unknown> = {
       ...payload,
       sasStartTime,
       sasEndTime,
-      timestamp: payload.timestamp ? new Date(payload.timestamp) : new Date(),
-      collectionTime: payload.collectionTime 
-        ? new Date(payload.collectionTime) 
-        : (payload.timestamp ? new Date(payload.timestamp) : new Date()),
+      timestamp: payload.timestamp
+        ? typeof payload.timestamp === 'string'
+          ? new Date(payload.timestamp)
+          : new Date(payload.timestamp)
+        : new Date(),
+      collectionTime: payload.collectionTime
+        ? typeof payload.collectionTime === 'string'
+          ? new Date(payload.collectionTime)
+          : new Date(payload.collectionTime)
+        : payload.timestamp
+          ? typeof payload.timestamp === 'string'
+            ? new Date(payload.timestamp)
+            : new Date(payload.timestamp)
+          : new Date(),
     };
 
     // ============================================================================
@@ -449,7 +543,9 @@ export async function POST(req: NextRequest) {
       // CRITICAL: Use client-provided prevIn/prevOut if available, otherwise use calculated values
       // This ensures accuracy when client has the correct previous meter values
       prevIn:
-        calculationPayload.prevIn !== undefined ? calculationPayload.prevIn : previousMeters.metersIn,
+        calculationPayload.prevIn !== undefined
+          ? calculationPayload.prevIn
+          : previousMeters.metersIn,
       prevOut:
         calculationPayload.prevOut !== undefined
           ? calculationPayload.prevOut
@@ -510,7 +606,9 @@ export async function POST(req: NextRequest) {
       ramClearMetersIn: calculationPayload.ramClearMetersIn,
       ramClearMetersOut: calculationPayload.ramClearMetersOut,
       serialNumber:
-        calculationPayload.serialNumber || (machineData.serialNumber as string) || '',
+        calculationPayload.serialNumber ||
+        (machineData.serialNumber as string) ||
+        '',
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -534,7 +632,10 @@ export async function POST(req: NextRequest) {
       try {
         // Calculate changes for granular logging
         // For CREATE, we compare null with the created object to log all fields
-        const changes = calculateChanges({}, created.toObject ? created.toObject() : created);
+        const changes = calculateChanges(
+          {},
+          created.toObject ? created.toObject() : created
+        );
 
         await logActivity({
           action: 'CREATE',
@@ -562,6 +663,14 @@ export async function POST(req: NextRequest) {
     // STEP 10: Return created collection
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/collection-reports/collections',
+      1,
+      user,
+      duration
+    );
     if (duration > 1000) {
       console.warn(`[Collections POST API] Completed in ${duration}ms`);
     }
@@ -578,6 +687,13 @@ export async function POST(req: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to create collection';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/collection-reports/collections',
+      errorMessage,
+      user
+    );
     console.error(
       `[Collections API POST] Error after ${duration}ms:`,
       errorMessage
@@ -619,6 +735,8 @@ export async function POST(req: NextRequest) {
  */
 export async function PATCH(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'PATCH /api/collection-reports/collections';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
@@ -632,6 +750,13 @@ export async function PATCH(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) {
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/collection-reports/collections',
+        'Missing id',
+        user
+      );
       console.error('[Collections API PATCH] 400 — missing id param');
       return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     }
@@ -648,6 +773,13 @@ export async function PATCH(req: NextRequest) {
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const originalCollection = await Collections.findOne({ _id: id });
     if (!originalCollection) {
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/collection-reports/collections',
+        `Collection not found: ${id}`,
+        user
+      );
       console.error('[Collections API PATCH] 404 — collection not found:', id);
       return NextResponse.json(
         { error: 'Collection not found' },
@@ -679,7 +811,9 @@ export async function PATCH(req: NextRequest) {
           new Date(originalCollection.timestamp).getTime()) ||
       (updateData.collectionTime !== undefined &&
         new Date(updateData.collectionTime).getTime() !==
-          new Date(originalCollection.collectionTime || originalCollection.timestamp).getTime());
+          new Date(
+            originalCollection.collectionTime || originalCollection.timestamp
+          ).getTime());
 
     // ============================================================================
     // STEP 6: Resolve prevIn/prevOut and recalculate movement if meters changed
@@ -690,8 +824,10 @@ export async function PATCH(req: NextRequest) {
       // already set the correct baseline. Overwriting them from a DB lookup is what was
       // causing edits to revert — the old completed collection's metersIn/Out were being
       // injected as prevIn/prevOut, discarding whatever the user typed.
-      const prevInProvided = updateData.prevIn !== undefined && updateData.prevIn !== null;
-      const prevOutProvided = updateData.prevOut !== undefined && updateData.prevOut !== null;
+      const prevInProvided =
+        updateData.prevIn !== undefined && updateData.prevIn !== null;
+      const prevOutProvided =
+        updateData.prevOut !== undefined && updateData.prevOut !== null;
 
       if (!prevInProvided || !prevOutProvided) {
         // Both (or one) prev values are missing — fall back to DB lookup
@@ -710,34 +846,50 @@ export async function PATCH(req: NextRequest) {
           .lean<CollectionDocument>();
 
         if (previousCollection) {
-          if (!prevInProvided) updateData.prevIn = previousCollection.metersIn ?? 0;
-          if (!prevOutProvided) updateData.prevOut = previousCollection.metersOut ?? 0;
+          if (!prevInProvided)
+            updateData.prevIn = previousCollection.metersIn ?? 0;
+          if (!prevOutProvided)
+            updateData.prevOut = previousCollection.metersOut ?? 0;
         } else {
           // No previous collection — first collection for the machine.
           const editMachine = await Machine.findOne({
             _id: originalCollection.machineId,
           }).lean<GamingMachine>();
-          const sasM = editMachine?.sasMeters as Record<string, unknown> | undefined;
-          const colM = editMachine?.collectionMeters as Record<string, unknown> | undefined;
+          const sasM = editMachine?.sasMeters as
+            | Record<string, unknown>
+            | undefined;
+          const colM = editMachine?.collectionMeters as
+            | Record<string, unknown>
+            | undefined;
 
           const sasIn = (sasM?.drop as number) ?? null;
           const sasOut = (sasM?.totalCancelledCredits as number) ?? null;
 
           if (!prevInProvided) {
-            updateData.prevIn = (sasIn !== null && sasIn > 0) ? sasIn : ((colM?.metersIn as number) ?? 0);
+            updateData.prevIn =
+              sasIn !== null && sasIn > 0
+                ? sasIn
+                : ((colM?.metersIn as number) ?? 0);
           }
           if (!prevOutProvided) {
-            updateData.prevOut = (sasOut !== null && sasOut > 0) ? sasOut : ((colM?.metersOut as number) ?? 0);
+            updateData.prevOut =
+              sasOut !== null && sasOut > 0
+                ? sasOut
+                : ((colM?.metersOut as number) ?? 0);
           }
         }
       }
 
       // Recalculate movement using the resolved prevIn/prevOut
-      const currentMetersIn = updateData.metersIn ?? originalCollection.metersIn;
-      const currentMetersOut = updateData.metersOut ?? originalCollection.metersOut;
+      const currentMetersIn =
+        updateData.metersIn ?? originalCollection.metersIn;
+      const currentMetersOut =
+        updateData.metersOut ?? originalCollection.metersOut;
       const ramClear = updateData.ramClear ?? originalCollection.ramClear;
-      const ramClearMetersIn = updateData.ramClearMetersIn ?? originalCollection.ramClearMetersIn;
-      const ramClearMetersOut = updateData.ramClearMetersOut ?? originalCollection.ramClearMetersOut;
+      const ramClearMetersIn =
+        updateData.ramClearMetersIn ?? originalCollection.ramClearMetersIn;
+      const ramClearMetersOut =
+        updateData.ramClearMetersOut ?? originalCollection.ramClearMetersOut;
 
       let movementIn: number;
       let movementOut: number;
@@ -745,7 +897,8 @@ export async function PATCH(req: NextRequest) {
       if (ramClear) {
         if (ramClearMetersIn !== undefined && ramClearMetersOut !== undefined) {
           movementIn = ramClearMetersIn - updateData.prevIn + currentMetersIn;
-          movementOut = ramClearMetersOut - updateData.prevOut + currentMetersOut;
+          movementOut =
+            ramClearMetersOut - updateData.prevOut + currentMetersOut;
         } else {
           movementIn = currentMetersIn;
           movementOut = currentMetersOut;
@@ -776,8 +929,8 @@ export async function PATCH(req: NextRequest) {
         // Get correct SAS time period based on previous collections
         // CRITICAL: Only preserve manual overrides if they are provided in the current update (updateData).
         // If the date is changing, we should recalculate the SAS period from scratch.
-        const customStartTime = updateData.sasStartTime ? new Date(updateData.sasStartTime) : undefined;
-        const customEndTime = updateData.sasEndTime ? new Date(updateData.sasEndTime) : undefined;
+        const customStartTime = updateData.sasStartTime ?? undefined;
+        const customEndTime = updateData.sasEndTime ?? collectionTimestamp;
 
         const { sasStartTime, sasEndTime } = await getSasTimePeriod(
           originalCollection.machineId as string,
@@ -830,18 +983,24 @@ export async function PATCH(req: NextRequest) {
     // So we only apply dot notation when sasMeters was NOT set by step 7.
     if (!updateData.sasMeters) {
       if (updateData.sasEndTime) {
-        updateData['sasMeters.sasEndTime'] =
-          typeof updateData.sasEndTime === 'string'
-            ? updateData.sasEndTime
-            : new Date(updateData.sasEndTime as string | Date).toISOString();
+        updateData['sasMeters.sasEndTime'] = updateData.sasEndTime;
       }
       if (updateData.sasStartTime) {
-        updateData['sasMeters.sasStartTime'] =
-          typeof updateData.sasStartTime === 'string'
-            ? updateData.sasStartTime
-            : new Date(updateData.sasStartTime as string | Date).toISOString();
+        updateData['sasMeters.sasStartTime'] = updateData.sasStartTime;
       }
     }
+    // Snapshot the caller-supplied sasEndTime BEFORE deletion so Step 8.5 can
+    // detect a real change and use the explicit value rather than whatever
+    // getSasTimePeriod/calculateSasMetrics may have rewritten in Step 7.
+    const explicitSasEndTime: string | Date | undefined = updateData.sasEndTime;
+    const sasEndTimeChanged =
+      explicitSasEndTime !== undefined &&
+      new Date(explicitSasEndTime as string | Date).getTime() !==
+        new Date(
+          originalCollection.sasMeters?.sasEndTime ??
+            originalCollection.timestamp
+        ).getTime();
+
     // Remove fields that should not be updated manually or by system automatically during edit
     delete updateData.sasEndTime;
     delete updateData.sasStartTime;
@@ -858,6 +1017,27 @@ export async function PATCH(req: NextRequest) {
     );
 
     // ============================================================================
+    // STEP 8.5: Update meters' readAt if timestamp or SAS times changed
+    // ============================================================================
+    if ((timestampChanged || sasEndTimeChanged) && updated) {
+      const newSasEndTime =
+        explicitSasEndTime !== undefined
+          ? new Date(explicitSasEndTime as Date)
+          : (updated.sasMeters?.sasEndTime ?? updated.timestamp ?? new Date());
+
+      const meterId = (updated as unknown as { meterId?: string }).meterId;
+      const ramClearMeterId = (
+        updated as unknown as { ramClearMeterId?: string }
+      ).ramClearMeterId;
+
+      await updateRegularAndRamClearMeters(
+        meterId,
+        ramClearMeterId,
+        newSasEndTime
+      );
+    }
+
+    // ============================================================================
     // STEP 9: Log activity
     // ============================================================================
     const currentUser = await getUserFromServer();
@@ -865,7 +1045,9 @@ export async function PATCH(req: NextRequest) {
       try {
         // Calculate granular changes — compare original vs request body only (not full updated doc)
         const changes = calculateChanges(
-          originalCollection.toObject ? originalCollection.toObject() : originalCollection,
+          originalCollection.toObject
+            ? originalCollection.toObject()
+            : originalCollection,
           updateData as Record<string, unknown>
         );
 
@@ -873,7 +1055,9 @@ export async function PATCH(req: NextRequest) {
           action: 'UPDATE',
           details: `Updated collection for machine ${originalCollection.machineId} at location ${originalCollection.location}`,
           ipAddress: getClientIP(req) || undefined,
-          userId: (currentUser._id || currentUser.id || currentUser.sub) as string,
+          userId: (currentUser._id ||
+            currentUser.id ||
+            currentUser.sub) as string,
           username: currentUser.emailAddress as string,
           metadata: {
             resource: 'collection',
@@ -897,6 +1081,14 @@ export async function PATCH(req: NextRequest) {
     // STEP 10: Return updated collection
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteUpdate(
+      functionName,
+      'PATCH',
+      '/api/collection-reports/collections',
+      1,
+      user,
+      duration
+    );
     if (duration > 1000) {
       console.warn(`[Collections PATCH API] Completed in ${duration}ms`);
     }
@@ -905,6 +1097,13 @@ export async function PATCH(req: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to update collection';
+    logRouteError(
+      functionName,
+      'PATCH',
+      '/api/collection-reports/collections',
+      errorMessage,
+      user
+    );
     console.error(
       `[Collections API PATCH] Error after ${duration}ms:`,
       errorMessage
@@ -936,10 +1135,12 @@ export async function PATCH(req: NextRequest) {
  */
 export async function DELETE(req: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'DELETE /api/collection-reports/collections';
+  const user = extractUserFromRequest(req);
 
   try {
     // ============================================================================
-    // STEP 1: Connect to database
+    // STEP1: Connect to database
     // ============================================================================
     await connectDB();
 
@@ -949,6 +1150,13 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) {
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/collection-reports/collections',
+        'Missing id',
+        user
+      );
       console.error('[Collections API DELETE] 400 — missing id param');
       return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     }
@@ -963,6 +1171,13 @@ export async function DELETE(req: NextRequest) {
     // CRITICAL: Use findOne with _id instead of findById (repo rule)
     const collectionToDelete = await Collections.findOne({ _id: id });
     if (!collectionToDelete) {
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/collection-reports/collections',
+        `Collection not found: ${id}`,
+        user
+      );
       console.error('[Collections API DELETE] 404 — collection not found:', id);
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
@@ -973,7 +1188,10 @@ export async function DELETE(req: NextRequest) {
     // CRITICAL: Use findOneAndDelete with _id instead of findByIdAndDelete (repo rule)
     const deletedCollection = await Collections.findOneAndDelete({ _id: id });
     if (!deletedCollection) {
-      return NextResponse.json({ error: 'Failed to delete collection' }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to delete collection' },
+        { status: 500 }
+      );
     }
 
     // ============================================================================
@@ -1011,7 +1229,9 @@ export async function DELETE(req: NextRequest) {
           updateOperation
         );
         if (!machineRevertResult) {
-          console.warn(`[Collections DELETE] Machine ${collectionToDelete.machineId} not found for meter revert`);
+          console.warn(
+            `[Collections DELETE] Machine ${collectionToDelete.machineId} not found for meter revert`
+          );
         }
       } catch (machineUpdateError) {
         console.error(
@@ -1032,7 +1252,9 @@ export async function DELETE(req: NextRequest) {
           action: 'DELETE',
           details: `Deleted collection for machine ${collectionToDelete.machineId} at location ${collectionToDelete.location}`,
           ipAddress: getClientIP(req) || undefined,
-          userId: (currentUser._id || currentUser.id || currentUser.sub) as string,
+          userId: (currentUser._id ||
+            currentUser.id ||
+            currentUser.sub) as string,
           username: currentUser.emailAddress as string,
           metadata: {
             resource: 'collection',
@@ -1053,6 +1275,14 @@ export async function DELETE(req: NextRequest) {
     // STEP 8: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteDelete(
+      functionName,
+      'DELETE',
+      '/api/collection-reports/collections',
+      1,
+      user,
+      duration
+    );
     if (duration > 1000) {
       console.warn(`[Collections DELETE API] Completed in ${duration}ms`);
     }
@@ -1061,6 +1291,13 @@ export async function DELETE(req: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Failed to delete collection';
+    logRouteError(
+      functionName,
+      'DELETE',
+      '/api/collection-reports/collections',
+      errorMessage,
+      user
+    );
     console.error(
       `[Collections API DELETE] Error after ${duration}ms:`,
       errorMessage
@@ -1074,4 +1311,3 @@ export async function DELETE(req: NextRequest) {
     );
   }
 }
-

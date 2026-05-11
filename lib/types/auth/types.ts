@@ -5,4 +5,3 @@ export type UseAuthReturn = {
   isLoading: boolean;
   isAuthenticated: boolean;
 };
-

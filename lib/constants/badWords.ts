@@ -24,7 +24,7 @@ export const ADDITIONAL_BAD_WORDS = [
   'retard',
   'retarded',
   'mongoloid',
-  
+
   // Sexual and explicit terms
   'fuck',
   'fucking',
@@ -98,7 +98,7 @@ export const ADDITIONAL_BAD_WORDS = [
   'nipples',
   'erection',
   'erections',
-  
+
   // Violence and threats
   'kill',
   'killing',
@@ -144,7 +144,7 @@ export const ADDITIONAL_BAD_WORDS = [
   'torturing',
   'tortured',
   'torturer',
-  
+
   // Drugs and illegal substances
   'cocaine',
   'coke',
@@ -176,7 +176,7 @@ export const ADDITIONAL_BAD_WORDS = [
   'stoned',
   'stoner',
   'stoners',
-  
+
   // Hate speech and discrimination
   'hate',
   'hating',
@@ -202,7 +202,7 @@ export const ADDITIONAL_BAD_WORDS = [
   'genocide',
   'ethnic',
   'cleansing',
-  
+
   // Offensive body parts and anatomy
   'anus',
   'butthole',
@@ -225,7 +225,7 @@ export const ADDITIONAL_BAD_WORDS = [
   'jizz',
   'jizzing',
   'jizzed',
-  
+
   // Vulgar expressions
   'screw',
   'screwing',
@@ -259,7 +259,7 @@ export const ADDITIONAL_BAD_WORDS = [
   'stinking',
   'stank',
   'stunk',
-  
+
   // Offensive actions
   'suck',
   'sucking',
@@ -287,7 +287,7 @@ export const ADDITIONAL_BAD_WORDS = [
   'fingered',
   'finger',
   'fingers',
-  
+
   // Crude terms
   'turd',
   'turds',
@@ -315,7 +315,7 @@ export const ADDITIONAL_BAD_WORDS = [
   'tinkling',
   'tinkled',
   'tinkles',
-  
+
   // Additional offensive terms
   'idiot',
   'idiots',
@@ -361,7 +361,7 @@ export const ADDITIONAL_BAD_WORDS = [
   'junk',
   'junkie',
   'junkies',
-  
+
   // Offensive phrases
   'go to hell',
   'go to hell',
@@ -378,5 +378,3 @@ export const ADDITIONAL_BAD_WORDS = [
   'deadlier',
   'deadliest',
 ] as const;
-
-

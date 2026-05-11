@@ -35,11 +35,14 @@ type LayoutWrapperProps = {
 };
 
 // Paths that should NOT have the CMS layout (sidebar, auth gates)
-const AUTH_PATHS = ['/login', '/forgot-password', '/reset-password', '/install'];
+const AUTH_PATHS = [
+  '/login',
+  '/forgot-password',
+  '/reset-password',
+  '/install',
+];
 
-export default function LayoutWrapper({
-  children,
-}: LayoutWrapperProps) {
+export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const pathname = usePathname();
   const { user } = useUserStore();
 

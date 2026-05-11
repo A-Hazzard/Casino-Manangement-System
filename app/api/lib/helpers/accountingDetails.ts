@@ -5,10 +5,7 @@ import type {
 import { CollectionReportData } from '@/lib/types/api';
 import type { CollectionMetersHistoryEntry } from '@/shared/types';
 import type { TimePeriod } from '@/shared/types/common';
-import type {
-  CollectionReportDocument,
-  GamingMachine,
-} from '@/shared/types';
+import type { CollectionReportDocument, GamingMachine } from '@/shared/types';
 import { AcceptedBill } from '../models/acceptedBills';
 import { CollectionReport } from '../models/collectionReport';
 import { Collections } from '../models/collections';
@@ -16,11 +13,16 @@ import { GamingLocations } from '../models/gaminglocations';
 import { MachineEvent } from '../models/machineEvents';
 import { Machine } from '../models/machines';
 import { getDatesForTimePeriod } from '../utils/dates';
-import { getReviewerScale, scaleMachineValues } from '../utils/reviewerScale';
+import {
+  getMoneyInScale,
+  getMoneyOutAndJackpotScale,
+  scaleMachineValues,
+} from '../utils/reviewerScale';
 import type { JwtPayload } from '@/shared/types/auth';
 
 type UserWithMultiplier = JwtPayload & {
-  multiplier?: number | null;
+  moneyInMultiplier?: number | null;
+  moneyOutAndJackpotMultiplier?: number | null;
 };
 
 /**
@@ -62,13 +64,13 @@ async function getAcceptedBillsByMachine(
     const result = await AcceptedBill.find(query).lean<AcceptedBillType[]>();
 
     return result;
-    } catch (error) {
-      console.error(
-        '[getAcceptedBillsByMachine] Error:',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
-      return [];
-    }
+  } catch (error) {
+    console.error(
+      '[getAcceptedBillsByMachine] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    return [];
+  }
 }
 
 /**
@@ -138,7 +140,9 @@ async function getCollectionMetersHistoryByMachine(
     const query = { _id: machineId };
     const projection = { collectionMetersHistory: 1 };
 
-    const machine = await Machine.findOne(query, projection).lean<Record<string, unknown>>();
+    const machine = await Machine.findOne(query, projection).lean<
+      Record<string, unknown>
+    >();
 
     let result = (machine?.collectionMetersHistory ||
       []) as CollectionMetersHistoryEntry[];
@@ -157,13 +161,13 @@ async function getCollectionMetersHistoryByMachine(
     }
 
     return result;
-    } catch (error) {
-      console.error(
-        '[getCollectionMetersHistoryByMachine] Error:',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
-      return [];
-    }
+  } catch (error) {
+    console.error(
+      '[getCollectionMetersHistoryByMachine] Error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    return [];
+  }
 }
 
 /**
@@ -179,7 +183,12 @@ export async function getAccountingDetails(
 ) {
   if (!machineId) {
     console.error('[getAccountingDetails] machineId is required');
-    return { acceptedBills: [], machineEvents: [], collectionMetersHistory: [], machine: null };
+    return {
+      acceptedBills: [],
+      machineEvents: [],
+      collectionMetersHistory: [],
+      machine: null,
+    };
   }
   const [acceptedBills, machineEvents, collectionMetersHistory, machine] =
     await Promise.all([
@@ -203,7 +212,9 @@ export async function getCollectionReportById(
   currentUser: UserWithMultiplier
 ): Promise<CollectionReportData | null> {
   if (!reportId || !currentUser) {
-    console.error('[getCollectionReportById] reportId and currentUser are required');
+    console.error(
+      '[getCollectionReportById] reportId and currentUser are required'
+    );
     return null;
   }
   const report = await CollectionReport.findOne({
@@ -211,8 +222,9 @@ export async function getCollectionReportById(
   }).lean<CollectionReportDocument>();
   if (!report) return null;
 
-  // Get multiplier from user for reviewer calculations
-  const scale = getReviewerScale(currentUser);
+  // Get multipliers from user for reviewer calculations
+  const moneyInScale = getMoneyInScale(currentUser);
+  const moneyOutScale = getMoneyOutAndJackpotScale(currentUser);
 
   // Fetch actual collections for this report with machine details resolved
   const collections = await Collections.aggregate([
@@ -353,12 +365,15 @@ export async function getCollectionReportById(
   // Do NOT use sasMeters.machine (display identifier) — it's inconsistent.
   const meterQueries = collections
     .filter(
-      collection => collection.machineId && collection.sasMeters?.sasStartTime && collection.sasMeters?.sasEndTime
+      collection =>
+        collection.machineId &&
+        collection.sasMeters?.sasStartTime &&
+        collection.sasMeters?.sasEndTime
     )
     .map(collection => ({
       machineId: collection.machineId as string,
-      startTime: new Date(collection.sasMeters!.sasStartTime!),
-      endTime: new Date(collection.sasMeters!.sasEndTime!),
+      startTime: collection.sasMeters!.sasStartTime!,
+      endTime: collection.sasMeters!.sasEndTime!,
     }));
 
   // Build a single aggregation to get all meter data grouped by machine
@@ -413,6 +428,22 @@ export async function getCollectionReportById(
     ])
   );
 
+  // Fetch relayId per machine to identify machines without a SMIB.
+  // Machines without a relayId cannot produce SAS data, so they render as
+  // "No SMIB for this Machine" with zero variation.
+  const machineIdsForRelay = collections
+    .map(collection => collection.machineId)
+    .filter((id): id is string => Boolean(id));
+  const relayDocs = machineIdsForRelay.length
+    ? await Machine.find(
+        { _id: { $in: machineIdsForRelay } },
+        { relayId: 1 }
+      ).lean<{ _id: string; relayId?: string }[]>()
+    : [];
+  const hasRelayMap = new Map(
+    relayDocs.map(doc => [String(doc._id), Boolean(doc.relayId?.trim())])
+  );
+
   // Calculate location metrics from actual collections using the same logic as individual machines
   const totalDrop = collections.reduce((sum, collection) => {
     return sum + ((collection.metersIn || 0) - (collection.prevIn || 0));
@@ -457,12 +488,12 @@ export async function getCollectionReportById(
         includeJackpot = Boolean(licenceeDoc?.includeJackpot);
       }
     }
-    } catch (err) {
-      console.error(
-        '[getCollectionReportById] Could not fetch licencee includeJackpot:',
-        err instanceof Error ? err.message : 'Unknown error'
-      );
-    }
+  } catch (err) {
+    console.error(
+      '[getCollectionReportById] Could not fetch licencee includeJackpot:',
+      err instanceof Error ? err.message : 'Unknown error'
+    );
+  }
 
   // Calculate total SAS gross and jackpot from meter data map
   let totalSasGross = 0;
@@ -507,43 +538,46 @@ export async function getCollectionReportById(
       });
       totalMachinesForLocation = totalMachinesCount;
     }
-    } catch (error) {
-      console.error(
-        '[getAccountingDetails] Could not count total machines for location:',
-        error instanceof Error ? error.message : 'Unknown error'
-      );
-      // Keep the fallback value
-    }
+  } catch (error) {
+    console.error(
+      '[getAccountingDetails] Could not count total machines for location:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    // Keep the fallback value
+  }
 
   // Map location metrics (use calculated values for core metrics, keep report values for financial fields)
+  // Money in fields use moneyInScale, money out fields use moneyOutScale
+  const totalJackpot = collections.reduce((sum, collection) => {
+    const meterData = meterDataMap.get(collection.machineId);
+    return sum + (meterData?.jackpot ?? collection.sasMeters?.jackpot ?? 0);
+  }, 0);
+  const scaledGross = totalMetersGross * moneyInScale;
+  const scaledJackpot = totalJackpot * moneyOutScale;
+
   const locationMetrics = {
-    droppedCancelled: `${formatSmartDecimal(totalDrop * scale)} / ${formatSmartDecimal(totalCancelled * scale)}`,
-    metersGross: totalMetersGross * scale,
-    jackpot: collections.reduce((sum, collection) => {
-      const meterData = meterDataMap.get(collection.machineId);
-      return sum + (meterData?.jackpot ?? collection.sasMeters?.jackpot ?? 0);
-    }, 0) * scale,
-    netGross:
-      (totalMetersGross -
-      collections.reduce((sum, collection) => {
-        const meterData = meterDataMap.get(collection.machineId);
-        return sum + (meterData?.jackpot ?? collection.sasMeters?.jackpot ?? 0);
-      }, 0)) * scale,
-    variation: totalVariation * scale,
-    sasGross: totalSasGross * scale,
-    locationRevenue: (report.partnerProfit || 0) * scale,
-    amountUncollected: (report.amountUncollected || 0) * scale,
-    amountToCollect: (report.amountToCollect || 0) * scale,
+    droppedCancelled: `${formatSmartDecimal(totalDrop * moneyInScale)} / ${formatSmartDecimal(totalCancelled * moneyOutScale)}`,
+    metersGross: scaledGross,
+    jackpot: scaledJackpot,
+    netGross: scaledGross - scaledJackpot,
+    variation: totalVariation * moneyInScale,
+    sasGross: totalSasGross * moneyInScale,
+    locationRevenue: (report.partnerProfit || 0) * moneyInScale,
+    amountUncollected: (report.amountUncollected || 0) * moneyInScale,
+    amountToCollect: (report.amountToCollect || 0) * moneyInScale,
     machinesNumber: `${collections.length}/${totalMachinesForLocation}`,
-    collectedAmount: (report.amountCollected || 0) * scale,
+    collectedAmount: (report.amountCollected || 0) * moneyInScale,
     reasonForShortage: report.reasonShortagePayment || '-',
-    taxes: (report.taxes || 0) * scale,
-    advance: (report.advance || 0) * scale,
-    previousBalanceOwed: (report.previousBalance || 0) * scale,
-    balanceCorrection: (report.balanceCorrection || 0) * scale,
-    currentBalanceOwed: (report.currentBalance || 0) * scale,
+    taxes: (report.taxes || 0) * moneyOutScale,
+    advance: (report.advance || 0) * moneyOutScale,
+    previousBalanceOwed: (report.previousBalance || 0) * moneyOutScale,
+    balanceCorrection: (report.balanceCorrection || 0) * moneyOutScale,
+    currentBalanceOwed: (report.currentBalance || 0) * moneyOutScale,
     correctionReason: report.balanceCorrectionReas || '-',
-    variance: typeof report.variance === 'number' ? report.variance * scale : report.variance || '-',
+    variance:
+      typeof report.variance === 'number'
+        ? report.variance * moneyInScale
+        : report.variance || '-',
     varianceReason: report.varianceReason || '-',
   };
 
@@ -570,9 +604,9 @@ export async function getCollectionReportById(
 
   // Map SAS metrics from meter data map (calculated above)
   const sasMetrics = {
-    dropped: sasDropTotal * scale,
-    cancelled: sasCancelledTotal * scale,
-    gross: sasGrossTotal * scale,
+    dropped: sasDropTotal * moneyInScale,
+    cancelled: sasCancelledTotal * moneyOutScale,
+    gross: sasGrossTotal * moneyInScale,
   };
 
   return {
@@ -616,9 +650,14 @@ export async function getCollectionReportById(
 
       const machineDisplayName = `${mainIdentifier} (${bracketParts.join(', ')})`;
 
-      // Calculate drop/cancelled from the difference between current and previous meters
-      const drop = (collection.metersIn || 0) - (collection.prevIn || 0);
-      const cancelled = (collection.metersOut || 0) - (collection.prevOut || 0);
+      // Use movement.drop/totalCancelledCredits if available (more reliable),
+      // otherwise calculate from meter differences
+      const drop =
+        collection.movement?.drop ??
+        (collection.metersIn || 0) - (collection.prevIn || 0);
+      const cancelled =
+        collection.movement?.totalCancelledCredits ??
+        (collection.metersOut || 0) - (collection.prevOut || 0);
       const meterGross = collection.movement?.gross || 0;
 
       // 🚀 OPTIMIZED: Use pre-fetched meter data from batch query (no individual queries!)
@@ -655,11 +694,25 @@ export async function getCollectionReportById(
         !collection.sasMeters?.sasEndTime ||
         !meterDataMap.has(String(collection.machineId));
 
-      const variation = meterGross - (hasNoSasData ? 0 : adjustedSasGross);
+      const hasSmib = hasRelayMap.get(String(collection.machineId)) ?? false;
+
+      const variation = hasSmib
+        ? meterGross - (hasNoSasData ? 0 : adjustedSasGross)
+        : 0;
 
       const scaled = scaleMachineValues(
-        { drop, cancelled, meterGross, jackpot, netGross, sasGross, variation, hasNoSasData },
-        scale
+        {
+          drop,
+          cancelled,
+          meterGross,
+          jackpot,
+          netGross,
+          sasGross,
+          variation,
+          hasNoSasData,
+        },
+        moneyInScale,
+        moneyOutScale
       );
 
       return {
@@ -670,8 +723,12 @@ export async function getCollectionReportById(
         metersGross: scaled.meterGross,
         jackpot: scaled.jackpot,
         netGross: scaled.netGross,
-        sasGross: hasNoSasData ? 'No SAS Data' : formatSmartDecimal(scaled.sasGross),
-        variation: formatSmartDecimal(scaled.variation),
+        sasGross: !hasSmib
+          ? 'No SMIB for this Machine'
+          : hasNoSasData
+            ? 'No SAS Data'
+            : formatSmartDecimal(scaled.sasGross),
+        variation: hasSmib ? formatSmartDecimal(scaled.variation) : '0',
         sasStartTime: collection.sasMeters?.sasStartTime || null,
         sasEndTime: collection.sasMeters?.sasEndTime || null,
         hasIssue: false,

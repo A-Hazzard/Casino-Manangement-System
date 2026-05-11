@@ -132,8 +132,15 @@ export async function createLicencee(
     console.error('[createLicencee] request is required');
     throw new Error('[createLicencee] request is required');
   }
-  const { name, description, country, startDate, expiryDate, includeJackpot, gameDayOffset } =
-    data;
+  const {
+    name,
+    description,
+    country,
+    startDate,
+    expiryDate,
+    includeJackpot,
+    gameDayOffset,
+  } = data;
   const currentUser = await getUserFromServer();
   const newId = await generateMongoId();
   const licenceKey = await generateUniqueLicenceKey();
@@ -235,7 +242,9 @@ export async function updateLicencee(
   } = data;
 
   const currentUser = await getUserFromServer();
-  const originalLicencee = await Licencee.findOne({ _id }).lean<LicenceeDocument>();
+  const originalLicencee = await Licencee.findOne({
+    _id,
+  }).lean<LicenceeDocument>();
 
   if (!originalLicencee) {
     throw new Error('Licencee not found');
@@ -478,4 +487,3 @@ export async function deleteLicencee(_id: string, request: NextRequest) {
 
   return deleted;
 }
-

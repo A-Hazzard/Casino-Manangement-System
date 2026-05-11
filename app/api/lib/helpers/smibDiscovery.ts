@@ -110,9 +110,7 @@ export async function discoverSMIBDevices(): Promise<SMIBDiscoveryResult> {
     .select('_id name')
     .lean<GamingLocationDocument[]>();
 
-  const locationMap = new Map(
-    locations.map(loc => [loc._id, loc.name])
-  );
+  const locationMap = new Map(locations.map(loc => [loc._id, loc.name]));
 
   // Build SMIB device list
   const smibs: SMIBDevice[] = machines
@@ -151,5 +149,3 @@ export async function discoverSMIBDevices(): Promise<SMIBDiscoveryResult> {
     count: smibs.length,
   };
 }
-
-

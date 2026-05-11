@@ -141,7 +141,10 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * Format a change item for display in activity logs
  */
 function formatChangeItem(change: ChangeItem): string {
-  if (change === null || change === undefined) { console.error('[formatChangeItem] change is required'); return ''; }
+  if (change === null || change === undefined) {
+    console.error('[formatChangeItem] change is required');
+    return '';
+  }
   const { field, oldValue, newValue } = change;
 
   const formatValue = (value: unknown): string => {
@@ -165,7 +168,10 @@ function formatChangeItem(change: ChangeItem): string {
  * Filter out empty or meaningless changes
  */
 export function filterMeaningfulChanges(changes: ChangeItem[]): ChangeItem[] {
-  if (!Array.isArray(changes)) { console.error('[filterMeaningfulChanges] changes is required'); return []; }
+  if (!Array.isArray(changes)) {
+    console.error('[filterMeaningfulChanges] changes is required');
+    return [];
+  }
   return changes.filter(change => {
     const { oldValue, newValue, path } = change;
 
@@ -212,11 +218,13 @@ export function filterMeaningfulChanges(changes: ChangeItem[]): ChangeItem[] {
  * Get a summary of changes for activity log description
  */
 export function getChangesSummary(changes: ChangeItem[]): string {
-  if (!Array.isArray(changes)) { console.error('[getChangesSummary] changes is required'); return 'No changes detected'; }
+  if (!Array.isArray(changes)) {
+    console.error('[getChangesSummary] changes is required');
+    return 'No changes detected';
+  }
   if (changes.length === 0) return 'No changes detected';
   if (changes.length === 1) return `1 change: ${formatChangeItem(changes[0])}`;
 
   const fieldNames = changes.map(change => change.field).join(', ');
   return `${changes.length} changes: ${fieldNames}`;
 }
-

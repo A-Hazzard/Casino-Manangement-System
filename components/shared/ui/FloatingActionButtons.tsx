@@ -22,7 +22,9 @@ import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import AdminFeedbackPanel from '@/components/shared/ui/AdminFeedbackPanel';
 import FeedbackForm from '@/components/shared/ui/FeedbackForm';
-import NotificationBell, { NotificationItem } from '@/components/shared/ui/NotificationBell';
+import NotificationBell, {
+  NotificationItem,
+} from '@/components/shared/ui/NotificationBell';
 import { useNotificationStore } from '@/lib/store/notificationStore';
 import { useUserStore } from '@/lib/store/userStore';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -44,7 +46,8 @@ export const FloatingActionButtons = ({
   const [mounted, setMounted] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const { user } = useUserStore();
-  const isPrivileged = user?.roles?.includes('admin') || user?.roles?.includes('developer');
+  const isPrivileged =
+    user?.roles?.includes('admin') || user?.roles?.includes('developer');
 
   useEffect(() => {
     setMounted(true);
@@ -56,7 +59,9 @@ export const FloatingActionButtons = ({
       const res = await fetch('/api/feedback?status=pending&limit=1');
       const data = await res.json();
       if (data.success) setPendingCount(data.pagination?.total ?? 0);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [isPrivileged]);
 
   useEffect(() => {
@@ -65,12 +70,12 @@ export const FloatingActionButtons = ({
     return () => clearInterval(interval);
   }, [refreshPendingCount]);
 
-  const { 
-    notifications: storeNotifications, 
+  const {
+    notifications: storeNotifications,
     unreadCount,
     onMarkAsRead,
     onMarkAllAsRead,
-    onDismiss
+    onDismiss,
   } = useNotificationStore();
 
   // Avoid rendering on the server to prevent hydration mismatches
@@ -80,9 +85,7 @@ export const FloatingActionButtons = ({
 
   return (
     <>
-      <div
-        className="fixed bottom-6 right-6 z-[100] flex flex-col gap-4 items-center"
-      >
+      <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-center gap-4">
         {/* Floating Notification Bell - appears on scroll if there are unread notifications */}
         <AnimatePresence>
           {showRefresh && unreadCount > 0 && (
@@ -93,7 +96,9 @@ export const FloatingActionButtons = ({
               transition={{ duration: 0.3, delay: 0.1 }}
             >
               <NotificationBell
-                notifications={storeNotifications as unknown as NotificationItem[]}
+                notifications={
+                  storeNotifications as unknown as NotificationItem[]
+                }
                 unreadCount={unreadCount}
                 onMarkAsRead={onMarkAsRead}
                 onMarkAllAsRead={onMarkAllAsRead}
@@ -101,14 +106,14 @@ export const FloatingActionButtons = ({
                 onDismiss={onDismiss}
                 trigger={
                   <motion.button
-                    className="flex h-12 w-12 items-center justify-center rounded-full bg-orangeHighlight p-3 text-white shadow-lg transition-all duration-200 hover:bg-orangeHighlight/90 hover:scale-110 active:scale-95 relative"
+                    className="relative flex h-12 w-12 items-center justify-center rounded-full bg-orangeHighlight p-3 text-white shadow-lg transition-all duration-200 hover:scale-110 hover:bg-orangeHighlight/90 active:scale-95"
                     aria-label="View notifications"
                   >
                     <Bell className="h-6 w-6 fill-white" />
                     {unreadCount > 0 && (
                       <Badge
                         variant="destructive"
-                        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center p-0 text-[10px] font-bold border-2 border-white"
+                        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center border-2 border-white p-0 text-[10px] font-bold"
                       >
                         {unreadCount > 9 ? '9+' : unreadCount}
                       </Badge>
@@ -189,4 +194,3 @@ export const FloatingActionButtons = ({
     </>
   );
 };
-

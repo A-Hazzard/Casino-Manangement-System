@@ -21,9 +21,18 @@ import { logActivity } from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { sendVerificationSMS } from '@/app/api/lib/helpers/sms';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/members/send-verification-sms';
+  const logUser = extractUserFromRequest(req);
+
   try {
     // ============================================================================
     // STEP 1: Connect to Database
@@ -38,15 +47,32 @@ export async function GET(req: NextRequest) {
     const phoneNumber = searchParams.get('phoneNumber');
 
     if (!memberId || !phoneNumber) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/members/send-verification-sms',
+        'Missing required parameters',
+        logUser
+      );
       return NextResponse.json(
-        { success: false, error: 'Missing required parameters: memberId and phoneNumber' },
+        {
+          success: false,
+          error: 'Missing required parameters: memberId and phoneNumber',
+        },
         { status: 400 }
       );
     }
 
     const phoneRegex = /^\+?[1-9]\d{1,14}$/;
-    
+
     if (!phoneRegex.test(phoneNumber)) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/members/send-verification-sms',
+        'Invalid phone number format',
+        logUser
+      );
       return NextResponse.json(
         { success: false, error: 'Invalid phone number format' },
         { status: 400 }
@@ -67,7 +93,10 @@ export async function GET(req: NextRequest) {
         action: 'sms_success',
         details: `Successfully sent verification SMS to ${phoneNumber} (Member ID: ${memberId}). Status: ${result.statusName}`,
         userId: String(user._id || user.id || user.sub),
-        username: (user.emailAddress as string) || (user.username as string) || 'unknown',
+        username:
+          (user.emailAddress as string) ||
+          (user.username as string) ||
+          'unknown',
         membershipLog: true,
         metadata: {
           resource: 'sms',
@@ -77,13 +106,23 @@ export async function GET(req: NextRequest) {
           messageId: result.messageId,
           status: result.statusName,
           description: result.statusDescription,
-        }
+        },
       });
     }
 
     // ============================================================================
     // STEP 5: Return Success Response
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/members/send-verification-sms',
+      1,
+      logUser,
+      duration
+    );
+
     return NextResponse.json({
       success: true,
       message: 'Verification code sent successfully',
@@ -94,14 +133,24 @@ export async function GET(req: NextRequest) {
         statusDescription: result.statusDescription,
       },
     });
-
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown server error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown server error';
     const { searchParams } = new URL(req.url);
     const memberId = searchParams.get('memberId');
     const phoneNumber = searchParams.get('phoneNumber');
 
-    console.error(`[SMS API] Failed to send verification SMS to memberId ${memberId}:`, errorMessage);
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/members/send-verification-sms',
+      errorMessage,
+      logUser
+    );
+    console.error(
+      `[SMS API] Failed to send verification SMS to memberId ${memberId}:`,
+      errorMessage
+    );
 
     // Log Activity (Failure)
     const user = await getUserFromServer();
@@ -111,14 +160,17 @@ export async function GET(req: NextRequest) {
           action: 'sms_failed',
           details: `Failed to send verification SMS to ${phoneNumber} (Member ID: ${memberId}). Error: ${errorMessage}`,
           userId: String(user._id || user.id || user.sub),
-          username: (user.emailAddress as string) || (user.username as string) || 'unknown',
+          username:
+            (user.emailAddress as string) ||
+            (user.username as string) ||
+            'unknown',
           membershipLog: true,
           metadata: {
             resource: 'sms',
             resourceId: memberId || 'unknown',
             resourceName: phoneNumber || 'unknown',
             error: errorMessage,
-          }
+          },
         });
       } catch (logErr) {
         console.error('[SMS API] Failed to log failure activity:', logErr);

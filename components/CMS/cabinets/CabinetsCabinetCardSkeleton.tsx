@@ -68,4 +68,3 @@ export default function CabinetsCabinetCardSkeleton() {
     </div>
   );
 }
-

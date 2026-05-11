@@ -10,11 +10,11 @@
 
 import { Button } from '@/components/shared/ui/button';
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/shared/ui/dialog';
 import { BarChart3, History, User } from 'lucide-react';
 
@@ -50,8 +50,8 @@ export default function CashierActionSelectionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
-        className="sm:max-w-md !z-[200]"
+      <DialogContent
+        className="!z-[200] sm:max-w-md"
         backdropClassName="bg-black/90 backdrop-blur-md !z-[190]"
       >
         <DialogHeader>

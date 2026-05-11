@@ -51,28 +51,28 @@
 
 ## 🛠️ Tech Stack
 
-| Category | Technology | Version |
-| --- | --- | --- |
-| Framework | Next.js (App Router) | 16.0.7 |
-| Language | TypeScript | 5.9.3 |
-| Styling | Tailwind CSS | 3.4.17 |
-| Database | MongoDB / Mongoose | 6.17.0 / 8.18.1 |
-| State (Global) | Zustand | 5.0.8 |
-| State (Server) | TanStack React Query | 5.90.7 |
-| Auth | jose (JWT) | 6.1.0 |
-| Password | bcryptjs | 3.0.2 |
-| 2FA | otplib (TOTP) | 13.3.0 |
-| UI Components | Shadcn/UI + Radix UI + MUI | various |
-| Charts | Recharts | 2.15.4 |
-| Maps | React Leaflet | 5.0.0 |
-| Animations | Framer Motion | 12.23.12 |
-| HTTP Client | Axios | 1.12.2 |
-| SMS | Infobip SDK | 0.3.2 |
-| Email | Nodemailer | 8.0.1 |
-| IoT | MQTT | 5.14.1 |
-| Export | jsPDF + xlsx | 3.0.2 / 0.18.5 |
-| Validation | Zod | 3.25.76 |
-| Testing | Jest + Playwright | 30.2.0 / 1.58.2 |
+| Category       | Technology                 | Version         |
+| -------------- | -------------------------- | --------------- |
+| Framework      | Next.js (App Router)       | 16.0.7          |
+| Language       | TypeScript                 | 5.9.3           |
+| Styling        | Tailwind CSS               | 3.4.17          |
+| Database       | MongoDB / Mongoose         | 6.17.0 / 8.18.1 |
+| State (Global) | Zustand                    | 5.0.8           |
+| State (Server) | TanStack React Query       | 5.90.7          |
+| Auth           | jose (JWT)                 | 6.1.0           |
+| Password       | bcryptjs                   | 3.0.2           |
+| 2FA            | otplib (TOTP)              | 13.3.0          |
+| UI Components  | Shadcn/UI + Radix UI + MUI | various         |
+| Charts         | Recharts                   | 2.15.4          |
+| Maps           | React Leaflet              | 5.0.0           |
+| Animations     | Framer Motion              | 12.23.12        |
+| HTTP Client    | Axios                      | 1.12.2          |
+| SMS            | Infobip SDK                | 0.3.2           |
+| Email          | Nodemailer                 | 8.0.1           |
+| IoT            | MQTT                       | 5.14.1          |
+| Export         | jsPDF + xlsx               | 3.0.2 / 0.18.5  |
+| Validation     | Zod                        | 3.25.76         |
+| Testing        | Jest + Playwright          | 30.2.0 / 1.58.2 |
 
 ## ⚙️ Installation & Setup
 
@@ -156,20 +156,20 @@ docker run --rm -p 3000:3000 \
 
 ## 🖥️ Development Commands
 
-| Command | Description |
-| --- | --- |
-| `bun run dev` | Start development server (localhost:3000) |
-| `bun run dev:turbo` | Start with Turbopack |
-| `bun run build` | Build production app |
-| `bun run start` | Start production server |
-| `bun run lint` | ESLint on .ts/.tsx files |
-| `bun run lint:fix` | Auto-fix ESLint issues |
-| `bun run type-check` | TypeScript type checking (tsc --noEmit) |
-| `bun run format` | Prettier formatting |
-| `bun run check` | type-check && lint |
-| `bun run test` | Run Jest tests |
-| `bun run test:watch` | Jest in watch mode |
-| `bun run test:coverage` | Jest with coverage |
+| Command                 | Description                               |
+| ----------------------- | ----------------------------------------- |
+| `bun run dev`           | Start development server (localhost:3000) |
+| `bun run dev:turbo`     | Start with Turbopack                      |
+| `bun run build`         | Build production app                      |
+| `bun run start`         | Start production server                   |
+| `bun run lint`          | ESLint on .ts/.tsx files                  |
+| `bun run lint:fix`      | Auto-fix ESLint issues                    |
+| `bun run type-check`    | TypeScript type checking (tsc --noEmit)   |
+| `bun run format`        | Prettier formatting                       |
+| `bun run check`         | type-check && lint                        |
+| `bun run test`          | Run Jest tests                            |
+| `bun run test:watch`    | Jest in watch mode                        |
+| `bun run test:coverage` | Jest with coverage                        |
 
 ## 🧪 Testing & Development Tools
 
@@ -187,16 +187,19 @@ go run main.go
 ## 🏗️ Development Guidelines
 
 ### Package Management
+
 - **Use `bun` exclusively** — the project has bun-specific overrides in `package.json`
 - Always run `bun build` after changes; fix all errors before committing
 
 ### TypeScript
+
 - **`type` over `interface`** for all type definitions
 - **No `any`** — create proper type definitions
 - Type locations: `shared/types/` (shared), `lib/types/` (frontend only), `app/api/lib/types/` (backend only)
 - Strict mode enabled: `noUnusedLocals`, `noImplicitReturns`, `noFallthroughCases`
 
 ### React Imports (Critical)
+
 ```typescript
 // ✅ CORRECT
 import { useState, useEffect, FC } from 'react';
@@ -206,22 +209,26 @@ import React from 'react';
 ```
 
 ### File Organization
+
 - `page.tsx` files are thin wrappers — offload all logic to hooks/helpers
 - API business logic in `app/api/lib/helpers/`
 - Shared utilities in `lib/utils/` or `lib/helpers/`
 - Components organized by feature in `components/CMS/` or `components/VAULT/`
 
 ### Security & Cookies
+
 - **Never hardcode `secure: true`** — use `getAuthCookieOptions(request)` from `lib/utils/cookieSecurity.ts`
 - App runs on both HTTPS (domain) and HTTP (LAN IP), so cookie security must be auto-detected
 - Always use `sameSite: 'lax'` — never `'none'`
 
 ### Timezone
+
 - All dates stored UTC, displayed in Trinidad time (UTC-4)
 - Use `lib/utils/gamingDayRange.ts` for gaming day offset calculations
 - Business day: 8 AM → 8 AM Trinidad time (not midnight to midnight)
 
 ### Auditing & Logging
+
 - Use `app/api/lib/helpers/activityLogger.ts` for all significant CRUD operations and security events
 - Required for regulatory compliance — log before/after values for data changes
 
@@ -284,6 +291,7 @@ Evolution1 CMS/
 ## 📊 Documentation Index
 
 ### Page Documentation (`Documentation/pages/`)
+
 - [Dashboard](Documentation/pages/dashboard-page.md)
 - [Locations](Documentation/pages/locations-page.md)
 - [Cabinets / Fleet](Documentation/pages/cabinets-page.md)
@@ -296,6 +304,7 @@ Evolution1 CMS/
 - [Frontend Standards](Documentation/pages/frontend-standards.md)
 
 ### API Documentation (`Documentation/api/`)
+
 - [Auth & IAM](Documentation/api/auth-api.md)
 - [Calculation Engine](Documentation/api/calculation-engine.md)
 - [Collections API](Documentation/api/collections-api.md)
@@ -311,6 +320,7 @@ Evolution1 CMS/
 - [System Config API](Documentation/api/system-config-api.md)
 
 ### Master Hub
+
 - [Project Guide](Documentation/PROJECT_GUIDE.md) — complete documentation index
 
 ## ✨ Core Principles

@@ -1,6 +1,5 @@
 'use client';
 
-
 import { ReactElement } from 'react';
 import { ExternalLink } from 'lucide-react';
 
@@ -32,7 +31,10 @@ export default function CollectionReportFormMachineInfoDisplay({
       <div className="flex items-center justify-between">
         <div className="flex-1">
           {typeof machineName === 'string' ? (
-            <p className="font-semibold" dangerouslySetInnerHTML={{ __html: machineName }} />
+            <p
+              className="font-semibold"
+              dangerouslySetInnerHTML={{ __html: machineName }}
+            />
           ) : (
             <p className="font-semibold">{machineName}</p>
           )}
@@ -45,7 +47,7 @@ export default function CollectionReportFormMachineInfoDisplay({
           <button
             type="button"
             className="ml-2 shrink-0 rounded p-1 text-blue-600 transition-transform hover:scale-110 hover:bg-blue-50 active:scale-95"
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
               onViewMachine();
             }}
@@ -58,6 +60,4 @@ export default function CollectionReportFormMachineInfoDisplay({
       </div>
     </div>
   );
-};
-
-
+}

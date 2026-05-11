@@ -1,8 +1,8 @@
 # Locations Page Implementation (`/locations`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:** May 7, 2026  
+**Version:** 4.4.0
 
 ---
 
@@ -15,6 +15,7 @@ Overview of the gaming property portfolio with real-time performance tracking.
 ## 2. Data & API Architecture (By Section)
 
 ### 📊 Property Statistics Bar
+
 Summary of the total financial and operational footprint across the selected scope.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -26,6 +27,7 @@ Summary of the total financial and operational footprint across the selected sco
 - **Implementation**: `fetchDashboardTotals` helper within the `useLocationsPageData` hook.
 
 ### 📋 Locations Inventory Table
+
 The primary grid for managing and auditing individual gaming properties.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -37,6 +39,7 @@ The primary grid for managing and auditing individual gaming properties.
 - **Implementation**: `LocationsTable` component with server-side filtering via the `locationAggregation` endpoint.
 
 ### 📡 Cabinet Connectivity Widget
+
 Real-time operational health of the property fleet.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -48,6 +51,7 @@ Real-time operational health of the property fleet.
 - **Implementation**: `CabinetStatusWidget` component.
 
 ### 🗺️ Interactive Property Map
+
 Geospatial visualization of the property portfolio.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -90,4 +94,95 @@ Geospatial visualization of the property portfolio.
 - **Responsive Design**: The map is hidden on mobile devices, replaced by a "List View" optimized for one-handed operation.
 
 ---
+
+## 7. SMIB Classification System
+
+### What is SMIB Classification?
+
+Each location is automatically classified based on its machines' SMIB (Slot Machine Interface Board) connectivity:
+
+| Classification          | Meaning                        | Rule                              |
+| :---------------------- | :----------------------------- | :-------------------------------- |
+| **Full SMIB**           | All machines have SMIB boards  | `relayId` exists on ALL machines  |
+| **Partial (Semi) SMIB** | Some machines have SMIB boards | `relayId` exists on SOME machines |
+| **No SMIB**             | No machines have SMIB boards   | `relayId` exists on NO machines   |
+
+### The Filtering Problem (Solved)
+
+**Before**: When filtering by SMIB status, only paginated results were checked. Locations on later pages weren't evaluated, causing incorrect filtering.
+
+**After**: SMIB status is synced to the database, then filtering uses cached database values.
+
+### How the Sync Works
+
+1. **Page Load / Refresh**: Frontend calls `GET /api/admin/smib-sync`
+2. **Check Staleness**: If last sync > 1 hour ago, triggers background sync
+3. **Fetch All Data**: Gets ALL accessible locations + their machines
+4. **Classify Each Location**: Checks each machine for `relayId` presence
+5. **Save to DB**: Updates `fullSMIBs`, `semiSMIBs`, `noSMIBLocation` fields
+
+### Sync Flow Diagram
+
+```
+User loads /locations
+       ↓
+Frontend: GET /api/admin/smib-sync
+       ↓
+Response: { lastSync, isStale }
+       ↓
+if isStale = true:
+       ↓
+Frontend: POST /api/admin/smib-sync
+       ↓
+Backend: Fetch ALL locations
+       ↓
+Backend: Fetch ALL machines
+       ↓
+Backend: Classify each location
+       ↓
+Backend: Bulk write to DB
+       ↓
+Filter uses cached values
+```
+
+### API Endpoints
+
+| Endpoint                                     | Purpose                         |
+| :------------------------------------------- | :------------------------------ |
+| `GET /api/admin/smib-sync`                   | Check sync status               |
+| `POST /api/admin/smib-sync`                  | Trigger full sync               |
+| `GET /api/reports/locations?syncAll=true`    | Sync + return paginated results |
+| `GET /api/locations/search-all?syncAll=true` | Sync + return full results      |
+
+### Sync Status Response
+
+```json
+{
+  "lastSync": "2026-05-07T15:36:53.844Z",
+  "isStale": false,
+  "staleAfterHours": 1
+}
+```
+
+| Field             | Meaning                              |
+| :---------------- | :----------------------------------- |
+| `lastSync`        | Timestamp of last sync               |
+| `isStale`         | `true` = needs sync, `false` = fresh |
+| `staleAfterHours` | Threshold (1 hour)                   |
+
+### Manual Sync
+
+To force a sync:
+
+```bash
+# Via API
+curl -X POST http://localhost:3000/api/admin/smib-sync
+
+# Via URL parameter
+GET /api/reports/locations?syncAll=true&limit=1
+GET /api/locations/search-all?syncAll=true
+```
+
+---
+
 **Internal Document** - Engineering Team

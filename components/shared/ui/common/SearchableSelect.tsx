@@ -42,7 +42,7 @@ export default function SearchableSelect({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      
+
       // If the target is no longer in the document, it was likely an element
       // unmounted during a re-render (e.g. selection)
       if (!document.body.contains(target)) return;
@@ -63,10 +63,18 @@ export default function SearchableSelect({
     setSearchTerm('');
   };
 
-  const filteredOptions = options.filter(option =>
-    (option.label || '').toLowerCase().includes((searchTerm || '').toLowerCase()) || 
-    (option.value || '').toLowerCase().includes((searchTerm || '').toLowerCase()) ||
-    (option.group && (option.group || '').toLowerCase().includes((searchTerm || '').toLowerCase()))
+  const filteredOptions = options.filter(
+    option =>
+      (option.label || '')
+        .toLowerCase()
+        .includes((searchTerm || '').toLowerCase()) ||
+      (option.value || '')
+        .toLowerCase()
+        .includes((searchTerm || '').toLowerCase()) ||
+      (option.group &&
+        (option.group || '')
+          .toLowerCase()
+          .includes((searchTerm || '').toLowerCase()))
   );
 
   const selectedOption = options.find(option => option.value === value);
@@ -80,7 +88,7 @@ export default function SearchableSelect({
         variant="outline"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'w-full justify-between text-left font-normal px-3 py-2 h-auto text-sm rounded-xl border',
+          'h-auto w-full justify-between rounded-xl border px-3 py-2 text-left text-sm font-normal',
           !selectedOption && 'text-muted-foreground',
           error ? 'border-red-500' : 'border-gray-200'
         )}
@@ -94,8 +102,8 @@ export default function SearchableSelect({
       </Button>
 
       {isOpen && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto overflow-x-hidden rounded-xl border border-gray-200 bg-white shadow-lg custom-scrollbar">
-          <div className="sticky top-0 bg-white border-b border-gray-100 p-2 z-10">
+        <div className="custom-scrollbar absolute z-50 mt-1 max-h-60 w-full overflow-y-auto overflow-x-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+          <div className="sticky top-0 z-10 border-b border-gray-100 bg-white p-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 transform text-gray-400" />
               <Input
@@ -103,7 +111,7 @@ export default function SearchableSelect({
                 placeholder={searchPlaceholder}
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="h-8 pl-8 text-xs rounded-lg"
+                className="h-8 rounded-lg pl-8 text-xs"
                 onClick={e => e.stopPropagation()}
               />
             </div>
@@ -118,18 +126,26 @@ export default function SearchableSelect({
                     key={option.value}
                     className={cn(
                       'flex cursor-pointer items-center justify-between px-3 py-2 text-sm hover:bg-gray-50',
-                      isSelected ? 'bg-violet-50 text-violet-900 font-medium' : 'text-gray-700'
+                      isSelected
+                        ? 'bg-violet-50 font-medium text-violet-900'
+                        : 'text-gray-700'
                     )}
-                    onClick={(e) => {
+                    onClick={e => {
                       e.stopPropagation();
                       handleSelect(option.value);
                     }}
                   >
                     <div className="flex flex-col">
                       <span>{option.label}</span>
-                      {option.group && <span className="text-[10px] text-gray-400">{option.group}</span>}
+                      {option.group && (
+                        <span className="text-[10px] text-gray-400">
+                          {option.group}
+                        </span>
+                      )}
                     </div>
-                    {isSelected && <Check className="h-4 w-4 text-violet-600" />}
+                    {isSelected && (
+                      <Check className="h-4 w-4 text-violet-600" />
+                    )}
                   </div>
                 );
               })

@@ -149,7 +149,7 @@ async function obtainAuthCookie(
     const body = await response.text();
     throw new Error(
       `[auth.fixture] /api/e2e/auth failed (${response.status()}): ${body}\n` +
-      'Ensure the Next.js dev server is running and NODE_ENV !== "production".'
+        'Ensure the Next.js dev server is running and NODE_ENV !== "production".'
     );
   }
 
@@ -182,7 +182,7 @@ export async function setRoleAuthCookie(
   await seedZustandUser(page, userPayload);
 
   // Mock current-user so the API confirms the role (keeps Zustand in sync)
-  await page.route('**/api/auth/current-user**', (route) =>
+  await page.route('**/api/auth/current-user**', route =>
     route.fulfill({
       status: 200,
       json: mockCurrentUserResponse(userPayload),
@@ -190,18 +190,18 @@ export async function setRoleAuthCookie(
   );
 
   // Mock token API so fetchUserId doesn't hit the DB and return 401
-  await page.route('**/api/auth/token**', (route) =>
+  await page.route('**/api/auth/token**', route =>
     route.fulfill({
       status: 200,
-      json: { userId: userPayload._id }
+      json: { userId: userPayload._id },
     })
   );
 
   // Mock profile API so AppSidebar doesn't get 404
-  await page.route(`**/api/users/${userPayload._id}**`, (route) =>
+  await page.route(`**/api/users/${userPayload._id}**`, route =>
     route.fulfill({
       status: 200,
-      json: { success: true, user: mockCurrentUserResponse(userPayload).user }
+      json: { success: true, user: mockCurrentUserResponse(userPayload).user },
     })
   );
 
@@ -217,12 +217,10 @@ export async function loginViaUI(page: Page): Promise<void> {
   await page.locator('#password').fill(TEST_USER.password);
   await page.locator('button[type="submit"]').click();
 
-  await page.waitForURL((url) => !url.pathname.includes('/login'), {
+  await page.waitForURL(url => !url.pathname.includes('/login'), {
     timeout: 15_000,
   });
 }
-
-
 
 // ─── Login via mock (no real user in DB needed) ───────────────────────────────
 
@@ -235,7 +233,7 @@ export async function loginViaMock(
   userPayload = MOCK_USER_PAYLOAD
 ): Promise<void> {
   // Mock current-user so the API confirms the user (keeps Zustand in sync)
-  await page.route('**/api/auth/current-user**', (route) =>
+  await page.route('**/api/auth/current-user**', route =>
     route.fulfill({
       status: 200,
       json: mockCurrentUserResponse(userPayload),
@@ -243,18 +241,18 @@ export async function loginViaMock(
   );
 
   // Mock token API so fetchUserId doesn't hit the DB and return 401
-  await page.route('**/api/auth/token**', (route) =>
+  await page.route('**/api/auth/token**', route =>
     route.fulfill({
       status: 200,
-      json: { userId: userPayload._id }
+      json: { userId: userPayload._id },
     })
   );
 
   // Mock profile API so AppSidebar doesn't get 404
-  await page.route(`**/api/users/${userPayload._id}**`, (route) =>
+  await page.route(`**/api/users/${userPayload._id}**`, route =>
     route.fulfill({
       status: 200,
-      json: { success: true, user: mockCurrentUserResponse(userPayload).user }
+      json: { success: true, user: mockCurrentUserResponse(userPayload).user },
     })
   );
 
@@ -268,7 +266,7 @@ export async function loginViaMock(
 
   // Navigate to the dashboard — the cookie and seeded Zustand state are ready
   await page.goto('/');
-  await page.waitForURL((url) => !url.pathname.includes('/login'), {
+  await page.waitForURL(url => !url.pathname.includes('/login'), {
     timeout: 15_000,
   });
 }

@@ -13,16 +13,27 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useCollectionReportVariationCheck, type CheckVariationsMachine } from './useCollectionReportVariationCheck';
+import {
+  useCollectionReportVariationCheck,
+  type CheckVariationsMachine,
+} from './useCollectionReportVariationCheck';
 
-type VariationFlowState = 'idle' | 'checking' | 'no-variations' | 'with-variations' | 'error' | 'minimized';
+type VariationFlowState =
+  | 'idle'
+  | 'checking'
+  | 'no-variations'
+  | 'with-variations'
+  | 'error'
+  | 'minimized';
 
 interface UseVariationCheckFlowOptions {
   autoCheckOnEdit?: boolean;
   debounceMs?: number;
 }
 
-export function useCollectionReportVariationCheckFlow(options: UseVariationCheckFlowOptions = {}) {
+export function useCollectionReportVariationCheckFlow(
+  options: UseVariationCheckFlowOptions = {}
+) {
   const {
     isChecking,
     checkComplete,
@@ -36,13 +47,18 @@ export function useCollectionReportVariationCheckFlow(options: UseVariationCheck
   } = useCollectionReportVariationCheck(options);
 
   const [flowState, setFlowState] = useState<VariationFlowState>('idle');
-  const [showConfirmationWithVariations, setShowConfirmationWithVariations] = useState(false);
+  const [showConfirmationWithVariations, setShowConfirmationWithVariations] =
+    useState(false);
 
   /**
    * Start the variation check flow
    */
   const startVariationCheck = useCallback(
-    async (locationId: string, machines: CheckVariationsMachine[], includeJackpot?: boolean) => {
+    async (
+      locationId: string,
+      machines: CheckVariationsMachine[],
+      includeJackpot?: boolean
+    ) => {
       setFlowState('checking');
       await performCheck(locationId, machines, includeJackpot);
     },
@@ -101,7 +117,11 @@ export function useCollectionReportVariationCheckFlow(options: UseVariationCheck
    * Retry variation check
    */
   const handleRetry = useCallback(
-    async (locationId: string, machines: CheckVariationsMachine[], includeJackpot?: boolean) => {
+    async (
+      locationId: string,
+      machines: CheckVariationsMachine[],
+      includeJackpot?: boolean
+    ) => {
       setFlowState('checking');
       await performCheck(locationId, machines, includeJackpot);
     },

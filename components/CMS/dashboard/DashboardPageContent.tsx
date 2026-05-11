@@ -17,14 +17,11 @@ import { NoLicenceeAssigned } from '@/components/shared/ui/NoLicenceeAssigned';
 import { PieChartLabelRenderer } from '@/components/shared/ui/PieChartLabelRenderer';
 import { useCurrency } from '@/lib/contexts/CurrencyContext';
 import {
-    fetchMetricsData,
-    fetchTopPerformingDataHelper,
-    loadGamingLocations,
+  fetchMetricsData,
+  fetchTopPerformingDataHelper,
+  loadGamingLocations,
 } from '@/lib/helpers/dashboard';
-import {
-    useDashboardFilters,
-    useDashboardRefresh,
-} from '@/lib/hooks/data';
+import { useDashboardFilters, useDashboardRefresh } from '@/lib/hooks/data';
 import { useGlobalErrorHandler } from '@/lib/hooks/data/useGlobalErrorHandler';
 import { useAbortableRequest } from '@/lib/hooks/useAbortableRequest';
 import { useDashBoardStore } from '@/lib/store/dashboardStore';
@@ -107,8 +104,6 @@ export default function DashboardPageContent() {
       ) as ChartGranularity
   );
 
-
-
   const { refreshing, handleRefresh } = useDashboardRefresh({
     selectedLicencee,
     activeMetricsFilter,
@@ -181,16 +176,20 @@ export default function DashboardPageContent() {
       customDateRange?.endDate
     ) {
       // Show minute/hourly selector only for same-day custom ranges
-      const sd = customDateRange.startDate instanceof Date
-        ? customDateRange.startDate
-        : new Date(customDateRange.startDate);
-      const ed = customDateRange.endDate instanceof Date
-        ? customDateRange.endDate
-        : new Date(customDateRange.endDate);
+      const sd =
+        customDateRange.startDate instanceof Date
+          ? customDateRange.startDate
+          : new Date(customDateRange.startDate);
+      const ed =
+        customDateRange.endDate instanceof Date
+          ? customDateRange.endDate
+          : new Date(customDateRange.endDate);
       // Compare calendar dates (same year, month, day)
-      return sd.getFullYear() === ed.getFullYear() &&
+      return (
+        sd.getFullYear() === ed.getFullYear() &&
         sd.getMonth() === ed.getMonth() &&
-        sd.getDate() === ed.getDate();
+        sd.getDate() === ed.getDate()
+      );
     }
     // Show daily/weekly selector for Last 30 Days
     if (activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days') {
@@ -294,8 +293,7 @@ export default function DashboardPageContent() {
         prevFetchParams.current.replace(
           `-${prevGranularityRef.current}`,
           ''
-        ) ===
-          fetchKey.replace(`-${chartGranularity}`, '');
+        ) === fetchKey.replace(`-${chartGranularity}`, '');
 
       if (isGranularityChangeOnly) {
         setLoadingChartData(true);
@@ -330,8 +328,10 @@ export default function DashboardPageContent() {
             displayCurrency,
             signal,
             // Pass granularity to API for short periods (minute/hourly) and 30d (daily/weekly)
-            (chartGranularity === 'minute' || chartGranularity === 'hourly' ||
-              chartGranularity === 'daily' || chartGranularity === 'weekly')
+            chartGranularity === 'minute' ||
+              chartGranularity === 'hourly' ||
+              chartGranularity === 'daily' ||
+              chartGranularity === 'weekly'
               ? chartGranularity
               : undefined
           );
@@ -554,4 +554,3 @@ export default function DashboardPageContent() {
     </PageLayout>
   );
 }
-

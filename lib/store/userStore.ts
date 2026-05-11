@@ -79,13 +79,20 @@ const createStore = () => {
           }
         },
         clearUser: () => {
-          set({ user: null, isInitialized: false, hasActiveVaultShift: false, isVaultReconciled: false, isStaleShift: false });
+          set({
+            user: null,
+            isInitialized: false,
+            hasActiveVaultShift: false,
+            isVaultReconciled: false,
+            isStaleShift: false,
+          });
           // Clear cache when user is logged out
           clearUserCache();
         },
         setInitialized: initialized => set({ isInitialized: initialized }),
         setHasActiveVaultShift: active => set({ hasActiveVaultShift: active }),
-        setIsVaultReconciled: reconciled => set({ isVaultReconciled: reconciled }),
+        setIsVaultReconciled: reconciled =>
+          set({ isVaultReconciled: reconciled }),
         setIsStaleShift: stale => set({ isStaleShift: stale }),
       }),
       {

@@ -65,6 +65,7 @@ export type LocationMultiSelectProps = {
   maxSelections?: number;
   className?: string;
   showSearch?: boolean;
+  showSasBadge?: boolean;
 };
 
 export type NewMovementModalProps = {
@@ -114,18 +115,18 @@ export type LocationsCabinetGridProps = {
   itemsPerPage: number;
   router: AppRouterInstance;
   sortOption?:
-  | 'assetNumber'
-  | 'locationName'
-  | 'moneyIn'
-  | 'moneyOut'
-  | 'jackpot'
-  | 'gross'
-  | 'cancelledCredits'
-  | 'game'
-  | 'smbId'
-  | 'serialNumber'
-  | 'lastOnline'
-  | 'offlineTime';
+    | 'assetNumber'
+    | 'locationName'
+    | 'moneyIn'
+    | 'moneyOut'
+    | 'jackpot'
+    | 'gross'
+    | 'cancelledCredits'
+    | 'game'
+    | 'smbId'
+    | 'serialNumber'
+    | 'lastOnline'
+    | 'offlineTime';
   sortOrder?: 'asc' | 'desc';
   onSortChange?: (
     option:

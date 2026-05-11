@@ -50,10 +50,16 @@ export default function CashierManagementPage() {
           <div className="space-y-6">
             <VaultManagerHeader />
 
-            <StaleShiftDetectedBlock isStale={isStaleShift} openedAt={vaultBalance?.openedAt} type="vault">
+            <StaleShiftDetectedBlock
+              isStale={isStaleShift}
+              openedAt={vaultBalance?.openedAt}
+              type="vault"
+            >
               <CashierManagementPanel
                 onLoadingChange={setPanelLoading}
-                onRefresh={(fn) => { refreshFnRef.current = fn; }}
+                onRefresh={fn => {
+                  refreshFnRef.current = fn;
+                }}
               />
             </StaleShiftDetectedBlock>
           </div>

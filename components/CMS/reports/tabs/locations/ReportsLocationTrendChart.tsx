@@ -22,23 +22,28 @@
  * @param isHourly - Whether data is hourly
  */
 import { ReactNode, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { formatTrinidadTime } from '@/lib/utils/timezone';
 import { TimePeriod, type ChartGranularity } from '@/shared/types/common';
 import {
-    formatDate,
-    formatDisplayDate,
-    formatTime12Hour,
+  formatDate,
+  formatDisplayDate,
+  formatTime12Hour,
 } from '@/shared/utils/dateFormat';
-import {  useMemo  } from 'react';
+import { useMemo } from 'react';
 import {
-    CartesianGrid,
-    Line,
-    LineChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 type ReportsLocationTrendChartProps = {
@@ -82,7 +87,6 @@ export function ReportsLocationTrendChart({
   timePeriod,
   granularity,
 }: ReportsLocationTrendChartProps) {
-
   // Debug: Log raw data for jackpot to investigate missing data points
   useEffect(() => {
     if (dataKey === 'jackpot' && data.length > 0) {
@@ -411,9 +415,7 @@ export function ReportsLocationTrendChart({
           </div>
 
           {/* Scrollable Container for both Mobile and Desktop */}
-          <div
-            className="touch-pan-x overflow-x-auto overflow-y-hidden"
-          >
+          <div className="touch-pan-x overflow-x-auto overflow-y-hidden">
             <div style={{ minWidth: `${minWidth}px`, width: '100%' }}>
               <ResponsiveContainer width="100%" height={380}>
                 <LineChart
@@ -606,4 +608,3 @@ export function ReportsLocationTrendChart({
     </div>
   );
 }
-

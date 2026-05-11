@@ -10,7 +10,10 @@
  * - Handle null/empty data gracefully
  */
 
-import type { AggregatedLocation, GamingMachine as Cabinet } from '@/shared/types/entities';
+import type {
+  AggregatedLocation,
+  GamingMachine as Cabinet,
+} from '@/shared/types/entities';
 
 export type FinancialTotals = {
   moneyIn: number;
@@ -43,9 +46,10 @@ export function calculateLocationFinancialTotals(
       const moneyIn = location.moneyIn || 0;
       const moneyOut = location.moneyOut || 0;
       const jackpot = location.jackpot || 0;
-      const gross = location.gross !== undefined ? location.gross : (moneyIn - moneyOut);
+      const gross =
+        location.gross !== undefined ? location.gross : moneyIn - moneyOut;
       const netGross = location.netGross || 0;
-      
+
       const newAcc = {
         moneyIn: acc.moneyIn + moneyIn,
         moneyOut: acc.moneyOut + moneyOut,
@@ -54,9 +58,23 @@ export function calculateLocationFinancialTotals(
         netGross: (acc.netGross || 0) + netGross,
       };
 
-      const locRaw = (location as { _raw?: { moneyIn?: number; moneyOut?: number; jackpot?: number; gross?: number } })._raw;
+      const locRaw = (
+        location as {
+          _raw?: {
+            moneyIn?: number;
+            moneyOut?: number;
+            jackpot?: number;
+            gross?: number;
+          };
+        }
+      )._raw;
       if (locRaw) {
-        const currentRaw = acc._raw || { moneyIn: 0, moneyOut: 0, jackpot: 0, gross: 0 };
+        const currentRaw = acc._raw || {
+          moneyIn: 0,
+          moneyOut: 0,
+          jackpot: 0,
+          gross: 0,
+        };
         return {
           ...newAcc,
           _raw: {
@@ -64,7 +82,7 @@ export function calculateLocationFinancialTotals(
             moneyOut: currentRaw.moneyOut + (locRaw.moneyOut || 0),
             jackpot: currentRaw.jackpot + (locRaw.jackpot || 0),
             gross: currentRaw.gross + (locRaw.gross || 0),
-          }
+          },
         };
       }
 
@@ -95,9 +113,10 @@ export function calculateCabinetFinancialTotals(
       const moneyOut = cabinet.moneyOut || 0;
       const jackpot = cabinet.jackpot || 0;
       // Gross is calculated as moneyIn - moneyOut according to financial metrics guide
-      const gross = cabinet.gross !== undefined ? cabinet.gross : (moneyIn - moneyOut);
+      const gross =
+        cabinet.gross !== undefined ? cabinet.gross : moneyIn - moneyOut;
       const netGross = cabinet.netGross || 0;
-      
+
       const newAcc = {
         moneyIn: acc.moneyIn + moneyIn,
         moneyOut: acc.moneyOut + moneyOut,
@@ -106,9 +125,23 @@ export function calculateCabinetFinancialTotals(
         netGross: (acc.netGross || 0) + netGross,
       };
 
-      const cabRaw = (cabinet as { _raw?: { moneyIn?: number; moneyOut?: number; jackpot?: number; gross?: number } })._raw;
+      const cabRaw = (
+        cabinet as {
+          _raw?: {
+            moneyIn?: number;
+            moneyOut?: number;
+            jackpot?: number;
+            gross?: number;
+          };
+        }
+      )._raw;
       if (cabRaw) {
-        const currentRaw = acc._raw || { moneyIn: 0, moneyOut: 0, jackpot: 0, gross: 0 };
+        const currentRaw = acc._raw || {
+          moneyIn: 0,
+          moneyOut: 0,
+          jackpot: 0,
+          gross: 0,
+        };
         return {
           ...newAcc,
           _raw: {
@@ -116,7 +149,7 @@ export function calculateCabinetFinancialTotals(
             moneyOut: currentRaw.moneyOut + (cabRaw.moneyOut || 0),
             jackpot: currentRaw.jackpot + (cabRaw.jackpot || 0),
             gross: currentRaw.gross + (cabRaw.gross || 0),
-          }
+          },
         };
       }
 
@@ -127,4 +160,3 @@ export function calculateCabinetFinancialTotals(
 
   return totals;
 }
-

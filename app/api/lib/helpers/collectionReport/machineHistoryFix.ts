@@ -135,7 +135,9 @@ export async function fixMachineCollectionHistory(
         );
 
         if (!clearResult) {
-          console.error(`[fixMachineCollectionHistory] Failed to clear history for machine ${machineId}`);
+          console.error(
+            `[fixMachineCollectionHistory] Failed to clear history for machine ${machineId}`
+          );
           issues.push('Failed to clear collection history');
         }
 
@@ -178,19 +180,25 @@ export async function fixMachineCollectionHistory(
             `   🗑️ Found ${duplicateCollections.length} duplicate collections to remove`
           );
 
-           // Remove duplicate collections from database
-           for (const duplicateGroup of duplicateCollections) {
-             const idsToRemove = duplicateGroup.duplicates.map(d => d._id);
-             const deleteResult = await Collections.deleteMany({ _id: { $in: idsToRemove } });
-             if (deleteResult.deletedCount === 0) {
-               console.error(`[fixMachineCollectionHistory] Failed to delete duplicates for timestamp ${duplicateGroup.timestamp}`);
-               issues.push(`Failed to delete duplicate collections for timestamp ${duplicateGroup.timestamp}`);
-             } else {
-               console.warn(
-                 `   ✅ Removed ${deleteResult.deletedCount} duplicates for timestamp ${duplicateGroup.timestamp}`
-               );
-             }
-           }
+          // Remove duplicate collections from database
+          for (const duplicateGroup of duplicateCollections) {
+            const idsToRemove = duplicateGroup.duplicates.map(d => d._id);
+            const deleteResult = await Collections.deleteMany({
+              _id: { $in: idsToRemove },
+            });
+            if (deleteResult.deletedCount === 0) {
+              console.error(
+                `[fixMachineCollectionHistory] Failed to delete duplicates for timestamp ${duplicateGroup.timestamp}`
+              );
+              issues.push(
+                `Failed to delete duplicate collections for timestamp ${duplicateGroup.timestamp}`
+              );
+            } else {
+              console.warn(
+                `   ✅ Removed ${deleteResult.deletedCount} duplicates for timestamp ${duplicateGroup.timestamp}`
+              );
+            }
+          }
 
           // Refresh actual collections after deduplication
           actualCollections = await Collections.find({
@@ -236,9 +244,10 @@ export async function fixMachineCollectionHistory(
         const currentMachineState = await Machine.findOne({
           _id: machineId,
         }).lean<GamingMachine>();
-        const currentCollectionMeters = currentMachineState?.collectionMeters as
-          | { metersIn: number; metersOut: number }
-          | undefined;
+        const currentCollectionMeters =
+          currentMachineState?.collectionMeters as
+            | { metersIn: number; metersOut: number }
+            | undefined;
 
         const expectedMetersIn = mostRecentCollection.metersIn || 0;
         const expectedMetersOut = mostRecentCollection.metersOut || 0;
@@ -278,7 +287,9 @@ export async function fixMachineCollectionHistory(
         );
 
         if (!updateResult) {
-          console.error(`[fixMachineCollectionHistory] Failed to update history for machine ${machineId}`);
+          console.error(
+            `[fixMachineCollectionHistory] Failed to update history for machine ${machineId}`
+          );
           issues.push('Failed to update collection history');
         }
 
@@ -308,7 +319,10 @@ export async function fixMachineCollectionHistory(
         historyEntriesRebuilt,
       });
     } catch (machineError) {
-      console.error('[fixMachineCollectionHistory] Error:', machineError instanceof Error ? machineError.message : 'Unknown error');
+      console.error(
+        '[fixMachineCollectionHistory] Error:',
+        machineError instanceof Error ? machineError.message : 'Unknown error'
+      );
       detailedResults.push({
         machineId,
         machineName,
@@ -447,7 +461,8 @@ function analyzeCollectionHistory(
   let isChronologicallyCorrect = true;
   for (let entryIndex = 0; entryIndex < sortedHistory.length; entryIndex++) {
     if (
-      JSON.stringify(sortedHistory[entryIndex]) !== JSON.stringify(currentHistory[entryIndex])
+      JSON.stringify(sortedHistory[entryIndex]) !==
+      JSON.stringify(currentHistory[entryIndex])
     ) {
       isChronologicallyCorrect = false;
       break;
@@ -461,7 +476,11 @@ function analyzeCollectionHistory(
 
   // Check previous meter values accuracy
   let incorrectPrevValues = 0;
-  for (let historyIndex = 1; historyIndex < currentHistory.length; historyIndex++) {
+  for (
+    let historyIndex = 1;
+    historyIndex < currentHistory.length;
+    historyIndex++
+  ) {
     const currentEntry = currentHistory[historyIndex];
     const prevEntry = currentHistory[historyIndex - 1];
 
@@ -589,7 +608,9 @@ function rebuildHistoryFromCollections(
   actualCollections: Array<CollectionRecord>
 ): Array<HistoryEntry> {
   if (!actualCollections) {
-    console.error('[rebuildHistoryFromCollections] actualCollections is required');
+    console.error(
+      '[rebuildHistoryFromCollections] actualCollections is required'
+    );
     return [];
   }
   return actualCollections.map((collection, index) => {

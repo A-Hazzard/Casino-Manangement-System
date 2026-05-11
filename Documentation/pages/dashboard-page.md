@@ -1,8 +1,8 @@
 # Dashboard Page Implementation (`/`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -15,6 +15,7 @@ The Dashboard is the "Pulse" of the operation. It provides real-time financial o
 ## 2. Data & API Architecture (By Section)
 
 ### 💳 Financial Stats Bar
+
 The top-of-page summary showing aggregate performance.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -27,6 +28,7 @@ The top-of-page summary showing aggregate performance.
 - **Implementation**: Uses `FinancialMetrics` component with `DashboardTotalsSkeleton`.
 
 ### 📈 Performance Chart
+
 Visualizes revenue trends over time.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -37,6 +39,7 @@ Visualizes revenue trends over time.
 - **Implementation**: `DashboardChart` component using `useMeterTrends` hook.
 
 ### 🗺️ Location Map
+
 Geospatial view of all properties in the selected scope.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -47,6 +50,7 @@ Geospatial view of all properties in the selected scope.
 - **Implementation**: `MapPreview` using `react-leaflet` and `useLocationAggregation` hook.
 
 ### 🏆 Property Leaderboard
+
 Rankings of the highest-performing assets.
 | UI Term | Data Element | Source API |
 | :--- | :--- | :--- |
@@ -80,4 +84,5 @@ Rankings of the highest-performing assets.
 - **Polling**: Data is automatically refreshed every 180 seconds to ensure the dashboard remains "live" without manual intervention.
 
 ---
+
 **Internal Document** - Engineering Team

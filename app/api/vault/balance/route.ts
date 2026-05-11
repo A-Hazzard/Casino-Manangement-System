@@ -3,13 +3,22 @@
  */
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import CashierShiftModel from '@/app/api/lib/models/cashierShift';
 import { Meters } from '@/app/api/lib/models/meters';
 import UserModel from '@/app/api/lib/models/user';
 import { VaultCollectionSession } from '@/app/api/lib/models/vault-collection-session';
 import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
-import type { CashierShiftDocument, GamingLocationDocument, VaultShiftDocument } from '@shared/types';
+import type {
+  CashierShiftDocument,
+  GamingLocationDocument,
+  VaultShiftDocument,
+} from '@shared/types';
 import type { LeanUserDocument } from 'shared/types/auth';
 import type { VaultReconciliation } from '@/shared/types/vault';
 import { NextRequest, NextResponse } from 'next/server';
@@ -22,6 +31,10 @@ import { GamingLocations } from '../../lib/models/gaminglocations';
  * @param {string} locationId - ID of the location to fetch balance for (REQUIRED)
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/vault/balance';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ userRoles }) => {
     try {
       const hasVaultAccess = userRoles
@@ -158,6 +171,15 @@ export async function GET(request: NextRequest) {
       const vaultBalanceVal =
         activeShift.closingBalance ?? activeShift.openingBalance ?? 0;
 
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/vault/balance',
+        1,
+        user,
+        duration
+      );
       return NextResponse.json({
         success: true,
         data: {
@@ -188,6 +210,7 @@ export async function GET(request: NextRequest) {
     } catch (error: unknown) {
       console.error('[Vault Balance] Error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
+      logRouteError(functionName, 'GET', '/api/vault/balance', message, user);
       return NextResponse.json(
         { success: false, error: message },
         { status: 500 }

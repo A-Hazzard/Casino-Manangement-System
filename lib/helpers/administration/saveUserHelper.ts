@@ -46,7 +46,10 @@ export async function saveUserHelper({
     updated.assignedLicencees !== undefined ||
     (updated as { isEnabled?: boolean }).isEnabled !== undefined ||
     (updated as { enabled?: boolean }).enabled !== undefined ||
-    (updated as { multiplier?: number }).multiplier !== undefined;
+    (updated as { moneyInMultiplier?: number }).moneyInMultiplier !==
+      undefined ||
+    (updated as { moneyOutAndJackpotMultiplier?: number })
+      .moneyOutAndJackpotMultiplier !== undefined;
 
   if (!hasUpdates) {
     toast.error('No changes detected. Please update at least one field.');
@@ -110,9 +113,24 @@ export async function saveUserHelper({
     formDataComparison.password = updated.password;
   }
 
-  if ((updated as { multiplier?: number }).multiplier !== undefined) {
-    originalData.multiplier = selectedUser.multiplier || 0;
-    formDataComparison.multiplier = (updated as { multiplier: number }).multiplier;
+  if (
+    (updated as { moneyInMultiplier?: number }).moneyInMultiplier !== undefined
+  ) {
+    originalData.moneyInMultiplier = selectedUser.moneyInMultiplier || 0;
+    formDataComparison.moneyInMultiplier = (
+      updated as { moneyInMultiplier: number }
+    ).moneyInMultiplier;
+  }
+
+  if (
+    (updated as { moneyOutAndJackpotMultiplier?: number })
+      .moneyOutAndJackpotMultiplier !== undefined
+  ) {
+    originalData.moneyOutAndJackpotMultiplier =
+      selectedUser.moneyOutAndJackpotMultiplier || 0;
+    formDataComparison.moneyOutAndJackpotMultiplier = (
+      updated as { moneyOutAndJackpotMultiplier: number }
+    ).moneyOutAndJackpotMultiplier;
   }
 
   // Detect changes
@@ -168,8 +186,21 @@ export async function saveUserHelper({
   if (updated.assignedLicencees !== undefined) {
     updatePayload.assignedLicencees = updated.assignedLicencees;
   }
-  if ((updated as { multiplier?: number }).multiplier !== undefined) {
-    updatePayload.multiplier = (updated as { multiplier: number }).multiplier;
+  if (
+    (updated as { moneyInMultiplier?: number }).moneyInMultiplier !== undefined
+  ) {
+    updatePayload.moneyInMultiplier = (
+      updated as { moneyInMultiplier: number }
+    ).moneyInMultiplier;
+  }
+
+  if (
+    (updated as { moneyOutAndJackpotMultiplier?: number })
+      .moneyOutAndJackpotMultiplier !== undefined
+  ) {
+    updatePayload.moneyOutAndJackpotMultiplier = (
+      updated as { moneyOutAndJackpotMultiplier: number }
+    ).moneyOutAndJackpotMultiplier;
   }
 
   if (permissionFieldsChanged) {

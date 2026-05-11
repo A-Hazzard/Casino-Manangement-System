@@ -12,53 +12,53 @@ import CabinetsEditCabinetModal from '@/components/CMS/cabinets/modals/CabinetsE
 import { Button } from '@/components/shared/ui/button';
 import { MoneyOutCell } from '@/components/shared/ui/financial/MoneyOutCell';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import LocationSingleSelect from '@/components/shared/ui/common/LocationSingleSelect';
 import StatusIcon from '@/components/shared/ui/common/StatusIcon';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/shared/ui/dropdown-menu';
 import { Input } from '@/components/shared/ui/input';
 import { formatMachineDisplayNameWithBold } from '@/components/shared/ui/machineDisplay';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/shared/ui/select';
 import {
-    MachinesOverviewSkeleton,
-    MetricCardsSkeleton,
+  MachinesOverviewSkeleton,
+  MetricCardsSkeleton,
 } from '@/components/shared/ui/skeletons/ReportsSkeletons';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import type {
-    MachineData,
-    MachineSortKey,
-    ReportsMachinesOverviewProps,
+  MachineData,
+  MachineSortKey,
+  ReportsMachinesOverviewProps,
 } from '@/shared/types/reports';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
 import { getFinancialColorClass } from '@/lib/utils/financial';
 import { Pencil2Icon } from '@radix-ui/react-icons';
 import {
-    BarChart3,
-    ChevronDown,
-    ChevronUp,
-    Download,
-    ExternalLink,
-    FileSpreadsheet,
-    FileText,
-    RefreshCw,
-    Trash2,
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  ExternalLink,
+  FileSpreadsheet,
+  FileText,
+  RefreshCw,
+  Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -135,7 +135,8 @@ export const ReportsMachinesOverview = ({
 }: ReportsMachinesOverviewProps) => {
   const router = useRouter();
   const { displayCurrency } = useCurrencyFormat();
-  const formatCurrency = (val: number | null | undefined) => formatCurrencyWithCodeString(val, displayCurrency);
+  const formatCurrency = (val: number | null | undefined) =>
+    formatCurrencyWithCodeString(val, displayCurrency);
 
   // ============================================================================
   // Render
@@ -446,7 +447,9 @@ export const ReportsMachinesOverview = ({
                           moneyOut={machine.totalCancelledCredits || 0}
                           moneyIn={machine.drop || 0}
                           jackpot={machine.jackpot || 0}
-                          displayValue={formatCurrency(machine.totalCancelledCredits)}
+                          displayValue={formatCurrency(
+                            machine.totalCancelledCredits
+                          )}
                           includeJackpot={!!machine.includeJackpot}
                         />
                       </td>
@@ -510,4 +513,3 @@ export const ReportsMachinesOverview = ({
     </div>
   );
 };
-

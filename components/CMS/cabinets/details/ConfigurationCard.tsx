@@ -1,6 +1,6 @@
 /**
  * Configuration Card Component
- * 
+ *
  * Displays and allows editing of machine configuration fields.
  * Supports currency, percentage, and date/time inputs.
  */

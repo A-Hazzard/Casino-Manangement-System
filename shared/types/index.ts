@@ -9,17 +9,20 @@ import type {
   QueryFilter,
 } from './common';
 
-export type { TimePeriod, CustomDate, DateRangeFilter, MongoDBQueryValue, QueryFilter };
+export type {
+  TimePeriod,
+  CustomDate,
+  DateRangeFilter,
+  MongoDBQueryValue,
+  QueryFilter,
+};
 export type { MongooseId };
 export type { SasMeters };
 export type { CollectionMetersHistoryEntry };
 
 export * from './entities';
 
-export type {
-  UserAuthPayload,
-  AuthResult,
-} from './auth';
+export type { UserAuthPayload, AuthResult } from './auth';
 
 export * from './api';
 
@@ -60,4 +63,3 @@ export type {
   LeanLicencee,
   LeanMachine,
 } from './models';
-

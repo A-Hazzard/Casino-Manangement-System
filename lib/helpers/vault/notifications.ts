@@ -28,7 +28,8 @@ export async function createFloatRequestNotification(
 ): Promise<IVaultNotification> {
   // Determine specific title based on type and if it's initial
   let title = `Float Request from ${cashierName}`;
-  const isInitial = floatRequest.requestNotes === 'Initial shift float' || !floatRequest.type;
+  const isInitial =
+    floatRequest.requestNotes === 'Initial shift float' || !floatRequest.type;
 
   if (isInitial) {
     title = `Cashdesk Start Day Float Request - ${cashierName}`;
@@ -304,13 +305,10 @@ export async function getRecentNotifications(
   limit: number = 50
 ): Promise<IVaultNotification[]> {
   const notifications = await VaultNotificationModel.find({
-    $or: [
-      { recipientId: userId },
-      { recipientRole: 'vault-manager' }
-    ],
+    $or: [{ recipientId: userId }, { recipientRole: 'vault-manager' }],
     locationId,
     status: { $ne: 'dismissed' },
-    dismissedByUsers: { $ne: userId }
+    dismissedByUsers: { $ne: userId },
   })
     .sort({ createdAt: -1 })
     .limit(limit)
@@ -329,12 +327,9 @@ export async function getNotifications(
   limit: number = 50
 ): Promise<IVaultNotification[]> {
   const query: FilterQuery<IVaultNotification> = {
-    $or: [
-      { recipientId: userId },
-      { recipientRole: 'vault-manager' }
-    ],
+    $or: [{ recipientId: userId }, { recipientRole: 'vault-manager' }],
     locationId,
-    dismissedByUsers: { $ne: userId }
+    dismissedByUsers: { $ne: userId },
   };
 
   if (status) {
@@ -361,13 +356,10 @@ export async function getNotificationCounts(
   pendingShiftReviews: number;
 }> {
   const baseQuery = {
-    $or: [
-      { recipientId: userId },
-      { recipientRole: 'vault-manager' }
-    ],
+    $or: [{ recipientId: userId }, { recipientRole: 'vault-manager' }],
     locationId,
     status: 'unread',
-    dismissedByUsers: { $ne: userId }
+    dismissedByUsers: { $ne: userId },
   };
 
   const [unreadCount, floatRequestCount, shiftReviewCount] = await Promise.all([

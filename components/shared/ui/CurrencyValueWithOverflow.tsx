@@ -9,7 +9,10 @@ type CurrencyValueWithOverflowProps = {
   value: number | null | undefined;
   className?: string;
   formatCurrencyFn?: (value: number) => string;
-  formatCurrencyWithScalingFn?: (value: number) => { display: string; size: string };
+  formatCurrencyWithScalingFn?: (value: number) => {
+    display: string;
+    size: string;
+  };
   currencyCode?: string;
 };
 
@@ -90,7 +93,8 @@ export default function CurrencyValueWithOverflow({
   const containerRef = useRef<HTMLSpanElement>(null);
 
   // Always call hooks before any early returns
-  const fullFormattedValue = value !== null && value !== undefined ? formatCurrencyFn(value) : '';
+  const fullFormattedValue =
+    value !== null && value !== undefined ? formatCurrencyFn(value) : '';
   const isOverflowing = useTextOverflow(fullFormattedValue, containerRef);
 
   if (value === null || value === undefined) {
@@ -98,7 +102,8 @@ export default function CurrencyValueWithOverflow({
   }
 
   // Use provided scaling function or create default one
-  const scalingFn = formatCurrencyWithScalingFn || createScalingFormatter(currencyCode);
+  const scalingFn =
+    formatCurrencyWithScalingFn || createScalingFormatter(currencyCode);
   const scaledFormat = scalingFn(value);
   const displayValue = isOverflowing
     ? scaledFormat.display
@@ -114,5 +119,3 @@ export default function CurrencyValueWithOverflow({
     </span>
   );
 }
-
-

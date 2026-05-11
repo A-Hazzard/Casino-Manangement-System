@@ -5,7 +5,14 @@
  */
 
 import { ArrowLeftIcon } from '@radix-ui/react-icons';
-import { MapPinOff, PlusCircle, RefreshCw, Settings } from 'lucide-react';
+import {
+  MapPinOff,
+  MonitorOff,
+  PlusCircle,
+  RefreshCw,
+  Server,
+  Settings,
+} from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/shared/ui/button';
@@ -23,6 +30,45 @@ type LocationsDetailsHeaderProps = {
   onEditLocation: (location: AggregatedLocation) => void;
   onNewMachine: (locationId: string) => void;
 };
+
+function SmibTypeBadge({
+  locationData,
+  size = 'sm',
+}: {
+  locationData: AggregatedLocation | null;
+  size?: 'sm' | 'md';
+}) {
+  if (!locationData) return null;
+  const isSmall = size === 'sm';
+  if (locationData.fullSMIBs) {
+    return (
+      <span
+        className={`inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-blue-700 ${isSmall ? 'text-[10px]' : 'text-xs'}`}
+      >
+        <Server className={isSmall ? 'h-2.5 w-2.5' : 'h-3 w-3'} />
+        Full SMIB
+      </span>
+    );
+  }
+  if (locationData.semiSMIBs) {
+    return (
+      <span
+        className={`inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700 ${isSmall ? 'text-[10px]' : 'text-xs'}`}
+      >
+        <Server className={isSmall ? 'h-2.5 w-2.5' : 'h-3 w-3'} />
+        Semi SMIB
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 font-semibold text-gray-600 ${isSmall ? 'text-[10px]' : 'text-xs'}`}
+    >
+      <MonitorOff className={isSmall ? 'h-2.5 w-2.5' : 'h-3 w-3'} />
+      No SMIB
+    </span>
+  );
+}
 
 export default function LocationsDetailsHeader({
   locationId,
@@ -47,8 +93,9 @@ export default function LocationsDetailsHeader({
               <ArrowLeftIcon className="h-4 w-4" />
             </Button>
           </Link>
-          <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-xl font-bold text-gray-900 leading-tight">
+          <h1 className="flex min-w-0 flex-1 items-center gap-2 truncate text-xl font-bold leading-tight text-gray-900">
             {locationData?.locationName || 'Location Details'}
+            <SmibTypeBadge locationData={locationData} size="sm" />
             {locationData && hasMissingCoordinates(locationData) ? (
               <div className="group relative inline-flex flex-shrink-0">
                 <MapPinOff className="h-4 w-4 flex-shrink-0 text-red-600" />
@@ -66,7 +113,7 @@ export default function LocationsDetailsHeader({
               />
             )}
           </h1>
-          
+
           {activeView !== 'members' && (
             <button
               onClick={onRefresh}
@@ -120,6 +167,7 @@ export default function LocationsDetailsHeader({
           </Link>
           <h1 className="flex min-w-0 flex-1 items-center gap-3 truncate text-4xl font-black tracking-tight text-gray-900">
             {locationData?.locationName || 'Location Details'}
+            <SmibTypeBadge locationData={locationData} size="md" />
             {locationData && hasMissingCoordinates(locationData) ? (
               <div className="group relative inline-flex flex-shrink-0">
                 <MapPinOff className="h-6 w-6 flex-shrink-0 text-red-600 sm:h-8 sm:w-8" />

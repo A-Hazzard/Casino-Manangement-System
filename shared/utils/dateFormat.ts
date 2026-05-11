@@ -40,7 +40,10 @@ export function formatDate(
 
     return formatter.format(dateObj);
   } catch (e) {
-    console.error('[formatDate] Error:', e instanceof Error ? e.message : 'Unknown error');
+    console.error(
+      '[formatDate] Error:',
+      e instanceof Error ? e.message : 'Unknown error'
+    );
     return 'Invalid Date';
   }
 }
@@ -109,7 +112,10 @@ export function formatTime12Hour(time24: string): string {
 
     return `${hour12}:${minutesStr} ${period}`;
   } catch (e) {
-    console.error('[formatTime12Hour] Error:', e instanceof Error ? e.message : 'Unknown error');
+    console.error(
+      '[formatTime12Hour] Error:',
+      e instanceof Error ? e.message : 'Unknown error'
+    );
     return time24; // Return original on error
   }
 }
@@ -158,7 +164,9 @@ export function formatLocalDateTimeString(
   timezoneOffset: number = TRINIDAD_TIMEZONE_OFFSET
 ): string {
   if (!date || typeof timezoneOffset !== 'number') {
-    console.error('[formatLocalDateTimeString] date and timezoneOffset (number) are required');
+    console.error(
+      '[formatLocalDateTimeString] date and timezoneOffset (number) are required'
+    );
     return 'Invalid Date';
   }
 
@@ -190,8 +198,6 @@ export function formatLocalDateTimeString(
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${offsetHoursStr}:${offsetMinutesStr}`;
 }
 
-
-
 /**
  * Create a Date object in Trinidad timezone from local time components.
  *
@@ -219,8 +225,14 @@ export function createDateInTrinidadTime(
   minutes: number,
   seconds: number = 0
 ): Date {
-  if (typeof year !== 'number' || typeof month !== 'number' || typeof day !== 'number' ||
-      typeof hours !== 'number' || typeof minutes !== 'number' || typeof seconds !== 'number') {
+  if (
+    typeof year !== 'number' ||
+    typeof month !== 'number' ||
+    typeof day !== 'number' ||
+    typeof hours !== 'number' ||
+    typeof minutes !== 'number' ||
+    typeof seconds !== 'number'
+  ) {
     console.error('[createDateInTrinidadTime] All parameters must be numbers');
     return new Date();
   }
@@ -250,7 +262,9 @@ export function setTimeToGamingDayStart(
   gameDayOffset: number
 ): Date {
   if (!(date instanceof Date) || typeof gameDayOffset !== 'number') {
-    console.error('[setTimeToGamingDayStart] date (Date) and gameDayOffset (number) are required');
+    console.error(
+      '[setTimeToGamingDayStart] date (Date) and gameDayOffset (number) are required'
+    );
     return new Date();
   }
 
@@ -271,7 +285,6 @@ export function setTimeToGamingDayStart(
  * @returns New Date with gaming day end time (Trinidad timezone)
  */
 
-
 /**
  * Create the end of gaming day in Trinidad timezone.
  * This is (gameDayOffset - 1):59:59 on the next day.
@@ -285,7 +298,9 @@ export function getGamingDayEndInTrinidad(
   gameDayOffset: number = 8
 ): Date {
   if (!(date instanceof Date) || typeof gameDayOffset !== 'number') {
-    console.error('[getGamingDayEndInTrinidad] date (Date) and gameDayOffset (number) are required');
+    console.error(
+      '[getGamingDayEndInTrinidad] date (Date) and gameDayOffset (number) are required'
+    );
     return new Date();
   }
 

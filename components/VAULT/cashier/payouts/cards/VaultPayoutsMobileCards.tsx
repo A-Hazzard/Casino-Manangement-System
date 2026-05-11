@@ -64,24 +64,33 @@ export default function VaultPayoutsMobileCards({
     <div className="block lg:hidden">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {payouts.map(payout => (
-          <Card key={payout.id} className="overflow-hidden rounded-lg bg-container shadow-md">
+          <Card
+            key={payout.id}
+            className="overflow-hidden rounded-lg bg-container shadow-md"
+          >
             <CardContent className="p-4">
               {/* Header: Ticket Number */}
               <div className="mb-3 border-b pb-3">
                 <p className="text-xs text-gray-500">Ticket Number</p>
-                <p className="text-sm font-medium text-gray-900">{payout.ticketNumber}</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {payout.ticketNumber}
+                </p>
               </div>
 
               {/* Amount */}
               <div className="mb-3">
                 <p className="text-xs text-gray-500">Amount</p>
-                <p className="text-xl font-bold text-button">{formatAmount(payout.amount)}</p>
+                <p className="text-xl font-bold text-button">
+                  {formatAmount(payout.amount)}
+                </p>
               </div>
 
               {/* Player */}
               <div className="mb-3">
                 <p className="text-xs text-gray-500">Player</p>
-                <p className="text-sm font-medium text-gray-900">{payout.player}</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {payout.player}
+                </p>
               </div>
 
               {/* Cashier and Station */}
@@ -90,7 +99,9 @@ export default function VaultPayoutsMobileCards({
                   <p className="text-xs text-gray-500">Cashier</p>
                   <div className="flex items-center gap-1">
                     <Users className="h-3 w-3 text-gray-400" />
-                    <p className="font-medium text-gray-900">{payout.cashier}</p>
+                    <p className="font-medium text-gray-900">
+                      {payout.cashier}
+                    </p>
                   </div>
                 </div>
                 <div>

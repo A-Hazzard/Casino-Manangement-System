@@ -95,16 +95,20 @@ export function useLocationChartData({
       customDateRange?.endDate
     ) {
       // Show minute/hourly selector only for same-day custom ranges
-      const sd = customDateRange.startDate instanceof Date
-        ? customDateRange.startDate
-        : new Date(customDateRange.startDate);
-      const ed = customDateRange.endDate instanceof Date
-        ? customDateRange.endDate
-        : new Date(customDateRange.endDate);
+      const sd =
+        customDateRange.startDate instanceof Date
+          ? customDateRange.startDate
+          : new Date(customDateRange.startDate);
+      const ed =
+        customDateRange.endDate instanceof Date
+          ? customDateRange.endDate
+          : new Date(customDateRange.endDate);
       // Compare calendar dates (same year, month, day)
-      return sd.getFullYear() === ed.getFullYear() &&
+      return (
+        sd.getFullYear() === ed.getFullYear() &&
         sd.getMonth() === ed.getMonth() &&
-        sd.getDate() === ed.getDate();
+        sd.getDate() === ed.getDate()
+      );
     }
     // Show daily/weekly selector for Last 30 Days
     if (activeMetricsFilter === '30d' || activeMetricsFilter === 'last30days') {
@@ -218,12 +222,14 @@ export function useLocationChartData({
   // on every render due to a new object reference from the store.
   const dateRangeKey = useMemo(() => {
     if (!customDateRange?.startDate || !customDateRange?.endDate) return '';
-    const start = customDateRange.startDate instanceof Date
-      ? customDateRange.startDate.getTime()
-      : new Date(customDateRange.startDate).getTime();
-    const end = customDateRange.endDate instanceof Date
-      ? customDateRange.endDate.getTime()
-      : new Date(customDateRange.endDate).getTime();
+    const start =
+      customDateRange.startDate instanceof Date
+        ? customDateRange.startDate.getTime()
+        : new Date(customDateRange.startDate).getTime();
+    const end =
+      customDateRange.endDate instanceof Date
+        ? customDateRange.endDate.getTime()
+        : new Date(customDateRange.endDate).getTime();
     return `${start}-${end}`;
   }, [customDateRange?.startDate, customDateRange?.endDate]);
 
@@ -263,21 +269,26 @@ export function useLocationChartData({
       customDateRange?.startDate &&
       customDateRange?.endDate
     ) {
-      const sd = customDateRange.startDate instanceof Date
-        ? customDateRange.startDate
-        : new Date(customDateRange.startDate);
-      const ed = customDateRange.endDate instanceof Date
-        ? customDateRange.endDate
-        : new Date(customDateRange.endDate);
+      const sd =
+        customDateRange.startDate instanceof Date
+          ? customDateRange.startDate
+          : new Date(customDateRange.startDate);
+      const ed =
+        customDateRange.endDate instanceof Date
+          ? customDateRange.endDate
+          : new Date(customDateRange.endDate);
       // Only include granularity for same-day custom ranges
-      shouldIncludeGranularity = sd.getFullYear() === ed.getFullYear() &&
+      shouldIncludeGranularity =
+        sd.getFullYear() === ed.getFullYear() &&
         sd.getMonth() === ed.getMonth() &&
         sd.getDate() === ed.getDate();
     }
 
     // For Last 30 Days, include granularity when user selects weekly (needs server aggregation)
     const is30dPeriod = timePeriod === '30d' || timePeriod === 'last30days';
-    const needs30dGranularity = is30dPeriod && (chartGranularity === 'daily' || chartGranularity === 'weekly');
+    const needs30dGranularity =
+      is30dPeriod &&
+      (chartGranularity === 'daily' || chartGranularity === 'weekly');
 
     // For Quarterly/All Time, include granularity if it's monthly or weekly (needs server aggregation)
     const isLongPeriod =
@@ -308,7 +319,8 @@ export function useLocationChartData({
     });
 
     // Skip if this exact fetch was already made (unless refresh was triggered)
-    const shouldSkip = lastFetchParamsRef.current === fetchKey && refreshTrigger === 0;
+    const shouldSkip =
+      lastFetchParamsRef.current === fetchKey && refreshTrigger === 0;
 
     if (shouldSkip) {
       return;
@@ -324,7 +336,9 @@ export function useLocationChartData({
         // 1. Short periods (Today/Yesterday/Custom ≤ 2 days) - affects hourly/minute aggregation
         // 2. Long periods (Quarterly/All Time) with monthly/weekly - needs server aggregation
         const granularity =
-          shouldIncludeGranularity || needsServerAggregation || needs30dGranularity
+          shouldIncludeGranularity ||
+          needsServerAggregation ||
+          needs30dGranularity
             ? chartGranularity
             : undefined;
 
@@ -349,7 +363,9 @@ export function useLocationChartData({
 
         // Add status filter
         if (status && status !== 'All') {
-          params.status = status.startsWith('Offline') ? 'offline' : status.toLowerCase();
+          params.status = status.startsWith('Offline')
+            ? 'offline'
+            : status.toLowerCase();
         }
 
         // Add game type filter
@@ -588,4 +604,3 @@ export function useLocationChartData({
     refreshChart, // Expose refresh function
   };
 }
-

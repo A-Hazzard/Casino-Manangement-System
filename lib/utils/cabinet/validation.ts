@@ -127,33 +127,20 @@ export function validateRamClearMeters(
     }
 
     // RAM Clear Meters validation (if provided)
+    // CRITICAL: RAM clear meters must be >= current meters to be valid
     if (ramClearMetersIn !== undefined && ramClearMetersOut !== undefined) {
-      // RAM Clear meters should be higher than or equal to previous values
-      if (ramClearMetersIn < prevIn) {
-        warnings.push(
-          'RAM Clear Meters In should be higher than or equal to previous reading. ' +
-            `RAM Clear Meters: ${ramClearMetersIn.toLocaleString()}, Previous: ${prevIn.toLocaleString()}`
-        );
-      }
-
-      if (ramClearMetersOut < prevOut) {
-        warnings.push(
-          'RAM Clear Meters Out should be higher than or equal to previous reading. ' +
-            `RAM Clear Meters: ${ramClearMetersOut.toLocaleString()}, Previous: ${prevOut.toLocaleString()}`
-        );
-      }
-
-      // RAM Clear meters should be higher than current meters
+      // RAM Clear meters MUST be greater than or equal to current meters
+      // This is an ERROR that prevents submission
       if (ramClearMetersIn < currentMetersIn) {
-        warnings.push(
-          'RAM Clear Meters In should be higher than current meters. ' +
+        errors.push(
+          'RAM Clear Meters In must be greater than or equal to Current Meters In. ' +
             `RAM Clear Meters: ${ramClearMetersIn.toLocaleString()}, Current: ${currentMetersIn.toLocaleString()}`
         );
       }
 
       if (ramClearMetersOut < currentMetersOut) {
-        warnings.push(
-          'RAM Clear Meters Out should be higher than current meters. ' +
+        errors.push(
+          'RAM Clear Meters Out must be greater than or equal to Current Meters Out. ' +
             `RAM Clear Meters: ${ramClearMetersOut.toLocaleString()}, Current: ${currentMetersOut.toLocaleString()}`
         );
       }
@@ -175,5 +162,3 @@ export function validateRamClearMeters(
     errors,
   };
 }
-
-

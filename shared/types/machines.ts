@@ -1,7 +1,10 @@
 import type { CollectionMetersHistoryEntry } from './common';
 import type { GamingMachine } from './entities';
 
-export type MachinePayload = Omit<GamingMachine, '_id' | 'createdAt' | 'updatedAt'> & {
+export type MachinePayload = Omit<
+  GamingMachine,
+  '_id' | 'createdAt' | 'updatedAt'
+> & {
   collectionSettings?: {
     lastCollectionTime?: string;
     lastMetersIn?: string;
@@ -98,4 +101,3 @@ export type MachineWithOptionalHistory = {
   custom?: { name?: string };
   collectionMetersHistory?: Array<CollectionMetersHistoryEntry>;
 };
-

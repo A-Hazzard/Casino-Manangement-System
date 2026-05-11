@@ -13,10 +13,10 @@ import { ChangeEvent } from 'react';
 import { Button } from '@/components/shared/ui/button';
 import type { PaginationControlsProps } from '@/lib/types/components';
 import {
-    ChevronLeftIcon,
-    ChevronRightIcon,
-    DoubleArrowLeftIcon,
-    DoubleArrowRightIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DoubleArrowLeftIcon,
+  DoubleArrowRightIcon,
 } from '@radix-ui/react-icons';
 
 export default function PaginationControls({
@@ -54,13 +54,18 @@ export default function PaginationControls({
     'border-button bg-white p-2 text-button hover:bg-button/10 disabled:border-gray-300 disabled:text-gray-400 disabled:opacity-50';
 
   return (
-    <div className={cn("mt-4 flex flex-col items-center gap-4 py-3 sm:px-6 w-full", className)}>
+    <div
+      className={cn(
+        'mt-4 flex w-full flex-col items-center gap-4 py-3 sm:px-6',
+        className
+      )}
+    >
       {showTotalCount && totalCount !== undefined && (
-        <div className="text-sm text-gray-500 font-medium italic">
+        <div className="text-sm font-medium italic text-gray-500">
           Page {currentPage + 1} of {totalPages} ({totalCount} total items)
         </div>
       )}
-      
+
       <div className="flex h-12 w-full items-center justify-center border-t border-gray-200 bg-white px-4 py-3">
         {/* Navigation controls — shared for both mobile and desktop */}
         <div className="flex items-center gap-1">

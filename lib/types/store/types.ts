@@ -2,13 +2,13 @@ import { TimePeriod } from '@/shared/types/common';
 import type { CurrencyCode } from '@/shared/types/currency';
 import type { Firmware } from '@/shared/types/entities';
 import type {
-    ActiveFilters,
-    ActiveTab,
-    dashboardData,
-    DashboardTotals,
-    dateRange,
-    locations,
-    TopPerformingData,
+  ActiveFilters,
+  ActiveTab,
+  dashboardData,
+  DashboardTotals,
+  dateRange,
+  locations,
+  TopPerformingData,
 } from '../index';
 
 export type FirmwareActionsState = {
@@ -89,5 +89,3 @@ export type DashBoardStore = {
   gameDayOffset: number;
   setGameDayOffset: (state: number) => void;
 };
-
-

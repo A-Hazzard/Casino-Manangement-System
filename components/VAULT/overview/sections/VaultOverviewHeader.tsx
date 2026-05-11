@@ -2,7 +2,7 @@
  * Vault Overview Header Section Component
  *
  * Displays title, date, notifications, and manager actions for the vault dashboard.
- * 
+ *
  * @module components/VAULT/overview/sections/VaultOverviewHeader
  */
 'use client';
@@ -45,26 +45,27 @@ export default function VaultOverviewHeader({
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <p className="mt-1 text-sm text-gray-600 flex items-center gap-2">
+        <p className="mt-1 flex items-center gap-2 text-sm text-gray-600">
           {new Date().toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric',
           })}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onRefresh} 
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRefresh}
             disabled={refreshing}
             className="h-6 px-2 text-gray-400 hover:text-blue-600"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`}
+            />
           </Button>
         </p>
       </div>
       <div className="flex items-center gap-3">
-       
         <NotificationBell
           notifications={bellNotifications}
           onMarkAsRead={onMarkAsRead}
@@ -75,8 +76,8 @@ export default function VaultOverviewHeader({
           onDeny={onDeny}
           vaultInventory={denominations}
         />
-         {isShiftActive && (
-          <Button 
+        {isShiftActive && (
+          <Button
             onClick={onCloseDay}
             className="bg-orangeHighlight text-white hover:bg-orangeHighlight/90"
           >

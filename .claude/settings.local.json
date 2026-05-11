@@ -45,7 +45,26 @@
       "Bash(find C:UserspcOneDriveDocumentsGithubevolution-one-cmslib -name id*)",
       "Bash(node scripts/seed-db.js)",
       "Bash(xargs wc *)",
-      "Bash(find /c/Users/ahazzard.DYNAMIC1/OneDrive/Documents/Github/evolution-one-cms/app/api -name route.ts -type f -exec sh -c 'lines=$\\(wc -l < \"$1\"\\); if [ \"$lines\" -ge 80 ]; then head -1 \"$1\" | grep -q \"^/\\\\*\\\\*\" || echo \"$1\"; fi' _ '{}' ';')"
+      "Bash(find /c/Users/ahazzard.DYNAMIC1/OneDrive/Documents/Github/evolution-one-cms/app/api -name route.ts -type f -exec sh -c 'lines=$\\(wc -l < \"$1\"\\); if [ \"$lines\" -ge 80 ]; then head -1 \"$1\" | grep -q \"^/\\\\*\\\\*\" || echo \"$1\"; fi' _ '{}' ';')",
+      "Bash(timeout 30 bash -c 'until curl -s http://localhost:3000 > /dev/null 2>&1; do sleep 1; done && echo \"Server ready\"')",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs kill *)",
+      "Bash(awk '/useEffect.*selectedMachine/,/^\\\\s*\\\\}, \\\\[/' \"lib\\\\hooks\\\\collectionReport\\\\useMobileCollectionModal.ts\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\ahazzard.DYNAMIC1\\\\OneDrive\\\\Documents\\\\Github\\\\evolution-one-cms\\\\app\\\\api\" -Recurse -Filter \"route.ts\" -o FullName)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(bun scripts/analyze-api-routes.ts)",
+      "Bash(bun scripts/add-logging-to-routes.ts)",
+      "Bash(findstr \"error TS\")",
+      "Bash(findstr \"6133\\\\|1149\\\\|2304\\\\|2345\\\\|2339\\\\|2322\")",
+      "Bash(cat)",
+      "Bash(node /tmp/fix_ts6133.js)",
+      "Read(//c/Users/ahazzard.DYNAMIC1/**)",
+      "Bash(node fix_ts6133_duration.js)",
+      "Bash(Out-File -FilePath \"C:\\\\Users\\\\ahazzard.DYNAMIC1\\\\remaining_ts6133.txt\" -Encoding utf8)",
+      "Bash(node fix_ts6133_imports.js)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\pc\\\\Documents\\\\Github\\\\evolution-one-cms\\\\app\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\pc\\\\Documents\\\\Github\\\\evolution-one-cms\\\\app\\\\api\\\\collection-reports-v2\\\\sessions\\\\[sessionId]\\\\submit\")"
     ]
   }
 }

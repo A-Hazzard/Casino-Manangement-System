@@ -4,8 +4,7 @@ import { KeyboardEvent } from 'react';
 import { cn } from '@/lib/utils';
 import type { GamingMachine } from '@/shared/types/entities';
 import { Check, ChevronDown, Search } from 'lucide-react';
-import {  useEffect, useMemo, useRef, useState  } from 'react';
-
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type MachineSearchSelectProps = {
   value: string; // Selected machineId
@@ -126,7 +125,7 @@ export function MachineSearchSelect({
   const getDisplayText = (machine?: GamingMachine) => {
     if (!machine) return placeholder;
     // Format: "Serial - Game" or "Asset (Serial) - Game"
-    const identifier = machine.assetNumber 
+    const identifier = machine.assetNumber
       ? `${machine.assetNumber} (${machine.serialNumber})`
       : machine.serialNumber;
     return `${identifier} - ${machine.game}`;
@@ -149,7 +148,9 @@ export function MachineSearchSelect({
         )}
       >
         <span className="flex flex-1 items-center gap-2 overflow-hidden">
-          <span className="truncate text-left">{getDisplayText(selectedMachine)}</span>
+          <span className="truncate text-left">
+            {getDisplayText(selectedMachine)}
+          </span>
         </span>
         <ChevronDown
           className={cn(
@@ -192,9 +193,11 @@ export function MachineSearchSelect({
                 const isFocused = index === focusedIndex;
                 const identifier = machine.assetNumber || machine.serialNumber;
                 const secondaryInfo = [
-                   machine.assetNumber ? `S/N: ${machine.serialNumber}` : null,
-                   machine.relayId ? `SMID: ${machine.relayId}` : null
-                ].filter(Boolean).join(' • ');
+                  machine.assetNumber ? `S/N: ${machine.serialNumber}` : null,
+                  machine.relayId ? `SMID: ${machine.relayId}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' • ');
 
                 return (
                   <button
@@ -211,9 +214,9 @@ export function MachineSearchSelect({
                     <div className="flex w-full items-center gap-3">
                       <div className="flex flex-1 flex-col items-start gap-0.5">
                         <div className="flex items-center gap-2">
-                            <span className="font-medium">{identifier}</span>
-                            <span className="text-muted-foreground">-</span>
-                            <span className="font-medium">{machine.game}</span>
+                          <span className="font-medium">{identifier}</span>
+                          <span className="text-muted-foreground">-</span>
+                          <span className="font-medium">{machine.game}</span>
                         </div>
                         {secondaryInfo && (
                           <span className="text-xs text-muted-foreground">
@@ -223,7 +226,7 @@ export function MachineSearchSelect({
                       </div>
 
                       {isSelected && (
-                        <Check className="h-4 w-4 shrink-0 ml-2" />
+                        <Check className="ml-2 h-4 w-4 shrink-0" />
                       )}
                     </div>
                   </button>

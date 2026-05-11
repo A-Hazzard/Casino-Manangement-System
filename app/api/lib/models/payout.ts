@@ -1,9 +1,5 @@
 import mongoose, { model, Schema } from 'mongoose';
 
-/**
- * Payout Schema
- * Individual payout records for ticket redemption and hand pays (C-2)
- */
 const PayoutSchema = new Schema(
   {
     _id: { type: String, required: true },
@@ -19,27 +15,22 @@ const PayoutSchema = new Schema(
 
     amount: { type: Number, required: true, min: 0 },
 
-    // Ticket redemption (C-2.1)
     ticketNumber: { type: String },
     ticketBarcode: { type: String },
-    printedAt: { type: Date }, // Date on the physical ticket
+    printedAt: { type: Date },
 
-    // Hand pay (C-2.2)
     machineId: { type: String },
     machineSerialNumber: { type: String },
     reason: { type: String },
 
-    // Validation
     validated: { type: Boolean, default: false },
     validationMethod: { type: String },
 
-    // Audit trail
     timestamp: { type: Date, required: true, default: Date.now, index: true },
     cashierFloatBefore: { type: Number, required: true },
     cashierFloatAfter: { type: Number, required: true },
 
-    // Transaction reference
-    transactionId: { type: String, required: true }, // Link to vaultTransactions
+    transactionId: { type: String, required: true },
 
     notes: { type: String },
     cashierName: { type: String },
@@ -47,10 +38,9 @@ const PayoutSchema = new Schema(
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date },
   },
-  { timestamps: true } // Use createdAt and updatedAt
+  { timestamps: true }
 );
 
-// Indexes for performance
 PayoutSchema.index({ locationId: 1, timestamp: -1 });
 PayoutSchema.index({ cashierId: 1, timestamp: -1 });
 PayoutSchema.index({ type: 1, timestamp: -1 });

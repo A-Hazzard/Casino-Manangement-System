@@ -14,8 +14,8 @@ import DeleteMovementRequestModal from '@/components/shared/ui/movements/DeleteM
 import EditMovementRequestModal from '@/components/shared/ui/movements/EditMovementRequestModal';
 import MovementRequestCard from '@/components/shared/ui/movements/MovementRequestCard';
 import {
-    MovementRequestCardSkeleton,
-    MovementRequestsTableSkeleton,
+  MovementRequestCardSkeleton,
+  MovementRequestsTableSkeleton,
 } from '@/components/shared/ui/movements/MovementRequestsSkeleton';
 import MovementRequestsTable from '@/components/shared/ui/movements/MovementRequestsTable';
 import PaginationControls from '@/components/shared/ui/PaginationControls';
@@ -39,7 +39,9 @@ export default function CabinetsMovementRequests({
 }: CabinetsMovementRequestsProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [statusFilter, setStatusFilter] = useState<
+    'all' | 'pending' | 'completed'
+  >('all');
   const [currentPage, setCurrentPage] = useState(0);
   const [requests, setRequests] = useState<MovementRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,16 +94,19 @@ export default function CabinetsMovementRequests({
       (req.locationTo || '').toLowerCase().includes(searchLower) ||
       (req.cabinetIn || '').toLowerCase().includes(searchLower) ||
       (req.status || '').toLowerCase().includes(searchLower);
-    
+
     const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
-    
+
     const matchesLocation =
       selectedLocations.length === 0 ||
       selectedLocations.some(locId => {
         const locationData = locations.find(l => l._id === locId);
-        return req.locationFrom === locationData?.name || req.locationTo === locationData?.name;
+        return (
+          req.locationFrom === locationData?.name ||
+          req.locationTo === locationData?.name
+        );
       });
-      
+
     return matchesSearch && matchesStatus && matchesLocation;
   });
 
@@ -138,7 +143,7 @@ export default function CabinetsMovementRequests({
           </div>
 
           {/* Location Filter */}
-          <div className="w-full lg:w-64 relative z-50">
+          <div className="relative z-50 w-full lg:w-64">
             <MultiSelectDropdown
               options={locations.map(loc => ({ id: loc._id, label: loc.name }))}
               selectedIds={selectedLocations}
@@ -151,14 +156,16 @@ export default function CabinetsMovementRequests({
 
         {/* Status Filtering Buttons */}
         <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-4">
-          <span className="mr-2 text-xs font-bold uppercase tracking-wider text-white/70">Filter Status:</span>
+          <span className="mr-2 text-xs font-bold uppercase tracking-wider text-white/70">
+            Filter Status:
+          </span>
           <Button
             variant={statusFilter === 'all' ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => setStatusFilter('all')}
             className={`h-8 rounded-full px-4 text-xs font-bold transition-all ${
-              statusFilter === 'all' 
-                ? 'bg-white text-buttonActive shadow-md' 
+              statusFilter === 'all'
+                ? 'bg-white text-buttonActive shadow-md'
                 : 'bg-white/10 text-white hover:bg-white/20'
             }`}
           >
@@ -169,8 +176,8 @@ export default function CabinetsMovementRequests({
             size="sm"
             onClick={() => setStatusFilter('pending')}
             className={`h-8 rounded-full px-4 text-xs font-bold transition-all ${
-              statusFilter === 'pending' 
-                ? 'bg-amber-400 text-amber-950 shadow-md ring-2 ring-amber-200' 
+              statusFilter === 'pending'
+                ? 'bg-amber-400 text-amber-950 shadow-md ring-2 ring-amber-200'
                 : 'bg-white/10 text-white hover:bg-white/20'
             }`}
           >
@@ -181,14 +188,14 @@ export default function CabinetsMovementRequests({
             size="sm"
             onClick={() => setStatusFilter('completed')}
             className={`h-8 rounded-full px-4 text-xs font-bold transition-all ${
-              statusFilter === 'completed' 
-                ? 'bg-emerald-400 text-emerald-950 shadow-md ring-2 ring-emerald-200' 
+              statusFilter === 'completed'
+                ? 'bg-emerald-400 text-emerald-950 shadow-md ring-2 ring-emerald-200'
                 : 'bg-white/10 text-white hover:bg-white/20'
             }`}
           >
             COMPLETED
           </Button>
-          
+
           <div className="ml-auto text-xs font-medium text-white/80">
             Showing {filteredRequests.length} movement requests
           </div>
@@ -196,7 +203,7 @@ export default function CabinetsMovementRequests({
       </div>
 
       {/* Table Area (Desktop) */}
-      <div className="hidden lg:block overflow-hidden rounded-lg">
+      <div className="hidden overflow-hidden rounded-lg lg:block">
         {loading ? (
           <MovementRequestsTableSkeleton />
         ) : (
@@ -225,8 +232,12 @@ export default function CabinetsMovementRequests({
           ))
         ) : (
           <div className="rounded-lg border-2 border-dashed border-gray-200 py-12 text-center text-gray-500">
-            <p className="mb-1 font-semibold text-gray-600">No requests found</p>
-            <p className="text-sm">Try adjusting your filters or search term.</p>
+            <p className="mb-1 font-semibold text-gray-600">
+              No requests found
+            </p>
+            <p className="text-sm">
+              Try adjusting your filters or search term.
+            </p>
           </div>
         )}
       </div>
@@ -242,4 +253,3 @@ export default function CabinetsMovementRequests({
     </div>
   );
 }
-

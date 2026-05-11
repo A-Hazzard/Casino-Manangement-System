@@ -1,18 +1,4 @@
-/**
- * Vault Notification Model
- *
- * Mongoose model for vault management notifications.
- * Tracks all notifications for Vault Managers including float requests,
- * shift reviews, and system alerts.
- *
- * @module app/api/lib/models/vaultNotification
- */
-
 import mongoose, { Model, Schema } from 'mongoose';
-
-// ============================================================================
-// Types
-// ============================================================================
 
 export type NotificationType =
   | 'float_request'
@@ -20,7 +6,12 @@ export type NotificationType =
   | 'low_balance'
   | '2fa_recovery_request';
 
-export type NotificationStatus = 'unread' | 'read' | 'actioned' | 'dismissed' | 'cancelled';
+export type NotificationStatus =
+  | 'unread'
+  | 'read'
+  | 'actioned'
+  | 'dismissed'
+  | 'cancelled';
 
 export type RelatedEntityType =
   | 'float_request'
@@ -33,20 +24,16 @@ export interface IVaultNotification {
   locationId: string;
   type: NotificationType;
 
-  // Recipient
   recipientId: string;
   recipientRole: string;
 
-  // Content
   title: string;
   message: string;
   urgent: boolean;
 
-  // Related entities
   relatedEntityType: RelatedEntityType;
   relatedEntityId: string;
 
-  // Metadata
   metadata: {
     cashierId?: string;
     cashierName?: string;
@@ -57,24 +44,18 @@ export interface IVaultNotification {
     [key: string]: unknown;
   };
 
-  // Status
   status: NotificationStatus;
   readAt?: Date;
   actionedAt?: Date;
   dismissedAt?: Date;
   deletedAt?: Date;
-  dismissedByUsers?: string[]; // Array of user IDs who dismissed this
+  dismissedByUsers?: string[];
 
-  // Action URL
   actionUrl?: string;
 
   createdAt: Date;
   updatedAt: Date;
 }
-
-// ============================================================================
-// Schema
-// ============================================================================
 
 const VaultNotificationSchema = new Schema<IVaultNotification>(
   {
@@ -85,12 +66,17 @@ const VaultNotificationSchema = new Schema<IVaultNotification>(
     },
     type: {
       type: String,
-      enum: ['float_request', 'shift_review', 'system_alert', 'low_balance', '2fa_recovery_request'],
+      enum: [
+        'float_request',
+        'shift_review',
+        'system_alert',
+        'low_balance',
+        '2fa_recovery_request',
+      ],
       required: true,
       index: true,
     },
 
-    // Recipient
     recipientId: {
       type: String,
       required: true,
@@ -102,7 +88,6 @@ const VaultNotificationSchema = new Schema<IVaultNotification>(
       default: 'vault-manager',
     },
 
-    // Content
     title: {
       type: String,
       required: true,
@@ -116,7 +101,6 @@ const VaultNotificationSchema = new Schema<IVaultNotification>(
       default: false,
     },
 
-    // Related entities
     relatedEntityType: {
       type: String,
       enum: ['float_request', 'cashier_shift', 'vault_shift', 'expense'],
@@ -128,13 +112,11 @@ const VaultNotificationSchema = new Schema<IVaultNotification>(
       index: true,
     },
 
-    // Metadata
     metadata: {
       type: Schema.Types.Mixed,
       default: {},
     },
 
-    // Status
     status: {
       type: String,
       enum: ['unread', 'read', 'actioned', 'dismissed', 'cancelled'],
@@ -159,7 +141,6 @@ const VaultNotificationSchema = new Schema<IVaultNotification>(
       index: true,
     },
 
-    // Action URL
     actionUrl: {
       type: String,
     },
@@ -170,18 +151,9 @@ const VaultNotificationSchema = new Schema<IVaultNotification>(
   }
 );
 
-// ============================================================================
-// Indexes
-// ============================================================================
-
-// Compound index for efficient querying
 VaultNotificationSchema.index({ recipientId: 1, status: 1, createdAt: -1 });
 VaultNotificationSchema.index({ locationId: 1, status: 1, createdAt: -1 });
 VaultNotificationSchema.index({ relatedEntityId: 1, relatedEntityType: 1 });
-
-// ============================================================================
-// Model
-// ============================================================================
 
 const VaultNotificationModel: Model<IVaultNotification> =
   mongoose.models.VaultNotification ||

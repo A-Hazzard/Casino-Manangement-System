@@ -52,9 +52,15 @@ export async function checkAllIssues(
   let reports;
   if (machineId) {
     // For machine-specific checks, find reports that contain this machine
-    const collections = await Collections.find({ machineId }).lean<CollectionDocument[]>();
+    const collections = await Collections.find({ machineId }).lean<
+      CollectionDocument[]
+    >();
     const locationReportIds = [
-      ...new Set(collections.map(collection => collection.locationReportId).filter(Boolean)),
+      ...new Set(
+        collections
+          .map(collection => collection.locationReportId)
+          .filter(Boolean)
+      ),
     ];
     reports = await CollectionReport.find({
       locationReportId: { $in: locationReportIds },
@@ -106,7 +112,9 @@ export async function checkAllIssues(
     // Check each collection for issues
     for (const collection of collections) {
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const machine = await Machine.findOne({ _id: collection.machineId }).lean<GamingMachine>();
+      const machine = await Machine.findOne({
+        _id: collection.machineId,
+      }).lean<GamingMachine>();
 
       if (machine) {
         const currentCollectionMeters = machine.collectionMeters || {
@@ -222,8 +230,8 @@ export async function checkAllIssues(
         collection.sasMeters?.sasStartTime &&
         collection.sasMeters?.sasEndTime
       ) {
-        const sasStart = new Date(collection.sasMeters.sasStartTime);
-        const sasEnd = new Date(collection.sasMeters.sasEndTime);
+        const sasStart = collection.sasMeters.sasStartTime;
+        const sasEnd = collection.sasMeters.sasEndTime;
         if (sasStart >= sasEnd) {
           issueCount++;
         }
@@ -246,7 +254,9 @@ export async function checkAllIssues(
 
     for (const machineIdToCheck of machineIds) {
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const machine = await Machine.findOne({ _id: machineIdToCheck }).lean<GamingMachine>();
+      const machine = await Machine.findOne({
+        _id: machineIdToCheck,
+      }).lean<GamingMachine>();
 
       if (machine) {
         const history = machine.collectionMetersHistory || [];
@@ -293,9 +303,7 @@ export async function checkAllIssues(
           reportIssues[report._id.toString()].issueCount++;
           reportIssues[report._id.toString()].hasIssues = true;
           const machineName = String(
-            machine.serialNumber ||
-              machine.custom?.name ||
-              machineIdToCheck
+            machine.serialNumber || machine.custom?.name || machineIdToCheck
           );
           if (
             !reportIssues[report._id.toString()].machines.includes(machineName)
@@ -340,14 +348,14 @@ export async function checkAllIssues(
   if (machineIdsToCheck.length > 0) {
     for (const machId of machineIdsToCheck) {
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const machine = await Machine.findOne({ _id: machId }).lean<GamingMachine>();
+      const machine = await Machine.findOne({
+        _id: machId,
+      }).lean<GamingMachine>();
 
       if (machine) {
         const history = machine.collectionMetersHistory || [];
         const machineName = String(
-          machine.serialNumber ||
-            machine.custom?.name ||
-            machId
+          machine.serialNumber || machine.custom?.name || machId
         );
 
         const issues: Array<{
@@ -395,7 +403,8 @@ export async function checkAllIssues(
               issues.push({
                 type: 'orphaned_history',
                 locationReportId: reportId,
-                message: 'Orphaned history entry - no collection or report found',
+                message:
+                  'Orphaned history entry - no collection or report found',
                 details: {
                   timestamp: entry.timestamp,
                 },
@@ -422,5 +431,3 @@ export async function checkAllIssues(
     totalIssues,
   };
 }
-
-

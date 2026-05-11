@@ -77,8 +77,8 @@ export default function LocationsDetailsMembersSection({
             {activeTab === 'members' ? (
               <MembersListTab forcedLocationId={locationId} />
             ) : (
-              <MembersSummaryTab 
-                selectedLicencee={selectedLicencee || ''} 
+              <MembersSummaryTab
+                selectedLicencee={selectedLicencee || ''}
                 forcedLocationId={locationId}
               />
             )}

@@ -106,4 +106,3 @@ export const getMapCenterByLicencee = (
   const center = REGION_CENTERS[countryCode] || REGION_CENTERS.DEFAULT;
   return center;
 };
-

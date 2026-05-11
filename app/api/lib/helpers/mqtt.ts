@@ -101,8 +101,7 @@ export function extractMQTTConfig(cabinet: MachineDocument): MQTTConfig {
     netMode:
       cabinet.smibConfig?.net?.netMode?.toString() || 'No Value Provided',
     networkSSID: cabinet.smibConfig?.net?.netStaSSID || 'No Value Provided',
-    networkPassword:
-      cabinet.smibConfig?.net?.netStaPwd || 'No Value Provided',
+    networkPassword: cabinet.smibConfig?.net?.netStaPwd || 'No Value Provided',
     networkChannel:
       cabinet.smibConfig?.net?.netStaChan?.toString() || 'No Value Provided',
     communicationMode: formatCommunicationMode(
@@ -118,8 +117,7 @@ export function extractMQTTConfig(cabinet: MachineDocument): MQTTConfig {
       cabinet.smibConfig?.coms?.comsRTE?.toString() || 'No Value Provided',
     comsGPC:
       cabinet.smibConfig?.coms?.comsGPC?.toString() || 'No Value Provided',
-    firmwareVersion:
-      cabinet.smibVersion?.firmware || 'No Value Provided',
+    firmwareVersion: cabinet.smibVersion?.firmware || 'No Value Provided',
     mqttHost:
       extractHostFromUri(cabinet.smibConfig?.mqtt?.mqttURI ?? undefined) ||
       'No Value Provided',
@@ -133,19 +131,13 @@ export function extractMQTTConfig(cabinet: MachineDocument): MQTTConfig {
     mqttIdleTimeout:
       cabinet.smibConfig?.mqtt?.mqttIdleTimeS?.toString() ||
       'No Value Provided',
-    mqttUsername:
-      cabinet.smibConfig?.mqtt?.mqttUsername || 'No Value Provided',
-    mqttPassword:
-      cabinet.smibConfig?.mqtt?.mqttPassword || 'No Value Provided',
-    mqttPubTopic:
-      cabinet.smibConfig?.mqtt?.mqttPubTopic || 'No Value Provided',
-    mqttCfgTopic:
-      cabinet.smibConfig?.mqtt?.mqttCfgTopic || 'No Value Provided',
-    mqttSubTopic:
-      cabinet.smibConfig?.mqtt?.mqttSubTopic || 'No Value Provided',
+    mqttUsername: cabinet.smibConfig?.mqtt?.mqttUsername || 'No Value Provided',
+    mqttPassword: cabinet.smibConfig?.mqtt?.mqttPassword || 'No Value Provided',
+    mqttPubTopic: cabinet.smibConfig?.mqtt?.mqttPubTopic || 'No Value Provided',
+    mqttCfgTopic: cabinet.smibConfig?.mqtt?.mqttCfgTopic || 'No Value Provided',
+    mqttSubTopic: cabinet.smibConfig?.mqtt?.mqttSubTopic || 'No Value Provided',
     mqttURI: cabinet.smibConfig?.mqtt?.mqttURI || 'No Value Provided',
-    serverTopic:
-      cabinet.smibConfig?.mqtt?.mqttPubTopic || 'No Value Provided',
+    serverTopic: cabinet.smibConfig?.mqtt?.mqttPubTopic || 'No Value Provided',
     otaURL: cabinet.smibConfig?.ota?.otaURL || 'No Value Provided',
   };
 }
@@ -202,5 +194,3 @@ export function validateMQTTConfigRequest(body: unknown): string | null {
 
   return null;
 }
-
-

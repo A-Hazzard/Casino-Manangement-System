@@ -23,8 +23,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import type { ClientErrorPayload } from '@/shared/types/api';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/client-errors';
+  const user = extractUserFromRequest(request);
+
   try {
     const body = (await request.json()) as ClientErrorPayload;
 
@@ -49,9 +58,32 @@ export async function POST(request: NextRequest) {
       ].join('\n')
     );
 
+    const duration = Date.now() - startTime;
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/client-errors',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[CLIENT ERROR] Failed to parse client error payload:', error);
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : 'Failed to parse client error payload';
+    console.error(
+      '[CLIENT ERROR] Failed to parse client error payload:',
+      error
+    );
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/client-errors',
+      errorMessage,
+      user
+    );
     return NextResponse.json({ success: false }, { status: 400 });
   }
 }

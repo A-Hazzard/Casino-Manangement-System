@@ -84,9 +84,7 @@ export function useAdministrationUsers({
 
   const isOwner = useMemo(() => {
     const userRoles = user?.roles || [];
-    return userRoles.some(
-      role => typeof role === 'string' && role === 'owner'
-    );
+    return userRoles.some(role => typeof role === 'string' && role === 'owner');
   }, [user?.roles]);
 
   // Calculate which batch corresponds to the current page
@@ -102,9 +100,7 @@ export function useAdministrationUsers({
     return allUsers.filter(user => {
       const userRoles = user.roles || [];
       return userRoles.some(
-        role =>
-          typeof role === 'string' &&
-          role === selectedRole
+        role => typeof role === 'string' && role === selectedRole
       );
     });
   }, [allUsers, selectedRole]);
@@ -157,10 +153,20 @@ export function useAdministrationUsers({
     const usersToCount = allUsers;
     return {
       total: usersToCount.length,
-      collectors: usersToCount.filter(user => (user.roles as string[] | undefined)?.includes('collector')).length,
-      admins: usersToCount.filter(user => (user.roles as string[] | undefined)?.some(role => role === 'admin' || role === 'developer')).length,
-      locationAdmins: usersToCount.filter(user => (user.roles as string[] | undefined)?.includes('location admin')).length,
-      managers: usersToCount.filter(user => (user.roles as string[] | undefined)?.includes('manager')).length,
+      collectors: usersToCount.filter(user =>
+        (user.roles as string[] | undefined)?.includes('collector')
+      ).length,
+      admins: usersToCount.filter(user =>
+        (user.roles as string[] | undefined)?.some(
+          role => role === 'admin' || role === 'developer'
+        )
+      ).length,
+      locationAdmins: usersToCount.filter(user =>
+        (user.roles as string[] | undefined)?.includes('location admin')
+      ).length,
+      managers: usersToCount.filter(user =>
+        (user.roles as string[] | undefined)?.includes('manager')
+      ).length,
     };
   }, [allUsers]);
 
@@ -260,7 +266,11 @@ export function useAdministrationUsers({
           const lastName = (u.profile?.lastName || '').toLowerCase();
 
           if (username.startsWith(lowerSearchValue)) score += 20;
-          if (firstName.startsWith(lowerSearchValue) || lastName.startsWith(lowerSearchValue)) score += 15;
+          if (
+            firstName.startsWith(lowerSearchValue) ||
+            lastName.startsWith(lowerSearchValue)
+          )
+            score += 15;
           if (email.startsWith(lowerSearchValue)) score += 10;
           if (userId.startsWith(lowerSearchValue)) score += 5;
           return score;
@@ -304,12 +314,7 @@ export function useAdministrationUsers({
       };
       loadBackendSearch();
     }
-  }, [
-    debouncedSearchValue,
-    allLoadedUsers,
-    activeSection,
-    selectedLicencee,
-  ]);
+  }, [debouncedSearchValue, allLoadedUsers, activeSection, selectedLicencee]);
 
   // Handle pagination for backend search results
   useEffect(() => {
@@ -634,14 +639,14 @@ export function useAdministrationUsers({
         updated,
         currentUser: user
           ? ({
-            _id: user._id,
-            name: user.username || '',
-            username: user.username || '',
-            emailAddress: user.emailAddress || '',
-            isEnabled: user.isEnabled || true,
-            roles: user.roles || [],
-            profilePicture: null,
-          } as User)
+              _id: user._id,
+              name: user.username || '',
+              username: user.username || '',
+              emailAddress: user.emailAddress || '',
+              isEnabled: user.isEnabled || true,
+              roles: user.roles || [],
+              profilePicture: null,
+            } as User)
           : null,
         getUserDisplayName,
         selectedLicencee,
@@ -716,8 +721,9 @@ export function useAdministrationUsers({
               resource: 'user',
               resourceId: userToDelete._id,
               resourceName: userToDelete.username,
-              details: `Deleted user: ${userToDelete.username} with roles: ${userData.roles?.join(', ') || 'N/A'
-                }`,
+              details: `Deleted user: ${userToDelete.username} with roles: ${
+                userData.roles?.join(', ') || 'N/A'
+              }`,
               userId: user?._id || 'unknown',
               username: getUserDisplayName(),
               userRole: 'user',
@@ -808,4 +814,3 @@ export function useAdministrationUsers({
     getUserDisplayName,
   };
 }
-

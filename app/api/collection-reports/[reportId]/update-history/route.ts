@@ -18,6 +18,11 @@ import {
   updateReportMachineHistories,
 } from '@/app/api/lib/helpers/collectionReport/historyUpdate';
 import { connectDB } from '@/app/api/lib/middleware/db';
+import {
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * PATCH /api/collection-reports/[reportId]/update-history
@@ -32,10 +37,11 @@ import { connectDB } from '@/app/api/lib/middleware/db';
  * Body fields:
  * @param changes   {Array}  Required. Array of machine history change objects to apply. Each entry must conform to `UpdateHistoryPayload['changes']`.
  */
-export async function PATCH(
-  request: NextRequest
-) {
+export async function PATCH(request: NextRequest) {
   const startTime = Date.now();
+  const functionName =
+    'PATCH /api/collection-reports/[reportId]/update-history';
+  const user = extractUserFromRequest(request);
   const { pathname } = request.nextUrl;
   const parts = pathname.split('/');
   const reportId = parts[parts.length - 2];
@@ -44,6 +50,13 @@ export async function PATCH(
     const body = (await request.json()) as UpdateHistoryPayload;
 
     if (!reportId) {
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/collection-reports/[reportId]/update-history',
+        'Report ID is required',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Report ID is required' },
         { status: 400 }
@@ -51,6 +64,13 @@ export async function PATCH(
     }
 
     if (!body.changes || !Array.isArray(body.changes)) {
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/collection-reports/[reportId]/update-history',
+        'Changes array is required',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Changes array is required' },
         { status: 400 }
@@ -71,6 +91,14 @@ export async function PATCH(
     // STEP 4: Return results summary
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteUpdate(
+      functionName,
+      'PATCH',
+      '/api/collection-reports/[reportId]/update-history',
+      results.updated,
+      user,
+      duration
+    );
     console.log(
       `[Update Report History PATCH API] Updated ${results.updated}/${body.changes.length} machine histories after ${duration}ms.`
     );
@@ -87,6 +115,13 @@ export async function PATCH(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
+    logRouteError(
+      functionName,
+      'PATCH',
+      '/api/collection-reports/[reportId]/update-history',
+      errorMessage,
+      user
+    );
     console.error(
       `[Update Report History PATCH API] Error after ${duration}ms:`,
       errorMessage

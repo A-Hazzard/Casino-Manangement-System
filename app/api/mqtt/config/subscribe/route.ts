@@ -9,6 +9,11 @@
  */
 
 import { mqttService } from '@/app/api/lib/services/mqttService';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest } from 'next/server';
 
 /**
@@ -26,6 +31,8 @@ import { NextRequest } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/mqtt/config/subscribe';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -36,6 +43,13 @@ export async function GET(request: NextRequest) {
 
     if (!relayId) {
       const duration = Date.now() - startTime;
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/mqtt/config/subscribe',
+        'relayId query parameter is required',
+        user
+      );
       console.error(
         `[MQTT Config Subscribe GET API] Missing relayId parameter after ${duration}ms.`
       );
@@ -200,7 +214,7 @@ export async function GET(request: NextRequest) {
           isClosed = true;
           clearInterval(keepAliveInterval);
         });
-    },
+      },
       cancel() {
         console.log(
           `[MQTT Config Subscribe GET API] SSE stream cancelled for relayId: ${relayId}`
@@ -214,6 +228,14 @@ export async function GET(request: NextRequest) {
     // STEP 6: Return SSE response stream
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/mqtt/config/subscribe',
+      1,
+      user,
+      duration
+    );
     console.log(
       `[MQTT Config Subscribe GET API] SSE connection established for relayId: ${relayId} after ${duration}ms.`
     );
@@ -222,6 +244,13 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/mqtt/config/subscribe',
+      errorMessage,
+      user
+    );
     console.error(
       `[MQTT Config Subscribe GET API] Error after ${duration}ms:`,
       errorMessage
@@ -235,4 +264,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

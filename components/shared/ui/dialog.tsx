@@ -17,7 +17,6 @@ import { ComponentPropsWithoutRef, ElementRef } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { Cross2Icon } from '@radix-ui/react-icons';
 
-
 import { cn } from '@/lib/utils';
 
 // ============================================================================
@@ -37,7 +36,7 @@ const DialogOverlay = forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'fixed inset-0 z-[60000] bg-black/80 backdrop-blur-sm pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      'pointer-events-auto fixed inset-0 z-[60000] bg-black/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className
     )}
     {...props}
@@ -47,36 +46,48 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = forwardRef<
   ElementRef<typeof DialogPrimitive.Content>,
-  ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { 
+  ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     backdropClassName?: string;
     showCloseButton?: boolean;
     isMobileFullScreen?: boolean;
   }
->(({ className, children, backdropClassName, showCloseButton = true, isMobileFullScreen = true, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay className={backdropClassName} />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        'fixed z-[60001] flex flex-col border bg-background shadow-lg duration-200 pointer-events-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
-        isMobileFullScreen 
-          ? 'inset-0 w-full h-[100dvh] max-w-none rounded-none' 
-          : 'left-[50%] top-[50%] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-lg',
-        'md:inset-auto md:left-[50%] md:top-[50%] md:translate-x-[-50%] md:translate-y-[-50%] md:max-h-[90vh]',
-        className
-      )}
-      {...props}
-    >
-      {children}
-      {showCloseButton && (
-        <DialogPrimitive.Close className="absolute right-4 top-4 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-          <Cross2Icon className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      )}
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
+>(
+  (
+    {
+      className,
+      children,
+      backdropClassName,
+      showCloseButton = true,
+      isMobileFullScreen = true,
+      ...props
+    },
+    ref
+  ) => (
+    <DialogPortal>
+      <DialogOverlay className={backdropClassName} />
+      <DialogPrimitive.Content
+        ref={ref}
+        className={cn(
+          'pointer-events-auto fixed z-[60001] flex flex-col border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+          isMobileFullScreen
+            ? 'inset-0 h-[100dvh] w-full max-w-none rounded-none'
+            : 'left-[50%] top-[50%] w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-lg',
+          'md:inset-auto md:left-[50%] md:top-[50%] md:max-h-[90vh] md:translate-x-[-50%] md:translate-y-[-50%]',
+          className
+        )}
+        {...props}
+      >
+        {children}
+        {showCloseButton && (
+          <DialogPrimitive.Close className="absolute right-4 top-4 z-50 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+            <Cross2Icon className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        )}
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  )
+);
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({
@@ -137,8 +148,13 @@ DialogDescription.displayName = DialogPrimitive.Description.displayName;
 const DialogTrigger = DialogPrimitive.Trigger;
 
 export {
-    Dialog, DialogClose,
-    DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogPortal, DialogTitle,
-    DialogTrigger
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
 };
-

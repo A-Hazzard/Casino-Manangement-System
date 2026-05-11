@@ -23,8 +23,8 @@ export type CollectionSasMeters = {
   gross: number;
   gamesPlayed: number;
   jackpot: number;
-  sasStartTime: string;
-  sasEndTime: string;
+  sasStartTime: Date | undefined;
+  sasEndTime: Date | undefined;
 };
 
 export type CollectionMovement = {
@@ -59,6 +59,7 @@ export type CollectionDocument = {
   ramClear?: boolean;
   ramClearMetersIn?: number;
   ramClearMetersOut?: number;
+  // API-only fields: sent as top-level but mapped to sasMeters via dot notation
   sasStartTime?: Date;
   sasEndTime?: Date;
   serialNumber?: string;
@@ -77,8 +78,6 @@ export type CreateCollectionPayload = {
   prevOut?: number;
   timestamp?: Date | string;
   collectionTime?: Date | string;
-  sasStartTime?: Date;
-  sasEndTime?: Date;
   notes?: string;
   locationReportId?: string;
   machineCustomName?: string;
@@ -90,14 +89,17 @@ export type CreateCollectionPayload = {
   ramClearCoinOut?: number;
   ramClearMetersIn?: number;
   ramClearMetersOut?: number;
+  // SAS times are sent as top-level fields but mapped to sasMeters via API
+  sasStartTime?: Date;
+  sasEndTime?: Date;
 };
 
 export type SasMetricsCalculation = {
   drop: number;
   totalCancelledCredits: number;
   gross: number;
-  sasStartTime: string;
-  sasEndTime: string;
+  sasStartTime: Date;
+  sasEndTime: Date;
   gamesPlayed: number;
   jackpot: number;
 };
@@ -114,7 +116,12 @@ export type PreviousCollectionMeters = {
   collectionTime?: Date;
 };
 
-export type CollectionView = 'collection' | 'monthly' | 'manager' | 'collector';
+export type CollectionView =
+  | 'collection'
+  | 'monthly'
+  | 'manager'
+  | 'collector'
+  | 'collection-v2';
 
 export type CollectionTab = {
   id: CollectionView;
@@ -122,4 +129,5 @@ export type CollectionTab = {
   icon: string;
   description?: string;
   available?: boolean;
+  highlight?: boolean;
 };

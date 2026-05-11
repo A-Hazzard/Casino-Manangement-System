@@ -14,4 +14,3 @@ export type UseDashboardRefreshReturn = {
   handleRefresh: () => Promise<void>;
   canRefresh: boolean;
 };
-

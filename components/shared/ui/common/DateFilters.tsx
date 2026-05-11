@@ -302,7 +302,11 @@ export default function DateFilters({
                   Custom
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start" side="bottom">
+              <PopoverContent
+                className="w-auto p-0"
+                align="start"
+                side="bottom"
+              >
                 <MuiDateCalendar
                   date={useDashBoardStore.getState().customDateRange?.startDate}
                   gameDayOffset={gameDayOffset}

@@ -7,4 +7,7 @@
 export { cmsNavigationConfig, getCmsNavigationConfig } from './cmsNavigation';
 export { vaultNavigationConfig } from './vaultNavigation';
 export { cashierNavigationConfig } from './cashierNavigation';
-export type { NavigationConfig, NavigationItem } from '@/lib/types/layout/navigation';
+export type {
+  NavigationConfig,
+  NavigationItem,
+} from '@/lib/types/layout/navigation';

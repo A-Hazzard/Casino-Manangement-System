@@ -10,7 +10,6 @@
 
 import { formatFullDate } from '../date/formatting';
 
-
 // ============================================================================
 // Status Functions
 // ============================================================================
@@ -20,7 +19,10 @@ import { formatFullDate } from '../date/formatting';
  * @returns string (Tailwind color class)
  */
 export function getStatusColor(status: string): string {
-  if (!status) { console.error('[getStatusColor] status is required'); return 'bg-gray-200 text-gray-500'; }
+  if (!status) {
+    console.error('[getStatusColor] status is required');
+    return 'bg-gray-200 text-gray-500';
+  }
   switch (status) {
     case 'completed':
       return 'bg-greenHighlight/20 text-greenHighlight';
@@ -41,7 +43,9 @@ export function getStatusColor(status: string): string {
  * @returns string with date and time
  */
 export function formatMovementRequestDate(date: Date | string): string {
-  if (!date) { console.error('[formatMovementRequestDate] date is required'); return ''; }
+  if (!date) {
+    console.error('[formatMovementRequestDate] date is required');
+    return '';
+  }
   return formatFullDate(date);
 }
-

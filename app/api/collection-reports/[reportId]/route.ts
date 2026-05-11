@@ -24,13 +24,19 @@ import { checkUserLocationAccess } from '@/app/api/lib/helpers/licenceeFilter';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { CollectionReport } from '@/app/api/lib/models/collectionReport';
 import { Collections } from '@/app/api/lib/models/collections';
+import {
+  logRouteFetch,
+  logRouteUpdate,
+  logRouteDelete,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import type { CreateCollectionReportPayload } from '@/lib/types/api';
 import { getClientIP } from '@/lib/utils/ipAddress';
 import type { CollectionDocument } from '@/lib/types/collection';
 import type { CollectionReportDocument } from '@/shared/types';
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromServer } from '../../lib/helpers/users';
-
 
 /**
  * Main GET handler for fetching an individual collection report
@@ -52,6 +58,9 @@ import { getUserFromServer } from '../../lib/helpers/users';
  * 8. Return report data
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  const startTime = Date.now();
+  const functionName = 'GET /api/collection-reports/[reportId]';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -65,21 +74,45 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const reportId = request.nextUrl.pathname.split('/').pop();
 
     if (!reportId) {
-      return NextResponse.json({ message: 'Report ID is required' }, { status: 400 });
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/collection-reports/[reportId]',
+        'Report ID is required',
+        user
+      );
+      return NextResponse.json(
+        { message: 'Report ID is required' },
+        { status: 400 }
+      );
     }
 
     // ============================================================================
     // STEP 3: Find report by locationReportId or MongoDB _id
     // ============================================================================
     // Try finding by locationReportId first, then by MongoDB _id (maintenance fallback)
-    let report = await CollectionReport.findOne({ locationReportId: reportId }).lean<CollectionReportDocument | null>();
+    let report = await CollectionReport.findOne({
+      locationReportId: reportId,
+    }).lean<CollectionReportDocument | null>();
 
     if (!report && /^[0-9a-fA-F]{24}$/.test(reportId)) {
-        report = await CollectionReport.findOne({ _id: reportId }).lean<CollectionReportDocument | null>();
+      report = await CollectionReport.findOne({
+        _id: reportId,
+      }).lean<CollectionReportDocument | null>();
     }
 
     if (!report) {
-      return NextResponse.json({ message: 'Collection Report not found' }, { status: 404 });
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/collection-reports/[reportId]',
+        'Collection Report not found',
+        user
+      );
+      return NextResponse.json(
+        { message: 'Collection Report not found' },
+        { status: 404 }
+      );
     }
 
     // ============================================================================
@@ -89,8 +122,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (report.location) {
       const hasAccess = await checkUserLocationAccess(report.location);
       if (!hasAccess) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/collection-reports/[reportId]',
+          'Unauthorized: location access denied',
+          user
+        );
         return NextResponse.json(
-          { message: "Unauthorized: You do not have access to this collection report's location" },
+          {
+            message:
+              "Unauthorized: You do not have access to this collection report's location",
+          },
           { status: 403 }
         );
       }
@@ -101,6 +144,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     const currentUser = await getUserFromServer();
     if (!currentUser) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/collection-reports/[reportId]',
+        'User not found',
+        user
+      );
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
 
@@ -114,7 +164,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
 
     if (!reportData) {
-      return NextResponse.json({ message: 'Collection Report not found' }, { status: 404 });
+      return NextResponse.json(
+        { message: 'Collection Report not found' },
+        { status: 404 }
+      );
     }
 
     // ============================================================================
@@ -122,15 +175,32 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // Fallback for missing collectionDate
     if (!reportData.collectionDate && report.timestamp) {
-        reportData.collectionDate = new Date(report.timestamp).toISOString();
+      reportData.collectionDate = new Date(report.timestamp).toISOString();
     }
 
     // ============================================================================
     // STEP 8: Return report data
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/collection-reports/[reportId]',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json(reportData);
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/collection-reports/[reportId]',
+      errorMessage,
+      user
+    );
     console.error(`[Collection Reports GET API] Error:`, errorMessage);
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
@@ -155,6 +225,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
  * 7. Return success response
  */
 export async function PATCH(request: NextRequest): Promise<NextResponse> {
+  const startTime = Date.now();
+  const functionName = 'PATCH /api/collection-reports/[reportId]';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -168,10 +241,21 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const reportId = request.nextUrl.pathname.split('/').pop();
 
     if (!reportId) {
-      return NextResponse.json({ message: 'Report ID is required' }, { status: 400 });
+      logRouteError(
+        functionName,
+        'PATCH',
+        '/api/collection-reports/[reportId]',
+        'Report ID is required',
+        user
+      );
+      return NextResponse.json(
+        { message: 'Report ID is required' },
+        { status: 400 }
+      );
     }
 
-    const body = (await request.json()) as Partial<CreateCollectionReportPayload>;
+    const body =
+      (await request.json()) as Partial<CreateCollectionReportPayload>;
 
     // CRITICAL: Do not update the collector field during edit
     delete body.collector;
@@ -181,13 +265,18 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     // STEP 3: Find existing report (handle either ID type)
     // ============================================================================
     // Find the report to handle either ID type
-    let existingReport = await CollectionReport.findOne({ locationReportId: reportId });
+    let existingReport = await CollectionReport.findOne({
+      locationReportId: reportId,
+    });
     if (!existingReport && /^[0-9a-fA-F]{24}$/.test(reportId)) {
-        existingReport = await CollectionReport.findOne({ _id: reportId });
+      existingReport = await CollectionReport.findOne({ _id: reportId });
     }
 
     if (!existingReport) {
-      return NextResponse.json({ message: 'Collection Report not found' }, { status: 404 });
+      return NextResponse.json(
+        { message: 'Collection Report not found' },
+        { status: 404 }
+      );
     }
 
     const resolvedReportId = existingReport.locationReportId || reportId;
@@ -220,37 +309,79 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     const currentUser = await getUserFromServer();
     if (currentUser && currentUser.emailAddress) {
       try {
-        const updateChanges: { field: string; oldValue: unknown; newValue: unknown }[] = [];
+        const updateChanges: {
+          field: string;
+          oldValue: unknown;
+          newValue: unknown;
+        }[] = [];
         // Comparison logic... (same as in singular route)
         const existingReportObj = existingReport.toObject();
-        const fieldsToTrack = ['locationName', 'amountCollected', 'amountToCollect', 'variance', 'partnerProfit', 'taxes'];
+        const fieldsToTrack = [
+          'locationName',
+          'amountCollected',
+          'amountToCollect',
+          'variance',
+          'partnerProfit',
+          'taxes',
+        ];
         fieldsToTrack.forEach(field => {
-            if (body[field as keyof typeof body] !== undefined) {
-                updateChanges.push({
-                    field,
-                    oldValue: (existingReportObj as Record<string, unknown>)[field],
-                    newValue: (body as Record<string, unknown>)[field],
-                });
-            }
+          if (body[field as keyof typeof body] !== undefined) {
+            updateChanges.push({
+              field,
+              oldValue: (existingReportObj as Record<string, unknown>)[field],
+              newValue: (body as Record<string, unknown>)[field],
+            });
+          }
         });
 
         if (body.machines && Array.isArray(body.machines)) {
-          const oldMachineIds = existingCollections.map((collection) => collection.machineId as string) || [];
-          const newMachineIds = (body.machines as { machineId: string }[]).map((machine) => machine.machineId);
-          const added = (body.machines as { machineId: string; machineName?: string; machineCustomName?: string }[]).filter((machine) => !oldMachineIds.includes(machine.machineId));
-          const removed = (existingCollections as { machineId: string; machineName?: string; machineCustomName?: string }[]).filter((collection) => !newMachineIds.includes(collection.machineId));
+          const oldMachineIds =
+            existingCollections.map(
+              collection => collection.machineId as string
+            ) || [];
+          const newMachineIds = (body.machines as { machineId: string }[]).map(
+            machine => machine.machineId
+          );
+          const added = (
+            body.machines as {
+              machineId: string;
+              machineName?: string;
+              machineCustomName?: string;
+            }[]
+          ).filter(machine => !oldMachineIds.includes(machine.machineId));
+          const removed = (
+            existingCollections as {
+              machineId: string;
+              machineName?: string;
+              machineCustomName?: string;
+            }[]
+          ).filter(collection => !newMachineIds.includes(collection.machineId));
 
           if (added.length > 0) {
             updateChanges.push({
               field: 'machines_added',
               oldValue: null,
-              newValue: added.map((machine) => (machine.machineCustomName || machine.machineName || machine.machineId)).join(', '),
+              newValue: added
+                .map(
+                  machine =>
+                    machine.machineCustomName ||
+                    machine.machineName ||
+                    machine.machineId
+                )
+                .join(', '),
             });
           }
           if (removed.length > 0) {
             updateChanges.push({
               field: 'machines_removed',
-              oldValue: removed.map((collection) => (collection.machineCustomName || collection.machineName || collection.machineId)).join(', '),
+              oldValue: removed
+                .map(
+                  collection =>
+                    collection.machineCustomName ||
+                    collection.machineName ||
+                    collection.machineId
+                )
+                .join(', '),
               newValue: null,
             });
           }
@@ -279,9 +410,26 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 7: Return success response
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteUpdate(
+      functionName,
+      'PATCH',
+      '/api/collection-reports/[reportId]',
+      1,
+      user,
+      duration
+    );
     return NextResponse.json({ success: true, data: updateResult.data });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'PATCH',
+      '/api/collection-reports/[reportId]',
+      errorMessage,
+      user
+    );
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
@@ -308,6 +456,9 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
  * 11. Return success response
  */
 export async function DELETE(request: NextRequest): Promise<NextResponse> {
+  const startTime = Date.now();
+  const functionName = 'DELETE /api/collection-reports/[reportId]';
+  const user = extractUserFromRequest(request);
   try {
     // ============================================================================
     // STEP 1: Connect to the database
@@ -320,19 +471,41 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     const reportId = request.nextUrl.pathname.split('/').pop();
 
     if (!reportId) {
-      return NextResponse.json({ message: 'Report ID is required' }, { status: 400 });
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/collection-reports/[reportId]',
+        'Report ID is required',
+        user
+      );
+      return NextResponse.json(
+        { message: 'Report ID is required' },
+        { status: 400 }
+      );
     }
 
     // ============================================================================
     // STEP 3: Find existing report
     // ============================================================================
-    let existingReport = await CollectionReport.findOne({ locationReportId: reportId }).lean<CollectionReportDocument | null>();
+    let existingReport = await CollectionReport.findOne({
+      locationReportId: reportId,
+    }).lean<CollectionReportDocument | null>();
     if (!existingReport && /^[0-9a-fA-F]{24}$/.test(reportId)) {
-        existingReport = await CollectionReport.findOne({ _id: reportId });
+      existingReport = await CollectionReport.findOne({ _id: reportId });
     }
 
     if (!existingReport) {
-      return NextResponse.json({ message: 'Collection Report not found' }, { status: 404 });
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/collection-reports/[reportId]',
+        'Collection Report not found',
+        user
+      );
+      return NextResponse.json(
+        { message: 'Collection Report not found' },
+        { status: 404 }
+      );
     }
 
     const resolvedReportId = existingReport.locationReportId || reportId;
@@ -340,15 +513,23 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 4: Fetch associated collections
     // ============================================================================
-    const associatedCollections = await Collections.find({ locationReportId: resolvedReportId }).lean<CollectionDocument[]>();
+    const associatedCollections = await Collections.find({
+      locationReportId: resolvedReportId,
+    }).lean<CollectionDocument[]>();
+    console.log(
+      `[DELETE] Found ${associatedCollections.length} collections for report ${resolvedReportId}`
+    );
 
     // ============================================================================
     // STEP 5: Remove collection history from machines
     // ============================================================================
-    const historyResult = await removeCollectionHistoryFromMachines(resolvedReportId);
+    const historyResult =
+      await removeCollectionHistoryFromMachines(resolvedReportId);
     if (!historyResult.success) {
       return NextResponse.json(
-        { message: historyResult.error || 'Failed to remove collection history' },
+        {
+          message: historyResult.error || 'Failed to remove collection history',
+        },
         { status: 500 }
       );
     }
@@ -356,10 +537,14 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 6: Revert machine collection meters
     // ============================================================================
-    const revertResult = await revertMachineCollectionMeters(associatedCollections);
+    const revertResult = await revertMachineCollectionMeters(
+      associatedCollections
+    );
     if (!revertResult.success) {
       return NextResponse.json(
-        { message: `Failed to revert machine meters: ${revertResult.errors.join(', ')}` },
+        {
+          message: `Failed to revert machine meters: ${revertResult.errors.join(', ')}`,
+        },
         { status: 500 }
       );
     }
@@ -367,10 +552,13 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 7: Delete manual meters per collection
     // ============================================================================
-    const deleteMetersResult = await deleteManualMetersPerCollection(resolvedReportId);
+    const deleteMetersResult =
+      await deleteManualMetersPerCollection(resolvedReportId);
     if (!deleteMetersResult.success) {
       return NextResponse.json(
-        { message: deleteMetersResult.error || 'Failed to delete manual meters' },
+        {
+          message: deleteMetersResult.error || 'Failed to delete manual meters',
+        },
         { status: 500 }
       );
     }
@@ -378,15 +566,21 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 8: Delete associated collections
     // ============================================================================
-    const deleteCollectionsResult = await Collections.deleteMany({ locationReportId: resolvedReportId });
+    const deleteCollectionsResult = await Collections.deleteMany({
+      locationReportId: resolvedReportId,
+    });
     if (deleteCollectionsResult.deletedCount === 0) {
-      console.warn(`[DELETE] No collections deleted for report ${resolvedReportId}`);
+      console.warn(
+        `[DELETE] No collections deleted for report ${resolvedReportId}`
+      );
     }
 
     // ============================================================================
     // STEP 9: Delete collection report
     // ============================================================================
-    const deletedReport = await CollectionReport.findOneAndDelete({ _id: existingReport._id });
+    const deletedReport = await CollectionReport.findOneAndDelete({
+      _id: existingReport._id,
+    });
     if (!deletedReport) {
       return NextResponse.json(
         { message: 'Failed to delete collection report' },
@@ -417,9 +611,29 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     // ============================================================================
     // STEP 11: Return success response
     // ============================================================================
-    return NextResponse.json({ success: true, message: 'Collection report deleted successfully' });
+    const duration = Date.now() - startTime;
+    logRouteDelete(
+      functionName,
+      'DELETE',
+      '/api/collection-reports/[reportId]',
+      1,
+      user,
+      duration
+    );
+    return NextResponse.json({
+      success: true,
+      message: 'Collection report deleted successfully',
+    });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'DELETE',
+      '/api/collection-reports/[reportId]',
+      errorMessage,
+      user
+    );
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }

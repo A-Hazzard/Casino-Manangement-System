@@ -13,6 +13,11 @@ import {
   getUserMetrics,
   validateTimePeriod,
 } from '@/app/api/lib/helpers/users/metrics';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -29,6 +34,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/metrics/metricsByUser';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -39,6 +46,13 @@ export async function GET(request: NextRequest) {
     const timePeriod = searchParams.get('timePeriod');
 
     if (!userIdStr) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/metrics/metricsByUser',
+        'Missing userId parameter',
+        user
+      );
       return NextResponse.json(
         { error: 'Missing userId parameter' },
         { status: 400 }
@@ -50,6 +64,13 @@ export async function GET(request: NextRequest) {
     // ============================================================================
     const timePeriodError = validateTimePeriod(timePeriod);
     if (timePeriodError) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/metrics/metricsByUser',
+        timePeriodError,
+        user
+      );
       return NextResponse.json({ error: timePeriodError }, { status: 400 });
     }
 
@@ -59,6 +80,13 @@ export async function GET(request: NextRequest) {
     const metricsForLocations = await getUserMetrics(userIdStr);
 
     if (!metricsForLocations) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/metrics/metricsByUser',
+        'User metrics not found',
+        user
+      );
       return NextResponse.json(
         { error: 'User metrics not found' },
         { status: 404 }
@@ -69,6 +97,14 @@ export async function GET(request: NextRequest) {
     // STEP 4: Return user metrics
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/metrics/metricsByUser',
+      1,
+      user,
+      duration
+    );
     if (duration > 1000) {
       console.warn(`[Metrics By User API] Completed in ${duration}ms`);
     }
@@ -77,6 +113,13 @@ export async function GET(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/metrics/metricsByUser',
+      errorMessage,
+      user
+    );
     console.error(
       `[User Metrics GET API] Error after ${duration}ms:`,
       errorMessage
@@ -84,4 +127,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
-

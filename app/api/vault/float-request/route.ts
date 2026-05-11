@@ -9,6 +9,13 @@
  */
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
+import {
+  logRouteFetch,
+  logRouteCreate,
+  logRouteUpdate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import FloatRequestModel from '@/app/api/lib/models/floatRequest';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -24,6 +31,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @param {string} endDate - ISO date for range end
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/vault/float-request';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const normalizedRoles = userRoles.map(r => String(r).toLowerCase());
@@ -202,6 +213,16 @@ export async function GET(request: NextRequest) {
         FloatRequestModel.countDocuments(query),
       ]);
 
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/vault/float-request',
+        pendingRequests.length,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         data: pendingRequests,
@@ -213,8 +234,23 @@ export async function GET(request: NextRequest) {
         },
       });
     } catch (e) {
-      console.error('[GET] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to fetch float requests';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/vault/float-request',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[GET] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        { status: 500 }
+      );
     }
   });
 }
@@ -230,6 +266,10 @@ export async function GET(request: NextRequest) {
  * @body {string} cashierShiftId - ID of the active cashier shift (REQUIRED)
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/float-request';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload }) => {
     try {
       const body = await request.json();
@@ -241,20 +281,36 @@ export async function POST(request: NextRequest) {
         locationId,
         cashierShiftId,
       } = body;
-      if (!type || !amount || !locationId || !cashierShiftId)
+      if (!type || !amount || !locationId || !cashierShiftId) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/float-request',
+          'Missing required fields',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Missing required fields' },
           { status: 400 }
         );
+      }
 
       const vaultShift = await (
         await import('@/app/api/lib/models/vaultShift')
       ).default.findOne({ locationId, status: 'active' });
-      if (!vaultShift)
+      if (!vaultShift) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/float-request',
+          'No active vault shift',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'No active vault shift' },
           { status: 400 }
         );
+      }
 
       const { generateMongoId } = await import('@/lib/utils/id');
       const requestId = await generateMongoId();
@@ -297,46 +353,106 @@ export async function POST(request: NextRequest) {
         console.error('Notification failed:', e);
       }
 
+      const duration = Date.now() - startTime;
+      logRouteCreate(
+        functionName,
+        'POST',
+        '/api/vault/float-request',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         message: 'Float request submitted',
         floatRequest: floatRequest.toObject(),
       });
     } catch (e) {
-      console.error('[Float Create API] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to create float request';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/float-request',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[Float Create API] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        { status: 500 }
+      );
     }
   });
 }
 
 export async function DELETE(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'DELETE /api/vault/float-request';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const { requestId } = await request.json();
-      if (!requestId)
+      if (!requestId) {
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/vault/float-request',
+          'Request ID required',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Request ID required' },
           { status: 400 }
         );
+      }
 
       const requestDoc = await FloatRequestModel.findOne({ _id: requestId });
-      if (!requestDoc)
+      if (!requestDoc) {
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/vault/float-request',
+          'Request not found',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Request not found' },
           { status: 404 }
         );
+      }
 
       const isVM = userRoles.some(r =>
         ['admin', 'manager', 'vault-manager'].includes(String(r).toLowerCase())
       );
-      if (requestDoc.cashierId.toString() !== userPayload._id && !isVM)
+      if (requestDoc.cashierId.toString() !== userPayload._id && !isVM) {
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/vault/float-request',
+          'Unauthorized',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Unauthorized' },
           { status: 403 }
         );
+      }
 
       const allowedStatuses = ['pending', 'approved_vm'];
-      if (!allowedStatuses.includes(requestDoc.status))
+      if (!allowedStatuses.includes(requestDoc.status)) {
+        logRouteError(
+          functionName,
+          'DELETE',
+          '/api/vault/float-request',
+          `Cannot cancel ${requestDoc.status} requests`,
+          user
+        );
         return NextResponse.json(
           {
             success: false,
@@ -344,6 +460,7 @@ export async function DELETE(request: NextRequest) {
           },
           { status: 400 }
         );
+      }
 
       requestDoc.status = 'cancelled';
       requestDoc.auditLog.push({
@@ -363,19 +480,46 @@ export async function DELETE(request: NextRequest) {
           relatedEntityType: 'float_request',
         });
         if (notifDeleteResult.deletedCount === 0) {
-          console.warn(`[float-request cancel] No notifications found to delete for requestId: ${requestId}`);
+          console.warn(
+            `[float-request cancel] No notifications found to delete for requestId: ${requestId}`
+          );
         }
       } catch (e) {
         console.error('Notification cleanup failed:', e);
       }
+
+      const duration = Date.now() - startTime;
+      logRouteUpdate(
+        functionName,
+        'DELETE',
+        '/api/vault/float-request',
+        1,
+        user,
+        duration
+      );
 
       return NextResponse.json({
         success: true,
         message: 'Request cancelled successfully',
       });
     } catch (e) {
-      console.error('[Float Cancel API] Error:', e instanceof Error ? e.message : 'Unknown error');
-      return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to cancel float request';
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/vault/float-request',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[Float Cancel API] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        { status: 500 }
+      );
     }
   });
 }

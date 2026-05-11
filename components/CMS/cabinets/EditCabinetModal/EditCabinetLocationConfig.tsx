@@ -39,7 +39,9 @@ type EditCabinetLocationConfigProps = {
   locationError: string;
   relayIdError: string;
   hasValidSerialNumber: boolean;
-  onFormDataChange: (updates: Partial<EditCabinetLocationConfigProps['formData']>) => void;
+  onFormDataChange: (
+    updates: Partial<EditCabinetLocationConfigProps['formData']>
+  ) => void;
   onLocationErrorChange: (error: string) => void;
   onSmibBlur?: (value: string) => void;
   onCustomNameBlur?: (value: string) => void;
@@ -164,7 +166,13 @@ export default function EditCabinetLocationConfig({
         </label>
         <Select
           value={formData.status as string}
-          onValueChange={value => onFormDataChange({ status: value })}
+          onValueChange={value => {
+            console.log(
+              `[EditCabinetLocationConfig] Status changed to:`,
+              value
+            );
+            onFormDataChange({ status: value });
+          }}
         >
           <SelectTrigger className="border-border bg-container">
             <SelectValue placeholder="Select Status" />
@@ -213,4 +221,3 @@ export default function EditCabinetLocationConfig({
     </div>
   );
 }
-

@@ -56,7 +56,10 @@ test.describe.serial('API-based Data Management', () => {
   });
 
   test('Step 3: Create a temporary Admin User via API', async ({ request }) => {
-    test.skip(!licenceeId || !locationId, 'Licencee or Location creation failed');
+    test.skip(
+      !licenceeId || !locationId,
+      'Licencee or Location creation failed'
+    );
 
     const response = await request.post('/api/users', {
       data: {
@@ -67,7 +70,7 @@ test.describe.serial('API-based Data Management', () => {
         profile: {
           firstName: 'E2E',
           lastName: 'Automated',
-          gender: 'male'
+          gender: 'male',
         },
         assignedLicencees: [licenceeId],
         assignedLocations: [locationId],
@@ -84,7 +87,10 @@ test.describe.serial('API-based Data Management', () => {
     expect(userId).toBeDefined();
 
     // Persist IDs for potential external cleanup if the test run crashes
-    fs.writeFileSync(TEST_DATA_FILE, JSON.stringify({ licenceeId, locationId, userId }, null, 2));
+    fs.writeFileSync(
+      TEST_DATA_FILE,
+      JSON.stringify({ licenceeId, locationId, userId }, null, 2)
+    );
   });
 
   test('Step 4: Cleanup - Delete the test User', async ({ request }) => {

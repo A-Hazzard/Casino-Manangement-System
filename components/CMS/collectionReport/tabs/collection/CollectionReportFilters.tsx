@@ -40,7 +40,7 @@
  */
 'use client';
 
-import {  useRef, useEffect  } from 'react';
+import { useRef, useEffect } from 'react';
 import { KeyboardEvent } from 'react';
 import { MagnifyingGlassIcon } from '@radix-ui/react-icons';
 import { Checkbox } from '@/components/shared/ui/checkbox';
@@ -132,7 +132,7 @@ export default function CollectionReportFilters({
       {/* Top row - Search and Location (md: side by side, lg: with Clear Button) */}
       <div className="flex flex-col gap-y-3 md:flex-row md:items-center md:gap-3 lg:gap-4">
         {/* Search Input */}
-        <div className="relative w-full md:flex-1 md:max-w-[400px] lg:w-[320px] lg:flex-none lg:min-w-[280px]">
+        <div className="relative w-full md:max-w-[400px] md:flex-1 lg:w-[320px] lg:min-w-[280px] lg:flex-none">
           <input
             type="text"
             placeholder="Search Collector or Location..."
@@ -158,13 +158,19 @@ export default function CollectionReportFilters({
             name: loc.name,
             sasEnabled: false,
           }))}
-          selectedLocations={Array.isArray(selectedLocation) ? selectedLocation : (selectedLocation === 'all' ? [] : [selectedLocation])}
+          selectedLocations={
+            Array.isArray(selectedLocation)
+              ? selectedLocation
+              : selectedLocation === 'all'
+                ? []
+                : [selectedLocation]
+          }
           onSelectionChange={value => {
             console.warn('[LOCATION SELECT] Value changed to:', value);
             onLocationChange(value.length === 0 ? 'all' : value);
           }}
           placeholder="Select Locations"
-          className="w-full md:flex-1 md:max-w-[300px] lg:w-[240px] lg:flex-none lg:min-w-[200px]"
+          className="w-full md:max-w-[300px] md:flex-1 lg:w-[240px] lg:min-w-[200px] lg:flex-none"
         />
 
         {/* Clear Filters Button - only visible on lg and above */}
@@ -186,7 +192,7 @@ export default function CollectionReportFilters({
                 onCheckedChange={checked =>
                   onShowUncollectedOnlyChange(!!checked)
                 }
-                className="border border-white bg-white data-[state=checked]:bg-buttonActive data-[state=checked]:border-white"
+                className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
               />
               <span className="whitespace-nowrap text-sm font-medium">
                 SHOW UNCOLLECTED ONLY
@@ -207,7 +213,7 @@ export default function CollectionReportFilters({
               onCheckedChange={checked =>
                 onShowUncollectedOnlyChange(!!checked)
               }
-              className="border border-white bg-white data-[state=checked]:bg-buttonActive data-[state=checked]:border-white"
+              className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
             />
             <span className="whitespace-nowrap text-sm font-medium">
               SHOW UNCOLLECTED ONLY
@@ -224,7 +230,7 @@ export default function CollectionReportFilters({
               onCheckedChange={checked =>
                 onFilterChange('SMIBLocationsOnly', !!checked)
               }
-              className="border border-white bg-white data-[state=checked]:bg-buttonActive data-[state=checked]:border-white"
+              className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
             />
             <label
               htmlFor="smibFilter"
@@ -241,7 +247,7 @@ export default function CollectionReportFilters({
               onCheckedChange={checked =>
                 onFilterChange('NoSMIBLocation', !!checked)
               }
-              className="border border-white bg-white data-[state=checked]:bg-buttonActive data-[state=checked]:border-white"
+              className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
             />
             <label
               htmlFor="noSmibFilter"
@@ -258,7 +264,7 @@ export default function CollectionReportFilters({
               onCheckedChange={checked =>
                 onFilterChange('LocalServersOnly', !!checked)
               }
-              className="border border-white bg-white data-[state=checked]:bg-buttonActive data-[state=checked]:border-white"
+              className="border border-white bg-white data-[state=checked]:border-white data-[state=checked]:bg-buttonActive"
             />
             <label
               htmlFor="localServerFilter"
@@ -269,11 +275,11 @@ export default function CollectionReportFilters({
           </div>
 
           {/* Clear Filters Button - Better positioning on md */}
-          <div className="flex w-full sm:w-auto sm:ml-auto items-center">
+          <div className="flex w-full items-center sm:ml-auto sm:w-auto">
             <Button
               variant="outline"
               onClick={onClearFilters}
-              className="w-full sm:w-auto whitespace-nowrap border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+              className="w-full whitespace-nowrap border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900 sm:w-auto"
             >
               Clear Filters
             </Button>
@@ -283,4 +289,3 @@ export default function CollectionReportFilters({
     </div>
   );
 }
-

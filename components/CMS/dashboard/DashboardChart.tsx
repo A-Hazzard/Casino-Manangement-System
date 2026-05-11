@@ -6,19 +6,19 @@ import { DashboardChartSkeleton } from '@/components/shared/ui/skeletons/Dashboa
 import type { dashboardData } from '@/lib/types';
 import { ChartProps } from '@/lib/types/components';
 import {
-    formatDate,
-    formatDisplayDate,
-    formatTime,
+  formatDate,
+  formatDisplayDate,
+  formatTime,
 } from '@/shared/utils/dateFormat';
 import { useState } from 'react';
 import {
-    Area,
-    AreaChart,
-    CartesianGrid,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
 
 export default function Chart({
@@ -220,7 +220,11 @@ export default function Chart({
       if (!item.day) return;
       const dateParts = item.day.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       const date = dateParts
-        ? new Date(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3]))
+        ? new Date(
+            Number(dateParts[1]),
+            Number(dateParts[2]) - 1,
+            Number(dateParts[3])
+          )
         : new Date(item.day);
       if (isNaN(date.getTime())) return;
       // Get Monday of the week
@@ -245,19 +249,30 @@ export default function Chart({
       weeklyData[weekKey].moneyIn += item.moneyIn || 0;
       weeklyData[weekKey].moneyOut += item.moneyOut || 0;
       weeklyData[weekKey].gross += item.gross || 0;
-      weeklyData[weekKey].jackpot = (weeklyData[weekKey].jackpot || 0) + (item.jackpot || 0);
+      weeklyData[weekKey].jackpot =
+        (weeklyData[weekKey].jackpot || 0) + (item.jackpot || 0);
     });
-    finalChartData = Object.values(weeklyData).sort((a, b) => parseDay(a.day) - parseDay(b.day));
+    finalChartData = Object.values(weeklyData).sort(
+      (a, b) => parseDay(a.day) - parseDay(b.day)
+    );
   }
 
   // Client-side monthly aggregation: group daily data points by month
-  if (granularity === 'monthly' && !isHourlyChart && finalChartData.length > 0) {
+  if (
+    granularity === 'monthly' &&
+    !isHourlyChart &&
+    finalChartData.length > 0
+  ) {
     const monthlyData: Record<string, dashboardData> = {};
     finalChartData.forEach(item => {
       if (!item.day) return;
       const dateParts = item.day.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       const date = dateParts
-        ? new Date(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3]))
+        ? new Date(
+            Number(dateParts[1]),
+            Number(dateParts[2]) - 1,
+            Number(dateParts[3])
+          )
         : new Date(item.day);
       if (isNaN(date.getTime())) return;
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
@@ -278,9 +293,12 @@ export default function Chart({
       monthlyData[monthKey].moneyIn += item.moneyIn || 0;
       monthlyData[monthKey].moneyOut += item.moneyOut || 0;
       monthlyData[monthKey].gross += item.gross || 0;
-      monthlyData[monthKey].jackpot = (monthlyData[monthKey].jackpot || 0) + (item.jackpot || 0);
+      monthlyData[monthKey].jackpot =
+        (monthlyData[monthKey].jackpot || 0) + (item.jackpot || 0);
     });
-    finalChartData = Object.values(monthlyData).sort((a, b) => parseDay(a.day) - parseDay(b.day));
+    finalChartData = Object.values(monthlyData).sort(
+      (a, b) => parseDay(a.day) - parseDay(b.day)
+    );
   }
 
   // Filter out $0 values for both minute and hourly views
@@ -308,7 +326,8 @@ export default function Chart({
     const hasMoneyOut =
       selectedMetrics.includes('Money Out') && moneyOut > threshold;
     const hasGross = selectedMetrics.includes('Gross') && gross > threshold;
-    const hasJackpot = selectedMetrics.includes('Jackpot') && (item.jackpot || 0) > threshold;
+    const hasJackpot =
+      selectedMetrics.includes('Jackpot') && (item.jackpot || 0) > threshold;
 
     return hasMoneyIn || hasMoneyOut || hasGross || hasJackpot;
   });
@@ -379,8 +398,10 @@ export default function Chart({
             (previous.moneyIn || 0) >= 0.01) ||
           (selectedMetrics.includes('Money Out') &&
             (previous.moneyOut || 0) >= 0.01) ||
-          (selectedMetrics.includes('Gross') && (previous.gross || 0) >= 0.01) ||
-          (selectedMetrics.includes('Jackpot') && (previous.jackpot || 0) >= 0.01)
+          (selectedMetrics.includes('Gross') &&
+            (previous.gross || 0) >= 0.01) ||
+          (selectedMetrics.includes('Jackpot') &&
+            (previous.jackpot || 0) >= 0.01)
         : false;
 
       // Check if next point has activity
@@ -448,9 +469,10 @@ export default function Chart({
   // Use moderate widths per point so charts fit on desktop but scroll on mobile.
   // Minute-level data has many more points so use smaller px per point.
   const pxPerPoint = isMinuteLevel ? 30 : isHourlyChart ? 65 : 120;
-  const minWidth = gapFilteredChartData.length >= 5
-    ? Math.min(gapFilteredChartData.length * pxPerPoint, 2400)
-    : 0; // 0 means no minWidth constraint — chart fits container naturally
+  const minWidth =
+    gapFilteredChartData.length >= 5
+      ? Math.min(gapFilteredChartData.length * pxPerPoint, 2400)
+      : 0; // 0 means no minWidth constraint — chart fits container naturally
 
   const legendItems = [
     { label: 'Money In', color: '#a855f7' },
@@ -514,7 +536,13 @@ export default function Chart({
                       ? 'day'
                       : 'day'
                 }
-                interval={minWidth > 0 ? (isHourlyChart && !isMinuteLevel ? 0 : 'preserveStartEnd') : 'preserveStartEnd'}
+                interval={
+                  minWidth > 0
+                    ? isHourlyChart && !isMinuteLevel
+                      ? 0
+                      : 'preserveStartEnd'
+                    : 'preserveStartEnd'
+                }
                 minTickGap={isMinuteLevel ? 60 : isHourlyChart ? 30 : 80}
                 tickFormatter={(val, index) => {
                   if (isHourlyChart) {
@@ -592,12 +620,21 @@ export default function Chart({
                       // Validate and format the date for daily charts
                       // Parse YYYY-MM-DD as local date (not UTC) to avoid timezone shift
                       // e.g., "2026-03-11" should display as "Mar 11" not "Mar 10"
-                      const dateParts = dayValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                      const dateParts = dayValue.match(
+                        /^(\d{4})-(\d{2})-(\d{2})$/
+                      );
                       const date = dateParts
-                        ? new Date(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3]))
+                        ? new Date(
+                            Number(dateParts[1]),
+                            Number(dateParts[2]) - 1,
+                            Number(dateParts[3])
+                          )
                         : new Date(dayValue);
                       if (!isNaN(date.getTime())) {
-                        return formatDate(date, { month: 'short', day: 'numeric' });
+                        return formatDate(date, {
+                          month: 'short',
+                          day: 'numeric',
+                        });
                       }
                       // If val is already a formatted string, return it
                       return String(val);
@@ -666,9 +703,15 @@ export default function Chart({
                   if (payload && payload[0] && payload[0].payload?.day) {
                     const day = payload[0].payload.day;
                     // Parse YYYY-MM-DD as local date to avoid timezone shift
-                    const dayParts = String(day).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                    const dayParts = String(day).match(
+                      /^(\d{4})-(\d{2})-(\d{2})$/
+                    );
                     const testDate = dayParts
-                      ? new Date(Number(dayParts[1]), Number(dayParts[2]) - 1, Number(dayParts[3]))
+                      ? new Date(
+                          Number(dayParts[1]),
+                          Number(dayParts[2]) - 1,
+                          Number(dayParts[3])
+                        )
                       : new Date(day);
                     if (!isNaN(testDate.getTime())) {
                       return formatDisplayDate(testDate);
@@ -676,9 +719,15 @@ export default function Chart({
                   }
                   // Try to parse and validate the label as a date
                   const labelStr = String(label);
-                  const labelParts = labelStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                  const labelParts = labelStr.match(
+                    /^(\d{4})-(\d{2})-(\d{2})$/
+                  );
                   const testDate = labelParts
-                    ? new Date(Number(labelParts[1]), Number(labelParts[2]) - 1, Number(labelParts[3]))
+                    ? new Date(
+                        Number(labelParts[1]),
+                        Number(labelParts[2]) - 1,
+                        Number(labelParts[3])
+                      )
                     : new Date(labelStr);
                   if (!isNaN(testDate.getTime())) {
                     return formatDisplayDate(testDate);

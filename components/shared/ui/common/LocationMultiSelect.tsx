@@ -36,6 +36,7 @@ export default function LocationMultiSelect({
   className,
   maxSelections,
   showSearch = true,
+  showSasBadge = true,
 }: LocationMultiSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -199,25 +200,29 @@ export default function LocationMultiSelect({
                         checked={isSelected}
                         onCheckedChange={() => handleToggleLocation(option.id)}
                         className="h-4 w-4"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={e => e.stopPropagation()}
                       />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium text-gray-900">
                         {option.name}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant={option.sasEnabled ? 'default' : 'secondary'}
-                          className={`text-xs ${
-                            option.sasEnabled
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-600'
-                          }`}
-                        >
-                          {option.sasEnabled ? 'SAS Enabled' : 'Non-SAS'}
-                        </Badge>
-                      </div>
+                      {showSasBadge && (
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={
+                              option.sasEnabled ? 'default' : 'secondary'
+                            }
+                            className={`text-xs ${
+                              option.sasEnabled
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {option.sasEnabled ? 'SAS Enabled' : 'Non-SAS'}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -242,4 +247,3 @@ export default function LocationMultiSelect({
     </div>
   );
 }
-

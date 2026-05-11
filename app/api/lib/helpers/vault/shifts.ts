@@ -17,9 +17,7 @@ import { type ShiftDocument } from '@/shared/types/models';
  * @param {string} id - Shift ID
  * @returns {Promise<ShiftDocument | null>} Shift document or null
  */
-export async function getShiftById(
-  id: string
-): Promise<ShiftDocument | null> {
+export async function getShiftById(id: string): Promise<ShiftDocument | null> {
   if (!id) {
     console.error('[getShiftById] id is required');
     return null;

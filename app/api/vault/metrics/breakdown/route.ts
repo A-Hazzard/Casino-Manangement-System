@@ -3,6 +3,11 @@
  */
 
 import { getUserLocationFilter } from '@/app/api/lib/helpers/licenceeFilter';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { GamingLocations } from '@/app/api/lib/models/gaminglocations';
 import VaultTransactionModel from '@/app/api/lib/models/vaultTransaction';
 import { getGamingDayRangeForPeriod } from '@/lib/utils/gamingDayRange';
@@ -19,16 +24,28 @@ import type { VaultTransactionDocument } from '@shared/types';
  * @param {string} type - REQUIRED. Type of breakdown to retrieve.
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'GET /api/vault/metrics/breakdown';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const { searchParams } = new URL(request.url);
       const locationId = searchParams.get('locationId');
       const type = searchParams.get('type');
-      if (!locationId || !type)
+      if (!locationId || !type) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/vault/metrics/breakdown',
+          'locationId and type are required',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'locationId and type are required' },
           { status: 400 }
         );
+      }
 
       const allowedLocationIds = await getUserLocationFilter(
         (userPayload?.assignedLicencees as string[]) || [],
@@ -41,6 +58,13 @@ export async function GET(request: NextRequest) {
         allowedLocationIds !== 'all' &&
         !allowedLocationIds.includes(locationId)
       ) {
+        logRouteError(
+          functionName,
+          'GET',
+          '/api/vault/metrics/breakdown',
+          'Access denied',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Access denied' },
           { status: 403 }
@@ -77,8 +101,30 @@ export async function GET(request: NextRequest) {
       const transactions = await VaultTransactionModel.find(query)
         .sort({ timestamp: -1 })
         .lean<VaultTransactionDocument[]>();
+
+      const duration = Date.now() - startTime;
+      logRouteFetch(
+        functionName,
+        'GET',
+        '/api/vault/metrics/breakdown',
+        transactions.length,
+        user,
+        duration
+      );
+
       return NextResponse.json({ success: true, data: transactions });
     } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Failed to fetch metrics breakdown';
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/vault/metrics/breakdown',
+        errorMessage,
+        user
+      );
       console.error('[Vault Metrics Breakdown API] Error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       return NextResponse.json(

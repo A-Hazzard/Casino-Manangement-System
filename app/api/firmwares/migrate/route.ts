@@ -15,7 +15,13 @@ import {
   migrateFirmwareSchema,
   checkMigrationNeeded,
 } from '@/lib/utils/firmwareMigration';
-import { NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Main POST handler for running firmware migration
@@ -25,8 +31,10 @@ import { NextResponse } from 'next/server';
  * 2. Run migration if needed
  * 3. Return migration result
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/firmwares/migrate';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -36,9 +44,14 @@ export async function POST() {
 
     if (!needsMigration) {
       const duration = Date.now() - startTime;
-      if (duration > 1000) {
-        console.warn(`[Firmwares Migrate POST API] Completed in ${duration}ms`);
-      }
+      logRouteFetch(
+        functionName,
+        'POST',
+        '/api/firmwares/migrate',
+        0,
+        user,
+        duration
+      );
       return NextResponse.json(
         {
           message: 'No migration needed - all firmware records are up to date',
@@ -56,21 +69,28 @@ export async function POST() {
     // STEP 3: Return migration result
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Firmwares Migrate POST API] Completed in ${duration}ms`);
-    }
+    logRouteCreate(
+      functionName,
+      'POST',
+      '/api/firmwares/migrate',
+      1,
+      user,
+      duration
+    );
 
     return NextResponse.json(
       { message: 'Firmware migration completed successfully' },
       { status: 200 }
     );
   } catch (error: unknown) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(
-      `[Firmwares Migrate POST API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/firmwares/migrate',
+      errorMessage,
+      user
     );
     return NextResponse.json(
       { error: 'Failed to migrate firmware records' },
@@ -86,8 +106,10 @@ export async function POST() {
  * 1. Check if migration is needed
  * 2. Return migration status
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/firmwares/migrate';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -99,9 +121,14 @@ export async function GET() {
     // STEP 2: Return migration status
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 1000) {
-      console.warn(`[Firmwares Migrate GET API] Completed in ${duration}ms`);
-    }
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/firmwares/migrate',
+      1,
+      user,
+      duration
+    );
 
     return NextResponse.json(
       {
@@ -113,12 +140,14 @@ export async function GET() {
       { status: 200 }
     );
   } catch (error: unknown) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(
-      `[Firmwares Migrate GET API] Error after ${duration}ms:`,
-      errorMessage
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/firmwares/migrate',
+      errorMessage,
+      user
     );
     return NextResponse.json(
       { error: 'Failed to check migration status' },
@@ -126,4 +155,3 @@ export async function GET() {
     );
   }
 }
-

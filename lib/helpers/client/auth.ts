@@ -106,4 +106,3 @@ export async function logoutUser(): Promise<AuthResult> {
     return { success: true, message: 'Logged out locally' };
   }
 }
-

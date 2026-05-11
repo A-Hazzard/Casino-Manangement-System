@@ -235,7 +235,14 @@ export default function AdministrationPageContent() {
         refreshUsers={usersHook.refreshUsers}
       />
     );
-  }, [activeSection, user, usersHook, licenceesHook, selectedLicencee, countriesHook]);
+  }, [
+    activeSection,
+    user,
+    usersHook,
+    licenceesHook,
+    selectedLicencee,
+    countriesHook,
+  ]);
 
   // ============================================================================
   // Event Handlers
@@ -312,7 +319,10 @@ export default function AdministrationPageContent() {
             ) : activeSection === 'licencees' ? (
               <Button
                 onClick={licenceesHook.handleOpenAddLicencee}
-                disabled={licenceesHook.isCountriesLoading || licenceesHook.countries.length === 0}
+                disabled={
+                  licenceesHook.isCountriesLoading ||
+                  licenceesHook.countries.length === 0
+                }
                 className="flex items-center gap-1 rounded-md bg-button px-2 py-1 text-xs font-medium text-white hover:bg-buttonActive"
               >
                 <PlusCircle className="h-4 w-4" />
@@ -375,7 +385,6 @@ export default function AdministrationPageContent() {
             </Button>
           ) : null}
         </div>
-
       </div>
 
       {/* Tab Navigation Section */}
@@ -398,4 +407,3 @@ export default function AdministrationPageContent() {
     </PageLayout>
   );
 }
-

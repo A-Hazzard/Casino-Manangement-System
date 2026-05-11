@@ -1,8 +1,8 @@
 # Members & CRM API (`/api/members`)
 
 **Author:** Aaron Hazzard - Senior Software Engineer  
-**Last Updated:** April 2026  
-**Version:** 4.3.0
+**Last Updated:May 4, 2026  
+**Version:\*\* 4.3.0
 
 ---
 
@@ -15,9 +15,11 @@ Manages player identities, loyalty points, Win/Loss analytics, and KYC complianc
 ## 2. Core Endpoints
 
 ### 👤 `GET /api/members`
+
 Returns a paginated, searchable player registry enriched with financial metrics.
 
 **Steps:**
+
 1. **Connect to database** — Establishes the Mongoose connection.
 2. **Parse query params** — Reads `search`, `page`, `limit`, `sortBy`, `sortOrder`, `startDate`, `endDate`, `winLossFilter` (`positive`/`negative`/`zero`/`all`), `locationFilter`, `currency`, and `licencee`.
 3. **Build query filters** — Constructs a MongoDB `$match` object:
@@ -40,9 +42,11 @@ Returns a paginated, searchable player registry enriched with financial metrics.
 ---
 
 ### 🆕 `POST /api/members`
+
 Enrolls a new casino member.
 
 **Steps:**
+
 1. **Connect to database** — Establishes the Mongoose connection.
 2. **Parse & validate request body** — Reads `profile`, `username`, `phoneNumber`, `pin`, `points`, `gamingLocation`, etc.
 3. **Validate required fields** — Trims `firstName`, `lastName`, and `username`. Returns `400` if any of these are empty after trimming.
@@ -58,12 +62,15 @@ Enrolls a new casino member.
 ## 3. Business Logic
 
 ### 🎡 Win/Loss Calculation
+
 Win/Loss is computed on-the-fly per request — it is not a stored field. The aggregation `$reduce`s each session's `endMeters.movement.drop` (money in) and `totalCancelledCredits` (money out), then subtracts them. This ensures the value is always fresh and consistent with any session corrections.
 
 ### 📋 KYC Compliance (BR-MEM)
+
 - **BR-MEM-01**: A member cannot be created without a unique username.
 - **BR-MEM-02**: Point redemptions are blocked if the member's `accountLocked: true`.
 - **BR-MEM-03**: Staff with `Cashier` role see masked ID numbers and phone numbers via the frontend `PIIMask` component (not enforced at API level, enforced in UI layer).
 
 ---
+
 **Technical Reference** - CRM & Loyalty Team

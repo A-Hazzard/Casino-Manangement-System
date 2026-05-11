@@ -133,5 +133,3 @@ export async function getAuthEvents(
     totalPages: Math.ceil(total / limit),
   };
 }
-
-

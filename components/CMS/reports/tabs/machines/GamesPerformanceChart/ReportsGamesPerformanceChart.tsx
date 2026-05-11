@@ -10,7 +10,12 @@
 'use client';
 
 import { Button } from '@/components/shared/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/shared/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/shared/ui/card';
 import { Checkbox } from '@/components/shared/ui/checkbox';
 import { Input } from '@/components/shared/ui/input';
 import { Label } from '@/components/shared/ui/label';
@@ -39,7 +44,10 @@ import { ReportsGameMultiSelect } from '../GamesPerformanceRevenueChart/ReportsG
 import { ReportsGamesPerformanceTooltip } from './ReportsGamesPerformanceTooltip';
 import { useGamesPerformanceData } from './useGamesPerformanceData';
 
-import { type GamesPerformanceData, type MachineEvaluationData } from '@/shared/types/reports';
+import {
+  type GamesPerformanceData,
+  type MachineEvaluationData,
+} from '@/shared/types/reports';
 
 type ReportsGamesPerformanceChartProps = {
   data: GamesPerformanceData[];
@@ -728,4 +736,3 @@ export default function ReportsGamesPerformanceChart({
     </Card>
   );
 }
-

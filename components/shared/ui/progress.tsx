@@ -10,7 +10,6 @@
  */
 'use client';
 
-
 import { forwardRef } from 'react';
 import { ComponentPropsWithoutRef, ElementRef } from 'react';
 import * as ProgressPrimitive from '@radix-ui/react-progress';
@@ -37,4 +36,3 @@ const Progress = forwardRef<
 Progress.displayName = ProgressPrimitive.Root.displayName;
 
 export { Progress };
-

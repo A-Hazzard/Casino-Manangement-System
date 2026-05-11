@@ -42,7 +42,11 @@ function AdministrationActivityLogCard({
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Copy to clipboard function
-  const copyToClipboard = async (text: string, label: string, fieldId: string) => {
+  const copyToClipboard = async (
+    text: string,
+    label: string,
+    fieldId: string
+  ) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedField(fieldId);
@@ -58,9 +62,11 @@ function AdministrationActivityLogCard({
     // If username is "unknown" and description contains an identifier, extract it
     if (log.username === 'unknown' && log.description) {
       // Try to extract email/username from description like "Invalid password for: email@example.com"
-      const emailMatch = log.description.match(/(?:for|:)\s*([^\s:]+@[^\s:]+)/i);
+      const emailMatch = log.description.match(
+        /(?:for|:)\s*([^\s:]+@[^\s:]+)/i
+      );
       if (emailMatch) return emailMatch[1];
-      
+
       const userMatch = log.description.match(/(?:for|:)\s*([^\s:]+)/i);
       if (userMatch) return userMatch[1];
     }
@@ -82,7 +88,8 @@ function AdministrationActivityLogCard({
 
   const displayUsername = getDisplayUsername();
   const displayEmail = getDisplayEmail();
-  const displayUserId = log.userId && log.userId !== 'unknown' ? log.userId : null;
+  const displayUserId =
+    log.userId && log.userId !== 'unknown' ? log.userId : null;
 
   // Handle undefined _id
   if (!log._id) {
@@ -145,7 +152,9 @@ function AdministrationActivityLogCard({
               <Badge className={getActionBadgeStyle(log.action || 'unknown')}>
                 {(log.action || 'unknown').toUpperCase()}
               </Badge>
-              <Badge className={getResourceBadgeStyle(log.resource || 'unknown')}>
+              <Badge
+                className={getResourceBadgeStyle(log.resource || 'unknown')}
+              >
                 {log.resource || 'unknown'}
               </Badge>
             </div>
@@ -158,11 +167,15 @@ function AdministrationActivityLogCard({
               <div className="flex items-center gap-1">
                 {log.ipAddress && log.ipAddress !== 'unknown' ? (
                   <button
-                    onClick={() => copyToClipboard(log.ipAddress!, 'IP Address', 'ip')}
+                    onClick={() =>
+                      copyToClipboard(log.ipAddress!, 'IP Address', 'ip')
+                    }
                     className="flex items-center gap-1 hover:text-blue-600 hover:underline"
                     title="Click to copy IP address"
                   >
-                    <span className="max-w-[100px] truncate">{log.ipAddress}</span>
+                    <span className="max-w-[100px] truncate">
+                      {log.ipAddress}
+                    </span>
                     {copiedField === 'ip' ? (
                       <Check className="h-3 w-3 text-green-600" />
                     ) : (
@@ -187,9 +200,13 @@ function AdministrationActivityLogCard({
         <div className="mb-3 space-y-1">
           {/* Username */}
           <div className="flex min-w-0 items-baseline gap-2">
-            <span className="shrink-0 text-xs font-semibold text-gray-500">Username:</span>
+            <span className="shrink-0 text-xs font-semibold text-gray-500">
+              Username:
+            </span>
             <button
-              onClick={() => copyToClipboard(displayUsername, 'Username', 'username')}
+              onClick={() =>
+                copyToClipboard(displayUsername, 'Username', 'username')
+              }
               className="flex min-w-0 items-center gap-1 text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline"
               title="Click to copy username"
             >
@@ -205,9 +222,13 @@ function AdministrationActivityLogCard({
           {/* User ID */}
           {displayUserId && (
             <div className="flex min-w-0 items-baseline gap-2">
-              <span className="shrink-0 text-xs font-semibold text-gray-500">User ID:</span>
+              <span className="shrink-0 text-xs font-semibold text-gray-500">
+                User ID:
+              </span>
               <button
-                onClick={() => copyToClipboard(displayUserId, 'User ID', 'userId')}
+                onClick={() =>
+                  copyToClipboard(displayUserId, 'User ID', 'userId')
+                }
                 className="flex min-w-0 items-center gap-1 font-mono text-xs text-gray-700 hover:text-blue-600 hover:underline"
                 title="Click to copy user ID"
               >
@@ -224,7 +245,9 @@ function AdministrationActivityLogCard({
           {/* Email (only show if different from username) */}
           {displayEmail && displayEmail !== displayUsername && (
             <div className="flex min-w-0 items-baseline gap-2">
-              <span className="shrink-0 text-xs font-semibold text-gray-500">Email:</span>
+              <span className="shrink-0 text-xs font-semibold text-gray-500">
+                Email:
+              </span>
               <button
                 onClick={() => copyToClipboard(displayEmail, 'Email', 'email')}
                 className="flex min-w-0 items-center gap-1 text-sm text-gray-600 hover:text-blue-600 hover:underline"
@@ -303,9 +326,17 @@ function AdministrationActivityLogCard({
                       <button
                         onClick={() => {
                           // Extract email/identifier from description if it's a login message
-                          const emailMatch = description.match(/(?:Successful login|Invalid password|User not found)[\s:]+([^\s]+@[^\s]+)/i);
-                          const textToCopy = emailMatch ? emailMatch[1] : description;
-                          copyToClipboard(textToCopy, 'Description', 'description');
+                          const emailMatch = description.match(
+                            /(?:Successful login|Invalid password|User not found)[\s:]+([^\s]+@[^\s]+)/i
+                          );
+                          const textToCopy = emailMatch
+                            ? emailMatch[1]
+                            : description;
+                          copyToClipboard(
+                            textToCopy,
+                            'Description',
+                            'description'
+                          );
                         }}
                         className="text-left transition-colors hover:text-blue-600 hover:underline"
                         title="Click to copy description"
@@ -356,4 +387,3 @@ function AdministrationActivityLogCard({
 }
 
 export default AdministrationActivityLogCard;
-

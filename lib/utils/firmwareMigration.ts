@@ -50,27 +50,33 @@ export async function migrateFirmwareSchema() {
 
           // Update with new schema fields
           // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-          await Firmware.findOneAndUpdate({ _id: firmware._id }, {
-            $set: {
-              fileName:
-                oldFile.originalname || oldFile.filename || 'unknown.bin',
-              fileSize: oldFile.size || 0,
-            },
-            $unset: {
-              file: 1, // Remove the old file object
-            },
-          });
+          await Firmware.findOneAndUpdate(
+            { _id: firmware._id },
+            {
+              $set: {
+                fileName:
+                  oldFile.originalname || oldFile.filename || 'unknown.bin',
+                fileSize: oldFile.size || 0,
+              },
+              $unset: {
+                file: 1, // Remove the old file object
+              },
+            }
+          );
 
           // console.log(`Migrated firmware ${firmware._id}: ${firmware.product} ${firmware.version}`);
         } else {
           // If missing new fields but no old file object, set defaults
           // CRITICAL: Use findOneAndUpdate with _id instead of findByIdAndUpdate (repo rule)
-          await Firmware.findOneAndUpdate({ _id: firmware._id }, {
-            $set: {
-              fileName: 'unknown.bin',
-              fileSize: 0,
-            },
-          });
+          await Firmware.findOneAndUpdate(
+            { _id: firmware._id },
+            {
+              $set: {
+                fileName: 'unknown.bin',
+                fileSize: 0,
+              },
+            }
+          );
 
           // console.log(`Set defaults for firmware ${firmware._id}: ${firmware.product} ${firmware.version}`);
         }
@@ -113,4 +119,3 @@ export async function checkMigrationNeeded(): Promise<boolean> {
     return false;
   }
 }
-

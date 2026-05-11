@@ -103,6 +103,7 @@ export async function fetchLocationsWithMachines(
         profitShare: 1,
         collectionBalance: 1,
         gameDayOffset: 1,
+        noSMIBLocation: 1,
       },
     },
   ];
@@ -148,6 +149,7 @@ export async function fetchLocationsWithMachines(
         profitShare: 1,
         collectionBalance: 1,
         gameDayOffset: 1,
+        noSMIBLocation: 1,
         machines: {
           $map: {
             input: '$machines',
@@ -311,7 +313,9 @@ export async function determineAllowedLocationIds(
     return [];
   }
   if (!Array.isArray(userLocationPermissions)) {
-    console.error('[determineAllowedLocationIds] userLocationPermissions is required');
+    console.error(
+      '[determineAllowedLocationIds] userLocationPermissions is required'
+    );
     return [];
   }
 
@@ -579,7 +583,9 @@ export async function getMonthlyCollectionReportByLocation(
   }>
 > {
   if (!startDate) {
-    console.error('[getMonthlyCollectionReportByLocation] startDate is required');
+    console.error(
+      '[getMonthlyCollectionReportByLocation] startDate is required'
+    );
     return [];
   }
   if (!endDate) {

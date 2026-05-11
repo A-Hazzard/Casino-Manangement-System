@@ -26,5 +26,11 @@ export const COLLECTION_TABS_CONFIG: CollectionTab[] = [
     icon: '👥',
     available: isTabAvailable('collection-report', 'collector'),
   },
+  {
+    id: 'collection-v2',
+    label: 'V2 Capture',
+    icon: '⚡',
+    available: isTabAvailable('collection-report', 'collection-v2'),
+    highlight: true,
+  },
 ];
-

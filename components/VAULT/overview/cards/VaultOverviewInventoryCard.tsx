@@ -14,10 +14,10 @@
 'use client';
 
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
 } from '@/components/shared/ui/card';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { useVaultLicencee } from '@/lib/hooks/vault/useVaultLicencee';
@@ -73,14 +73,18 @@ export default function VaultInventoryCard({
           <Layers className="h-4 w-4 text-gray-400" />
         </div>
         <div className="text-xs text-gray-500">
-          Total Notes: <span className="font-medium text-gray-900">{totalBills}</span>
+          Total Notes:{' '}
+          <span className="font-medium text-gray-900">{totalBills}</span>
         </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8">
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-24 w-full bg-gray-100 rounded-lg animate-pulse" />
+              <div
+                key={i}
+                className="h-24 w-full animate-pulse rounded-lg bg-gray-100"
+              />
             ))}
           </div>
         ) : (
@@ -99,23 +103,29 @@ export default function VaultInventoryCard({
                     <AlertTriangle className="h-3 w-3 text-red-400" />
                   </div>
                 )}
-                
-                <span className="text-xs font-medium text-gray-400 uppercase tracking-tighter truncate w-full">
+
+                <span className="w-full truncate text-xs font-medium uppercase tracking-tighter text-gray-400">
                   ${item.value} Bills
                 </span>
-                
-                <span className={cn(
-                    "font-bold leading-tight transition-all truncate w-full",
+
+                <span
+                  className={cn(
+                    'w-full truncate font-bold leading-tight transition-all',
                     item.isLow ? 'text-red-700' : 'text-gray-900',
                     item.quantity.toString().length > 6 ? 'text-lg' : 'text-2xl'
-                )}>
+                  )}
+                >
                   {item.quantity}
                 </span>
-                
-                <span className={cn(
-                    "font-medium text-gray-500 overflow-hidden truncate w-full",
-                    formatAmount(item.total).length > 12 ? 'text-[9px]' : 'text-xs'
-                )}>
+
+                <span
+                  className={cn(
+                    'w-full overflow-hidden truncate font-medium text-gray-500',
+                    formatAmount(item.total).length > 12
+                      ? 'text-[9px]'
+                      : 'text-xs'
+                  )}
+                >
                   {formatAmount(item.total)}
                 </span>
               </div>

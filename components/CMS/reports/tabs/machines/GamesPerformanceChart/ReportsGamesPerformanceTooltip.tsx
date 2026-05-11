@@ -10,7 +10,7 @@ import { RefObject } from 'react';
 import { CSSProperties } from 'react';
 import { useCurrencyFormat } from '@/lib/hooks/useCurrencyFormat';
 import { formatCurrencyWithCodeString } from '@/lib/utils/currency';
-import {  useLayoutEffect, useState  } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { type PerformanceMetrics } from '@/shared/types/reports';
@@ -37,7 +37,10 @@ type ReportsGamesPerformanceTooltipProps = {
 /**
  * Helper to get raw value for a metric
  */
-function getRawValue(dataKey: string, rawTotals?: PerformanceMetrics): number | null {
+function getRawValue(
+  dataKey: string,
+  rawTotals?: PerformanceMetrics
+): number | null {
   if (!rawTotals) return null;
 
   const keyMap: Record<string, keyof PerformanceMetrics> = {
@@ -88,15 +91,17 @@ export function ReportsGamesPerformanceTooltip({
   chartContainerRef,
 }: ReportsGamesPerformanceTooltipProps) {
   const { displayCurrency } = useCurrencyFormat();
-  const formatCurrency = (value: number | null | undefined) => formatCurrencyWithCodeString(value, displayCurrency);
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(
-    null
-  );
+  const formatCurrency = (value: number | null | undefined) =>
+    formatCurrencyWithCodeString(value, displayCurrency);
+  const [position, setPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   useLayoutEffect(() => {
     if (active && coordinate && chartContainerRef?.current) {
       const rect = chartContainerRef.current.getBoundingClientRect();
-      
+
       const left = rect.left + (coordinate.x || 0);
       const top = rect.top + (coordinate.y || 0);
 
@@ -218,4 +223,3 @@ export function ReportsGamesPerformanceTooltip({
 
   return createPortal(content, document.body);
 }
-

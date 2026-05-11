@@ -10,10 +10,20 @@
  * @module app/api/members/[id]/route
  */
 
-import { calculateChanges, logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  calculateChanges,
+  logActivity,
+} from '@/app/api/lib/helpers/activityLogger';
 import { getUserFromServer } from '@/app/api/lib/helpers/users';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { Member } from '@/app/api/lib/models/members';
+import {
+  logRouteFetch,
+  logRouteUpdate,
+  logRouteDelete,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
@@ -25,10 +35,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * URL params:
  * @param id {string} Required (path). The string `_id` of the member to retrieve.
  */
-export async function GET(
-  request: NextRequest
-) {
+export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/members/[id]';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -90,18 +100,26 @@ export async function GET(
     const member = members[0];
 
     if (!member) {
+      logRouteError(
+        functionName,
+        'GET',
+        '/api/members/[id]',
+        `Not found: ${id}`,
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Member not found' },
         { status: 404 }
       );
     }
 
+    const duration = Date.now() - startTime;
+    logRouteFetch(functionName, 'GET', '/api/members/[id]', 1, user, duration);
     return NextResponse.json(member);
   } catch (error) {
-    const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
-    console.error(`[Member API GET] Error after ${duration}ms:`, errorMessage);
+    logRouteError(functionName, 'GET', '/api/members/[id]', errorMessage, user);
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
@@ -134,10 +152,10 @@ export async function GET(
  * @param uaccount         {unknown} Universal account reference object stored on the member document.
  * @param gamingLocation   {string}  ID of the gaming location this member belongs to (required, cannot be blank).
  */
-export async function PUT(
-  request: NextRequest
-) {
+export async function PUT(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'PUT /api/members/[id]';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -166,6 +184,13 @@ export async function PUT(
     const userPayload = await getUserFromServer();
 
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'PUT',
+        '/api/members/[id]',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -176,6 +201,13 @@ export async function PUT(
     );
 
     if (!isAdminOrDeveloper) {
+      logRouteError(
+        functionName,
+        'PUT',
+        '/api/members/[id]',
+        'Forbidden - insufficient permissions',
+        user
+      );
       return NextResponse.json(
         {
           error:
@@ -192,6 +224,13 @@ export async function PUT(
     const member = await Member.findOne({ _id: memberId });
 
     if (!member) {
+      logRouteError(
+        functionName,
+        'PUT',
+        '/api/members/[id]',
+        `Member not found: ${memberId}`,
+        user
+      );
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
@@ -256,6 +295,13 @@ export async function PUT(
       if (body.profile.firstName !== undefined) {
         const trimmedFirstName = trimString(body.profile.firstName);
         if (!trimmedFirstName) {
+          logRouteError(
+            functionName,
+            'PUT',
+            '/api/members/[id]',
+            'First name cannot be blank',
+            user
+          );
           return NextResponse.json(
             { error: 'First name cannot be blank' },
             { status: 400 }
@@ -266,6 +312,13 @@ export async function PUT(
       if (body.profile.lastName !== undefined) {
         const trimmedLastName = trimString(body.profile.lastName);
         if (!trimmedLastName) {
+          logRouteError(
+            functionName,
+            'PUT',
+            '/api/members/[id]',
+            'Last name cannot be blank',
+            user
+          );
           return NextResponse.json(
             { error: 'Last name cannot be blank' },
             { status: 400 }
@@ -282,6 +335,13 @@ export async function PUT(
             _id: { $ne: memberId },
           });
           if (existingMember) {
+            logRouteError(
+              functionName,
+              'PUT',
+              '/api/members/[id]',
+              'Email address already in use',
+              user
+            );
             return NextResponse.json(
               { error: 'Email address already in use' },
               { status: 400 }
@@ -312,6 +372,13 @@ export async function PUT(
       const trimmedUsername =
         typeof body.username === 'string' ? body.username.trim() : '';
       if (!trimmedUsername) {
+        logRouteError(
+          functionName,
+          'PUT',
+          '/api/members/[id]',
+          'Username is required and cannot be blank',
+          user
+        );
         return NextResponse.json(
           { error: 'Username is required and cannot be blank' },
           { status: 400 }
@@ -323,6 +390,13 @@ export async function PUT(
         _id: { $ne: memberId },
       });
       if (existingMember) {
+        logRouteError(
+          functionName,
+          'PUT',
+          '/api/members/[id]',
+          'Username already exists',
+          user
+        );
         return NextResponse.json(
           { error: 'Username already exists' },
           { status: 400 }
@@ -353,6 +427,13 @@ export async function PUT(
         member.gamingLocation = trimmedLocation;
       } else {
         // If empty or invalid, return error since gamingLocation is required
+        logRouteError(
+          functionName,
+          'PUT',
+          '/api/members/[id]',
+          'gamingLocation is required and cannot be empty',
+          user
+        );
         return NextResponse.json(
           { error: 'gamingLocation is required and cannot be empty' },
           { status: 400 }
@@ -375,13 +456,16 @@ export async function PUT(
     // STEP 7: Activity log + return updated member
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteUpdate(functionName, 'PUT', '/api/members/[id]', 1, user, duration);
     console.log(`[Member PUT] Member ${memberId} updated — ${duration}ms`);
 
     logActivity({
       action: 'update',
       details: `Member ${member.username || memberId} profile updated`,
       userId: String(userPayload._id),
-      username: String(userPayload.username || userPayload.email || userPayload._id),
+      username: String(
+        userPayload.username || userPayload.email || userPayload._id
+      ),
       metadata: {
         resource: 'member',
         resourceId: memberId,
@@ -400,6 +484,7 @@ export async function PUT(
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(functionName, 'PUT', '/api/members/[id]', errorMessage, user);
     console.error(`[Member API PUT] Error after ${duration}ms:`, errorMessage);
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
@@ -414,10 +499,10 @@ export async function PUT(
  * URL params:
  * @param id {string} Required (path). The string `_id` of the member to soft-delete.
  */
-export async function DELETE(
-  request: NextRequest
-) {
+export async function DELETE(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'DELETE /api/members/[id]';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -448,6 +533,13 @@ export async function DELETE(
     const member = await Member.findOne({ _id: memberId });
 
     if (!member) {
+      logRouteError(
+        functionName,
+        'DELETE',
+        '/api/members/[id]',
+        `Member not found: ${memberId}`,
+        user
+      );
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
 
@@ -464,11 +556,28 @@ export async function DELETE(
     // ============================================================================
     // STEP 7: Return success response
     // ============================================================================
+    const duration = Date.now() - startTime;
+    logRouteDelete(
+      functionName,
+      'DELETE',
+      '/api/members/[id]',
+      1,
+      user,
+      duration
+    );
+
     return NextResponse.json({ message: 'Member deleted successfully' });
   } catch (error) {
     const duration = Date.now() - startTime;
     const errorMessage =
       error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'DELETE',
+      '/api/members/[id]',
+      errorMessage,
+      user
+    );
     console.error(
       `[Member API DELETE] Error after ${duration}ms:`,
       errorMessage

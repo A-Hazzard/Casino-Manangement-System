@@ -149,8 +149,6 @@ export const MOCK_USERS_LIST_AFTER_DELETE = {
 
 // ─── Single user ──────────────────────────────────────────────────────────────
 
-
-
 // ─── Create / Update / Delete ─────────────────────────────────────────────────
 
 export const MOCK_USER_CREATE_SUCCESS = {
@@ -198,5 +196,3 @@ export const MOCK_USER_DUPLICATE_USERNAME = {
   code: 'DUPLICATE_USERNAME',
   timestamp: new Date().toISOString(),
 };
-
-

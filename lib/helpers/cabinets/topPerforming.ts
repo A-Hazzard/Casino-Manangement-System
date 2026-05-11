@@ -77,7 +77,7 @@ export async function fetchTopPerformingData(
 
         const gameDisplay = item.game?.trim() || '(game name not provided)';
         bracketParts.push(gameDisplay);
-        
+
         formattedName = `${mainIdentifier} (${bracketParts.join(', ')})`;
       }
 
@@ -112,4 +112,3 @@ export async function fetchTopPerformingData(
     return [];
   }
 }
-

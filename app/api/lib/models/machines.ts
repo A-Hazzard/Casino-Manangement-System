@@ -42,21 +42,20 @@ export const machineSchema = new Schema(
     __v: Number,
     gamingLocation: String,
     game: String,
-    gameType: String, // Added: "slot", "roulette", etc.
+    gameType: String,
     lastActivity: Date,
-    loggedIn: Boolean, // Added: Whether machine is currently logged in
+    loggedIn: Boolean,
     machineMembershipSettings: {
-      // Added: Membership configuration
       isPointsAllowed: Boolean,
       isFreePlayAllowed: Boolean,
       pointsAwardMethod: String,
       freePlayAmount: Number,
       freePlayCreditsTimeout: Number,
     },
-    nonRestricted: Number, // Added: Non-restricted credits
-    restricted: Number, // Added: Restricted credits
-    sasVersion: String, // Added: SAS protocol version
-    uaccount: Number, // Added: User account balance
+    nonRestricted: Number,
+    restricted: Number,
+    sasVersion: String,
+    uaccount: Number,
     sasMeters: {
       drop: Number,
       totalCancelledCredits: Number,
@@ -84,7 +83,7 @@ export const machineSchema = new Schema(
     },
     collectionMeters: { metersIn: Number, metersOut: Number },
     collectionTime: Date,
-    previousCollectionTime: Date, // Added: Previous collection timestamp
+    previousCollectionTime: Date,
     collectionMetersHistory: [
       {
         _id: String,
@@ -209,9 +208,8 @@ export const machineSchema = new Schema(
     maintenanceHistory: [
       { date: Date, description: String, performedBy: String },
     ],
-    // --- BEGIN: Added missing fields from provided JSON example ---
+
     collectorDenomination: Number,
-    // --- END: Added missing fields from provided JSON example ---
   },
   { timestamps: true }
 );
@@ -227,4 +225,3 @@ machineSchema.index({ 'custom.name': 1 });
 machineSchema.index({ lastSasMeterAt: -1 });
 
 export const Machine = models['machines'] ?? model('machines', machineSchema);
-

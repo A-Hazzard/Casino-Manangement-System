@@ -38,15 +38,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Skeleton } from '@/components/shared/ui/skeleton';
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from '@/components/shared/ui/tooltip';
 import {
-    PERFORMANCE_CONFIG,
-    PerformanceLevel,
-    getPerformanceLevel as getCommonPerformanceLevel,
+  PERFORMANCE_CONFIG,
+  PerformanceLevel,
+  getPerformanceLevel as getCommonPerformanceLevel,
 } from '@/lib/utils/financial';
 import { getMapCenterByLicencee } from '@/lib/utils/location';
 
@@ -459,7 +459,7 @@ export default function MapPreview(props: MapPreviewProps) {
     if (!normalizedSelected || normalizedSelected === 'all') {
       return validLocations;
     }
-    return validLocations.filter((location) =>
+    return validLocations.filter(location =>
       matchesLicencee(location, normalizedSelected)
     );
   }, [normalizedSelected, validLocations]);
@@ -648,7 +648,7 @@ export default function MapPreview(props: MapPreviewProps) {
 
     // Search through filteredLocations (already filtered by licencee and coordinates)
     // This ensures search results only show locations from the selected licencee
-    const filtered = filteredLocations.filter((location) => {
+    const filtered = filteredLocations.filter(location => {
       const locationName = location.name || location.locationName || '';
       return locationName.toLowerCase().includes(query.toLowerCase());
     });
@@ -1068,4 +1068,3 @@ export default function MapPreview(props: MapPreviewProps) {
     </TooltipProvider>
   );
 }
-

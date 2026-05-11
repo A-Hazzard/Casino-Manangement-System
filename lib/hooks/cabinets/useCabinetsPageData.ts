@@ -32,7 +32,9 @@ const ITEMS_PER_BATCH = 40;
 const PAGES_PER_BATCH = ITEMS_PER_BATCH / ITEMS_PER_PAGE; // 2
 
 export function useCabinetsPageData() {
-  const activeMetricsFilter = useDashBoardStore(state => state.activeMetricsFilter);
+  const activeMetricsFilter = useDashBoardStore(
+    state => state.activeMetricsFilter
+  );
   const selectedLicencee = useDashBoardStore(state => state.selectedLicencee);
   const customDateRange = useDashBoardStore(state => state.customDateRange);
   const displayCurrency = useDashBoardStore(state => state.displayCurrency);
@@ -73,12 +75,9 @@ export function useCabinetsPageData() {
   const [batchResetCounter, setBatchResetCounter] = useState(0);
 
   // Helper to calculate which batch a page belongs to
-  const calculateBatchNumber = useCallback(
-    (page: number) => {
-      return Math.floor(page / PAGES_PER_BATCH) + 1;
-    },
-    []
-  );
+  const calculateBatchNumber = useCallback((page: number) => {
+    return Math.floor(page / PAGES_PER_BATCH) + 1;
+  }, []);
 
   const {
     allCabinets,
@@ -109,10 +108,7 @@ export function useCabinetsPageData() {
   // ============================================================================
   // Batch Loading & Pagination (Now true server-side)
   // ============================================================================
-  const {
-    transformCabinet,
-    paginatedCabinets,
-  } = useCabinetSorting({
+  const { transformCabinet, paginatedCabinets } = useCabinetSorting({
     filteredCabinets: filteredCabinets,
     itemsPerPage: ITEMS_PER_PAGE,
     useBatchPagination: false, // Using simple slicing on accumulated data
@@ -128,13 +124,18 @@ export function useCabinetsPageData() {
     // the server says there's more to fetch (totalCount).
     // Note: When searching, we fetch all at once, so this correctly bypasses
     // because totalCount is set to the full search result count.
-    return !debouncedSearchTerm?.trim() && startIndex >= allCabinets.length && allCabinets.length < totalCount;
+    return (
+      !debouncedSearchTerm?.trim() &&
+      startIndex >= allCabinets.length &&
+      allCabinets.length < totalCount
+    );
   }, [allCabinets.length, currentPage, totalCount, debouncedSearchTerm]);
 
   // effectiveTotalPages is based on the client-visible filtered count.
   // Adds +1 trigger page only if server has more raw data not yet fetched.
   const effectiveTotalPages = useMemo(() => {
-    const displayedPages = Math.ceil(filteredCabinets.length / ITEMS_PER_PAGE) || 1;
+    const displayedPages =
+      Math.ceil(filteredCabinets.length / ITEMS_PER_PAGE) || 1;
 
     if (allCabinets.length < totalCount && totalCount > 0) {
       const serverTotalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
@@ -145,15 +146,18 @@ export function useCabinetsPageData() {
   }, [filteredCabinets.length, allCabinets.length, totalCount]);
 
   // Custom column sort handler that triggers fresh fetch
-  const handleColumnSort = useCallback((column: CabinetSortOption) => {
-    if (sortOption === column) {
-      setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'));
-    } else {
-      setSortOption(column);
-      setSortOrder('desc');
-    }
-    setCurrentPage(0);
-  }, [sortOption]);
+  const handleColumnSort = useCallback(
+    (column: CabinetSortOption) => {
+      if (sortOption === column) {
+        setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'));
+      } else {
+        setSortOption(column);
+        setSortOrder('desc');
+      }
+      setCurrentPage(0);
+    },
+    [sortOption]
+  );
 
   // ============================================================================
   // Stats & Machine Logic
@@ -204,7 +208,7 @@ export function useCabinetsPageData() {
 
     return apiMachineStats;
   }, [apiMachineStats, filteredCabinets, machineStatsLoading]);
-  
+
   // includeJackpot is configured at the Licencee level
   const [includeJackpot, setIncludeJackpot] = useState(false);
   useEffect(() => {
@@ -215,7 +219,9 @@ export function useCabinetsPageData() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/licencees?licencee=${encodeURIComponent(selectedLicencee)}&limit=1`);
+        const res = await fetch(
+          `/api/licencees?licencee=${encodeURIComponent(selectedLicencee)}&limit=1`
+        );
         if (cancelled) return;
         const data = await res.json();
         const lic = data?.licencees?.[0];
@@ -224,7 +230,9 @@ export function useCabinetsPageData() {
         if (!cancelled) setIncludeJackpot(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedLicencee]);
 
   // ============================================================================
@@ -260,7 +268,11 @@ export function useCabinetsPageData() {
       customDateRange?.endDate
     );
     setChartGranularity(defaultGranularity);
-  }, [activeMetricsFilter, customDateRange?.startDate, customDateRange?.endDate]);
+  }, [
+    activeMetricsFilter,
+    customDateRange?.startDate,
+    customDateRange?.endDate,
+  ]);
 
   const fetchChartData = useCallback(async () => {
     if (!activeMetricsFilter) return;
@@ -268,12 +280,24 @@ export function useCabinetsPageData() {
     try {
       await makeRequest(async signal => {
         // Pass granularity to API for short periods and 30d daily/weekly
-        const apiGranularity: 'hourly' | 'minute' | 'daily' | 'weekly' | 'monthly' | undefined =
-          chartGranularity === 'minute' ? 'minute' :
-          chartGranularity === 'hourly' ? 'hourly' :
-          chartGranularity === 'daily' ? 'daily' :
-          chartGranularity === 'weekly' ? 'weekly' :
-          chartGranularity === 'monthly' ? 'monthly' : undefined;
+        const apiGranularity:
+          | 'hourly'
+          | 'minute'
+          | 'daily'
+          | 'weekly'
+          | 'monthly'
+          | undefined =
+          chartGranularity === 'minute'
+            ? 'minute'
+            : chartGranularity === 'hourly'
+              ? 'hourly'
+              : chartGranularity === 'daily'
+                ? 'daily'
+                : chartGranularity === 'weekly'
+                  ? 'weekly'
+                  : chartGranularity === 'monthly'
+                    ? 'monthly'
+                    : undefined;
         const data = await getMetrics(
           activeMetricsFilter as TimePeriod,
           customDateRange?.startDate,
@@ -358,7 +382,21 @@ export function useCabinetsPageData() {
     loadedBatchesRef.current = new Set();
     // Bump counter to trigger the data fetch effect
     setBatchResetCounter(c => c + 1);
-  }, [selectedLocation, selectedGameType, searchTerm, debouncedSearchTerm, selectedLicencee, activeMetricsFilter, customDateRange, sortOption, sortOrder, displayCurrency, selectedMembership, selectedSmibStatus]);
+  }, [
+    selectedLocation,
+    selectedGameType,
+    searchTerm,
+    debouncedSearchTerm,
+    selectedLicencee,
+    activeMetricsFilter,
+    customDateRange,
+    sortOption,
+    sortOrder,
+    displayCurrency,
+    selectedMembership,
+    selectedSmibStatus,
+    selectedStatus,
+  ]);
 
   // Wrapped setters
   const handleSetSelectedStatus = useCallback((status: string) => {
@@ -379,27 +417,36 @@ export function useCabinetsPageData() {
     setCurrentPage(0);
   }, []);
 
-  const handleSetSelectedLocation = useCallback((location: string | string[]) => {
-    setIsFilterResetting(true);
-    const locationArray = Array.isArray(location) ? location : [location];
-    setSelectedLocation(locationArray);
-    setCurrentPage(0);
-  }, []);
-
-  const handleSetSelectedGameType = useCallback((gameType: string | string[]) => {
-    setIsFilterResetting(true);
-    const gameTypeArray = Array.isArray(gameType) ? gameType : [gameType];
-    setSelectedGameType(gameTypeArray);
-    setCurrentPage(0);
-  }, []);
-
-  const handleSetSearchTerm = useCallback((term: string) => {
-    if (term.trim() !== searchTerm.trim()) {
+  const handleSetSelectedLocation = useCallback(
+    (location: string | string[]) => {
       setIsFilterResetting(true);
-      setSearchTerm(term);
+      const locationArray = Array.isArray(location) ? location : [location];
+      setSelectedLocation(locationArray);
       setCurrentPage(0);
-    }
-  }, [searchTerm]);
+    },
+    []
+  );
+
+  const handleSetSelectedGameType = useCallback(
+    (gameType: string | string[]) => {
+      setIsFilterResetting(true);
+      const gameTypeArray = Array.isArray(gameType) ? gameType : [gameType];
+      setSelectedGameType(gameTypeArray);
+      setCurrentPage(0);
+    },
+    []
+  );
+
+  const handleSetSearchTerm = useCallback(
+    (term: string) => {
+      if (term.trim() !== searchTerm.trim()) {
+        setIsFilterResetting(true);
+        setSearchTerm(term);
+        setCurrentPage(0);
+      }
+    },
+    [searchTerm]
+  );
 
   const [isNewMovementOpen, setIsNewMovementOpen] = useState(false);
   const [isUploadSmibOpen, setIsUploadSmibOpen] = useState(false);
@@ -418,7 +465,9 @@ export function useCabinetsPageData() {
 
       // Fetch next batch if needed (using ref for synchronous check)
       if (!loadedBatchesRef.current.has(currentBatch)) {
-        console.warn(`[useCabinetsPageData] Fetching batch ${currentBatch} for page ${currentPage + 1}`);
+        console.warn(
+          `[useCabinetsPageData] Fetching batch ${currentBatch} for page ${currentPage + 1}`
+        );
         loadedBatchesRef.current.add(currentBatch);
         void loadCabinets(currentBatch, ITEMS_PER_BATCH, sortOption, sortOrder);
       }
@@ -454,8 +503,14 @@ export function useCabinetsPageData() {
 
   return {
     activeSection,
-    loading: loading || initialLoading || isFilterResetting || isDataMissingForPage || (searchTerm !== debouncedSearchTerm),
-    refreshing: loading || machineStatsLoading || loadingChart || isFilterResetting,
+    loading:
+      loading ||
+      initialLoading ||
+      isFilterResetting ||
+      isDataMissingForPage ||
+      searchTerm !== debouncedSearchTerm,
+    refreshing:
+      loading || machineStatsLoading || loadingChart || isFilterResetting,
     error,
     locations,
     gameTypes,

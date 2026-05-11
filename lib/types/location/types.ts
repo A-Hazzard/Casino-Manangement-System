@@ -1,8 +1,8 @@
 import type {
-    Address,
-    AggregatedLocation,
-    GeoCoordinates,
-    RelationshipInfo,
+  Address,
+  AggregatedLocation,
+  GeoCoordinates,
+  RelationshipInfo,
 } from '@/shared/types';
 
 export type { AggregatedLocation };
@@ -39,7 +39,8 @@ export type LocationSortOption =
 
 export type LocationFilter =
   | 'NoSMIBLocation'
-  | 'SMIBLocationsOnly'
+  | 'FullSMIBs'
+  | 'SemiSMIBs'
   | 'LocalServersOnly'
   | 'MembershipOnly'
   | 'MissingCoordinates'
@@ -101,9 +102,11 @@ export type LocationTableProps = {
   sortOption: LocationSortOption;
   sortOrder: 'asc' | 'desc';
   onLocationClick: (id: string) => void;
-  onAction: (action: 'edit' | 'delete' | 'restore', location: AggregatedLocation) => void;
+  onAction: (
+    action: 'edit' | 'delete' | 'restore',
+    location: AggregatedLocation
+  ) => void;
   formatCurrency: (amount: number) => string;
   selectedFilters?: LocationFilter[];
   showArchived?: boolean;
 };
-

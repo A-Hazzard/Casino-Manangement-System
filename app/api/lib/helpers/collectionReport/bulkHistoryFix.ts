@@ -90,7 +90,9 @@ export async function fixAllCollectionHistoryData(): Promise<{
 
       // Check if this machine actually has collectionMetersHistory issues
       // CRITICAL: Use findOne with _id instead of findById (repo rule)
-      const machine = await Machine.findOne({ _id: machineId }).lean<GamingMachine>();
+      const machine = await Machine.findOne({
+        _id: machineId,
+      }).lean<GamingMachine>();
       if (
         !machine ||
         !machine.collectionMetersHistory ||
@@ -161,7 +163,10 @@ export async function fixAllCollectionHistoryData(): Promise<{
         );
       }
     } catch (machineError) {
-      console.error('[fixAllCollectionHistoryData] Error:', machineError instanceof Error ? machineError.message : 'Unknown error');
+      console.error(
+        '[fixAllCollectionHistoryData] Error:',
+        machineError instanceof Error ? machineError.message : 'Unknown error'
+      );
       errors.push({
         machineId,
         error:
@@ -206,7 +211,11 @@ function checkMachineHistoryForIssues(machine: GamingMachine): boolean {
   }
   if (!machine.collectionMetersHistory) return false;
 
-  for (let historyIndex = 1; historyIndex < machine.collectionMetersHistory.length; historyIndex++) {
+  for (
+    let historyIndex = 1;
+    historyIndex < machine.collectionMetersHistory.length;
+    historyIndex++
+  ) {
     const entry = machine.collectionMetersHistory[historyIndex];
     const prevMetersIn = entry.prevMetersIn || 0;
     const prevMetersOut = entry.prevMetersOut || 0;
@@ -271,4 +280,3 @@ function rebuildHistoryForMachine(collections: CollectionDocument[]): Array<{
     };
   });
 }
-

@@ -22,7 +22,10 @@ export function getDefaultChartGranularity(
   startDate?: Date | string,
   endDate?: Date | string
 ): 'minute' | 'hourly' | 'daily' | 'weekly' | 'monthly' {
-  if (!timePeriod) { console.error('[getDefaultChartGranularity] timePeriod is required'); return 'hourly'; }
+  if (!timePeriod) {
+    console.error('[getDefaultChartGranularity] timePeriod is required');
+    return 'hourly';
+  }
   const HOURS_THRESHOLD = 5;
 
   // For predefined periods, calculate the actual time range
@@ -84,17 +87,24 @@ export function getDefaultChartGranularity(
     // 'hourly' instead of 'daily'.  Fix that with a calendar-day count.
     // Time-aware ranges keep the original hours-based logic.
     const startIsMidnight =
-      start.getHours() === 0 && start.getMinutes() === 0 && start.getSeconds() === 0;
+      start.getHours() === 0 &&
+      start.getMinutes() === 0 &&
+      start.getSeconds() === 0;
     const endIsMidnight =
       end.getHours() === 0 && end.getMinutes() === 0 && end.getSeconds() === 0;
 
     if (startIsMidnight && endIsMidnight) {
-      const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      const startDay = new Date(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate()
+      );
       const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
       const calendarDays = Math.round(
         (endDay.getTime() - startDay.getTime()) / (1000 * 60 * 60 * 24)
       );
-      if (calendarDays === 0) return hoursDiff <= HOURS_THRESHOLD ? 'minute' : 'hourly';
+      if (calendarDays === 0)
+        return hoursDiff <= HOURS_THRESHOLD ? 'minute' : 'hourly';
       if (calendarDays <= 31) return 'daily';
       if (calendarDays <= 90) return 'weekly';
       return 'monthly';
@@ -103,7 +113,7 @@ export function getDefaultChartGranularity(
     // Time-aware custom range (gaming day "8:00 AM → 7:59 AM next day", etc.)
     const daysDiff = diffMs / (1000 * 60 * 60 * 24);
     if (hoursDiff <= HOURS_THRESHOLD) return 'minute';
-    if (daysDiff <= 1)  return 'hourly';
+    if (daysDiff <= 1) return 'hourly';
     if (daysDiff <= 31) return 'daily';
     if (daysDiff <= 90) return 'weekly';
     return 'monthly';
@@ -147,7 +157,10 @@ export function getGranularityFromDataPoints(
           timestamps.push(timestamp);
         }
       } catch (e) {
-        console.error('[getGranularityFromDataPoints] Error:', e instanceof Error ? e.message : 'Unknown error');
+        console.error(
+          '[getGranularityFromDataPoints] Error:',
+          e instanceof Error ? e.message : 'Unknown error'
+        );
         // Skip invalid timestamps
         console.warn('Invalid timestamp in data:', {
           day: item.day,
@@ -162,8 +175,12 @@ export function getGranularityFromDataPoints(
   }
 
   // Find earliest and latest timestamps
-  const earliest = new Date(Math.min(...timestamps.map(timestamp => timestamp.getTime())));
-  const latest = new Date(Math.max(...timestamps.map(timestamp => timestamp.getTime())));
+  const earliest = new Date(
+    Math.min(...timestamps.map(timestamp => timestamp.getTime()))
+  );
+  const latest = new Date(
+    Math.max(...timestamps.map(timestamp => timestamp.getTime()))
+  );
 
   // Calculate hours difference
   const hoursDiff = (latest.getTime() - earliest.getTime()) / (1000 * 60 * 60);
@@ -171,4 +188,3 @@ export function getGranularityFromDataPoints(
   // If <= 5 hours, use minute granularity, otherwise use hourly
   return hoursDiff <= HOURS_THRESHOLD ? 'minute' : 'hourly';
 }
-

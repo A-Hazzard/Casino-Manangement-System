@@ -25,13 +25,27 @@ import VaultShiftModel from '@/app/api/lib/models/vaultShift';
 import { validateDenominations } from '@/lib/helpers/vault/calculations';
 import { generateMongoId } from '@/lib/utils/id';
 import type { OpenCashierShiftRequest } from '@/shared/types/vault';
+import {
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { NextRequest, NextResponse } from 'next/server';
-  
+
 export async function POST(request: NextRequest) {
+  const functionName = 'POST /api/cashier/shift/open';
+  const user = extractUserFromRequest(request);
+
   try {
     // STEP 1: Authentication & Authorization
     const userPayload = await getUserFromServer();
     if (!userPayload) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/open',
+        'Unauthorized',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -43,12 +57,17 @@ export async function POST(request: NextRequest) {
     const userRoles = (userPayload.roles as string[]) || [];
 
     const hasCashierAccess = userRoles.some((role: string) =>
-      ['developer', 'admin', 'manager', 'cashier'].includes(
-        role.toLowerCase()
-      )
+      ['developer', 'admin', 'manager', 'cashier'].includes(role.toLowerCase())
     );
 
     if (!hasCashierAccess) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/open',
+        'Insufficient permissions',
+        user
+      );
       return NextResponse.json(
         { success: false, error: 'Insufficient permissions' },
         { status: 403 }
@@ -60,10 +79,18 @@ export async function POST(request: NextRequest) {
     const { locationId, requestedFloat, denominations } = body;
 
     if (!locationId || requestedFloat === undefined || !denominations) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/open',
+        'Missing required fields: locationId, requestedFloat, denominations',
+        user
+      );
       return NextResponse.json(
         {
           success: false,
-          error: 'Missing required fields: locationId, requestedFloat, denominations',
+          error:
+            'Missing required fields: locationId, requestedFloat, denominations',
         },
         { status: 400 }
       );
@@ -72,6 +99,13 @@ export async function POST(request: NextRequest) {
     // STEP 3: Validate denominations
     const denominationValidation = validateDenominations(denominations);
     if (!denominationValidation.valid) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/open',
+        'Invalid denominations',
+        user
+      );
       return NextResponse.json(
         {
           success: false,
@@ -83,6 +117,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (denominationValidation.total !== requestedFloat) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/open',
+        `Denomination total ($${denominationValidation.total}) does not match requested float ($${requestedFloat})`,
+        user
+      );
       return NextResponse.json(
         {
           success: false,
@@ -102,20 +143,36 @@ export async function POST(request: NextRequest) {
     });
 
     if (!vaultShift) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/open',
+        'No active vault shift found',
+        user
+      );
       return NextResponse.json(
         {
           success: false,
-          error: 'No active vault shift found. Please ask a Vault Manager to open the vault.',
+          error:
+            'No active vault shift found. Please ask a Vault Manager to open the vault.',
         },
         { status: 400 }
       );
     }
 
     if (!vaultShift.isReconciled) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/open',
+        'Vault is not reconciled',
+        user
+      );
       return NextResponse.json(
         {
           success: false,
-          error: 'Vault is not reconciled. Please ask a Vault Manager to perform the mandatory opening reconciliation.',
+          error:
+            'Vault is not reconciled. Please ask a Vault Manager to perform the mandatory opening reconciliation.',
         },
         { status: 403 }
       );
@@ -124,6 +181,13 @@ export async function POST(request: NextRequest) {
     // STEP 5.5: Ensure cashier is assigned to this location
     const assignedLocations = (userPayload.assignedLocations as string[]) || [];
     if (!assignedLocations.includes(locationId)) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/open',
+        'You are not assigned to this location',
+        user
+      );
       return NextResponse.json(
         {
           success: false,
@@ -140,6 +204,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingShift) {
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/cashier/shift/open',
+        `You already have a shift with status: ${existingShift.status}`,
+        user
+      );
       return NextResponse.json(
         {
           success: false,
@@ -204,7 +275,8 @@ export async function POST(request: NextRequest) {
 
     // STEP 10: Create notification for Vault Manager
     try {
-      const { createFloatRequestNotification } = await import('@/lib/helpers/vault/notifications');
+      const { createFloatRequestNotification } =
+        await import('@/lib/helpers/vault/notifications');
       // Target the VM who opened the vault shift
       if (vaultShift.vaultManagerId) {
         await createFloatRequestNotification(
@@ -214,7 +286,10 @@ export async function POST(request: NextRequest) {
         );
       }
     } catch (notifError) {
-      console.error('Failed to create notification but shift request was created:', notifError);
+      console.error(
+        'Failed to create notification but shift request was created:',
+        notifError
+      );
       // We don't fail the whole request if only notification fails
     }
 
@@ -227,8 +302,16 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-
   } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(
+      functionName,
+      'POST',
+      '/api/cashier/shift/open',
+      errorMessage,
+      user
+    );
     console.error('Error opening cashier shift:', error);
     return NextResponse.json(
       {

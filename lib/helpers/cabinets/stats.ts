@@ -111,5 +111,3 @@ export async function fetchMachineStats(
     };
   }
 }
-
-

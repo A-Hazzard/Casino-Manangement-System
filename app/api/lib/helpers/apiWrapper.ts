@@ -32,9 +32,6 @@ export type ApiAuthContext = {
   db?: mongo.Db;
 };
 
-
-
-
 /**
  * Higher-order function to wrap API route handlers with common logic
  * Handles database connection, authentication, and standardized error responses.
@@ -70,7 +67,7 @@ export async function withApiAuth(
 
     // 2. Authenticate User
     const userPayload = await getUserFromServer();
-    
+
     // If not public and no user, return 401
     if (!userPayload && !options.optionalAuth) {
       return NextResponse.json(
@@ -80,7 +77,10 @@ export async function withApiAuth(
     }
 
     const userRoles = (userPayload?.roles as string[]) || [];
-    const isAdminOrDev = userRoles.includes('admin') || userRoles.includes('developer') || userRoles.includes('owner');
+    const isAdminOrDev =
+      userRoles.includes('admin') ||
+      userRoles.includes('developer') ||
+      userRoles.includes('owner');
 
     // 3. Execute Handler
     return await handler({
@@ -89,9 +89,9 @@ export async function withApiAuth(
       isAdminOrDev,
       db,
     });
-
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
+    const message =
+      error instanceof Error ? error.message : 'Internal Server Error';
     console.error('[withApiAuth] Error:', message);
     return NextResponse.json(
       { success: false, error: message },

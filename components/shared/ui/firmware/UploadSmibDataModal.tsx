@@ -1,4 +1,4 @@
-import {  useState, useRef  } from 'react';
+import { useState, useRef } from 'react';
 
 import { ChangeEvent, FC } from 'react';
 import axios from 'axios';
@@ -242,4 +242,3 @@ const UploadSmibDataModal: FC<UploadSmibDataModalProps> = ({
 };
 
 export default UploadSmibDataModal;
-

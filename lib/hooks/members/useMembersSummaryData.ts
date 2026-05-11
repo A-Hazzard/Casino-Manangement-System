@@ -62,15 +62,18 @@ export function useMembersSummaryData({
   limit = 10,
 }: UseMembersSummaryDataProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [summaryData, setSummaryData] = useState<MembersSummaryData | null>(null);
-  const [demographicsData, setDemographicsData] = useState<DemographicsData | null>(null);
+  const [summaryData, setSummaryData] = useState<MembersSummaryData | null>(
+    null
+  );
+  const [demographicsData, setDemographicsData] =
+    useState<DemographicsData | null>(null);
   const [activityTrends, setActivityTrends] = useState<ActivityTrend[]>([]);
 
   const fetchSummaryData = useCallback(async () => {
     setIsLoading(true);
     let hasError = false;
     const errors: string[] = [];
-    
+
     try {
       // Build query params
       // "licencee=9a5db2cb29ffd2d962fd1d91&page=1&limit=10"
@@ -90,16 +93,25 @@ export function useMembersSummaryData({
         // "licencee=9a5db2cb29ffd2d962fd1d91&page=1&limit=10&search=John&location=6801f2a3b4c5d6e7f8901234"
       }
 
-      const locationQuery = locationFilter && locationFilter !== 'all' ? `&location=${locationFilter}` : '';
+      const locationQuery =
+        locationFilter && locationFilter !== 'all'
+          ? `&location=${locationFilter}`
+          : '';
 
-      const [summaryRes, demographicsRes, trendsRes] = await Promise.allSettled([
-        // GET /api/members/summary?licencee=9a5db2cb29ffd2d962fd1d91&page=1&limit=10&search=John&location=6801f2a3b4c5d6e7f8901234
-        axios.get(`/api/members/summary?${params.toString()}`),
-        // GET /api/members/demographics?licencee=9a5db2cb29ffd2d962fd1d91&location=6801f2a3b4c5d6e7f8901234
-        axios.get(`/api/members/demographics?licencee=${selectedLicencee}${locationQuery}`),
-        // GET /api/members/trends?licencee=9a5db2cb29ffd2d962fd1d91&location=6801f2a3b4c5d6e7f8901234
-        axios.get(`/api/members/trends?licencee=${selectedLicencee}${locationQuery}`),
-      ]);
+      const [summaryRes, demographicsRes, trendsRes] = await Promise.allSettled(
+        [
+          // GET /api/members/summary?licencee=9a5db2cb29ffd2d962fd1d91&page=1&limit=10&search=John&location=6801f2a3b4c5d6e7f8901234
+          axios.get(`/api/members/summary?${params.toString()}`),
+          // GET /api/members/demographics?licencee=9a5db2cb29ffd2d962fd1d91&location=6801f2a3b4c5d6e7f8901234
+          axios.get(
+            `/api/members/demographics?licencee=${selectedLicencee}${locationQuery}`
+          ),
+          // GET /api/members/trends?licencee=9a5db2cb29ffd2d962fd1d91&location=6801f2a3b4c5d6e7f8901234
+          axios.get(
+            `/api/members/trends?licencee=${selectedLicencee}${locationQuery}`
+          ),
+        ]
+      );
 
       // Handle summary response
       // API returns: { success: true, data: { members: [...], summary: {...}, pagination: {...} } }
@@ -136,7 +148,10 @@ export function useMembersSummaryData({
           hasError = true;
           errors.push('demographics');
         }
-        console.warn('Demographics endpoint not available:', demographicsRes.reason);
+        console.warn(
+          'Demographics endpoint not available:',
+          demographicsRes.reason
+        );
       }
 
       // Handle trends response (optional - don't show error for 404)
@@ -177,5 +192,3 @@ export function useMembersSummaryData({
     refreshData: fetchSummaryData,
   };
 }
-
-

@@ -11,7 +11,7 @@
  * - Search and filter capabilities
  * - Cabinet grid with pagination
  * - Responsive design for mobile and desktop
- * 
+ *
  * @param props - Component props
  */
 
@@ -310,7 +310,8 @@ export default function LocationsDetailsCabinetsSection({
                 This location adds Jackpot to Money Out
               </span>
               <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                Jackpot is added to Money Out: Money Out = Total Cancelled Credits + Jackpot
+                Jackpot is added to Money Out: Money Out = Total Cancelled
+                Credits + Jackpot
               </div>
             </div>
           )}
@@ -346,9 +347,14 @@ export default function LocationsDetailsCabinetsSection({
             enableTimeInputs={true}
           />
         </div>
-        <div className="order-2 w-auto flex-shrink-0">
+        <div className="order-2 hidden w-auto flex-shrink-0 md:block">
           <MachineStatusWidget
-            isLoading={machineStatsLoading || membershipStatsLoading || machineStats === null || machineStats === undefined}
+            isLoading={
+              machineStatsLoading ||
+              membershipStatsLoading ||
+              machineStats === null ||
+              machineStats === undefined
+            }
             onlineCount={machineStats?.onlineMachines || 0}
             offlineCount={machineStats?.offlineMachines || 0}
             totalCount={machineStats?.totalMachines}
@@ -360,14 +366,14 @@ export default function LocationsDetailsCabinetsSection({
       </div>
 
       {/* Search and Location Selection Section: Desktop search bar with location dropdown */}
-      <div className="mt-4 hidden w-full bg-buttonActive p-4 md:block rounded-lg rounded-b-none shadow-sm">
+      <div className="mt-4 hidden w-full rounded-lg rounded-b-none bg-buttonActive p-4 shadow-sm md:block">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full flex-1 md:max-w-none lg:max-w-2xl xl:max-w-3xl">
             <Input
               type="text"
               placeholder="Search machines (Asset, SMID, Serial, Game)..."
               className="h-9 w-full rounded-md border border-gray-300 bg-white px-3 pr-10 text-sm text-gray-700 placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
-               value={searchTerm}
+              value={searchTerm}
               onChange={e => handleSearchChange(e.target.value)}
             />
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -415,14 +421,15 @@ export default function LocationsDetailsCabinetsSection({
             <div className="w-full flex-shrink-0 sm:w-auto md:min-w-[150px] lg:min-w-[180px]">
               <CustomSelect
                 value={selectedStatus}
-                onValueChange={value =>
-                  handleFilterChange(value)
-                }
+                onValueChange={value => handleFilterChange(value)}
                 options={[
                   { value: 'All', label: 'All Status' },
                   { value: 'Online', label: 'Online' },
                   { value: 'OfflineLongest', label: 'Offline (Longest First)' },
-                  { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
+                  {
+                    value: 'OfflineShortest',
+                    label: 'Offline (Shortest First)',
+                  },
                   { value: 'NeverOnline', label: 'Never Online' },
                 ]}
                 placeholder="All Status"
@@ -458,10 +465,13 @@ export default function LocationsDetailsCabinetsSection({
                   type="checkbox"
                   id="showArchivedDesktop"
                   checked={showArchived}
-                  onChange={(e) => setShowArchived(e.target.checked)}
+                  onChange={e => setShowArchived(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-buttonActive focus:ring-buttonActive"
                 />
-                <label htmlFor="showArchivedDesktop" className="text-sm font-medium text-white cursor-pointer select-none">
+                <label
+                  htmlFor="showArchivedDesktop"
+                  className="cursor-pointer select-none text-sm font-medium text-white"
+                >
                   View Archived
                 </label>
               </div>
@@ -478,7 +488,7 @@ export default function LocationsDetailsCabinetsSection({
             type="text"
             placeholder="Search machines..."
             className="h-11 w-full rounded-full border border-gray-300 bg-white px-4 pr-10 text-base text-gray-700 placeholder-gray-400 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
-             value={searchTerm}
+            value={searchTerm}
             onChange={e => handleSearchChange(e.target.value)}
           />
           <MagnifyingGlassIcon className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
@@ -523,14 +533,15 @@ export default function LocationsDetailsCabinetsSection({
             <div className="relative w-44 flex-shrink-0">
               <CustomSelect
                 value={selectedStatus}
-                onValueChange={value =>
-                  handleFilterChange(value)
-                }
+                onValueChange={value => handleFilterChange(value)}
                 options={[
                   { value: 'All', label: 'All Status' },
                   { value: 'Online', label: 'Online' },
                   { value: 'OfflineLongest', label: 'Offline (Longest First)' },
-                  { value: 'OfflineShortest', label: 'Offline (Shortest First)' },
+                  {
+                    value: 'OfflineShortest',
+                    label: 'Offline (Shortest First)',
+                  },
                   { value: 'NeverOnline', label: 'Never Online' },
                 ]}
                 placeholder="All Status"
@@ -638,7 +649,7 @@ export default function LocationsDetailsCabinetsSection({
                 emptyMessage="No sort options found"
               />
             </div>
-            
+
             {/* Show Archived Toggle - Mobile */}
             {canViewArchived && (
               <div className="flex h-10 items-center gap-2 rounded-full border border-gray-300 bg-white px-4">
@@ -646,10 +657,13 @@ export default function LocationsDetailsCabinetsSection({
                   type="checkbox"
                   id="showArchivedMobile"
                   checked={showArchived}
-                  onChange={(e) => setShowArchived(e.target.checked)}
+                  onChange={e => setShowArchived(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-buttonActive focus:ring-buttonActive"
                 />
-                <label htmlFor="showArchivedMobile" className="text-sm font-medium text-gray-700 cursor-pointer select-none whitespace-nowrap">
+                <label
+                  htmlFor="showArchivedMobile"
+                  className="cursor-pointer select-none whitespace-nowrap text-sm font-medium text-gray-700"
+                >
                   View Archived
                 </label>
               </div>
@@ -659,7 +673,7 @@ export default function LocationsDetailsCabinetsSection({
       </div>
 
       {/* Content Section: Main cabinet data display with responsive layouts */}
-      <div className="mt-4 lg:mt-0 w-full flex-1">
+      <div className="mt-4 w-full flex-1 lg:mt-0">
         {loading || cabinetsLoading ? (
           <>
             {/* Use CabinetTableSkeleton for lg+ only */}
@@ -687,9 +701,13 @@ export default function LocationsDetailsCabinetsSection({
             <div ref={tableRef}>
               <LocationsCabinetGrid
                 filteredCabinets={
-                filteredCabinets
-                  .filter(cab => (cab.serialNumber || cab.custom?.name || 'N/A') !== 'N/A')
-                  .map(cab => ({
+                  filteredCabinets
+                    .filter(
+                      cab =>
+                        (cab.serialNumber || cab.custom?.name || 'N/A') !==
+                        'N/A'
+                    )
+                    .map(cab => ({
                       ...cab,
                       isOnline: cab.online,
                     })) as ExtendedCabinetDetail[]

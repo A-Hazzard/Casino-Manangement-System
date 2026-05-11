@@ -28,4 +28,3 @@ export type LocationPickerMapProps = {
   onMapLoadError?: () => void;
   onMapLoadSuccess?: () => void;
 };
-

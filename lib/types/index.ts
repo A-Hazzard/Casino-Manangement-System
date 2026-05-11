@@ -1,6 +1,11 @@
 import { DateRange } from '../utils/date/ranges';
 import { TimePeriod } from '@/shared/types/common';
-import { ReportTab, MachineEvaluationData, ReportView, DashboardTotals } from '@/shared/types/reports';
+import {
+  ReportTab,
+  MachineEvaluationData,
+  ReportView,
+  DashboardTotals,
+} from '@/shared/types/reports';
 
 export * from '@/shared/types/entities';
 

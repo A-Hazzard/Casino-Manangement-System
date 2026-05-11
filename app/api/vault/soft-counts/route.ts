@@ -4,6 +4,11 @@
 
 import { withApiAuth } from '@/app/api/lib/helpers/apiWrapper';
 import { logActivity } from '@/app/api/lib/helpers/activityLogger';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 import { getAttributionDate } from '@/app/api/lib/helpers/vault/gamingDay';
 import {
   updateVaultShiftInventory,
@@ -24,6 +29,10 @@ import { NextRequest, NextResponse } from 'next/server';
  * @body {string} machineId - Optional. Specific machine ID for the soft count.
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  const functionName = 'POST /api/vault/soft-counts';
+  const user = extractUserFromRequest(request);
+
   return withApiAuth(request, async ({ user: userPayload, userRoles }) => {
     try {
       const hasVMAccess = userRoles
@@ -31,35 +40,67 @@ export async function POST(request: NextRequest) {
         .some(role =>
           ['developer', 'admin', 'manager', 'vault-manager'].includes(role)
         );
-      if (!hasVMAccess)
+      if (!hasVMAccess) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/soft-counts',
+          'Insufficient permissions',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Insufficient permissions' },
           { status: 403 }
         );
+      }
 
       const { amount, denominations, notes, isEndOfDay } = await request.json();
-      if (!amount || !denominations)
+      if (!amount || !denominations) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/soft-counts',
+          'Missing required fields',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Missing required fields' },
           { status: 400 }
         );
+      }
 
       const activeVaultShift = await VaultShiftModel.findOne({
         vaultManagerId: userPayload._id,
         status: 'active',
       });
 
-      if (!activeVaultShift)
+      if (!activeVaultShift) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/soft-counts',
+          'No active vault shift',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'No active vault shift' },
           { status: 400 }
         );
+      }
 
-      if (!validateDenominationTotal(amount, denominations))
+      if (!validateDenominationTotal(amount, denominations)) {
+        logRouteError(
+          functionName,
+          'POST',
+          '/api/vault/soft-counts',
+          'Denomination mismatch',
+          user
+        );
         return NextResponse.json(
           { success: false, error: 'Denomination mismatch' },
           { status: 400 }
         );
+      }
 
       const scId = await generateMongoId(),
         txId = await generateMongoId();
@@ -121,13 +162,35 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      const duration = Date.now() - startTime;
+      logRouteCreate(
+        functionName,
+        'POST',
+        '/api/vault/soft-counts',
+        1,
+        user,
+        duration
+      );
+
       return NextResponse.json({
         success: true,
         softCount,
         transaction: vaultTransaction,
       });
     } catch (e) {
-      console.error('[SoftCount POST] Error:', e instanceof Error ? e.message : 'Unknown error');
+      const errorMessage =
+        e instanceof Error ? e.message : 'Failed to record soft count';
+      logRouteError(
+        functionName,
+        'POST',
+        '/api/vault/soft-counts',
+        errorMessage,
+        user
+      );
+      console.error(
+        '[SoftCount POST] Error:',
+        e instanceof Error ? e.message : 'Unknown error'
+      );
       return NextResponse.json(
         { success: false, error: 'Internal server error' },
         { status: 500 }

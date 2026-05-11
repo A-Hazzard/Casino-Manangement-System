@@ -13,6 +13,11 @@
 import { getLogisticsData } from '@/app/api/lib/helpers/logistics';
 import { connectDB } from '@/app/api/lib/middleware/db';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteFetch,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * GET /api/analytics/logistics
@@ -31,6 +36,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'GET /api/analytics/logistics';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -54,6 +61,15 @@ export async function GET(request: NextRequest) {
     // STEP 4: Return logistics data
     // ============================================================================
     const duration = Date.now() - startTime;
+    logRouteFetch(
+      functionName,
+      'GET',
+      '/api/analytics/logistics',
+      Array.isArray(responseData) ? responseData.length : 1,
+      user,
+      duration
+    );
+
     if (duration > 1000) {
       console.warn(`[Analytics Logistics GET API] Completed in ${duration}ms`);
     }
@@ -64,8 +80,14 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     const duration = Date.now() - startTime;
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logRouteError(
+      functionName,
+      'GET',
+      '/api/analytics/logistics',
+      errorMessage,
+      user
+    );
     console.error(
       `[Logistics Analytics GET API] Error after ${duration}ms:`,
       errorMessage
@@ -80,4 +102,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

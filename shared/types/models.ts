@@ -120,7 +120,10 @@ export type CashierShiftDocument = {
   closingDenominations?: Array<{ denomination: number; quantity: number }>;
   lastSyncedDenominations?: Array<{ denomination: number; quantity: number }>;
   cashierEnteredBalance?: number;
-  cashierEnteredDenominations?: Array<{ denomination: number; quantity: number }>;
+  cashierEnteredDenominations?: Array<{
+    denomination: number;
+    quantity: number;
+  }>;
   expectedClosingBalance?: number;
   discrepancy?: number;
   discrepancyResolved?: boolean;
@@ -191,8 +194,8 @@ export type CollectionDocument = {
     gross?: number;
     gamesPlayed?: number;
     jackpot?: number;
-    sasStartTime?: string;
-    sasEndTime?: string;
+    sasStartTime?: Date;
+    sasEndTime?: Date;
   };
   movement?: {
     metersIn?: number;
@@ -238,7 +241,14 @@ export type DenominationDocument = {
 export type FeedbackDocument = {
   _id: string;
   email: string;
-  category: 'bug' | 'suggestion' | 'general-review' | 'feature-request' | 'performance' | 'ui-ux' | 'other';
+  category:
+    | 'bug'
+    | 'suggestion'
+    | 'general-review'
+    | 'feature-request'
+    | 'performance'
+    | 'ui-ux'
+    | 'other';
   description: string;
   submittedAt: Date;
   status: 'pending' | 'reviewed' | 'resolved';
@@ -290,7 +300,13 @@ export type FloatRequestDocument = {
   requestedAt: Date;
   requestedFloatAt?: Date;
   shiftId?: string;
-  status: 'pending' | 'approved' | 'approved_vm' | 'denied' | 'edited' | 'cancelled';
+  status:
+    | 'pending'
+    | 'approved'
+    | 'approved_vm'
+    | 'denied'
+    | 'edited'
+    | 'cancelled';
   requestedTotalAmount?: number;
   totalAmount?: number;
   location?: string;
@@ -385,6 +401,8 @@ export type GamingLocationDocument = {
     changedBy?: string;
   }>;
   noSMIBLocation?: boolean;
+  fullSMIBs?: boolean;
+  semiSMIBs?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -1118,7 +1136,8 @@ export type UserDocument = {
   profilePicture?: string;
   assignedLocations?: string[];
   assignedLicencees?: string[];
-  multiplier?: number;
+  moneyInMultiplier?: number;
+  moneyOutAndJackpotMultiplier?: number;
   totpSecret?: string;
   totpEnabled?: boolean;
   totpRecoveryToken?: string;

@@ -28,6 +28,7 @@ const results = await Meters.aggregate(pipeline).exec();
 ```
 
 **Why:**
+
 - Prevents loading large result sets into memory
 - 10-20x faster for 7d/30d periods
 - Reduces memory usage and prevents timeouts
@@ -54,8 +55,7 @@ const pipeline: PipelineStage[] = [
   },
 ];
 
-const results = await Meters.aggregate(pipeline)
-  .cursor({ batchSize: 1000 });
+const results = await Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
 
 // ❌ INCORRECT - Expensive $lookup operation
 const pipeline: PipelineStage[] = [
@@ -79,6 +79,7 @@ const pipeline: PipelineStage[] = [
 ```
 
 **Performance Impact:**
+
 - Before: 31+ seconds with `$lookup`
 - After: 5-10 seconds with direct location field
 - **10-20x faster improvement**
@@ -100,7 +101,7 @@ for (const location of locations) {
 
 ```typescript
 // ✅ CORRECT - Batch all at once
-const allLocationIds = locations.map((loc) => loc._id);
+const allLocationIds = locations.map(loc => loc._id);
 
 const allMachines = await Machine.find({
   gamingLocation: { $in: allLocationIds },
@@ -115,8 +116,7 @@ for (const machine of allMachines) {
 }
 
 // Single aggregation query
-const allMetrics = await Meters.aggregate(pipeline)
-  .cursor({ batchSize: 1000 });
+const allMetrics = await Meters.aggregate(pipeline).cursor({ batchSize: 1000 });
 
 // Combine results in memory
 for await (const metric of allMetrics) {
@@ -144,8 +144,12 @@ for (const location of locations) {
 
 // Get min and max for global query
 const allRanges = Array.from(gamingDayRanges.values());
-const globalStart = new Date(Math.min(...allRanges.map((r) => r.rangeStart.getTime())));
-const globalEnd = new Date(Math.max(...allRanges.map((r) => r.rangeEnd.getTime())));
+const globalStart = new Date(
+  Math.min(...allRanges.map(r => r.rangeStart.getTime()))
+);
+const globalEnd = new Date(
+  Math.max(...allRanges.map(r => r.rangeEnd.getTime()))
+);
 
 // Step 2: Global aggregation with wide range
 const pipeline: PipelineStage[] = [

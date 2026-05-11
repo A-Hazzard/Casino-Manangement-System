@@ -18,27 +18,26 @@ import { FC } from 'react';
 import { Badge } from '@/components/shared/ui/badge';
 import { Button } from '@/components/shared/ui/button';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/shared/ui/table';
 import deleteIcon from '@/public/deleteIcon.svg';
 import editIcon from '@/public/editIcon.svg';
 import leftHamburgerMenu from '@/public/leftHamburgerMenu.svg';
 import type { CasinoMember as Member } from '@/shared/types/entities';
 import {
-    ChevronLeftIcon,
-    ChevronRightIcon,
-    DoubleArrowLeftIcon,
-    DoubleArrowRightIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DoubleArrowLeftIcon,
+  DoubleArrowRightIcon,
 } from '@radix-ui/react-icons';
 import { ExternalLink } from 'lucide-react';
 import Image from 'next/image';
-import {  useRef  } from 'react';
-
+import { useRef } from 'react';
 
 type MemberSortOption =
   | 'name'
@@ -137,7 +136,7 @@ const MembersMemberTable: FC<MembersMemberTableProps> = ({
   return (
     <>
       {/* Pull up table to touch the purple summary container on the page */}
-      <div className="overflow-x-auto rounded-lg bg-white shadow overflow-y-hidden">
+      <div className="overflow-x-auto overflow-y-hidden rounded-lg bg-white shadow">
         <Table ref={tableRef} className="w-full table-fixed">
           <TableHeader>
             <TableRow className="bg-button hover:bg-button">
@@ -388,4 +387,3 @@ const MembersMemberTable: FC<MembersMemberTableProps> = ({
 };
 
 export default MembersMemberTable;
-

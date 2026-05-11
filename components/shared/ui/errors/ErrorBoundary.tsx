@@ -129,13 +129,17 @@ export default class ErrorBoundary extends Component<
           <CardContent className="space-y-4 text-center">
             {error && (
               <div className="rounded-md bg-red-100 p-3 text-left text-sm text-red-600">
-                <p><strong>Error:</strong> {error.message}</p>
+                <p>
+                  <strong>Error:</strong> {error.message}
+                </p>
                 {this.state.errorInfo && (
                   <details className="mt-2 cursor-pointer">
-                    <summary className="font-semibold underline">Technical Details</summary>
+                    <summary className="font-semibold underline">
+                      Technical Details
+                    </summary>
                     <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded border border-red-200 bg-red-50 p-2 text-[10px]">
                       {error.stack}
-                      {"\n\nComponent Stack:\n"}
+                      {'\n\nComponent Stack:\n'}
                       {this.state.errorInfo.componentStack}
                     </pre>
                   </details>
@@ -154,7 +158,9 @@ export default class ErrorBoundary extends Component<
 
             <div className="text-xs text-red-600">
               <p>
-                If this problem persists, please refresh the page or contact support. Provide the technical details above if reporting an issue.
+                If this problem persists, please refresh the page or contact
+                support. Provide the technical details above if reporting an
+                issue.
               </p>
             </div>
           </CardContent>
@@ -165,4 +171,3 @@ export default class ErrorBoundary extends Component<
     return children;
   }
 }
-

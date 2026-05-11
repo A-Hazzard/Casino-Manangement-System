@@ -29,9 +29,9 @@ export default function CashierDashboardSkeleton() {
       {/* Main Content Area */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left Column: Shift Status & Actions */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6 lg:col-span-2">
           {/* Shift Banner Skeleton */}
-          <div className="h-24 w-full rounded-lg bg-gray-100 animate-pulse" />
+          <div className="h-24 w-full animate-pulse rounded-lg bg-gray-100" />
 
           {/* Balance/Stats Card Skeleton */}
           <Card>
@@ -46,7 +46,7 @@ export default function CashierDashboardSkeleton() {
                 </div>
                 <Skeleton className="h-12 w-12 rounded-full" />
               </div>
-              <div className="pt-4 border-t">
+              <div className="border-t pt-4">
                 <Skeleton className="h-4 w-full" />
               </div>
             </CardContent>

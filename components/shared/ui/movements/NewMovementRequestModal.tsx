@@ -34,11 +34,10 @@ import { Loader2, Search } from 'lucide-react';
 import { useSMIBDiscovery } from '@/lib/hooks/data/useSMIBDiscovery';
 import { useEffect, useState } from 'react';
 
-
 // === Disabled field hint banner ===
 function DisabledHint({ message }: { message: string }) {
   return (
-    <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+    <p className="mt-1 flex items-center gap-1 text-xs text-amber-600">
       <span>⚠</span> {message}
     </p>
   );
@@ -51,10 +50,23 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
   onRefresh,
   locations: propLocations,
 }) => {
-  const [locations, setLocations] = useState<{ id: string; name: string; licenceeId?: string }[]>([]);
-  const [users, setUsers] = useState<{ _id: string; name: string; emailAddress: string; roles: string[]; assignedLocations: string[]; assignedLicencees: string[] }[]>([]);
+  const [locations, setLocations] = useState<
+    { id: string; name: string; licenceeId?: string }[]
+  >([]);
+  const [users, setUsers] = useState<
+    {
+      _id: string;
+      name: string;
+      emailAddress: string;
+      roles: string[];
+      assignedLocations: string[];
+      assignedLicencees: string[];
+    }[]
+  >([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
-  const [movementType, setMovementType] = useState<'Machine' | 'SMIB'>('Machine');
+  const [movementType, setMovementType] = useState<'Machine' | 'SMIB'>(
+    'Machine'
+  );
   const [fromLocation, setFromLocation] = useState('');
   const [toLocation, setToLocation] = useState('');
   const [cabinets, setCabinets] = useState<Cabinet[]>([]);
@@ -69,22 +81,36 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
 
   const { user: currentUser } = useUserStore();
   const userRoles = currentUser?.roles?.map(r => r?.toLowerCase()) || [];
-  const isAdminOrDev = userRoles.some(role => ['admin', 'developer'].includes(role));
+  const isAdminOrDev = userRoles.some(role =>
+    ['admin', 'developer'].includes(role)
+  );
 
   // Use prop locations or fetch if not provided
   useEffect(() => {
     if (propLocations && propLocations.length > 0) {
-      setLocations(propLocations.map(locationItem => {
-        const locationData = locationItem as Record<string, unknown>;
-        const relationData = locationData.rel as Record<string, unknown> | undefined;
-        return { 
-          id: String(locationData._id || ''), 
-          name: String(locationData.name || ''),
-          licenceeId: String(locationData.licenceeId || relationData?.licencee || relationData?.licencee || locationData.licencee || '')
-        };
-      }));
+      setLocations(
+        propLocations.map(locationItem => {
+          const locationData = locationItem as Record<string, unknown>;
+          const relationData = locationData.rel as
+            | Record<string, unknown>
+            | undefined;
+          return {
+            id: String(locationData._id || ''),
+            name: String(locationData.name || ''),
+            licenceeId: String(
+              locationData.licenceeId ||
+                relationData?.licencee ||
+                relationData?.licencee ||
+                locationData.licencee ||
+                ''
+            ),
+          };
+        })
+      );
     } else {
-      fetchAllGamingLocations().then(res => setLocations(res as { id: string; name: string; licenceeId?: string }[]));
+      fetchAllGamingLocations().then(res =>
+        setLocations(res as { id: string; name: string; licenceeId?: string }[])
+      );
     }
   }, [propLocations]);
 
@@ -120,24 +146,32 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
             console.error('Failed to fetch cabinets for location:', error);
             setCabinets([]);
             setSelectedCabinets([]);
-            setErrors(prev => ({ ...prev, fromLocation: 'Failed to load machines for this location' }));
+            setErrors(prev => ({
+              ...prev,
+              fromLocation: 'Failed to load machines for this location',
+            }));
           })
           .finally(() => setLoadingCabinets(false));
       } else {
         // SMIB Mode: Use availableSmibs from hook, filtered by fromLocation
         // Map SmibDevice to Cabinet type for internal state compatibility
-        const filteredSmibs = availableSmibs.filter(smib => String(smib.locationId) === String(fromLocation));
-        const mappedSmibs = filteredSmibs.map(smib => ({
-          _id: smib.relayId, // Use relayId as _id for SMIBs in this context
-          relayId: smib.relayId,
-          serialNumber: smib.serialNumber || '',
-          assetNumber: smib.serialNumber || '', // Fallback for asset number
-          game: smib.game || 'Unassigned SMIB',
-          installedGame: smib.game || 'Unassigned SMIB',
-          gamingLocation: smib.locationName || '',
-          custom: { name: smib.relayId }, // Use relayId as name for SMIBs
-        } as unknown as Cabinet));
-        
+        const filteredSmibs = availableSmibs.filter(
+          smib => String(smib.locationId) === String(fromLocation)
+        );
+        const mappedSmibs = filteredSmibs.map(
+          smib =>
+            ({
+              _id: smib.relayId, // Use relayId as _id for SMIBs in this context
+              relayId: smib.relayId,
+              serialNumber: smib.serialNumber || '',
+              assetNumber: smib.serialNumber || '', // Fallback for asset number
+              game: smib.game || 'Unassigned SMIB',
+              installedGame: smib.game || 'Unassigned SMIB',
+              gamingLocation: smib.locationName || '',
+              custom: { name: smib.relayId }, // Use relayId as name for SMIBs
+            }) as unknown as Cabinet
+        );
+
         setCabinets(mappedSmibs);
         setSelectedCabinets([]);
         setLoadingCabinets(loadingSmibs);
@@ -154,9 +188,12 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
     const errs: { [key: string]: string } = {};
     if (!movementType) errs.movementType = 'Movement type is required.';
     if (!fromLocation) errs.fromLocation = 'From location is required.';
-    if (!selectedCabinets.length) errs.selectedCabinets = 'Select at least one ' + (movementType.toLowerCase()) + '.';
+    if (!selectedCabinets.length)
+      errs.selectedCabinets =
+        'Select at least one ' + movementType.toLowerCase() + '.';
     if (!toLocation) errs.toLocation = 'Destination location is required.';
-    if (toLocation && toLocation === fromLocation) errs.toLocation = 'Destination must be different from source.';
+    if (toLocation && toLocation === fromLocation)
+      errs.toLocation = 'Destination must be different from source.';
     if (!requestTo) errs.requestTo = 'Recipient user is required.';
     return errs;
   };
@@ -172,8 +209,10 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
     setSubmitting(true);
     try {
       const createdBy = currentUser?.emailAddress || 'unknown';
-      const fromLocationName = locations.find(loc => loc.id === fromLocation)?.name || fromLocation;
-      const toLocationName = locations.find(loc => loc.id === toLocation)?.name || toLocation;
+      const fromLocationName =
+        locations.find(loc => loc.id === fromLocation)?.name || fromLocation;
+      const toLocationName =
+        locations.find(loc => loc.id === toLocation)?.name || toLocation;
       const movementRequestId = await generateMongoId();
 
       const payload: Partial<MovementRequest> = {
@@ -197,7 +236,9 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
         requestTo,
         reason: notes,
         cabinetIn: selectedCabinets
-          .map(cab => cab.serialNumber || cab.assetNumber || cab.relayId || cab._id)
+          .map(
+            cab => cab.serialNumber || cab.assetNumber || cab.relayId || cab._id
+          )
           .join(','),
         status: 'pending',
         createdBy: currentUser?._id || 'unknown',
@@ -208,13 +249,18 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
         updatedAt: new Date(),
       };
 
-      const createdRequest = await createMovementRequest(payload as MovementRequest);
+      const createdRequest = await createMovementRequest(
+        payload as MovementRequest
+      );
 
       if (onSubmit) {
         const machineMovementRecord: MachineMovementRecord = {
           _id: createdRequest._id,
           machineId: selectedCabinets[0]?._id || '',
-          machineName: selectedCabinets[0]?.installedGame || selectedCabinets[0]?.game || 'Unknown Machine',
+          machineName:
+            selectedCabinets[0]?.installedGame ||
+            selectedCabinets[0]?.game ||
+            'Unknown Machine',
           fromLocationId: fromLocation,
           fromLocationName,
           toLocationId: toLocation,
@@ -233,7 +279,12 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Movement request creation error:', error);
-      setErrors({ submit: error instanceof Error ? error.message : 'Failed to create movement request.' });
+      setErrors({
+        submit:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create movement request.',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -243,60 +294,74 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
   const locationOptions = locations
     .filter(loc => {
       if (isAdminOrDev) return true;
-      return currentUser?.assignedLocations?.includes(loc.id) || currentUser?.assignedLocations?.includes(loc.name);
+      return (
+        currentUser?.assignedLocations?.includes(loc.id) ||
+        currentUser?.assignedLocations?.includes(loc.name)
+      );
     })
     .map(loc => ({ label: loc.name, value: String(loc.id) }));
-    
-  const toLocationOptions = locationOptions.filter(loc => loc.value !== fromLocation);
+
+  const toLocationOptions = locationOptions.filter(
+    loc => loc.value !== fromLocation
+  );
 
   // Filter users based on role and location access
   const filteredUsers = users.filter(user => {
     if (!user.emailAddress || user.emailAddress.trim() === '') return false;
     if (!toLocation) return false;
-    
+
     const roleLower = user.roles?.map(r => r?.toLowerCase()) || [];
-    const hasRole = roleLower.includes('technician') || roleLower.includes('location admin');
-    
+    const hasRole =
+      roleLower.includes('technician') || roleLower.includes('location admin');
+
     // Admins/developers bypass location assignment validation for recipients
     if (isAdminOrDev) return hasRole;
-    
+
     // Check if the user is assigned to the selected destination location
-    const targetLoc = locations.find(loc => String(loc.id) === String(toLocation));
+    const targetLoc = locations.find(
+      loc => String(loc.id) === String(toLocation)
+    );
     const targetLocName = targetLoc?.name;
-    
-    const hasLocation = 
-      (user.assignedLocations || []).some(loc => String(loc) === 'all') || 
-      (user.assignedLocations || []).some(loc => String(loc) === String(toLocation)) || 
-      (!!targetLocName && (user.assignedLocations || []).some(loc => String(loc) === String(targetLocName)));
-    
+
+    const hasLocation =
+      (user.assignedLocations || []).some(loc => String(loc) === 'all') ||
+      (user.assignedLocations || []).some(
+        loc => String(loc) === String(toLocation)
+      ) ||
+      (!!targetLocName &&
+        (user.assignedLocations || []).some(
+          loc => String(loc) === String(targetLocName)
+        ));
+
     return hasRole && hasLocation;
   });
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="md:max-w-4xl max-h-[95vh] md:max-h-[90vh] md:h-auto overflow-hidden bg-white p-0 flex flex-col border-none shadow-2xl">
-        <DialogHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 p-6 shrink-0 w-full relative">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-button to-buttonActive"></div>
-          <DialogTitle className="text-2xl font-extrabold tracking-tight text-gray-900 text-center">
+      <DialogContent className="flex max-h-[95vh] flex-col overflow-hidden border-none bg-white p-0 shadow-2xl md:h-auto md:max-h-[90vh] md:max-w-4xl">
+        <DialogHeader className="relative w-full shrink-0 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white p-6">
+          <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-button to-buttonActive"></div>
+          <DialogTitle className="text-center text-2xl font-extrabold tracking-tight text-gray-900">
             New Movement Request
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 gap-0 overflow-y-auto md:grid-cols-2 custom-scrollbar w-full bg-white">
+        <div className="custom-scrollbar grid w-full grid-cols-1 gap-0 overflow-y-auto bg-white md:grid-cols-2">
           {/* Left Column - Form Inputs */}
-          <div className="flex flex-col gap-5 p-6 border-r border-gray-50">
-
+          <div className="flex flex-col gap-5 border-r border-gray-50 p-6">
             {/* Movement Type */}
             <div className="space-y-1">
-              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-button"></span>
+              <label className="ml-1 flex items-center gap-1.5 text-[13px] font-bold text-gray-900">
+                <span className="h-1.5 w-1.5 rounded-full bg-button"></span>
                 Movement Type <span className="text-red-500">*</span>
               </label>
               <Select
                 value={movementType}
-                onValueChange={(value: 'Machine' | 'SMIB') => setMovementType(value)}
+                onValueChange={(value: 'Machine' | 'SMIB') =>
+                  setMovementType(value)
+                }
               >
-                <SelectTrigger className="h-11 w-full border-gray-200 bg-gray-50/30 shadow-none hover:bg-white transition-all focus:border-buttonActive focus:ring-1 focus:ring-buttonActive/20">
+                <SelectTrigger className="h-11 w-full border-gray-200 bg-gray-50/30 shadow-none transition-all hover:bg-white focus:border-buttonActive focus:ring-1 focus:ring-buttonActive/20">
                   <SelectValue placeholder="Select movement type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -304,13 +369,17 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
                   <SelectItem value="SMIB">SMIB</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.movementType && <div className="mt-1 text-xs font-medium text-red-500">{errors.movementType}</div>}
+              {errors.movementType && (
+                <div className="mt-1 text-xs font-medium text-red-500">
+                  {errors.movementType}
+                </div>
+              )}
             </div>
 
             {/* From Location — searchable */}
             <div className="space-y-1">
-              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              <label className="ml-1 flex items-center gap-1.5 text-[13px] font-bold text-gray-900">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
                 From Location <span className="text-red-500">*</span>
               </label>
               <SearchableSelect
@@ -327,20 +396,24 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
                 error={!!errors.fromLocation}
                 className="h-11 shadow-sm"
               />
-              {errors.fromLocation && <div className="mt-1 text-xs font-medium text-red-500">{errors.fromLocation}</div>}
+              {errors.fromLocation && (
+                <div className="mt-1 text-xs font-medium text-red-500">
+                  {errors.fromLocation}
+                </div>
+              )}
             </div>
 
             {/* To Location — searchable, disabled until cabinets selected */}
             <div className="space-y-1">
-              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              <label className="ml-1 flex items-center gap-1.5 text-[13px] font-bold text-gray-900">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                 To Location <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <SearchableSelect
                   options={toLocationOptions}
                   value={toLocation}
-                  onChange={(val) => {
+                  onChange={val => {
                     setToLocation(val);
                     setRequestTo('');
                   }}
@@ -351,7 +424,7 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
                 />
                 {!selectedCabinets.length && (
                   <div
-                    className="absolute inset-0 cursor-not-allowed z-10"
+                    className="absolute inset-0 z-10 cursor-not-allowed"
                     onClick={() =>
                       setErrors(prev => ({
                         ...prev,
@@ -363,40 +436,46 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
                   />
                 )}
               </div>
-              {errors.toLocation && <div className="mt-1 text-xs font-medium text-red-500">{errors.toLocation}</div>}
+              {errors.toLocation && (
+                <div className="mt-1 text-xs font-medium text-red-500">
+                  {errors.toLocation}
+                </div>
+              )}
               {!selectedCabinets.length && errors.toLocationHint && (
                 <DisabledHint message={errors.toLocationHint} />
               )}
               {!selectedCabinets.length && !errors.toLocationHint && (
-                <DisabledHint message={
-                  !fromLocation
-                    ? 'Select a source location first, then select machines.'
-                    : 'Select at least one machine before choosing a destination.'
-                } />
+                <DisabledHint
+                  message={
+                    !fromLocation
+                      ? 'Select a source location first, then select machines.'
+                      : 'Select at least one machine before choosing a destination.'
+                  }
+                />
               )}
             </div>
 
             {/* Notes */}
             <div className="space-y-1">
-              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+              <label className="ml-1 flex items-center gap-1.5 text-[13px] font-bold text-gray-900">
+                <span className="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
                 Additional Notes
               </label>
               <Textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
-                className="min-h-[120px] resize-none border-gray-300 shadow-sm placeholder-gray-400 focus:border-buttonActive focus:ring-buttonActive"
+                className="min-h-[120px] resize-none border-gray-300 placeholder-gray-400 shadow-sm focus:border-buttonActive focus:ring-buttonActive"
                 placeholder="Please enter any additional notes or details about this request..."
               />
             </div>
           </div>
 
           {/* Right Column - Selection & Destination */}
-          <div className="flex flex-col gap-5 p-6 bg-gray-50/30">
+          <div className="flex flex-col gap-5 bg-gray-50/30 p-6">
             {/* Request To — disabled until to-location selected */}
             <div className="space-y-1">
-              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+              <label className="ml-1 flex items-center gap-1.5 text-[13px] font-bold text-gray-900">
+                <span className="h-1.5 w-1.5 rounded-full bg-violet-500"></span>
                 Request To <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -412,7 +491,13 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
                         <span>Loading users...</span>
                       </div>
                     ) : (
-                      <SelectValue placeholder={toLocation ? "Select user" : "Select destination location first"} />
+                      <SelectValue
+                        placeholder={
+                          toLocation
+                            ? 'Select user'
+                            : 'Select destination location first'
+                        }
+                      />
                     )}
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
@@ -420,37 +505,45 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
                       filteredUsers.map(user => (
                         <SelectItem key={user._id} value={user._id}>
                           <div className="flex flex-col py-0.5">
-                            <span className="font-semibold text-gray-900">{user.name || user.emailAddress}</span>
-                            <span className="text-[11px] text-gray-500">{user.emailAddress}</span>
+                            <span className="font-semibold text-gray-900">
+                              {user.name || user.emailAddress}
+                            </span>
+                            <span className="text-[11px] text-gray-500">
+                              {user.emailAddress}
+                            </span>
                           </div>
                         </SelectItem>
                       ))
                     ) : (
-                      <div className="py-6 text-center text-sm text-gray-500 px-4">
-                        {toLocation 
-                          ? "No technicians or admins assigned to this location found." 
-                          : "Please select a destination location above to see available recipients."}
+                      <div className="px-4 py-6 text-center text-sm text-gray-500">
+                        {toLocation
+                          ? 'No technicians or admins assigned to this location found.'
+                          : 'Please select a destination location above to see available recipients.'}
                       </div>
                     )}
                   </SelectContent>
                 </Select>
                 {!toLocation && (
                   <div
-                    className="absolute inset-0 cursor-not-allowed z-10"
+                    className="absolute inset-0 z-10 cursor-not-allowed"
                     onClick={() =>
                       setErrors(prev => ({
                         ...prev,
                         requestToHint: !fromLocation
                           ? 'Please select a source location first.'
                           : !selectedCabinets.length
-                          ? 'Please select at least one machine first.'
-                          : 'Please select a destination location first.',
+                            ? 'Please select at least one machine first.'
+                            : 'Please select a destination location first.',
                       }))
                     }
                   />
                 )}
               </div>
-              {errors.requestTo && <div className="mt-1 text-xs font-medium text-red-500">{errors.requestTo}</div>}
+              {errors.requestTo && (
+                <div className="mt-1 text-xs font-medium text-red-500">
+                  {errors.requestTo}
+                </div>
+              )}
               {!toLocation && errors.requestToHint && (
                 <DisabledHint message={errors.requestToHint} />
               )}
@@ -458,9 +551,10 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
 
             {/* Cabinet/SMIB Selection with MultiSelectDropdown */}
             <div className="space-y-1 px-1">
-              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-button"></span>
-                Select {movementType}s to move <span className="text-red-500">*</span>
+              <label className="ml-1 flex items-center gap-1.5 text-[13px] font-bold text-gray-900">
+                <span className="h-1.5 w-1.5 rounded-full bg-button"></span>
+                Select {movementType}s to move{' '}
+                <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="flex flex-col gap-2 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
@@ -469,44 +563,59 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                     <Input
                       type="text"
-                      placeholder={fromLocation ? `Search ${movementType}s...` : "Select a source location first"}
+                      placeholder={
+                        fromLocation
+                          ? `Search ${movementType}s...`
+                          : 'Select a source location first'
+                      }
                       value={machineSearchTerm}
-                      onChange={(e) => setMachineSearchTerm(e.target.value)}
+                      onChange={e => setMachineSearchTerm(e.target.value)}
                       disabled={!fromLocation || loadingCabinets}
-                      className="h-10 pl-9 text-sm rounded-lg"
+                      className="h-10 rounded-lg pl-9 text-sm"
                     />
                   </div>
 
                   {/* List of Machines */}
-                  <div className="max-h-56 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1">
+                  <div className="custom-scrollbar flex max-h-56 flex-col gap-1 overflow-y-auto pr-1">
                     {loadingCabinets ? (
                       <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                        <Loader2 className="h-6 w-6 animate-spin mb-2" />
-                        <span className="text-sm">Loading {movementType.toLowerCase()}s...</span>
+                        <Loader2 className="mb-2 h-6 w-6 animate-spin" />
+                        <span className="text-sm">
+                          Loading {movementType.toLowerCase()}s...
+                        </span>
                       </div>
                     ) : !fromLocation ? (
-                      <div className="py-8 text-center text-sm text-gray-500 italic">
+                      <div className="py-8 text-center text-sm italic text-gray-500">
                         Please select a source location first.
                       </div>
                     ) : cabinets.length === 0 ? (
                       <div className="py-8 text-center text-sm text-gray-500">
-                        No {movementType.toLowerCase()}s found for this location.
+                        No {movementType.toLowerCase()}s found for this
+                        location.
                       </div>
                     ) : (
                       (() => {
                         const filtered = cabinets.filter(cab => {
                           const searchStr = machineSearchTerm.toLowerCase();
                           return (
-                            (cab.installedGame || cab.game || '').toLowerCase().includes(searchStr) ||
-                            (cab.serialNumber || '').toLowerCase().includes(searchStr) ||
-                            (cab.assetNumber || '').toLowerCase().includes(searchStr) ||
-                            (cab.relayId || '').toLowerCase().includes(searchStr)
+                            (cab.installedGame || cab.game || '')
+                              .toLowerCase()
+                              .includes(searchStr) ||
+                            (cab.serialNumber || '')
+                              .toLowerCase()
+                              .includes(searchStr) ||
+                            (cab.assetNumber || '')
+                              .toLowerCase()
+                              .includes(searchStr) ||
+                            (cab.relayId || '')
+                              .toLowerCase()
+                              .includes(searchStr)
                           );
                         });
 
                         if (filtered.length === 0) {
                           return (
-                            <div className="py-6 text-center text-sm text-gray-500 font-medium">
+                            <div className="py-6 text-center text-sm font-medium text-gray-500">
                               No matches for "{machineSearchTerm}"
                             </div>
                           );
@@ -516,42 +625,57 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
                           <label
                             key={cab._id}
                             className={`flex cursor-pointer items-start gap-3 rounded-lg border border-transparent p-2 transition-all hover:bg-gray-50 ${
-                              selectedCabinets.some(c => c._id === cab._id) ? 'bg-violet-50/50 border-violet-100' : ''
+                              selectedCabinets.some(c => c._id === cab._id)
+                                ? 'border-violet-100 bg-violet-50/50'
+                                : ''
                             }`}
                           >
                             <Checkbox
-                              checked={selectedCabinets.some(c => c._id === cab._id)}
+                              checked={selectedCabinets.some(
+                                c => c._id === cab._id
+                              )}
                               onCheckedChange={() => {
-                                if (selectedCabinets.some(c => c._id === cab._id)) {
-                                  setSelectedCabinets(prev => prev.filter(c => c._id !== cab._id));
+                                if (
+                                  selectedCabinets.some(c => c._id === cab._id)
+                                ) {
+                                  setSelectedCabinets(prev =>
+                                    prev.filter(c => c._id !== cab._id)
+                                  );
                                 } else {
                                   setSelectedCabinets(prev => [...prev, cab]);
-                                  setErrors(prev => ({...prev, selectedCabinets: '', machineHint: ''}));
+                                  setErrors(prev => ({
+                                    ...prev,
+                                    selectedCabinets: '',
+                                    machineHint: '',
+                                  }));
                                 }
                               }}
-                              className="mt-1 h-4 w-4 border-gray-300 data-[state=checked]:bg-buttonActive data-[state=checked]:border-buttonActive"
+                              className="mt-1 h-4 w-4 border-gray-300 data-[state=checked]:border-buttonActive data-[state=checked]:bg-buttonActive"
                             />
-                            <div className="flex flex-1 items-center justify-between min-w-0 leading-tight">
+                            <div className="flex min-w-0 flex-1 items-center justify-between leading-tight">
                               {movementType === 'SMIB' ? (
-                                <div className="flex flex-col min-w-0">
-                                  <span className="text-sm font-bold text-gray-900 truncate">
+                                <div className="flex min-w-0 flex-col">
+                                  <span className="truncate text-sm font-bold text-gray-900">
                                     {cab.relayId}
                                   </span>
-                                  <span className="text-[10px] text-gray-500 font-medium mt-0.5">
-                                    <span className="text-gray-400">SN:</span> {cab.serialNumber || 'N/A'} | <span className="text-gray-400">ID:</span> {cab.relayId || 'N/A'}
+                                  <span className="mt-0.5 text-[10px] font-medium text-gray-500">
+                                    <span className="text-gray-400">SN:</span>{' '}
+                                    {cab.serialNumber || 'N/A'} |{' '}
+                                    <span className="text-gray-400">ID:</span>{' '}
+                                    {cab.relayId || 'N/A'}
                                   </span>
                                 </div>
                               ) : (
                                 <>
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="text-sm font-bold text-gray-900 truncate">
+                                  <div className="flex min-w-0 flex-col">
+                                    <span className="truncate text-sm font-bold text-gray-900">
                                       {cab.serialNumber || 'No Serial'}
                                     </span>
-                                    <span className="text-[10px] text-gray-500 font-medium mt-0.5 truncate">
+                                    <span className="mt-0.5 truncate text-[10px] font-medium text-gray-500">
                                       {cab.custom?.name || 'Unnamed Machine'}
                                     </span>
                                   </div>
-                                  <span className="text-[11px] font-bold text-buttonActive bg-violet-50 px-2 py-0.5 rounded ml-3 shrink-0 uppercase tracking-wider">
+                                  <span className="ml-3 shrink-0 rounded bg-violet-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-buttonActive">
                                     {cab.installedGame || cab.game || 'No Game'}
                                   </span>
                                 </>
@@ -565,50 +689,62 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
                 </div>
                 {!fromLocation && (
                   <div
-                    className="absolute inset-0 cursor-not-allowed z-10"
+                    className="absolute inset-0 z-10 cursor-not-allowed"
                     onClick={() =>
                       setErrors(prev => ({
                         ...prev,
-                        machineHint: 'Please select a source location before picking machines.',
+                        machineHint:
+                          'Please select a source location before picking machines.',
                       }))
                     }
                   />
                 )}
                 {loadingCabinets && (
-                   <div className="absolute right-10 top-1/2 -translate-y-1/2">
-                     <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                   </div>
+                  <div className="absolute right-10 top-1/2 -translate-y-1/2">
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                  </div>
                 )}
               </div>
               {!fromLocation && errors.machineHint && (
                 <DisabledHint message={errors.machineHint} />
               )}
               {errors.selectedCabinets && (
-                <div className="mt-1 text-xs font-medium text-red-500">{errors.selectedCabinets}</div>
+                <div className="mt-1 text-xs font-medium text-red-500">
+                  {errors.selectedCabinets}
+                </div>
               )}
             </div>
 
             {/* Selected Items */}
             <div className="space-y-1">
-              <label className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 ml-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <label className="ml-1 flex items-center gap-1.5 text-[13px] font-bold text-gray-900">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"></span>
                 Selected {movementType}s ({selectedCabinets.length})
               </label>
               <div className="h-32 overflow-y-auto rounded-xl border border-dashed border-gray-200 bg-white p-3 shadow-inner">
                 {selectedCabinets.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {selectedCabinets.map(cab => (
-                        <Chip
-                          key={cab._id}
-                          label={movementType === 'SMIB' ? (cab.relayId || 'Unknown SMIB') : (cab.serialNumber || cab.installedGame || cab.game || 'Machine')}
-                          onRemove={() => handleRemoveCabinet(cab._id)}
-                          className="bg-buttonActive text-white px-3 py-1 font-medium shadow-sm"
-                        />
-                      ))}
+                      <Chip
+                        key={cab._id}
+                        label={
+                          movementType === 'SMIB'
+                            ? cab.relayId || 'Unknown SMIB'
+                            : cab.serialNumber ||
+                              cab.installedGame ||
+                              cab.game ||
+                              'Machine'
+                        }
+                        onRemove={() => handleRemoveCabinet(cab._id)}
+                        className="bg-buttonActive px-3 py-1 font-medium text-white shadow-sm"
+                      />
+                    ))}
                   </div>
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center text-gray-400">
-                    <p className="text-sm">No {movementType.toLowerCase() + 's'} selected.</p>
+                    <p className="text-sm">
+                      No {movementType.toLowerCase() + 's'} selected.
+                    </p>
                   </div>
                 )}
               </div>
@@ -616,24 +752,29 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="border-t border-gray-100 p-5 w-full bg-white">
-          <div className="flex flex-col sm:flex-row justify-end gap-3 w-full sm:w-auto ml-auto">
+        <DialogFooter className="w-full border-t border-gray-100 bg-white p-5">
+          <div className="ml-auto flex w-full flex-col justify-end gap-3 sm:w-auto sm:flex-row">
             <DialogClose asChild>
-              <Button variant="outline" className="h-10 px-8 font-semibold text-gray-600 border-gray-200 hover:bg-gray-50 transition-colors sm:order-1">
+              <Button
+                variant="outline"
+                className="h-10 border-gray-200 px-8 font-semibold text-gray-600 transition-colors hover:bg-gray-50 sm:order-1"
+              >
                 Cancel
               </Button>
             </DialogClose>
             <Button
               onClick={handleSubmit}
               disabled={submitting}
-              className="h-10 px-10 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-bold shadow-lg shadow-green-200 transition-all active:scale-95 sm:order-2"
+              className="h-10 bg-gradient-to-r from-emerald-600 to-green-600 px-10 font-bold text-white shadow-lg shadow-green-200 transition-all hover:from-emerald-700 hover:to-green-700 active:scale-95 sm:order-2"
             >
               {submitting ? (
                 <div className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Submitting...</span>
                 </div>
-              ) : 'Confirm Request'}
+              ) : (
+                'Confirm Request'
+              )}
             </Button>
           </div>
         </DialogFooter>
@@ -643,4 +784,3 @@ const NewMovementRequestModal: FC<NewMovementModalProps> = ({
 };
 
 export default NewMovementRequestModal;
-

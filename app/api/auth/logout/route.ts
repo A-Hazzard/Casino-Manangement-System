@@ -12,6 +12,11 @@
 
 import { getAuthCookieOptions } from '@/lib/utils/cookieSecurity';
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  logRouteCreate,
+  logRouteError,
+  extractUserFromRequest,
+} from '@/app/api/lib/utils/routeLogger';
 
 /**
  * POST /api/auth/logout
@@ -21,6 +26,8 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+  const functionName = 'POST /api/auth/logout';
+  const user = extractUserFromRequest(request);
 
   try {
     // ============================================================================
@@ -46,18 +53,16 @@ export async function POST(request: NextRequest) {
     // STEP 4: Return success response
     // ============================================================================
     const duration = Date.now() - startTime;
-    if (duration > 100) {
-      console.warn(`[Logout API] Completed in ${duration}ms`);
-    }
+    logRouteCreate(functionName, 'POST', '/api/auth/logout', 1, user, duration);
 
     return response;
   } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`[Logout API] Error after ${duration}ms:`, error);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Internal server error';
+    logRouteError(functionName, 'POST', '/api/auth/logout', errorMessage, user);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
-

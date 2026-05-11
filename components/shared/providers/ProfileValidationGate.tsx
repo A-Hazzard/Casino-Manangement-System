@@ -25,13 +25,13 @@ import { useCurrentUserQuery } from '@/lib/hooks/useCurrentUserQuery';
 import { useAuthSessionStore } from '@/lib/store/authSessionStore';
 import { useUserStore } from '@/lib/store/userStore';
 import type {
-    ProfileValidationFormData,
-    ProfileValidationModalData,
+  ProfileValidationFormData,
+  ProfileValidationModalData,
 } from '@/lib/types/auth';
 import { validatePasswordStrength } from '@/lib/utils/validation';
 import type {
-    InvalidProfileFields,
-    ProfileValidationReasons,
+  InvalidProfileFields,
+  ProfileValidationReasons,
 } from '@/shared/types/auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -69,16 +69,17 @@ export default function ProfileValidationGate({
   const router = useRouter();
   const { user, setUser, clearUser } = useUserStore();
   const { refetch } = useCurrentUserQuery();
-  const { lastLoginPassword, clearLastLoginPassword } =
-    useAuthSessionStore();
+  const { lastLoginPassword, clearLastLoginPassword } = useAuthSessionStore();
   // Use only new fields - memoize to prevent dependency array issues
   const userLicenceeDeps = useMemo(() => {
-    return Array.isArray(user?.assignedLicencees) && user.assignedLicencees.length > 0
+    return Array.isArray(user?.assignedLicencees) &&
+      user.assignedLicencees.length > 0
       ? user.assignedLicencees
       : [];
   }, [user?.assignedLicencees]);
   const userLocationDeps = useMemo(() => {
-    return Array.isArray(user?.assignedLocations) && user.assignedLocations.length > 0
+    return Array.isArray(user?.assignedLocations) &&
+      user.assignedLocations.length > 0
       ? user.assignedLocations
       : [];
   }, [user?.assignedLocations]);
@@ -100,7 +101,7 @@ export default function ProfileValidationGate({
     licenceeIds: [],
     locationIds: [],
   });
-  
+
   // Track if we just successfully updated to prevent re-evaluation
   const justUpdatedRef = useRef(false);
 
@@ -227,32 +228,37 @@ export default function ProfileValidationGate({
 
       // Use only new fields
       let latestLicenceeIds: string[] = [];
-      if (Array.isArray(latestUser.assignedLicencees) && latestUser.assignedLicencees.length > 0) {
+      if (
+        Array.isArray(latestUser.assignedLicencees) &&
+        latestUser.assignedLicencees.length > 0
+      ) {
         latestLicenceeIds = latestUser.assignedLicencees.map(id => String(id));
       }
-      
+
       let latestLocationIds: string[] = [];
-      if (Array.isArray(latestUser.assignedLocations) && latestUser.assignedLocations.length > 0) {
+      if (
+        Array.isArray(latestUser.assignedLocations) &&
+        latestUser.assignedLocations.length > 0
+      ) {
         latestLocationIds = latestUser.assignedLocations.map(id => String(id));
       }
 
-    setCurrentData({
-      username: latestUser.username || '',
-      firstName: latestUser.profile?.firstName || '',
-      lastName: latestUser.profile?.lastName || '',
-      otherName: latestUser.profile?.otherName || '',
-      gender:
-        (latestUser.profile?.gender &&
-          String(latestUser.profile.gender).toLowerCase()) ||
-        '',
-      emailAddress: latestUser.emailAddress || '',
-      phone:
-        latestUser.profile?.phoneNumber ||
-        latestUser.profile?.contact?.phone ||
-        latestUser.profile?.contact?.mobile ||
-        '',
-      dateOfBirth:
-        latestUser.profile?.identification?.dateOfBirth
+      setCurrentData({
+        username: latestUser.username || '',
+        firstName: latestUser.profile?.firstName || '',
+        lastName: latestUser.profile?.lastName || '',
+        otherName: latestUser.profile?.otherName || '',
+        gender:
+          (latestUser.profile?.gender &&
+            String(latestUser.profile.gender).toLowerCase()) ||
+          '',
+        emailAddress: latestUser.emailAddress || '',
+        phone:
+          latestUser.profile?.phoneNumber ||
+          latestUser.profile?.contact?.phone ||
+          latestUser.profile?.contact?.mobile ||
+          '',
+        dateOfBirth: latestUser.profile?.identification?.dateOfBirth
           ? new Date(
               latestUser.profile.identification.dateOfBirth as
                 | string
@@ -262,9 +268,9 @@ export default function ProfileValidationGate({
               .toISOString()
               .split('T')[0]
           : '',
-      licenceeIds: latestLicenceeIds,
-      locationIds: latestLocationIds,
-    });
+        licenceeIds: latestLicenceeIds,
+        locationIds: latestLocationIds,
+      });
 
       if (!needsUpdate) {
         setInvalidFields(EMPTY_FIELDS);
@@ -321,7 +327,9 @@ export default function ProfileValidationGate({
         success: result.success,
         requiresProfileUpdate: result.requiresProfileUpdate,
         invalidFields: result.invalidProfileFields,
-        hasInvalidFields: result.invalidProfileFields && Object.values(result.invalidProfileFields).some(Boolean),
+        hasInvalidFields:
+          result.invalidProfileFields &&
+          Object.values(result.invalidProfileFields).some(Boolean),
       });
 
       if (!response.ok || !result.success) {
@@ -359,37 +367,49 @@ export default function ProfileValidationGate({
           result.user?.profile?.contact?.mobile ||
           data.phone ||
           '',
-      dateOfBirth:
-        (result.user?.profile?.identification?.dateOfBirth
-          ? new Date(
-              result.user.profile.identification.dateOfBirth as
-                | string
-                | number
-                | Date
-            )
-              .toISOString()
-              .split('T')[0]
-          : data.dateOfBirth) || '',
+        dateOfBirth:
+          (result.user?.profile?.identification?.dateOfBirth
+            ? new Date(
+                result.user.profile.identification.dateOfBirth as
+                  | string
+                  | number
+                  | Date
+              )
+                .toISOString()
+                .split('T')[0]
+            : data.dateOfBirth) || '',
         licenceeIds: (() => {
           // Use only new field
-          if (Array.isArray(result.user?.assignedLicencees) && result.user.assignedLicencees.length > 0) {
-            return result.user.assignedLicencees.map((id: string) => String(id));
+          if (
+            Array.isArray(result.user?.assignedLicencees) &&
+            result.user.assignedLicencees.length > 0
+          ) {
+            return result.user.assignedLicencees.map((id: string) =>
+              String(id)
+            );
           }
           return data.licenceeIds ?? [];
         })(),
         locationIds: (() => {
           // Use only new field
-          if (Array.isArray(result.user?.assignedLocations) && result.user.assignedLocations.length > 0) {
-            return result.user.assignedLocations.map((id: string) => String(id));
+          if (
+            Array.isArray(result.user?.assignedLocations) &&
+            result.user.assignedLocations.length > 0
+          ) {
+            return result.user.assignedLocations.map((id: string) =>
+              String(id)
+            );
           }
           return data.locationIds ?? [];
         })(),
       });
 
       // Check if profile update is complete (no invalid fields remaining)
-      const hasNoInvalidFields = !result.invalidProfileFields || 
+      const hasNoInvalidFields =
+        !result.invalidProfileFields ||
         !Object.values(result.invalidProfileFields).some(Boolean);
-      const profileUpdateComplete = !result.requiresProfileUpdate && hasNoInvalidFields;
+      const profileUpdateComplete =
+        !result.requiresProfileUpdate && hasNoInvalidFields;
 
       console.log('[ProfileValidationGate] Profile update complete check:', {
         requiresProfileUpdate: result.requiresProfileUpdate,
@@ -398,21 +418,26 @@ export default function ProfileValidationGate({
       });
 
       // Logout conditionally after successful profile update.
-      // If sessionVersion was NOT incremented (e.g. only profile fields changed), 
+      // If sessionVersion was NOT incremented (e.g. only profile fields changed),
       // we can persist the session and just update the local state.
       if (result.success) {
         if (!result.sessionVersionIncremented) {
-          console.log('[ProfileValidationGate] Profile update successful - session version unchanged, continuing session.');
-          
+          console.log(
+            '[ProfileValidationGate] Profile update successful - session version unchanged, continuing session.'
+          );
+
           if (profileUpdateComplete) {
             toast.success('Profile updated successfully.', { duration: 3000 });
             setOpen(false);
             justUpdatedRef.current = true;
           } else {
             // Some fields still need attention, stay in modal or refresh state
-            toast.info('Profile partially updated. Some fields may still need attention.', { duration: 3000 });
+            toast.info(
+              'Profile partially updated. Some fields may still need attention.',
+              { duration: 3000 }
+            );
           }
-          
+
           return {
             success: profileUpdateComplete,
             invalidFields: result.invalidProfileFields,
@@ -421,14 +446,16 @@ export default function ProfileValidationGate({
         }
 
         // logout logic for sessionVersionIncremented
-        console.log('[ProfileValidationGate] Profile update successful - initiating logout (sessionVersion incremented)...');
-        
+        console.log(
+          '[ProfileValidationGate] Profile update successful - initiating logout (sessionVersion incremented)...'
+        );
+
         // Set flag to prevent re-evaluation
         justUpdatedRef.current = true;
-        
+
         // Close modal immediately
         setOpen(false);
-        
+
         // Show success toast
         const toastMessage = profileUpdateComplete
           ? 'Profile updated successfully. Please log in again to continue.'
@@ -436,7 +463,7 @@ export default function ProfileValidationGate({
         toast.success(toastMessage, {
           duration: 5000,
         });
-        
+
         // Small delay to ensure toast is visible, then logout and redirect
         setTimeout(async () => {
           try {
@@ -444,10 +471,10 @@ export default function ProfileValidationGate({
             // Logout via API (clears cookies)
             await logoutUser();
             console.log('[ProfileValidationGate] Logout successful');
-            
+
             // Clear user from store
             clearUser();
-            
+
             // Redirect to login with success message
             console.log('[ProfileValidationGate] Redirecting to login...');
             const loginMessage = profileUpdateComplete
@@ -464,7 +491,7 @@ export default function ProfileValidationGate({
             router.push('/login?message=' + encodeURIComponent(loginMessage));
           }
         }, 1000);
-        
+
         return {
           success: profileUpdateComplete,
           invalidFields: result.invalidProfileFields,
@@ -488,10 +515,9 @@ export default function ProfileValidationGate({
     }
   };
 
+  // ... (previous imports remain, ProfileValidationModal is removed)
 
-// ... (previous imports remain, ProfileValidationModal is removed)
-
-// ...
+  // ...
 
   // ============================================================================
   // Render - Profile Validation Modal
@@ -511,5 +537,3 @@ export default function ProfileValidationGate({
     />
   );
 }
-
-

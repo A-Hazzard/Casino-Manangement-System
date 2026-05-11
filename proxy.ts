@@ -21,7 +21,12 @@ import { getCurrentDbConnectionString, getJwtSecret } from '@/lib/utils/auth';
 import { jwtVerify } from 'jose';
 import { NextRequest, NextResponse } from 'next/server';
 
-const publicPaths = ['/login', '/forgot-password', '/reset-password', '/install'];
+const publicPaths = [
+  '/login',
+  '/forgot-password',
+  '/reset-password',
+  '/install',
+];
 
 /**
  * Validates database context from JWT token
@@ -223,4 +228,3 @@ function createLogoutResponse(
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.|api/).*)'],
 };
-

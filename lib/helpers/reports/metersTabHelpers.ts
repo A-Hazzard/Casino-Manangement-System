@@ -26,9 +26,7 @@ import { toast } from 'sonner';
  * Formats as: serialNumber || custom.name (custom.name if different, game)
  * Shows "(game name not provided)" in red if game is missing
  */
-export function formatMachineIdForDisplay(
-  item: MetersReportData
-): {
+export function formatMachineIdForDisplay(item: MetersReportData): {
   mainIdentifier: string;
   displayParts: Array<{ text: string; isError: boolean }>;
   hasLink: boolean;
@@ -175,8 +173,9 @@ export function calculateTopMachines(
         const serialNumber = item.serialNumber?.trim() || '';
         const hasSerialNumber = serialNumber !== '';
 
-        const customName =
-          (item.custom as Record<string, unknown>)?.name as string | undefined;
+        const customName = (item.custom as Record<string, unknown>)?.name as
+          | string
+          | undefined;
         const customNameTrimmed = customName?.trim() || '';
         const hasCustomName = customNameTrimmed !== '';
 
@@ -279,7 +278,8 @@ export async function handleExportMeters({
         (customDateRange.startDate || customDateRange.start) &&
         (customDateRange.endDate || customDateRange.end) && {
           startDate: (() => {
-            const dateValue = (customDateRange.startDate || customDateRange.start)!;
+            const dateValue = (customDateRange.startDate ||
+              customDateRange.start)!;
             return `${dateValue.getFullYear()}-${String(dateValue.getMonth() + 1).padStart(2, '0')}-${String(dateValue.getDate()).padStart(2, '0')}`;
           })(),
           endDate: (() => {
@@ -354,5 +354,3 @@ export async function handleExportMeters({
     });
   }
 }
-
-

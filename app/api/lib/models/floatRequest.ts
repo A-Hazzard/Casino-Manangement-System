@@ -1,9 +1,5 @@
 import mongoose, { model, Schema } from 'mongoose';
 
-/**
- * Denomination Schema
- * Tracks specific bill denominations and quantities
- */
 const DenominationSchema = new Schema(
   {
     denomination: {
@@ -20,10 +16,6 @@ const DenominationSchema = new Schema(
   { _id: false }
 );
 
-/**
- * Float Request Schema
- * Cashier float increase/decrease requests (C-3)
- */
 const FloatRequestSchema = new Schema(
   {
     _id: { type: String, required: true },
@@ -38,7 +30,6 @@ const FloatRequestSchema = new Schema(
       required: true,
     },
 
-    // Request details
     requestedAmount: { type: Number, required: true, min: 0 },
     requestedDenominations: [DenominationSchema],
     requestedDenom: [DenominationSchema],
@@ -48,10 +39,16 @@ const FloatRequestSchema = new Schema(
     shiftId: { type: String },
     location: { type: String },
 
-    // Approval workflow
     status: {
       type: String,
-      enum: ['pending', 'approved', 'approved_vm', 'denied', 'edited', 'cancelled'],
+      enum: [
+        'pending',
+        'approved',
+        'approved_vm',
+        'denied',
+        'edited',
+        'cancelled',
+      ],
       default: 'pending',
       required: true,
       index: true,
@@ -65,14 +62,12 @@ const FloatRequestSchema = new Schema(
     approvedBy: { type: String },
     rejectedBy: { type: String },
     rejectionReason: { type: String },
-    processedBy: { type: String }, // VM user ID
+    processedBy: { type: String },
     processedAt: { type: Date },
     vmNotes: { type: String },
-    
-    // Transaction reference
-    transactionId: { type: String }, // Link to vaultTransactions
 
-    // Notification tracking
+    transactionId: { type: String },
+
     notificationSent: { type: Boolean, default: false },
     notificationSentAt: { type: Date },
     notificationReadAt: { type: Date },
@@ -82,7 +77,6 @@ const FloatRequestSchema = new Schema(
     acknowledgedByManager: { type: Boolean, default: false },
     acknowledgedAt: { type: Date },
 
-    // Audit trail
     auditLog: [
       {
         action: {
@@ -112,7 +106,6 @@ const FloatRequestSchema = new Schema(
   { timestamps: true }
 );
 
-// Indexes for performance
 FloatRequestSchema.index({ locationId: 1, status: 1, requestedAt: -1 });
 FloatRequestSchema.index({ cashierId: 1, createdAt: -1 });
 FloatRequestSchema.index({ vaultShiftId: 1, status: 1 });

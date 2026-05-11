@@ -1,6 +1,6 @@
 /**
  * Custom hook for Games Performance data processing
- * 
+ *
  * Handles data aggregation, filtering, and transformation for the games performance chart
  */
 
@@ -239,5 +239,3 @@ export function useGamesPerformanceData({
     minWidth,
   };
 }
-
-
