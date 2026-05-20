@@ -398,39 +398,21 @@ export default function CollectionReportV2SessionReportMachinesTab({
                   {/* Col 2 — Machine */}
                   <SortableHeader label="Machine" field="machineName" />
 
-                  {/* Col 3 — Lifetime Machine In */}
+                  {/* Col 3 — Lifetime Machine In/Out */}
                   <SortableHeader
-                    label="Lifetime Machine In"
+                    label="Lifetime Machine In/Out"
                     field="lifetimeMachineIn"
                     align="right"
                   />
-                  {/* Col 4 — Lifetime Machine Out */}
+                  {/* Col 4 — Movement Machine In/Out */}
                   <SortableHeader
-                    label="Lifetime Machine Out"
-                    field="lifetimeMachineOut"
-                    align="right"
-                  />
-                  {/* Col 5 — Movement Machine In */}
-                  <SortableHeader
-                    label="Movement Machine In"
+                    label="Movement Machine In/Out"
                     field="movementMachineIn"
                     align="right"
                   />
-                  {/* Col 6 — Movement Machine Out */}
+                  {/* Cols 5-6 — SAS columns, merged for noSMIB */}
                   <SortableHeader
-                    label="Movement Machine Out"
-                    field="movementMachineOut"
-                    align="right"
-                  />
-                  {/* Col 7 — Movement Machine Gross */}
-                  <SortableHeader
-                    label="Movement Machine Gross"
-                    field="movementMachineGross"
-                    align="right"
-                  />
-                  {/* Cols 8-10 — SAS columns, merged for noSMIB */}
-                  <SortableHeader
-                    label="Lifetime SAS In"
+                    label="Lifetime SAS In/Out"
                     field="lifetimeSasIn"
                     align="right"
                   />
@@ -439,6 +421,15 @@ export default function CollectionReportV2SessionReportMachinesTab({
                     field="lifetimeSasGross"
                     align="right"
                   />
+
+                  {/* Col 7 — Movement Gross */}
+                  <SortableHeader
+                    label="Movement Gross"
+                    field="movementMachineGross"
+                    align="right"
+                  />
+
+                  {/* Col 8 — Variation */}
                   <SortableHeader
                     label="Variation"
                     field="variation"
@@ -462,6 +453,7 @@ export default function CollectionReportV2SessionReportMachinesTab({
                     machine.manualMetersOut ?? machine.sasMetersOut ?? null;
                   // SAS values are null for noSMIB — show N/A rather than 0
                   const lifetimeSasIn = machine.sasMetersIn;
+                  const lifetimeSasOut = machine.sasMetersOut;
                   const lifetimeSasGross = machine.sasGross ?? null;
 
                   return (
@@ -501,67 +493,63 @@ export default function CollectionReportV2SessionReportMachinesTab({
                         </div>
                       </td>
 
-                      {/* Col 3 — Lifetime Machine In */}
+                      {/* Col 3 — Lifetime Machine In/Out */}
                       <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-900 last:border-r-0">
-                        {formatNum(lifetimeMachineIn)}
+                        {formatNum(lifetimeMachineIn)}/{formatNum(lifetimeMachineOut)}
                       </td>
 
-                      {/* Col 4 — Lifetime Machine Out */}
-                      <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-900 last:border-r-0">
-                        {formatNum(lifetimeMachineOut)}
-                      </td>
-
-                      {/* Col 5 — Movement Machine In */}
+                      {/* Col 4 — Movement Machine In/Out */}
                       <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-700 last:border-r-0">
-                        {formatNum(machine.movement?.manualMetersIn ?? null)}
+                        {formatNum(machine.movement?.manualMetersIn ?? null)}/{formatNum(machine.movement?.manualMetersOut ?? null)}
                       </td>
 
-                      {/* Col 6 — Movement Machine Out */}
-                      <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-700 last:border-r-0">
-                        {formatNum(machine.movement?.manualMetersOut ?? null)}
-                      </td>
-
-                      {/* Col 7 — Movement Machine Gross */}
-                      <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-700 last:border-r-0">
-                        {formatNum(machine.movement?.machineGross ?? null)}
-                      </td>
-
-                      {/* Cols 8-10 — SAS: merged for noSMIB, separate for SMIB */}
+                      {/* Cols 5-6 — SAS: merged for noSMIB, separate for SMIB */}
                       {noSMIBLocation ? (
                         <td
-                          colSpan={3}
+                          colSpan={2}
                           className="border-r border-gray-100 px-3 py-3 text-center font-medium italic text-gray-400 last:border-r-0"
                         >
                           No SMIBs for this Location
                         </td>
                       ) : (
                         <>
-                          {/* Col 8 — Lifetime SAS In */}
+                          {/* Col 5 — Lifetime SAS In/Out */}
                           <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-600 last:border-r-0">
-                            {formatNum(lifetimeSasIn)}
+                            {formatNum(lifetimeSasIn)}/{formatNum(lifetimeSasOut)}
                           </td>
 
-                          {/* Col 9 — Lifetime SAS Gross */}
+                          {/* Col 6 — Lifetime SAS Gross */}
                           <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-600 last:border-r-0">
                             {formatNum(lifetimeSasGross)}
-                          </td>
-
-                          {/* Col 10 — Variation */}
-                          <td
-                            className={`whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-semibold tabular-nums last:border-r-0 ${
-                              machine.grossDifference !== null &&
-                              machine.grossDifference !== undefined &&
-                              machine.grossDifference !== 0
-                                ? 'text-red-600'
-                                : 'text-gray-900'
-                            }`}
-                          >
-                            {formatNum(machine.grossDifference ?? null)}
                           </td>
                         </>
                       )}
 
-                      {/* Col 10 / 6 — SAS Times */}
+                      {/* Col 7 — Movement Gross */}
+                      <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium tabular-nums text-gray-700 last:border-r-0">
+                        {formatNum(machine.movement?.machineGross ?? null)}
+                      </td>
+
+                      {/* Col 8 — Variation */}
+                      {noSMIBLocation ? (
+                        <td className="whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-medium text-gray-400 last:border-r-0">
+                          —
+                        </td>
+                      ) : (
+                        <td
+                          className={`whitespace-nowrap border-r border-gray-100 px-3 py-3 text-right font-semibold tabular-nums last:border-r-0 ${
+                            machine.grossDifference !== null &&
+                            machine.grossDifference !== undefined &&
+                            machine.grossDifference !== 0
+                              ? 'text-red-600'
+                              : 'text-gray-900'
+                          }`}
+                        >
+                          {formatNum(machine.grossDifference ?? null)}
+                        </td>
+                      )}
+
+                      {/* Col 9 — SAS Times */}
                       <SasTimesCell machine={machine} />
                     </tr>
                   );
@@ -618,47 +606,23 @@ export default function CollectionReportV2SessionReportMachinesTab({
 
                   {/* Data grid */}
                   <div className="grid grid-cols-2 gap-y-2 text-sm">
-                    {/* Lifetime Machine In + Out */}
-                    <div>
+                    {/* Lifetime Machine In/Out */}
+                    <div className="col-span-2">
                       <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                        Lifetime Machine In
+                        Lifetime Machine In/Out
                       </p>
                       <p className="mt-0.5 font-medium tabular-nums text-gray-900">
-                        {formatNum(lifetimeMachineIn)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                        Lifetime Machine Out
-                      </p>
-                      <p className="mt-0.5 font-medium tabular-nums text-gray-900">
-                        {formatNum(lifetimeMachineOut)}
+                        {formatNum(lifetimeMachineIn)}/{formatNum(lifetimeMachineOut)}
                       </p>
                     </div>
 
-                    {/* Movement Machine In + Out + Gross */}
-                    <div>
-                      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                        Movement Machine In
-                      </p>
-                      <p className="mt-0.5 font-medium tabular-nums text-gray-700">
-                        {formatNum(machine.movement?.manualMetersIn ?? null)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                        Movement Machine Out
-                      </p>
-                      <p className="mt-0.5 font-medium tabular-nums text-gray-700">
-                        {formatNum(machine.movement?.manualMetersOut ?? null)}
-                      </p>
-                    </div>
+                    {/* Movement Machine In/Out */}
                     <div className="col-span-2">
                       <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                        Movement Machine Gross
+                        Movement Machine In/Out
                       </p>
                       <p className="mt-0.5 font-medium tabular-nums text-gray-700">
-                        {formatNum(machine.movement?.machineGross ?? null)}
+                        {formatNum(machine.movement?.manualMetersIn ?? null)}/{formatNum(machine.movement?.manualMetersOut ?? null)}
                       </p>
                     </div>
 
@@ -674,39 +638,67 @@ export default function CollectionReportV2SessionReportMachinesTab({
                       </div>
                     ) : (
                       <>
-                        <div>
-                          <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                            Lifetime SAS In
-                          </p>
-                          <p className="mt-0.5 font-medium tabular-nums text-gray-600">
-                            {formatNum(machine.sasMetersIn)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                            Lifetime SAS Gross
-                          </p>
-                          <p className="mt-0.5 font-medium tabular-nums text-gray-600">
-                            {formatNum(lifetimeSasGross)}
-                          </p>
-                        </div>
+                        {/* Lifetime SAS In/Out */}
                         <div className="col-span-2">
                           <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
-                            Variation
+                            Lifetime SAS In/Out
                           </p>
-                          <p
-                            className={`mt-0.5 font-semibold tabular-nums ${
-                              machine.grossDifference !== null &&
-                              machine.grossDifference !== undefined &&
-                              machine.grossDifference !== 0
-                                ? 'text-red-600'
-                                : 'text-gray-900'
-                            }`}
-                          >
-                            {formatNum(machine.grossDifference ?? null)}
+                          <p className="mt-0.5 font-medium tabular-nums text-gray-600">
+                            {formatNum(machine.sasMetersIn)}/{formatNum(machine.sasMetersOut)}
                           </p>
                         </div>
                       </>
+                    )}
+
+                    {/* Movement Gross + Lifetime SAS Gross side-by-side */}
+                    <div>
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                        Movement Gross
+                      </p>
+                      <p className="mt-0.5 font-medium tabular-nums text-gray-700">
+                        {formatNum(machine.movement?.machineGross ?? null)}
+                      </p>
+                    </div>
+                    {!noSMIBLocation ? (
+                      <div>
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                          Lifetime SAS Gross
+                        </p>
+                        <p className="mt-0.5 font-medium tabular-nums text-gray-600">
+                          {formatNum(lifetimeSasGross)}
+                        </p>
+                      </div>
+                    ) : (
+                      <div />
+                    )}
+
+                    {/* Variation at the end */}
+                    {!noSMIBLocation ? (
+                      <div className="col-span-2">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                          Variation
+                        </p>
+                        <p
+                          className={`mt-0.5 font-semibold tabular-nums ${
+                            machine.grossDifference !== null &&
+                            machine.grossDifference !== undefined &&
+                            machine.grossDifference !== 0
+                              ? 'text-red-600'
+                              : 'text-gray-900'
+                          }`}
+                        >
+                          {formatNum(machine.grossDifference ?? null)}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="col-span-2">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">
+                          Variation
+                        </p>
+                        <p className="mt-0.5 font-normal italic text-gray-400">
+                          —
+                        </p>
+                      </div>
                     )}
 
                     {/* SAS Times — col-span-2, border-top section */}
